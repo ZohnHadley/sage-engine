@@ -1,0 +1,3 @@
+Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
+"c:/Users/zohn/Documents/Mono Game projects/sage_engine/Content/hydra_t.png","c:/Users/zohn/Documents/Mono Game projects/sage_engine/Content/bin/DesktopGL/hydra_t_0.xnb","TextureProcessor","Texture2DContent",112398,1398253,0,9410787
+"c:/Users/zohn/Documents/Mono Game projects/sage_engine/Content/hydrahead.fbx","c:/Users/zohn/Documents/Mono Game projects/sage_engine/Content/bin/DesktopGL/hydrahead.xnb","ModelProcessor","ModelContent",43148,69393,1,0391221

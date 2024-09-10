@@ -1,0 +1,3 @@
+Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
+"C:/Users/Zohn Hadley/Documents/sage-engine/Content/hydra_t.png","C:/Users/Zohn Hadley/Documents/sage-engine/Content/bin/DesktopGL/Content/hydra_t_0.xnb","TextureProcessor","Texture2DContent",112398,1398253,1.8568952
+"C:/Users/Zohn Hadley/Documents/sage-engine/Content/hydrahead.fbx","C:/Users/Zohn Hadley/Documents/sage-engine/Content/bin/DesktopGL/Content/hydrahead.xnb","ModelProcessor","ModelContent",43148,69393,2.192676
