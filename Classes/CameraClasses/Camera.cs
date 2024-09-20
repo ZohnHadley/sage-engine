@@ -4,6 +4,7 @@ using System.Transactions;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using sage_engine;
 
 public class Camera
 {
@@ -12,13 +13,17 @@ public class Camera
 
     public Matrix projectionMatrix; // converts 3d to 2d a.k.a the lens (what the camera cans see)
     public Matrix viewMatrix; // cameras physical position in the world (location and orientation) 
-    Vector3 camForward = Vector3.Forward;
-    Vector3 camUp = Vector3.Up;
-    float mouseAmount = 0.05f;
-    private GraphicsDevice graphicsDevice;
 
+    private Vector3 camForward = Vector3.Forward;
+    private Vector3 camUp = Vector3.Up;
+    private float mouseAmount = 0.005f;
+
+    KeyboardState keyState;
     private MouseState mouseState;
-    MouseState prevMouseState;
+    private MouseState prevMouseState;
+
+
+    private bool isEditor = true;
 
     public Camera(float aspect_ratio, Vector3 position, Vector3 rotation)
     {
@@ -36,14 +41,27 @@ public class Camera
 
     public void update(GameTime gameTime)
     {
+        keyState = Keyboard.GetState();
+        mouseState = Mouse.GetState();
+        if (EditorUI.getIsHovered() == false)
+        {
+            //isEditor = !isEditor;
+            //Console.WriteLine("Editor mode: " + isEditor);
+            editorCameraMovement(keyState, mouseState);
+        }
+
+
+        viewMatrix = Matrix.CreateLookAt(camPosition, (camPosition + camForward), camUp);
+
+    }
+
+    private void editorCameraMovement(KeyboardState keyState, MouseState mouseState)
+    {
+
+
         Vector3 direction = camForward;
         direction.Normalize();
-
-        Vector3 normal = Vector3.Cross(direction, camUp); // if y and z then x or if x and z then y or if x and y then z
-
-
-        KeyboardState keyState = Keyboard.GetState();
-        mouseState = Mouse.GetState();
+        Vector3 normal = Vector3.Cross(direction, camUp);
 
         if (mouseState.LeftButton == ButtonState.Pressed)
         {
@@ -53,16 +71,15 @@ public class Camera
 
             y *= 480 / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height * 1.0f);
             x *= 800 / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width * 1.0f);
-            Console.WriteLine("X: " + x + " Y: " + y);
 
             camForward += x * mouseAmount * normal;
             camForward -= y * mouseAmount * camUp;
             camForward.Normalize();
-            
+
             prevMouseState = mouseState;
         }
 
-        if(mouseState.LeftButton == ButtonState.Released)
+        if (mouseState.LeftButton == ButtonState.Released)
         {
             prevMouseState = mouseState;
         }
@@ -71,8 +88,6 @@ public class Camera
         {
             //move camera forward in direction of rotation 
             camPosition += direction * 0.25f;
-
-
         }
 
         if (keyState.IsKeyDown(Keys.S))
@@ -82,19 +97,13 @@ public class Camera
 
         if (keyState.IsKeyDown(Keys.D))
         {
-            //camForward += 1f * 0.05f * normal;
-            camPosition.X += 0.25f;
+            camPosition += normal * 0.25f;
         }
 
         if (keyState.IsKeyDown(Keys.A))
         {
-            //camForward -= 1f * 0.05f * normal;
-            camPosition.X -= 0.25f;
+            camPosition -= normal * 0.25f;
         }
-        viewMatrix = Matrix.CreateLookAt(camPosition, (camPosition + camForward), camUp);
-
-        //update position in wolrd matrix
-
     }
 
 }

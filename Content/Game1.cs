@@ -16,13 +16,15 @@ public class Game1 : Game
     private Entity dragonHead1;
     private Entity dragonHead2;
     private Entity dragonHead3;
+
+   
+    private RenderTarget2D gameRender;
+
     public Game1()
     {
         // Initialize GraphicsDeviceManager
         graphics_device_manager = new GraphicsDeviceManager(this);
-        graphics_device_manager.PreferredBackBufferWidth = 800;
-        graphics_device_manager.PreferredBackBufferHeight = 480;
-        graphics_device_manager.ApplyChanges();
+        
 
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
@@ -32,6 +34,9 @@ public class Game1 : Game
     {
 
         graphics_device = graphics_device_manager.GraphicsDevice;
+         
+
+
 
         cam = new Camera(GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0, 0, 9), new Vector3(0, 0, 0));
         entityManager = new EntityManager(cam);
@@ -42,6 +47,7 @@ public class Game1 : Game
 
     protected override void LoadContent()
     {
+       
         MyraEnvironment.Game = this;
 
         Models.InitializeModels(Content);
@@ -52,7 +58,7 @@ public class Game1 : Game
         entityManager.addEntity(dragonHead2);
         entityManager.addEntity(dragonHead3);
 
-        EditorUI.load();
+        EditorUI.load(graphics_device);
 
     }
 
@@ -62,7 +68,7 @@ public class Game1 : Game
             Exit();
 
 
-
+        EditorUI.update(gameTime);
         //Console.WriteLine("pdated");
         cam.update(gameTime);
         dragonHead1.setPosition(cam.camTarget);
@@ -72,11 +78,12 @@ public class Game1 : Game
     protected override void Draw(GameTime gameTime)
     {
 
+ 
+        graphics_device.Clear(Color.CornflowerBlue);
 
-        graphics_device.Clear(Color.LightBlue);
         entityManager.renderEntities();
-        EditorUI.draw();
 
+        EditorUI.draw();
 
         base.Draw(gameTime);
     }

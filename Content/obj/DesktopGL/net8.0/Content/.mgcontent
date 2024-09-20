@@ -4,8 +4,8 @@
   <Platform>DesktopGL</Platform>
   <Config />
   <SourceFiles>
-    <File>C:/Users/Zohn Hadley/Documents/sage-engine/Content/hydra_t.png</File>
-    <File>C:/Users/Zohn Hadley/Documents/sage-engine/Content/hydrahead.fbx</File>
+    <File>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/hydra_t.png</File>
+    <File>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/hydrahead.fbx</File>
   </SourceFiles>
   <DestFiles>
     <File xsi:nil="true" />

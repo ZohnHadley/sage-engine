@@ -1,25 +1,21 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Zohn Hadley\\Documents\\sage-engine\\sage_engine.csproj": {}
+    "C:\\Users\\zohn\\Documents\\MonoGame_projects\\sage engine\\sage_engine.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Zohn Hadley\\Documents\\sage-engine\\sage_engine.csproj": {
+    "C:\\Users\\zohn\\Documents\\MonoGame_projects\\sage engine\\sage_engine.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Zohn Hadley\\Documents\\sage-engine\\sage_engine.csproj",
+        "projectUniqueName": "C:\\Users\\zohn\\Documents\\MonoGame_projects\\sage engine\\sage_engine.csproj",
         "projectName": "sage_engine",
-        "projectPath": "C:\\Users\\Zohn Hadley\\Documents\\sage-engine\\sage_engine.csproj",
-        "packagesPath": "C:\\Users\\Zohn Hadley\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Zohn Hadley\\Documents\\sage-engine\\obj\\",
+        "projectPath": "C:\\Users\\zohn\\Documents\\MonoGame_projects\\sage engine\\sage_engine.csproj",
+        "packagesPath": "C:\\Users\\zohn\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\zohn\\Documents\\MonoGame_projects\\sage engine\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Microsoft\\Xamarin\\NuGet\\"
-        ],
         "configFilePaths": [
-          "C:\\Users\\Zohn Hadley\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Xamarin.Offline.config"
+          "C:\\Users\\zohn\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -38,6 +34,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -73,7 +74,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.300/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
