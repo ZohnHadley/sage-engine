@@ -1,6 +1,4 @@
 
-using System;
-using System.Transactions;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -21,9 +19,7 @@ public class Camera
     KeyboardState keyState;
     private MouseState mouseState;
     private MouseState prevMouseState;
-
-
-    private bool isEditor = true;
+     
 
     public Camera(float aspect_ratio, Vector3 position, Vector3 rotation)
     {
@@ -31,9 +27,10 @@ public class Camera
         //camTarget in fonrt of camPosition with a distance of 10 from z axis
         camTarget = new Vector3(0, 0, 0);
         camPosition = position;
-
+        //set rotation 
+        camForward = Vector3.Transform(camForward, Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(rotation.Y), MathHelper.ToRadians(rotation.X), MathHelper.ToRadians(rotation.Z)));
         projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(45f), aspect_ratio, 1, 1000); // screen aspect ration and render distance
-        viewMatrix = Matrix.CreateLookAt(camPosition, camTarget, Vector3.Up);
+        viewMatrix = Matrix.CreateLookAt(camPosition, (camPosition + camForward), Vector3.Up);
 
     }
 
@@ -43,10 +40,10 @@ public class Camera
     {
         keyState = Keyboard.GetState();
         mouseState = Mouse.GetState();
+
         if (EditorUI.getIsHovered() == false)
         {
-            //isEditor = !isEditor;
-            //Console.WriteLine("Editor mode: " + isEditor);
+            
             editorCameraMovement(keyState, mouseState);
         }
 

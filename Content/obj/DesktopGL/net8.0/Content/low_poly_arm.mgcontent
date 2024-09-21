@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PipelineBuildEvent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <SourceFile>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/hydrahead.fbx</SourceFile>
-  <SourceTime>2024-09-17T21:39:13.1757562-04:00</SourceTime>
-  <DestFile>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/Content/hydrahead.xnb</DestFile>
-  <DestTime>2024-09-22T22:44:50.0299295-04:00</DestTime>
+  <SourceFile>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/low_poly_arm.fbx</SourceFile>
+  <SourceTime>2024-09-25T23:06:59.9514986-04:00</SourceTime>
+  <DestFile>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/Content/low_poly_arm.xnb</DestFile>
+  <DestTime>2024-09-25T23:08:46.9386326-04:00</DestTime>
   <Importer>FbxImporter</Importer>
   <ImporterTime>2024-08-16T13:05:56-04:00</ImporterTime>
   <Processor>ModelProcessor</Processor>
@@ -65,8 +65,6 @@
     <Value>Compressed</Value>
   </Parameters>
   <Dependencies />
-  <BuildAsset>
-    <string>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/Content/hydra_t_0.xnb</string>
-  </BuildAsset>
+  <BuildAsset />
   <BuildOutput />
 </PipelineBuildEvent>

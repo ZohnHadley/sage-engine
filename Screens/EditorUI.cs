@@ -1,49 +1,130 @@
 using System;
+using System.ComponentModel.Design.Serialization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Myra;
 using Myra.Graphics2D.Brushes;
 using Myra.Graphics2D.UI;
+using Myra.Graphics2D.UI.Properties;
 namespace sage_engine;
 class EditorUI
 {
     private static Desktop _desktop;
     static bool isHovered = false;
-    private static HorizontalMenu top_menu;
-    private static MenuItem menuItem_scene;
+
 
     public static void load(GraphicsDevice graphicsDevice)
     {
-        //add background to  panel
         _desktop = new Desktop();
-        
-      //  var stackPanelLayout = new StackPanelLayout( Orientation.Vertical);
-         
-        top_menu = new HorizontalMenu(); 
-        menuItem_scene = new MenuItem { Text = "Scene" };
-        menuItem_scene.Items.Add(new MenuItem { Text = "Save" });
-        menuItem_scene.Items.Add(new MenuItem { Text = "Open" });
-        menuItem_scene.Items.Add(new MenuItem { Text = "New" });
-        top_menu.Items.Add(menuItem_scene); 
+        //add background to  panel
+        var root = new Panel
+        {
+            Width = graphicsDevice.Viewport.Width,
+            Height = graphicsDevice.Viewport.Height,
+        };
 
-        _desktop.Root = top_menu;
+        var verticalStack = new VerticalStackPanel
+        {
+        
+            Spacing = 2,
+          
+        };
+
+        var topMenu = new HorizontalMenu();
+        topMenu.Items.Add(new MenuItem { Text = "File" });
+        topMenu.Items.Add(new MenuItem { Text = "Edit" });
+
+        var horizontalSplit = new HorizontalSplitPane
+        {
+            Width = graphicsDevice.Viewport.Width,
+            Height = graphicsDevice.Viewport.Height,
+        };
+        StackPanel.SetProportionType(horizontalSplit, Myra.Graphics2D.UI.ProportionType.Fill);
+
+        var rightPanel = new VerticalStackPanel
+        { 
+            Height = graphicsDevice.Viewport.Height, 
+        };
+
+        var leftPanel_inspectionPanel = new VerticalStackPanel
+        {
+            Spacing = 2,
+ 
+            Height = graphicsDevice.Viewport.Height,
+
+            Background = new SolidBrush(Color.Gray),
+            ShowGridLines = true,
+            GridLinesColor = Color.White,
+        };
+
+        var label_leftPanel = new Label
+        {
+            Text = "Inspection Panel",
+          
+        };
+
+        var label_leftPanel_objectName = new Label
+        {
+            Text = "name : N/A",
+          
+        };
+ 
+        var bottomPanel = new VerticalStackPanel
+        {
+            Height = graphicsDevice.Viewport.Height / 2,
+            Background = new SolidBrush(Color.Gray),
+            ShowGridLines = true,
+            GridLinesColor = Color.White,
+        };
+
+        leftPanel_inspectionPanel.Widgets.Add(label_leftPanel);
+        leftPanel_inspectionPanel.Widgets.Add(label_leftPanel_objectName);
+        
+
+
+        horizontalSplit.Widgets.Add(leftPanel_inspectionPanel);
+        horizontalSplit.Widgets.Add(rightPanel); 
+        horizontalSplit.SetSplitterPosition(0, 0.25f);
+
+
+        var verticalSplit = new VerticalSplitPane
+        {
+            Width = graphicsDevice.Viewport.Width, 
+        };
+        
+        //verticalSplit.Widgets.Add(horizontalSplit);
+        //verticalSplit.Widgets.Add(bottomPanel);
+
+        verticalStack.Widgets.Add(topMenu);
+        //verticalStack.Widgets.Add(verticalSplit);
+
+        root.Widgets.Add(verticalStack);
+        //add buttons to grid 
+
+
+
+
+
+
+        _desktop.Root = root;
     }
 
     public static void update(GameTime gameTime)
     {
         MouseState mouseState = Mouse.GetState();
-       //check if mouse is hovering over the menu
-        if (top_menu.Bounds.Contains(mouseState.Position))
+        //check if mouse is hovering over the menu
+        if (_desktop.IsMouseOverGUI)
         {
             //if mouse is hovering over the menu
-            isHovered = true; 
+            isHovered = true;
         }
         else
         {
             //if mouse is not hovering over the menu 
             isHovered = false;
         }
+        Console.WriteLine(isHovered);
     }
 
     public static void draw()
@@ -56,3 +137,4 @@ class EditorUI
         return isHovered;
     }
 }
+
