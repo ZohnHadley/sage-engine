@@ -113,3 +113,4 @@ c:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\refint\sage_engine.d
 c:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\sage_engine.pdb
 C:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\sage_engine.genruntimeconfig.cache
 C:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\ref\sage_engine.dll
+c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\low_poly_arm.xnb
