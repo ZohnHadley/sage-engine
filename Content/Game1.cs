@@ -1,4 +1,6 @@
 ﻿
+using System;
+using Liru3D.Models;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -13,8 +15,7 @@ public class Game1 : Game
     private EntityManager entityManager;
     private Entity dragonHead1;
     private Entity dragonHead2;
-    private Entity dragonHead3;
-
+    private Entity dragonHead3; 
 
     public Game1()
     {
@@ -36,7 +37,7 @@ public class Game1 : Game
 
 
         cam = new Camera(GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0, 0, 12), new Vector3(0, 0, 0));
-        entityManager = new EntityManager(cam);
+        entityManager = new EntityManager(cam, graphics_device);
 
 
         base.Initialize();
@@ -46,16 +47,12 @@ public class Game1 : Game
     {
 
 
-        MyraEnvironment.Game = this;
-
+        MyraEnvironment.Game = this;  
 
         Models.InitializeModels(Content);
-        dragonHead1 = new Entity("ent1", Models.debug_low_poly_arms, cam.camTarget, new Vector3(-90, 0, 0));
-        dragonHead2 = new Entity("ent2", Models.debug_monkey_head, new Vector3(0, 5, 0), new Vector3(0, 0, 0));
-        dragonHead3 = new Entity("ent3", Models.debug_monkey_head, new Vector3(6, 0, 5), new Vector3(0, 0, 0));
+        dragonHead1 = new Entity("ent1", Models.debug_monkey_head, cam.camTarget, new Vector3(0, 0, 0));
         entityManager.addEntity(dragonHead1);
-        entityManager.addEntity(dragonHead2);
-        entityManager.addEntity(dragonHead3);
+         
 
         EditorUI.load(graphics_device);
 
@@ -81,7 +78,6 @@ public class Game1 : Game
         graphics_device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.CornflowerBlue, 1.0f, 0);
 
         entityManager.renderEntities();
-
         EditorUI.draw();
 
         base.Draw(gameTime);

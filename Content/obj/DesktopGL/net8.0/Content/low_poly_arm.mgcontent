@@ -1,68 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PipelineBuildEvent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <SourceFile>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/low_poly_arm.fbx</SourceFile>
-  <SourceTime>2024-09-25T23:06:59.9514986-04:00</SourceTime>
+  <SourceTime>2024-10-12T19:16:13.0721265-04:00</SourceTime>
   <DestFile>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/Content/low_poly_arm.xnb</DestFile>
-  <DestTime>2024-09-25T23:08:46.9386326-04:00</DestTime>
-  <Importer>FbxImporter</Importer>
-  <ImporterTime>2024-08-16T13:05:56-04:00</ImporterTime>
-  <Processor>ModelProcessor</Processor>
-  <ProcessorTime>2024-08-16T13:05:56-04:00</ProcessorTime>
+  <DestTime>2024-10-12T19:17:50.5705023-04:00</DestTime>
+  <Importer>SkinnedMeshImporter</Importer>
+  <ImporterTime>2023-05-24T11:23:54-04:00</ImporterTime>
+  <Processor>SkinnedMeshProcessor</Processor>
+  <ProcessorTime>2023-05-24T11:23:54-04:00</ProcessorTime>
   <Parameters>
-    <Key>ColorKeyColor</Key>
-    <Value>0,0,0,0</Value>
+    <Key>KeyframeDecimalPlaceRounding</Key>
+    <Value>5</Value>
   </Parameters>
   <Parameters>
-    <Key>ColorKeyEnabled</Key>
-    <Value>True</Value>
-  </Parameters>
-  <Parameters>
-    <Key>DefaultEffect</Key>
-    <Value>BasicEffect</Value>
-  </Parameters>
-  <Parameters>
-    <Key>GenerateMipmaps</Key>
-    <Value>True</Value>
-  </Parameters>
-  <Parameters>
-    <Key>GenerateTangentFrames</Key>
+    <Key>SkipUVs</Key>
     <Value>False</Value>
-  </Parameters>
-  <Parameters>
-    <Key>PremultiplyTextureAlpha</Key>
-    <Value>True</Value>
-  </Parameters>
-  <Parameters>
-    <Key>PremultiplyVertexColors</Key>
-    <Value>True</Value>
-  </Parameters>
-  <Parameters>
-    <Key>ResizeTexturesToPowerOfTwo</Key>
-    <Value>False</Value>
-  </Parameters>
-  <Parameters>
-    <Key>RotationX</Key>
-    <Value>0</Value>
-  </Parameters>
-  <Parameters>
-    <Key>RotationY</Key>
-    <Value>0</Value>
-  </Parameters>
-  <Parameters>
-    <Key>RotationZ</Key>
-    <Value>0</Value>
-  </Parameters>
-  <Parameters>
-    <Key>Scale</Key>
-    <Value>1</Value>
-  </Parameters>
-  <Parameters>
-    <Key>SwapWindingOrder</Key>
-    <Value>False</Value>
-  </Parameters>
-  <Parameters>
-    <Key>TextureFormat</Key>
-    <Value>Compressed</Value>
   </Parameters>
   <Dependencies />
   <BuildAsset />

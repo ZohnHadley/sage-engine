@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("sage_engine")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d51ceab2f965e15af0a0159241c6f47911d5f2d9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e7b30279bf47cf8b6810a8f4f1026a7f92a7ac6b")]
 [assembly: System.Reflection.AssemblyProductAttribute("sage_engine")]
 [assembly: System.Reflection.AssemblyTitleAttribute("sage_engine")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
