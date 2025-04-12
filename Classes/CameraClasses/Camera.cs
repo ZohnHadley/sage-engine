@@ -95,56 +95,7 @@ public class Camera
 
         viewMatrix = Matrix.CreateLookAt(camPosition, (camPosition + camForward), camUp);
 
-    }
-
-    private void editorCameraMovement(KeyboardState keyState, MouseState mouseState)
-    {
-        Vector3 direction = camForward;
-        direction.Normalize();
-        Vector3 normal = Vector3.Cross(direction, camUp);
-
-        if (mouseState.LeftButton == ButtonState.Pressed)
-        {
-            Vector2 pos = Vector2.SmoothStep(new Vector2(prevMouseState.X, prevMouseState.Y), new Vector2(mouseState.X, mouseState.Y), 0.5f);
-            float y = mouseState.Y - prevMouseState.Y;
-            float x = mouseState.X - prevMouseState.X;
-
-            y *= graphics_device_manager.PreferredBackBufferHeight / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height * 1.0f);
-            x *= graphics_device_manager.PreferredBackBufferWidth / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width * 1.0f);
-
-            camForward += x * mouseAmount * normal * 0.01f;
-            camForward -= y * mouseAmount * camUp  * 0.01f;
-            camForward.Normalize();
-
-            prevMouseState = mouseState;
-        }
-
-        if (mouseState.LeftButton == ButtonState.Released)
-        {
-            prevMouseState = mouseState;
-        }
-
-        if (keyState.IsKeyDown(Keys.W))
-        {
-            //move camera forward in direction of rotation 
-            camPosition += direction * 0.25f;
-        }
-
-        if (keyState.IsKeyDown(Keys.S))
-        {
-            camPosition -= direction * 0.25f;
-        }
-
-        if (keyState.IsKeyDown(Keys.D))
-        {
-            camPosition += normal * 0.25f;
-        }
-
-        if (keyState.IsKeyDown(Keys.A))
-        {
-            camPosition -= normal * 0.25f;
-        }
-    }
+    } 
 
     private void CustomMovement(KeyboardState keyState, MouseState mouseState)
     {
@@ -153,28 +104,24 @@ public class Camera
         direction.Normalize();
         Vector3 normal = Vector3.Cross(direction, camUp);
  
-        /*if (mouseState.LeftButton == ButtonState.Pressed)
+        float mouse_y = mouseState.Y - prevMouseState.Y;
+        float mouse_x = mouseState.X - prevMouseState.X;
+        if (mouseState.RightButton == ButtonState.Pressed)
         {
-            Vector2 pos = Vector2.SmoothStep(new Vector2(prevMouseState.X, prevMouseState.Y), new Vector2(mouseState.X, mouseState.Y), 0.5f);
-            float y = mouseState.Y - prevMouseState.Y;
-            float x = mouseState.X - prevMouseState.X;
 
-            y *= graphics_device_manager.PreferredBackBufferHeight / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height * 1.0f);
-            x *= graphics_device_manager.PreferredBackBufferWidth / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width * 1.0f);
+            mouse_y *= graphics_device_manager.PreferredBackBufferHeight / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height * 1.0f);
+            mouse_x *= graphics_device_manager.PreferredBackBufferWidth / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width * 1.0f);
 
-            camForward += x * mouseAmount * normal * 0.01f;
-            camForward -= y * mouseAmount * camUp  * 0.01f;
+            camForward -= mouse_y * mouseAmount * camUp  * 0.01f;
+            camForward += mouse_x * mouseAmount * normal * 0.01f;
             camForward.Normalize();
 
             prevMouseState = mouseState;
-        }
-
-        if (mouseState.LeftButton == ButtonState.Released)
-        {
+        }else if (mouseState.RightButton == ButtonState.Released){
             prevMouseState = mouseState;
         }
 
-        if (keyState.IsKeyDown(Keys.W))
+        /*if (keyState.IsKeyDown(Keys.W))
         {
             //move camera forward in direction of rotation 
             camPosition += direction * 0.25f;

@@ -11,13 +11,13 @@ public class Game1 : Game
     private EditorManager editorManager;
     private GraphicsDevice graphics_device;
     private Camera cam;
-    private EntityManager entityManager;
     private Entity bunnyEntity; 
- 
+    EntityContext entContext;
     public Game1()
     {
         // Initialize GraphicsDeviceManager
         editorManager = new  EditorManager(this, 800, 420);
+        entContext = EntityContext.getInstance();
 
 
         Content.RootDirectory = "Content";
@@ -26,14 +26,12 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        
-
         graphics_device = editorManager.getGraphicsDeviceManager().GraphicsDevice;
 
-
         cam = editorManager.getCamera();
-        cam.setCamPosition(new Vector3(5, 0, 10));
-        entityManager = new EntityManager(cam, graphics_device);
+        cam.setCamPosition(new Vector3(0, 0, 1));
+ 
+
         
         EditorUI.setEditorManager(editorManager);
 
@@ -47,17 +45,22 @@ public class Game1 : Game
         MyraEnvironment.Game = this;  
 
         Models.InitializeModels(Content);
-        for(int x = 0; x < 10; x++)
+        /*for(int x = 0; x < 10; x++)
         {
             for(int z = 0; z < 10; z++)
             {
                 bunnyEntity = new Entity("ent" + x + z, Models.standforBunny, new Vector3(x, 0, z));
                 entityManager.addEntity(bunnyEntity);
             } 
-        }
+        }*/
 
 
          
+        bunnyEntity = entContext.createEntity();
+        bunnyEntity.addComponent(new ModelComponent(Models.standforBunny, new Vector3(0, 0, 0)));
+
+        Console.WriteLine(entContext.getAllEntities().Count);
+        Console.WriteLine(entContext.getAllEntities("ModelComponent").Count);
 
         EditorUI.load(graphics_device);
 
@@ -83,7 +86,7 @@ public class Game1 : Game
         graphics_device.DepthStencilState = DepthStencilState.Default;
         graphics_device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkGray, 1.0f, 0);
 
-        entityManager.renderEntities();
+        ModelRendererSystem.getInstance().render(cam);
         EditorUI.draw(gameTime);
 
         base.Draw(gameTime);
