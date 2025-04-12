@@ -4,13 +4,9 @@
   <Platform>DesktopGL</Platform>
   <Config />
   <SourceFiles>
-    <File>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/hydra_t.png</File>
-    <File>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/hydrahead.fbx</File>
-    <File>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/low_poly_arm.fbx</File>
+    <File>C:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/stanford_bunny.fbx</File>
   </SourceFiles>
   <DestFiles>
-    <File xsi:nil="true" />
-    <File xsi:nil="true" />
     <File xsi:nil="true" />
   </DestFiles>
 </SourceFileCollection>

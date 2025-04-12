@@ -1,6 +1,5 @@
 ﻿
 using System;
-using Liru3D.Models;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -9,18 +8,16 @@ namespace sage_engine;
 
 public class Game1 : Game
 {
-    private GraphicsDeviceManager graphics_device_manager;
+    private EditorManager editorManager;
     private GraphicsDevice graphics_device;
     private Camera cam;
     private EntityManager entityManager;
-    private Entity dragonHead1;
-    private Entity dragonHead2;
-    private Entity dragonHead3; 
-
+    private Entity bunnyEntity; 
+ 
     public Game1()
     {
         // Initialize GraphicsDeviceManager
-        graphics_device_manager = new GraphicsDeviceManager(this);
+        editorManager = new  EditorManager(this, 800, 420);
 
 
         Content.RootDirectory = "Content";
@@ -29,29 +26,37 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        graphics_device_manager.PreferredBackBufferWidth = 800;
-        graphics_device_manager.PreferredBackBufferHeight = 640;
-        graphics_device_manager.ApplyChanges();
+        
 
-        graphics_device = graphics_device_manager.GraphicsDevice;
+        graphics_device = editorManager.getGraphicsDeviceManager().GraphicsDevice;
 
 
-        cam = new Camera(GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0, 0, 12), new Vector3(0, 0, 0));
+        cam = editorManager.getCamera();
+        cam.setCamPosition(new Vector3(5, 0, 10));
         entityManager = new EntityManager(cam, graphics_device);
-
+        
+        EditorUI.setEditorManager(editorManager);
 
         base.Initialize();
     }
 
     protected override void LoadContent()
     {
-
+        // Load the content for the game here
 
         MyraEnvironment.Game = this;  
 
         Models.InitializeModels(Content);
-        dragonHead1 = new Entity("ent1", Models.debug_monkey_head, cam.camTarget, new Vector3(0, 0, 0));
-        entityManager.addEntity(dragonHead1);
+        for(int x = 0; x < 10; x++)
+        {
+            for(int z = 0; z < 10; z++)
+            {
+                bunnyEntity = new Entity("ent" + x + z, Models.standforBunny, new Vector3(x, 0, z));
+                entityManager.addEntity(bunnyEntity);
+            } 
+        }
+
+
          
 
         EditorUI.load(graphics_device);
@@ -72,13 +77,14 @@ public class Game1 : Game
 
     protected override void Draw(GameTime gameTime)
     {
+         
 
         //z buffer dept clear
         graphics_device.DepthStencilState = DepthStencilState.Default;
-        graphics_device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.CornflowerBlue, 1.0f, 0);
+        graphics_device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkGray, 1.0f, 0);
 
         entityManager.renderEntities();
-        EditorUI.draw();
+        EditorUI.draw(gameTime);
 
         base.Draw(gameTime);
     }

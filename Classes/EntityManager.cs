@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using Liru3D.Models;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 namespace sage_engine;
 class EntityManager
@@ -19,58 +17,23 @@ class EntityManager
     public void addEntity(Entity param_entity)
     {
         entities.Add(param_entity);
-    }
-    /*public void renderEntities()
-    {
-        foreach (Entity entity in entities)
-        {
-            bool isEntitySkinned = entity is SkinnedMesh_Entity;
-            Matrix worldRotationMatrix = Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(entity.rotation.Y), MathHelper.ToRadians(entity.rotation.X), MathHelper.ToRadians(entity.rotation.Z));
-            Matrix worldPositionMatrix = Matrix.CreateTranslation(entity.position.X, entity.position.Y, entity.position.Z);
-
-            if (isEntitySkinned)
-            {
-                SkinnedMesh_Entity ent = (SkinnedMesh_Entity)entity;
-                skinned_effect.View = main_camera.viewMatrix;
-                skinned_effect.World = Matrix.Identity; // main_camera.worldMatrix
-                skinned_effect.Projection = main_camera.projectionMatrix;
-
-
-                skinned_effect.EnableDefaultLighting(); // enable default lighting
-                skinned_effect.PreferPerPixelLighting = true;
-                skinned_effect.SpecularColor = new Vector3(1f);
-                skinned_effect.SpecularPower = 10f;
-                skinned_effect.AmbientLightColor = new Vector3(0, 1, 0);
-                skinned_effect.CurrentTechnique.Passes[0].Apply();
-
-                //ent.animationPlayer.SetEffectBones(skinned_effect);
-
-                foreach (SkinnedMesh mesh in ent.model.Meshes)
-                {
-                    mesh.Draw();
-                }
-               
-            }
-           
-            
-        }
-    }*/
+    } 
 
     public void renderEntities()
     {
         foreach (Entity entity in entities)
         {
-            foreach (ModelMesh mesh in entity.model.Meshes)
+            foreach (ModelMesh mesh in entity.getModel().Meshes)
             {
 
                 foreach (BasicEffect effect in mesh.Effects)
                 {
-                    Matrix worldRotationMatrix = Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(entity.rotation.Y), MathHelper.ToRadians(entity.rotation.X), MathHelper.ToRadians(entity.rotation.Z));
-                    Matrix worldPositionMatrix = Matrix.CreateTranslation(entity.position.X, entity.position.Y, entity.position.Z);
+                    Matrix worldRotationMatrix = Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(entity.getRotation().Y), MathHelper.ToRadians(entity.getRotation().X), MathHelper.ToRadians(entity.getRotation().Z));
+                    Matrix worldPositionMatrix = Matrix.CreateTranslation(entity.getPosition().X, entity.getPosition().Y, entity.getPosition().Z);
 
-                    effect.View = main_camera.viewMatrix;
-                    effect.World = Matrix.Identity * worldRotationMatrix * worldPositionMatrix; // main_camera.worldMatrix
-                    effect.Projection = main_camera.projectionMatrix;
+                    effect.View = main_camera.getViewMatrix(); // main_camera.viewMatrix
+                    effect.World = Matrix.Identity * worldPositionMatrix; // main_camera.worldMatrix
+                    effect.Projection = main_camera.getProjectionMatrix(); // main_camera.projectionMatrix
                     
                     Vector3 lightDirection = new Vector3(0, -20, 0);
                     lightDirection.Normalize();

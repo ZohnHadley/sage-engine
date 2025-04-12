@@ -11,13 +11,14 @@ namespace sage_engine;
 class EditorUI
 {
     private static Desktop _desktop;
+    private static EditorManager editorManager;
     static bool isHovered = false;
-
-
+    static Label label_fps;
     public static void load(GraphicsDevice graphicsDevice)
     {
         _desktop = new Desktop();
         //add background to  panel
+        
         var root = new Panel
         {
             Width = graphicsDevice.Viewport.Width,
@@ -31,9 +32,10 @@ class EditorUI
           
         };
 
-        var topMenu = new HorizontalMenu();
+        /*var topMenu = new HorizontalMenu();
         topMenu.Items.Add(new MenuItem { Text = "File" });
         topMenu.Items.Add(new MenuItem { Text = "Edit" });
+        
 
         var horizontalSplit = new HorizontalSplitPane
         {
@@ -93,25 +95,27 @@ class EditorUI
             Width = graphicsDevice.Viewport.Width, 
         };
         
-        //verticalSplit.Widgets.Add(horizontalSplit);
-        //verticalSplit.Widgets.Add(bottomPanel);
+        verticalSplit.Widgets.Add(horizontalSplit);
+        verticalSplit.Widgets.Add(bottomPanel);
 
-        verticalStack.Widgets.Add(topMenu);
+        verticalStack.Widgets.Add(topMenu);*/
+        label_fps = new Label
+        {
+            Text =  editorManager.getCurrentFPS().ToString(),
+            TextColor = Color.Red,
+        };
+        verticalStack.Widgets.Add(label_fps);
         //verticalStack.Widgets.Add(verticalSplit);
 
         root.Widgets.Add(verticalStack);
         //add buttons to grid 
-
-
-
-
-
-
+ 
         _desktop.Root = root;
     }
 
     public static void update(GameTime gameTime)
     {
+ 
         MouseState mouseState = Mouse.GetState();
         //check if mouse is hovering over the menu
         if (_desktop.IsMouseOverGUI)
@@ -124,17 +128,25 @@ class EditorUI
             //if mouse is not hovering over the menu 
             isHovered = false;
         }
+        
         Console.WriteLine(isHovered);
     }
 
-    public static void draw()
+    public static void draw(GameTime gameTime)
     {
+        editorManager.setCurrentFPS( 1 / (float)gameTime.ElapsedGameTime.TotalSeconds);
+        label_fps.Text = editorManager.getCurrentFPS().ToString();
         _desktop.Render();
     }
 
     public static bool getIsHovered()
     {
         return isHovered;
+    }
+
+    public static void setEditorManager(EditorManager _editorManager)
+    {
+        editorManager = _editorManager;
     }
 }
 

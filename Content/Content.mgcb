@@ -10,23 +10,10 @@
 
 #-------------------------------- References --------------------------------#
 
-/reference:..\..\..\..\.nuget\packages\lovebirb.monogame.skinnedmeshimporter\1.0.4\lib\netstandard2.0\SkinnedMeshImporter.dll
 
 #---------------------------------- Content ---------------------------------#
 
-#begin hydra_t.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:hydra_t.png
-
-#begin hydrahead.fbx
+#begin stanford_bunny.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -43,12 +30,5 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:hydrahead.fbx
-
-#begin low_poly_arm.fbx
-/importer:SkinnedMeshImporter
-/processor:SkinnedMeshProcessor
-/processorParam:KeyframeDecimalPlaceRounding=5
-/processorParam:SkipUVs=False
-/build:low_poly_arm.fbx
+/build:stanford_bunny.fbx
 

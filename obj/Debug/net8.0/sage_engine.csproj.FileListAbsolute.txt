@@ -31,9 +31,6 @@ C:\Users\zohn\Documents\Mono Game projects\sage engine\obj\Debug\net8.0\sage_eng
 C:\Users\zohn\Documents\Mono Game projects\sage engine\obj\Debug\net8.0\ref\sage_engine.dll
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\hydrahead.geo.xnb
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\ship1.xnb
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\hydrahead.xnb
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\hydra_t.xnb
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\hydra_t_0.xnb
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\sage_engine.exe
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\sage_engine.deps.json
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\sage_engine.runtimeconfig.json
@@ -113,13 +110,7 @@ c:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\refint\sage_engine.d
 c:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\sage_engine.pdb
 C:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\sage_engine.genruntimeconfig.cache
 C:\Users\Zohn Hadley\Documents\sage-engine\obj\Debug\net8.0\ref\sage_engine.dll
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\low_poly_arm.xnb
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\AssimpNet.dll
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\SkinnedMeshImporter.dll
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\runtimes\linux-x64\native\libassimp.so
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\runtimes\osx-x64\native\libassimp.dylib
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\runtimes\win-x64\native\assimp.dll
-c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\runtimes\win-x86\native\assimp.dll
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\carrot.fbx
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\Character.xnb
 c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\boxman.xnb
+c:\Users\zohn\Documents\MonoGame_projects\sage engine\bin\Debug\net8.0\Content\stanford_bunny.xnb

@@ -1,44 +1,41 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Liru3D.Models;
-using Liru3D.Animations;
 namespace sage_engine;
 
 class Entity{
-    public String name {get;}
-
-    public AnimationPlayer animationPlayer;
-    public SkinnedModel skinned_model {get;}
-
-    public Model model {get;}
-
-    public Vector3 position {get; set;}
-    public Vector3 rotation {get; set;}
-
+    private String name {get;}
+    private Model model {get;}
+    private Vector3 position {get; set;}
+    private Vector3 rotation {get; set;}
+  
+    public Entity(String _name, Model _model, Vector3 _position){
+        this.name = _name;
+        this.model = _model;
+        this.position = _position;
+    }
     
-    public Entity(String param_name, SkinnedModel param_model, Vector3 param_position, Vector3 param_rotaiton){
-        this.name = param_name;
-        this.skinned_model = param_model;
-        this.position = param_position;
-        this.rotation = param_rotaiton;
-        this.animationPlayer = new AnimationPlayer(skinned_model);
-        this.animationPlayer.Animation = skinned_model.Animations[0];
-        
+    public String getName(){
+        return this.name;
     }
-
-    public Entity(String param_name, Model param_model, Vector3 param_position, Vector3 param_rotaiton){
-        this.name = param_name;
-        this.model = param_model;
-        this.position = param_position;
-        this.rotation = param_rotaiton;
+    
+    public Model getModel(){
+        return this.model;
     }
-
-    public void setPosition(Vector3 param_position){
-        this.position = param_position;
+    
+    public Vector3 getRotation(){
+        return this.rotation;
     }
-
+    
     public Vector3 getPosition(){
         return this.position;
+    }
+
+    public void setRotation(Vector3 _rotation){
+        this.rotation = _rotation;
+    }
+
+    public void setPosition(Vector3 _position){
+        this.position = _position;
     }
 }

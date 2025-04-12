@@ -1,4 +1,2 @@
 Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
-"c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/hydra_t.png","c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/hydra_t_0.xnb","TextureProcessor","Texture2DContent",112398,1398253,0.9969391
-"c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/hydrahead.fbx","c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/hydrahead.xnb","ModelProcessor","ModelContent",43148,69393,1.0922503
-"c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/low_poly_arm.fbx","c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/low_poly_arm.xnb","SkinnedMeshProcessor","SkinnedModelData",360588,654998,0.081596
+"c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/stanford_bunny.fbx","c:/Users/zohn/Documents/MonoGame_projects/sage engine/Content/bin/DesktopGL/stanford_bunny.xnb","ModelProcessor","ModelContent",168604,388148,0.2713285
