@@ -129,7 +129,7 @@ class EditorUI
             isHovered = false;
         }
         
-        Console.WriteLine(isHovered);
+        //Console.WriteLine(isHovered);
     }
 
     public static void draw(GameTime gameTime)

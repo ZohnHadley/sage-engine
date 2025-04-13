@@ -1,19 +1,23 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using sage_engine;
 
 class ModelRendererSystem : ComponentSystem{
-    private EntityContext context = EntityContext.getInstance();
     private static ModelRendererSystem instance = null;
+    private EntityContext context;
 
-    List<Entity> entities;
+    private List<Entity> entities;
 
 
     private ModelRendererSystem()
     {
+        context = EntityContext.getInstance();
         entities = new List<Entity>();
-        entities = context.getAllEntities(["TransformComponent", "ModelComponent"]);
+        entities = context.getAllEntitiesWithListOfComponents(["TransformComponent", "ModelComponent"]);
+        //list of all entities with model component and transform component
+         
     }
 
     public static ModelRendererSystem getInstance()
@@ -36,8 +40,8 @@ class ModelRendererSystem : ComponentSystem{
             {
                 foreach (BasicEffect effect in mesh.Effects)
                 {   
-                    Vector3 enitityPosition = entity.getComponent<TransformComponent>().position;
-                    Quaternion entityRotation = entity.getComponent<TransformComponent>().rotation;
+                    Vector3 enitityPosition = entity.getPosition();
+                    Quaternion entityRotation = entity.getRotation();
 
                     Matrix worldRotationMatrix = Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(entityRotation.Y), MathHelper.ToRadians(entityRotation.X), MathHelper.ToRadians(entityRotation.Z));
                     Matrix worldPositionMatrix = Matrix.CreateTranslation(enitityPosition.X, enitityPosition.Y, enitityPosition.Z);

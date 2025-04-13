@@ -3,10 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 
 class ModelComponent : Component{
     public Model model {get; set;}
-    public Vector3 modelPosition {get; set;}
-    public ModelComponent(Model model, Vector3 position)
+    public ModelComponent(Model model)
     {
         this.model = model;
-        this.modelPosition = position;
     }
 }

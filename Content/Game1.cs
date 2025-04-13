@@ -45,23 +45,19 @@ public class Game1 : Game
         MyraEnvironment.Game = this;  
 
         Models.InitializeModels(Content);
-        /*for(int x = 0; x < 10; x++)
+
+
+        for(int x = 0; x < 5; x++)
         {
-            for(int z = 0; z < 10; z++)
+            for(int z = 0; z < 5; z++)
             {
-                bunnyEntity = new Entity("ent" + x + z, Models.standforBunny, new Vector3(x, 0, z));
-                entityManager.addEntity(bunnyEntity);
+                bunnyEntity = entContext.createEntity();
+                bunnyEntity.addComponent(new ModelComponent(Models.standforBunny));
+                bunnyEntity.transform().position = new Vector3(x, 0, z);
             } 
-        }*/
+        }
 
-
-         
-        bunnyEntity = entContext.createEntity();
-        bunnyEntity.addComponent(new ModelComponent(Models.standforBunny, new Vector3(0, 0, 0)));
-
-        Console.WriteLine(entContext.getAllEntities().Count);
-        Console.WriteLine(entContext.getAllEntities("ModelComponent").Count);
-
+        entContext.createEntity();
         EditorUI.load(graphics_device);
 
     }

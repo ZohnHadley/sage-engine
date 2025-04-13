@@ -6,7 +6,7 @@ using sage_engine;
 
 class EntityContext {
     private static EntityContext instance = null;
-    private int contextEntityCount = 0;
+    private static int contextEntityCount = 0;
     private Dictionary<long, Entity> entities =  new Dictionary<long, Entity>();
     //organises entities into groups based on components they have
     private Dictionary<String, List<Entity>> entityGroups = new Dictionary<String, List<Entity>>();
@@ -22,18 +22,18 @@ class EntityContext {
 
     public Entity createEntity() {
         Entity entity = new Entity();
-        entity.id = contextEntityCount;
-        entities.Add(entity.id, entity);
- 
+        entity.setId(contextEntityCount);
+        entity.addComponent(new TransformComponent());
+        entities.Add(entity.getId(), entity);
         contextEntityCount++;
         return entity;
     }
     
     public void removeEntity(Entity entity) {
-        if (entities.ContainsKey(entity.id)) {
-            entities.Remove(entity.id);
+        if (entities.ContainsKey(entity.getId())) {
+            entities.Remove(entity.getId());
         } else {
-            throw new KeyNotFoundException("Entity with ID " + entity.id + " not found.");
+            throw new KeyNotFoundException("Entity with ID " + entity.getId()+ " not found.");
         }
     }
 
@@ -53,7 +53,7 @@ class EntityContext {
         return result;
     } 
 
-    public List<Entity> getAllEntities(String group) {
+    public List<Entity> getAllEntitiesFromGroup(String group) {
         if (entityGroups.ContainsKey(group)) {
             return entityGroups[group];
         } else {
@@ -61,15 +61,38 @@ class EntityContext {
         }
     }
 
-    public List<Entity> getAllEntities(List<String> groups) {
-        List<Entity> result = new List<Entity>();
+    // gets entities based on groups they belong to
+    public List<Entity> getAllEntitiesFromListOfGroups(List<String> groups) {
+        HashSet<Entity> resultSet = new HashSet<Entity>();
         foreach (var group in groups) {
+            Console.WriteLine("group: " + group);
             if (entityGroups.ContainsKey(group)) {
-                result.AddRange(entityGroups[group]);
+                resultSet.UnionWith(entityGroups[group]);
             }
         }
-        return result;
+        return new List<Entity>(resultSet);
     } 
+
+    public List<Entity> getAllEntitiesWithListOfComponents(List<String> ComponentTypes) {
+        List<Entity> result = new List<Entity>();
+
+        foreach (Entity entity in entities.Values) {
+            bool hasAllComponents = true;
+            foreach (String componentType in ComponentTypes) {
+                if (!entity.hasComponent(componentType)) {
+                    hasAllComponents = false;
+                    //when last component is not found (has all == false), break out of the loop and return a empty list
+                    break;
+                }
+            }
+
+            if (hasAllComponents) {
+                result.Add(entity);
+            }
+        }
+
+        return result;
+    }  
 
     //get all groups
     public Dictionary<String, List<Entity>> getGroups() {

@@ -1,30 +1,79 @@
-using System;using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
 namespace sage_engine;
 
 class Entity{
     private EntityContext context = EntityContext.getInstance();
 
-    public long id {get; set; } // TODO : make so entity has random generated id and adds itself to context 
-    private String name {get; set; }
+    private int id; // TODO : make so entity has random generated id and adds itself to context 
+    private String name;
     private List<Component> components = new List<Component>();
+    private TransformComponent transformComponent;
 
     public Entity() {
         this.name = "Untitled_Entity";
-        addComponent(new TransformComponent()); // add default transform component to all entities
-     } 
+    }
 
     public Entity(String name) {
         this.name = name;
-        addComponent(new TransformComponent()); // add default transform component to all entities
     }
 
-    public void addComponent(Component component) { 
+    public int getId() {
+        return id;
+    }
+    
+    public String getName() {
+        return name;
+    }
+
+    public TransformComponent transform () {
+        if (transformComponent == null) {
+            transformComponent = getComponent<TransformComponent>();
+        }  
+        return transformComponent;
+    }
+
+    public void setId (int id) {
+        this.id = id;
+    }
+
+    public void setName (String name) {
+        this.name = name;
+    }
+ 
+    public void setTransform (TransformComponent transformComponent) {
+        if (transformComponent == null) {
+            throw new ArgumentNullException("TransformComponent cannot be null.");
+        }
+        this.transformComponent = transformComponent;
+    }
+
+
+    public Vector3 getPosition () {
+        return transformComponent.position;
+    }
+
+    public Quaternion getRotation () {
+        return transformComponent.rotation;
+    }
+
+    public Vector3 getScale () {
+        return transformComponent.scale;
+    }
+
+
+        public void addComponent(Component component) { 
         if (component == null) {
-            throw new ArgumentNullException("Component cannot be null.");
+            //throw new ArgumentNullException("Component cannot be null.");
+            Console.WriteLine("Component cannot be null.");
+            return;
         }
 
         if (components.Contains(component)) {
-            throw new ArgumentException("Component already exists in entity.");
+            //throw new ArgumentException("Component already exists in entity.");
+            Console.WriteLine("Component already exists in entity.");
+            return;
         }
 
         if (!context.getGroups().ContainsKey(component.GetType().Name))
@@ -32,8 +81,8 @@ class Entity{
             context.getGroups()[component.GetType().Name] = new List<Entity>();
         }
 
-        context.getGroups()[component.GetType().Name].Add(this);
         components.Add(component);
+        context.getGroups()[component.GetType().Name].Add(this);
     }
 
     public void removeComponent(Component component) {
@@ -55,7 +104,7 @@ class Entity{
 
     public List<Component> getComponents() {
         return components;
-    }
+    } 
 
     public T getComponent<T>() where T : Component {
         foreach (Component component in components) {
@@ -64,5 +113,15 @@ class Entity{
             }
         }
         throw new ArgumentException("Component of type " + typeof(T).Name + " not found in entity.");
+    }
+
+    internal bool hasComponent(string componentType)
+    {
+        foreach (Component component in components) {
+            if (component.GetType().Name == componentType) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -121,7 +121,7 @@ public class Camera
             prevMouseState = mouseState;
         }
 
-        /*if (keyState.IsKeyDown(Keys.W))
+        if (keyState.IsKeyDown(Keys.W))
         {
             //move camera forward in direction of rotation 
             camPosition += direction * 0.25f;
@@ -140,7 +140,7 @@ public class Camera
         if (keyState.IsKeyDown(Keys.A))
         {
             camPosition -= normal * 0.25f;
-        }*/
+        }
     }
 
 }
