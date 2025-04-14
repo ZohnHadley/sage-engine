@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 
-class TransformComponent : Component
+namespace sage_engine;
+class ComponentTransform : Component
 {
     public Vector3 position { get; set; }
     public Quaternion rotation { get; set; }

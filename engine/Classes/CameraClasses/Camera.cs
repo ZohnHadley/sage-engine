@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using sage_engine;
 
-public class Camera
+public class Camera 
 {
 
     private GraphicsDeviceManager graphics_device_manager;
@@ -98,16 +98,19 @@ public class Camera
  
         float mouse_y = mouseState.Y - prevMouseState.Y;
         float mouse_x = mouseState.X - prevMouseState.X;
+
         if (mouseState.RightButton == ButtonState.Pressed)
         {
 
             mouse_y *= graphics_device_manager.PreferredBackBufferHeight / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height * 1.0f);
             mouse_x *= graphics_device_manager.PreferredBackBufferWidth / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width * 1.0f);
 
+
+            //modify rotation
             camForward -= mouse_y * mouseAmount * camUp  * 0.01f;
             camForward += mouse_x * mouseAmount * normal * 0.01f;
             camForward.Normalize();
-
+            //
             prevMouseState = mouseState;
         }else if (mouseState.RightButton == ButtonState.Released){
             prevMouseState = mouseState;
@@ -116,23 +119,25 @@ public class Camera
         if (keyState.IsKeyDown(Keys.W))
         {
             //move camera forward in direction of rotation 
-            camPosition += direction * 0.25f;
+            //camPosition += direction * 0.25f;
+            camPosition = Vector3.Lerp(camPosition, camPosition + direction * 0.25f, 0.1f);
         }
 
         if (keyState.IsKeyDown(Keys.S))
         {
-            camPosition -= direction * 0.25f;
+            camPosition = Vector3.Lerp(camPosition, camPosition - direction * 0.25f, 0.1f);
         }
 
         if (keyState.IsKeyDown(Keys.D))
         {
-            camPosition += normal * 0.25f;
+            camPosition = Vector3.Lerp(camPosition, camPosition + normal * 0.25f, 0.1f);
         }
 
         if (keyState.IsKeyDown(Keys.A))
         {
-            camPosition -= normal * 0.25f;
+            camPosition = Vector3.Lerp(camPosition, camPosition - normal * 0.25f, 0.1f);
         }
     }
+ 
 
 }

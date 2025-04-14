@@ -15,8 +15,7 @@ public class Game1 : Game
     private GraphicsDevice graphicsDevice;
     private Camera cam;
     private Entity bunnyEntity; 
-    EntityContext entContext;
-
+    private EntityContext entContext;
     public Game1()
     {
         // Initialize GraphicsDeviceManager
@@ -31,7 +30,7 @@ public class Game1 : Game
     protected override void Initialize()
     {
     
-        editorManager = new  EditorManager(this, 930, 640);
+        editorManager = new  EditorManager(this, 800, 520);
         editorManager.setGraphicsDeviceManager(graphics);
         graphicsDevice = graphics.GraphicsDevice;
      
@@ -42,6 +41,7 @@ public class Game1 : Game
         cam.setCamPosition(new Vector3(0, 0, 1));
         
         editorManager.setCamera(cam);
+         
 
         GuiRenderer = new ImGuiRenderer(this);
         base.Initialize();
@@ -51,20 +51,20 @@ public class Game1 : Game
     {
         // Load the content for the game here
 
-        Models.InitializeModels(Content);
+        GameAssets.InitializeModels(Content);
 
 
-        for(int x = 0; x < 1; x++)
+        for(int x = 0; x < 2; x++)
         {
-            for(int z = 0; z < 2; z++)
+            for(int z = 0; z < 1; z++)
             {
                 bunnyEntity = entContext.createEntity();
-                bunnyEntity.addComponent(new ModelComponent(Models.standforBunny));
+                bunnyEntity.addComponent(new ComponentMeshRenderer(GameAssets.standforBunny));
                 bunnyEntity.transform().position = new Vector3(x, 0, z);
             } 
         }
 
-
+   
         GuiRenderer.RebuildFontAtlas();
         base.LoadContent();
     }
@@ -85,13 +85,17 @@ public class Game1 : Game
          
         //z buffer dept clear
         graphicsDevice.DepthStencilState = DepthStencilState.Default;
-        graphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkGray, 1.0f, 0);
+        graphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkOliveGreen, 1.0f, 0);
         graphicsDevice.RasterizerState  = RasterizerState.CullCounterClockwise; // add this to system
+
+        
         ModelRendererSystem.getInstance().render(cam);
+        //quad.Draw(cam);
         base.Draw(gameTime);
         
         // Draw the GUI
         GuiRenderer.BeginLayout(gameTime);
+        EditorUI.GetInstance().Draw();
         EntityContextMenuUI.getInstance().draw();
         GuiRenderer.EndLayout();
     }

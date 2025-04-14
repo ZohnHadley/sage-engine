@@ -9,7 +9,8 @@ class Entity{
     private int id; // TODO : make so entity has random generated id and adds itself to context 
     private String name;
     private List<Component> components = new List<Component>();
-    private TransformComponent transformComponent;
+    private List<Tag> tags = new List<Tag>();
+    private ComponentTransform transformComponent;
 
     public Entity() {
         this.name = "Untitled_Entity";
@@ -27,9 +28,9 @@ class Entity{
         return name;
     }
 
-    public TransformComponent transform () {
+    public ComponentTransform transform () {
         if (transformComponent == null) {
-            transformComponent = getComponent<TransformComponent>();
+            transformComponent = getComponent<ComponentTransform>();
         }  
         return transformComponent;
     }
@@ -42,7 +43,7 @@ class Entity{
         this.name = name;
     }
  
-    public void setTransform (TransformComponent transformComponent) {
+    public void setTransform (ComponentTransform transformComponent) {
         if (transformComponent == null) {
             throw new ArgumentNullException("TransformComponent cannot be null.");
         }
@@ -62,7 +63,7 @@ class Entity{
     }
 
 
-        public void addComponent(Component component) { 
+    public void addComponent(Component component) { 
         if (component == null) {
             //throw new ArgumentNullException("Component cannot be null.");
             Console.WriteLine("Component cannot be null.");
@@ -122,5 +123,37 @@ class Entity{
             }
         }
         return false;
+    }
+
+    public void addTag(Tag tag) {
+        if (tag == null) {
+            throw new ArgumentNullException("Tag cannot be null.");
+        }
+
+        if (tags.Contains(tag)) {
+            throw new ArgumentException("Tag already exists in entity.");
+        }
+
+        tags.Add(tag);
+    }
+
+    public void removeTag(Tag tag) {
+        if (tag == null) {
+            throw new ArgumentNullException("Tag cannot be null.");
+        }
+
+        if (!tags.Contains(tag)) {
+            throw new ArgumentException("Tag not found in entity.");
+        }
+
+        tags.Remove(tag);
+    }
+
+    public List<Tag> getTags() {
+        return tags;
+    }
+
+    public bool hasTag(Tag tag) {
+        return tags.Contains(tag);
     }
 }

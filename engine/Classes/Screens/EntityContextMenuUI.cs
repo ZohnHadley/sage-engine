@@ -1,13 +1,15 @@
 using System;
 using System.Numerics;
-using ImGuiNET; 
+using Microsoft.Xna.Framework.Input;
+using ImGuiNET;
 using sage_engine;
 
+namespace sage_engine;
 class EntityContextMenuUI
 {
     private static EntityContextMenuUI instance = null;
     private EntityContext context;
-    private ImGuiWindowFlags mainFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysVerticalScrollbar;
+    private ImGuiWindowFlags mainFlags = ImGuiWindowFlags.AlwaysVerticalScrollbar  ;
     private EntityContextMenuUI()
     {
         context = EntityContext.getInstance();
@@ -24,31 +26,36 @@ class EntityContextMenuUI
 
     public void draw(){
         ImGui.Begin("EntityContextMenu", mainFlags);
-            ImGuiIOPtr io = ImGui.GetIO();
         
             foreach (Entity entity in context.getAllEntities())
             {
                 String entityName = entity.getName() + " " + entity.getId();
                 ImGui.Separator();
-                if (ImGui.TreeNodeEx(entityName))
-                {
-                    ImGui.Text("ID: " + entity.getId());
+                if (ImGui.TreeNodeEx(entityName, ImGuiTreeNodeFlags.SpanFullWidth))
+                {   
                     
-                    Vector3 position = new Vector3(entity.transform().position.X, entity.transform().position.Y, entity.transform().position.Z);
-                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "Position: " + position.ToString());
-                    ImGui.InputFloat3("", ref position, "%.3f");
-                    entity.transform().position = position;
-
-                  
-                    ImGui.TextColored(new Vector4(1, 0, 1, 1), "Components: ");
-                    foreach (Component component in entity.getComponents())
-                    {
-                        ImGui.TextColored(new Vector4(0, 1, 1, 1), "-"+component.GetType().Name);
+                    ImGui.TextColored( new Vector4(1,0.5f,1,1) ,"Components: " + entity.getComponents().Count );
+                    foreach(Component component in entity.getComponents()){
+                        String componentName = component.GetType().ToString() ;
+                        ImGui.Separator();
+                        if (ImGui.TreeNodeEx(componentName, ImGuiTreeNodeFlags.SpanFullWidth))
+                        {
+                            if (Mouse.GetState().RightButton == ButtonState.Pressed)
+                            {
+                                ImGui.OpenPopup("EntityContextMenuPopup");
+                            }
+                            //show all the properties of the component
+                            foreach (var property in component.GetType().GetProperties())
+                            {
+                                ImGui.TextColored( new Vector4(1,1,0.5f,1) ,property.Name + ": " + property.GetValue(component));
+                            }
+                            ImGui.TreePop();
+                        }
                     }
-                    ImGui.TreePop();
 
+                    ImGui.TreePop();
                 }
-           
+                //if right click on entity, show context menu
             }
         ImGui.End();
     }

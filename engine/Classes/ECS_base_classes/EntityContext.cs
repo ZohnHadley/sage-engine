@@ -4,6 +4,7 @@ using System.Numerics;
 using Microsoft.Xna.Framework.Graphics;
 using sage_engine;
 
+namespace sage_engine;
 class EntityContext {
     private static EntityContext instance = null;
     private static int contextEntityCount = 0;
@@ -23,7 +24,7 @@ class EntityContext {
     public Entity createEntity() {
         Entity entity = new Entity();
         entity.setId(contextEntityCount);
-        entity.addComponent(new TransformComponent());
+        entity.addComponent(new ComponentTransform());
         entities.Add(entity.getId(), entity);
         contextEntityCount++;
         return entity;

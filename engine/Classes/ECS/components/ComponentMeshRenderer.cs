@@ -1,9 +1,10 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-class ModelComponent : Component{
+namespace sage_engine;
+class ComponentMeshRenderer : Component{
     public Model model {get; set;}
-    public ModelComponent(Model model)
+    public ComponentMeshRenderer(Model model)
     {
         this.model = model;
     }

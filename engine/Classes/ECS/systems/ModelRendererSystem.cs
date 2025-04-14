@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using sage_engine;
 
+namespace sage_engine;
 class ModelRendererSystem : ComponentSystem{
     private static ModelRendererSystem instance = null;
     private EntityContext context;
@@ -15,7 +15,7 @@ class ModelRendererSystem : ComponentSystem{
     {
         context = EntityContext.getInstance();
         entities = new List<Entity>();
-        entities = context.getAllEntitiesWithListOfComponents(["TransformComponent", "ModelComponent"]);
+        entities = context.getAllEntitiesWithListOfComponents(["ComponentTransform", "ComponentMeshRenderer"]);
         //list of all entities with model component and transform component
          
     }
@@ -35,8 +35,12 @@ class ModelRendererSystem : ComponentSystem{
     }
 
     public void render(Camera camera){
+        if (entities.Count == 0)
+        {
+            return;
+        }
         foreach (Entity entity in entities){
-            foreach (ModelMesh mesh in entity.getComponent<ModelComponent>().model.Meshes)
+            foreach (ModelMesh mesh in entity.getComponent<ComponentMeshRenderer>().model.Meshes)
             {
                 foreach (BasicEffect effect in mesh.Effects)
                 {   
@@ -49,10 +53,7 @@ class ModelRendererSystem : ComponentSystem{
                     effect.View = camera.getViewMatrix(); // main_camera.viewMatrix
                     effect.World = Matrix.Identity * worldPositionMatrix; // main_camera.worldMatrix
                     effect.Projection = camera.getProjectionMatrix(); // main_camera.projectionMatrix
-                    //enable backface culling
                       
-                 
-
                     Vector3 lightDirection = new Vector3(0, -20, 0);
                     lightDirection.Normalize();
 
@@ -60,7 +61,7 @@ class ModelRendererSystem : ComponentSystem{
                     effect.DirectionalLight0.DiffuseColor = new Vector3(1, 1, 1);
                     effect.DirectionalLight0.SpecularColor = new Vector3(1, 1, 1);
                     //effect.DirectionalLight0.Enabled = true;
-                    effect.AmbientLightColor = new Vector3(0.6f, 0.6f, 0.6f);
+                    effect.AmbientLightColor = new Vector3(0.26f, 0.26f, 0.26f);
                     effect.EnableDefaultLighting();
 
 
