@@ -1,5 +1,5 @@
 @echo off
-setlocal enabledelayedexpansion
+
 echo remote branches :
 git branch -r
 echo ------
@@ -15,18 +15,23 @@ if "%source_branch%"=="" (
 set /p target_branch="Enter the target branch (default: main): "
 if "%target_branch%"=="" set target_branch=main
 
-:: Fetch latest changes
-git fetch origin
-if errorlevel 1 (
-    echo Failed to fetch from origin.
-    pause
-    exit /b 1
-)
-
 :: Checkout and update source branch
 git checkout %source_branch%
 if errorlevel 1 (
     echo Branch %source_branch% does not exist.
+    pause
+    exit /b 1
+)
+
+::display changes
+echo changes :
+echo ____
+git status
+
+:: Fetch latest changes
+git fetch origin
+if errorlevel 1 (
+    echo Failed to fetch from origin.
     pause
     exit /b 1
 )
@@ -36,6 +41,12 @@ if errorlevel 1 (
     echo Failed to pull %source_branch%. Resolve manually.
     pause
     exit /b 1
+)
+
+::push to target branch
+git push --set-upstream origin %source_branch%
+if errorlevel 1 (
+	echo Branch %target_branch% 
 )
 
 :: Checkout and update target branch

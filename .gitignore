@@ -10,6 +10,9 @@
 *.userosscache
 *.sln.docstates
 
+commit_to_branch.bat
+merge_branch.bat
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
