@@ -13,9 +13,6 @@
 commit_to_branch.bat
 merge_branch.bat
 
-# User-specific files (MonoDevelop/Xamarin Studio)
-*.userprefs
-
 # Mono auto generated files
 mono_crash.*
 
