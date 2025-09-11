@@ -10,13 +10,8 @@
 *.userosscache
 *.sln.docstates
 
-# User-specific files (MonoDevelop/Xamarin Studio)
-*.userprefs
-
-
 commit_to_branch.bat
 merge_branch.bat
-
 
 # Mono auto generated files
 mono_crash.*
