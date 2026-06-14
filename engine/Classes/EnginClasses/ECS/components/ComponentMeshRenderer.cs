@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
-class ComponentMeshRenderer : Component{
+internal class ComponentMeshRenderer : IComponent{
     public Model model {get; set;}
     public ComponentMeshRenderer(Model model)
     {

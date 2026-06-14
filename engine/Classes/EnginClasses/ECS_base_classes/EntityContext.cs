@@ -1,17 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.Numerics;
-using Microsoft.Xna.Framework.Graphics;
-using sage_engine;
+using System.Linq; 
 
 namespace sage_engine;
-class EntityContext {
+internal class EntityContext {
     private static EntityContext instance = null;
-    private static int contextEntityCount = 0;
     private Dictionary<long, Entity> entities =  new Dictionary<long, Entity>();
     //organises entities into groups based on components they have
-    private Dictionary<String, List<Entity>> entityGroups = new Dictionary<String, List<Entity>>();
-
+    private Dictionary<String, Dictionary<long, Entity>> entityGroups = new Dictionary<String, Dictionary<long, Entity>>();
+    private Random _randomNumberGenerator = new Random();
     private EntityContext() { }
 
     public static EntityContext getInstance() {
@@ -21,18 +18,29 @@ class EntityContext {
         return instance;
     }
 
-    public Entity createEntity() {
+    public Entity createEntity(String name = "Untitled_Entity")
+    {
         Entity entity = new Entity();
-        entity.setId(contextEntityCount);
-        entity.addComponent(new ComponentTransform());
+        entity.Name = name;
+
+        long newId;
+        do {
+            newId = _randomNumberGenerator.NextInt64();
+        } while (entities.ContainsKey(newId));
+        entity.setId(newId);
+
         entities.Add(entity.getId(), entity);
-        contextEntityCount++;
+        addComponentFor(entity, new ComponentTransform());
         return entity;
     }
     
     public void removeEntity(Entity entity) {
         if (entities.ContainsKey(entity.getId())) {
             entities.Remove(entity.getId());
+            foreach (var (group_name, group_entities) in entityGroups)
+            {
+                group_entities.Remove(entity.getId());
+            }
         } else {
             throw new KeyNotFoundException("Entity with ID " + entity.getId()+ " not found.");
         }
@@ -56,7 +64,8 @@ class EntityContext {
 
     public List<Entity> getAllEntitiesFromGroup(String group) {
         if (entityGroups.ContainsKey(group)) {
-            return entityGroups[group];
+
+            return entityGroups[group].Values.ToList();
         } else {
             return new List<Entity>();
         }
@@ -68,7 +77,7 @@ class EntityContext {
         foreach (var group in groups) {
             Console.WriteLine("group: " + group);
             if (entityGroups.ContainsKey(group)) {
-                resultSet.UnionWith(entityGroups[group]);
+                resultSet.UnionWith(entityGroups[group].Values.ToList());
             }
         }
         return new List<Entity>(resultSet);
@@ -95,8 +104,41 @@ class EntityContext {
         return result;
     }  
 
-    //get all groups
-    public Dictionary<String, List<Entity>> getGroups() {
-        return entityGroups;
+    //read-only view of groups — addComponentFor / removeComponentFor are the only writers
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<long, Entity>> getGroups() {
+        return entityGroups.ToDictionary(
+            kvp => kvp.Key,
+            kvp => (IReadOnlyDictionary<long, Entity>)kvp.Value
+        );
+    }
+
+    public void addComponentFor(Entity entity, IComponent component)
+    {
+        if (component == null) {
+            throw new ArgumentNullException(nameof(component));
+        }
+
+        string groupName = component.GetType().Name;
+        if (!entityGroups.ContainsKey(groupName))
+        {
+            entityGroups[groupName] = new Dictionary<long, Entity>();
+        }
+
+        entity.addComponent(component.GetType(), component);
+        entityGroups[groupName].Add(entity.getId(), entity);
+    }
+ 
+    public void removeComponentFor(Entity entity, IComponent component)
+    {
+        if (component == null) {
+            throw new ArgumentNullException(nameof(component));
+        }
+
+        string groupName = component.GetType().Name;
+        if (entityGroups.ContainsKey(groupName))
+        {
+            entityGroups[groupName].Remove(entity.getId());
+        }
+        entity.removeComponent(component.GetType());
     }
 }

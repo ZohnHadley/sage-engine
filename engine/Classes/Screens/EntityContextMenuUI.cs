@@ -5,7 +5,7 @@ using ImGuiNET;
 using sage_engine;
 
 namespace sage_engine;
-class EntityContextMenuUI
+internal class EntityContextMenuUI
 {
     private static EntityContextMenuUI instance = null;
     private EntityContext context;
@@ -31,31 +31,34 @@ class EntityContextMenuUI
             {
                 String entityName = entity.getName() + " " + entity.getId();
                 ImGui.Separator();
-                if (ImGui.TreeNodeEx(entityName, ImGuiTreeNodeFlags.SpanFullWidth))
-                {   
-                    
-                    ImGui.TextColored( new Vector4(1,0.5f,1,1) ,"Components: " + entity.getComponents().Count );
-                    foreach(Component component in entity.getComponents()){
-                        String componentName = component.GetType().ToString() ;
+
+                bool nodeOpen = ImGui.TreeNodeEx(entityName, ImGuiTreeNodeFlags.SpanFullWidth);
+
+                if (ImGui.BeginPopupContextItem("ctx_" + entity.getId()))
+                {
+                    if (ImGui.MenuItem("Delete")) { context.removeEntity(entity); }
+                    ImGui.EndPopup();
+                }
+
+                if (nodeOpen)
+                {
+                    ImGui.TextColored(new Vector4(1, 0.5f, 1, 1), "Components: " + entity.Components.Count);
+                    foreach (var (component_type, component) in entity.Components)
+                    {
+                        string componentName = component.GetType().ToString();
                         ImGui.Separator();
                         if (ImGui.TreeNodeEx(componentName, ImGuiTreeNodeFlags.SpanFullWidth))
                         {
-                            if (Mouse.GetState().RightButton == ButtonState.Pressed)
-                            {
-                                ImGui.OpenPopup("EntityContextMenuPopup");
-                            }
                             //show all the properties of the component
                             foreach (var property in component.GetType().GetProperties())
                             {
-                                ImGui.TextColored( new Vector4(1,1,0.5f,1) ,property.Name + ": " + property.GetValue(component));
+                                ImGui.TextColored(new Vector4(1, 1, 0.5f, 1), property.Name + ": " + property.GetValue(component));
                             }
                             ImGui.TreePop();
                         }
                     }
-
                     ImGui.TreePop();
                 }
-                //if right click on entity, show context menu
             }
         ImGui.End();
     }

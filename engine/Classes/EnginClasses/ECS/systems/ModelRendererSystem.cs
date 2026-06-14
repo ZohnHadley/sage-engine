@@ -4,18 +4,16 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
-class ModelRendererSystem : ComponentSystem{
+internal class ModelRendererSystem : IComponentSystem{
     private static ModelRendererSystem instance = null;
     private EntityContext context;
 
     private List<Entity> entities;
 
-
     private ModelRendererSystem()
     {
         context = EntityContext.getInstance();
         entities = new List<Entity>();
-        entities = context.getAllEntitiesWithListOfComponents(["ComponentTransform", "ComponentMeshRenderer"]);
         //list of all entities with model component and transform component
          
     }
@@ -35,6 +33,7 @@ class ModelRendererSystem : ComponentSystem{
     }
 
     public void render(Camera camera){
+        entities = context.getAllEntitiesWithListOfComponents(["ComponentTransform", "ComponentMeshRenderer"]);
         if (entities.Count == 0)
         {
             return;
@@ -44,24 +43,24 @@ class ModelRendererSystem : ComponentSystem{
             {
                 foreach (BasicEffect effect in mesh.Effects)
                 {   
-                    Vector3 enitityPosition = entity.getPosition();
-                    Quaternion entityRotation = entity.getRotation();
+                    ComponentTransform transform = entity.getComponent<ComponentTransform>();
+                    Vector3 entityPosition = transform.position;
+                    Quaternion entityRotation = transform.rotation;
 
-                    Matrix worldRotationMatrix = Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(entityRotation.Y), MathHelper.ToRadians(entityRotation.X), MathHelper.ToRadians(entityRotation.Z));
-                    Matrix worldPositionMatrix = Matrix.CreateTranslation(enitityPosition.X, enitityPosition.Y, enitityPosition.Z);
+                    Matrix worldPositionMatrix = Matrix.CreateTranslation(entityPosition.X, entityPosition.Y, entityPosition.Z);
 
                     effect.View = camera.getViewMatrix(); // main_camera.viewMatrix
-                    effect.World = Matrix.Identity * worldPositionMatrix; // main_camera.worldMatrix
+                    effect.World = Matrix.CreateFromQuaternion(entityRotation) * worldPositionMatrix;
                     effect.Projection = camera.getProjectionMatrix(); // main_camera.projectionMatrix
                       
                     Vector3 lightDirection = new Vector3(0, -20, 0);
                     lightDirection.Normalize();
 
-                    effect.DirectionalLight0.Direction = lightDirection;
-                    effect.DirectionalLight0.DiffuseColor = new Vector3(1, 1, 1);
-                    effect.DirectionalLight0.SpecularColor = new Vector3(1, 1, 1);
-                    //effect.DirectionalLight0.Enabled = true;
-                    effect.AmbientLightColor = new Vector3(0.26f, 0.26f, 0.26f);
+                    // effect.DirectionalLight0.Enabled = true;
+                    // effect.DirectionalLight0.Direction = lightDirection;
+                    // effect.DirectionalLight0.DiffuseColor = new Vector3(0.15f, 0.15f, 0.15f);
+                    // effect.DirectionalLight0.SpecularColor = new Vector3(0.1f,0.1f, 0.1f);
+                    // effect.AmbientLightColor = new Vector3(0.26f, 0.26f, 0.26f);
                     effect.EnableDefaultLighting();
 
 

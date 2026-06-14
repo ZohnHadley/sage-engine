@@ -1,5 +1,5 @@
 using System.Collections.Generic;
 namespace sage_engine;
-interface ComponentSystem { 
+internal interface IComponentSystem { 
     void update(); 
 }

@@ -1,54 +1,54 @@
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using ImGuiNET;
 using sage_engine;
 
 namespace sage_engine;
-class EditorUI
-{   
+internal class EditorUI
+{
 
     private static EditorUI instance = null;
     private EntityContext context;
 
-    private EditorUI( )
+    private EditorUI()
     {
-        context = EntityContext.getInstance( );
+        context = EntityContext.getInstance();
     }
 
-    public static EditorUI GetInstance( )
+    public static EditorUI GetInstance()
     {
-        if ( instance == null )
+        if (instance == null)
         {
-            instance = new EditorUI( );
+            instance = new EditorUI();
         }
         return instance;
-    } 
- 
-    public void Draw( )
+    }
+
+    public void Draw(Game game)
     {
        //create menu bar with ImGui
-        ImGui.BeginMainMenuBar( );
-        if ( ImGui.BeginMenu( "File" ) )
+        ImGui.BeginMainMenuBar();
+        if (ImGui.BeginMenu("File"))
         {
-            if ( ImGui.MenuItem( "New" ) )
+            if (ImGui.MenuItem("New"))
             {
                 // New file action
             }
-            if ( ImGui.MenuItem( "Open" ) )
+            if (ImGui.MenuItem("Open"))
             {
                 // Open file action
             }
-            if ( ImGui.MenuItem( "Save" ) )
+            if (ImGui.MenuItem("Save"))
             {
                 // Save file action
             }
-            if ( ImGui.MenuItem( "Exit" ) )
+            if (ImGui.MenuItem("Exit"))
             {
-                // Exit action
-                System.Environment.Exit( 0 );
+                game.Exit();
             }
-            ImGui.EndMenu( );
+            ImGui.EndMenu();
         }
-        ImGui.EndMainMenuBar( );
+        ImGui.EndMainMenuBar();
 
     }
 }

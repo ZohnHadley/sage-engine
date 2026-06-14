@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using System;
+using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -30,8 +31,8 @@ public class Game1 : Game
     protected override void Initialize()
     {
     
-        editorManager = new  EditorManager(this, 800, 520);
-        editorManager.setGraphicsDeviceManager(graphics);
+        editorManager = new  EditorManager();
+        editorManager.setGraphicsDeviceManager(graphics, 800, 410);
         graphicsDevice = graphics.GraphicsDevice;
      
         //entity world context
@@ -51,16 +52,16 @@ public class Game1 : Game
     {
         // Load the content for the game here
 
-        GameAssets.InitializeModels(Content);
+        UtilAssets.InitializeModels(Content);
 
 
-        for(int x = 0; x < 2; x++)
+        for(int x = 0; x < 80; x++)
         {
-            for(int z = 0; z < 1; z++)
+            for(int z = 0; z < 80; z++)
             {
                 bunnyEntity = entContext.createEntity();
-                bunnyEntity.addComponent(new ComponentMeshRenderer(GameAssets.standforBunny));
-                bunnyEntity.transform().position = new Vector3(x, 0, z);
+                entContext.addComponentFor(bunnyEntity, new ComponentMeshRenderer(UtilAssets.stanfordBunny));
+                bunnyEntity.getComponent<ComponentTransform>().position = new Vector3(x, 0, z);
             } 
         }
 
@@ -95,7 +96,7 @@ public class Game1 : Game
         
         // Draw the GUI
         GuiRenderer.BeginLayout(gameTime);
-        EditorUI.GetInstance().Draw();
+        EditorUI.GetInstance().Draw(this);
         EntityContextMenuUI.getInstance().draw();
         GuiRenderer.EndLayout();
     }

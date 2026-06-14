@@ -3,92 +3,47 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-class EditorManager {
-    private Dictionary<String,bool> debugModes = new Dictionary<String,bool>();
-    private GraphicsDeviceManager graphicDeviceManager;
-    private int windoWidth;
-    private int windowHeight;
+
+namespace sage_engine;
+internal class EditorManager {
+    // private Dictionary<String,bool> debugModes = new Dictionary<String,bool>();
+    private int _windowWidth = 0;
+    private int _windowHeight = 0;
+    public int windowWidth
+    {
+        get { return _windowWidth; } set
+        {
+            if(value > 0)   
+                _windowWidth = value;
+            // graphicDeviceManager.PreferredBackBufferHeight = value;
+            // graphicDeviceManager.ApplyChanges();
+        }
+    }
+    public int WindowHeight
+    {
+        get { return _windowHeight; }
+        set
+        {
+            if(value > 0) 
+                _windowHeight = value;
+            // graphicDeviceManager.PreferredBackBufferHeight = value;
+            // graphicDeviceManager.ApplyChanges();
+        }
+    }
+    
     private Camera camera;
 
-    private float current_fps;
+    public EditorManager(){ 
+    } 
 
-    public EditorManager(Game _game, int _windowWidth, int _windowHeight){
-        windoWidth = _windowWidth;
-        windowHeight = _windowHeight;
-
-        debugModes.Add("showFPS", true);
-        debugModes.Add("showGrid", false);
-        debugModes.Add("showBoundingBox", false);
-        debugModes.Add("showCollision", false);
-        debugModes.Add("showCameraInfo", false);
-
-         
-    }
+    public void setGraphicsDeviceManager(GraphicsDeviceManager gdm, int width, int height){
+        windowWidth = width;
+        WindowHeight = height;
+        gdm.PreferredBackBufferWidth = windowWidth;
+        gdm.PreferredBackBufferHeight = WindowHeight;
+        gdm.ApplyChanges();
+    } 
  
-    public Dictionary<String,bool> getDebugModes(){
-        return debugModes;
-    }
-
-    public GraphicsDeviceManager getGraphicsDeviceManager(){
-        return graphicDeviceManager;
-    }
-
-    public int getWindowWidth(){
-        return windoWidth;
-    }
-
-    public int getWindowHeight(){
-        return windowHeight;
-    }
-
-    public bool getDebugMode(String mode){
-        if(debugModes.ContainsKey(mode)){
-            return debugModes[mode];
-        }else{
-            return false;
-        }
-    }
-
-    public float getCurrentFPS(){
-        return current_fps;
-    }
-
-    public void setGraphicsDeviceManager(GraphicsDeviceManager gdm){
-        graphicDeviceManager = gdm;
-        graphicDeviceManager.PreferredBackBufferWidth = windoWidth;
-        graphicDeviceManager.PreferredBackBufferHeight = windowHeight;
-
-        windoWidth = graphicDeviceManager.PreferredBackBufferWidth;
-        windowHeight = graphicDeviceManager.PreferredBackBufferHeight;
-        graphicDeviceManager.ApplyChanges();
-    }
- 
-
-    public void setCurrentFPS(float fps){
-        current_fps = fps;
-    }
-
-    public void setDebugMode(String mode, bool value){
-        if(debugModes.ContainsKey(mode)){
-            debugModes[mode] = value;
-        }else{
-            debugModes.Add(mode, value);
-        }
-    }
-
-    
-    public void setWindowWidth(int width){
-        windoWidth = width;
-        graphicDeviceManager.PreferredBackBufferWidth = width;
-        graphicDeviceManager.ApplyChanges();
-    }
-
-    public void setWindowHeight(int height){
-        windowHeight = height;
-        graphicDeviceManager.PreferredBackBufferHeight = height;
-        graphicDeviceManager.ApplyChanges();
-    }
-
     public Camera getCamera(){
         return camera;
     }

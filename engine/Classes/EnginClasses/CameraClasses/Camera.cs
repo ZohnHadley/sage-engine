@@ -3,9 +3,9 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using sage_engine;
 
-public class Camera 
+namespace sage_engine;
+internal class Camera 
 {
 
     private GraphicsDeviceManager graphics_device_manager;
@@ -18,7 +18,11 @@ public class Camera
 
     private Vector3 camForward = Vector3.Forward;
     private Vector3 camUp = Vector3.Up;
+    private float yaw;
+    private float pitch;
     private float mouseAmount = 1f;
+    private float speed = 10;
+    private static readonly float PitchLimit = MathHelper.ToRadians(89f);
 
     KeyboardState keyState;
     private MouseState mouseState;
@@ -29,14 +33,20 @@ public class Camera
     {
         graphics_device_manager = graphicsDeviceManager;
         prevMouseState = Mouse.GetState();
-        //camTarget in fonrt of camPosition with a distance of 10 from z axis
         camPosition = position;
-        //set rotation 
-        camForward = Vector3.Transform(camForward, Matrix.CreateFromYawPitchRoll(MathHelper.ToRadians(rotation.Y), MathHelper.ToRadians(rotation.X), MathHelper.ToRadians(rotation.Z)));
-        camTarget = camForward;
-        projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(45f), aspect_ratio, 0.01f, 1000); // screen aspect ration and render distance
-        viewMatrix = Matrix.CreateLookAt(camPosition, (camPosition + camForward), Vector3.Up);
 
+        yaw = MathHelper.ToRadians(rotation.Y);
+        pitch = MathHelper.Clamp(MathHelper.ToRadians(rotation.X), -PitchLimit, PitchLimit);
+        rebuildForward();
+
+        camTarget = camForward;
+        projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(45f), aspect_ratio, 0.01f, 1000);
+        viewMatrix = Matrix.CreateLookAt(camPosition, (camPosition + camForward), Vector3.Up);
+    }
+
+    private void rebuildForward()
+    {
+        camForward = Vector3.Transform(Vector3.Forward, Matrix.CreateFromYawPitchRoll(yaw, pitch, 0));
     }
 
     public Matrix getProjectionMatrix()
@@ -86,10 +96,10 @@ public class Camera
         mouseState = Mouse.GetState();
 
         viewMatrix = Matrix.CreateLookAt(camPosition, (camPosition + camForward), camUp);
-        CustomMovement(keyState, mouseState);
+        CustomMovement(gameTime, keyState, mouseState);
     } 
 
-    private void CustomMovement(KeyboardState keyState, MouseState mouseState)
+    private void CustomMovement(GameTime gameTime, KeyboardState keyState, MouseState mouseState)
     {
         Vector3 direction = camForward;
 
@@ -99,43 +109,42 @@ public class Camera
         float mouse_y = mouseState.Y - prevMouseState.Y;
         float mouse_x = mouseState.X - prevMouseState.X;
 
-        if (mouseState.RightButton == ButtonState.Pressed)
-        {
+        bool risingEdge = mouseState.RightButton == ButtonState.Pressed
+                          && prevMouseState.RightButton == ButtonState.Released;
 
+        if (mouseState.RightButton == ButtonState.Pressed && !risingEdge)
+        {
             mouse_y *= graphics_device_manager.PreferredBackBufferHeight / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height * 1.0f);
             mouse_x *= graphics_device_manager.PreferredBackBufferWidth / (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width * 1.0f);
 
-
-            //modify rotation
-            camForward -= mouse_y * mouseAmount * camUp  * 0.01f;
-            camForward += mouse_x * mouseAmount * normal * 0.01f;
-            camForward.Normalize();
-            //
-            prevMouseState = mouseState;
-        }else if (mouseState.RightButton == ButtonState.Released){
-            prevMouseState = mouseState;
+            yaw -= mouse_x * mouseAmount * 0.01f;
+            pitch -= mouse_y * mouseAmount * 0.01f;
+            yaw = MathHelper.WrapAngle(yaw);
+            pitch = MathHelper.Clamp(pitch, -PitchLimit, PitchLimit);
+            rebuildForward();
         }
+
+        prevMouseState = mouseState;
 
         if (keyState.IsKeyDown(Keys.W))
         {
             //move camera forward in direction of rotation 
-            //camPosition += direction * 0.25f;
-            camPosition = Vector3.Lerp(camPosition, camPosition + direction * 0.25f, 0.1f);
+            camPosition = Vector3.Lerp(camPosition, camPosition + (direction * speed) * (float)gameTime.ElapsedGameTime.TotalSeconds, 0.15f);
         }
 
         if (keyState.IsKeyDown(Keys.S))
         {
-            camPosition = Vector3.Lerp(camPosition, camPosition - direction * 0.25f, 0.1f);
+            camPosition = Vector3.Lerp(camPosition, camPosition - (direction * speed) * (float)gameTime.ElapsedGameTime.TotalSeconds, 0.15f);
         }
 
         if (keyState.IsKeyDown(Keys.D))
         {
-            camPosition = Vector3.Lerp(camPosition, camPosition + normal * 0.25f, 0.1f);
+            camPosition = Vector3.Lerp(camPosition, camPosition + (normal* speed) * (float)gameTime.ElapsedGameTime.TotalSeconds, 0.15f);
         }
 
         if (keyState.IsKeyDown(Keys.A))
         {
-            camPosition = Vector3.Lerp(camPosition, camPosition - normal * 0.25f, 0.1f);
+            camPosition = Vector3.Lerp(camPosition, camPosition - (normal* speed) * (float)gameTime.ElapsedGameTime.TotalSeconds, 0.15f);
         }
     }
  
