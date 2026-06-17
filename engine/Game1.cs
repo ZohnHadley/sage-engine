@@ -22,8 +22,6 @@ public class Game1 : Game
         // Initialize GraphicsDeviceManager
         graphics = new GraphicsDeviceManager(this);
 
-
-
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
     }
@@ -55,9 +53,9 @@ public class Game1 : Game
         UtilAssets.InitializeModels(Content);
 
 
-        for(int x = 0; x < 80; x++)
+        for(int x = 0; x < 10; x++)
         {
-            for(int z = 0; z < 80; z++)
+            for(int z = 0; z < 10; z++)
             {
                 bunnyEntity = entContext.createEntity();
                 entContext.addComponentFor(bunnyEntity, new ComponentMeshRenderer(UtilAssets.stanfordBunny));
@@ -75,7 +73,7 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
 
-
+        KeyboardInputSystem.getInstance().update(gameTime);
         cam.update(gameTime);
 
         base.Update(gameTime);

@@ -27,7 +27,7 @@ internal class ModelRendererSystem : IComponentSystem{
         return instance;
     }
 
-    public void update()
+    public void update(GameTime deltaTime)
     {
        
     }
