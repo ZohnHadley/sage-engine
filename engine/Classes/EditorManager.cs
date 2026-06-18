@@ -31,7 +31,7 @@ internal class EditorManager {
         }
     }
     
-    private Camera camera;
+    private DevCamera camera;
 
     public EditorManager(){ 
     } 
@@ -44,11 +44,11 @@ internal class EditorManager {
         gdm.ApplyChanges();
     } 
  
-    public Camera getCamera(){
+    public DevCamera getCamera(){
         return camera;
     }
 
-    public void setCamera(Camera cam){
+    public void setCamera(DevCamera cam){
         camera = cam;
     }
 

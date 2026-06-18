@@ -32,7 +32,7 @@ internal class ModelRendererSystem : IComponentSystem{
        
     }
 
-    public void render(Camera camera){
+    public void render(DevCamera camera){
         entities = context.getAllEntitiesWithListOfComponents(["ComponentTransform", "ComponentMeshRenderer"]);
         if (entities.Count == 0)
         {

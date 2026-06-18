@@ -10,11 +10,11 @@ namespace sage_engine;
 public class Game1 : Game
 {
     public static ImGuiRenderer GuiRenderer;
-    
+    public static GameTime gameTime;
     private EditorManager editorManager;
     private GraphicsDeviceManager graphics;
     private GraphicsDevice graphicsDevice;
-    private Camera cam;
+    private DevCamera cam;
     private Entity bunnyEntity; 
     private EntityContext entContext;
     public Game1()
@@ -36,8 +36,8 @@ public class Game1 : Game
         //entity world context
         entContext = EntityContext.getInstance();
         //camera
-        cam = new Camera(graphics, graphics.GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0,0, 0), new Vector3(0, 0, 0)); 
-        cam.setCamPosition(new Vector3(0, 0, 1));
+        cam = new DevCamera(graphics, graphics.GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0,0, 0), new Vector3(0, 0, 0)); 
+        cam.Position = new Vector3(0, 0, 1);
         
         editorManager.setCamera(cam);
          
@@ -73,7 +73,8 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
 
-        KeyboardInputSystem.getInstance().update(gameTime);
+        Game1.gameTime = gameTime;
+        InputSystem.getInstance().update(gameTime);
         cam.update(gameTime);
 
         base.Update(gameTime);
