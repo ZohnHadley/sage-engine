@@ -6,16 +6,14 @@ using Microsoft.Xna.Framework.Graphics;
 namespace sage_engine;
 internal class ModelRendererSystem : IComponentSystem{
     private static ModelRendererSystem instance = null;
-    private EntityContext context;
 
-    private List<Entity> entities;
+    // Live set of entities that have both a transform and a mesh renderer, maintained
+    // incrementally by the entity-context system instead of rescanned every frame.
+    private readonly ArchetypeView _renderables;
 
     private ModelRendererSystem()
     {
-        context = EntityContext.getInstance();
-        entities = new List<Entity>();
-        //list of all entities with model component and transform component
-         
+        _renderables = EntityContextSystem.getInstance().Track("ComponentTransform", "ComponentMeshRenderer");
     }
 
     public static ModelRendererSystem getInstance()
@@ -33,12 +31,11 @@ internal class ModelRendererSystem : IComponentSystem{
     }
 
     public void render(DevCamera camera){
-        entities = context.getAllEntitiesWithListOfComponents(["ComponentTransform", "ComponentMeshRenderer"]);
-        if (entities.Count == 0)
+        if (_renderables.Entities.Count == 0)
         {
             return;
         }
-        foreach (Entity entity in entities){
+        foreach (Entity entity in _renderables.Entities){
             foreach (ModelMesh mesh in entity.getComponent<ComponentMeshRenderer>().model.Meshes)
             {
                 foreach (BasicEffect effect in mesh.Effects)
@@ -54,13 +51,8 @@ internal class ModelRendererSystem : IComponentSystem{
                     effect.Projection = camera.getProjectionMatrix(); // main_camera.projectionMatrix
                       
                     Vector3 lightDirection = new Vector3(0, -20, 0);
-                    lightDirection.Normalize();
-
-                    // effect.DirectionalLight0.Enabled = true;
-                    // effect.DirectionalLight0.Direction = lightDirection;
-                    // effect.DirectionalLight0.DiffuseColor = new Vector3(0.15f, 0.15f, 0.15f);
-                    // effect.DirectionalLight0.SpecularColor = new Vector3(0.1f,0.1f, 0.1f);
-                    // effect.AmbientLightColor = new Vector3(0.26f, 0.26f, 0.26f);
+                    lightDirection.Normalize(); 
+                    
                     effect.EnableDefaultLighting();
 
 

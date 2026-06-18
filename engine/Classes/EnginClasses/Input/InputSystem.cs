@@ -94,10 +94,7 @@ internal class InputSystem : IEnginSystem
     private InputSystem()
     {
         _keyboardListener = new KeyboardListener();
-        _keyboardListener.OnKeyPressed += HandleKeyPressed;
-        // _keyboardListener.OnKeyReleased += HandleKeyReleased;
         _mouseListener = new MouseListener();
-        // _mouseListener.OnButtonPressed += HandledMouseButtonPressed;
     }
 
     public static InputSystem getInstance()
@@ -107,26 +104,7 @@ internal class InputSystem : IEnginSystem
             instance = new InputSystem();
         }
         return instance;
-    }
-
-    private void HandledMouseButtonPressed(MouseButton mousebtn)
-    {
-        Console.WriteLine(mousebtn);
-    }
-
-    private void HandleKeyPressed(Keys key)
-    {
-        if (key_binds["toggle_debug"].Equals(key))
-        {
-            isDebug = !isDebug;
-            Console.WriteLine(isDebug);
-        }
-    }
-
-    private void HandleKeyReleased(Keys key)
-    {
-        // Console.WriteLine(key + " UP");
-    }
+    } 
 
     public void update(GameTime deltaTime)
     {

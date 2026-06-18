@@ -50,9 +50,9 @@ internal class MouseListener
     {
         get
         {
-            Point d = PositionDelta;
-            if (d == Point.Zero) return Vector2.Zero;
-            Vector2 v = new Vector2(d.X, d.Y);
+            Point direction = PositionDelta;
+            if (direction == Point.Zero) return Vector2.Zero;
+            Vector2 v = new Vector2(direction.X, direction.Y);
             v.Normalize();
             return v;
         }
@@ -68,8 +68,8 @@ internal class MouseListener
         get
         {
             MouseButton pressed = 0;
-            foreach (MouseButton b in AllButtons)
-                if (IsButtonDown(b)) pressed |= b;
+            foreach (MouseButton button in AllButtons)
+                if (IsButtonDown(button)) pressed |= button;
             return pressed;
         }
     }
@@ -81,10 +81,10 @@ internal class MouseListener
         _currentMouseState = Mouse.GetState();
         _previousMouseState = _currentMouseState;
 
-        foreach (MouseButton b in AllButtons)
+        foreach (MouseButton button in AllButtons)
         {
-            _pressAnchor[b] = Point.Zero;
-            _dragging[b] = false;
+            _pressAnchor[button] = Point.Zero;
+            _dragging[button] = false;
         }
     }
 

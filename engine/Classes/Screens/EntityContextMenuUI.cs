@@ -3,6 +3,7 @@ using System.Numerics;
 using Microsoft.Xna.Framework.Input;
 using ImGuiNET;
 using sage_engine;
+using System.Linq;
 
 namespace sage_engine;
 internal class EntityContextMenuUI
@@ -27,7 +28,7 @@ internal class EntityContextMenuUI
     public void draw(){
         ImGui.Begin("EntityContextMenu", mainFlags);
         
-            foreach (Entity entity in context.getAllEntities())
+            foreach (Entity entity in context.EntitiesDict.Values.ToList<Entity>())
             {
                 String entityName = entity.getName() + " " + entity.getId();
                 ImGui.Separator();

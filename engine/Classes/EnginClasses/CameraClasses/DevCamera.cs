@@ -29,9 +29,9 @@ internal class DevCamera
     private float yaw;
     private float pitch;
     private float mouseAmount = 1f;
-    private float speed = 10;
+    private float speed = 3f;
     private static readonly float PitchLimit = MathHelper.ToRadians(89f);
-
+    private InputSystem input = InputSystem.getInstance();
 
     public DevCamera(GraphicsDeviceManager graphicsDeviceManager, float aspect_ratio, Vector3 position, Vector3 rotation)
     {
@@ -73,7 +73,7 @@ internal class DevCamera
         // mouse event subscriptions. InputSystem is polled centrally in Game1.Update
         // (before this), so its state is current.
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
-        InputSystem input = InputSystem.getInstance();
+        
 
         Vector3 forward = camForward;
         forward.Normalize();

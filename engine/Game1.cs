@@ -35,6 +35,9 @@ public class Game1 : Game
      
         //entity world context
         entContext = EntityContext.getInstance();
+        // Bring the entity-context system up before LoadContent so its listener is
+        // subscribed in time to observe the entities created there.
+        EntityContextSystem.getInstance();
         //camera
         cam = new DevCamera(graphics, graphics.GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0,0, 0), new Vector3(0, 0, 0)); 
         cam.Position = new Vector3(0, 0, 1);
@@ -53,9 +56,9 @@ public class Game1 : Game
         UtilAssets.InitializeModels(Content);
 
 
-        for(int x = 0; x < 10; x++)
+        for(int x = 0; x < 20; x++)
         {
-            for(int z = 0; z < 10; z++)
+            for(int z = 0; z < 20; z++)
             {
                 bunnyEntity = entContext.createEntity();
                 entContext.addComponentFor(bunnyEntity, new ComponentMeshRenderer(UtilAssets.stanfordBunny));
@@ -75,6 +78,7 @@ public class Game1 : Game
 
         Game1.gameTime = gameTime;
         InputSystem.getInstance().update(gameTime);
+        EntityContextSystem.getInstance().update(gameTime);
         cam.update(gameTime);
 
         base.Update(gameTime);
