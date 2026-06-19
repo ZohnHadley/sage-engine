@@ -18,7 +18,18 @@ internal class EntityContextListener
     // Live archetype views maintained incrementally as components/entities change.
     private readonly List<ArchetypeView> _views = new List<ArchetypeView>();
 
-    public EntityContextListener()
+    private static EntityContextListener instance;
+
+    public static EntityContextListener getInstance()
+    {
+        if (instance == null)
+        {
+            instance = new EntityContextListener();
+        }
+        return instance;
+    }
+
+    private EntityContextListener()
     {
         EntityContext context = EntityContext.getInstance();
         context.OnEntityAdded += HandleEntityAdded;

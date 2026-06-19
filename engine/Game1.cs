@@ -10,7 +10,6 @@ namespace sage_engine;
 public class Game1 : Game
 {
     public static ImGuiRenderer GuiRenderer;
-    public static GameTime gameTime;
     private EditorManager editorManager;
     private GraphicsDeviceManager graphics;
     private GraphicsDevice graphicsDevice;
@@ -35,9 +34,9 @@ public class Game1 : Game
      
         //entity world context
         entContext = EntityContext.getInstance();
-        // Bring the entity-context system up before LoadContent so its listener is
-        // subscribed in time to observe the entities created there.
-        EntityContextSystem.getInstance();
+        EntityContextListener.getInstance();
+        // Bring the entity-context listener up before LoadContent so it is subscribed
+        // in time to observe the entities created there.
         //camera
         cam = new DevCamera(graphics, graphics.GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0,0, 0), new Vector3(0, 0, 0)); 
         cam.Position = new Vector3(0, 0, 1);
@@ -56,13 +55,13 @@ public class Game1 : Game
         UtilAssets.InitializeModels(Content);
 
 
-        for(int x = 0; x < 20; x++)
+        for(int x = 0; x < 1; x++)
         {
-            for(int z = 0; z < 20; z++)
+            for(int z = 0; z < 1; z++)
             {
                 bunnyEntity = entContext.createEntity();
                 entContext.addComponentFor(bunnyEntity, new ComponentMeshRenderer(UtilAssets.stanfordBunny));
-                bunnyEntity.getComponent<ComponentTransform>().position = new Vector3(x, 0, z);
+                bunnyEntity.getComponent<ComponentTransform>().Position = new Vector3(x, 0, z);
             } 
         }
 
@@ -76,10 +75,9 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
 
-        Game1.gameTime = gameTime;
         InputSystem.getInstance().update(gameTime);
-        EntityContextSystem.getInstance().update(gameTime);
         cam.update(gameTime);
+        bunnyEntity.getComponent<ComponentTransform>().Billboard(cam.Position);
 
         base.Update(gameTime);
     }

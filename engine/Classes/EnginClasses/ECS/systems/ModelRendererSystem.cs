@@ -13,7 +13,7 @@ internal class ModelRendererSystem : IComponentSystem{
 
     private ModelRendererSystem()
     {
-        _renderables = EntityContextSystem.getInstance().Track("ComponentTransform", "ComponentMeshRenderer");
+        _renderables = EntityContextListener.getInstance().Track("ComponentTransform", "ComponentMeshRenderer");
     }
 
     public static ModelRendererSystem getInstance()
@@ -41,8 +41,8 @@ internal class ModelRendererSystem : IComponentSystem{
                 foreach (BasicEffect effect in mesh.Effects)
                 {   
                     ComponentTransform transform = entity.getComponent<ComponentTransform>();
-                    Vector3 entityPosition = transform.position;
-                    Quaternion entityRotation = transform.rotation;
+                    Vector3 entityPosition = transform.Position;
+                    Quaternion entityRotation = transform.Rotation;
 
                     Matrix worldPositionMatrix = Matrix.CreateTranslation(entityPosition.X, entityPosition.Y, entityPosition.Z);
 
