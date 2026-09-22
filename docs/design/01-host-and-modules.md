@@ -130,9 +130,9 @@ public sealed class Engine                        // process-wide services; crea
 ### 5.1 Boot sequence
 ```
 Program.Main(args)
- 1. Parse args      -game <dir>; +<cvar> <value> / +<command> <args> (applied after config.cfg)
- 2. Core services   Log (sinks: stdout + file first, console later), crash handler, BuildConfig
- 3. CVars           defaults → config.cfg (Archive cvars) → +cvar args
+ 1. Parse args      -game <dir>; +<cvar> <value> / +<command> <args> (kept for step 6)
+ 2. Core services   Log (file + stdout; the ring buffer always exists), crash handler, BuildConfig
+ 3. Core cvars      the engine's own cvars and commands (02 §4.2)
  4. VFS             mount engine content → framework content → game.json mounts → mods in load order (17)
                     (+ dev_override/ when developer ≥ 1, dev builds); user:// resolved (05 §3.1)
  5. Modules         load the game assembly (+ trusted mod assemblies, later, 17)
@@ -141,7 +141,9 @@ Program.Main(args)
                     → Init in order (Runtime; Editor only in the editor host).
                       Init only REGISTERS (schemas, loaders, systems, cvars, services); it must not
                       read records or assets yet
- 6. Records         load + merge + validate all record files against the registered schemas (05)
+ 6. Config + args   config.cfg (Archive cvars), then +args in order. Runs after every module has
+                    registered its cvars and commands, so `+stat fps` or a game cvar works at launch
+    Records         load + merge + validate all record files against the registered schemas (05)
  7. Graphics        MonoGame Game created; GraphicsDevice ready
     Start           modules Start in dependency order (records and GPU now available)
  8. World           Engine.CreateWorld("main") → IGameModule.OnWorldCreated(world)
@@ -149,6 +151,8 @@ Program.Main(args)
 10. Shutdown        worlds destroyed → modules Shutdown in reverse order → Archive cvars saved
                     → asset scopes released → logs flushed last
 ```
+
+*Today (migration step 2):* steps 1–3, a stand-in for step 6 (config.cfg + launch args, run from `Game1.Initialize` once the host has registered `quit`/`stat`/`clear`/`toggleconsole`), then the game; shutdown saves Archive cvars and flushes the log. `-game` is parsed but has no effect until `game.json` exists (step 5); unknown options are logged as warnings.
 
 Each step is logged under `LogCat.Host` with its duration. A failure in steps 1–6 shows a native message box (if a window can't be created yet), writes the crash report (02) and exits non-zero.
 
@@ -236,4 +240,4 @@ A dedicated server is a different host (`Sage.Host.Server`) running the same boo
 2. `Engine` object + `IModule` + dependency sort; convert singletons (TODO R1, R8).
 3. Custom fixed-tick loop + interpolation alpha (TODO R2).
 4. `game.json` + VFS mounts (with 05).
-5. Build configurations + `developer` cvar + console availability (TODO R10).
+5. ~~Build configurations + `developer` cvar + console availability~~ **Done 2026-09-22** (ARCHITECTURE §7 step 2; TODO R10).

@@ -122,4 +122,4 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `PlayerCommand` | One tick's worth of player intent (move, look, actions), sampled from actions | 08 |
 
 ### Log categories
-`Core`, `Host`, `Modules`, `VFS`, `Assets`, `Records`, `Shaders`, `Render`, `Input`, `World`, `Events`, `Physics`, `Audio`, `Animation`, `UI`, `Streaming`, `Save`, `AI`, `Gameplay`, `Editor`, `Mods`. Games add their own (see 02).
+`Core`, `Host`, `Modules`, `VFS`, `Assets`, `Records`, `Shaders`, `Render`, `Input`, `World`, `Events`, `Physics`, `Audio`, `Animation`, `UI`, `Streaming`, `Save`, `AI`, `Gameplay`, `Editor`, `Mods`, `Console` (console echo and command output). Games add their own (see 02).

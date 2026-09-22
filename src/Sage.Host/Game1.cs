@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -16,8 +17,21 @@ public class Game1 : Game
     private DevCamera cam;
     private Entity bunnyEntity; 
     private EntityContext entContext;
-    public Game1()
+
+    // Core services from Program (they move onto the Engine object in migration step 3).
+    private readonly CVarRegistry cvars;
+    private readonly CoreCVars coreCVars;
+    private readonly Action onCommandsRegistered;
+    private DevConsoleWindow console;
+    private StatOverlay stats;
+    private readonly Stopwatch frameClock = new Stopwatch();
+    private long frame;
+
+    internal Game1(CVarRegistry cvars, CoreCVars coreCVars, Action onCommandsRegistered)
     {
+        this.cvars = cvars;
+        this.coreCVars = coreCVars;
+        this.onCommandsRegistered = onCommandsRegistered;
         // Initialize GraphicsDeviceManager
         graphics = new GraphicsDeviceManager(this);
 
@@ -45,6 +59,19 @@ public class Game1 : Game
          
 
         GuiRenderer = new ImGuiRenderer(this);
+
+        // Developer console (`~`) and `stat` overlays; see docs/design/02 and 01 §3.2.
+        console = new DevConsoleWindow(cvars, coreCVars);
+        stats = new StatOverlay(cvars, coreCVars);
+        cvars.RegisterCommand("quit", CVarFlags.None, "Exit the game.", _ => Exit());
+        InputSystem.getInstance().OnKeyPressed += key =>
+        {
+            if (key == Keys.OemTilde) console.Toggle();
+        };
+        CrashReporter.AddSection("GPU", () => $"{GraphicsAdapter.DefaultAdapter.Description}, profile {graphics.GraphicsProfile}");
+        Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
+        onCommandsRegistered();   // config.cfg + launch args, now that every command exists
+
         base.Initialize();
     }
 
@@ -72,10 +99,14 @@ public class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-            Exit();
-
+        Log.SetFrame(++frame);
         InputSystem.getInstance().update((float)gameTime.ElapsedGameTime.TotalSeconds);
+
+        // Escape closes the console first; otherwise it quits (TODO #37: becomes the Menu action in R3).
+        bool escape = GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
+                      InputSystem.getInstance().IsKeyPressed(Keys.Escape);
+        if (escape && console.IsOpen) console.Close();
+        else if (escape) Exit();
         cam.update(gameTime);
         bunnyEntity.getComponent<ComponentTransform>().Billboard(cam.Position.ToNumerics());
 
@@ -99,6 +130,13 @@ public class Game1 : Game
         GuiRenderer.BeginLayout(gameTime);
         EditorUI.GetInstance().Draw(this);
         EntityContextMenuUI.getInstance().draw();
+        console.Draw();
+        stats.Draw();
         GuiRenderer.EndLayout();
+
+        // Real frame time (MonoGame's ElapsedGameTime is the fixed target step, not the measured time).
+        float frameSeconds = frameClock.IsRunning ? (float)frameClock.Elapsed.TotalSeconds : 0f;
+        frameClock.Restart();
+        stats.EndFrame(frameSeconds);
     }
 }

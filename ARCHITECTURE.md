@@ -228,7 +228,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 
 **Suggested order** (each step keeps the engine running):
 1. ~~**Solution split**~~ **Done 2026-09-22.** `Sage.Engine` / `Sage.Client` / `Sage.Editor` / `Sage.Host` + `tests/Sage.Tests` (15 headless tests); `ComponentTransform` on `System.Numerics`; `IEngineSystem.update(float)` instead of MonoGame's `GameTime`. Two differences from the plan: **`games/Sandbox` is deferred to step 4**, because it needs `IGameModule` to plug in (the test scene stays in `Game1` until then); and **`Sage.Host` references `Sage.Editor`** because today's exe is still game + editor in one.
-2. **Logging + build configurations + console/`developer`** (TODO R10), so every later step has diagnostics.
+2. ~~**Logging + build configurations + console/`developer`**~~ **Done 2026-09-22** (TODO R10). Debug/Development/Shipping configurations with `SAGE_DEV`; `Log` with categories, zero-cost disabled calls, file/stdout/ring sinks, duplicate collapse and rate limiting; `Assert.Dev/Ensure/Check`; crash reports; cvars, console commands, `config.cfg` and `+launch` args; the ImGui console (`~`) and `stat fps`/`stat mem`; 36 tests. Deferred on purpose: profiler scopes and `TickTime` (step 4, they need the tick phases) and the job system (step 5, with async asset loading).
 3. **`World` + `Engine` objects replace the singletons** (R1); the Friflo spike (D4, R5); fix #15, #33, #38.
 4. **Fixed tick + schedules + phases** (R2, R4).
 5. **Modules + `game.json` + VFS + records** (R8, R11). Sandbox becomes a real game module.

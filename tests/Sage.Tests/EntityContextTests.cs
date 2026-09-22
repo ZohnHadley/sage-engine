@@ -6,6 +6,9 @@ using sage_engine;
 
 namespace sage_engine.Tests;
 
+// The engine has its own `Assert` (Assert.Dev/Ensure/Check); inside this namespace it would hide xUnit's.
+using Assert = Xunit.Assert;
+
 public class EntityContextTests
 {
     private sealed class TestTag : IComponent { }

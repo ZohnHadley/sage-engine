@@ -3,6 +3,7 @@
     Headless tests. References Sage.Engine only: if simulation code ever picks up a MonoGame
     dependency, this project stops compiling (ARCHITECTURE.md §2 rule 2).
   -->
+  <Import Project="..\..\build\Sage.Configurations.props" />
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <!-- Same as the engine: run on the newest installed runtime when .NET 8 itself isn't installed. -->

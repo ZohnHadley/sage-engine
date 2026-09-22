@@ -3,6 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using ImGuiNET;
 
 namespace sage_engine;
 internal class DevCamera 
@@ -74,10 +75,12 @@ internal class DevCamera
         Vector3 right = Vector3.Cross(forward, camUp);
 
         Vector3 move = Vector3.Zero;
-        if (input.IsKeyDown(Keys.W)) move += forward;
-        if (input.IsKeyDown(Keys.S)) move -= forward;
-        if (input.IsKeyDown(Keys.D)) move += right;
-        if (input.IsKeyDown(Keys.A)) move -= right;
+        // Don't fly while typing in the console or an editor field (input contexts replace this in TODO R3).
+        bool typing = ImGui.GetIO().WantCaptureKeyboard;
+        if (!typing && input.IsKeyDown(Keys.W)) move += forward;
+        if (!typing && input.IsKeyDown(Keys.S)) move -= forward;
+        if (!typing && input.IsKeyDown(Keys.D)) move += right;
+        if (!typing && input.IsKeyDown(Keys.A)) move -= right;
 
         // Normalize so diagonal movement isn't faster, then scale by speed * dt
         // for frame-rate-independent movement.
@@ -92,8 +95,8 @@ internal class DevCamera
 
     private void OnMouseDrag(MouseButton button, Point delta)
     {
-        if (button != MouseButton.RIGHT)
-            return;
+        if (button != MouseButton.RIGHT || ImGui.GetIO().WantCaptureMouse)
+            return;   // dragging inside an ImGui window (console, inspector) doesn't turn the camera
 
         // Scale the raw pixel delta by the back-buffer / display ratio so look
         // sensitivity is consistent across window/display resolutions.

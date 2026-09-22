@@ -25,9 +25,9 @@ These are against the **current** single-project code. Many disappear when the m
 | [~] 25 | Dead render code: unused `lightDirection`, redundant empty check, per-effect recompute, empty `update` | `Sage.Client/Rendering/ModelRendererSystem.cs` | Migration → R9 / F2 (Extract + materials replace this class) |
 | [~] 26 | Spawn loop is 1×1; only the last-spawned bunny is billboarded | `Sage.Host/Game1.cs` | Migration → the Sandbox game (billboarding moves to the renderer, F1) |
 | [ ] 33 | `removeComponentFor` mutates the group before validating; fires the event with the caller's instance | `EntityContext.cs` | Migration → R1 (`World.Remove<T>` in `docs/design/03`) |
-| [ ] 34 | `Entity.addComponent` logs and ignores null instead of throwing | `Entity.cs` | Migration → R1 / R10 |
-| [~] 36 | Remaining dead code: `EditorManager.getCamera`, `EntityContext.getGroups`/`getAllEntitiesFromListOfGroups` (with its `Console.WriteLine`), unused `using`s. The unused fields and stale comments were removed 2026-09-22 | various | Migration → R1 / R5 (these classes are replaced) |
-| [ ] 37 | `Game1` reads Escape/GamePad directly instead of through `InputSystem` | `Sage.Host/Game1.cs` | Migration → R3 (`Menu` action) |
+| [ ] 34 | `Entity.addComponent` ignores null instead of throwing (it now logs `Log.Error`, step 2) | `Entity.cs` | Migration → R1 / R10 |
+| [~] 36 | Remaining dead code: `EditorManager.getCamera`, `EntityContext.getGroups`/`getAllEntitiesFromListOfGroups`, unused `using`s. The unused fields and stale comments were removed 2026-09-22 | various | Migration → R1 / R5 (these classes are replaced) |
+| [~] 37 | `Game1` reads GamePad Back directly (Escape now goes through `InputSystem`, step 2) | `Sage.Host/Game1.cs` | Migration → R3 (`Menu` action) |
 | [ ] 38 | Groups/archetypes keyed by type-name strings | `EntityContext.cs`, `Entity.cs`, `Sage.Engine/ECS/Listeners/ArchetypeView.cs`, `ModelRendererSystem.cs` | Migration → R5 (typed queries) |
 | [ ] 39 | Mouse sensitivity scaled by back-buffer/display size (look speed depends on window size) | `Sage.Editor/Camera/DevCamera.cs` | Migration → R3 / F3 (editor camera rig on actions) |
 
@@ -68,7 +68,7 @@ The structure these items fit into is in `ARCHITECTURE.md` (overview), with the 
 - [ ] **R7. Content as data.** Superseded by **R11** (one record pipeline for all definitions).
 - [ ] **R8. Two-level module system.** csproj boundaries only at layers (`Sage.Engine`, `Sage.Client`, `Sage.Framework`, `Sage.Framework.Client`, `Sage.Editor`, `Sage.Host`, `Sage.Generators`). Logical `IModule`s with dependencies and `Init` (register) / `Start` (use) / `Shutdown`; `game.json`. → `01`
 - [ ] **R9. Subsystem handles + Extract phase.** Heavy subsystems (renderer, physics, audio) own their data, and components hold handles. An Extract phase builds a pooled `RenderSnapshot` from interpolated, camera-relative poses. → `06`, `10`
-- [ ] **R10. Build configurations + console + logging.** `Debug`/`Development`/`Shipping` (no separate runtime dev mode): `developer` cvar as a defaults setter, `DevOnly` = compiled into dev builds only, restricted Shipping console via `con_enable`. `Log` with categories/levels/sinks (zero-cost when off); `Assert.Dev/Ensure/Check`; crash reports; cvars/console; the profiler + allocation counter. Replace the existing `Console.WriteLine` calls (#34, #36). → `02`
+- [~] **R10. Build configurations + console + logging.** *Mostly done 2026-09-22 (migration step 2): everything below except the profiler, which needs the tick phases (step 4).* `Debug`/`Development`/`Shipping` (no separate runtime dev mode): `developer` cvar as a defaults setter, `DevOnly` = compiled into dev builds only, restricted Shipping console via `con_enable`. `Log` with categories/levels/sinks (zero-cost when off); `Assert.Dev/Ensure/Check`; crash reports; cvars/console; the profiler + allocation counter. Replace the existing `Console.WriteLine` calls (#34, #36). → `02`
 - [ ] **R11. Unified data-record pipeline.** JSON records for *every* definition (items, spells, materials, input maps, sounds, prefabs…): namespaced `RecordId`s, `base` inheritance, per-field patch merge in load order, validation generated from `[Record]` schemas, hot reload. → `05 §3.5`, `09`
 - [ ] **R12. MonoGame 3.8.2 → 3.8.5.x upgrade, stay on DesktopGL.** Set `GraphicsProfile.HiDef`. Re-evaluate DesktopVK later (ARCHITECTURE D13). Remove the MGCB dependency: runtime asset loaders + `dotnet-mgfxc` for shaders (fixes #9). → `05`, `07`
 
@@ -81,7 +81,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F2. Custom shaders and materials (v1).** `lit.fx`, `sprite.fx`, `common.fxh`; techniques as variants; material records; fog, hemispheric ambient, up to 4 point lights; later lightmaps (HL1) and skinning (F9). → `07`
 - [ ] **F3. Camera modes (v1: first-person + editor free-fly).** First-person rig; third-person orbit with collision later (Lugaru, M&B). `DevCamera` becomes the editor rig. → `08`, `15`, `16`
 - [ ] **F4. Audio.** `sound` records, event-driven playback, buses, `AudioSource`, voice limiting. → `11`
-- [ ] **F5. Debug overlays (v1 minimal).** `stat` overlays (frame, phases, memory), `r_stats`, `phys_debug`, `ai_debug`; later the visual logger. Properly replaces the overlays removed in review items #7/#8 (history log). → `02`, `06`
+- [~] **F5. Debug overlays (v1 minimal).** *`stat fps` / `stat mem` done in migration step 2.* `stat` overlays (frame, phases, memory), `r_stats`, `phys_debug`, `ai_debug`; later the visual logger. Properly replaces the overlays removed in review items #7/#8 (history log). → `02`, `06`
 
 #### Phase 2 — Physics and movement
 - [ ] **F6. Physics layer (v1).** BepuPhysics v2 per world; colliders/rigid bodies via handles; raycasts/sweeps/overlaps; triggers → events; layers. → `10`

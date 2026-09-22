@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    Sage build configurations (docs/design/01-host-and-modules.md §3.2).
+
+      Debug        no optimizations; SAGE_DEV (dev build)
+      Development  optimized;        SAGE_DEV (dev build)
+      Shipping     optimized;        no SAGE_DEV: Log.Trace/Debug, Assert.Dev, DevOnly cvars/commands
+                                     and dev tools are compiled out
+
+    "Release" is accepted as an alias of Shipping, because `dotnet publish` defaults to it.
+    Imported by src/Directory.Build.props and tests/Sage.Tests; not by vendored packages/.
+  -->
+  <PropertyGroup>
+    <Configurations>Debug;Development;Shipping</Configurations>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <SageShipping Condition="'$(Configuration)' == 'Shipping' Or '$(Configuration)' == 'Release'">true</SageShipping>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <Optimize>false</Optimize>
+    <DebugType>portable</DebugType>
+    <DefineConstants>$(DefineConstants);DEBUG;TRACE;SAGE_DEV;SAGE_DEBUG</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Development'">
+    <Optimize>true</Optimize>
+    <DebugType>portable</DebugType>
+    <DefineConstants>$(DefineConstants);TRACE;SAGE_DEV;SAGE_DEVELOPMENT</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SageShipping)' == 'true'">
+    <Optimize>true</Optimize>
+    <DebugType>portable</DebugType>
+    <DefineConstants>$(DefineConstants);TRACE;SAGE_SHIPPING</DefineConstants>
+  </PropertyGroup>
+</Project>

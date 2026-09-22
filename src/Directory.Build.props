@@ -1,5 +1,7 @@
 <Project>
   <!-- Shared settings for every Sage engine project under src/. -->
+  <Import Project="..\build\Sage.Configurations.props" />
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RollForward>Major</RollForward>

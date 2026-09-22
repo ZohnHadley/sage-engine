@@ -3,6 +3,9 @@ using sage_engine;
 
 namespace sage_engine.Tests;
 
+// The engine has its own `Assert` (Assert.Dev/Ensure/Check); inside this namespace it would hide xUnit's.
+using Assert = Xunit.Assert;
+
 // Guards the LookAt/Billboard fixes (review items #30/#31) and their port to System.Numerics.
 public class ComponentTransformTests
 {

@@ -65,44 +65,58 @@ public enum LogLevel { Trace, Debug, Info, Warn, Error, Fatal }
 
 public sealed class LogCat
 {
-    public LogCat(string name, LogLevel defaultLevel = LogLevel.Info);
+    public LogCat(string name);                                // follows LogCat.DefaultLevel until set explicitly
     public string Name { get; }
-    public LogLevel MinLevel { get; set; }                     // set by the log_level cvar/command
+    public LogLevel MinLevel { get; set; }                     // setting it marks the category as overridden (log_level)
     public bool IsEnabled(LogLevel level);
+    public void ResetToDefault();
+    public static LogLevel DefaultLevel { get; set; }          // Info, or Debug while developer >= 1
     // Engine categories: LogCat.Core, .Host, .Modules, .VFS, .Assets, .Records, .Shaders, .Render,
     // .Input, .World, .Events, .Physics, .Audio, .Animation, .UI, .Streaming, .Save, .AI,
-    // .Gameplay, .Editor, .Mods
+    // .Gameplay, .Editor, .Mods, .Console
 }
 
 public static class Log
 {
-    // One overload set per level (Trace shown; Debug/Info/Warn/Error/Fatal are identical, and
-    // Trace/Debug carry [Conditional("SAGE_DEV")]). Fields are fixed-arity overloads, not
-    // `params LogField[]`, because a params array allocates on every call.
-    [Conditional("SAGE_DEV")] public static void Trace(LogCat cat, [InterpolatedStringHandlerArgument("cat")] ref LogHandler msg);
-    [Conditional("SAGE_DEV")] public static void Trace(LogCat cat, [InterpolatedStringHandlerArgument("cat")] ref LogHandler msg, in LogField f1);
-    [Conditional("SAGE_DEV")] public static void Trace(LogCat cat, [InterpolatedStringHandlerArgument("cat")] ref LogHandler msg, in LogField f1, in LogField f2);
-    [Conditional("SAGE_DEV")] public static void Trace(LogCat cat, [InterpolatedStringHandlerArgument("cat")] ref LogHandler msg, in LogField f1, in LogField f2, in LogField f3);
-    // ... Debug, Info, Warn, Error, Fatal: same shapes
+    // Per level (Trace shown; Debug/Info/Warn/Error/Fatal have the same shapes, and Trace/Debug carry
+    // [Conditional("SAGE_DEV")]): an interpolated form and a plain-string form. Up to 3 fields as
+    // optional `in` parameters (a `params` array would allocate on every call); caller file/line are
+    // captured automatically.
+    [Conditional("SAGE_DEV")]
+    public static void Trace(LogCat cat, [InterpolatedStringHandlerArgument("cat")] ref LogHandler<LogLevels.Trace> message,
+        in LogField f1 = default, in LogField f2 = default, in LogField f3 = default,
+        [CallerFilePath] string file = "", [CallerLineNumber] int line = 0);
+    [Conditional("SAGE_DEV")]
+    public static void Trace(LogCat cat, string message, in LogField f1 = default, /* ... same */);
+    // Fatal logs, flushes, writes a crash report, then throws SageFatalException ([DoesNotReturn]).
 
-    // Spam control. The handler receives the key/interval too, and checks the rate-limit table
-    // before formatting, so a suppressed message is never formatted.
+    // Level chosen at runtime (console, tools).
+    public static void Write(LogCat cat, LogLevel level, [InterpolatedStringHandlerArgument("cat", "level")] ref LogDynamicHandler message, ...);
+
+    // Spam control. The handler also receives the key/interval and checks the rate limit in its
+    // constructor, so a suppressed message is never formatted. Every appends "(+N suppressed)".
     public static void Once (LogCat cat, LogLevel level, string key,
-                             [InterpolatedStringHandlerArgument("cat", "level", "key")] ref RateLimitedLogHandler msg);
+                             [InterpolatedStringHandlerArgument("cat", "level", "key")] ref LogDynamicHandler message, ...);
     public static void Every(LogCat cat, LogLevel level, string key, TimeSpan interval,
-                             [InterpolatedStringHandlerArgument("cat", "level", "key", "interval")] ref RateLimitedLogHandler msg);
+                             [InterpolatedStringHandlerArgument("cat", "level", "key", "interval")] ref LogDynamicHandler message, ...);
 
-    public static void AddSink(ILogSink sink);
-    public static void Flush();
+    public static void Initialize(LogOptions options);          // file + stdout sinks (the ring buffer always exists)
+    public static void AddSink(ILogSink sink);  public static void RemoveSink(ILogSink sink);
+    public static void SetFrame(long frame);   public static void SetTick(long tick);
+    public static void Flush();                 public static bool Flush(TimeSpan timeout);
+    public static void Shutdown();
+    public static RingBufferLogSink Ring { get; }               // console scroll-back + crash-report tail
 }
 
-public readonly struct LogField { public readonly string Key; public readonly object? Value; }  // implicit from (string, T) tuples.
+// Fields: Log.Warn(LogCat.Assets, $"Missing texture", new LogField("path", p), new LogField("mount", m));
 // Note: boxing Value allocates, so fields are for Warn and above, or for dev-only paths — not per-frame Info logs.
+public readonly struct LogField { public LogField(string key, object? value); }
 
-// Interpolated string handler: if the category/level is disabled, the handler's constructor
-// sets shouldAppend = false, and C# skips formatting entirely, so nothing is allocated.
+// Interpolated string handler, generic over a compile-time level marker (LogLevels.Trace … Fatal),
+// so one type serves every level. If the category/level is disabled, the constructor sets
+// shouldAppend = false and C# skips every Append call: nothing is formatted or allocated.
 [InterpolatedStringHandler]
-public ref struct LogHandler { /* formats into a pooled buffer */ }
+public ref struct LogHandler<TLevel> where TLevel : struct, ILogLevelMarker { /* wraps DefaultInterpolatedStringHandler (pooled) */ }
 
 public interface ILogSink { LogLevel MinLevel { get; } void Write(in LogEntry entry); void Flush(); }
 
@@ -121,7 +135,9 @@ if (!Assert.Ensure(mesh != null, "Renderable without mesh")) return;
 Log.Every(LogCat.Physics, LogLevel.Warn, "tunnel", TimeSpan.FromSeconds(5), $"Body {id} tunnelled through wall");
 ```
 
-Duplicate collapse: the console and file sinks fold consecutive identical messages into one line with a count ("… ×120"), as consoles in browsers and many engines do.
+Duplicate collapse: the log writer folds consecutive identical messages (same category, level and text) into one, followed by "(previous message repeated N more times)" when the run ends or after a second of quiet. All sinks see the collapsed stream.
+
+Test code note: inside `namespace sage_engine…`, `Assert` means this class, not xUnit's. Test files add `using Assert = Xunit.Assert;` after their namespace declaration.
 
 ### 4.1 Crash reports
 ```csharp
@@ -145,38 +161,39 @@ Then all sinks are flushed. In dev with a debugger attached, `Debugger.Break()` 
 ```csharp
 [Flags] public enum CVarFlags { None = 0, Archive = 1, Cheat = 2, DevOnly = 4, ReadOnly = 8 /* later: Replicated */ }
 
-public sealed class CVar<T>                                     // T: bool, int, float, string, enum
+public sealed class CVar<T> : CVar                              // T: bool, int, float, string, enum
 {
-    public string Name { get; }
-    public T Value { get; set; }                                 // validated (min/max/allowed values)
+    public T Value { get; set; }                                 // from code: clamped to the range (with a warning)
     public T Default { get; }
-    public CVarFlags Flags { get; }
-    public event Action<T>? Changed;                             // engine signal (04), main thread
+    // (base CVar) Name, Help, Flags, ValueString, IsDefault, TrySet(string, out error), Reset(),
+    // event Action<CVar> Changed  — raised only when the value actually changes
 }
 
 public sealed class CVarRegistry
 {
-    public CVar<T> Register<T>(string name, T defaultValue, CVarFlags flags, string help, T? min = default, T? max = default);
+    public CVar<T> Register<T>(string name, T defaultValue, CVarFlags flags, string help);
+    public CVar<int> Register(string name, int defaultValue, CVarFlags flags, string help, int min, int max);
+    public CVar<float> Register(string name, float defaultValue, CVarFlags flags, string help, float min, float max);
     public void RegisterCommand(string name, CVarFlags flags, string help, Action<ConsoleArgs> run);
-    public void Execute(string line);                           // "name value", "command args", "a; b"
-    public void LoadConfig(VirtualPath path);                   // config.cfg
-    public void SaveArchived(VirtualPath path);
+    public bool Execute(string text, ExecSource source = ExecSource.Console);   // "name value", "cmd args", "a; b", // comments
+    public bool ExecFile(string path, ExecSource source = ExecSource.Config);   // config.cfg, exec <file>
+    public void SaveArchived(string path);                                      // temp file + move
+    public IEnumerable<string> Complete(string prefix);
 }
 ```
+`ExecSource` is `Code`, `Console`, `Config` or `LaunchArgs`. Cheat and read-only checks apply to every source except `Code`. Paths are plain file paths under `UserPaths.Root` until the VFS exists (migration step 5).
 Rules:
 - `Cheat` cvars can only change when `sv_cheats 1`.
 - `DevOnly` cvars and commands exist only in dev builds (`Debug`/`Development`); they're not compiled into `Shipping`.
 - Console availability per build is defined in 01 §3.2 (`con_enable` in `Shipping`).
 - Game and mod cvars are prefixed with their game id (`sandbox_spawn_rate`).
 
-Built-in commands:
-- `help`, `find <text>`, `cvarlist`, `exec <file>`;
-- `log_level <cat|*> <level>`, `log_list`;
-- `crash` (`DevOnly`, tests the reporter);
-- `profile_start`/`profile_stop`;
-- `mem` (GC stats).
+Built-in commands (engine): `help [name]`, `find <text>`, `cvarlist [prefix]`, `cmdlist`, `echo`, `exec <file>`, `log_level <cat|*> [level|default]`, `log_list`, `mem`, `crash` (`DevOnly`). Host/editor: `quit`, `stat <fps|mem|all|none>`, `clear`, `toggleconsole`. `profile_start`/`profile_stop` come with the profiler (§4.4).
+
+Launch arguments (`+name value`, `+command args`) and `config.cfg` run **after every cvar and command is registered**, so `+stat fps` works from the command line (01 §5.1).
 
 ### 4.3 Time
+*Arrives with the fixed tick in migration step 4 (TODO R2); not built in step 2.*
 ```csharp
 public readonly struct TickTime  { public long Tick; public float Dt; public double SimTime; }   // Fixed schedule
 public readonly struct FrameTime { public long Frame; public float Dt; public float Alpha; public double RealTime; }
@@ -184,6 +201,7 @@ public readonly struct FrameTime { public long Frame; public float Dt; public fl
 Systems receive these through their run context (03), never through `DateTime.Now` or MonoGame's `GameTime`. That's what makes headless tests and time scaling work.
 
 ### 4.4 Profiler
+*Arrives in migration step 4, when there are tick phases for the host to wrap; not built in step 2. The `stat fps`/`stat mem` overlay and the allocation counter already exist.*
 ```csharp
 public static class Profiler
 {
@@ -197,6 +215,7 @@ public static class Profiler
 - Later: Tracy integration.
 
 ### 4.5 Jobs
+*Arrives with async asset loading (migration step 5, 05 §3.4); not built in step 2.*
 ```csharp
 public sealed class JobSystem
 {
@@ -221,7 +240,7 @@ Built on the .NET thread pool (`Task`/`Parallel.For`), with no custom fibers (C#
   - no boxing (struct → interface, `params object[]`);
   - no string concatenation or formatting.
 - Use `ArrayPool<T>`, pooled lists, `Span<T>`/`stackalloc`, and structs.
-- **Measurement:** `GC.GetAllocatedBytesForCurrentThread()` is sampled per frame and shown in the overlay. A dev warning fires when steady-state frames allocate more than `mem_warn_bytes` (default 1 KB) for more than 60 frames in a row. `mem` prints GC counts per generation and the heap size.
+- **Measurement:** `GC.GetAllocatedBytesForCurrentThread()` is sampled per frame and shown in the overlay. A dev warning fires when steady-state frames allocate more than `mem_warn_bytes` for 60 frames in a row. The default is **0 (off)** for now: today's editor inspector and ImGui layer allocate every frame, so a 1 KB default would only produce noise. Turn it on to measure, and raise the default once the renderer and editor are rewritten. `mem` prints GC counts per generation and the heap size.
 - `GCSettings.LatencyMode = SustainedLowLatency` during gameplay (cvar `mem_lowlatency`).
 
 ## 5. Data flow
@@ -230,23 +249,26 @@ Built on the .NET thread pool (`Task`/`Parallel.For`), with no custom fibers (C#
 any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing formatted, nothing allocated)
                                         │yes
                                         ▼
-                               LogEntry into lock-free MPSC queue
+                               LogEntry into a ConcurrentQueue
                                         │
-                     ┌──────────────────┼──────────────────────────┐
-                     ▼                  ▼                          ▼
-          background writer      main thread drain            ring buffer
-          → file sink (batched)  → console / editor panel     (always, for crash reports)
-          → stdout/debugger
+                                        ▼
+                     background writer thread ("log-writer")
+                     duplicate collapse → sinks:
+                       • file (batched, flushed per drain)
+                       • stdout/debugger (while developer >= 1)
+                       • ring buffer (always) ◄── console window reads it each frame
+                                                  crash reports copy its tail
 ```
 
 ## 6. Threading and memory
-- `Log.*` is thread-safe and lock-free for producers. The file writer is one background thread; the UI sinks drain on the main thread once per frame.
-- `LogHandler` formats into a pooled `char` buffer. Entries are pooled structs with string storage in a pooled arena; the queue has a fixed capacity (`log_queue_size`, default 16,384). If it's full, producers drop `Trace`/`Debug`, block for `Warn`+, and count the drops ("… 312 log entries dropped").
-- `Fatal` and crash handling write synchronously.
+- `Log.*` is thread-safe and lock-free for producers. One background writer thread feeds all sinks; sinks never run concurrently. The console window reads the ring buffer on the main thread (it copies only when the buffer's version changes).
+- A **disabled** call formats and allocates nothing. An **enabled** call allocates its message string (formatted through the pooled `DefaultInterpolatedStringHandler`) and a queue slot. That's acceptable because enabled logs aren't per-frame hot paths; a pooled string arena was considered and dropped as not worth the complexity.
+- The queue is soft-capped (`log_queue_size`, default 16,384). Over the cap, `Trace`/`Debug` entries are dropped and counted ("… N log entries dropped"); `Info` and above are always kept, so **producers never block**.
+- `Fatal` and crash handling flush synchronously (with a timeout, so a stuck sink can't hang the process).
 
 ## 7. File formats
 - **Log file:** one line per entry: `2026-09-22T14:03:11.412Z [+00:12.345] f=742 t=701 [main] WARN  Assets  Missing texture textures/goblin.png → placeholder (mount=game) (AssetServer.cs:212)`.
-- **Crash report:** plain text with sections (Exception / Log tail / Build / Modules / Mods / CVars / System).
+- **Crash report:** plain text with sections: Summary, Exception, Build, System, then registered sections (today: CVars (non-default), Modules / mods, GPU), then Log tail.
 - **`config.cfg`:** `name "value"` lines (01).
 - **Profiler dump:** Chrome trace event JSON.
 
@@ -257,31 +279,31 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
 
 ## 9. Debug and tooling hooks
 - **Cvars:** `developer` (`DevOnly`, defaults setter, 01 §3.2), `con_enable` (`Archive`; Shipping console), `log_keep`, `log_queue_size`, `log_console_level`, `log_file_level`, `sv_cheats`, `mem_warn_bytes`, `mem_lowlatency`.
-- **Commands:** `log_level`, `log_list`, `cvarlist`, `find`, `help`, `exec`, `crash`, `mem`, `profile_start`, `profile_stop`.
-- **Overlays:** `stat fps` / `stat frame` / `stat mem`: frame time, per-phase ms, allocations, GC.
+- **Commands:** `help`, `find`, `cvarlist`, `cmdlist`, `echo`, `exec`, `log_level`, `log_list`, `mem`, `crash`; host/editor `quit`, `stat`, `clear`, `toggleconsole`. Later: `profile_start`, `profile_stop`.
+- **Overlays:** `stat fps` (fps, average and worst ms over 0.5 s) and `stat mem` (bytes allocated per frame, heap, GC counts, dropped log entries). `stat frame` (per-phase ms) arrives with the profiler.
 - **Later: visual logger** (Unreal's idea). `VLog.Shape(cat, entity, shape, color, text)` records world-space shapes with the tick. An editor timeline scrubs through them, which is especially useful for AI ("why did it path there?").
 
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `Console.WriteLine("Component cannot be null.")` in `Entity.addComponent` (`src/Sage.Engine/ECS/Entity.cs`) | `Log.Error(LogCat.World, …)` (with TODO #34: throw instead) |
-| `Console.WriteLine("group: " + group)` in `EntityContext.getAllEntitiesFromListOfGroups` (`EntityContext.cs:101`) | Removed with that method (TODO #36) or `Log.Trace(LogCat.World, …)` |
+| `Console.WriteLine("Component cannot be null.")` in `Entity.addComponent` | **Done (step 2):** `Log.Error(LogCat.World, …)`. Still ignores the null (TODO #34: throw instead, with R1) |
+| `Console.WriteLine("group: " + group)` in `EntityContext.getAllEntitiesFromListOfGroups` | **Done (step 2):** `Log.Trace(LogCat.World, …)`. The method itself goes with R5 (TODO #36) |
+| `Program.cs` (two lines) | **Done (step 2):** boot sequence: logging, crash reporter, cvars, config and launch args, then the game |
 | (removed 2026-09-22: the unused `InputSystem.isDebug` / `key_binds["toggle_debug"]`) | The `ToggleConsole` action (08), active when the console is available (01 §3.2) |
 | `EditorManager`'s commented-out `debugModes` | Overlay cvars (`stat …`, `r_drawbounds`, `phys_debug`) |
 
 ## 11. v1 scope vs later
-- **v1:**
-  - `Log` + categories + levels + the interpolated handler;
-  - file, stdout and ring-buffer sinks;
-  - the in-game console sink with an ImGui window;
-  - `Assert.Dev`/`Ensure`/`Check`;
-  - crash reports;
-  - cvars/commands + `config.cfg`;
-  - `TickTime`/`FrameTime`;
-  - profiler scopes + overlay;
-  - `JobSystem` over the thread pool;
-  - the allocation counter.
-- **Later:** editor log panel, Chrome-trace dump, Tracy, visual logger, structured-field search.
+- **v1** (✓ = built in migration step 2):
+  - ✓ `Log` + categories + levels + the interpolated handler; `Once`/`Every`; duplicate collapse;
+  - ✓ file (rotating), stdout and ring-buffer sinks;
+  - ✓ the ImGui console window (level/category/text filters, auto-scroll, command input);
+  - ✓ `Assert.Dev`/`Ensure`/`Check`;
+  - ✓ crash reports;
+  - ✓ cvars/commands + `config.cfg` + launch arguments;
+  - ✓ the allocation counter + `stat fps`/`stat mem`;
+  - `TickTime`/`FrameTime` and profiler scopes (step 4, with the fixed tick and phases);
+  - `JobSystem` over the thread pool (step 5, with async asset loading).
+- **Later:** console command history and Tab completion (`CVarRegistry.Complete` exists; the ImGui input callback isn't wired yet), editor log panel, Chrome-trace dump, Tracy, visual logger, structured-field search.
 
 ## 12. Multiplayer-later notes
 - Add a `Replicated` cvar flag (server values pushed to clients, like Quake 3 `SERVERINFO`).
@@ -292,9 +314,9 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
 - Should `Trace` be separate from `Debug` at all? Kept, because `log_level events trace` (every event) is too noisy for `Debug`.
 
 ## 14. Build steps
-1. `Log`, `LogCat`, `LogHandler`, file/stdout/ring sinks; replace the existing `Console.WriteLine` calls (TODO R10, #34, #36).
-2. Build configurations + `SAGE_DEV` symbol + `developer` cvar + console availability (with 01; TODO R10).
-3. `CrashReporter` (TODO R10).
-4. `CVarRegistry` + console commands + `config.cfg` + the ImGui console window (TODO R10).
-5. `Profiler` scopes + overlay; the allocation counter (TODO F5).
-6. `JobSystem` (with 05 async loading).
+1. ✓ `Log`, `LogCat`, handlers, file/stdout/ring sinks; `Console.WriteLine` calls replaced (TODO R10).
+2. ✓ Build configurations + `SAGE_DEV` symbol + `developer` cvar + console availability (with 01; TODO R10).
+3. ✓ `CrashReporter` (TODO R10).
+4. ✓ `CVarRegistry` + console commands + `config.cfg` + launch arguments + the ImGui console window (TODO R10).
+5. Half done: ✓ the allocation counter and `stat fps`/`stat mem`; `Profiler` scopes + `stat frame` in step 4 (TODO F5, R2).
+6. `JobSystem` (with 05 async loading, step 5).

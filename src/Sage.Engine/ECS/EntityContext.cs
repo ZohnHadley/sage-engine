@@ -98,7 +98,7 @@ internal class EntityContext {
     public List<Entity> getAllEntitiesFromListOfGroups(List<String> groups) {
         HashSet<Entity> resultSet = new HashSet<Entity>();
         foreach (var group in groups) {
-            Console.WriteLine("group: " + group);
+            Log.Trace(LogCat.World, $"group: {group}");
             if (_entityGroups.ContainsKey(group)) {
                 resultSet.UnionWith(_entityGroups[group].Values.ToList());
             }

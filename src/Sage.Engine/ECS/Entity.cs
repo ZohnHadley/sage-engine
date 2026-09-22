@@ -32,7 +32,7 @@ internal class Entity{
     internal void addComponent(Type type, IComponent component) {
         if (component == null) {
             //throw new ArgumentNullException("Component cannot be null.");
-            Console.WriteLine("Component cannot be null.");
+            Log.Error(LogCat.World, $"addComponent: null component for entity {_name} ({id}); ignored");
             return;
         }
         _components.Add(type, component);
