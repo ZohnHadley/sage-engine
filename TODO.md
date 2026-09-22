@@ -1,233 +1,240 @@
 # Sage Engine — Code Review Findings & TODO
 
 Generated from a full read-through of the engine source on 2026-05-25.
-Last verified against source: 2026-06-14 (post-#17/#18/#19/#29 round; visibility policy almost fully applied).
+Last verified against source: 2026-09-21 (post input-listener / push-observer entity-context / LookAt+Billboard round, `dcfbd12` + uncommitted `UtilAssets.cs` / `Content.mgcb` changes).
 
 Legend:
 - [ ] = open
 - [X] = done
-- [~] = partially done
+- [~] = partially done / regressed
 - **Severity**: Critical / Wiring / Latent / Cosmetic
+
+Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, camera, input, listeners). `Camera.cs` was replaced by `DevCamera.cs`. Paths and line numbers below are current as of 2026-09-21.
 
 ---
 
 ## Critical bugs (wrong behavior or crashes)
 
 ### [X] 1. `ModelRendererSystem` caches its entity list once and never refreshes
-- **File**: `engine/Classes/ECS/systems/ModelRendererSystem.cs:18`
-- **Problem**: The query `getAllEntitiesWithListOfComponents([...])` is run in the singleton constructor. Because the system is a singleton, the list is built once for the entire lifetime of the program. Any entity created after `ModelRendererSystem.getInstance()` is first called will never be rendered.
-- **Why it "works" today**: All bunnies are spawned in `LoadContent` before `Draw` runs, so the first `getInstance()` call happens after all entities exist.
-- **Fix**: Re-query each frame inside `render(...)`, or subscribe to an "entity added/component added" event in `EntityContext` to keep the list in sync.
+- **File**: `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs:12-17`
+- **Problem**: The component query was run once in the singleton constructor, so entities created later were never rendered.
+- **Resolution**: The system now holds a live `ArchetypeView` from `EntityContextListener.getInstance().Track("ComponentTransform", "ComponentMeshRenderer")`. `EntityContext` raises `OnEntityAdded/Removed` and `OnComponentAdded/Removed`, the listener re-evaluates every view, and `_renderables.Entities` stays current without per-frame rescans. `Game1.Initialize` brings the listener up before `LoadContent` (`Game1.cs:37`).
 
 ### [X] 2. Quaternion components used as if they were Euler-degrees
-- **File**: `engine/Classes/ECS/systems/ModelRendererSystem.cs:50`
-- **Problem**:
-  ```csharp
-  Matrix.CreateFromYawPitchRoll(
-      MathHelper.ToRadians(entityRotation.Y),
-      MathHelper.ToRadians(entityRotation.X),
-      MathHelper.ToRadians(entityRotation.Z));
-  ```
-  `entityRotation` is a `Quaternion`, so `.X .Y .Z` are imaginary components, not angles. Converting them with `ToRadians` is meaningless.
-- **Secondary problem**: `worldRotationMatrix` is computed but never multiplied into `effect.World` (line 54) — rotation has zero effect right now.
-- **Fix**: `effect.World = Matrix.CreateFromQuaternion(entityRotation) * worldPositionMatrix;`
+- **File**: `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs:50`
+- **Resolution**: `effect.World = Matrix.CreateFromQuaternion(entityRotation) * worldPositionMatrix;`. Scale is still not applied — see #32.
 
 ### [X] 3. `ComponentTransform` defaults are broken for rotation/scale
-- **File**: `engine/Classes/ECS/components/ComponentTransform.cs`
-- **Problem**: Auto-properties default to `default(T)`. For `Quaternion` that's `(0,0,0,0)` (not identity `(0,0,0,1)`), and `Vector3 scale` defaults to `Zero`. As soon as the renderer actually uses rotation/scale, models will disappear or render as garbage.
-- **Fix**: Initialize in the field/constructor:
-  ```csharp
-  public Quaternion rotation { get; set; } = Quaternion.Identity;
-  public Vector3 scale { get; set; } = Vector3.One;
-  ```
+- **File**: `engine/Classes/EnginClasses/ECS/components/ComponentTransform.cs:6-8`
+- **Resolution**: Backing fields are initialized: `_position = Vector3.Zero`, `_rotation = Quaternion.Identity`, `_scale = Vector3.One`. Public properties are now PascalCase: `Position`, `Rotation`, `Scale`.
 
 ### [X] 4. `EntityContext.removeEntity` does not clean up `entityGroups`
-- **File**: `engine/Classes/ECS_base_classes/EntityContext.cs:34-44`
-- **Problem**: The entity is removed from the `entities` dict, but its references remain in every group list under `entityGroups`. Systems that iterate groups will operate on dead entities.
-- **Fix**: Iterate the removed entity's components and remove the entity from each corresponding group list (and remove tags similarly if/when group tracking expands to tags).
-- **Resolution**: `removeEntity` now iterates `entityGroups` and calls `group_entities.Remove(entity.getId())` for each group.
+- **File**: `engine/Classes/EnginClasses/ECS_base_classes/EntityContext.cs:68-87`
+- **Resolution**: `removeEntity` removes the id from every group, then fires `OnComponentRemoved` for each component (over a `ToList()` snapshot) followed by `OnEntityRemoved`.
 
 ### [X] 5. Camera movement is not frame-rate independent
-- **File**: `engine/Classes/CameraClasses/Camera.cs:119-139`
-- **Problem**: Hard-coded `0.25f` per frame with no use of `gameTime.ElapsedGameTime`. Movement speed varies with FPS.
-- **Fix**: Multiply movement by `(float)gameTime.ElapsedGameTime.TotalSeconds` (pass `gameTime` through to `CustomMovement`).
+- **File**: `engine/Classes/EnginClasses/CameraClasses/DevCamera.cs:70-97`
+- **Resolution**: `DevCamera.update(gameTime)` builds a move vector from WASD (polled via `InputSystem.IsKeyDown`), normalizes it so diagonals aren't faster, and applies `move * speed * dt`.
 
 ### [X] 6. `EntityContextMenuUI` opens a popup that's never defined
-- **File**: `engine/Classes/Screens/EntityContextMenuUI.cs:35-41`
-- **Problem**: `ImGui.OpenPopup("EntityContextMenuPopup")` has no matching `ImGui.BeginPopup("EntityContextMenuPopup")` block, so the context menu never actually appears.
-- **Secondary problem**: `Mouse.GetState().RightButton == Pressed` fires every frame the button is held — should compare against previous mouse state to detect a click edge.
-- **Fix**: Add a matching `BeginPopup/EndPopup` pair, and track previous mouse state for edge detection.
-- **Resolution**: Switched to `BeginPopupContextItem("ctx_" + entity.getId())` placed immediately after `TreeNodeEx` (with the result captured into `nodeOpen`). ImGui handles right-click edge detection and popup open/close internally — no manual mouse-state tracking needed. The popup correctly binds to the entity row whether the tree is collapsed or expanded.
-- **Follow-up done**: the `Delete` menu item now calls `context.removeEntity(entity)`. Safe to delete during iteration because `getAllEntities()` returns a fresh `List<Entity>` snapshot — the foreach iterates the copy, not the live dict.
+- **File**: `engine/Classes/Screens/EntityContextMenuUI.cs:36-42`
+- **Resolution**: Uses `BeginPopupContextItem("ctx_" + entity.getId())` right after `TreeNodeEx`; ImGui handles the right-click edge and open/close.
+- **Follow-up done**: `Delete` calls `context.removeEntity(entity)`. Deleting mid-loop is safe because the loop iterates `context.EntitiesDict.Values.ToList()` (a copy), not the live dict.
 
 ---
 
 ## Missing connections / dead wiring
 
 ### [X] 7. `EditorManager.current_fps` is never set
-- **File**: `engine/Classes/EditorManager.cs` (formerly lines 13, 67)
-- **Problem**: `setCurrentFPS` has no callers. `Game1.Update`/`Draw` never compute FPS, and `EditorUI` never reads it. The `"showFPS"` debug mode default-true is dead too.
-- **Fix**: Compute FPS in `Game1.Update` (e.g. `1f / (float)gameTime.ElapsedGameTime.TotalSeconds`) and render an overlay in `EditorUI` when `getDebugMode("showFPS")` is true.
-- **Resolution**: Dead `current_fps` / `setCurrentFPS` were removed from `EditorManager`. FPS overlay is still not implemented — re-open if/when it's actually needed.
+- **Resolution**: Dead `current_fps` / `setCurrentFPS` removed. FPS overlay is not implemented — re-open if needed.
 
 ### [X] 8. None of the debug modes are wired up
-- **File**: `engine/Classes/EditorManager.cs` (formerly lines 19-23)
-- **Problem**: `showGrid`, `showBoundingBox`, `showCollision`, `showCameraInfo` are stored but no system reads them. The whole `debugModes` dictionary is currently dead.
-- **Fix**: Either implement matching overlays/gizmos or remove until you actually need them.
-- **Resolution**: The `debugModes` dictionary was removed from `EditorManager` (the field is now commented out at `EditorManager.cs:7`). Reintroduce when overlays/gizmos are actually being implemented.
+- **Resolution**: `debugModes` removed from `EditorManager` (commented out at `EditorManager.cs:9`). Note a similar unwired leftover now exists in `InputSystem` — see #36.
 
-### [ ] 9. `UtilAssets.lightIconTexture` is loaded but never used
-- **File**: `engine/Classes/UtilAssets.cs:7, 11` (renamed from `GameAssets` since the original TODO entry)
-- **Status**: Still loaded in `InitializeModels`, still has no references anywhere else in the engine.
-- **Fix**: Use it for a light-source icon in the editor, or drop the load.
+### [~] 9. `UtilAssets.lightIconTexture` is declared but never loaded or used
+- **Files**: `engine/Classes/UtilAssets.cs:7, 11`, `engine/Content/Content.mgcb`, `engine/Content/light.png`
+- **Status (uncommitted)**: The load is commented out (`// TODO: Fix FreeImage dependency`) and the `light.png` entry was removed from `Content.mgcb`. The `lightIconTexture` field and `Content/light.png` still exist, and nothing references either.
+- **Fix**: Either delete the field and `light.png` to finish dropping it, or fix the FreeImage/texture pipeline issue, restore the mgcb entry, and use it as a light-source icon in the editor.
 
 ### [X] 10. `Primitive.cs` is an empty abstract class
-- **File**: `engine/Classes/Primitives/Primitive.cs`
-- **Fix**: Either flesh it out (cube/sphere/plane builders) or delete it.
+- **Resolution**: File deleted.
 
-### [X] 11. `EditorManager.getGraphicsDeviceManager()` returns a never-assigned field unless `setGraphicsDeviceManager` was called
-- **File**: `engine/Classes/EditorManager.cs:8, 32-34`
-- **Problem**: Works today because `Game1.Initialize` always calls the setter, but the contract is fragile. The constructor takes a `Game` but never uses it.
-- **Fix**: Take the `GraphicsDeviceManager` in the constructor; remove the `Game` parameter or actually use it.
+### [X] 11. `EditorManager.getGraphicsDeviceManager()` returns a never-assigned field
+- **File**: `engine/Classes/EditorManager.cs:36-45`
+- **Resolution**: `getGraphicsDeviceManager` and the stored field are gone. The constructor takes no arguments; `setGraphicsDeviceManager(gdm, width, height)` only applies the back-buffer size and does not keep `gdm`. (The method name is now a bit misleading — something like `applyWindowSize` would describe it better.)
 
 ### [X] 12. `Game1.cs` is in `Content/`
-- **File**: `engine/Content/Game1.cs`
-- **Problem**: That folder is for MGCB-built assets. Compiles by accident because the csproj globs all `.cs` files. Confusing and risks the file being treated as content.
-- **Fix**: Move to `engine/Game1.cs` (project root, next to `Program.cs`).
+- **Resolution**: Moved to `engine/Game1.cs`.
 
 ---
 
 ## Latent bugs / design issues
 
 ### [X] 13. `addComponent` doesn't enforce one-component-per-type
-- **File**: `engine/Classes/ECS_base_classes/Entity.cs:11, 73-80`
-- **Problem**: `components.Contains(component)` uses reference equality. Adding two `ComponentTransform` instances succeeds. `getComponent<T>()` then returns whichever it finds first.
-- **Fix**: Store as `Dictionary<Type, Component>` and reject duplicates by type.
-- **Resolution**: `Entity._components` is now `Dictionary<Type, IComponent>`. `addComponent` calls `_components.Add(type, component)`, which throws `ArgumentException` on duplicate keys — duplicates are now rejected by type.
+- **File**: `engine/Classes/EnginClasses/ECS_base_classes/Entity.cs:34-41`
+- **Resolution**: `_components` is `Dictionary<Type, IComponent>`; `_components.Add` throws on duplicate type. (Group/archetype matching still uses type-name strings — see #38.)
 
 ### [X] 14. `Tag` system uses reference equality
-- **Problem**: `tags.Contains(tag)` and `hasTag(tag)` compare references — two `new EditorOnly()` are distinct.
-- **Fix**: Track tags by `Type`, or expose `hasTag<T>()`.
-- **Resolution**: Tag system removed entirely — `Tag.cs` and `EditorOnly.cs` deleted; `Entity.cs` no longer has any tag fields or methods. Re-introduce with a `Type`-keyed implementation if/when tags are needed again.
+- **Resolution**: Tag system removed entirely. Re-introduce `Type`-keyed if needed.
 
-### [X] 15. `EntityContext.getGroups()` returns the internal dictionary by reference
-- **File**: `engine/Classes/ECS_base_classes/EntityContext.cs`
-- **Problem**: `Entity.addComponent` (`Entity.cs:78-85`) mutates it directly — encapsulation leak and tight coupling.
-- **Fix**: Move group bookkeeping into `EntityContext.addComponentFor(entity, component)` (or similar). Make `getGroups` return an `IReadOnly...` view.
-- **Resolution**:
-  - `EntityContext.addComponentFor(entity, component)` and `removeComponentFor(entity, component)` are now the only writers — they update `_components` and `entityGroups` together.
-  - `Entity.addComponent` / `Entity.removeComponent` are `internal` and only touch `_components`; they no longer know `entityGroups` exists.
-  - `getGroups()` now returns `IReadOnlyDictionary<string, IReadOnlyDictionary<long, Entity>>`. External callers can read but cannot mutate.
-  - Note: the read view is rebuilt via `ToDictionary` on each call. Cheap for editor/inspector use; cache if it ever ends up in a hot loop.
+### [~] 15. Entity/context internals exposed for direct mutation
+- **Files**: `engine/Classes/EnginClasses/ECS_base_classes/EntityContext.cs:9-19, 110-115`, `engine/Classes/EnginClasses/ECS_base_classes/Entity.cs:14, 53-55`
+- **Done**: `addComponentFor` / `removeComponentFor` keep `_components` and `_entityGroups` in sync and fire the component events. `Entity.addComponent` / `removeComponent` are `internal`. `getGroups()` returns an `IReadOnlyDictionary` view.
+- **Regressed / still open**:
+  - `Entity.Components` has a public **setter**, and `Entity.getComponents()` returns the live internal dictionary. Anyone can add or remove components without touching groups or firing `OnComponentAdded/Removed`, which silently desyncs every `ArchetypeView`.
+  - `EntityContext.EntitiesDict` is public with a **setter** and returns the live dict. Callers can add or remove entities or swap the whole dictionary without firing `OnEntityAdded/Removed`.
+- **Fix**: Remove both setters. Expose `IReadOnlyDictionary<Type, IComponent>` / `IReadOnlyDictionary<long, Entity>` (or `IReadOnlyCollection<Entity>`) instead of the concrete dictionaries, and delete the redundant `getComponents()`.
 
 ### [X] 16. Entity ID type inconsistency
-- **Files**: `engine/Classes/ECS_base_classes/EntityContext.cs`, `Entity.cs`
-- **Problem**: `entities` dict is keyed by `long`, but `contextEntityCount` and `Entity.id` are `int`. `getEntity(long)` exists but `setId(int)` doesn't. Works by implicit conversion.
-- **Fix**: Pick one (probably `int`) and use it everywhere.
-- **Resolution**: Standardized on `long`. `Entity.id`, `getId()`, `setId()`, `entities` keys, and `getEntity()` all use `long`. `contextEntityCount` was removed in favor of generating IDs inside `createEntity`. The type-consistency problem is closed — but the new generation scheme has its own issues; see new item #28.
+- **Resolution**: Standardized on `long` everywhere.
 
 ### [X] 17. Camera rotation drifts and has no pitch clamp
-- **File**: `engine/Classes/CameraClasses/Camera.cs`
-- **Problem**: Adding `mouse * normal` to `camForward` then normalizing causes gradual drift and lets the camera roll / get stuck near vertical.
-- **Fix**: Store yaw and pitch as floats; rebuild `camForward` each frame from them; clamp pitch to ±89°.
-- **Resolution**:
-  - Added `private float yaw` and `private float pitch` fields (radians), plus `static readonly float PitchLimit = MathHelper.ToRadians(89f)`.
-  - Constructor seeds them from the `rotation` Vector3 (`rotation.Y` → yaw, `rotation.X` → pitch with the clamp), then calls a new `rebuildForward()` helper that does `camForward = Vector3.Transform(Vector3.Forward, Matrix.CreateFromYawPitchRoll(yaw, pitch, 0))`.
-  - Right-click drag updates yaw/pitch instead of `camForward`: `yaw -= mouse_x * sensitivity; pitch -= mouse_y * sensitivity;` then `MathHelper.WrapAngle(yaw)` and `MathHelper.Clamp(pitch, -PitchLimit, PitchLimit)`, then `rebuildForward()`. No more cumulative additions, no more re-normalization, no roll, no flipping near vertical.
+- **File**: `engine/Classes/EnginClasses/CameraClasses/DevCamera.cs:29-33, 54-57, 99-114`
+- **Resolution**: Yaw/pitch are stored as floats (radians); `rebuildForward()` rebuilds `camForward` from them; pitch is clamped to ±89° and yaw is wrapped. Mouse-look now runs in `OnMouseDrag` (subscribed to `InputSystem.OnMouseDrag`, right button only) instead of the old `CustomMovement`.
 
 ### [X] 18. `EditorUI` "Exit" calls `System.Environment.Exit(0)`
-- **File**: `engine/Classes/Screens/EditorUI.cs`
-- **Problem**: Bypasses MonoGame shutdown (Content disposal, GraphicsDevice cleanup).
-- **Fix**: Hold a reference to `Game1` and call its `Exit()` method.
-- **Resolution**: `EditorUI.Draw` now takes a `Game game` parameter and calls `game.Exit()` for the menu's Exit item. `Game1.Draw` passes `this` (`EditorUI.GetInstance().Draw(this);`). MonoGame runs its shutdown path normally now.
+- **Resolution**: `EditorUI.Draw(Game game)` calls `game.Exit()`.
 
 ### [X] 19. Mouse delta on first frame of right-click can snap
-- **File**: `engine/Classes/CameraClasses/Camera.cs`
-- **Problem**: Although `prevMouseState` is updated every frame (in both press/release branches), if the cursor moves a lot in a single frame the camera will still snap.
-- **Fix**: On the rising edge of right-click, force the delta to zero for that frame.
-- **Resolution**: `CustomMovement` now computes `bool risingEdge = mouseState.RightButton == Pressed && prevMouseState.RightButton == Released;`. The rotation block runs only when `Pressed && !risingEdge`, so the first frame after the user re-presses RMB doesn't apply any yaw/pitch delta. `prevMouseState = mouseState` moved to a single unconditional assignment at the end, replacing the duplicated press/release branches.
+- **Files**: `engine/Classes/EnginClasses/Listeners/MouseListener.cs:99-136`, `DevCamera.cs:38-41`
+- **Resolution**: Replaced the old manual rising-edge check. `MouseListener` re-anchors each button at its press position and only promotes a hold to a drag after `DragThreshold` (5 px) of travel. `OnDrag` then delivers per-frame deltas. The camera only rotates from `OnMouseDrag`, so a re-press can't snap. `MouseListener` also seeds both mouse states in its constructor so the first frame has no bogus delta.
 
 ### [X] 20. `createEntity` adds to `entityGroups` before adding to `entities`
-- **File**: `engine/Classes/ECS_base_classes/EntityContext.cs:25-33`
-- **Problem**: Inside `addComponent(new ComponentTransform())` the entity gets registered into the groups dict, but it's not yet present in the master `entities` dict. Anyone iterating groups during that window sees a half-registered entity.
-- **Fix**: Insert into `entities` first, then add components.
-- **Resolution**: `createEntity` now does `entities.Add(...)` before `addComponentFor(entity, new ComponentTransform())`, so the entity is fully registered in `entities` before any group registration happens.
+- **File**: `engine/Classes/EnginClasses/ECS_base_classes/EntityContext.cs:49-66`
+- **Resolution**: Insert into `_entities`, fire `OnEntityAdded`, then `addComponentFor(entity, new ComponentTransform())`. Subscribers see the entity before any of its component events.
 
 ---
 
 ## Cosmetic / style
 
-### [X] 21. Namespace mismatch
-- `Camera.cs` and `EditorManager.cs` are in the global namespace; everything else is in `sage_engine`.
-- **Fix**: Put them in `namespace sage_engine;`.
+### [~] 21. Namespace mismatch
+- **Regressed**: `engine/Classes/EnginClasses/ECS/systems/TransfomSystem.cs:4` declares `namespace sage_engin;` (typo) and adds `using sage_engine;` to compensate.
+- **Fix**: `namespace sage_engine;`, drop the `using`.
 
-### [X] 22. Mixed visibility
-- `Game1` is `public`; `Component`, `ComponentSystem`, `Tag`, `Entity`, etc. have no modifier (default `internal`).
-- **Fix**: Pick a policy. If this is a single-assembly engine, `internal` everywhere except true API surfaces is fine.
-- **Resolution**: Policy is `internal` everywhere except `Game1` (the entry point, stays `public`). Explicit `internal` is now on every other class/interface in the engine: `Entity`, `EntityContext`, `Camera`, `EditorManager`, `EditorUI`, `EntityContextMenuUI`, `ComponentTransform`, `ComponentMeshRenderer`, `ModelRendererSystem`, `IComponent`, `IComponentSystem`, `UtilAssets` (renamed from `GameAssets` in the same round).
+### [~] 22. Mixed visibility
+- **Policy**: `internal` everywhere except `Game1`.
+- **Regressed**: `public enum MouseButton` (`engine/Classes/EnginClasses/Listeners/MouseListener.cs:190`).
+- **Fix**: Make it `internal`.
 
 ### [X] 23. Interface naming
-- `Component` and `ComponentSystem` would conventionally be `IComponent`, `IComponentSystem`. (`Tag` is no longer in the codebase — see #14.)
-- **Fix**: Rename for clarity.
-- **Resolution**: Both renamed. `IComponent.cs` and `IComponentSystem.cs` exist; `ModelRendererSystem : IComponentSystem` and all components implement `IComponent`.
+- **Resolution**: `IComponent`, `IComponentSystem` (now `: IEnginSystem`), `IEnginSystem` under `ECS_base_classes/Interfaces/`.
 
-### [X] 24. Typos
-- Fixed in `GameAssets.cs`, `EditorManager.cs`, `ModelRendererSystem.cs`.
+### [~] 24. Typos
+- **Earlier round**: Fixed in `GameAssets.cs` (now `UtilAssets.cs`), `EditorManager.cs`, `ModelRendererSystem.cs`.
+- **New**:
+  - Folder `EnginClasses/` → `EngineClasses/`
+  - `IEnginSystem` → `IEngineSystem` (file + type)
+  - `TransfomSystem.cs` → `TransformSystem.cs` (the class inside is already `TransformSystem`)
+  - `sage_engin` namespace (see #21)
+  - `DevCamera.cs:24` "what the camera cans see"
+  - `Game1.cs:88` "z buffer dept clear"
+  - `EditorManager.windowWidth` vs `WindowHeight` — inconsistent casing (should be `WindowWidth`)
 
-### [X] 25. Dead / redundant code
-- `Matrix.Identity * worldPositionMatrix` — identity multiplication is a no-op.
-- The commented `effect.DirectionalLight0.Enabled = true;` line is followed by `EnableDefaultLighting()`, which overrides all the manual light setup above it.
-- **Fix**: Pick manual lights OR default lighting, not both.
+### [~] 25. Dead / redundant code
+- **Done**: Identity multiplication removed; manual light setup collapsed to `EnableDefaultLighting()`.
+- **Still present** in `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs`:
+  - Lines 53-54: `lightDirection` is computed and normalized but never used.
+  - Lines 34-37: `if (_renderables.Entities.Count == 0) return;` is redundant — the `foreach` already does nothing on an empty set.
+  - Lines 43-45: `getComponent<ComponentTransform>()` and the World matrix are recomputed per effect inside the mesh loop. Hoist them to per-entity.
+  - `update(GameTime)` is an empty body.
+- Other new dead code is tracked in #36.
 
-### [X] 26. Bunny spawn loop is `z < 1`
-- **File**: `engine/Game1.cs:57-65`
-- Original note: only spawned one row of bunnies; probably intentional during testing.
-- **Resolution**: Loop is now `x < 8` × `z < 8`, spawning an 8×8 grid.
+### [~] 26. Bunny spawn loop size
+- **File**: `engine/Game1.cs:58-66`
+- **History**: `z < 1` → 8×8 → 20×20 → now **`x < 1` × `z < 1`** again (changed in `dcfbd12`, probably to test Billboard on one entity).
+- **Related**: `Game1.cs:80` billboards only `bunnyEntity`, i.e. the *last* entity spawned. With a grid, only one bunny would face the camera.
+- **Fix**: Decide the intended grid size. If billboarding should apply to all renderables, move it into a system (e.g. the empty `TransformSystem`, #35) that iterates an archetype view.
 
 ---
 
-## New issues introduced during the refactor (added 2026-06-14)
+## Issues introduced during the refactor (added 2026-06-14)
 
-### [X] 27. Two `ComponentTransform` instances per entity (desync hazard)  — **Severity: Latent**
-- **Files**: `engine/Classes/ECS_base_classes/Entity.cs:12`, `engine/Classes/ECS_base_classes/EntityContext.cs:28`
-- **Problem**: `Entity` field-initializes `_transformComponent = new ComponentTransform()` (instance **A**), and `EntityContext.createEntity` then calls `addComponentFor(entity, new ComponentTransform())` which puts a *different* instance **B** into `_components`.
-  - `entity.Transform` → A
-  - `entity.getComponent<ComponentTransform>()` → B
-  - Game1 writes via `bunnyEntity.Transform.position = ...` (A); `ModelRendererSystem` reads via `entity.Transform.position` (A). Works by luck because everyone uses the property.
-  - Any code that ever reaches for the transform via the components dict (e.g. a generic inspector or future system) gets a stale, default-pose instance.
-- **Fix**: Pick one storage location:
-  - Drop the `_transformComponent` field and have `Transform` resolve via `getComponent<ComponentTransform>()` (cache the result). OR
-  - Drop the `addComponentFor(entity, new ComponentTransform())` call in `createEntity` and instead register the field-initialized instance in `_components` (e.g. `addComponentFor(entity, entity.Transform)`).
-- **Resolution**: Dropped the `_transformComponent` field, the `Transform` property, and `setTransform` from `Entity`. The `ComponentTransform` added by `createEntity → addComponentFor` is now the single source of truth, accessed via `entity.getComponent<ComponentTransform>()`. `Game1` writes positions through it (`Game1.cs:64`), `ModelRendererSystem` reads through it (`ModelRendererSystem.cs:42, 46`). One instance, no desync.
-- **Followup bug fixed in same round**: `Entity.getComponent<T>()` had `if (component_type is T)` (testing the dictionary *key*, a `System.Type` instance), which always failed and made every transform read throw. Replaced with `_components.TryGetValue(typeof(T), …)` — O(1) lookup and structurally can't be confused with the key/value swap. The method still throws `ArgumentException` on miss (loud-failure contract intentionally preserved).
-- **Followup cleanup**: `EntityContext.getComponentFor<T>` was deleted — it was a thin pass-through with no group-bookkeeping invariant to enforce on the read path, and its `if (component == null) return default;` branch was dead code. Callers go through `entity.getComponent<T>()` directly.
+### [X] 27. Two `ComponentTransform` instances per entity (desync hazard)
+- **Resolution**: `Entity` no longer has its own transform field. The instance added by `createEntity → addComponentFor` is the single source of truth, read via `entity.getComponent<ComponentTransform>()` (`Game1.cs:64, 80`; `ModelRendererSystem.cs:43`). `getComponent<T>` uses `TryGetValue(typeof(T), …)` and throws on miss.
 
-### [X] 28. `createEntity` ID generation is flaky  — **Severity: Latent**
-- **File**: `engine/Classes/ECS_base_classes/EntityContext.cs:21-34`
-- **Original code**: `long random_number = new System.Random().Next() + entities.Keys.ToList().Count;`
-- **Problems**:
-  - `new System.Random()` per call is seeded from the clock — collisions possible in same tick.
-  - `entities.Keys.ToList()` allocates a `List<long>` just to read `.Count`.
-  - `Random.Next()` returns a non-negative `int` (~2.1B max), so despite the field being `long`, only positive-int range is used.
-  - If an ID happens to collide, `entities.Add(id, entity)` will throw at runtime — no retry loop.
-- **Resolution**:
-  - Single `_randomNumberGenerator` field on `EntityContext` (one `Random` instance for the context's lifetime).
-  - Switched from `Next()` to `NextInt64()` — full non-negative `long` range (0 to `long.MaxValue`).
-  - Allocating `.Keys.ToList()` deleted.
-  - Wrapped the ID draw in a `do { newId = _randomNumberGenerator.NextInt64(); } while (entities.ContainsKey(newId));` loop. Collisions are astronomically unlikely in `long` range (≈ `N²/2^64`) but the retry costs nothing on the happy path and makes the `entities.Add` unconditionally safe.
+### [X] 28. `createEntity` ID generation is flaky
+- **Resolution**: A single `_randomNumberGenerator`, `NextInt64()`, and a `do/while ContainsKey` retry loop (`EntityContext.cs:29, 54-58`).
 
 ### [X] 29. Stale `// TODO` comment in `Entity.cs`
-- **File**: `engine/Classes/ECS_base_classes/Entity.cs:9` — `// TODO : make so entity has random generated id and adds itself to context`
-- This is now done (random IDs are generated inside `EntityContext.createEntity`, and entities self-register via the context). Delete the comment.
-- **Resolution**: Comment deleted.
+- **Resolution**: Deleted.
+
+---
+
+## New issues (added 2026-09-21)
+
+### [X] 30. `ComponentTransform.LookAt` produces an inverted rotation
+- **File**: `engine/Classes/EnginClasses/ECS/components/ComponentTransform.cs`
+- **Problem**: Used `Matrix.CreateLookAt` (a *view* matrix, the inverse of a world transform), so the quaternion had the inverse orientation. It also went NaN when the target was straight above/below, and was undefined when the target sat on the object.
+- **Resolution**: Builds `Matrix.CreateWorld(Vector3.Zero, direction, up)` so local Forward (-Z) points at the target. Returns early (keeps the current rotation) if the target is within ~1e-4 units. A shared `UpHintFor(direction)` helper swaps the up hint to `Vector3.Forward` when the direction is within ~2.5° of vertical.
+
+### [X] 31. `ComponentTransform.Billboard` arguments were swapped
+- **File**: `engine/Classes/EnginClasses/ECS/components/ComponentTransform.cs`
+- **Problem**: Called `Matrix.CreateBillboard(targetPosition, Position, …)`, which passes the camera as the object, so the facing was flipped 180°.
+- **Resolution**: Now `Matrix.CreateBillboard(Position, targetPosition, UpHintFor(direction), Vector3.Forward)`, with the same too-close guard and vertical up-hint as `LookAt`. Local Forward (-Z) faces the target.
+- **Note**: With the corrected convention, `LookAt(cam)` and `Billboard(cam)` now give the same orientation. If the bunny model's visible front is +Z rather than -Z, it will now show its back to the camera. That is a model-orientation question (fix it in the model or with a per-mesh offset), not a reason to re-swap the arguments.
+
+### [ ] 32. Renderer ignores `ComponentTransform.Scale` — **Severity: Latent**
+- **File**: `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs:47-50`
+- **Problem**: `effect.World = CreateFromQuaternion(rotation) * translation` has no scale term, so setting `Scale` does nothing.
+- **Fix**: `effect.World = Matrix.CreateScale(transform.Scale) * Matrix.CreateFromQuaternion(transform.Rotation) * Matrix.CreateTranslation(transform.Position);`. Consider a `ComponentTransform.WorldMatrix` property so every system builds it the same way.
+
+### [ ] 33. `removeComponentFor` can leave state half-updated — **Severity: Latent**
+- **File**: `engine/Classes/EnginClasses/ECS_base_classes/EntityContext.cs:134-147`
+- **Problem**:
+  - The entity is removed from the group *before* `entity.removeComponent(...)`, which throws if the entity doesn't have that component. After the throw, the group no longer holds the entity, but the event never fired.
+  - `OnComponentRemoved` receives the caller's `component` argument, not the instance actually stored on the entity. Passing a fresh `new ComponentMeshRenderer(...)` removes the real one but reports the wrong object.
+  - `removeEntity` also doesn't clear the entity's `_components`. Fine for the archetype views (they use `Remove`), but a handler holding the dead entity still sees all its components.
+- **Fix**: Look up the stored instance first (`removeComponentFor<T>(entity)` or by `Type`), validate, then mutate the entity, then the group, then fire the event with the stored instance.
+
+### [ ] 34. `Entity.addComponent` silently swallows null — **Severity: Cosmetic**
+- **File**: `engine/Classes/EnginClasses/ECS_base_classes/Entity.cs:34-41`
+- **Problem**: `Console.WriteLine` + return, with the throw commented out. Unreachable today because `addComponentFor` already throws `ArgumentNullException`, but the two layers disagree.
+- **Fix**: Throw (matching `removeComponent`), or drop the check since `internal` callers already validate.
+
+### [ ] 35. `TransformSystem` is a stub that throws — **Severity: Wiring**
+- **File**: `engine/Classes/EnginClasses/ECS/systems/TransfomSystem.cs`
+- **Problem**: It is never created. `update` throws `NotImplementedException`, so it would crash the frame if anything ever called it. It also has the namespace typo (#21) and file-name typo (#24).
+- **Fix**: Implement it (e.g. host billboard/look-at behaviour, see #26) or delete it until needed.
+
+### [ ] 36. Dead fields / methods / stale comments — **Severity: Cosmetic**
+- `InputSystem.isDebug` and `key_binds["toggle_debug"]` (`InputSystem.cs:14-17`) — never read. Same pattern as the removed `debugModes` (#8).
+- `Entity.context` (`Entity.cs:7`) — assigned, never used. It also forces an `EntityContext` singleton to exist for every `new Entity()`.
+- `EditorUI.context` (`EditorUI.cs:11, 15`) — never used.
+- `EditorManager.getCamera()` — no callers. `setCamera` is only called from `Game1`.
+- `DevCamera.Target` / `_camTarget` (`DevCamera.cs:13-17, 49`) — never read, and it's set to a *direction* (`camForward`), not a point.
+- `EntityContext.getGroups()` and `getAllEntitiesFromListOfGroups()` — no callers since `ArchetypeView` replaced them. `getAllEntitiesFromListOfGroups` also has a leftover `Console.WriteLine` in its loop and returns the **union** (any group), unlike `ArchetypeView`'s all-of match.
+- `ArchetypeView.cs:7` and `EntityContextListener.cs:12` refer to `EntityContextSystem`, which was deleted in `dcfbd12`.
+- `EditorManager.cs:18-19, 29-30` — commented-out `ApplyChanges` lines. The one in the *width* setter sets `PreferredBackBufferHeight` (copy-paste bug if ever re-enabled).
+- Unused `using`s (e.g. `System.Collections.Generic` in `IComponentSystem.cs`, `System` in `IComponent.cs`, `Microsoft.Xna.Framework.Input` in `EditorUI.cs` / `EntityContextMenuUI.cs`, self-`using sage_engine;` in the Screens files).
+
+### [ ] 37. Input bypasses `InputSystem` in `Game1` — **Severity: Cosmetic**
+- **File**: `engine/Game1.cs:75`
+- **Problem**: Escape and GamePad Back are read via `Keyboard.GetState()` / `GamePad.GetState()` *before* `InputSystem.update`. That is the last direct hardware read outside the listeners.
+- **Fix**: Move `InputSystem.getInstance().update(gameTime)` first and use `input.IsKeyPressed(Keys.Escape)`. GamePad can stay direct until there's a gamepad listener.
+
+### [ ] 38. Component groups/archetypes are keyed by type-name strings — **Severity: Latent**
+- **Files**: `EntityContext.cs:123, 140`, `Entity.cs:64-72`, `ArchetypeView.cs:12, 27-37`, `ModelRendererSystem.cs:16`
+- **Problem**: Components are stored by `Type`, but groups and archetypes match on `GetType().Name` strings (`Track("ComponentTransform", "ComponentMeshRenderer")`). A typo matches nothing and fails silently, renames aren't caught by the compiler, and two same-named types in different namespaces would collide. `Entity.hasComponent(string)` also scans every component linearly instead of using the dictionary.
+- **Fix**: Key on `Type`: `Track(params Type[])` or `Track<T1, T2>()`, `hasComponent(Type)` → `_components.ContainsKey(type)`, and `Dictionary<Type, Dictionary<long, Entity>>` for groups.
+
+### [ ] 39. `DevCamera` mouse sensitivity scaling is odd — **Severity: Cosmetic**
+- **File**: `engine/Classes/EnginClasses/CameraClasses/DevCamera.cs:104-107`
+- **Problem**: Dividing the delta by the display size and multiplying it by the back-buffer size makes look speed depend on window size (a small window gives slow look), which is the opposite of the comment's claim. It also queries `GraphicsAdapter.DefaultAdapter.CurrentDisplayMode` on every drag event.
+- **Fix**: Use raw pixel delta × a sensitivity constant (radians per pixel). Scale by nothing, or by DPI if needed.
 
 ---
 
 ## Suggested fix order (highest value first)
 
-Remaining (as of 2026-06-14):
+Remaining (as of 2026-09-21):
 
-1. **#9** — Either use `lightIconTexture` for a light-source icon in the editor or drop the load.
+1. **#15** — Remove the public setters and live-dict exposure that let callers skip the entity-context events. This is the main thing that can silently break `ArchetypeView`.
+2. **#33** — Make `removeComponentFor` validate before mutating.
+3. **#32** — Apply `Scale` in the renderer.
+4. **#38** — Switch archetype/group keys from strings to `Type`.
+5. **#26 / #35** — Decide the spawn grid; move billboarding into a real system or delete `TransformSystem`.
+6. **#9** — Finish dropping `lightIconTexture` + `light.png`, or fix the texture pipeline.
+7. **#21, #22, #24, #25, #34, #36, #37, #39** — Namespace/visibility/typo/dead-code sweep.
 
 Optional: add a `tryGetComponent<T>(out T)` on `Entity` if/when "maybe-component" reads are needed (currently every caller knows the component exists).
 
@@ -237,8 +244,13 @@ Optional: add a `tryGetComponent<T>(out T)` on `Entity` if/when "maybe-component
 
 - No physics / collision system.
 - No audio.
-- No scene serialization (save/load entities).
-- No input manager (input read directly from `Keyboard.GetState()`/`Mouse.GetState()` in each class).
+- No scene serialization (save/load entities). The `EditorUI` File → New/Open/Save items are empty stubs.
 - No asset hot-reload.
 - No gizmos (translate/rotate/scale handles in the editor).
 - No undo/redo in the editor.
+- No FPS / debug overlays (removed in #7/#8).
+- No gamepad listener (GamePad is read directly in `Game1`).
+
+Now present (moved out of this list):
+- **Input manager**: `InputSystem` singleton (`EnginClasses/Input/InputSystem.cs`) over `KeyboardListener` + `MouseListener`. It has edge events, polling queries, exact-match chords, and a threshold-gated drag gesture. It is polled once per frame from `Game1.Update`.
+- **Entity-context observer system**: `EntityContext` mutation events → `EntityContextListener` → live `ArchetypeView`s with `OnEnter`/`OnExit`.
