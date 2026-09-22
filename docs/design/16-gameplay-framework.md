@@ -77,7 +77,16 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   - perception is sight only (no hearing), one enemy type (the local player), and no squads;
   - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
 
-- **Not yet:** possession, attributes/effects/abilities, combat, inventory, interaction — the rest of this doc.
+### As built (attributes, tags and effects, 2026-09-22)
+- **Code:** `src/Sage.Engine/Gameplay/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
+- **Ids are indices.** `attribute` and `tag` records become small indices (`GameplayRegistries`), so components hold numbers, not strings: attribute values are parallel arrays, tags a 64-bit set. More than 64 tags is reported rather than silently truncated.
+- **Effects are the only thing that changes attributes.** Instant effects change the base value (damage, healing); timed and infinite ones are recomputed into the current value every tick, in order: adds, then multiplies, then overrides. `period` re-applies the modifiers on a timer (damage over time), `stacking` is Separate/Refresh/Stack with a cap, and `grantTags` holds tags while the effect runs.
+- **Tags gate application**: `requireTags` and `blockTags` decide whether an effect lands. The `god` cheat is exactly that — it gives the player `state.invulnerable`, and damage effects block themselves on it, instead of every damage path checking a flag.
+- **Death is a seam, not a feature.** When health reaches 0 the system tags the entity `state.dead` and calls `GameRules.OnEntityDied` once, outside the query loop. What death means is the game's business; the Sandbox respawns the player.
+- **Effects never add components.** They are applied from inside system loops (the AI's melee task), where a structural change throws, so an entity is set up once with `world.AddAttributes(entity)` and an effect on anything else is reported and ignored.
+- **Not yet:** abilities and cues (F21), the spellmaker, resistances in a damage pipeline (F20), skill progression.
+
+- **Not yet:** possession, combat, inventory, interaction — the rest of this doc.
 
 ## 4. API sketch
 ```csharp
@@ -115,7 +124,7 @@ public interface IAITask { TaskStatus Start(in AITaskContext c); TaskStatus Run(
 
 ## 14. Build steps
 1. ~~Controller/Pawn/`PawnIntent` + Character + `GameRules`~~ **Done 2026-09-22** (TODO F7, with 10).
-2. Attributes/effects/tags + `EffectSystem` (TODO F18, F21).
+2. ~~Attributes/effects/tags + `EffectSystem`~~ **Done 2026-09-22** (TODO F18).
 3. Abilities + cues + fireball (TODO F21).
 4. Combat + inventory + interaction (TODO F19, F20).
 5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22); damage on its hits waits for F20.

@@ -220,7 +220,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
   - step 4: a fixed-tick loop with interpolated rendering, schedules/phases and the profiler;
   - step 5: modules, `game.json`, the VFS and records;
   - step 6: Extract → `RenderSnapshot` → material-driven rendering with our own shaders, and input actions → `PlayerCommand`;
-  - **the vertical slice starts:** F1 billboard sprites (8 direction groups, sheet records, sprite animation at the tick rate), F13 heightmap terrain (one 1024 m sector, game-provided generator, chunk meshes) F6 physics (BepuPhysics per world, colliders behind handles, queries, triggers, terrain collision) F7 the kinematic character controller with a first-person camera, and the first `GameRules` and AI (schedules, perception, a creature that chases and attacks) — dogfooded by a Sandbox where a player walks the hills and a creature comes after them.
+  - **the vertical slice starts:** F1 billboard sprites (8 direction groups, sheet records, sprite animation at the tick rate), F13 heightmap terrain (one 1024 m sector, game-provided generator, chunk meshes) F6 physics (BepuPhysics per world, colliders behind handles, queries, triggers, terrain collision) F7 the kinematic character controller with a first-person camera, the first `GameRules` and AI (schedules, perception, a creature that chases and attacks) and F18 attributes/tags/effects — dogfooded by a Sandbox where a player walks the hills, a creature hunts them down, and losing all your health respawns you.
 - **Still to replace:** models are MGCB `.xnb` files until the runtime loaders (R12). Each design doc has a "Mapping from today's code" table. The main moves:
 
 | Today | Becomes |
@@ -253,7 +253,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
      - the editor camera still reads devices.
    - **Deferred:** sprites (F1), point lights, `DebugDraw`, shader hot reload, `bind`/`user://input.json`.
    - 100 tests.
-7. **The vertical slice**, alternating features with the infrastructure they prove they need (the "Suggested first milestone" in TODO.md). **Started 2026-09-22 with F1 (billboard sprites), F13 (terrain), F6 (physics), F7 (the character controller with a first-person camera) and the first gameplay: `GameRules` plus HL1-style AI (F22).** The engine is walkable and something chases you. Next: the parts that make the chase matter — attributes and effects (F18), combat and damage (F20), then abilities (F21) and items (F19), with saves (F27) closing the slice.
+7. **The vertical slice**, alternating features with the infrastructure they prove they need (the "Suggested first milestone" in TODO.md). **Started 2026-09-22 with F1 (billboard sprites), F13 (terrain), F6 (physics), F7 (the character controller with a first-person camera) and the first gameplay: `GameRules` plus HL1-style AI (F22).** The engine is walkable and something chases you. Next: combat proper (F20: the player's own swing, resistances, hit detection from physics queries), then abilities (F21) and items (F19), with saves (F27) closing the slice.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
 

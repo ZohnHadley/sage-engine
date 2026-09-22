@@ -72,6 +72,19 @@ public sealed class SandboxModule : IGameModule
         Log.Info(LogCat.Gameplay, $"Sandbox: spawned {world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Count} entities in '{world.Name}'");
     }
 
+    // Where the player starts: the position of the spawn record marked "player".
+    public Vector3 PlayerStart(World world)
+    {
+        foreach (var spawn in _records!.All<SpawnRecord>())
+            if (spawn.Player)
+            {
+                Vector3 position = HillsGenerator.SceneCenter + spawn.Position;
+                position.Y = world.Resources.Get<Terrain>().HeightAt(position.X, position.Z) + spawn.Position.Y;
+                return position;
+            }
+        return HillsGenerator.SceneCenter;
+    }
+
     // Called by SandboxRules once every module has set the world up.
     public Entity SpawnPlayer(World world)
     {
@@ -128,6 +141,7 @@ public sealed class SandboxModule : IGameModule
             world.Add(e, RigidBody.Kinematic());
             if (spawn.Player) e.AddTag<PlayerControlled>();
             if (spawn.Ai) world.Add(e, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+            world.AddAttributes(e);   // health, mana and the rest, from the attribute records (16)
         }
         else
         {
@@ -316,7 +330,8 @@ public sealed class AttackLogSystem : ISystem
     public void Run(in SystemContext ctx)
     {
         foreach (var attack in _events.Attacks)
-            Log.Info(LogCat.Gameplay, $"{World.Describe(attack.Attacker)} attacks {World.Describe(attack.Target)}");
+            Log.Info(LogCat.Gameplay, $"{World.Describe(attack.Attacker)} attacks {World.Describe(attack.Target)}: " +
+                                      $"health {ctx.World.Attribute(attack.Target, AttributeRecord.Health):F0}");
     }
 }
 
@@ -335,4 +350,20 @@ public sealed class SandboxRules : GameRules
     }
 
     public override Entity SpawnPlayer(World world) => _game.SpawnPlayer(world);
+
+    // The creature's claws can kill the player: put them back on their feet, healed (16 §3.1). A real
+    // game would show a screen and ask; this is the slice's stand-in.
+    public override void OnEntityDied(World world, Entity victim, Entity killer)
+    {
+        Log.Info(LogCat.Gameplay, $"{World.Describe(victim)} died");
+        if (!world.HasTag(victim, new RecordId("sage", "state.dead"))) return;
+
+        if (world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList().Contains(victim))
+        {
+            world.RemoveTag(victim, new RecordId("sage", "state.dead"));
+            world.AddAttributes(victim);                       // back to full health
+            world.Teleport(victim, Transform.At(_game.PlayerStart(world)));
+            Log.Info(LogCat.Gameplay, "The player respawns at the start");
+        }
+    }
 }

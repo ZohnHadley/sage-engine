@@ -35,6 +35,7 @@ public sealed class AIProfileRecord
     public float ThinkRate = 6f;             // times per second
     public float AttackCooldown = 1.2f;
     public float TurnSpeedDegrees = 360f;
+    public RecordId AttackEffect;            // applied to the target on a melee hit (16 §3.3)
 
     public static readonly RecordId Default = new("sage", "default_ai");
 }
@@ -224,6 +225,8 @@ internal sealed class MeleeAttackTask : IAITask
         if (c.State.TaskTime < (c.Param > 0 ? c.Param : 0.5f)) return AITaskStatus.Running;
 
         c.State.Cooldown = c.Profile.AttackCooldown;
+        if (!c.Profile.AttackEffect.IsEmpty)
+            Effects.Apply(c.World, c.State.Target, c.Profile.AttackEffect, c.Entity);
         Log.Debug(LogCat.AI, $"{World.Describe(c.Entity)} hits {World.Describe(c.State.Target)}");
         c.World.Resources.Get<AIEvents>().Attacks.Add(new AIAttack(c.Entity, c.State.Target));
         return AITaskStatus.Succeeded;

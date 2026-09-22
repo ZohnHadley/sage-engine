@@ -74,6 +74,23 @@ public sealed class GameplayModule : IModule
         _records.Register<MovementProfileRecord>();
         _records.Register<AIProfileRecord>();
         _records.Register<AIScheduleRecord>();
+        _records.Register<AttributeRecord>();
+        _records.Register<TagRecord>();
+        _records.Register<EffectRecord>();
+        _records.Reloaded += () => Registries.Rebuild(_records);
+
+        // `god`: the player stops taking damage. It is a tag, so effects block themselves with it
+        // (16 §3.3) instead of every damage path checking a flag.
+        ctx.Engine.CVars.RegisterCommand("god", CVarFlags.Cheat, "Toggle invulnerability for the local player.", _ =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+                foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities)
+                {
+                    bool on = !world.HasTag(entity, TagRecord.Invulnerable);
+                    if (on) world.AddTag(entity, TagRecord.Invulnerable); else world.RemoveTag(entity, TagRecord.Invulnerable);
+                    Log.Info(LogCat.Console, $"god {(on ? "ON" : "off")} for {World.Describe(entity)}");
+                }
+        });
 
         // Gameplay actions (08 §3.2): the simulation defines them, so a headless server has the same
         // ids and a PlayerCommand means the same thing on both sides.
@@ -88,13 +105,20 @@ public sealed class GameplayModule : IModule
     // Games add their own tasks to this before the first world is created (16 §3.4).
     public AITaskRegistry AITasks { get; } = new();
 
+    // Attribute and tag ids, shared by every world (16 §3.3).
+    public GameplayRegistries Registries { get; } = new();
+
     public void OnWorldCreated(World world)
     {
         world.Resources.Set(new AIEvents());
+        world.Resources.Set(Registries);
+        world.Resources.Set(_records!);      // effects look up their records through the world
+        Registries.Rebuild(_records!);
         if (!world.Resources.TryGet<GameRules>(out _)) world.Resources.Set<GameRules>(new DefaultGameRules());
 
         world.AddSystem(new PlayerControlSystem(world), Phase.Commands);
         world.AddSystem(new AIThinkSystem(world, _records!, AITasks), Phase.AI);
+        world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,
             before: new[] { typeof(PhysicsSyncSystem) });
         world.AddSystem(new FirstPersonCameraSystem(world, _records!), Phase.FrameUpdate);

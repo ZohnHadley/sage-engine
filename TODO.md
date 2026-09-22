@@ -6,7 +6,7 @@ The working tracker: **open bugs in today's code** and the **roadmap**. Updated 
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Overview, layers, decisions (D1–D13), migration order (§7) |
 | [`docs/design/`](docs/design/00-index.md) | How each subsystem works; every roadmap item below links to its doc |
-| [`docs/history/code-review-log.md`](docs/history/code-review-log.md) | Full history of review items #1–#41 (problems, fixes, resolution notes). Closed items live only there |
+| [`docs/history/code-review-log.md`](docs/history/code-review-log.md) | Full history of review items #1–#42 (problems, fixes, resolution notes). Closed items live only there |
 
 Legend: `[ ]` open · `[~]` partly done · `[X]` done. When an item is done, tick it here. Once a phase is finished, move its detail to the history log.
 
@@ -94,7 +94,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F17. Entity I/O (v1 minimal).** `[Output]`/`[Input]`, connections resolved and type-checked at map load, delays, `!self`/`!activator`, `ent_fire`, `io_trace`. → `04 §3.4`
 
 #### Phase 5 — Gameplay framework
-- [ ] **F18. Attributes, effects, tags (v1 minimal).** GAS-like: `Attributes`, `GameplayTags`, `effect` records, `ActiveEffects` + `EffectSystem`; skill progression later. → `16 §3.3`
+- [X] **F18. Attributes, effects, tags (v1 minimal).** *Done 2026-09-22: `attribute`/`tag`/`effect` records, id registries, `Attributes`/`GameplayTags`/`ActiveEffects` components, `EffectSystem` (durations, periods, stacking, granted tags, recomputed values), tag gating with the `god` cheat, and the death seam calling `GameRules.OnEntityDied`. The creature's claws now take the player's health. Skill progression and the damage pipeline's resistances come with F20/F21.* GAS-like: `Attributes`, `GameplayTags`, `effect` records, `ActiveEffects` + `EffectSystem`; skill progression later. → `16 §3.3`
 - [ ] **F19. Inventory and items (v1 minimal).** `item` records, `Inventory` component, equipment slots, pickup via interaction. → `16`
 - [ ] **F20. Combat (v1 minimal).** Damage pipeline, resistances, physics-query hit detection, sprite melee on "hit" animation events; directional melee/reversals later. → `16`, `12`
 - [ ] **F21. Abilities and magic (v1: fireball).** `ability` records, costs, cooldowns, cues; a spellmaker composing effects into saved custom abilities. → `16 §3.3`
@@ -140,4 +140,5 @@ This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F1
 - **Physics (F6):** BepuPhysics per world via `PhysicsModule`, colliders and rigid bodies behind handles, terrain collision meshes, raycast/sweep/overlap with layers, trigger overlaps, `phys_stats`; the Sandbox drops crates through a trigger onto the hills.
 - **Character and camera (F7, part of F3):** `GameplayModule` with `PawnIntent`, the player controller, the kinematic character controller and the first-person rig; `cam_free` and the Sandbox's `sandbox_autowalk` for automated checks.
 - **Rules and AI (16, F22):** `GameRules` started by `Engine.CreateWorld`, HL1-style schedules/tasks/conditions with sight perception and raycast steering; the Sandbox's creature chases the player and swings at it.
+- **Attributes and effects (F18):** attribute/tag/effect records, `EffectSystem` with durations, periods, stacking and granted tags, tag-gated application (`god`), and death reported to the rules; the Sandbox's player loses health to the creature and respawns.
 - **Modules, VFS, records (step 5):** `IModule` + `game.json` + the `games/Sandbox` game module; VFS mounts with shadowing; the `RecordStore` (patch merge, inheritance, validation, hot reload); `modules`, `vfs_which`/`vfs_ls`/`vfs_mounts`, `rec_list`/`rec_get`/`rec_reload`.

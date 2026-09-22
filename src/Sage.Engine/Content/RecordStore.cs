@@ -301,7 +301,17 @@ public sealed class RecordStore
                 Error($"{key.Type} {key.Id}: \"base\" cycle ({string.Join(" -> ", chain.Select(c => c.Item2))})");
                 return null;
             }
-            if (record.Fields["base"] is JsonNode baseNode && (string?)baseNode is { Length: > 0 } baseText)
+            // "base" is reserved for inheritance (05 §3.5): a record that wants a field of its own by
+            // that name has to call it something else, and a non-string value is a clear error rather
+            // than a crash.
+            string? baseText = null;
+            if (record.Fields["base"] is JsonNode baseNode)
+            {
+                if (baseNode.GetValueKind() == System.Text.Json.JsonValueKind.String) baseText = (string?)baseNode;
+                else Error($"{record.DefinedIn}: {key.Type} {key.Id}: \"base\" must be the id of another record, not {baseNode.GetValueKind()} " +
+                           "(\"base\" is reserved for inheritance; rename the field)");
+            }
+            if (baseText is { Length: > 0 })
             {
                 RecordId baseId;
                 try { baseId = RecordId.Parse(baseText, record.Id.Namespace); }

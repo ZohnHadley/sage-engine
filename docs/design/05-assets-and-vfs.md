@@ -82,7 +82,8 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
       "technique": "Unlit", "pass": "AlphaTested", "params": { "Albedo": "textures/creatures/goblin.png", "Tint": [1,1,1,1], "AlphaCutoff": 0.5 } }
   ]
   ```
-- **`RecordId` = `namespace:name`.** A bare `id` gets the namespace of the mount that defines it: the game's `id` from `game.json`, a mod's id, or `sage` for engine content.
+- **`RecordId` = `namespace:name`.** A bare `id` gets the namespace of the mount that defines it: the game's `id` from `game.json`, a mod's id, or `sage` for engine content. **Inside a patch, bare references resolve in the *patched record's* namespace**, not the patching mount's — a mod that points an engine record at one of its own records writes the id in full (`"attackEffect": "mymod:claw"`).
+- **`base`, `type`, `id`, `patch`, `disabled` and `abstract` are reserved**: a record that wants a field of its own by one of those names has to call it something else (the engine's `attribute` records use `start`, not `base`).
 - **`base`:** single inheritance of field values from another record of the same type (Dungeon Siege templates). It's resolved after merging. **`"abstract": true`** marks a template: it can be a `base` but never becomes a record itself (so `creature_base` doesn't spawn), and the flag isn't inherited.
 - **Localized text** is a key (`@items.iron_sword.name`) into string tables, not inline text (ARCHITECTURE §4.7).
 - **Load-order merge, per field, not whole-record:**

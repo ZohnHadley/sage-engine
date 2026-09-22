@@ -1,0 +1,32 @@
+[
+  // Attributes, tags and effects (docs/design/16 3.3). Games add their own and patch these.
+  { "type": "attribute", "id": "health",  "start": 100, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "mana",    "start": 50,  "min": 0, "max": 50 },
+  { "type": "attribute", "id": "stamina", "start": 100, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "armor",   "start": 0,   "min": 0, "max": 95 },
+
+  { "type": "tag", "id": "state.dead",         "description": "Health ran out" },
+  { "type": "tag", "id": "state.invulnerable", "description": "Takes no damage (the god cheat)" },
+  { "type": "tag", "id": "state.burning",      "description": "On fire" },
+
+  {
+    // Fire damage over time: a timed effect that applies its modifier every period (16 3.3).
+    "type": "effect",
+    "id": "burning",
+    "duration": "Timed",
+    "time": 4,
+    "period": 1,
+    "stacking": "Refresh",
+    "grantTags": ["state.burning"],
+    "blockTags": ["state.invulnerable"],
+    "modifiers": [ { "attribute": "health", "op": "Add", "value": -4 } ]
+  },
+  {
+    // A buff: while it runs, health's maximum contribution is raised.
+    "type": "effect",
+    "id": "vigour",
+    "duration": "Timed",
+    "time": 10,
+    "modifiers": [ { "attribute": "stamina", "op": "Add", "value": 25 } ]
+  }
+]

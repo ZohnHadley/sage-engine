@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#41) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#42) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -251,6 +251,11 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Where**: the host frame (`src/Sage.Host/Game1.cs`), measured with `mem_warn_bytes 1` (`StatOverlay`).
 - **Problem**: steady-state frames should allocate nothing (02 §4.6). The world's systems don't: toggling the Extract, Render and gameplay systems off changes nothing. But the frame as a whole allocates 176 B, the same on the commit before step 6. Likely candidates are ImGui.NET's per-frame layout or MonoGame's input polling.
 - **Fix**: find it with an allocation profiler (dotnet-counters / dotnet-trace GC allocation ticks); fix it, or accept and document it as the baseline.
+
+### [X] 42. A record with a non-string "base" crashed the record store — **Severity: Wiring** (found 2026-09-22, F18)
+- **File**: `src/Sage.Engine/Content/RecordStore.cs` (`ResolveBases`)
+- **Problem**: `"base"` is the reserved key for record inheritance, and the store read it with a blind cast. An `attribute` record with a numeric field of its own called `base` (`{ "type": "attribute", "id": "health", "base": 100 }`) threw `InvalidOperationException` out of `Load`, which took the whole game down at boot rather than reporting a bad record.
+- **Resolution (2026-09-22, F18)**: a non-string `base` is now an error naming the record and saying the key is reserved; loading continues. The engine's `attribute` records call the field `start`, and 05 §3.5 lists the reserved keys.
 - **Cause (2026-09-22, F1)**: the ImGui entity inspector (`EntityContextMenuUI`). It allocates about 130 bytes per listed entity per frame (the `$"{World.Describe(entity)}##{id}"` label, and reflection when a node is expanded). With the inspector's draw call removed, frames allocate **0 bytes** — the engine loop, the renderer and the rest of the host frame are allocation-free, as `SteadyStateTicksAndFrames_DoNotAllocate` also asserts for 200 entities.
 - **Partly fixed (F1, F13)**: the window skips its whole listing when collapsed, and `ui_entities 0` hides it entirely. With it hidden the frame allocates 0 bytes, including the terrain chunks' meshes and the sprite batcher. Still open: while it is open the cost grows with entity count, so cache the labels (or list only visible rows) before scenes get big. It is a dev-build tool only (02 §4.6).
 

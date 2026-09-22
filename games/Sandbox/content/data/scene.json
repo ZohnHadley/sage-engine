@@ -66,6 +66,23 @@
   { "type": "spawn", "id": "tree_b", "sheet": "tree", "name": "tree_b", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [-4.5, 0, -4] },
   { "type": "spawn", "id": "tree_c", "sheet": "tree", "name": "tree_c", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [0, 0, -7] },
 
+  // ---- gameplay (docs/design/16) -----------------------------------------------------------------
+  {
+    // What the creature's claws do. Damage is an instant effect, blocked by the god tag.
+    "type": "effect",
+    "id": "claw",
+    "duration": "Instant",
+    "blockTags": ["sage:state.invulnerable"],
+    "modifiers": [ { "attribute": "sage:health", "op": "Add", "value": -12 } ]
+  },
+  {
+    // The Sandbox's creatures hit harder than the engine's default profile.
+    "type": "ai_profile",
+    "id": "sage:default_ai",
+    "patch": true,
+    "attackEffect": "sandbox:claw"
+  },
+
   // ---- the player (docs/design/10 §3, 16 §3.1) ---------------------------------------------------
   {
     "type": "spawn",
