@@ -62,9 +62,20 @@
   { "type": "spawn", "id": "eastward", "base": "creature_base", "name": "eastward", "position": [2.5, 0, 0],   "yaw": 90 },
   { "type": "spawn", "id": "away",     "base": "creature_base", "name": "away",     "position": [-2.5, 0, 0],  "yaw": 180 },
 
-  { "type": "spawn", "id": "tree_a", "sheet": "tree", "name": "tree_a", "position": [4.5, 0, -3] },
-  { "type": "spawn", "id": "tree_b", "sheet": "tree", "name": "tree_b", "position": [-4.5, 0, -4] },
-  { "type": "spawn", "id": "tree_c", "sheet": "tree", "name": "tree_c", "position": [0, 0, -7] },
+  { "type": "spawn", "id": "tree_a", "sheet": "tree", "name": "tree_a", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [4.5, 0, -3] },
+  { "type": "spawn", "id": "tree_b", "sheet": "tree", "name": "tree_b", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [-4.5, 0, -4] },
+  { "type": "spawn", "id": "tree_c", "sheet": "tree", "name": "tree_c", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [0, 0, -7] },
+
+  // ---- the player (docs/design/10 §3, 16 §3.1) ---------------------------------------------------
+  {
+    "type": "spawn",
+    "id": "player",
+    "name": "player",
+    "position": [0, 1, 6],
+    "yaw": 0,
+    "character": true,
+    "player": true
+  },
 
   // ---- physics (docs/design/10) -----------------------------------------------------------------
   {

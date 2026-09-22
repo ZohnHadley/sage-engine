@@ -391,10 +391,12 @@ public sealed class PhysicsSpace : IDisposable
             };
         }
 
+        // Already touching at the start: Bepu has no normal for it, and it happens constantly (a
+        // character rests a skin width above the floor). Note it, but don't let it hide the hits
+        // further along the sweep, and don't cut the sweep short.
         public void OnHitAtZeroT(ref float maximumT, CollidableReference collidable)
         {
-            maximumT = 0;
-            Hit = new SweepHit { Entity = Data.EntityOf(collidable), Distance = 0, Hit = true, StartsTouching = true };
+            Hit.StartsTouching = true;
         }
     }
 

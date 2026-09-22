@@ -28,14 +28,11 @@ public sealed class ClientModule : IModule
         ctx.Engine.Records.Register<InputMapRecord>();
         ctx.Engine.Records.Register<SpriteSheetRecord>();
 
-        // The engine's actions (08 §3.2); bindings are in engine_content/data/input.json. Move and Look
-        // feed PlayerCommand.Move and the view angles.
+        // The client's own actions (08 §3.2); the gameplay ones (Move, Jump, Crouch...) belong to the
+        // gameplay module, so a headless server registers the same ids. Bindings for all of them are
+        // in engine_content/data/input.json.
         var actions = ctx.Engine.Actions;
-        actions.Register("Move", ActionKind.Axis2D);
         actions.Register("Look", ActionKind.Axis2D);
-        actions.Register("Jump", ActionKind.Button);
-        actions.Register("Attack", ActionKind.Button);
-        actions.Register("Use", ActionKind.Button);
         actions.Register("Menu", ActionKind.Button);
         actions.Register("ToggleConsole", ActionKind.Button);
     }

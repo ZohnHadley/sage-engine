@@ -9,6 +9,7 @@ public sealed class SandboxModule : IGameModule
 {
     private RecordStore? _records;
     private Renderer? _renderer;
+    private CVarRegistry? _cvars;
     private ActionId _jump = ActionId.None;
     private readonly List<World> _worlds = new();
 
@@ -22,6 +23,7 @@ public sealed class SandboxModule : IGameModule
     public void Start(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
+        _cvars = ctx.Engine.CVars;
         _renderer = ctx.Get<Renderer>();
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
         _jump = ctx.Engine.Actions.Get("Jump");   // registered by ClientModule
@@ -37,6 +39,7 @@ public sealed class SandboxModule : IGameModule
 
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
+        world.AddSystem(new AutoWalkSystem(world, _cvars!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
         Spawn(world);
@@ -61,7 +64,7 @@ public sealed class SandboxModule : IGameModule
     {
         foreach (var spawn in _records!.All<SpawnRecord>())
         {
-            if (spawn.Model.IsEmpty && spawn.Sheet.IsEmpty && spawn.BoxMesh == Vector3.Zero && spawn.ColliderSize == Vector3.Zero) continue;
+            if (spawn.Model.IsEmpty && spawn.Sheet.IsEmpty && spawn.BoxMesh == Vector3.Zero && spawn.ColliderSize == Vector3.Zero && !spawn.Character) continue;
             // A spawn's position is relative to the scene's spot in the sector, and its y is height
             // above the ground: everything stands on the terrain.
             var terrain = world.Resources.Get<Terrain>();
@@ -89,6 +92,20 @@ public sealed class SandboxModule : IGameModule
                 world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
                 if (spawn.FacesCamera) e.AddTag<FacesCamera>();
                 world.Add(e, new Hop { BaseY = position.Y });
+            }
+
+            // A character: capsule + kinematic body, so it collides with the world and the world
+            // collides with it, and an intent for its controller to write (16 §3.1).
+            if (spawn.Character)
+            {
+                var profile = _records.TryGet(MovementProfileRecord.Default, out MovementProfileRecord p) ? p : new MovementProfileRecord();
+                world.Add(e, CharacterController.Create());
+                world.Add(e, new Pawn());
+                world.Add(e, new PawnIntent());
+                world.Add(e, Collider.Capsule(profile.Radius, profile.StandHeight - 2 * profile.Radius, layer: 1));
+                world.Add(e, RigidBody.Kinematic());
+                if (spawn.Player) e.AddTag<PlayerControlled>();
+                continue;
             }
 
             // Physics: a collider, and a mass if it should fall (10 §3).
@@ -125,6 +142,11 @@ public sealed class SpawnRecord
     public Vector3 ColliderSize;       // zero = no collider
     public float Mass;                 // > 0 = dynamic
     public bool Trigger;
+
+    // A character (docs/design/10 §3): a capsule the engine moves. `player` makes it the pawn the
+    // local PlayerCommand drives, with the first-person camera in its head.
+    public bool Character;
+    public bool Player;
 }
 
 // Tags.
@@ -217,5 +239,36 @@ public sealed class TriggerLogSystem : ISystem
             Log.Info(LogCat.Gameplay, $"{World.Describe(overlap.Other)} entered {World.Describe(overlap.Trigger)}");
         foreach (var overlap in _space.TriggerExit)
             Log.Info(LogCat.Gameplay, $"{World.Describe(overlap.Other)} left {World.Describe(overlap.Trigger)}");
+    }
+}
+
+// Commands phase, after the player controller: walks the pawn forward on its own while
+// `sandbox_autowalk` is on. It is how the character controller gets exercised without a person at the
+// keyboard (screenshots, smoke runs); a real game would never ship this.
+public sealed class AutoWalkSystem : ISystem
+{
+    private readonly ArchetypeQuery<PawnIntent> _pawns;
+    private readonly CVar<float> _autoWalk;
+
+    public AutoWalkSystem(World world, CVarRegistry cvars)
+    {
+        _pawns = world.Query<PawnIntent>().AllTags(Tags.Get<PlayerControlled>());
+        _autoWalk = cvars.Register("sandbox_autowalk", 0f, CVarFlags.DevOnly,
+            "Walk the player forward by itself, turning this many degrees per second (0 = off).", 0f, 180f);
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        if (_autoWalk.Value <= 0f) return;
+        float turn = _autoWalk.Value * MathF.PI / 180f * ctx.Tick.Dt;
+        foreach (var (intents, _) in _pawns.Chunks)
+        {
+            var intent = intents.Span;
+            for (int n = 0; n < intent.Length; n++)
+            {
+                intent[n].Move = new Vector2(0, 1);
+                intent[n].Yaw -= turn;
+            }
+        }
     }
 }

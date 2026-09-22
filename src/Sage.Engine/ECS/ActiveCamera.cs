@@ -16,4 +16,8 @@ public sealed class ActiveCamera
     public float FovY = 45f * System.MathF.PI / 180f;   // vertical field of view, radians
     public float Near = 0.1f;                             // 06 §10: 0.01 wasted depth precision
     public float Far = 1000f;
+
+    // A camera rig (the first-person one, 16 §3.2) is driving this camera; the editor's free camera
+    // leaves it alone unless cam_free is on.
+    public bool OwnedByRig;
 }

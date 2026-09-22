@@ -115,6 +115,17 @@ public readonly record struct LayerMask(uint Bits)
     }
 
     public bool Has(int layer) => (Bits & (1u << (layer & 31))) != 0;
+
+    // Everything but this layer: what the character controller sweeps with every tick, so it never
+    // hits itself. No params array, because this runs per character per tick.
+    public LayerMask Except(int layer) => new(Bits & ~(1u << (layer & 31)));
+
+    public LayerMask Except(params int[] layers)
+    {
+        uint bits = Bits;
+        foreach (int l in layers) bits &= ~(1u << (l & 31));
+        return new LayerMask(bits);
+    }
 }
 
 public struct RayHit

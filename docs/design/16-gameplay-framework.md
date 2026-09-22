@@ -56,6 +56,12 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Think rate:** `AIThinkSystem` (AI phase) thinks at 5–10 Hz, **staggered** across agents. Perception (sight cone raycast, hearing from events) updates conditions. `GetSchedule` picks the next schedule from conditions + state.
 - **Later:** utility scoring for schedule choice, behaviour trees if schedules get unwieldy, squads/formations (Warband), daily routines (Daggerfall townsfolk).
 
+### As built (F7, 2026-09-22)
+- **`GameplayModule`** (`src/Sage.Engine/Gameplay/PawnIntent.cs`) is the seed of this doc's framework: an engine module that registers the gameplay actions (Move, Jump, Run, Crouch, Attack, Use) and the `movement_profile` records, and installs the character systems in every world. It moves to `Sage.Framework` when there is more in it.
+- **Controller → intent → movement** works as designed: `PlayerControlSystem` (Commands) copies the tick's `PlayerCommand` into `PawnIntent` on `PlayerControlled` pawns, and `CharacterMovementSystem` reads only the intent (10 "The character controller"). An AI controller writing the same component gets the same movement for free.
+- **First-person camera** (`FirstPersonCameraSystem`, FrameUpdate) puts `ActiveCamera` in the pawn's head from the interpolated pose and the command's view angles, at display rate. It sets `ActiveCamera.OwnedByRig`, and the editor's free camera steps aside unless `cam_free 1`.
+- **Not yet:** `GameRules`, possession, AI controllers, attributes/effects/abilities, combat, inventory, interaction — the rest of this doc.
+
 ## 4. API sketch
 ```csharp
 public abstract class GameRules                               // world resource; games subclass it
@@ -91,7 +97,7 @@ public interface IAITask { TaskStatus Start(in AITaskContext c); TaskStatus Run(
 - **Later:** the rest of the module table.
 
 ## 14. Build steps
-1. `GameRules` + Controller/Pawn/`PawnIntent` + Character (TODO F7, with 10).
+1. Controller/Pawn/`PawnIntent` + Character **done 2026-09-22** (TODO F7, with 10); `GameRules` still to do.
 2. Attributes/effects/tags + `EffectSystem` (TODO F18, F21).
 3. Abilities + cues + fireball (TODO F21).
 4. Combat + inventory + interaction (TODO F19, F20).

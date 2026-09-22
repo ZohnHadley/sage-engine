@@ -44,7 +44,17 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
   - Physics entities are assumed to be **roots**: the sync uses the local transform, so a parented collider would be placed wrong.
   - `Collided` events, `phys_debug` (it needs `DebugDraw`, 06) and dynamic-vs-kinematic teleport smoothing are not built.
   - Stepping allocates ~40 bytes per tick inside Bepu's own profiler; everything else in the frame allocates nothing (TODO #41).
-- **Not yet:** the character controller and `movement_profile` records (F7, §14 step 4) and the origin rebasing hook (`Rebase` exists but nothing calls it until R6).
+### The character controller (F7, 2026-09-22)
+- **Code:** `src/Sage.Engine/Gameplay/CharacterController.cs` — the `movement_profile` record, the `CharacterController` component and `CharacterMovementSystem` (PrePhysics, before the bodies sync), plus the first-person camera rig. It is simulation code, so it runs headless and a server would run the same paths.
+- **Each tick:** intent → acceleration (ground or air, with friction when there is no input) → jump/gravity → **horizontal collide-and-slide** (up to 4 planes) with a **step-up** attempt → **vertical move** (falling or a ceiling) → **ground check** with snapping. The character is a kinematic body, so the world collides with it and it pushes dynamic props.
+- **Details that matter:**
+  - Horizontal sweeps start a few centimetres above the feet. Otherwise the ground the capsule rests on answers every horizontal sweep at zero distance and the character never moves.
+  - A step-up moves forward at least a capsule radius before sweeping down, or the capsule lands on the *edge* of the step, whose blended normal looks like a cliff and gets rejected.
+  - On a face steeper than the slope limit the character slides down it and cannot push itself up: projecting motion onto a steep plane otherwise turns "walk into the cliff" into "climb it".
+  - Crouching is instant and checks headroom before standing up.
+- **Limitations:** no depenetration — a sweep that starts already overlapping carries no normal, so it is ignored and the skin width does the work (a shape-overlap query, §4, would fix it); no moving platforms; no smooth crouch interpolation; the GoldSrc air-strafe profile is still "later".
+
+- **Not yet:** the origin rebasing hook (`Rebase` exists but nothing calls it until R6).
 
 ## 4. API sketch
 ```csharp
@@ -82,5 +92,5 @@ Only the local player's KCC would be predicted (against static geometry). Bepu's
 1. ~~`PhysicsSpace` resource + `Collider`/`RigidBody`/`PhysicsBody` + body sync~~ **Done 2026-09-22** (TODO F6).
 2. ~~Raycast/sweep/overlap queries + layers~~ **Done 2026-09-22** (overlap is broad phase only).
 3. Triggers → game events. **Overlaps are collected and published as lists (done); the events wait for 04.**
-4. KCC + movement profile records (TODO F7).
+4. ~~KCC + movement profile records~~ **Done 2026-09-22** (TODO F7).
 5. Origin rebasing hook (with 14).

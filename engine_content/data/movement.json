@@ -1,0 +1,21 @@
+[
+  // Character movement tuning (docs/design/10 §3, 16 §3.2). Games give a pawn its own profile by
+  // patching this record or defining another one.
+  {
+    "type": "movement_profile",
+    "id": "default_movement",
+    "walkSpeed": 4.2,
+    "runSpeed": 7.0,
+    "acceleration": 55,
+    "airAcceleration": 12,
+    "friction": 8,
+    "jumpSpeed": 5.2,
+    "gravity": -18,
+    "maxSlopeDegrees": 50,
+    "stepHeight": 0.45,
+    "radius": 0.35,
+    "standHeight": 1.8,
+    "crouchHeight": 1.05,
+    "groundSnap": 0.35
+  }
+]

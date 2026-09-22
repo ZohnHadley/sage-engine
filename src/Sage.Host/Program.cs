@@ -60,6 +60,7 @@ if (manifest.Modules.Add.Count > 0)
 try
 {
     AddDefaultModule(new PhysicsModule());
+    AddDefaultModule(new GameplayModule());
     AddDefaultModule(new ClientModule());
     engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));
     engine.Modules.InitAll();

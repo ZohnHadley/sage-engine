@@ -21,6 +21,8 @@
       "Jump":          [ { "key": "Space" }, { "gamepad": "A" } ],
       "Attack":        [ { "mouse": "Left" }, { "gamepad": "RightTrigger" } ],
       "Use":           [ { "key": "E" }, { "gamepad": "X" } ],
+      "Run":           [ { "key": "LeftShift" }, { "gamepad": "LeftStickButton" } ],
+      "Crouch":        [ { "key": "LeftControl" }, { "gamepad": "B" } ],
       "Menu":          [ { "key": "Escape" }, { "gamepad": "Start" }, { "gamepad": "Back" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }

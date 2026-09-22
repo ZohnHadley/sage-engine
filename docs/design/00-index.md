@@ -82,6 +82,9 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | Fixed phases | `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late` | 03 |
 | Frame phases | `FrameUpdate → Extract → Render → Overlay` | 03, 06 |
 | `Transform` | Local position/rotation/scale, relative to the parent (or to the root's sector) | 03 |
+| `CharacterController` | Component: the kinematic capsule the engine moves (collide-and-slide, step-up, slopes, crouch, jump) | 10 |
+| `Pawn` / `PawnIntent` / `PlayerControlled` | A possessable body, what its controller wants this tick, and the tag marking the local player's pawn | 16 |
+| `movement_profile` | Record with speeds, acceleration, jump, gravity, slope and step limits | 10, 16 |
 | `PhysicsSpace` | World resource: the Bepu simulation, its queries (raycast, sweep, overlap) and trigger overlaps | 10 |
 | `Collider` / `RigidBody` / `PhysicsBody` | The shape and layer, how it moves (static, kinematic, dynamic), and the Bepu handle the engine manages | 10 |
 | `LayerMask` | Which collision layers a query or a contact considers | 10 |

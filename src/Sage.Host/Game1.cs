@@ -28,6 +28,7 @@ public class Game1 : Game
     private RecordHotReload recordHotReload;
     private CVar<bool> recHotReload;
     private CVar<bool> showEntities;
+    private CVar<bool> camFree;
 
     private readonly GraphicsDeviceManager graphics;
     private GraphicsDevice graphicsDevice;
@@ -89,6 +90,8 @@ public class Game1 : Game
         // Developer console (`~`), `stat` overlays and loop cvars; see docs/design/02 and 01 §3.2, §5.2.
         hostCVars = new HostCVars(cvars);
         hostCVars.VSync.Changed += _ => ApplyVSync();
+        camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
+            "Fly the editor camera even while a player pawn owns the view (16 §3.2).");
         showEntities = cvars.Register("ui_entities", true, CVarFlags.DevOnly | CVarFlags.Archive,
             "Show the entity list window. It allocates per listed entity per frame (TODO #41).");
         recHotReload = cvars.Register("rec_hotreload", engine.Core.Developer.Value >= 1, CVarFlags.DevOnly,
@@ -174,9 +177,14 @@ public class Game1 : Game
         latch.AddLook(actions.Axis2(lookAction));
 
         // The editor camera runs at the display rate, not the tick rate (smooth at any refresh rate).
+        // A first-person rig takes the camera over (ActiveCamera.OwnedByRig) unless cam_free is on.
         cam.update(gameTime);
-        activeCamera.Position = cam.Position.ToNumerics();
-        activeCamera.Rotation = cam.Rotation.ToNumerics();
+        if (camFree.Value || !activeCamera.OwnedByRig)
+        {
+            activeCamera.Position = cam.Position.ToNumerics();
+            activeCamera.Rotation = cam.Rotation.ToNumerics();
+            activeCamera.OwnedByRig = false;
+        }
         if (recHotReload.Value) recordHotReload?.Poll();
 
         step = clock.Advance(realDt, hostCVars.TickRate.Value, hostCVars.MaxFrameTime.Value, hostCVars.TimeScale.Value);
