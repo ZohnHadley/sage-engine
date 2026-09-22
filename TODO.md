@@ -98,7 +98,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F19. Inventory and items (v1 minimal).** `item` records, `Inventory` component, equipment slots, pickup via interaction. → `16`
 - [ ] **F20. Combat (v1 minimal).** Damage pipeline, resistances, physics-query hit detection, sprite melee on "hit" animation events; directional melee/reversals later. → `16`, `12`
 - [ ] **F21. Abilities and magic (v1: fireball).** `ability` records, costs, cooldowns, cues; a spellmaker composing effects into saved custom abilities. → `16 §3.3`
-- [ ] **F22. AI (v1: one melee creature).** HL1-style schedules/tasks/conditions, staggered think, perception; utility/BT and formations later. → `16 §3.4`
+- [~] **F22. AI (v1: one melee creature).** *Done 2026-09-22: conditions, `ai_schedule` records, named tasks (Wait, FaceTarget, MoveToTarget, MeleeAttack), `ai_profile` tuning, sight + line-of-sight perception, staggered thinking, raycast steering; the creature drives `PawnIntent`, so it walks with the player's controller. Left: hearing, damage on its hits (F20), utility/BT selection, squads and formations.* HL1-style schedules/tasks/conditions, staggered think, perception; utility/BT and formations later. → `16 §3.4`
 - [ ] **F23. Pathfinding.** Navmesh for interiors/battlefields; a coarse overworld graph. → `16`
 - [ ] **F24. Factions, reputation, dialogue and quests.** Records + entity I/O + events. → `16`
 - [ ] **F25. Economy and life paths.** Production chains, markets, professions as data; coarse offline simulation (ties into F14 dormancy). → `16`
@@ -139,4 +139,5 @@ This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F1
 - **Terrain (F13):** `Terrain`/`Heightfield`/`ITerrainGenerator` per world, chunk meshes from `Renderer.CreateMesh`, ground-height sampling; the Sandbox generates hills and stands its scene on them.
 - **Physics (F6):** BepuPhysics per world via `PhysicsModule`, colliders and rigid bodies behind handles, terrain collision meshes, raycast/sweep/overlap with layers, trigger overlaps, `phys_stats`; the Sandbox drops crates through a trigger onto the hills.
 - **Character and camera (F7, part of F3):** `GameplayModule` with `PawnIntent`, the player controller, the kinematic character controller and the first-person rig; `cam_free` and the Sandbox's `sandbox_autowalk` for automated checks.
+- **Rules and AI (16, F22):** `GameRules` started by `Engine.CreateWorld`, HL1-style schedules/tasks/conditions with sight perception and raycast steering; the Sandbox's creature chases the player and swings at it.
 - **Modules, VFS, records (step 5):** `IModule` + `game.json` + the `games/Sandbox` game module; VFS mounts with shadowing; the `RecordStore` (patch merge, inheritance, validation, hot reload); `modules`, `vfs_which`/`vfs_ls`/`vfs_mounts`, `rec_list`/`rec_get`/`rec_reload`.

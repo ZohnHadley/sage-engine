@@ -82,6 +82,8 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | Fixed phases | `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late` | 03 |
 | Frame phases | `FrameUpdate → Extract → Render → Overlay` | 03, 06 |
 | `Transform` | Local position/rotation/scale, relative to the parent (or to the root's sector) | 03 |
+| `GameRules` | World resource a game subclasses: spawning the player, deaths, loading hooks. Started by `Engine.CreateWorld` once every module has seen the world | 16 |
+| `AIState` / `ai_schedule` / `ai_profile` | An agent's conditions, schedule and current task; the record listing a schedule's tasks and interrupts; the record with its sight, melee and think tuning | 16 |
 | `CharacterController` | Component: the kinematic capsule the engine moves (collide-and-slide, step-up, slopes, crouch, jump) | 10 |
 | `Pawn` / `PawnIntent` / `PlayerControlled` | A possessable body, what its controller wants this tick, and the tag marking the local player's pawn | 16 |
 | `movement_profile` | Record with speeds, acceleration, jump, gravity, slope and step limits | 10, 16 |

@@ -154,6 +154,10 @@ public sealed class CharacterMovementSystem : ISystem
             }
         }
 
+        // The body faces where its controller is looking. Sprite sheets treat +Z as the front while a
+        // view yaw of 0 looks toward -Z, hence the half turn (06 §3.8).
+        transform.LocalRotation = Quaternion.CreateFromYawPitchRoll(yaw + MathF.PI, 0, 0);
+
         bool wasGrounded = character.Grounded;
         Vector3 motion = character.Velocity * dt;
         position = SlideHorizontal(position, motion with { Y = 0 }, ref character, profile, mask);

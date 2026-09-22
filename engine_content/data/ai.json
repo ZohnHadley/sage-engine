@@ -1,0 +1,32 @@
+[
+  // AI profile and schedules (docs/design/16 §3.4). A schedule is an ordered task list plus the
+  // conditions that interrupt it; tasks are registered by name and may take a number after a colon.
+  {
+    "type": "ai_profile",
+    "id": "default_ai",
+    "sightRange": 22,
+    "sightAngleDegrees": 200,
+    "meleeRange": 1.8,
+    "thinkRate": 6,
+    "attackCooldown": 1.2,
+    "turnSpeedDegrees": 360
+  },
+  {
+    "type": "ai_schedule",
+    "id": "idle",
+    "tasks": ["Wait:1.5"],
+    "interrupts": ["SeeEnemy"]
+  },
+  {
+    "type": "ai_schedule",
+    "id": "chase",
+    "tasks": ["MoveToTarget:1.6"],
+    "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"]
+  },
+  {
+    "type": "ai_schedule",
+    "id": "melee_attack",
+    "tasks": ["FaceTarget", "MeleeAttack:0.45", "Wait:0.5"],
+    "interrupts": ["LostEnemy", "NoEnemy"]
+  }
+]

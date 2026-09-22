@@ -58,7 +58,7 @@
     "sheet": "creature",
     "animate": true
   },
-  { "type": "spawn", "id": "watcher",  "base": "creature_base", "name": "watcher",  "position": [0, 0, 0],     "yaw": 0 },
+  { "type": "spawn", "id": "watcher",  "base": "creature_base", "name": "watcher",  "position": [0, 0, -3],    "yaw": 0, "ai": true },
   { "type": "spawn", "id": "eastward", "base": "creature_base", "name": "eastward", "position": [2.5, 0, 0],   "yaw": 90 },
   { "type": "spawn", "id": "away",     "base": "creature_base", "name": "away",     "position": [-2.5, 0, 0],  "yaw": 180 },
 

@@ -60,7 +60,24 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **`GameplayModule`** (`src/Sage.Engine/Gameplay/PawnIntent.cs`) is the seed of this doc's framework: an engine module that registers the gameplay actions (Move, Jump, Run, Crouch, Attack, Use) and the `movement_profile` records, and installs the character systems in every world. It moves to `Sage.Framework` when there is more in it.
 - **Controller → intent → movement** works as designed: `PlayerControlSystem` (Commands) copies the tick's `PlayerCommand` into `PawnIntent` on `PlayerControlled` pawns, and `CharacterMovementSystem` reads only the intent (10 "The character controller"). An AI controller writing the same component gets the same movement for free.
 - **First-person camera** (`FirstPersonCameraSystem`, FrameUpdate) puts `ActiveCamera` in the pawn's head from the interpolated pose and the command's view angles, at display rate. It sets `ActiveCamera.OwnedByRig`, and the editor's free camera steps aside unless `cam_free 1`.
-- **Not yet:** `GameRules`, possession, AI controllers, attributes/effects/abilities, combat, inventory, interaction — the rest of this doc.
+### As built (GameRules and the first creature, 2026-09-22)
+- **`GameRules`** (`src/Sage.Engine/Gameplay/GameRules.cs`) is a world resource a game subclasses and installs in its module's `OnWorldCreated`. `Engine.CreateWorld` calls `OnWorldStarted` **after every module has seen the new world**, so the rules can populate a world that is fully set up; a world without a game's rules gets `DefaultGameRules`. `SpawnPlayer`, `OnEntityDied` and `OnLoaded` are there for combat (F20) and saves (09) to call.
+- **AI** (`AI.cs`, `AIThinkSystem.cs`) is the HL1 shape of §3.4:
+  - **conditions** (`SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`);
+  - **schedules as records** (`ai_schedule`: an ordered task list plus the conditions that interrupt it), parsed once per record;
+  - **tasks registered by name** (`Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`), with an optional number after a colon (`"MoveToTarget:1.6"`). A game adds its own through `GameplayModule.AITasks`;
+  - **`ai_profile` records** for sight range, melee range, think rate, attack cooldown and turn speed;
+  - **perception** is a distance check plus a line-of-sight raycast from eye height, so terrain, walls and props hide the player;
+  - **think rate** is a few times a second, staggered by entity id; the current task runs every tick because it writes `PawnIntent`.
+- **The creature walks with the player's controller.** Its tasks write `PawnIntent`, exactly like `PlayerControlSystem`, so chasing uses the same capsule, slopes and step-ups. That is the payoff of the controller/pawn split.
+- **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side). Real pathfinding is F23.
+- **Deviations and gaps:**
+  - schedule *selection* is code (`ChooseSchedule`), as in HL1's `GetSchedule`; utility scoring or a behaviour tree can replace it without touching the tasks;
+  - attacks are published as an `AIEvents` list the game reads in a later phase, until the event bus (04) and combat (F20) exist — nothing takes damage yet;
+  - perception is sight only (no hearing), one enemy type (the local player), and no squads;
+  - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
+
+- **Not yet:** possession, attributes/effects/abilities, combat, inventory, interaction — the rest of this doc.
 
 ## 4. API sketch
 ```csharp
@@ -97,8 +114,8 @@ public interface IAITask { TaskStatus Start(in AITaskContext c); TaskStatus Run(
 - **Later:** the rest of the module table.
 
 ## 14. Build steps
-1. Controller/Pawn/`PawnIntent` + Character **done 2026-09-22** (TODO F7, with 10); `GameRules` still to do.
+1. ~~Controller/Pawn/`PawnIntent` + Character + `GameRules`~~ **Done 2026-09-22** (TODO F7, with 10).
 2. Attributes/effects/tags + `EffectSystem` (TODO F18, F21).
 3. Abilities + cues + fireball (TODO F21).
 4. Combat + inventory + interaction (TODO F19, F20).
-5. AI schedules + perception + one creature (TODO F22).
+5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22); damage on its hits waits for F20.

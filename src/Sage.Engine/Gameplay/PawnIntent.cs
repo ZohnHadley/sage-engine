@@ -72,6 +72,8 @@ public sealed class GameplayModule : IModule
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
         _records.Register<MovementProfileRecord>();
+        _records.Register<AIProfileRecord>();
+        _records.Register<AIScheduleRecord>();
 
         // Gameplay actions (08 §3.2): the simulation defines them, so a headless server has the same
         // ids and a PlayerCommand means the same thing on both sides.
@@ -83,9 +85,16 @@ public sealed class GameplayModule : IModule
         _actions.Register("Use", ActionKind.Button);
     }
 
+    // Games add their own tasks to this before the first world is created (16 §3.4).
+    public AITaskRegistry AITasks { get; } = new();
+
     public void OnWorldCreated(World world)
     {
+        world.Resources.Set(new AIEvents());
+        if (!world.Resources.TryGet<GameRules>(out _)) world.Resources.Set<GameRules>(new DefaultGameRules());
+
         world.AddSystem(new PlayerControlSystem(world), Phase.Commands);
+        world.AddSystem(new AIThinkSystem(world, _records!, AITasks), Phase.AI);
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,
             before: new[] { typeof(PhysicsSyncSystem) });
         world.AddSystem(new FirstPersonCameraSystem(world, _records!), Phase.FrameUpdate);

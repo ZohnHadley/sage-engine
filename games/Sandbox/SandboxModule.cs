@@ -40,6 +40,8 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
         world.AddSystem(new AutoWalkSystem(world, _cvars!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
+        world.AddSystem(new AttackLogSystem(world), Phase.Late);
+        world.Resources.Set<GameRules>(new SandboxRules(this));
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
         Spawn(world);
@@ -64,59 +66,85 @@ public sealed class SandboxModule : IGameModule
     {
         foreach (var spawn in _records!.All<SpawnRecord>())
         {
-            if (spawn.Model.IsEmpty && spawn.Sheet.IsEmpty && spawn.BoxMesh == Vector3.Zero && spawn.ColliderSize == Vector3.Zero && !spawn.Character) continue;
-            // A spawn's position is relative to the scene's spot in the sector, and its y is height
-            // above the ground: everything stands on the terrain.
-            var terrain = world.Resources.Get<Terrain>();
-            Vector3 position = HillsGenerator.SceneCenter + spawn.Position;
-            position.Y = terrain.HeightAt(position.X, position.Z) + spawn.Position.Y;
-            var transform = new Transform
-            {
-                LocalPosition = position,
-                LocalRotation = Quaternion.CreateFromYawPitchRoll(spawn.Yaw * MathF.PI / 180f, 0, 0),
-                LocalScale = Vector3.One,
-            };
-            var e = world.Create(transform, string.IsNullOrEmpty(spawn.Name) ? null : spawn.Name);
-            if (!spawn.Sheet.IsEmpty)
-            {
-                world.Add(e, new SpriteRenderer { Sheet = spawn.Sheet, Material = spawn.Material, Size = spawn.Size });
-                if (spawn.Animate) world.Add(e, SpriteAnimator.Play(0));
-                world.Add(e, new Hop { BaseY = position.Y });
-            }
-            else if (spawn.BoxMesh != Vector3.Zero)
-            {
-                world.Add(e, new MeshRenderer { Handle = _renderer!.CreateBox(spawn.BoxMesh, spawn.Name), Material = spawn.Material });
-            }
-            else if (!spawn.Model.IsEmpty)
-            {
-                world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
-                if (spawn.FacesCamera) e.AddTag<FacesCamera>();
-                world.Add(e, new Hop { BaseY = position.Y });
-            }
+            if (spawn.Player) continue;   // the rules spawn the player when the world starts (16)
+            SpawnOne(world, spawn);
+        }
+        Log.Info(LogCat.Gameplay, $"Sandbox: spawned {world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Count} entities in '{world.Name}'");
+    }
 
-            // A character: capsule + kinematic body, so it collides with the world and the world
-            // collides with it, and an intent for its controller to write (16 §3.1).
-            if (spawn.Character)
-            {
-                var profile = _records.TryGet(MovementProfileRecord.Default, out MovementProfileRecord p) ? p : new MovementProfileRecord();
-                world.Add(e, CharacterController.Create());
-                world.Add(e, new Pawn());
-                world.Add(e, new PawnIntent());
-                world.Add(e, Collider.Capsule(profile.Radius, profile.StandHeight - 2 * profile.Radius, layer: 1));
-                world.Add(e, RigidBody.Kinematic());
-                if (spawn.Player) e.AddTag<PlayerControlled>();
-                continue;
-            }
+    // Called by SandboxRules once every module has set the world up.
+    public Entity SpawnPlayer(World world)
+    {
+        foreach (var spawn in _records!.All<SpawnRecord>())
+            if (spawn.Player) return SpawnOne(world, spawn);
 
-            // Physics: a collider, and a mass if it should fall (10 §3).
+        Log.Warn(LogCat.Gameplay, "No spawn record marked \"player\": there is nothing to control");
+        return default;
+    }
+
+    private Entity SpawnOne(World world, SpawnRecord spawn)
+    {
+        // A spawn's position is relative to the scene's spot in the sector, and its y is height above
+        // the ground: everything stands on the terrain.
+        var terrain = world.Resources.Get<Terrain>();
+        Vector3 position = HillsGenerator.SceneCenter + spawn.Position;
+        position.Y = terrain.HeightAt(position.X, position.Z) + spawn.Position.Y;
+        var transform = new Transform
+        {
+            LocalPosition = position,
+            LocalRotation = Quaternion.CreateFromYawPitchRoll(spawn.Yaw * MathF.PI / 180f, 0, 0),
+            LocalScale = Vector3.One,
+        };
+        var e = world.Create(transform, string.IsNullOrEmpty(spawn.Name) ? null : spawn.Name);
+        bool character = spawn.Character || spawn.Ai;
+
+        // What it looks like.
+        if (!spawn.Sheet.IsEmpty)
+        {
+            world.Add(e, new SpriteRenderer { Sheet = spawn.Sheet, Material = spawn.Material, Size = spawn.Size });
+            if (spawn.Animate) world.Add(e, SpriteAnimator.Play(0));
+        }
+        else if (spawn.BoxMesh != Vector3.Zero)
+        {
+            world.Add(e, new MeshRenderer { Handle = _renderer!.CreateBox(spawn.BoxMesh, spawn.Name), Material = spawn.Material });
+        }
+        else if (!spawn.Model.IsEmpty)
+        {
+            world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
+            if (spawn.FacesCamera) e.AddTag<FacesCamera>();
+        }
+
+        if (character)
+        {
+            // A capsule the engine moves, so the world collides with it and it collides with the
+            // world, plus an intent for its controller to write (10, 16). The player's controller is
+            // the local PlayerCommand; a creature's is its AI schedules.
+            var profile = _records!.TryGet(MovementProfileRecord.Default, out MovementProfileRecord p) ? p : new MovementProfileRecord();
+            byte layer = (byte)(spawn.Player ? 1 : 2);   // "player" / "enemy" in physics_layers
+            world.Add(e, CharacterController.Create(layer: layer));
+            world.Add(e, new Pawn());
+            world.Add(e, new PawnIntent());
+            world.Add(e, Collider.Capsule(profile.Radius, profile.StandHeight - 2 * profile.Radius, layer));
+            world.Add(e, RigidBody.Kinematic());
+            if (spawn.Player) e.AddTag<PlayerControlled>();
+            if (spawn.Ai) world.Add(e, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+        }
+        else
+        {
+            // Props: a collider (and a mass if it should fall), or the old hop toy for scenery.
             if (spawn.ColliderSize != Vector3.Zero)
             {
                 world.Add(e, new Collider { Shape = spawn.Collider, Size = spawn.ColliderSize, IsTrigger = spawn.Trigger });
                 world.Add(e, spawn.Mass > 0 ? RigidBody.Dynamic(spawn.Mass) : new RigidBody { Kind = BodyKind.Static });
             }
-            e.AddTag<FromSpawnRecord>();
+            else if (!spawn.Sheet.IsEmpty || !spawn.Model.IsEmpty)
+            {
+                world.Add(e, new Hop { BaseY = position.Y });
+            }
         }
-        Log.Info(LogCat.Gameplay, $"Sandbox: spawned {world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Count} entities in '{world.Name}'");
+
+        e.AddTag<FromSpawnRecord>();
+        return e;
     }
 }
 
@@ -147,6 +175,7 @@ public sealed class SpawnRecord
     // local PlayerCommand drives, with the first-person camera in its head.
     public bool Character;
     public bool Player;
+    public bool Ai;                    // a creature that chases the player (16 3.4)
 }
 
 // Tags.
@@ -271,4 +300,39 @@ public sealed class AutoWalkSystem : ISystem
             }
         }
     }
+}
+
+// Late phase: reports the creature's melee hits. Real damage arrives with combat (F20); until then
+// this shows the AI reaching the player.
+public sealed class AttackLogSystem : ISystem
+{
+    private readonly AIEvents _events;
+
+    public AttackLogSystem(World world)
+    {
+        _events = world.Resources.Get<AIEvents>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        foreach (var attack in _events.Attacks)
+            Log.Info(LogCat.Gameplay, $"{World.Describe(attack.Attacker)} attacks {World.Describe(attack.Target)}");
+    }
+}
+
+// The Sandbox's rules (docs/design/16): what happens when the world starts, and where the player
+// comes from. Death, respawn and time of day join it as the slice grows.
+public sealed class SandboxRules : GameRules
+{
+    private readonly SandboxModule _game;
+
+    public SandboxRules(SandboxModule game) { _game = game; }
+
+    public override void OnWorldStarted(World world)
+    {
+        var player = SpawnPlayer(world);
+        Log.Info(LogCat.Gameplay, $"Sandbox rules started in '{world.Name}': player {World.Describe(player)}");
+    }
+
+    public override Entity SpawnPlayer(World world) => _game.SpawnPlayer(world);
 }

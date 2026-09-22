@@ -42,6 +42,10 @@ public sealed class Engine : IDisposable
         _worlds.Add(world);
         Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active)");
         Modules.NotifyWorldCreated(world);   // modules install their resources and systems
+
+        // Now that every module has had its turn, the game's rules may populate the world (16 §3.1).
+        if (world.Resources.TryGet<GameRules>(out var rules) && rules != null)
+            rules.OnWorldStarted(world);
         return world;
     }
 
