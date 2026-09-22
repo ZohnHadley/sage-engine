@@ -28,6 +28,13 @@ public struct SpriteAnimator { public int Clip; public float Time; public float 
 ```
 `SpriteAnimator` has no sheet field of its own. The animation system reads the sheet from the entity's `SpriteRenderer.Sheet` (06 §4) and loads its `SpriteSheetData` sim-side.
 
+### As built (F1, 2026-09-22)
+- **Code:** `src/Sage.Engine/Rendering/SpriteData.cs` (`SpriteSheetRecord`, `SpriteRenderer`, `SpriteMath`) and `src/Sage.Engine/Animation/SpriteAnimation.cs` (`SpriteAnimator`, `SpriteAnimationSystem`); frame selection in the client's `SpriteExtract` (06 §3.11).
+- **Deviation — the sheet is a record**, `sprite_sheet` in `data/**/*.json`, not a `*.sheet.json` asset: records already give hot reload, mod patches and cross-type reference validation, and there is no `AssetServer` yet (05 §3.5 does list sprite animation sets as records). The JSON is otherwise the shape sketched above, plus `texture`, `directions`, `size`, `mode` and an optional `material`.
+- **Clips are indexed, not named, in components:** `SpriteAnimator.Clip` is an index into the sheet's clip names sorted alphabetically (`SpriteSheetRecord.ClipIndex("walk")` looks one up), so components hold no strings.
+- **The simulation owns time:** `SpriteAnimationSystem` runs in the `Animation` phase at the tick rate and only advances `Time`; the renderer picks the frame with `SpriteMath.FrameAt` (looping clips wrap, others hold their last frame).
+- **Not yet:** frame events (`AnimationEvent` needs the event bus, 04), `AnimationStateSystem` picking clips from gameplay state (there is no gameplay state yet), the `anim_debug` overlay.
+
 ### Skeletal animation (later)
 - **glTF skins and clips via SharpGLTF.** Skeletons and clips are simulation-side assets (the pose is needed for hit detection); GPU skinning is the `Skinned` technique (07).
 - **Animation graphs** (state machines + 1D/2D blend spaces + layered upper/lower body) as records.
@@ -39,7 +46,7 @@ public struct SpriteAnimator { public int Clip; public float Time; public float 
 The sprite API is inline above: the sheet JSON, `SpriteAnimator` and `AnimationEvent`. The skeletal API is sketched when Phase 3 starts.
 
 ## 10. Mapping from today's code
-None. The per-frame `TransformMath.Billboard` call in `Game1` is presentation and moves to the renderer (06 §3.8, 03 §4).
+The per-frame `TransformMath.Billboard` call in `Game1` was presentation and moved to the renderer (06 §3.8, 03 §4): **done in F1**, where billboarding happens in the sprite batcher and the sheet's direction group is chosen at extract.
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -51,5 +58,5 @@ None. The per-frame `TransformMath.Billboard` call in `Game1` is presentation an
 - **Later:** everything under "Skeletal animation".
 
 ## 14. Build steps
-1. `SpriteSheetData` loader + `SpriteAnimator` + `AnimationStateSystem` + `AnimationEvent` (TODO F1, with 06).
+1. ~~`SpriteSheetData` + `SpriteAnimator`~~ **Done 2026-09-22** as the `sprite_sheet` record + `SpriteAnimationSystem` (TODO F1, with 06). `AnimationStateSystem` and `AnimationEvent` wait for gameplay state and the event bus (04).
 2. Skeletal pipeline (TODO F9–F12), when Phase 3 starts.

@@ -247,8 +247,10 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Problem**: `Update` copied the current state into the previous one at the *end*, so after polling, `IsKeyPressed`/`IsKeyReleased`, `IsButtonPressed`/`Released`, `PositionDelta` and `ScrollWheelDelta` compared a state with itself. Only the events (raised inside `Update`) saw edges. So `Game1`'s `input.IsKeyPressed(Keys.Escape)` (step 2) could never fire, and Escape never quit.
 - **Resolution (2026-09-22, migration step 6)**: both listeners roll the previous state at the *start* of `Update`, so polled edges stay valid until the next poll. `InputActions` relies on this.
 
-### [ ] 41. The host allocates 176 bytes every frame — **Severity: Latent** (found 2026-09-22, migration step 6)
+### [~] 41. Per-frame allocations in the host — **Severity: Latent** (found 2026-09-22, migration step 6)
 - **Where**: the host frame (`src/Sage.Host/Game1.cs`), measured with `mem_warn_bytes 1` (`StatOverlay`).
 - **Problem**: steady-state frames should allocate nothing (02 §4.6). The world's systems don't: toggling the Extract, Render and gameplay systems off changes nothing. But the frame as a whole allocates 176 B, the same on the commit before step 6. Likely candidates are ImGui.NET's per-frame layout or MonoGame's input polling.
 - **Fix**: find it with an allocation profiler (dotnet-counters / dotnet-trace GC allocation ticks); fix it, or accept and document it as the baseline.
+- **Cause (2026-09-22, F1)**: the ImGui entity inspector (`EntityContextMenuUI`). It allocates about 130 bytes per listed entity per frame (the `$"{World.Describe(entity)}##{id}"` label, and reflection when a node is expanded). With the inspector's draw call removed, frames allocate **0 bytes** — the engine loop, the renderer and the rest of the host frame are allocation-free, as `SteadyStateTicksAndFrames_DoNotAllocate` also asserts for 200 entities.
+- **Partly fixed (F1)**: the window skips its whole listing when collapsed. Still open: while it is open the cost grows with entity count, so cache the labels (or list only visible rows) before scenes get big. It is a dev-build tool only (02 §4.6).
 

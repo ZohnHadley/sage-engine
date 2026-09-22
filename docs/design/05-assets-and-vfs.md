@@ -62,7 +62,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 | Type | Source format | Loader | Notes |
 |---|---|---|---|
 | `Texture` (MonoGame `Texture2D`) | `.png`, `.jpg` | `Texture2D.FromStream` + `PremultiplyAlpha` processor | tga isn't supported by `FromStream`; convert to png |
-| `SpriteSheetData` | `.sheet.json` (frames, pivots, 8-direction groups, animations, frame events) | **sim** | Timings and events are needed by the simulation (melee "hit" frames, 12). The texture is loaded separately |
+| `SpriteSheetData` | **built as the `sprite_sheet` record** (§3.5), not a `.sheet.json` asset (12 "As built") | **sim** | Timings and events are needed by the simulation (melee "hit" frames, 12). The texture is loaded separately |
 | `SpriteSheet` | `.png` + its `SpriteSheetData` | client | the Daggerfall-style creature/NPC sprites (06, 12) |
 | `Mesh` | `.glb`/`.gltf` | SharpGLTF → our vertex/index buffers, submeshes with material slots | replaces `.fbx` + MGCB (today's `stanford_bunny.fbx`) |
 | `Effect` | `.mgfxo` (compiled from `.fx`, 07) | `new Effect(device, bytes)` | |

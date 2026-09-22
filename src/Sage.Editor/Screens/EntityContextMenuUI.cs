@@ -9,8 +9,9 @@ using ImGuiNET;
 namespace sage_engine;
 
 // Entity outliner + read-only inspector for one World. Right-click an entity to delete it.
-// Uses reflection to show component fields, which allocates: fine for a dev tool, and replaced by
-// the generated inspector metadata later (docs/design/09, 15).
+// Uses reflection and per-entity label strings, so it allocates about 130 bytes per listed entity
+// per frame while the window is open (TODO #41): fine for a dev tool, and replaced by the generated
+// inspector metadata later (docs/design/09, 15). Collapsing the window costs nothing.
 internal sealed class EntityContextMenuUI
 {
     private readonly World _world;
@@ -26,7 +27,11 @@ internal sealed class EntityContextMenuUI
 
     public void draw()
     {
-        ImGui.Begin($"Entities ({_world.Name})", _flags);
+        if (!ImGui.Begin($"Entities ({_world.Name})", _flags))
+        {
+            ImGui.End();   // collapsed: skip the listing entirely (it allocates per entity)
+            return;
+        }
 
         // Copy first: deleting from the context menu changes the world while we draw.
         _entities.Clear();

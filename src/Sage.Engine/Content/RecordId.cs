@@ -62,6 +62,31 @@ internal sealed class RecordIdJsonConverter : JsonConverter<RecordId>
         writer.WriteStringValue(value.ToString());
 }
 
+// [x, y] in record files.
+internal sealed class Vector2JsonConverter : JsonConverter<Vector2>
+{
+    public override Vector2 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("expected [x, y]");
+        var v = new float[2];
+        for (int i = 0; i < 2; i++)
+        {
+            if (!reader.Read() || reader.TokenType != JsonTokenType.Number) throw new JsonException("expected [x, y]");
+            v[i] = reader.GetSingle();
+        }
+        if (!reader.Read() || reader.TokenType != JsonTokenType.EndArray) throw new JsonException("expected [x, y]");
+        return new Vector2(v[0], v[1]);
+    }
+
+    public override void Write(Utf8JsonWriter writer, Vector2 value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        writer.WriteNumberValue(value.X);
+        writer.WriteNumberValue(value.Y);
+        writer.WriteEndArray();
+    }
+}
+
 // [x, y, z] in record files.
 internal sealed class Vector3JsonConverter : JsonConverter<Vector3>
 {

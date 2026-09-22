@@ -100,9 +100,10 @@ The shared include defines:
 Game shaders that include it get lighting and fog consistent with engine materials.
 
 ### 3.6 As built (migration step 6)
-- **Shaders:** `engine_content/shaders/`: `common.fxh` (the §3.5 contract), `lit.fx` (`Default`, `AlphaTest`, `Unlit`) and `error.fx`. `sprite.fx` and `debug.fx` come with sprites (F1) and `DebugDraw`.
+- **Shaders:** `engine_content/shaders/`: `common.fxh` (the §3.5 contract), `lit.fx` (`Default`, `AlphaTest`, `Unlit`), `sprite.fx` (`Unlit`, `Lit`, `UnlitBlend`; F1) and `error.fx`. `debug.fx` comes with `DebugDraw`.
 - **Build:** `build/Sage.EngineContent.targets` runs `dotnet mgfxc … /Profile:OpenGL` (pinned 3.8.2.1105 in `.config/dotnet-tools.json`) and copies `engine_content/` into the exe's `Content/`. Any `.fx`/`.fxh` change recompiles all; unchanged builds skip it. **Deviation:** the target is imported by `Sage.Host` (the exe owns the Content folder), not `Sage.Client`.
-- **Material records:** `MaterialRecord` in `src/Sage.Engine/Rendering/RenderData.cs`; engine materials `sage:lit_default`, `sage:unlit_default` and `sage:error` in `engine_content/data/materials.json`; the Sandbox inherits `sage:lit_default` for its bunny.
+- **Material records:** `MaterialRecord` in `src/Sage.Engine/Rendering/RenderData.cs`; engine materials `sage:lit_default`, `sage:unlit_default`, `sage:sprite_default`, `sage:sprite_lit` and `sage:error` in `engine_content/data/materials.json`; the Sandbox inherits `sage:lit_default` for its bunny and `sage:sprite_lit` for its trees.
+- **Sprite materials (F1):** the sprite sheet's texture replaces the material's `Albedo` per draw, so one material draws every sheet. Sprite quads carry their own per-vertex colour, multiplied with `AlbedoColor` and the object `Tint`.
 - **`MaterialCache`** (client) builds a runtime per material on first use: effect, technique, material params and cached state objects. It binds the three tiers of §3.4, and rebuilds everything lazily when records reload (material hot reload works; **shader** hot reload is §14 step 4, not done).
 - **Deviations:**
   - **Validation time:** missing effect parameters, unknown techniques and wrong param shapes are checked when the material is built (effect loaded), not at record load. The error names the material and the missing params, and the material draws as `sage:error`.
@@ -204,5 +205,5 @@ None. Materials are client-only.
 ## 14. Build steps
 1. ~~`common.fxh` + `lit.fx` + `error.fx`; mgfxc MSBuild target; port the bunny to the `lit_default` material~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO F2).
 2. ~~Material record schema + validation + `MaterialCache` (with 05 records)~~ **Done 2026-09-22** (validation when the material is built, §3.6).
-3. `sprite.fx` (with 06 sprites, TODO F1).
+3. ~~`sprite.fx` (with 06 sprites, TODO F1)~~ **Done 2026-09-22.**
 4. Shader hot reload.

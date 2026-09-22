@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using Microsoft.Xna.Framework;
 
 namespace sage_engine;
@@ -145,4 +146,94 @@ internal sealed class RenderSystem : ISystem
     }
 
     public void Run(in SystemContext ctx) => _renderer.Draw(_snapshot);
+}
+
+// Extract: one SpriteInstance per visible billboard (06 §3.8). It picks the direction group from the
+// angle between the sprite and the camera, and the animation frame from the animator's time (12 §3);
+// the batcher expands the quads. Sprites without a SpriteAnimator show frame 0 of their first clip.
+internal sealed class SpriteExtract : ISystem
+{
+    private readonly Renderer _renderer;
+    private readonly RecordStore _records;
+    private readonly RenderSnapshot _snapshot;
+    private readonly Friflo.Engine.ECS.ArchetypeQuery<GlobalTransform, SpriteRenderer> _sprites;
+
+    public SpriteExtract(World world, Renderer renderer, RecordStore records)
+    {
+        _renderer = renderer;
+        _records = records;
+        _snapshot = world.Resources.Get<RenderSnapshot>();
+        _sprites = world.Query<GlobalTransform, SpriteRenderer>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        var s = _snapshot;
+        if (!s.HasView) return;
+        Vector3 camera = s.View.CameraPosition;
+        Vector3 cullOffset = camera - s.CullOrigin;
+        float alpha = ctx.Frame.Alpha;
+        var materials = _renderer.Materials;
+
+        foreach (var (globals, renderers, entities) in _sprites.Chunks)
+        {
+            var g = globals.Span;
+            var r = renderers.Span;
+            for (int n = 0; n < g.Length; n++)
+            {
+                ref readonly var sr = ref r[n];
+                if (!_records.TryGet(sr.Sheet, out SpriteSheetRecord sheet))
+                {
+                    // Records that name a sheet are validated at load; this catches sheets set from code.
+                    Log.Once(LogCat.Render, LogLevel.Warn, $"sheet:{sr.Sheet}", $"Sprite sheet {sr.Sheet} not found; nothing drawn for it");
+                    continue;
+                }
+                int texture = _renderer.ResolveTexture(sheet.Texture);
+                var pose = g[n].Interpolated(alpha);
+                Vector3 position = pose.Position;   // System.Numerics → MonoGame (implicit)
+
+                // Which way does it face the camera, and which frame is playing?
+                int direction = SpriteMath.DirectionIndex(pose.Position, camera.ToNumerics(), SpriteMath.Yaw(pose.Rotation), sheet.Directions, out bool flipU);
+                int frameIndex = 0;
+                var entity = entities.EntityAt(n);
+                if (entity.TryGetComponent(out SpriteAnimator animator) && sheet.Clip(animator.Clip) is { } clip)
+                    frameIndex = SpriteMath.FrameAt(clip, direction, animator.Time);
+                else if (sheet.Clip(0) is { } first)
+                    frameIndex = SpriteMath.FrameAt(first, direction, 0f);
+                if (frameIndex < 0 || frameIndex >= sheet.Frames.Count) continue;
+
+                var frame = sheet.Frames[frameIndex];
+                Vector2 size = sr.Size == Vector2.Zero ? sheet.Size : sr.Size;
+                Vector2 scale = new(pose.Scale.X, pose.Scale.Y);
+                size *= scale;
+
+                // Bounding sphere around the quad, for culling: the pivot may be at the feet, so the
+                // sphere is centred half a height up and sized by the diagonal.
+                Vector3 center = position - camera;
+                float radius = 0.5f * MathF.Sqrt(size.X * size.X + size.Y * size.Y);
+                if (!s.Frustum.Intersects(new BoundingSphere(center + Vector3.Up * (size.Y * 0.5f) + cullOffset, radius)))
+                {
+                    s.Culled++;
+                    continue;
+                }
+
+                int materialId = materials.Resolve(!sr.Material.IsEmpty ? sr.Material
+                    : !sheet.Material.IsEmpty ? sheet.Material : SpriteSheetRecord.DefaultMaterial);
+                var material = materials.Get(materialId);
+                if (material == null) continue;
+
+                ref var instance = ref s.Sprites.Add();
+                instance.Center = center;
+                instance.Size = size;
+                instance.Pivot = _renderer.Pivot(texture, frame);
+                instance.Uv = _renderer.Uv(texture, frame, flipU);
+                instance.Tint = Vector4.One;
+                instance.Material = materialId;
+                instance.Texture = texture;
+                instance.Mode = sr.Mode;
+                instance.SortKey = RenderSortKey.Make(material.Pass, sr.Layer, materialId, texture,
+                    Vector3.Dot(center, s.View.Forward), s.View.Far);
+            }
+        }
+    }
 }

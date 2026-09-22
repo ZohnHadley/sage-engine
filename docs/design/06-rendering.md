@@ -114,7 +114,12 @@ Sorting by material first minimises effect and texture switches; depth last give
 - **Fallbacks:**
   - a missing mesh draws a 1 m magenta cube with `sage:error`;
   - a broken material draws as `sage:error` (07 §8).
-- **Not yet (v1 items left):** sprites and 8-direction billboards (F1), point lights, render scale, `DebugDraw`, `stat render`, `r_snapshot_dump`. Instancing stays "later".
+- **Sprites (F1, done):** `SpriteRenderer` + `SpriteExtract` + `SpriteBatcher`.
+  - Extract picks the direction group (§3.8) and the animation frame (12), culls, and writes a `SpriteInstance`; the batcher expands the quads from the camera basis (world up for `Cylindrical`, the full basis for `Spherical`) into one `DynamicVertexBuffer`.
+  - One draw per run of sprites sharing a material **and** a texture, so a sheet's creatures batch together. The sheet's texture overrides the material's `Albedo`, so `sage:sprite_default` serves every sheet.
+  - Frame UVs are inset by half a texel, or the quad's edge samples the next frame in the atlas.
+  - Meshes and sprites are interleaved by pass: each pass draws its meshes, then its sprites. Mixing *transparent* meshes and sprites by depth is not handled yet (nothing is transparent yet).
+- **Not yet (v1 items left):** point lights, render scale, `DebugDraw`, `stat render`, `r_snapshot_dump`. Instancing stays "later".
 - `GraphicsProfile.HiDef` is set by the host.
 
 ## 4. Public API sketch
@@ -192,7 +197,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 - Device lost/reset (MonoGame `DeviceReset`) → the renderer re-creates dynamic buffers and render targets; asset textures are managed by MonoGame.
 
 ## 9. Debug and tooling hooks
-- **Built in step 6:** `r_fog`, `r_wireframe` and `r_freezecull` (both DevOnly + Cheat), `r_stats`, `mat_list`, `mat_info`, and the host's `screenshot` command (saves the frame to `user://screenshots/`).
+- **Built in step 6 / F1:** `r_fog`, `r_wireframe` and `r_freezecull` (both DevOnly + Cheat), `r_stats` (items, sprites, culled, draws, triangles, material switches), `mat_list`, `mat_info`, and the host's `screenshot [delay]` and `cam_set <x> <y> <z> [yaw] [pitch]` (DevOnly) commands, which is how the renderer is checked from fixed viewpoints.
 - **Cvars:**
   - `r_instancing`, `r_instancing_min`;
   - `r_maxlights`;
@@ -215,7 +220,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 | `src/Sage.Client/Rendering/ModelRendererSystem.cs` + `ModelRenderer` + the `RenderView` resource (BasicEffect, TODO #25) | **Done (step 6):** `MeshRenderer` (Sage.Engine) + `MeshExtract` + the `Renderer`'s passes with material effects (07); the old files are deleted |
 | `Game1.Draw`: sets `DepthStencilState.Default`, `RasterizerState.CullCounterClockwise`, clears to `DarkOliveGreen` | **Done (step 6):** the Renderer clears to `RenderEnvironment.ClearColor` (the same green by default); render state comes from materials |
 | `DevCamera`: `projectionMatrix`/`viewMatrix`, 45° FOV, near 0.01 / far 1000 | **Step 6:** `DevCamera` only moves a position and yaw/pitch; `CameraExtract` builds the matrices from `ActiveCamera` (near 0.1). A `Camera` component and rigs come with the pawn (16) |
-| `TransformMath.Billboard` + the per-frame call in `Game1.Update` (TODO #26, #31) | `SpriteRenderer` with `BillboardMode` + direction selection at extract |
+| `TransformMath.Billboard` + the per-frame call in `Game1.Update` (TODO #26, #31) | **Done (F1):** `SpriteRenderer` with `BillboardMode` + direction selection at extract. `TransformMath.Billboard` stays for gameplay that wants an entity to *turn* (the Sandbox bunny) |
 | `Game1.GuiRenderer` (ImGui) | The Overlay pass (13) |
 
 ## 11. v1 scope vs later
@@ -250,7 +255,7 @@ Nothing changes: a client renders its own world's snapshot. A dedicated server d
 ## 14. Build steps
 1. ~~`RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO R9, #25).
 2. ~~Sort keys + material-based drawing (with 07)~~ **Done 2026-09-22** (radix sort later).
-3. Sprite batcher + `SpriteRenderer` + 8-direction selection (TODO F1; with 12).
+3. ~~Sprite batcher + `SpriteRenderer` + 8-direction selection~~ **Done 2026-09-22** (TODO F1; with 12).
 4. Lighting/fog/ambient + render scale (TODO F2).
 5. `DebugDraw` + `r_stats` + the overlay (TODO F5). *`r_stats` done in step 6.*
 6. Instancing experiment behind `r_instancing` (later).

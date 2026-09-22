@@ -20,11 +20,13 @@ public sealed class ClientModule : IModule
 {
     private ContentService? _content;
     private Renderer? _renderer;
+    private RecordStore? _records;
 
     public void Init(ModuleContext ctx)
     {
         ctx.Engine.Records.Register<MaterialRecord>();
         ctx.Engine.Records.Register<InputMapRecord>();
+        ctx.Engine.Records.Register<SpriteSheetRecord>();
 
         // The engine's actions (08 §3.2); bindings are in engine_content/data/input.json. Move and Look
         // feed PlayerCommand.Move and the view angles.
@@ -41,6 +43,7 @@ public sealed class ClientModule : IModule
     public void Start(ModuleContext ctx)
     {
         var host = ctx.Get<ClientHost>();
+        _records = ctx.Engine.Records;
         _content = new ContentService(host, ctx.Engine.Vfs);
         _renderer = new Renderer(host, _content, ctx.Engine);
         ctx.Provide(_content);
@@ -50,8 +53,12 @@ public sealed class ClientModule : IModule
     public void OnWorldCreated(World world)
     {
         world.Resources.Set(new RenderSnapshot());
+        // Sprite animation is simulation, not rendering (12 §3): it runs at the tick rate, and a
+        // headless server would run it too. It lives here until there is a framework module.
+        world.AddSystem(new SpriteAnimationSystem(world), Phase.Animation);
         world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);
         world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
+        world.AddSystem(new SpriteExtract(world, _renderer!, _records!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
     }
 

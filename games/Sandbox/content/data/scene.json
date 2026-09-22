@@ -1,6 +1,8 @@
 [
   // The test scene, as data (docs/design/05 §3.5). Edit while the game runs: with `developer 1`,
-  // record files hot-reload and the scene respawns. Press Space (Jump) to make it hop.
+  // record files hot-reload and the scene respawns. Press Space (Jump) to make things hop.
+
+  // ---- materials -------------------------------------------------------------------------------
   {
     // A game material inheriting from the engine's (07 §3.3): same effect and params, another colour.
     "type": "material",
@@ -8,19 +10,70 @@
     "base": "sage:lit_default",
     "params": { "AlbedoColor": [0.92, 0.86, 0.78, 1] }
   },
+
+  // ---- sprite sheets (06 §3.8, 12 §3) ------------------------------------------------------------
+  {
+    // 8 view directions x 2 idle frames of 64x96. Frame index = row * 8 + column, so the second row
+    // (8..15) is the second frame of each direction. The art is placeholder: the "nose" shows which
+    // way it faces and the bars at its feet count the direction group.
+    "type": "sprite_sheet",
+    "id": "creature",
+    "texture": "textures/creature.png",
+    "directions": 8,
+    "size": [1.2, 1.8],
+    "frames": [
+      { "rect": [0, 0, 64, 96], "pivot": [32, 94] },   { "rect": [64, 0, 64, 96], "pivot": [32, 94] },
+      { "rect": [128, 0, 64, 96], "pivot": [32, 94] }, { "rect": [192, 0, 64, 96], "pivot": [32, 94] },
+      { "rect": [256, 0, 64, 96], "pivot": [32, 94] }, { "rect": [320, 0, 64, 96], "pivot": [32, 94] },
+      { "rect": [384, 0, 64, 96], "pivot": [32, 94] }, { "rect": [448, 0, 64, 96], "pivot": [32, 94] },
+      { "rect": [0, 96, 64, 96], "pivot": [32, 94] },   { "rect": [64, 96, 64, 96], "pivot": [32, 94] },
+      { "rect": [128, 96, 64, 96], "pivot": [32, 94] }, { "rect": [192, 96, 64, 96], "pivot": [32, 94] },
+      { "rect": [256, 96, 64, 96], "pivot": [32, 94] }, { "rect": [320, 96, 64, 96], "pivot": [32, 94] },
+      { "rect": [384, 96, 64, 96], "pivot": [32, 94] }, { "rect": [448, 96, 64, 96], "pivot": [32, 94] }
+    ],
+    "animations": {
+      "idle": {
+        "fps": 3,
+        "loop": true,
+        "dirs": [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]
+      }
+    }
+  },
+  {
+    // One direction, one frame, no animation: a tree always looks the same from every side.
+    "type": "sprite_sheet",
+    "id": "tree",
+    "texture": "textures/tree.png",
+    "directions": 1,
+    "size": [2.2, 2.9],
+    "material": "sage:sprite_lit",
+    "frames": [ { "rect": [0, 0, 96, 128] } ]
+  },
+
+  // ---- the scene ---------------------------------------------------------------------------------
   {
     "type": "spawn",
     "id": "creature_base",
     "abstract": true,
-    "model": "stanford_bunny",
-    "material": "bunny",
-    "facesCamera": true
+    "sheet": "creature",
+    "animate": true
   },
+  { "type": "spawn", "id": "watcher",  "base": "creature_base", "name": "watcher",  "position": [0, 0, 0],     "yaw": 0 },
+  { "type": "spawn", "id": "eastward", "base": "creature_base", "name": "eastward", "position": [2.5, 0, 0],   "yaw": 90 },
+  { "type": "spawn", "id": "away",     "base": "creature_base", "name": "away",     "position": [-2.5, 0, 0],  "yaw": 180 },
+
+  { "type": "spawn", "id": "tree_a", "sheet": "tree", "name": "tree_a", "position": [4.5, 0, -3] },
+  { "type": "spawn", "id": "tree_b", "sheet": "tree", "name": "tree_b", "position": [-4.5, 0, -4] },
+  { "type": "spawn", "id": "tree_c", "sheet": "tree", "name": "tree_c", "position": [0, 0, -7] },
+
   {
+    // The mesh from step 6 is still here: meshes and sprites share the passes and the sort order.
     "type": "spawn",
     "id": "bunny",
-    "base": "creature_base",
+    "model": "stanford_bunny",
+    "material": "bunny",
     "name": "bunny",
-    "position": [0, 0, 0]
+    "position": [0, 0, -2],
+    "facesCamera": true
   }
 ]

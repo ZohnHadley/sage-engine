@@ -21,7 +21,7 @@ These are against the **current** single-project code. Many disappear when the m
 
 | # | Issue | Where | Plan |
 |---|---|---|---|
-| [ ] 41 | The host allocates 176 B every frame in steady state (`mem_warn_bytes 1`), already before step 6; the world systems allocate nothing. Probably ImGui or MonoGame input | `Sage.Host/Game1.cs` (frame loop) | Find with an allocation profiler; fix or document as the baseline (02 §4.6) |
+| [~] 41 | Per-frame allocations: **found** — the ImGui entity inspector builds a label string per listed entity per frame (~130 B each); the engine loop, renderer and host frame allocate **nothing** without it | `Sage.Editor/Screens/EntityContextMenuUI.cs` | Collapsing the window now costs nothing (F1). Left: cache the labels, or list only what's visible, when scenes get big (02 §4.6) |
 
 Paths are relative to `src/`. The full detail for each item is in the history log.
 
@@ -69,7 +69,7 @@ The structure these items fit into is in `ARCHITECTURE.md` (overview), with the 
 Each phase builds on the previous one. Items marked **(v1)** are part of the first milestone below.
 
 #### Phase 1 — Core runtime
-- [ ] **F1. Sprite/billboard renderer (v1).** CPU-batched camera-facing quads from atlases; cylindrical/spherical modes; 8-direction selection (5 + mirroring supported); sprite animation with frame events. → `06 §3.7–3.8`, `12`
+- [~] **F1. Sprite/billboard renderer (v1).** *Done 2026-09-22 (the first slice feature): `sprite_sheet` records (texture, direction groups, frames with pivots, animations), `SpriteRenderer`/`SpriteAnimator`, direction selection + frame choice at extract, CPU-batched camera-facing quads (one draw per material+texture run), cylindrical and spherical modes, `sprite.fx` with Unlit/Lit/UnlitBlend. Left: 5-direction mirrored art in practice (the code handles it), frame events (needs 04), `anim_debug`, atlas packing with the AssetServer (R12).* CPU-batched camera-facing quads from atlases; cylindrical/spherical modes; 8-direction selection (5 + mirroring supported); sprite animation with frame events. → `06 §3.7–3.8`, `12`
 - [~] **F2. Custom shaders and materials (v1).** *Done in step 6: `common.fxh`, `lit.fx` (Default/AlphaTest/Unlit), `error.fx`, the mgfxc build, material records + `MaterialCache`, sun + hemispheric ambient + fog. Left: `sprite.fx` (with F1), point lights, shader hot reload.* `lit.fx`, `sprite.fx`, `common.fxh`; techniques as variants; material records; fog, hemispheric ambient, up to 4 point lights; later lightmaps (HL1) and skinning (F9). → `07`
 - [ ] **F3. Camera modes (v1: first-person + editor free-fly).** First-person rig; third-person orbit with collision later (Lugaru, M&B). `DevCamera` becomes the editor rig. → `08`, `15`, `16`
 - [ ] **F4. Audio.** `sound` records, event-driven playback, buses, `AudioSource`, voice limiting. → `11`
@@ -135,4 +135,5 @@ This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F1
 - **Core services (step 2):** logging, asserts, crash reports, cvars/console, build configurations.
 - **Main loop (step 4):** fixed tick + interpolation, schedules/phases, profiler, `stat frame`, `sys_list`, `pause`, `host_exitafter`.
 - **Rendering, materials, input (step 6):** Extract → `RenderSnapshot` → `Renderer`; material records and our own shaders; input actions/contexts → `PlayerCommand`; `r_stats`, `mat_list`/`mat_info`, `bindlist`, `in_tap`, `screenshot`.
+- **Sprites (F1):** `sprite_sheet` records, billboards with 8 direction groups, sprite animation at the tick rate, the CPU sprite batcher; `cam_set` and `screenshot [delay]` for repeatable viewpoint checks.
 - **Modules, VFS, records (step 5):** `IModule` + `game.json` + the `games/Sandbox` game module; VFS mounts with shadowing; the `RecordStore` (patch merge, inheritance, validation, hot reload); `modules`, `vfs_which`/`vfs_ls`/`vfs_mounts`, `rec_list`/`rec_get`/`rec_reload`.

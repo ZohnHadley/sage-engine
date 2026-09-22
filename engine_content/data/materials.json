@@ -17,6 +17,25 @@
     "technique": "Unlit"
   },
   {
+    // Billboard sprites (06 §3.8). Point sampling and alpha test give the Daggerfall look; the sheet's
+    // texture replaces Albedo per draw, so one material serves every sheet.
+    "type": "material",
+    "id": "sprite_default",
+    "effect": "shaders/sprite.mgfxo",
+    "technique": "Unlit",
+    "pass": "AlphaTested",
+    "cull": "None",
+    "sampler": { "filter": "Point", "address": "Clamp" },
+    "params": { "Albedo": "textures/white.png", "AlbedoColor": [1, 1, 1, 1], "AlphaCutoff": 0.5 }
+  },
+  {
+    // Sprites lit by the sun and ambient, for props that should sit in the world's light.
+    "type": "material",
+    "id": "sprite_lit",
+    "base": "sprite_default",
+    "technique": "Lit"
+  },
+  {
     // The fallback for broken materials and the placeholder for missing meshes (07 §8).
     "type": "material",
     "id": "error",

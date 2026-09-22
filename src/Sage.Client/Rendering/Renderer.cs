@@ -9,7 +9,7 @@ namespace sage_engine;
 
 public struct RenderStats
 {
-    public int Items, Culled, DrawCalls, Triangles, MaterialSwitches;
+    public int Items, Sprites, Culled, DrawCalls, Triangles, MaterialSwitches;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -39,6 +39,9 @@ public sealed class Renderer : IDisposable
     private readonly ContentService _content;
     private readonly List<MeshData> _meshes = new();
     private readonly Dictionary<AssetPath, int> _meshIds = new();
+    private readonly List<Texture2D> _textures = new();
+    private readonly Dictionary<AssetPath, int> _textureIds = new();
+    private readonly SpriteBatcher _sprites;
     private readonly CVar<bool> _fog;
     private readonly CVar<bool> _wireframe;
     private readonly CVar<bool> _freezeCull;
@@ -50,15 +53,18 @@ public sealed class Renderer : IDisposable
         _content = content;
         Materials = new MaterialCache(_device, content, engine.Records);
         engine.Records.Reloaded += Materials.Invalidate;
-        _meshes.Add(CreateErrorMesh(_device));   // id 0
+        _meshes.Add(CreateErrorMesh(_device));    // id 0
+        _textures.Add(Materials.MissingTexture);  // id 0: the checker placeholder
+        _sprites = new SpriteBatcher(_device);
 
         var cvars = engine.CVars;
         _fog = cvars.Register("r_fog", true, CVarFlags.None, "Distance fog (the environment's fog settings).");
         _wireframe = cvars.Register("r_wireframe", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Draw the scene as wireframe.");
         _freezeCull = cvars.Register("r_freezecull", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Keep the current culling frustum while the camera moves.");
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
-            Log.Info(LogCat.Console, $"  items {LastFrame.Items}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, triangles {LastFrame.Triangles}, " +
-                                     $"material switches {LastFrame.MaterialSwitches}; {_meshes.Count - 1} meshes, {Materials.Count} materials"));
+            Log.Info(LogCat.Console, $"  items {LastFrame.Items}, sprites {LastFrame.Sprites}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
+                                     $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}; " +
+                                     $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials"));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
             foreach (var (id, record, m) in Materials.Entries)
@@ -127,6 +133,51 @@ public sealed class Renderer : IDisposable
 
     internal MeshData Mesh(int id) => _meshes[id];
 
+    // The texture id for an asset path, loading it on first use. Missing → 0, the checker (05 §8).
+    internal int ResolveTexture(AssetPath path)
+    {
+        if (_textureIds.TryGetValue(path, out int id)) return id;
+        var texture = _content.LoadTexture(path);
+        if (texture == null)
+        {
+            id = 0;
+        }
+        else
+        {
+            id = _textures.Count;
+            _textures.Add(texture);
+        }
+        _textureIds[path] = id;
+        return id;
+    }
+
+    internal Texture2D Texture(int id) => _textures[id];
+
+    // The frame's atlas rect as UVs in its texture (flipped horizontally for mirrored directions),
+    // and its pivot as a 0..1 position inside the quad. Both need the texture size, which only the
+    // client knows, so extract asks for them here.
+    internal Vector4 Uv(int texture, SpriteFrame frame, bool flipU)
+    {
+        var t = _textures[texture];
+        var (x, y, w, h) = RectOf(frame, t);
+        // Half-texel inset: without it the quad's edge pixels sample the neighbouring frame in the
+        // atlas (the classic sprite-sheet bleed).
+        float du = 0.5f / t.Width, dv = 0.5f / t.Height;
+        float u0 = x / (float)t.Width + du, v0 = y / (float)t.Height + dv;
+        float u1 = (x + w) / (float)t.Width - du, v1 = (y + h) / (float)t.Height - dv;
+        return flipU ? new Vector4(u1, v0, u0, v1) : new Vector4(u0, v0, u1, v1);
+    }
+
+    internal Vector2 Pivot(int texture, SpriteFrame frame)
+    {
+        var (_, _, w, h) = RectOf(frame, _textures[texture]);
+        if (frame.Pivot.Length < 2) return new Vector2(0.5f, 1f);   // default: bottom centre (the feet)
+        return new Vector2(frame.Pivot[0] / (float)w, frame.Pivot[1] / (float)h);
+    }
+
+    private static (int X, int Y, int W, int H) RectOf(SpriteFrame frame, Texture2D texture) =>
+        frame.Rect.Length >= 4 ? (frame.Rect[0], frame.Rect[1], frame.Rect[2], frame.Rect[3]) : (0, 0, texture.Width, texture.Height);
+
     // ---- Drawing ----
 
     internal void Draw(RenderSnapshot s)
@@ -134,46 +185,85 @@ public sealed class Renderer : IDisposable
         _frame++;
         ref readonly var env = ref s.Environment;
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, new Color(env.ClearColor), 1f, 0);   // pass 3, sky: a clear colour in v1
-        var stats = new RenderStats { Items = s.Items.Count, Culled = s.Culled };
+        var stats = new RenderStats { Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled };
         if (!s.HasView) { LastFrame = stats; return; }
 
-        int n = s.Items.Count;
-        if (s.SortKeys.Length < n)
-        {
-            s.SortKeys = new ulong[Math.Max(n, s.SortKeys.Length * 2)];
-            s.Order = new int[s.SortKeys.Length];
-        }
-        for (int i = 0; i < n; i++)
-        {
-            s.SortKeys[i] = s.Items[i].SortKey;
-            s.Order[i] = i;
-        }
-        Array.Sort(s.SortKeys, s.Order, 0, n);   // TODO(06 §3.5): radix sort when item counts grow
+        int items = s.Items.Count, sprites = s.Sprites.Count;
+        Grow(items, ref s.SortKeys, ref s.Order);
+        Grow(sprites, ref s.SpriteKeys, ref s.SpriteOrder);
+        for (int i = 0; i < items; i++) { s.SortKeys[i] = s.Items[i].SortKey; s.Order[i] = i; }
+        for (int i = 0; i < sprites; i++) { s.SpriteKeys[i] = s.Sprites[i].SortKey; s.SpriteOrder[i] = i; }
+        Array.Sort(s.SortKeys, s.Order, 0, items);       // TODO (06 §3.5): radix sort when counts grow
+        Array.Sort(s.SpriteKeys, s.SpriteOrder, 0, sprites);
+        _sprites.Begin(s.View);
 
+        // Passes in order (06 §3.4). Both lists are sorted by a key whose top bits are the pass, so
+        // each pass is a contiguous run in each list; meshes are drawn before sprites within a pass.
         bool wire = _wireframe.Value;
-        int current = -1;
-        for (int k = 0; k < n; k++)
+        _current = -1;
+        int item = 0, sprite = 0;
+        foreach (var pass in Passes)
+        {
+            int itemEnd = RunEnd(s.SortKeys, item, items, pass);
+            int spriteEnd = RunEnd(s.SpriteKeys, sprite, sprites, pass);
+            DrawItems(s, item, itemEnd, wire, ref stats);
+            DrawSprites(s, sprite, spriteEnd, wire, ref stats);
+            item = itemEnd;
+            sprite = spriteEnd;
+        }
+        LastFrame = stats;
+    }
+
+    private static readonly RenderPass[] Passes = { RenderPass.Opaque, RenderPass.AlphaTested, RenderPass.Transparent };
+    private int _current;   // the material currently applied to the device
+
+    // The pooled sort arrays grow with the scene and are never shrunk (06 §3.2).
+    private static void Grow(int count, ref ulong[] keys, ref int[] order)
+    {
+        if (keys.Length >= count) return;
+        keys = new ulong[Math.Max(count, keys.Length * 2)];
+        order = new int[keys.Length];
+    }
+
+    // The end of the run of entries belonging to `pass`, starting at `from` in a sorted key array.
+    private static int RunEnd(ulong[] keys, int from, int count, RenderPass pass)
+    {
+        ulong bits = pass switch { RenderPass.Opaque => 0UL, RenderPass.AlphaTested => 1UL, _ => 3UL };
+        int end = from;
+        while (end < count && (keys[end] >> 60) == bits) end++;
+        return end;
+    }
+
+    private MaterialRuntime? Use(int material, in RenderView view, in EnvironmentParams env, bool wire, ref RenderStats stats)
+    {
+        var m = Materials.Get(material);
+        if (m == null) return null;
+        if (m.Effect.FrameStamp != _frame)
+        {
+            m.Effect.SetFrame(view, env);
+            m.Effect.FrameStamp = _frame;
+        }
+        if (material != _current)
+        {
+            MaterialCache.Apply(_device, m, wire);
+            _current = material;
+            stats.MaterialSwitches++;
+        }
+        if (m.DrawnFrame != _frame) { m.DrawnFrame = _frame; m.Drawn = 0; }
+        return m;
+    }
+
+    private void DrawItems(RenderSnapshot s, int from, int to, bool wire, ref RenderStats stats)
+    {
+        for (int k = from; k < to; k++)
         {
             ref var item = ref s.Items[s.Order[k]];
-            var m = Materials.Get(item.Material);
+            var m = Use(item.Material, s.View, s.Environment, wire, ref stats);
             if (m == null) continue;
-            var binding = m.Effect;
-            if (binding.FrameStamp != _frame)
-            {
-                binding.SetFrame(s.View, env);
-                binding.FrameStamp = _frame;
-            }
-            if (item.Material != current)
-            {
-                MaterialCache.Apply(_device, m, wire);
-                current = item.Material;
-                stats.MaterialSwitches++;
-            }
-            if (m.DrawnFrame != _frame) { m.DrawnFrame = _frame; m.Drawn = 0; }
             m.Drawn++;
 
-            binding.World?.SetValue(item.World);
-            binding.Tint?.SetValue(item.Tint);
+            m.Effect.World?.SetValue(item.World);
+            m.Effect.Tint?.SetValue(item.Tint);
             var part = _meshes[item.Mesh].Parts[item.Part];
             _device.SetVertexBuffer(part.VertexBuffer);
             _device.Indices = part.IndexBuffer;
@@ -185,7 +275,40 @@ public sealed class Renderer : IDisposable
                 stats.Triangles += part.PrimitiveCount;
             }
         }
-        LastFrame = stats;
+    }
+
+    // Sprites in runs of the same material and texture: one draw per run (06 §3.7). The sheet's
+    // texture overrides the material's Albedo, so one sprite material serves every sheet.
+    private void DrawSprites(RenderSnapshot s, int from, int to, bool wire, ref RenderStats stats)
+    {
+        int run = from;
+        while (run < to)
+        {
+            ref var first = ref s.Sprites[s.SpriteOrder[run]];
+            int material = first.Material, texture = first.Texture;
+            int end = run + 1;
+            while (end < to)
+            {
+                ref var next = ref s.Sprites[s.SpriteOrder[end]];
+                if (next.Material != material || next.Texture != texture) break;
+                end++;
+            }
+
+            var m = Use(material, s.View, s.Environment, wire, ref stats);
+            if (m != null)
+            {
+                m.Drawn += end - run;
+                m.Effect.World?.SetValue(Matrix.Identity);   // sprite vertices are already in camera-relative space
+                m.Effect.Tint?.SetValue(Vector4.One);
+                foreach (var pass in m.Technique.Passes)
+                {
+                    int draws = _sprites.Draw(s.Sprites, s.SpriteOrder, run, end - run, _textures[texture], pass, m.Albedo);
+                    stats.DrawCalls += draws;
+                    stats.Triangles += (end - run) * 2;
+                }
+            }
+            run = end;
+        }
     }
 
     // A 1 m cube (06 §8: the error mesh is drawn, never skipped silently).
@@ -222,6 +345,7 @@ public sealed class Renderer : IDisposable
         var error = _meshes[0].Parts[0];
         error.VertexBuffer.Dispose();
         error.IndexBuffer.Dispose();
+        _sprites.Dispose();
         Materials.Dispose();
         // Model buffers, effects and textures belong to the ContentService.
     }

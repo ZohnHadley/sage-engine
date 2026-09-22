@@ -119,6 +119,9 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | Name | Meaning | Doc |
 |---|---|---|
 | `RenderSnapshot` | Pooled per-frame copy of everything rendering needs, built in Extract | 06 |
+| `SpriteRenderer` / `sprite_sheet` | Billboard component, and the record holding a sheet's texture, direction groups, frames and animations | 06, 12 |
+| `BillboardMode` | `Cylindrical` (turns about Y: characters, trees) or `Spherical` (faces the camera fully) | 06 |
+| `SpriteAnimator` | Component with the playing clip index and its time, advanced by the simulation | 12 |
 | `RenderItem` | One drawable in the snapshot: mesh, material, world matrix, sort key | 06 |
 | `SpriteInstance` | One billboard sprite in the snapshot | 06 |
 | `MeshHandle`, `TextureHandle` | Handles to GPU resources owned by the renderer | 06 |

@@ -53,6 +53,14 @@ internal class DevCamera
         camForward = Vector3.Transform(Vector3.Forward, Matrix.CreateFromYawPitchRoll(yaw, pitch, 0));
     }
 
+    // For `cam_set` and, later, the editor's viewport bookmarks.
+    public void SetLook(float yawDegrees, float pitchDegrees)
+    {
+        yaw = MathHelper.WrapAngle(MathHelper.ToRadians(yawDegrees));
+        pitch = MathHelper.Clamp(MathHelper.ToRadians(pitchDegrees), -PitchLimit, PitchLimit);
+        rebuildForward();
+    }
+
     public void update(GameTime gameTime)
     {
         // Devices are polled centrally in Game1.Update (before this), so their state is current.

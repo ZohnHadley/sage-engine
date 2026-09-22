@@ -58,7 +58,7 @@ public sealed class RecordStore
             IncludeFields = true,
             ReadCommentHandling = JsonCommentHandling.Skip,
             AllowTrailingCommas = true,
-            Converters = { new Vector3JsonConverter(), new JsonStringEnumConverter() },
+            Converters = { new Vector2JsonConverter(), new Vector3JsonConverter(), new JsonStringEnumConverter() },
         };
     }
 

@@ -52,26 +52,45 @@ public sealed class SandboxModule : IGameModule
     {
         foreach (var spawn in _records!.All<SpawnRecord>())
         {
-            if (spawn.Model.IsEmpty) continue;
-            var e = world.Create(Transform.At(spawn.Position), string.IsNullOrEmpty(spawn.Name) ? null : spawn.Name);
-            world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
+            if (spawn.Model.IsEmpty && spawn.Sheet.IsEmpty) continue;
+            var transform = new Transform
+            {
+                LocalPosition = spawn.Position,
+                LocalRotation = Quaternion.CreateFromYawPitchRoll(spawn.Yaw * MathF.PI / 180f, 0, 0),
+                LocalScale = Vector3.One,
+            };
+            var e = world.Create(transform, string.IsNullOrEmpty(spawn.Name) ? null : spawn.Name);
+            if (!spawn.Sheet.IsEmpty)
+            {
+                world.Add(e, new SpriteRenderer { Sheet = spawn.Sheet, Material = spawn.Material, Size = spawn.Size });
+                if (spawn.Animate) world.Add(e, SpriteAnimator.Play(0));
+            }
+            else
+            {
+                world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
+                if (spawn.FacesCamera) e.AddTag<FacesCamera>();
+            }
             world.Add(e, new Hop { BaseY = spawn.Position.Y });
             e.AddTag<FromSpawnRecord>();
-            if (spawn.FacesCamera) e.AddTag<FacesCamera>();
         }
         Log.Info(LogCat.Gameplay, $"Sandbox: spawned {world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Count} entities in '{world.Name}'");
     }
 }
 
-// `spawn` records (content/data/*.json): what to place in the test scene.
+// `spawn` records (content/data/*.json): what to place in the test scene. Either a mesh (`model`) or
+// a billboard sprite (`sheet`, docs/design/06 §3.8).
 [Record("spawn")]
 public sealed class SpawnRecord
 {
     public string Name = "";
     public AssetPath Model;            // mesh asset path (an MGCB model: no extension)
-    public RecordId Material;          // empty = sage:lit_default
+    public RecordId Sheet;             // sprite sheet record
+    public RecordId Material;          // empty = the default for the kind
     public Vector3 Position;
-    public bool FacesCamera;
+    public float Yaw;                  // degrees; which way it faces (picks the sprite's direction)
+    public Vector2 Size;               // sprite size in metres; 0 = the sheet's
+    public bool Animate;               // play the sheet's first clip
+    public bool FacesCamera;           // meshes only: the old billboard test
 }
 
 // Tags.

@@ -49,7 +49,7 @@ public class Game1 : Game
     private readonly Stopwatch frameClock = new Stopwatch();
     private FixedStepResult step;
     private long frame;
-    private bool screenshotPending;
+    private double screenshotAt = -1;   // >= 0: take a screenshot once RealTime passes it
 
     internal Game1(Engine engine, Action applyConfig, Action runLaunchCommands)
     {
@@ -93,7 +93,20 @@ public class Game1 : Game
         console = new DevConsoleWindow(cvars, engine.Core);
         stats = new StatOverlay(cvars, engine.Core);
         cvars.RegisterCommand("quit", CVarFlags.None, "Exit the game.", _ => Exit());
-        cvars.RegisterCommand("screenshot", CVarFlags.None, "Save the next frame as a PNG in the user folder's screenshots/.", _ => screenshotPending = true);
+        cvars.RegisterCommand("cam_set", CVarFlags.DevOnly, "cam_set <x> <y> <z> [yaw] [pitch]: place the editor camera (degrees).", a =>
+        {
+            if (a.Count < 3 || !float.TryParse(a[0], out float x) || !float.TryParse(a[1], out float y) || !float.TryParse(a[2], out float z))
+            {
+                Log.Warn(LogCat.Console, "cam_set <x> <y> <z> [yaw] [pitch]");
+                return;
+            }
+            cam.Position = new Vector3(x, y, z);
+            if (a.Count >= 4 && float.TryParse(a[3], out float yaw))
+                cam.SetLook(yaw, a.Count >= 5 && float.TryParse(a[4], out float pitch) ? pitch : 0f);
+            Log.Info(LogCat.Console, $"camera at {cam.Position}");
+        });
+        cvars.RegisterCommand("screenshot", CVarFlags.None, "screenshot [delay]: save a frame as a PNG in the user folder's screenshots/, now or after `delay` seconds.", a =>
+            screenshotAt = a.Count > 0 && float.TryParse(a[0], out float delay) ? clock.RealTime + delay : 0);
         WorldCommands.Register(cvars, engine);
         CrashReporter.AddSection("GPU", () => $"{GraphicsAdapter.DefaultAdapter.Description}, profile {graphics.GraphicsProfile}");
         Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
@@ -205,9 +218,9 @@ public class Game1 : Game
             guiRenderer.EndLayout();
         }
 
-        if (screenshotPending)
+        if (screenshotAt >= 0 && clock.RealTime >= screenshotAt)
         {
-            screenshotPending = false;
+            screenshotAt = -1;
             SaveScreenshot();
         }
 

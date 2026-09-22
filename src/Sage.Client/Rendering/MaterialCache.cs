@@ -60,6 +60,7 @@ internal sealed class MaterialRuntime
     public required DepthStencilState Depth;
     public required SamplerState Sampler;
     public required float Fog;
+    public EffectParameter? Albedo;   // the material's "Albedo" texture param, overridden per sprite sheet
     public bool IsError;
     public int Drawn;        // items drawn with it in frame DrawnFrame (mat_list)
     public long DrawnFrame = -1;
@@ -95,6 +96,8 @@ internal sealed class MaterialCache : IDisposable
     }
 
     public int Count => _idList.Count;
+
+    public Texture2D MissingTexture => _missingTexture;
 
     public void Dispose() => _missingTexture.Dispose();   // effects and textures belong to the ContentService
 
@@ -222,6 +225,7 @@ internal sealed class MaterialCache : IDisposable
                 _ => SamplerState.LinearWrap,
             },
             Fog = record.Fog ? 1f : 0f,
+            Albedo = effect.Parameters["Albedo"],
         };
     }
 

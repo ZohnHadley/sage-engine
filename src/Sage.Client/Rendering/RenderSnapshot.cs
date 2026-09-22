@@ -71,11 +71,14 @@ public sealed class RenderSnapshot
     public RenderView View;              // v1: one view (split screen, mirrors and shadow views later)
     public EnvironmentParams Environment;
     public readonly PooledList<RenderItem> Items = new(256);
+    public readonly PooledList<SpriteInstance> Sprites = new(256);
     public int Culled;                   // items rejected by frustum culling this frame
     public bool HasView;
 
     internal ulong[] SortKeys = new ulong[256];
     internal int[] Order = new int[256];
+    internal ulong[] SpriteKeys = new ulong[256];
+    internal int[] SpriteOrder = new int[256];
 
     // Culling frustum (camera-relative to CullOrigin). r_freezecull keeps the old one while the camera moves.
     internal readonly BoundingFrustum Frustum = new(Matrix.Identity);
@@ -85,6 +88,7 @@ public sealed class RenderSnapshot
     public void Clear()
     {
         Items.Clear();
+        Sprites.Clear();
         Culled = 0;
         HasView = false;
     }
