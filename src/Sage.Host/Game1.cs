@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using Friflo.Engine.ECS;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -8,63 +9,76 @@ using MonoGame.ImGuiNet;
 
 namespace sage_engine;
 
+// The host's MonoGame Game: today it is both game and editor (docs/design/01 §10). It owns the
+// client-side services as plain instances (no singletons); the Engine and the main World come from
+// Program. The bunny test scene moves to games/Sandbox in migration step 5.
 public class Game1 : Game
 {
-    public static ImGuiRenderer GuiRenderer;
-    private EditorManager editorManager;
-    private GraphicsDeviceManager graphics;
-    private GraphicsDevice graphicsDevice;
-    private DevCamera cam;
-    private Entity bunnyEntity; 
-    private EntityContext entContext;
-
-    // Core services from Program (they move onto the Engine object in migration step 3).
-    private readonly CVarRegistry cvars;
-    private readonly CoreCVars coreCVars;
+    private readonly Engine engine;
+    private readonly World world;
     private readonly Action onCommandsRegistered;
+
+    private readonly GraphicsDeviceManager graphics;
+    private GraphicsDevice graphicsDevice;
+    private ImGuiRenderer guiRenderer;
+    private EditorManager editorManager;
+    private InputSystem input;
+    private DevCamera cam;
+    private ModelRendererSystem modelRenderer;
+    private EditorUI editorUI;
+    private EntityContextMenuUI entityInspector;
     private DevConsoleWindow console;
     private StatOverlay stats;
+    private Entity bunnyEntity;
+
     private readonly Stopwatch frameClock = new Stopwatch();
     private long frame;
 
-    internal Game1(CVarRegistry cvars, CoreCVars coreCVars, Action onCommandsRegistered)
+    internal Game1(Engine engine, World world, Action onCommandsRegistered)
     {
-        this.cvars = cvars;
-        this.coreCVars = coreCVars;
+        this.engine = engine;
+        this.world = world;
         this.onCommandsRegistered = onCommandsRegistered;
-        // Initialize GraphicsDeviceManager
         graphics = new GraphicsDeviceManager(this);
-
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
     }
 
     protected override void Initialize()
     {
-    
-        editorManager = new  EditorManager();
+        editorManager = new EditorManager();
         editorManager.setGraphicsDeviceManager(graphics, 800, 410);
         graphicsDevice = graphics.GraphicsDevice;
-     
-        //entity world context
-        entContext = EntityContext.getInstance();
-        EntityContextListener.getInstance();
-        // Bring the entity-context listener up before LoadContent so it is subscribed
-        // in time to observe the entities created there.
-        //camera
-        cam = new DevCamera(graphics, graphics.GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0,0, 0), new Vector3(0, 0, 0)); 
-        cam.Position = new Vector3(0, 0, 1);
-        
-        editorManager.setCamera(cam);
-         
 
-        GuiRenderer = new ImGuiRenderer(this);
+        input = new InputSystem();
+        cam = new DevCamera(input, graphics, graphics.GraphicsDevice.DisplayMode.AspectRatio, new Vector3(0, 0, 0), new Vector3(0, 0, 0));
+        cam.Position = new Vector3(0, 0, 1);
+        editorManager.setCamera(cam);
+
+        modelRenderer = new ModelRendererSystem(world);
+        guiRenderer = new ImGuiRenderer(this);
+        editorUI = new EditorUI();
+        entityInspector = new EntityContextMenuUI(world);
 
         // Developer console (`~`) and `stat` overlays; see docs/design/02 and 01 §3.2.
-        console = new DevConsoleWindow(cvars, coreCVars);
-        stats = new StatOverlay(cvars, coreCVars);
+        var cvars = engine.CVars;
+        console = new DevConsoleWindow(cvars, engine.Core);
+        stats = new StatOverlay(cvars, engine.Core);
         cvars.RegisterCommand("quit", CVarFlags.None, "Exit the game.", _ => Exit());
-        InputSystem.getInstance().OnKeyPressed += key =>
+        cvars.RegisterCommand("ent_list", CVarFlags.None, "ent_list [filter]: list entities in the main world.", a =>
+        {
+            string filter = a.Count > 0 ? a[0] : "";
+            int shown = 0;
+            foreach (var e in world.QueryAll().Entities)
+            {
+                string label = World.Describe(e);
+                if (filter.Length > 0 && !label.Contains(filter, StringComparison.OrdinalIgnoreCase)) continue;
+                Log.Info(LogCat.Console, $"  {label}: {e.Components.Count} components");
+                shown++;
+            }
+            Log.Info(LogCat.Console, $"{shown} of {world.EntityCount} entities");
+        });
+        input.OnKeyPressed += key =>
         {
             if (key == Keys.OemTilde) console.Toggle();
         };
@@ -77,62 +91,59 @@ public class Game1 : Game
 
     protected override void LoadContent()
     {
-        // Load the content for the game here
-
         UtilAssets.InitializeModels(Content);
 
-
-        for(int x = 0; x < 1; x++)
+        for (int x = 0; x < 1; x++)
         {
-            for(int z = 0; z < 1; z++)
+            for (int z = 0; z < 1; z++)
             {
-                bunnyEntity = entContext.createEntity();
-                entContext.addComponentFor(bunnyEntity, new ComponentMeshRenderer(UtilAssets.stanfordBunny));
-                bunnyEntity.getComponent<ComponentTransform>().Position = new System.Numerics.Vector3(x, 0, z);
-            } 
+                bunnyEntity = world.Create(Transform.At(new System.Numerics.Vector3(x, 0, z)), "bunny");
+                world.Add(bunnyEntity, new ModelRenderer { Model = UtilAssets.stanfordBunny });
+            }
         }
+        Log.Info(LogCat.World, $"Test scene: {world.EntityCount} entities in '{world.Name}'");
 
-   
-        GuiRenderer.RebuildFontAtlas();
+        guiRenderer.RebuildFontAtlas();
         base.LoadContent();
     }
 
     protected override void Update(GameTime gameTime)
     {
         Log.SetFrame(++frame);
-        InputSystem.getInstance().update((float)gameTime.ElapsedGameTime.TotalSeconds);
+        input.update((float)gameTime.ElapsedGameTime.TotalSeconds);
 
         // Escape closes the console first; otherwise it quits (TODO #37: becomes the Menu action in R3).
         bool escape = GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-                      InputSystem.getInstance().IsKeyPressed(Keys.Escape);
+                      input.IsKeyPressed(Keys.Escape);
         if (escape && console.IsOpen) console.Close();
         else if (escape) Exit();
         cam.update(gameTime);
-        bunnyEntity.getComponent<ComponentTransform>().Billboard(cam.Position.ToNumerics());
 
+        // The bunny may have been deleted from the inspector.
+        if (world.IsAlive(bunnyEntity))
+            TransformMath.Billboard(ref world.Get<Transform>(bunnyEntity), cam.Position.ToNumerics());
+
+        world.FlushCommands();
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-         
         // clear colour + depth buffer
         graphicsDevice.DepthStencilState = DepthStencilState.Default;
         graphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.DarkOliveGreen, 1.0f, 0);
-        graphicsDevice.RasterizerState  = RasterizerState.CullCounterClockwise; // add this to system
+        graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise; // add this to system
 
-        
-        ModelRendererSystem.getInstance().render(cam.getViewMatrix(), cam.getProjectionMatrix());
-        //quad.Draw(cam);
+        modelRenderer.render(cam.getViewMatrix(), cam.getProjectionMatrix());
         base.Draw(gameTime);
-        
+
         // Draw the GUI
-        GuiRenderer.BeginLayout(gameTime);
-        EditorUI.GetInstance().Draw(this);
-        EntityContextMenuUI.getInstance().draw();
+        guiRenderer.BeginLayout(gameTime);
+        editorUI.Draw(this);
+        entityInspector.draw();
         console.Draw();
         stats.Draw();
-        GuiRenderer.EndLayout();
+        guiRenderer.EndLayout();
 
         // Real frame time (MonoGame's ElapsedGameTime is the fixed target step, not the measured time).
         float frameSeconds = frameClock.IsRunning ? (float)frameClock.Elapsed.TotalSeconds : 0f;

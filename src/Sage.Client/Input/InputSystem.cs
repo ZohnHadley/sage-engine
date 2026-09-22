@@ -5,9 +5,10 @@ using Microsoft.Xna.Framework.Input;
 
 namespace sage_engine;
 
+// Device input facade over the keyboard and mouse listeners. One instance, owned by the host and
+// passed to whoever needs it (no singleton; becomes InputDevices + actions in TODO R3, docs/design/08).
 internal class InputSystem : IEngineSystem
 {
-    private static InputSystem instance;
     private KeyboardListener _keyboardListener;
     private MouseListener _mouseListener;
 
@@ -87,20 +88,11 @@ internal class InputSystem : IEngineSystem
         set => _mouseListener.DragThreshold = value;
     }
 
-    private InputSystem()
+    public InputSystem()
     {
         _keyboardListener = new KeyboardListener();
         _mouseListener = new MouseListener();
     }
-
-    public static InputSystem getInstance()
-    {
-        if(instance == null)
-        {
-            instance = new InputSystem();
-        }
-        return instance;
-    } 
 
     public void update(float deltaSeconds)
     {

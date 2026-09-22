@@ -82,13 +82,14 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 ### [X] 14. `Tag` system uses reference equality
 - **Resolution**: Tag system removed entirely. Re-introduce `Type`-keyed if needed.
 
-### [~] 15. Entity/context internals exposed for direct mutation
+### [X] 15. Entity/context internals exposed for direct mutation
 - **Files**: `engine/Classes/EnginClasses/ECS_base_classes/EntityContext.cs:9-19, 110-115`, `engine/Classes/EnginClasses/ECS_base_classes/Entity.cs:14, 53-55`
 - **Done**: `addComponentFor` / `removeComponentFor` keep `_components` and `_entityGroups` in sync and fire the component events. `Entity.addComponent` / `removeComponent` are `internal`. `getGroups()` returns an `IReadOnlyDictionary` view.
 - **Regressed / still open**:
   - `Entity.Components` has a public **setter**, and `Entity.getComponents()` returns the live internal dictionary. Anyone can add or remove components without touching groups or firing `OnComponentAdded/Removed`, which silently desyncs every `ArchetypeView`.
   - `EntityContext.EntitiesDict` is public with a **setter** and returns the live dict. Callers can add or remove entities or swap the whole dictionary without firing `OnEntityAdded/Removed`.
 - **Fix**: Remove both setters. Expose `IReadOnlyDictionary<Type, IComponent>` / `IReadOnlyDictionary<long, Entity>` (or `IReadOnlyCollection<Entity>`) instead of the concrete dictionaries, and delete the redundant `getComponents()`.
+- **Resolution (2026-09-22, migration step 3 — `World` over Friflo.Engine.ECS)**: the old `Entity`/`EntityContext` classes were deleted. `World` exposes no mutable collections; all changes go through `World.Create/Destroy/Add/Remove` (or its command buffer), which always raise notifications.
 
 ### [X] 16. Entity ID type inconsistency
 - **Resolution**: Standardized on `long` everywhere.
@@ -187,18 +188,20 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Fix**: `effect.World = Matrix.CreateScale(transform.Scale) * Matrix.CreateFromQuaternion(transform.Rotation) * Matrix.CreateTranslation(transform.Position);`. Consider a `ComponentTransform.WorldMatrix` property so every system builds it the same way.
 - **Resolution (2026-09-22, quick-fix batch)**: `ModelRendererSystem` now builds `effect.World = CreateScale(transform.Scale) * CreateFromQuaternion(rotation) * translation`.
 
-### [ ] 33. `removeComponentFor` can leave state half-updated — **Severity: Latent**
+### [X] 33. `removeComponentFor` can leave state half-updated — **Severity: Latent**
 - **File**: `engine/Classes/EnginClasses/ECS_base_classes/EntityContext.cs:134-147`
 - **Problem**:
   - The entity is removed from the group *before* `entity.removeComponent(...)`, which throws if the entity doesn't have that component. After the throw, the group no longer holds the entity, but the event never fired.
   - `OnComponentRemoved` receives the caller's `component` argument, not the instance actually stored on the entity. Passing a fresh `new ComponentMeshRenderer(...)` removes the real one but reports the wrong object.
   - `removeEntity` also doesn't clear the entity's `_components`. Fine for the archetype views (they use `Remove`), but a handler holding the dead entity still sees all its components.
 - **Fix**: Look up the stored instance first (`removeComponentFor<T>(entity)` or by `Type`), validate, then mutate the entity, then the group, then fire the event with the stored instance.
+- **Resolution (2026-09-22, migration step 3 — `World` over Friflo.Engine.ECS)**: `World.Remove<T>` checks the component exists first and returns false with no side effects if not; notifications come from the store, so they always describe what was actually removed.
 
-### [ ] 34. `Entity.addComponent` silently swallows null — **Severity: Cosmetic**
+### [X] 34. `Entity.addComponent` silently swallows null — **Severity: Cosmetic**
 - **File**: `engine/Classes/EnginClasses/ECS_base_classes/Entity.cs:34-41`
 - **Problem**: `Console.WriteLine` + return, with the throw commented out. Unreachable today because `addComponentFor` already throws `ArgumentNullException`, but the two layers disagree.
 - **Fix**: Throw (matching `removeComponent`), or drop the check since `internal` callers already validate.
+- **Resolution (2026-09-22, migration step 3 — `World` over Friflo.Engine.ECS)**: moot: components are structs now (they can't be null), and `World.Add` refuses duplicates with an `Ensure`.
 
 ### [X] 35. `TransformSystem` is a stub that throws — **Severity: Wiring**
 - **File**: `engine/Classes/EnginClasses/ECS/systems/TransfomSystem.cs`
@@ -206,7 +209,7 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Fix**: Implement it (e.g. host billboard/look-at behaviour, see #26) or delete it until needed.
 - **Resolution (2026-09-22, quick-fix batch)**: the stub was deleted. Its replacement is `TransformPropagationSystem` (`docs/design/03` §3.6).
 
-### [~] 36. Dead fields / methods / stale comments — **Severity: Cosmetic**
+### [X] 36. Dead fields / methods / stale comments — **Severity: Cosmetic**
 - `InputSystem.isDebug` and `key_binds["toggle_debug"]` (`InputSystem.cs:14-17`) — never read. Same pattern as the removed `debugModes` (#8).
 - `Entity.context` (`Entity.cs:7`) — assigned, never used. It also forces an `EntityContext` singleton to exist for every `new Entity()`.
 - `EditorUI.context` (`EditorUI.cs:11, 15`) — never used.
@@ -217,16 +220,18 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - `EditorManager.cs:18-19, 29-30` — commented-out `ApplyChanges` lines. The one in the *width* setter sets `PreferredBackBufferHeight` (copy-paste bug if ever re-enabled).
 - Unused `using`s (e.g. `System.Collections.Generic` in `IComponentSystem.cs`, `System` in `IComponent.cs`, `Microsoft.Xna.Framework.Input` in `EditorUI.cs` / `EntityContextMenuUI.cs`, self-`using sage_engine;` in the Screens files).
 - **Resolution (2026-09-22, quick-fix batch)**: removed `InputSystem.isDebug`/`key_binds`, `Entity.context`, `EditorUI.context`, `DevCamera.Target`/`_camTarget`, and the stale `EntityContextSystem` comments in `ArchetypeView.cs`/`EntityContextListener.cs`. Remaining: `EditorManager.getCamera`, `getGroups`, `getAllEntitiesFromListOfGroups`, unused `using`s (tracked in `TODO.md`).
+- **Resolution (2026-09-22, migration step 3 — `World` over Friflo.Engine.ECS)**: `EditorManager.getCamera` removed; `getGroups`/`getAllEntitiesFromListOfGroups` went with `EntityContext`. (Unused `using`s aren't tracked any more.)
 
 ### [ ] 37. Input bypasses `InputSystem` in `Game1` — **Severity: Cosmetic**
 - **File**: `engine/Game1.cs:75`
 - **Problem**: Escape and GamePad Back are read via `Keyboard.GetState()` / `GamePad.GetState()` *before* `InputSystem.update`. That is the last direct hardware read outside the listeners.
 - **Fix**: Move `InputSystem.getInstance().update(gameTime)` first and use `input.IsKeyPressed(Keys.Escape)`. GamePad can stay direct until there's a gamepad listener.
 
-### [ ] 38. Component groups/archetypes are keyed by type-name strings — **Severity: Latent**
+### [X] 38. Component groups/archetypes are keyed by type-name strings — **Severity: Latent**
 - **Files**: `EntityContext.cs:123, 140`, `Entity.cs:64-72`, `ArchetypeView.cs:12, 27-37`, `ModelRendererSystem.cs:16`
 - **Problem**: Components are stored by `Type`, but groups and archetypes match on `GetType().Name` strings (`Track("ComponentTransform", "ComponentMeshRenderer")`). A typo matches nothing and fails silently, renames aren't caught by the compiler, and two same-named types in different namespaces would collide. `Entity.hasComponent(string)` also scans every component linearly instead of using the dictionary.
 - **Fix**: Key on `Type`: `Track(params Type[])` or `Track<T1, T2>()`, `hasComponent(Type)` → `_components.ContainsKey(type)`, and `Dictionary<Type, Dictionary<long, Entity>>` for groups.
+- **Resolution (2026-09-22, migration step 3 — `World` over Friflo.Engine.ECS)**: string-keyed groups and `ArchetypeView` replaced by typed Friflo queries (`World.Query<T1, T2>()`).
 
 ### [ ] 39. `DevCamera` mouse sensitivity scaling is odd — **Severity: Cosmetic**
 - **File**: `engine/Classes/EnginClasses/CameraClasses/DevCamera.cs:104-107`

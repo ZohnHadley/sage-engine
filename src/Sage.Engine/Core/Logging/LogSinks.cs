@@ -123,18 +123,22 @@ public sealed class FileLogSink : ILogSink, IDisposable
 // stdout, plus the debugger's output window when one is attached. Enabled while developer >= 1.
 public sealed class StdoutLogSink : ILogSink
 {
+    // Captured once: code elsewhere may temporarily redirect Console.Out (EcsSchema does, to catch a
+    // library's startup message), and log lines written meanwhile must still reach the real stdout.
+    private readonly TextWriter _out = System.Console.Out;
+
     public bool Enabled { get; set; } = true;
     public LogLevel MinLevel => Enabled ? LogLevel.Trace : (LogLevel)int.MaxValue;
 
     public void Write(in LogEntry entry)
     {
         string line = LogFormatter.Format(entry);
-        System.Console.Out.WriteLine(line);
+        _out.WriteLine(line);
         if (System.Diagnostics.Debugger.IsAttached)
             System.Diagnostics.Debug.WriteLine(line);
     }
 
-    public void Flush() => System.Console.Out.Flush();
+    public void Flush() => _out.Flush();
 }
 
 // Always-on in-memory history: the console's scroll-back and the tail of crash reports.

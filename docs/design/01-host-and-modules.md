@@ -210,7 +210,7 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
 | `src/Sage.Host/Game1.cs` | The host's MonoGame `Game` subclass: loop 5.2 only. The bunny spawn and billboard test move to `games/Sandbox` |
 | `Game1.Update` Escape check (TODO #37) | An input action (08), not a direct `Keyboard.GetState()` |
 | `src/Sage.Editor/EditorManager.cs` | Window size → `r_width`/`r_height` cvars applied by the host. Camera ownership → editor (15) |
-| Singletons (`EntityContext.getInstance()`, `InputSystem.getInstance()`, `ModelRendererSystem.getInstance()`) | Services on `Engine` or per-`World`, passed in (TODO R1) |
+| Singletons (`EntityContext.getInstance()`, `InputSystem.getInstance()`, `ModelRendererSystem.getInstance()`, `EditorUI`/`EntityContextMenuUI`) | **Done (step 3):** `Engine` (cvars, worlds) and the main `World` are created in `Program` and passed in; `InputSystem`, `ModelRendererSystem` and the editor windows are instances owned by `Game1` (TODO R1). `Log`/`CrashReporter` stay static by design (02) |
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -237,7 +237,7 @@ A dedicated server is a different host (`Sage.Host.Server`) running the same boo
 
 ## 14. Build steps
 1. ~~Solution split~~ **Done 2026-09-22** (ARCHITECTURE §7 step 1): `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `tests/Sage.Tests`. `games/Sandbox` waits for step 4 (`IGameModule`).
-2. `Engine` object + `IModule` + dependency sort; convert singletons (TODO R1, R8).
+2. `Engine` object + `IModule` + dependency sort; convert singletons (TODO R1, R8). **`Engine` + singleton removal done in step 3**; `IModule` in step 5.
 3. Custom fixed-tick loop + interpolation alpha (TODO R2).
 4. `game.json` + VFS mounts (with 05).
 5. ~~Build configurations + `developer` cvar + console availability~~ **Done 2026-09-22** (ARCHITECTURE §7 step 2; TODO R10).

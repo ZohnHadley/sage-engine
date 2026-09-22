@@ -21,19 +21,14 @@ These are against the **current** single-project code. Many disappear when the m
 
 | # | Issue | Where | Plan |
 |---|---|---|---|
-| [~] 15 | Public setters / live dictionaries let callers bypass entity events (`Entity.Components`, `getComponents()`, `EntityContext.EntitiesDict`) | `Sage.Engine/ECS/Entity.cs`, `EntityContext.cs` | Migration → R1 (`World` API, `docs/design/03`) |
 | [~] 25 | Dead render code: unused `lightDirection`, redundant empty check, per-effect recompute, empty `update` | `Sage.Client/Rendering/ModelRendererSystem.cs` | Migration → R9 / F2 (Extract + materials replace this class) |
 | [~] 26 | Spawn loop is 1×1; only the last-spawned bunny is billboarded | `Sage.Host/Game1.cs` | Migration → the Sandbox game (billboarding moves to the renderer, F1) |
-| [ ] 33 | `removeComponentFor` mutates the group before validating; fires the event with the caller's instance | `EntityContext.cs` | Migration → R1 (`World.Remove<T>` in `docs/design/03`) |
-| [ ] 34 | `Entity.addComponent` ignores null instead of throwing (it now logs `Log.Error`, step 2) | `Entity.cs` | Migration → R1 / R10 |
-| [~] 36 | Remaining dead code: `EditorManager.getCamera`, `EntityContext.getGroups`/`getAllEntitiesFromListOfGroups`, unused `using`s. The unused fields and stale comments were removed 2026-09-22 | various | Migration → R1 / R5 (these classes are replaced) |
 | [~] 37 | `Game1` reads GamePad Back directly (Escape now goes through `InputSystem`, step 2) | `Sage.Host/Game1.cs` | Migration → R3 (`Menu` action) |
-| [ ] 38 | Groups/archetypes keyed by type-name strings | `EntityContext.cs`, `Entity.cs`, `Sage.Engine/ECS/Listeners/ArchetypeView.cs`, `ModelRendererSystem.cs` | Migration → R5 (typed queries) |
 | [ ] 39 | Mouse sensitivity scaled by back-buffer/display size (look speed depends on window size) | `Sage.Editor/Camera/DevCamera.cs` | Migration → R3 / F3 (editor camera rig on actions) |
 
 Paths are relative to `src/`. The full detail for each item is in the history log.
 
-**#24 (typos) resolved by the solution split, 2026-09-22.** **Quick "fix now" batch: done 2026-09-22.** #9 (light icon field + `light.png` removed), #21/#35 (`TransfomSystem.cs` deleted), #22 (`MouseButton` internal), #32 (scale applied), and the trivial part of #36. Details in the history log. Everything left above waits for the migration.
+**#15, #33, #34, #36, #38 resolved by the `World` rewrite (step 3), 2026-09-22.** **#24 (typos) resolved by the solution split, 2026-09-22.** **Quick "fix now" batch: done 2026-09-22.** #9 (light icon field + `light.png` removed), #21/#35 (`TransfomSystem.cs` deleted), #22 (`MouseButton` internal), #32 (scale applied), and the trivial part of #36. Details in the history log. Everything left above waits for the migration.
 
 ---
 
@@ -59,11 +54,11 @@ The structure these items fit into is in `ARCHITECTURE.md` (overview), with the 
 
 ### Architecture items (build before or alongside the first features)
 
-- [ ] **R1. Replace singletons with `World` + `Engine`.** `EntityContext`, `EntityContextListener`, `ModelRendererSystem` and `InputSystem` are process-wide singletons. Several worlds are needed for Warband's overworld/battle split, the editor's edit/play worlds, level transitions and headless tests, and later for a server/client pair. `Entity.context` (#36) goes away. → `docs/design/01`, `03`
+- [X] **R1. Replace singletons with `World` + `Engine`.** *Done 2026-09-22 (migration step 3). `Engine` (cvars, worlds) and the main `World` come from `Program`; `InputSystem`, `ModelRendererSystem` and the editor windows are instances. `Log`/`CrashReporter` stay static by design.* `EntityContext`, `EntityContextListener`, `ModelRendererSystem` and `InputSystem` are process-wide singletons. Several worlds are needed for Warband's overworld/battle split, the editor's edit/play worlds, level transitions and headless tests, and later for a server/client pair. `Entity.context` (#36) goes away. → `docs/design/01`, `03`
 - [ ] **R2. Fixed tick + render interpolation.** Gameplay runs in a 60 Hz fixed schedule (`sim_tickrate`) with a clamped accumulator. Rendering interpolates between the previous and current poses. This is required for stable physics and deterministic animation events, and it's the tick any future netcode would index by. Today `Game1.Update` mixes input, camera and gameplay per frame. → `01 §5.2`, `03 §3.5`
 - [ ] **R3. Input as actions → `PlayerCommand`.** Actions from input-map records, a context stack (Editor > Console > UI > Gameplay), a per-tick command with latched taps, and frame-rate look. Replaces `InputSystem.key_binds` (#36) and the direct reads (#37). Gamepad included. → `08`
-- [ ] **R4. Data-only components, logic in systems.** Components are plain data. `LookAt`/`Billboard` move to `TransformMath`, and billboarding moves to the renderer (#26, #35). A system registry with phases, ordering and access declarations; command buffers. → `03`
-- [ ] **R5. Typed queries + the ECS spike.** Replace string-keyed groups/`ArchetypeView` with typed queries (#38). Spike **Friflo.Engine.ECS** against requirements E1–E9 (ARCHITECTURE D4). → `03 §3.1`
+- [~] **R4. Data-only components, logic in systems.** *Struct components + `TransformMath` done in step 3; system registry/phases in step 4.* Components are plain data. `LookAt`/`Billboard` move to `TransformMath`, and billboarding moves to the renderer (#26, #35). A system registry with phases, ordering and access declarations; command buffers. → `03`
+- [X] **R5. Typed queries + the ECS spike.** *Done 2026-09-22 (step 3): Friflo.Engine.ECS 3.6.0 adopted after passing E1–E9 (`docs/design/03` §3.1).* Replace string-keyed groups/`ArchetypeView` with typed queries (#38). Spike **Friflo.Engine.ECS** against requirements E1–E9 (ARCHITECTURE D4). → `03 §3.1`
 - [ ] **R6. Large-world coordinates.** `SectorCoord` (1024 m sectors) + a local `Transform` in the simulation. A world `Origin` rebased around the player (with hysteresis). Camera-relative rendering. Interiors as separate spaces. This is the Daggerfall Unity model, kept compatible with a future multi-player server. → `03 §3.6`, `14`
 - [ ] **R7. Content as data.** Superseded by **R11** (one record pipeline for all definitions).
 - [ ] **R8. Two-level module system.** csproj boundaries only at layers (`Sage.Engine`, `Sage.Client`, `Sage.Framework`, `Sage.Framework.Client`, `Sage.Editor`, `Sage.Host`, `Sage.Generators`). Logical `IModule`s with dependencies and `Init` (register) / `Start` (use) / `Shutdown`; `game.json`. → `01`
@@ -138,5 +133,6 @@ This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F1
 
 ### Already present
 - **Input devices:** `KeyboardListener` + `MouseListener` (edge events, polling, exact-match chords, threshold-gated drag). They become the device layer of R3 (`08 §3.1`).
-- **Entity-context observer system:** `EntityContext` events → `EntityContextListener` → live `ArchetypeView`s. Its ordering guarantees carry into structural notifications (`04 §3.3`), and its membership tracking into typed queries (R5).
-- **Look-at / billboard math:** `ComponentTransform.LookAt`/`Billboard` (#30/#31). It moves to `TransformMath` (R4); sprite facing moves to the renderer (F1).
+- **World / ECS (step 3):** `Engine` + `World` over Friflo.Engine.ECS, typed queries, command buffer, structural notifications with the old ordering guarantees, `PersistentId`, resources, hierarchy.
+- **Look-at / billboard math:** `TransformMath.LookAt`/`Billboard` (#30/#31). Sprite facing moves to the renderer (F1).
+- **Core services (step 2):** logging, asserts, crash reports, cvars/console, build configurations.

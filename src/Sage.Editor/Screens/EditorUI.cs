@@ -7,20 +7,7 @@ namespace sage_engine;
 internal class EditorUI
 {
 
-    private static EditorUI instance = null;
-
-    private EditorUI()
-    {
-    }
-
-    public static EditorUI GetInstance()
-    {
-        if (instance == null)
-        {
-            instance = new EditorUI();
-        }
-        return instance;
-    }
+    // One instance, owned by the host (no singleton).
 
     public void Draw(Game game)
     {

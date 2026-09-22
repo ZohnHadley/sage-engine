@@ -287,7 +287,7 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
 | Today | Becomes |
 |---|---|
 | `Console.WriteLine("Component cannot be null.")` in `Entity.addComponent` | **Done (step 2):** `Log.Error(LogCat.World, …)`. Still ignores the null (TODO #34: throw instead, with R1) |
-| `Console.WriteLine("group: " + group)` in `EntityContext.getAllEntitiesFromListOfGroups` | **Done (step 2):** `Log.Trace(LogCat.World, …)`. The method itself goes with R5 (TODO #36) |
+| `Console.WriteLine("group: " + group)` in `EntityContext.getAllEntitiesFromListOfGroups` | **Done (step 2):** `Log.Trace(LogCat.World, …)`; the method was removed with `EntityContext` in step 3 |
 | `Program.cs` (two lines) | **Done (step 2):** boot sequence: logging, crash reporter, cvars, config and launch args, then the game |
 | (removed 2026-09-22: the unused `InputSystem.isDebug` / `key_binds["toggle_debug"]`) | The `ToggleConsole` action (08), active when the console is available (01 §3.2) |
 | `EditorManager`'s commented-out `debugModes` | Overlay cvars (`stat …`, `r_drawbounds`, `phys_debug`) |

@@ -183,7 +183,7 @@ Summarised above:
 |---|---|
 | `EntityContextMenuUI` inspector: `GetType().GetProperties()` + `GetValue` per frame (runtime reflection, allocating) | Generated inspector metadata (15) |
 | `EditorUI` File → New/Open/Save stubs | Map documents (15) + `SaveSystem` |
-| Random `long` ids (`EntityContext.createEntity`) | `PersistentId` for anything saved or placed (03) |
+| Random `long` ids (old `EntityContext.createEntity`) | **Done (step 3):** Friflo handles at runtime + `PersistentId`/`Persistent` for anything saved or placed (03) |
 
 ## 11. v1 scope vs later
 - **v1:**

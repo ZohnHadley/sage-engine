@@ -1,61 +1,44 @@
-using System;
-using System.Collections.Generic;
+#nullable enable
+using Friflo.Engine.ECS;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
-internal class ModelRendererSystem : IComponentSystem{
-    private static ModelRendererSystem instance = null;
 
-    // Live set of entities that have both a transform and a mesh renderer, maintained
-    // incrementally by the entity-context system instead of rescanned every frame.
-    private readonly ArchetypeView _renderables;
+// Draws every entity with Transform + ModelRenderer using BasicEffect. One instance per world
+// (no singleton). Replaced by Extract + RenderSnapshot + materials (docs/design/06, 07; TODO R9).
+internal sealed class ModelRendererSystem : IComponentSystem
+{
+    private readonly ArchetypeQuery<Transform, ModelRenderer> _renderables;
 
-    private ModelRendererSystem()
+    public ModelRendererSystem(World world)
     {
-        _renderables = EntityContextListener.getInstance().Track("ComponentTransform", "ComponentMeshRenderer");
+        _renderables = world.Query<Transform, ModelRenderer>();
     }
 
-    public static ModelRendererSystem getInstance()
+    public void update(float deltaSeconds) { }
+
+    public void render(Matrix view, Matrix projection)
     {
-        if (instance == null)
+        foreach (var (transforms, renderers, _) in _renderables.Chunks)
         {
-            instance = new ModelRendererSystem();
-        }
-        return instance;
-    }
-
-    public void update(float deltaSeconds)
-    {
-       
-    }
-
-    public void render(Matrix view, Matrix projection){
-        if (_renderables.Entities.Count == 0)
-        {
-            return;
-        }
-        foreach (Entity entity in _renderables.Entities){
-            foreach (ModelMesh mesh in entity.getComponent<ComponentMeshRenderer>().model.Meshes)
+            var t = transforms.Span;
+            var r = renderers.Span;
+            for (int n = 0; n < t.Length; n++)
             {
-                foreach (BasicEffect effect in mesh.Effects)
-                {   
-                    ComponentTransform transform = entity.getComponent<ComponentTransform>();
-                    Vector3 entityPosition = transform.Position;   // System.Numerics → MonoGame (implicit)
-                    Quaternion entityRotation = transform.Rotation;
+                Model? model = r[n].Model;
+                if (model == null) continue;
 
-                    Matrix worldPositionMatrix = Matrix.CreateTranslation(entityPosition.X, entityPosition.Y, entityPosition.Z);
-
-                    effect.View = view;
-                    effect.World = Matrix.CreateScale(transform.Scale) * Matrix.CreateFromQuaternion(entityRotation) * worldPositionMatrix;
-                    effect.Projection = projection;
-                      
-                    Vector3 lightDirection = new Vector3(0, -20, 0);
-                    lightDirection.Normalize(); 
-                    
-                    effect.EnableDefaultLighting();
-
-
+                Matrix world = t[n].LocalMatrix;   // System.Numerics → MonoGame (implicit conversion)
+                foreach (ModelMesh mesh in model.Meshes)
+                {
+                    foreach (BasicEffect effect in mesh.Effects)
+                    {
+                        effect.View = view;
+                        effect.World = world;
+                        effect.Projection = projection;
+                        effect.EnableDefaultLighting();
+                    }
                     mesh.Draw();
                 }
             }

@@ -1,66 +1,88 @@
+#nullable enable
 using System;
+using System.Collections.Generic;
 using System.Numerics;
-using Microsoft.Xna.Framework.Input;
+using System.Reflection;
+using Friflo.Engine.ECS;
 using ImGuiNET;
-using sage_engine;
-using System.Linq;
 
 namespace sage_engine;
-internal class EntityContextMenuUI
+
+// Entity outliner + read-only inspector for one World. Right-click an entity to delete it.
+// Uses reflection to show component fields, which allocates: fine for a dev tool, and replaced by
+// the generated inspector metadata later (docs/design/09, 15).
+internal sealed class EntityContextMenuUI
 {
-    private static EntityContextMenuUI instance = null;
-    private EntityContext context;
-    private ImGuiWindowFlags mainFlags = ImGuiWindowFlags.AlwaysVerticalScrollbar  ;
-    private EntityContextMenuUI()
+    private readonly World _world;
+    private readonly ArchetypeQuery _all;
+    private readonly List<Entity> _entities = new();
+    private readonly ImGuiWindowFlags _flags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
+
+    public EntityContextMenuUI(World world)
     {
-        context = EntityContext.getInstance();
+        _world = world;
+        _all = world.QueryAll();
     }
 
-    public static EntityContextMenuUI getInstance()
+    public void draw()
     {
-        if (instance == null)
+        ImGui.Begin($"Entities ({_world.Name})", _flags);
+
+        // Copy first: deleting from the context menu changes the world while we draw.
+        _entities.Clear();
+        foreach (var e in _all.Entities)
+            _entities.Add(e);
+
+        foreach (var entity in _entities)
         {
-            instance = new EntityContextMenuUI();
-        }
-        return instance;
-    }
+            if (!_world.IsAlive(entity)) continue;
+            ImGui.Separator();
+            bool nodeOpen = ImGui.TreeNodeEx($"{World.Describe(entity)}##{entity.Id}", ImGuiTreeNodeFlags.SpanFullWidth);
 
-    public void draw(){
-        ImGui.Begin("EntityContextMenu", mainFlags);
-        
-            foreach (Entity entity in context.EntitiesDict.Values.ToList<Entity>())
+            if (ImGui.BeginPopupContextItem($"ctx_{entity.Id}"))
             {
-                String entityName = entity.getName() + " " + entity.getId();
+                if (ImGui.MenuItem("Delete")) _world.Destroy(entity);
+                ImGui.EndPopup();
+            }
+
+            if (!nodeOpen || !_world.IsAlive(entity))
+            {
+                if (nodeOpen) ImGui.TreePop();
+                continue;
+            }
+
+            ImGui.TextColored(new Vector4(1, 0.5f, 1, 1), $"Components: {entity.Components.Count}");
+            foreach (var component in entity.Components)
+            {
                 ImGui.Separator();
-
-                bool nodeOpen = ImGui.TreeNodeEx(entityName, ImGuiTreeNodeFlags.SpanFullWidth);
-
-                if (ImGui.BeginPopupContextItem("ctx_" + entity.getId()))
+                if (ImGui.TreeNodeEx($"{component.Type.Name}##{entity.Id}", ImGuiTreeNodeFlags.SpanFullWidth))
                 {
-                    if (ImGui.MenuItem("Delete")) { context.removeEntity(entity); }
-                    ImGui.EndPopup();
-                }
-
-                if (nodeOpen)
-                {
-                    ImGui.TextColored(new Vector4(1, 0.5f, 1, 1), "Components: " + entity.Components.Count);
-                    foreach (var (component_type, component) in entity.Components)
+#pragma warning disable CS0618   // Friflo marks the boxed Value obsolete in favour of GetComponent<T>(); a
+                                 // reflection inspector only knows the type at runtime, so it needs the box.
+                    object? value = component.Value;
+#pragma warning restore CS0618
+                    if (value != null)
                     {
-                        string componentName = component.GetType().ToString();
-                        ImGui.Separator();
-                        if (ImGui.TreeNodeEx(componentName, ImGuiTreeNodeFlags.SpanFullWidth))
+                        const BindingFlags publicInstance = BindingFlags.Public | BindingFlags.Instance;
+                        foreach (var field in value.GetType().GetFields(publicInstance))
+                            ImGui.TextColored(new Vector4(1, 1, 0.5f, 1), $"{field.Name}: {field.GetValue(value)}");
+                        foreach (var property in value.GetType().GetProperties(publicInstance))
                         {
-                            //show all the properties of the component
-                            foreach (var property in component.GetType().GetProperties())
-                            {
-                                ImGui.TextColored(new Vector4(1, 1, 0.5f, 1), property.Name + ": " + property.GetValue(component));
-                            }
-                            ImGui.TreePop();
+                            if (property.GetIndexParameters().Length > 0) continue;
+                            ImGui.TextColored(new Vector4(1, 1, 0.5f, 1), $"{property.Name}: {SafeGet(property, value)}");
                         }
                     }
                     ImGui.TreePop();
                 }
             }
+            ImGui.TreePop();
+        }
         ImGui.End();
+    }
+
+    private static string SafeGet(PropertyInfo property, object target)
+    {
+        try { return property.GetValue(target)?.ToString() ?? "null"; }
+        catch (Exception ex) { return $"({ex.GetType().Name})"; }
     }
 }

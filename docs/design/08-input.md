@@ -158,7 +158,7 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 ## 10. Mapping from today's code
 | Today (`src/...`) | Becomes |
 |---|---|
-| `Sage.Client/Input/InputSystem.cs` (singleton facade, events + polling) | `InputDevices` (devices) + `InputActions` (actions/contexts) as client module services. `toggle_debug` becomes the `ToggleConsole` action in the `Console`/`Gameplay` maps (dev only) |
+| `Sage.Client/Input/InputSystem.cs` (facade, events + polling; one instance owned by `Game1` since step 3) | `InputDevices` (devices) + `InputActions` (actions/contexts) as client module services. `toggle_debug` becomes the `ToggleConsole` action in the `Console`/`Gameplay` maps (dev only) |
 | `Sage.Client/Input/KeyboardListener.cs`, `MouseListener.cs` | Kept as the device layer. (`MouseButton` is already `internal`) |
 | `Game1.Update` Escape/GamePad Back checks (TODO #37) | The `Menu` action |
 | `DevCamera` WASD polling + `OnMouseDrag` look, with display-size sensitivity scaling (TODO #39) | The editor camera rig reads `Move`/`Look` in the `Editor` context. Sensitivity is raw delta × `Look.scale` × `m_sensitivity` (radians per pixel), with no display-size factor |

@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ECS storage (decision D4; spike results in docs/design/03 §3.1). Components are structs
+         implementing Friflo.Engine.ECS.IComponent; World (ECS/World.cs) is the thin wrapper. -->
+    <PackageReference Include="Friflo.Engine.ECS" Version="3.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Sage.Client" />
     <InternalsVisibleTo Include="Sage.Editor" />
     <InternalsVisibleTo Include="Sage.Host" />

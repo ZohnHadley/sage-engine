@@ -27,14 +27,15 @@ internal class DevCamera
     private float mouseAmount = 1f;
     private float speed = 3f;
     private static readonly float PitchLimit = MathHelper.ToRadians(89f);
-    private InputSystem input = InputSystem.getInstance();
+    private readonly InputSystem input;
 
-    public DevCamera(GraphicsDeviceManager graphicsDeviceManager, float aspect_ratio, Vector3 position, Vector3 rotation)
+    public DevCamera(InputSystem input, GraphicsDeviceManager graphicsDeviceManager, float aspect_ratio, Vector3 position, Vector3 rotation)
     {
+        this.input = input;
         // Mouse-look is a right-button drag. The drag gesture's threshold + anchor
         // reset on each press is what prevents the old camera "snap" (TODO #19) —
         // no manual first-delta bookkeeping needed.
-        InputSystem.getInstance().OnMouseDrag += OnMouseDrag;
+        input.OnMouseDrag += OnMouseDrag;
         graphics_device_manager = graphicsDeviceManager;
         _camPosition = position;
 

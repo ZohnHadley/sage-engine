@@ -39,7 +39,7 @@ public interface IEditorPanel { string Title { get; } void Draw(EditorContext ct
 | Today | Becomes |
 |---|---|
 | `src/Sage.Editor/Screens/EditorUI.cs` (menu bar; stubs; `game.Exit()`) | The editor host's menu: New/Open/Save map documents; Exit |
-| `src/Sage.Editor/Screens/EntityContextMenuUI.cs` (tree, per-frame reflection property dump, Delete via context menu) | Outliner + inspector (generated metadata; Delete becomes a command) |
+| `src/Sage.Editor/Screens/EntityContextMenuUI.cs` (tree over `World.QueryAll()`, per-frame reflection field dump, Delete via `World.Destroy`) | Outliner + inspector (generated metadata; Delete becomes a command) |
 | `src/Sage.Editor/Camera/DevCamera.cs` | The editor camera rig (actions-based, 08) |
 | `src/Sage.Editor/EditorManager.cs` (window size, camera holder) | Host window cvars (01) + editor state |
 

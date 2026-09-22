@@ -40,7 +40,8 @@ How parts of the engine and game tell each other that something happened, withou
 ### 3.3 Structural notifications in detail
 - *Internally* the world calls registered listeners immediately at flush points (03 §3.5): query caches, the `PersistentId` index, subsystems that mirror data (physics bodies, 10), and the editor.
 - *For gameplay*, the same changes are available as game events: `Added<T>` and `Removed<T>` (carrying the `EntityRef` and, for `Removed`, a copy of the component), plus `Spawned` and `Destroyed`. Systems read them like any other game event.
-- Ordering guarantees (kept from today's `EntityContext`): `Spawned` comes before any `Added<T>` for that entity; the `Removed<T>` events come before `Destroyed`.
+- **Built in step 3** as `World` C# events (`EntitySpawned`, `ComponentAdded`, `ComponentRemoved`, `EntityDestroyed`); the queued `Added<T>`/`Removed<T>` game events come with the event bus.
+- Ordering guarantees (kept from the old `EntityContext`, enforced by `World` on top of Friflo, 03 §3.1 E5): `Spawned` comes before any `Added<T>` for that entity; the `Removed<T>` events come before `Destroyed`.
 
 ### 3.4 Entity I/O in detail
 Entities placed in maps or spawned from prefabs can have **outputs** wired to **inputs** on other entities, the way Source's Hammer I/O works, but typed and checked at load.
@@ -156,8 +157,8 @@ I/O connections are part of map/prefab entity data (09):
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `EntityContext.OnEntityAdded/OnEntityRemoved/OnComponentAdded/OnComponentRemoved` (C# events, immediate) | Structural notifications (§3.3): immediate internal listeners + queued `Spawned`/`Destroyed`/`Added<T>`/`Removed<T>` |
-| `EntityContextListener` re-broadcast + `ArchetypeView.OnEnter/OnExit` | Cached queries (03) + `Added<T>`/`Removed<T>` events |
+| (old) `EntityContext.OnEntityAdded/OnEntityRemoved/OnComponentAdded/OnComponentRemoved`, now `World.EntitySpawned/ComponentAdded/ComponentRemoved/EntityDestroyed` (step 3) | Structural notifications (§3.3): immediate internal listeners + queued `Spawned`/`Destroyed`/`Added<T>`/`Removed<T>` |
+| (old) `EntityContextListener` re-broadcast + `ArchetypeView.OnEnter/OnExit` | **Done (step 3):** typed Friflo queries (03); `Added<T>`/`Removed<T>` queued events later |
 | `InputSystem` C# events (`OnKeyPressed`, `OnMouseDrag`, …) used by `DevCamera` | Device-layer events stay for **UI/editor/camera** use (08). Gameplay reads `PlayerCommand` instead |
 | `CVar`-like fields and ad-hoc delegates (none yet) | Engine signals |
 

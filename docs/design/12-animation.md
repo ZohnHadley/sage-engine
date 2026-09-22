@@ -39,7 +39,7 @@ public struct SpriteAnimator { public int Clip; public float Time; public float 
 The sprite API is inline above: the sheet JSON, `SpriteAnimator` and `AnimationEvent`. The skeletal API is sketched when Phase 3 starts.
 
 ## 10. Mapping from today's code
-None. `ComponentTransform.Billboard` is presentation and moves to the renderer (06 §3.8, 03 §4).
+None. The per-frame `TransformMath.Billboard` call in `Game1` is presentation and moves to the renderer (06 §3.8, 03 §4).
 
 ## 11. v1 scope vs later
 - **v1:**

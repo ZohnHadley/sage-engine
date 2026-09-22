@@ -57,7 +57,7 @@ In short: **Unity's composition and editor, Source's framework, console culture 
 ├──────────────────────────────────────────────────────────────┤
 │ HOSTS / TOOLS   Game host · Editor host · Source generator   │
 └──────────────────────────────────────────────────────────────┘
-      Libraries: BepuPhysics v2 · SharpGLTF · ImGui.NET · (spike) Friflo.Engine.ECS
+      Libraries: Friflo.Engine.ECS · BepuPhysics v2 · SharpGLTF · ImGui.NET
 ```
 
 Gregory's reference stack (survey §2.1) maps onto this directly. "Gameplay foundations" is our framework layer.
@@ -122,7 +122,7 @@ Inside each assembly, features are **logical `IModule`s** (Renderer, Physics, Au
 - **`EntityRef`** (stale-detecting) and **`PersistentId`** (maps/saves).
 - **Command buffers** flushed at phase ends.
 - **Transform hierarchy:** `Transform` + `SectorCoord` → `GlobalTransform` (previous/current poses, for interpolation).
-- **Storage:** the requirements (E1–E9) are tested in a **Friflo.Engine.ECS spike**. Keep a thin `World` API either way (D4).
+- **Storage:** **Friflo.Engine.ECS** behind a thin `World`, adopted after it passed requirements E1–E9 in a spike (D4, 03 §3.1). Handles are Friflo's `Entity`; queries are Friflo's; hot paths iterate chunks.
 
 ### 4.4 Events and messaging — [04](docs/design/04-events-and-messaging.md)
 Four mechanisms, each with a distinct job:
@@ -212,14 +212,14 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 
 ## 7. From today's code to this structure
 
-**Today** (after step 1): `Sage.sln` with `src/Sage.Engine` (no MonoGame), `src/Sage.Client`, `src/Sage.Editor`, `src/Sage.Host` (exe) and `tests/Sage.Tests`; still singletons, per-frame update, string-keyed archetypes, `BasicEffect` rendering and MGCB content. Each design doc has a "Mapping from today's code" table. The main moves:
+**Today** (after step 3): `Sage.sln` with `src/Sage.Engine` (no MonoGame), `src/Sage.Client`, `src/Sage.Editor`, `src/Sage.Host` (exe) and `tests/Sage.Tests`; logging/console/build configurations (step 2); `Engine` + `World` over Friflo.Engine.ECS with no singletons (step 3). Still a per-frame update, `BasicEffect` rendering and MGCB content. Each design doc has a "Mapping from today's code" table. The main moves:
 
 | Today | Becomes |
 |---|---|
 | `Game1`, `Program` | `Sage.Host` boot + fixed-tick loop ([01](docs/design/01-host-and-modules.md)); test scene → `games/Sandbox` |
-| `EntityContext`, `Entity`, `EntityContextListener`, `ArchetypeView` | `World`, `EntityRef`, typed queries, structural notifications ([03](docs/design/03-world-and-ecs.md), [04](docs/design/04-events-and-messaging.md)) |
-| `ComponentTransform` (+ `LookAt`/`Billboard`) | `Transform`/`SectorCoord`/`GlobalTransform` + `TransformPropagationSystem`; math in `TransformMath`; billboarding moves to the renderer |
-| `ComponentMeshRenderer`, `ModelRendererSystem` | `MeshRenderer` (with `AssetPath`) + `MeshExtract` + material-based passes ([06](docs/design/06-rendering.md), [07](docs/design/07-materials-and-shaders.md)) |
+| ~~`EntityContext`, `Entity`, `EntityContextListener`, `ArchetypeView`~~ (step 3) | `World`, `EntityRef` (Friflo `Entity`), typed queries, structural notifications ([03](docs/design/03-world-and-ecs.md), [04](docs/design/04-events-and-messaging.md)) |
+| `Transform` struct + `TransformMath` (step 3; was `ComponentTransform`) | + `SectorCoord`/`GlobalTransform` + `TransformPropagationSystem`; math in `TransformMath`; billboarding moves to the renderer |
+| `ModelRenderer` (struct, step 3), `ModelRendererSystem` | `MeshRenderer` (with `AssetPath`) + `MeshExtract` + material-based passes ([06](docs/design/06-rendering.md), [07](docs/design/07-materials-and-shaders.md)) |
 | `InputSystem`, listeners | `InputDevices` + actions/contexts + `PlayerCommand` ([08](docs/design/08-input.md)) |
 | `DevCamera` | Editor camera rig on actions ([15](docs/design/15-editor.md)) |
 | `EditorUI`, `EntityContextMenuUI` | Editor menu, outliner, generated inspector ([15](docs/design/15-editor.md)) |
@@ -229,7 +229,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 **Suggested order** (each step keeps the engine running):
 1. ~~**Solution split**~~ **Done 2026-09-22.** `Sage.Engine` / `Sage.Client` / `Sage.Editor` / `Sage.Host` + `tests/Sage.Tests` (15 headless tests); `ComponentTransform` on `System.Numerics`; `IEngineSystem.update(float)` instead of MonoGame's `GameTime`. Two differences from the plan: **`games/Sandbox` is deferred to step 4**, because it needs `IGameModule` to plug in (the test scene stays in `Game1` until then); and **`Sage.Host` references `Sage.Editor`** because today's exe is still game + editor in one.
 2. ~~**Logging + build configurations + console/`developer`**~~ **Done 2026-09-22** (TODO R10). Debug/Development/Shipping configurations with `SAGE_DEV`; `Log` with categories, zero-cost disabled calls, file/stdout/ring sinks, duplicate collapse and rate limiting; `Assert.Dev/Ensure/Check`; crash reports; cvars, console commands, `config.cfg` and `+launch` args; the ImGui console (`~`) and `stat fps`/`stat mem`; 36 tests. Deferred on purpose: profiler scopes and `TickTime` (step 4, they need the tick phases) and the job system (step 5, with async asset loading).
-3. **`World` + `Engine` objects replace the singletons** (R1); the Friflo spike (D4, R5); fix #15, #33, #38.
+3. ~~**`World` + `Engine` objects replace the singletons**~~ **Done 2026-09-22** (R1, R5; D4 decided). Friflo.Engine.ECS 3.6.0 passed all nine requirements in a spike (03 §3.1) and is adopted behind a thin `World` (struct components, stale-detecting handles, typed queries, command buffer, notifications with the old ordering guarantees, `PersistentId`, resources, hierarchy). `Engine` owns cvars and worlds; no engine singletons remain (`Log`/`CrashReporter` are static by design). Fixed #15, #33, #34, #36, #38. 44 tests.
 4. **Fixed tick + schedules + phases** (R2, R4).
 5. **Modules + `game.json` + VFS + records** (R8, R11). Sandbox becomes a real game module.
 6. **Extract + snapshot + materials** (R9); **input actions → `PlayerCommand`** (R3).
@@ -248,7 +248,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 | D1 | Multiplayer | **Later (Phase 7), not now.** Follow the readiness rules (§4.9) |
 | D2 | Math types in simulation | **`System.Numerics`** in all simulation code; MonoGame types only in `Sage.Client`. Bepu-native, SIMD, keeps MonoGame out of the simulation, enables headless tests and a future server |
 | D3 | Game code and modding | **C# game modules; data mods + trusted C# mods** (no sandboxed scripting). Code mods are never auto-downloaded ([17](docs/design/17-modding.md)) |
-| D4 | ECS storage | Thin `World` API. **Spike Friflo.Engine.ECS** against requirements E1–E9 ([03 §3.1](docs/design/03-world-and-ecs.md)). Friflo is favoured over Arch (more active; hierarchy + serialization built in; Arch's last release is over a year old). Fall back to today's dictionary storage behind the same API |
+| D4 | ECS storage | **Decided (step 3): Friflo.Engine.ECS 3.6.0** behind a thin `World`. It passed requirements E1–E9 in a spike ([03 §3.1](docs/design/03-world-and-ecs.md)); Arch was not needed. Queries are Friflo's own types; hot paths iterate chunks (0 allocations) |
 | D5 | Physics | **BepuPhysics v2** + **own kinematic character controller** |
 | D6 | Level editing | Own editor for terrain/props/entities + **TrenchBroom `.map` import** for brush interiors (later) |
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |

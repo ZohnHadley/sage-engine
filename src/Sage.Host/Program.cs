@@ -14,6 +14,7 @@ CrashReporter.Install();
 
 var cvars = new CVarRegistry();
 var core = CoreCVars.Register(cvars);
+using var engine = new Engine(cvars, core);
 CrashReporter.AddSection("CVars (non-default)", cvars.DumpNonDefault);
 CrashReporter.AddSection("Modules / mods", () => "(module system and mods arrive in migration step 5)");
 
@@ -35,7 +36,14 @@ void ApplyConfigAndLaunchArgs()
 
 try
 {
-    using var game = new Game1(cvars, core, ApplyConfigAndLaunchArgs);
+    // Every assembly that defines ECS component types must be loaded before the first World: Friflo
+    // builds its component schema once, from the assemblies loaded at that moment (docs/design/03 §3.1).
+    // Module loading (migration step 5) will do this for game and mod assemblies.
+    _ = typeof(ModelRenderer).Assembly;     // Sage.Client
+    _ = typeof(DevConsoleWindow).Assembly;  // Sage.Editor
+    var world = engine.CreateWorld("main");
+
+    using var game = new Game1(engine, world, ApplyConfigAndLaunchArgs);
     game.Run();
 }
 catch (SageFatalException fatal) when (fatal.Reported)
