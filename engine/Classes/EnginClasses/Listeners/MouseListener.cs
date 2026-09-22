@@ -187,7 +187,7 @@ internal class MouseListener
 }
 
 [Flags]
-public enum MouseButton
+internal enum MouseButton
 {
     LEFT = 1,
     RIGHT = 2,

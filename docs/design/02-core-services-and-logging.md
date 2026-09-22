@@ -266,7 +266,7 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
 |---|---|
 | `Console.WriteLine("Component cannot be null.")` in `Entity.addComponent` (`engine/Classes/EnginClasses/ECS_base_classes/Entity.cs:37`) | `Log.Error(LogCat.World, …)` (with TODO #34: throw instead) |
 | `Console.WriteLine("group: " + group)` in `EntityContext.getAllEntitiesFromListOfGroups` (`EntityContext.cs:101`) | Removed with that method (TODO #36) or `Log.Trace(LogCat.World, …)` |
-| `InputSystem.isDebug` / `key_binds["toggle_debug"]` (unused, TODO #36) | The `ToggleConsole` action (08), active when the console is available (01 §3.2) |
+| (removed 2026-09-22: the unused `InputSystem.isDebug` / `key_binds["toggle_debug"]`) | The `ToggleConsole` action (08), active when the console is available (01 §3.2) |
 | `EditorManager`'s commented-out `debugModes` | Overlay cvars (`stat …`, `r_drawbounds`, `phys_debug`) |
 
 ## 11. v1 scope vs later

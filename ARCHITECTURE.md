@@ -218,7 +218,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 |---|---|
 | `Game1`, `Program` | `Sage.Host` boot + fixed-tick loop ([01](docs/design/01-host-and-modules.md)); test scene → `games/Sandbox` |
 | `EntityContext`, `Entity`, `EntityContextListener`, `ArchetypeView` | `World`, `EntityRef`, typed queries, structural notifications ([03](docs/design/03-world-and-ecs.md), [04](docs/design/04-events-and-messaging.md)) |
-| `ComponentTransform` (+ `LookAt`/`Billboard`), `TransfomSystem` stub | `Transform`/`SectorCoord`/`GlobalTransform` + `TransformPropagationSystem`; math in `TransformMath`; billboarding moves to the renderer |
+| `ComponentTransform` (+ `LookAt`/`Billboard`) | `Transform`/`SectorCoord`/`GlobalTransform` + `TransformPropagationSystem`; math in `TransformMath`; billboarding moves to the renderer |
 | `ComponentMeshRenderer`, `ModelRendererSystem` | `MeshRenderer` (with `AssetPath`) + `MeshExtract` + material-based passes ([06](docs/design/06-rendering.md), [07](docs/design/07-materials-and-shaders.md)) |
 | `InputSystem`, listeners | `InputDevices` + actions/contexts + `PlayerCommand` ([08](docs/design/08-input.md)) |
 | `DevCamera` | Editor camera rig on actions ([15](docs/design/15-editor.md)) |

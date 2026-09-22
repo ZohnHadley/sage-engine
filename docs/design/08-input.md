@@ -158,8 +158,8 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 ## 10. Mapping from today's code
 | Today (`engine/Classes/EnginClasses/...`) | Becomes |
 |---|---|
-| `Input/InputSystem.cs` (singleton facade, events + polling, `key_binds`/`isDebug` unused, TODO #36) | `InputDevices` (devices) + `InputActions` (actions/contexts) as client module services. `toggle_debug` becomes the `ToggleConsole` action in the `Console`/`Gameplay` maps (dev only) |
-| `Listeners/KeyboardListener.cs`, `Listeners/MouseListener.cs` | Kept as the device layer (moved to `Sage.Client/Input`). `MouseButton` becomes `internal` (TODO #22) |
+| `Input/InputSystem.cs` (singleton facade, events + polling) | `InputDevices` (devices) + `InputActions` (actions/contexts) as client module services. `toggle_debug` becomes the `ToggleConsole` action in the `Console`/`Gameplay` maps (dev only) |
+| `Listeners/KeyboardListener.cs`, `Listeners/MouseListener.cs` | Kept as the device layer (moved to `Sage.Client/Input`). (`MouseButton` is already `internal`) |
 | `Game1.Update` Escape/GamePad Back checks (TODO #37) | The `Menu` action |
 | `DevCamera` WASD polling + `OnMouseDrag` look, with display-size sensitivity scaling (TODO #39) | The editor camera rig reads `Move`/`Look` in the `Editor` context. Sensitivity is raw delta × `Look.scale` × `m_sensitivity` (radians per pixel), with no display-size factor |
 
@@ -182,7 +182,7 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 - 64 button actions enough? Probably for one pawn. Menus use UI navigation, not `PlayerCommand`. Revisit if a game needs more (e.g. Warband's many orders); those could be one `Command` action with a parameter instead.
 
 ## 14. Build steps
-1. Move the listeners into `InputDevices`; add gamepad; make `MouseButton` internal (TODO #22).
+1. Move the listeners into `InputDevices`; add gamepad.
 2. Actions + input-map records + contexts (with ImGui capture) (TODO R3).
 3. `PlayerCommand` + `CommandSampler` + latching; the `Menu` action replaces the Escape check (TODO R3, #37).
 4. Editor camera rig on actions; drop display-size scaling (TODO #39).

@@ -55,10 +55,11 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 ### [X] 8. None of the debug modes are wired up
 - **Resolution**: `debugModes` removed from `EditorManager` (commented out at `EditorManager.cs:9`). Note a similar unwired leftover now exists in `InputSystem` — see #36.
 
-### [~] 9. `UtilAssets.lightIconTexture` is declared but never loaded or used
+### [X] 9. `UtilAssets.lightIconTexture` is declared but never loaded or used
 - **Files**: `engine/Classes/UtilAssets.cs:7, 11`, `engine/Content/Content.mgcb`, `engine/Content/light.png`
 - **Status (uncommitted)**: The load is commented out (`// TODO: Fix FreeImage dependency`) and the `light.png` entry was removed from `Content.mgcb`. The `lightIconTexture` field and `Content/light.png` still exist, and nothing references either.
 - **Fix**: Either delete the field and `light.png` to finish dropping it, or fix the FreeImage/texture pipeline issue, restore the mgcb entry, and use it as a light-source icon in the editor.
+- **Resolution (2026-09-22, quick-fix batch)**: the `lightIconTexture` field, its commented-out load, the `light.png` mgcb entry and `engine/Content/light.png` were removed. Runtime PNG loading returns with the asset system (TODO R12, `docs/design/05`).
 
 ### [X] 10. `Primitive.cs` is an empty abstract class
 - **Resolution**: File deleted.
@@ -111,14 +112,16 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 
 ## Cosmetic / style
 
-### [~] 21. Namespace mismatch
+### [X] 21. Namespace mismatch
 - **Regressed**: `engine/Classes/EnginClasses/ECS/systems/TransfomSystem.cs:4` declares `namespace sage_engin;` (typo) and adds `using sage_engine;` to compensate.
 - **Fix**: `namespace sage_engine;`, drop the `using`.
+- **Resolution (2026-09-22, quick-fix batch)**: `TransfomSystem.cs` (the only file with the `sage_engin` namespace) was deleted (see #35).
 
-### [~] 22. Mixed visibility
+### [X] 22. Mixed visibility
 - **Policy**: `internal` everywhere except `Game1`.
 - **Regressed**: `public enum MouseButton` (`engine/Classes/EnginClasses/Listeners/MouseListener.cs:190`).
 - **Fix**: Make it `internal`.
+- **Resolution (2026-09-22, quick-fix batch)**: `MouseButton` is now `internal`.
 
 ### [X] 23. Interface naming
 - **Resolution**: `IComponent`, `IComponentSystem` (now `: IEnginSystem`), `IEnginSystem` under `ECS_base_classes/Interfaces/`.
@@ -177,10 +180,11 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Resolution**: Now `Matrix.CreateBillboard(Position, targetPosition, UpHintFor(direction), Vector3.Forward)`, with the same too-close guard and vertical up-hint as `LookAt`. Local Forward (-Z) faces the target.
 - **Note**: With the corrected convention, `LookAt(cam)` and `Billboard(cam)` now give the same orientation. If the bunny model's visible front is +Z rather than -Z, it will now show its back to the camera. That is a model-orientation question (fix it in the model or with a per-mesh offset), not a reason to re-swap the arguments.
 
-### [ ] 32. Renderer ignores `ComponentTransform.Scale` — **Severity: Latent**
+### [X] 32. Renderer ignores `ComponentTransform.Scale` — **Severity: Latent**
 - **File**: `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs:47-50`
 - **Problem**: `effect.World = CreateFromQuaternion(rotation) * translation` has no scale term, so setting `Scale` does nothing.
 - **Fix**: `effect.World = Matrix.CreateScale(transform.Scale) * Matrix.CreateFromQuaternion(transform.Rotation) * Matrix.CreateTranslation(transform.Position);`. Consider a `ComponentTransform.WorldMatrix` property so every system builds it the same way.
+- **Resolution (2026-09-22, quick-fix batch)**: `ModelRendererSystem` now builds `effect.World = CreateScale(transform.Scale) * CreateFromQuaternion(rotation) * translation`.
 
 ### [ ] 33. `removeComponentFor` can leave state half-updated — **Severity: Latent**
 - **File**: `engine/Classes/EnginClasses/ECS_base_classes/EntityContext.cs:134-147`
@@ -195,12 +199,13 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Problem**: `Console.WriteLine` + return, with the throw commented out. Unreachable today because `addComponentFor` already throws `ArgumentNullException`, but the two layers disagree.
 - **Fix**: Throw (matching `removeComponent`), or drop the check since `internal` callers already validate.
 
-### [ ] 35. `TransformSystem` is a stub that throws — **Severity: Wiring**
+### [X] 35. `TransformSystem` is a stub that throws — **Severity: Wiring**
 - **File**: `engine/Classes/EnginClasses/ECS/systems/TransfomSystem.cs`
 - **Problem**: It is never created. `update` throws `NotImplementedException`, so it would crash the frame if anything ever called it. It also has the namespace typo (#21) and file-name typo (#24).
 - **Fix**: Implement it (e.g. host billboard/look-at behaviour, see #26) or delete it until needed.
+- **Resolution (2026-09-22, quick-fix batch)**: the stub was deleted. Its replacement is `TransformPropagationSystem` (`docs/design/03` §3.6).
 
-### [ ] 36. Dead fields / methods / stale comments — **Severity: Cosmetic**
+### [~] 36. Dead fields / methods / stale comments — **Severity: Cosmetic**
 - `InputSystem.isDebug` and `key_binds["toggle_debug"]` (`InputSystem.cs:14-17`) — never read. Same pattern as the removed `debugModes` (#8).
 - `Entity.context` (`Entity.cs:7`) — assigned, never used. It also forces an `EntityContext` singleton to exist for every `new Entity()`.
 - `EditorUI.context` (`EditorUI.cs:11, 15`) — never used.
@@ -210,6 +215,7 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - `ArchetypeView.cs:7` and `EntityContextListener.cs:12` refer to `EntityContextSystem`, which was deleted in `dcfbd12`.
 - `EditorManager.cs:18-19, 29-30` — commented-out `ApplyChanges` lines. The one in the *width* setter sets `PreferredBackBufferHeight` (copy-paste bug if ever re-enabled).
 - Unused `using`s (e.g. `System.Collections.Generic` in `IComponentSystem.cs`, `System` in `IComponent.cs`, `Microsoft.Xna.Framework.Input` in `EditorUI.cs` / `EntityContextMenuUI.cs`, self-`using sage_engine;` in the Screens files).
+- **Resolution (2026-09-22, quick-fix batch)**: removed `InputSystem.isDebug`/`key_binds`, `Entity.context`, `EditorUI.context`, `DevCamera.Target`/`_camTarget`, and the stale `EntityContextSystem` comments in `ArchetypeView.cs`/`EntityContextListener.cs`. Remaining: `EditorManager.getCamera`, `getGroups`, `getAllEntitiesFromListOfGroups`, unused `using`s (tracked in `TODO.md`).
 
 ### [ ] 37. Input bypasses `InputSystem` in `Game1` — **Severity: Cosmetic**
 - **File**: `engine/Game1.cs:75`

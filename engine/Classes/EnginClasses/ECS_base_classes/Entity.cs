@@ -4,7 +4,6 @@ using Microsoft.Xna.Framework;
 namespace sage_engine;
 
 internal class Entity{
-    private EntityContext context = EntityContext.getInstance();
 
     private long id;
     private String _name;

@@ -11,10 +11,6 @@ internal class InputSystem : IEnginSystem
     private KeyboardListener _keyboardListener;
     private MouseListener _mouseListener;
 
-    private bool isDebug = false;
-    private Dictionary<String, Keys> key_binds = new Dictionary<string, Keys> {
-        ["toggle_debug"] = Keys.OemTilde
-    };
 
     // Central input events that consumers (e.g. DevCamera) subscribe to,
     // forwarded from the single shared listeners.

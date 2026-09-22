@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace sage_engine;
 
 // A live, incrementally-maintained set of entities that own ALL of a given set of
-// component types. Created via EntityContextListener.Track / EntityContextSystem.Track.
+// component types. Created via EntityContextListener.Track.
 // Membership and the OnEnter/OnExit edges stay current as components and entities
 // change, so consumers never have to rescan the world each frame.
 internal sealed class ArchetypeView

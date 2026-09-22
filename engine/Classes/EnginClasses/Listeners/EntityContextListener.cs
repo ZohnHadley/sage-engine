@@ -8,8 +8,8 @@ namespace sage_engine;
 // higher-level archetype views so systems can hold live entity lists instead of rescanning.
 internal class EntityContextListener
 {
-    // Re-broadcast of the raw EntityContext events. Consumers subscribe here (via
-    // EntityContextSystem) rather than to EntityContext directly.
+    // Re-broadcast of the raw EntityContext events. Consumers subscribe here
+    // rather than to EntityContext directly.
     public event Action<Entity> OnEntityAdded;
     public event Action<Entity> OnEntityRemoved;
     public event Action<Entity, IComponent> OnComponentAdded;

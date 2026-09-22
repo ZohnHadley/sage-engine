@@ -47,7 +47,7 @@ internal class ModelRendererSystem : IComponentSystem{
                     Matrix worldPositionMatrix = Matrix.CreateTranslation(entityPosition.X, entityPosition.Y, entityPosition.Z);
 
                     effect.View = camera.getViewMatrix(); // main_camera.viewMatrix
-                    effect.World = Matrix.CreateFromQuaternion(entityRotation) * worldPositionMatrix;
+                    effect.World = Matrix.CreateScale(transform.Scale) * Matrix.CreateFromQuaternion(entityRotation) * worldPositionMatrix;
                     effect.Projection = camera.getProjectionMatrix(); // main_camera.projectionMatrix
                       
                     Vector3 lightDirection = new Vector3(0, -20, 0);

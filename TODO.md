@@ -21,25 +21,20 @@ These are against the **current** single-project code. Many disappear when the m
 
 | # | Issue | Where | Plan |
 |---|---|---|---|
-| [~] 9 | `lightIconTexture` field + `Content/light.png` unused. Load commented out ("FreeImage") and mgcb entry removed, both **uncommitted** | `engine/Classes/UtilAssets.cs`, `engine/Content/` | Fix now: commit the removal and delete the field + png. Runtime PNG loading returns with R12 |
 | [~] 15 | Public setters / live dictionaries let callers bypass entity events (`Entity.Components`, `getComponents()`, `EntityContext.EntitiesDict`) | `ECS_base_classes/Entity.cs`, `EntityContext.cs` | Migration → R1 (`World` API, `docs/design/03`) |
-| [~] 21 | Namespace typo `sage_engin` | `ECS/systems/TransfomSystem.cs` | Fix now (1 line), or delete the file (see #35) |
-| [~] 22 | `public enum MouseButton` breaks the `internal` policy | `Listeners/MouseListener.cs` | Fix now (1 word) |
-| [~] 24 | Typos: `EnginClasses/`, `IEnginSystem`, `TransfomSystem.cs`, comments; `windowWidth` vs `WindowHeight` casing | various | Migration: the solution split (ARCHITECTURE §7 step 1) renames folders and files. Fix comments then |
+| [~] 24 | Typos: `EnginClasses/`, `IEnginSystem`, comments; `windowWidth` vs `WindowHeight` casing | various | Migration: the solution split (ARCHITECTURE §7 step 1) renames folders and files. Fix comments then |
 | [~] 25 | Dead render code: unused `lightDirection`, redundant empty check, per-effect recompute, empty `update` | `ECS/systems/ModelRendererSystem.cs` | Migration → R9 / F2 (Extract + materials replace this class) |
 | [~] 26 | Spawn loop is 1×1; only the last-spawned bunny is billboarded | `engine/Game1.cs` | Migration → the Sandbox game (billboarding moves to the renderer, F1) |
-| [ ] 32 | Renderer ignores `Scale` | `ModelRendererSystem.cs` | Fix now if you need scaled models before R9 (1 line: `CreateScale * rotation * translation`); otherwise migration |
 | [ ] 33 | `removeComponentFor` mutates the group before validating; fires the event with the caller's instance | `EntityContext.cs` | Migration → R1 (`World.Remove<T>` in `docs/design/03`) |
 | [ ] 34 | `Entity.addComponent` logs and ignores null instead of throwing | `Entity.cs` | Migration → R1 / R10 |
-| [ ] 35 | `TransformSystem` stub throws `NotImplementedException` | `ECS/systems/TransfomSystem.cs` | Fix now: delete it. Its replacement is `TransformPropagationSystem` (R4, `03 §3.6`) |
-| [ ] 36 | Dead fields/methods/stale comments (`InputSystem.isDebug`/`key_binds`, `Entity.context`, `EditorUI.context`, `getCamera`, `DevCamera.Target`, `getGroups`, `getAllEntitiesFromListOfGroups`, `EntityContextSystem` comments, unused `using`s) | various | Fix now for the trivial ones (unused fields, stale comments); the rest goes with R1/R3 |
+| [~] 36 | Remaining dead code: `EditorManager.getCamera`, `EntityContext.getGroups`/`getAllEntitiesFromListOfGroups` (with its `Console.WriteLine`), unused `using`s. The unused fields and stale comments were removed 2026-09-22 | various | Migration → R1 / R5 (these classes are replaced) |
 | [ ] 37 | `Game1` reads Escape/GamePad directly instead of through `InputSystem` | `engine/Game1.cs` | Migration → R3 (`Menu` action) |
 | [ ] 38 | Groups/archetypes keyed by type-name strings | `EntityContext.cs`, `Entity.cs`, `Listeners/ArchetypeView.cs`, `ModelRendererSystem.cs` | Migration → R5 (typed queries) |
 | [ ] 39 | Mouse sensitivity scaled by back-buffer/display size (look speed depends on window size) | `CameraClasses/DevCamera.cs` | Migration → R3 / F3 (editor camera rig on actions) |
 
 Paths are relative to `engine/Classes/EnginClasses/` unless they start with `engine/`. The full detail for each item is in the history log.
 
-**Quick "fix now" batch** (under an hour, keeps the current build clean until the migration): #9, #21/#35 (delete `TransfomSystem.cs`), #22, the trivial part of #36, and optionally #32.
+**Quick "fix now" batch: done 2026-09-22.** #9 (light icon field + `light.png` removed), #21/#35 (`TransfomSystem.cs` deleted), #22 (`MouseButton` internal), #32 (scale applied), and the trivial part of #36. Details in the history log. Everything left above waits for the migration.
 
 ---
 

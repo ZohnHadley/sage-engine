@@ -10,11 +10,6 @@ internal class DevCamera
 
     private GraphicsDeviceManager graphics_device_manager;
 
-    private Vector3 _camTarget;
-    public Vector3 Target{
-        get{return _camTarget;}
-        set{_camTarget=value;}    
-    }
     private Vector3 _camPosition;
     public Vector3 Position
     {
@@ -46,7 +41,6 @@ internal class DevCamera
         pitch = MathHelper.Clamp(MathHelper.ToRadians(rotation.X), -PitchLimit, PitchLimit);
         rebuildForward();
 
-        _camTarget = camForward;
         projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(45f), aspect_ratio, 0.01f, 1000);
         viewMatrix = Matrix.CreateLookAt(_camPosition, (_camPosition + camForward), Vector3.Up);
     }

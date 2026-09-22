@@ -8,11 +8,9 @@ internal class EditorUI
 {
 
     private static EditorUI instance = null;
-    private EntityContext context;
 
     private EditorUI()
     {
-        context = EntityContext.getInstance();
     }
 
     public static EditorUI GetInstance()

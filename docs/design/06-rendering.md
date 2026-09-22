@@ -193,7 +193,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs`: iterates entities in `render()`, uses `BasicEffect`, calls `EnableDefaultLighting()` per mesh per frame, ignores `Scale` (TODO #32), recomputes the world matrix per effect (TODO #25) | `MeshExtract` (reads `GlobalTransform` + `MeshRenderer`) + the opaque pass with material effects (07). Scale is part of the pose |
+| `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs`: iterates entities in `render()`, uses `BasicEffect`, calls `EnableDefaultLighting()` per mesh per frame, recomputes the world matrix per effect (TODO #25) | `MeshExtract` (reads `GlobalTransform` + `MeshRenderer`) + the opaque pass with material effects (07). Scale is part of the pose |
 | `Game1.Draw`: sets `DepthStencilState.Default`, `RasterizerState.CullCounterClockwise`, clears to `DarkOliveGreen` | Pass setup (§3.4); the clear colour comes from `Environment` |
 | `DevCamera`: `projectionMatrix`/`viewMatrix`, 45° FOV, near 0.01 / far 1000 | `Camera` component + `CameraExtract`. The editor's free-fly camera (15) is one camera rig. Near plane raised (0.01 is too small for depth precision at 1000 far; 0.1 suggested) |
 | `ComponentTransform.Billboard` + the per-frame call in `Game1.Update` (TODO #26, #31) | `SpriteRenderer` with `BillboardMode` + direction selection at extract |
@@ -229,7 +229,7 @@ Nothing changes: a client renders its own world's snapshot. A dedicated server d
 - Is SM3's constant budget enough for 4 point lights + fog + sun in one pass on DesktopGL/MojoShader? Verify with the first material. Fall back to 2 lights if not.
 
 ## 14. Build steps
-1. `RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass (TODO R9, #25, #32).
+1. `RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass (TODO R9, #25).
 2. Sort keys + material-based drawing (with 07).
 3. Sprite batcher + `SpriteRenderer` + 8-direction selection (TODO F1; with 12).
 4. Lighting/fog/ambient + render scale (TODO F2).

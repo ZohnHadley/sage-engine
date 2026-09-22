@@ -197,7 +197,7 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 | `ECS_base_classes/Interfaces/IComponent.cs`, `IComponentSystem.cs`, `IEnginSystem.cs` | Struct components (a marker interface is optional depending on the storage choice); `ISystem` |
 | `ECS/components/ComponentTransform.cs` (`LookAt`/`Billboard` methods) | `Transform` data + `TransformMath` static helpers; `GlobalTransform` computed by propagation |
 | `ECS/components/ComponentMeshRenderer.cs` (holds a MonoGame `Model`) | `MeshRenderer { AssetPath Mesh; RecordId Material; }` and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
-| `ECS/systems/TransfomSystem.cs` (stub) | `TransformPropagationSystem` |
+| (the `TransfomSystem.cs` stub, deleted 2026-09-22) | `TransformPropagationSystem` |
 | `ECS/systems/ModelRendererSystem.cs` | Extract system in the client (06) |
 
 ## 11. v1 scope vs later
