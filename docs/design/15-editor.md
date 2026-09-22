@@ -38,10 +38,10 @@ public interface IEditorPanel { string Title { get; } void Draw(EditorContext ct
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `engine/Classes/Screens/EditorUI.cs` (menu bar; stubs; `game.Exit()`) | The editor host's menu: New/Open/Save map documents; Exit |
-| `engine/Classes/Screens/EntityContextMenuUI.cs` (tree, per-frame reflection property dump, Delete via context menu) | Outliner + inspector (generated metadata; Delete becomes a command) |
-| `engine/Classes/EnginClasses/CameraClasses/DevCamera.cs` | The editor camera rig (actions-based, 08) |
-| `engine/Classes/EditorManager.cs` (window size, camera holder) | Host window cvars (01) + editor state |
+| `src/Sage.Editor/Screens/EditorUI.cs` (menu bar; stubs; `game.Exit()`) | The editor host's menu: New/Open/Save map documents; Exit |
+| `src/Sage.Editor/Screens/EntityContextMenuUI.cs` (tree, per-frame reflection property dump, Delete via context menu) | Outliner + inspector (generated metadata; Delete becomes a command) |
+| `src/Sage.Editor/Camera/DevCamera.cs` | The editor camera rig (actions-based, 08) |
+| `src/Sage.Editor/EditorManager.cs` (window size, camera holder) | Host window cvars (01) + editor state |
 
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**

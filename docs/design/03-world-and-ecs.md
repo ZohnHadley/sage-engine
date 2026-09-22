@@ -189,16 +189,16 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 - **Log category:** `World`. `log_level world trace` logs every structural change (with the system that caused it).
 
 ## 10. Mapping from today's code
-| Today (`engine/Classes/EnginClasses/...`) | Becomes |
+| Today (`src/...`) | Becomes |
 |---|---|
-| `ECS_base_classes/EntityContext.cs` (singleton, random `long` ids, `EntitiesDict`, string-keyed groups) | `World` (per-world, `EntityRef` + `PersistentId`, no public mutable dictionaries: fixes TODO #15, #28's replacement, #38) |
-| `ECS_base_classes/Entity.cs` (class with `Dictionary<Type, IComponent>`) | `EntityRef` + world storage. `getComponent<T>` → `World.Get<T>`; `hasComponent(string)` → `Has<T>` |
-| `Listeners/EntityContextListener.cs` + `Listeners/ArchetypeView.cs` | Cached queries (membership) + structural notifications (04) for enter/exit edges |
-| `ECS_base_classes/Interfaces/IComponent.cs`, `IComponentSystem.cs`, `IEnginSystem.cs` | Struct components (a marker interface is optional depending on the storage choice); `ISystem` |
-| `ECS/components/ComponentTransform.cs` (`LookAt`/`Billboard` methods) | `Transform` data + `TransformMath` static helpers; `GlobalTransform` computed by propagation |
-| `ECS/components/ComponentMeshRenderer.cs` (holds a MonoGame `Model`) | `MeshRenderer { AssetPath Mesh; RecordId Material; }` and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
+| `Sage.Engine/ECS/EntityContext.cs` (singleton, random `long` ids, `EntitiesDict`, string-keyed groups) | `World` (per-world, `EntityRef` + `PersistentId`, no public mutable dictionaries: fixes TODO #15, #28's replacement, #38) |
+| `Sage.Engine/ECS/Entity.cs` (class with `Dictionary<Type, IComponent>`) | `EntityRef` + world storage. `getComponent<T>` → `World.Get<T>`; `hasComponent(string)` → `Has<T>` |
+| `Sage.Engine/ECS/Listeners/EntityContextListener.cs` + `ArchetypeView.cs` | Cached queries (membership) + structural notifications (04) for enter/exit edges |
+| `Sage.Engine/ECS/Interfaces/IComponent.cs`, `IComponentSystem.cs`, `IEngineSystem.cs` | Struct components (a marker interface is optional depending on the storage choice); `ISystem` |
+| `Sage.Engine/ECS/Components/ComponentTransform.cs` (System.Numerics; `LookAt`/`Billboard` methods) | `Transform` data + `TransformMath` static helpers; `GlobalTransform` computed by propagation |
+| `Sage.Client/Rendering/ComponentMeshRenderer.cs` (holds a MonoGame `Model`, so it lives in the client for now) | `MeshRenderer { AssetPath Mesh; RecordId Material; }` and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
 | (the `TransfomSystem.cs` stub, deleted 2026-09-22) | `TransformPropagationSystem` |
-| `ECS/systems/ModelRendererSystem.cs` | Extract system in the client (06) |
+| `Sage.Client/Rendering/ModelRendererSystem.cs` | Extract system in the client (06) |
 
 ## 11. v1 scope vs later
 - **v1:**

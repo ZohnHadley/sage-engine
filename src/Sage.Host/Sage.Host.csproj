@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The executable: boot + main loop + content. For now it is both the game and the editor
+    (today's app draws the ImGui editor panels), so it references Sage.Editor. A separate
+    game host without the editor comes with the editor host work (docs/design/15, TODO F28).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Sage.Host</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Icon.ico" />
+    <None Remove="Icon.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Icon.ico">
+      <LogicalName>Icon.ico</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Icon.bmp">
+      <LogicalName>Icon.bmp</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.2.1105" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.2.1105" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Builds Content/*.xnb into the output folder. (It was missing from the old engine csproj,
+         which is why the build warned "No Content References Found".) -->
+    <MonoGameContentReference Include="Content\Content.mgcb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
+    <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
+    <ProjectReference Include="..\Sage.Editor\Sage.Editor.csproj" />
+    <ProjectReference Include="..\..\packages\MonoGame.ImGuiNet-main\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
+  </ItemGroup>
+
+  <!-- The MGCB content tools come from the repo's .config/dotnet-tools.json. -->
+  <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
+    <Message Text="Restoring dotnet tools" Importance="High" />
+    <Exec Command="dotnet tool restore" />
+  </Target>
+</Project>

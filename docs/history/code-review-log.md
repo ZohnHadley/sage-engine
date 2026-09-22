@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#39) are stable and still referenced from `TODO.md` and `docs/design/*`.
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#39) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -59,7 +59,7 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Files**: `engine/Classes/UtilAssets.cs:7, 11`, `engine/Content/Content.mgcb`, `engine/Content/light.png`
 - **Status (uncommitted)**: The load is commented out (`// TODO: Fix FreeImage dependency`) and the `light.png` entry was removed from `Content.mgcb`. The `lightIconTexture` field and `Content/light.png` still exist, and nothing references either.
 - **Fix**: Either delete the field and `light.png` to finish dropping it, or fix the FreeImage/texture pipeline issue, restore the mgcb entry, and use it as a light-source icon in the editor.
-- **Resolution (2026-09-22, quick-fix batch)**: the `lightIconTexture` field, its commented-out load, the `light.png` mgcb entry and `engine/Content/light.png` were removed. Runtime PNG loading returns with the asset system (TODO R12, `docs/design/05`).
+- **Resolution (2026-09-22, quick-fix batch)**: the `lightIconTexture` field, its commented-out load, the `light.png` mgcb entry and `engine/Content/light.png` were removed; the unused duplicates in `Content/myAssets/` (a second `light.png` and a copy of `stanford_bunny.fbx`) followed with the solution split. Runtime PNG loading returns with the asset system (TODO R12, `docs/design/05`).
 
 ### [X] 10. `Primitive.cs` is an empty abstract class
 - **Resolution**: File deleted.
@@ -126,7 +126,7 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 ### [X] 23. Interface naming
 - **Resolution**: `IComponent`, `IComponentSystem` (now `: IEnginSystem`), `IEnginSystem` under `ECS_base_classes/Interfaces/`.
 
-### [~] 24. Typos
+### [X] 24. Typos
 - **Earlier round**: Fixed in `GameAssets.cs` (now `UtilAssets.cs`), `EditorManager.cs`, `ModelRendererSystem.cs`.
 - **New**:
   - Folder `EnginClasses/` → `EngineClasses/`
@@ -136,6 +136,7 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
   - `DevCamera.cs:24` "what the camera cans see"
   - `Game1.cs:88` "z buffer dept clear"
   - `EditorManager.windowWidth` vs `WindowHeight` — inconsistent casing (should be `WindowWidth`)
+- **Resolution (2026-09-22, solution split)**: the `EnginClasses/` folder and `TransfomSystem.cs` are gone, `IEnginSystem` → `IEngineSystem`, "cans see" and "dept" comments fixed, `windowWidth` → `WindowWidth`.
 
 ### [~] 25. Dead / redundant code
 - **Done**: Identity multiplication removed; manual light setup collapsed to `EnableDefaultLighting()`.

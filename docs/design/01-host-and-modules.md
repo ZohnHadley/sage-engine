@@ -24,7 +24,7 @@ Not in scope: what the services do (02), how worlds run systems (03).
   | `Sage.Framework` (gameplay modules, simulation side) | `Sage.Engine` | MonoGame, `Sage.Client`, `Sage.Editor` |
   | `Sage.Framework.Client` (camera rigs, cue playback, HUD helpers) | `Sage.Framework`, `Sage.Client` | `Sage.Editor` |
   | `Sage.Editor` | everything | — |
-  | `Sage.Host` (exe) | everything runtime; `Sage.Editor` only in the editor host | — |
+  | `Sage.Host` (exe) | everything runtime; `Sage.Editor` only in the editor host (*today:* the one exe is still game + editor, so it references `Sage.Editor` until the editor host exists, 15/F28) | — |
   | Game assemblies | `Sage.Framework`, `Sage.Framework.Client`, `Sage.Engine`, `Sage.Client` (a game can split its own sim/client parts the same way) | `Sage.Editor` (game editor extensions go in a separate `MyGame.Editor` assembly) |
 
 - **`IModule`s are logical units inside those assemblies** (Renderer, Physics, Audio, Streaming, Abilities…). Each declares its dependencies and gets `Init`/`Shutdown` in dependency order. Games can replace or disable engine modules (Bevy's `DefaultPlugins` idea) without touching engine code.
@@ -202,10 +202,10 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `engine/Program.cs` | `Sage.Host` `Program.Main`: boot sequence 5.1 |
-| `engine/Game1.cs` | The host's MonoGame `Game` subclass: loop 5.2 only. The bunny spawn and billboard test move to `games/Sandbox` |
+| `src/Sage.Host/Program.cs` | `Sage.Host` `Program.Main`: boot sequence 5.1 |
+| `src/Sage.Host/Game1.cs` | The host's MonoGame `Game` subclass: loop 5.2 only. The bunny spawn and billboard test move to `games/Sandbox` |
 | `Game1.Update` Escape check (TODO #37) | An input action (08), not a direct `Keyboard.GetState()` |
-| `engine/Classes/EditorManager.cs` | Window size → `r_width`/`r_height` cvars applied by the host. Camera ownership → editor (15) |
+| `src/Sage.Editor/EditorManager.cs` | Window size → `r_width`/`r_height` cvars applied by the host. Camera ownership → editor (15) |
 | Singletons (`EntityContext.getInstance()`, `InputSystem.getInstance()`, `ModelRendererSystem.getInstance()`) | Services on `Engine` or per-`World`, passed in (TODO R1) |
 
 ## 11. v1 scope vs later
@@ -232,7 +232,7 @@ A dedicated server is a different host (`Sage.Host.Server`) running the same boo
 - Should `tickDt` be exactly 1/64 s (exactly representable in binary) instead of 1/60? Not needed without lockstep networking; 60 Hz kept.
 
 ## 14. Build steps
-1. Solution split into `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox`, `tests/Sage.Tests` (ARCHITECTURE §9 step 1).
+1. ~~Solution split~~ **Done 2026-09-22** (ARCHITECTURE §7 step 1): `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `tests/Sage.Tests`. `games/Sandbox` waits for step 4 (`IGameModule`).
 2. `Engine` object + `IModule` + dependency sort; convert singletons (TODO R1, R8).
 3. Custom fixed-tick loop + interpolation alpha (TODO R2).
 4. `game.json` + VFS mounts (with 05).

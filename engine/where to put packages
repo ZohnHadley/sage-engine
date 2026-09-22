@@ -1,6 +1,0 @@
-C:\Users\zohn\.nuget\packages
-
-//toadd reference to libray or other project 
-dotnet add reference 
-ex: 
-dotnet add reference ./MonoGame.ImGuiNet-main/MonoGame.ImGuiNet

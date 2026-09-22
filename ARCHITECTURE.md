@@ -212,7 +212,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 
 ## 7. From today's code to this structure
 
-**Today:** one project (`engine/sage_engine.csproj`, an exe); singletons; per-frame update; string-keyed archetypes; `BasicEffect` rendering; MGCB content. Each design doc has a "Mapping from today's code" table. The main moves:
+**Today** (after step 1): `Sage.sln` with `src/Sage.Engine` (no MonoGame), `src/Sage.Client`, `src/Sage.Editor`, `src/Sage.Host` (exe) and `tests/Sage.Tests`; still singletons, per-frame update, string-keyed archetypes, `BasicEffect` rendering and MGCB content. Each design doc has a "Mapping from today's code" table. The main moves:
 
 | Today | Becomes |
 |---|---|
@@ -227,7 +227,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 | `Console.WriteLine` | `Log` with categories ([02](docs/design/02-core-services-and-logging.md)) |
 
 **Suggested order** (each step keeps the engine running):
-1. **Solution split** (`Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox`, `tests/Sage.Tests`). Move files, and move the simulation to `System.Numerics`. Nothing else is redesigned yet.
+1. ~~**Solution split**~~ **Done 2026-09-22.** `Sage.Engine` / `Sage.Client` / `Sage.Editor` / `Sage.Host` + `tests/Sage.Tests` (15 headless tests); `ComponentTransform` on `System.Numerics`; `IEngineSystem.update(float)` instead of MonoGame's `GameTime`. Two differences from the plan: **`games/Sandbox` is deferred to step 4**, because it needs `IGameModule` to plug in (the test scene stays in `Game1` until then); and **`Sage.Host` references `Sage.Editor`** because today's exe is still game + editor in one.
 2. **Logging + build configurations + console/`developer`** (TODO R10), so every later step has diagnostics.
 3. **`World` + `Engine` objects replace the singletons** (R1); the Friflo spike (D4, R5); fix #15, #33, #38.
 4. **Fixed tick + schedules + phases** (R2, R4).
@@ -253,7 +253,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 | D6 | Level editing | Own editor for terrain/props/entities + **TrenchBroom `.map` import** for brush interiors (later) |
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |
 | D8 | Game UI | ImGui for dev/editor only. **Evaluate Gum / Myra vs custom** before inventory/dialogue screens ([13](docs/design/13-ui.md)) |
-| D9 | Engine licence | Currently **CC0** (`engine/LICENSE`). Recommend **MIT** or **Apache-2.0** (adds a patent grant) if other developers will build commercial games on it. Keep vendored licences (`packages/MonoGame.ImGuiNet-main/LICENSE`). **Needs your decision** |
+| D9 | Engine licence | Currently **CC0** (`LICENSE`). Recommend **MIT** or **Apache-2.0** (adds a patent grant) if other developers will build commercial games on it. Keep vendored licences (`packages/MonoGame.ImGuiNet-main/LICENSE`). **Needs your decision** |
 | D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; **MGCB no longer used** |
 | D11 | Model format for animation | **glTF 2.0** over FBX |
 | D12 | Which game drives development | **Daggerfall-like** (confirmed) |

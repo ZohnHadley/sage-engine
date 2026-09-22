@@ -211,8 +211,8 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `engine/Classes/UtilAssets.cs` (static `stanfordBunny`) | `AssetRef`s loaded into scopes; no statics |
-| `engine/Content/Content.mgcb` + `stanford_bunny.fbx` | `stanford_bunny.glb` loaded at runtime via SharpGLTF. MGCB is no longer used: shaders compile with `dotnet-mgfxc` (07) |
+| `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | `AssetRef`s loaded into scopes; no statics |
+| `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | `stanford_bunny.glb` loaded at runtime via SharpGLTF. MGCB is no longer used: shaders compile with `dotnet-mgfxc` (07) |
 | The FreeImage failure that removed `light.png` (review #9, 2026-09-22) | Textures load with `Texture2D.FromStream` (StbImageSharp, no FreeImage) |
 | `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json` |
 

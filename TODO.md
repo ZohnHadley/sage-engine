@@ -21,20 +21,19 @@ These are against the **current** single-project code. Many disappear when the m
 
 | # | Issue | Where | Plan |
 |---|---|---|---|
-| [~] 15 | Public setters / live dictionaries let callers bypass entity events (`Entity.Components`, `getComponents()`, `EntityContext.EntitiesDict`) | `ECS_base_classes/Entity.cs`, `EntityContext.cs` | Migration → R1 (`World` API, `docs/design/03`) |
-| [~] 24 | Typos: `EnginClasses/`, `IEnginSystem`, comments; `windowWidth` vs `WindowHeight` casing | various | Migration: the solution split (ARCHITECTURE §7 step 1) renames folders and files. Fix comments then |
-| [~] 25 | Dead render code: unused `lightDirection`, redundant empty check, per-effect recompute, empty `update` | `ECS/systems/ModelRendererSystem.cs` | Migration → R9 / F2 (Extract + materials replace this class) |
-| [~] 26 | Spawn loop is 1×1; only the last-spawned bunny is billboarded | `engine/Game1.cs` | Migration → the Sandbox game (billboarding moves to the renderer, F1) |
+| [~] 15 | Public setters / live dictionaries let callers bypass entity events (`Entity.Components`, `getComponents()`, `EntityContext.EntitiesDict`) | `Sage.Engine/ECS/Entity.cs`, `EntityContext.cs` | Migration → R1 (`World` API, `docs/design/03`) |
+| [~] 25 | Dead render code: unused `lightDirection`, redundant empty check, per-effect recompute, empty `update` | `Sage.Client/Rendering/ModelRendererSystem.cs` | Migration → R9 / F2 (Extract + materials replace this class) |
+| [~] 26 | Spawn loop is 1×1; only the last-spawned bunny is billboarded | `Sage.Host/Game1.cs` | Migration → the Sandbox game (billboarding moves to the renderer, F1) |
 | [ ] 33 | `removeComponentFor` mutates the group before validating; fires the event with the caller's instance | `EntityContext.cs` | Migration → R1 (`World.Remove<T>` in `docs/design/03`) |
 | [ ] 34 | `Entity.addComponent` logs and ignores null instead of throwing | `Entity.cs` | Migration → R1 / R10 |
 | [~] 36 | Remaining dead code: `EditorManager.getCamera`, `EntityContext.getGroups`/`getAllEntitiesFromListOfGroups` (with its `Console.WriteLine`), unused `using`s. The unused fields and stale comments were removed 2026-09-22 | various | Migration → R1 / R5 (these classes are replaced) |
-| [ ] 37 | `Game1` reads Escape/GamePad directly instead of through `InputSystem` | `engine/Game1.cs` | Migration → R3 (`Menu` action) |
-| [ ] 38 | Groups/archetypes keyed by type-name strings | `EntityContext.cs`, `Entity.cs`, `Listeners/ArchetypeView.cs`, `ModelRendererSystem.cs` | Migration → R5 (typed queries) |
-| [ ] 39 | Mouse sensitivity scaled by back-buffer/display size (look speed depends on window size) | `CameraClasses/DevCamera.cs` | Migration → R3 / F3 (editor camera rig on actions) |
+| [ ] 37 | `Game1` reads Escape/GamePad directly instead of through `InputSystem` | `Sage.Host/Game1.cs` | Migration → R3 (`Menu` action) |
+| [ ] 38 | Groups/archetypes keyed by type-name strings | `EntityContext.cs`, `Entity.cs`, `Sage.Engine/ECS/Listeners/ArchetypeView.cs`, `ModelRendererSystem.cs` | Migration → R5 (typed queries) |
+| [ ] 39 | Mouse sensitivity scaled by back-buffer/display size (look speed depends on window size) | `Sage.Editor/Camera/DevCamera.cs` | Migration → R3 / F3 (editor camera rig on actions) |
 
-Paths are relative to `engine/Classes/EnginClasses/` unless they start with `engine/`. The full detail for each item is in the history log.
+Paths are relative to `src/`. The full detail for each item is in the history log.
 
-**Quick "fix now" batch: done 2026-09-22.** #9 (light icon field + `light.png` removed), #21/#35 (`TransfomSystem.cs` deleted), #22 (`MouseButton` internal), #32 (scale applied), and the trivial part of #36. Details in the history log. Everything left above waits for the migration.
+**#24 (typos) resolved by the solution split, 2026-09-22.** **Quick "fix now" batch: done 2026-09-22.** #9 (light icon field + `light.png` removed), #21/#35 (`TransfomSystem.cs` deleted), #22 (`MouseButton` internal), #32 (scale applied), and the trivial part of #36. Details in the history log. Everything left above waits for the migration.
 
 ---
 

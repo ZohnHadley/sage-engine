@@ -30,7 +30,7 @@ engine_content/shaders/
   debug.fx            DebugDraw lines/shapes (vertex colour)
   error.fx            flat magenta; the fallback for anything broken
 ```
-- An MSBuild target in `Sage.Client` runs `dotnet-mgfxc <file>.fx <file>.mgfxo /Profile:OpenGL` for every changed `.fx` before build (incremental, by timestamp). `dotnet-mgfxc` is pinned in the repo's `dotnet-tools.json`, like today's `engine/.config/dotnet-tools.json`.
+- An MSBuild target in `Sage.Client` runs `dotnet-mgfxc <file>.fx <file>.mgfxo /Profile:OpenGL` for every changed `.fx` before build (incremental, by timestamp). `dotnet-mgfxc` is pinned in the repo's `dotnet-tools.json`, like the MGCB tools in today's `.config/dotnet-tools.json`.
 - The `.mgfxo` output goes into the engine content mount, where it's loaded as an `Effect` asset (05). MGCB is no longer needed for shaders (the old plan kept it "for shaders only"; the dotnet tool is simpler and scriptable for hot reload).
 - Game and mod shaders follow the same layout in their own mounts; they `#include "common.fxh"` through a shared include path.
 
@@ -168,8 +168,8 @@ dev:     .fx saved ─► watcher runs dotnet-mgfxc ─► success: Effect repla
 | Today | Becomes |
 |---|---|
 | `BasicEffect` in `ModelRendererSystem.render` with `EnableDefaultLighting()` every draw and an unused `lightDirection` (TODO #25) | `lit.fx` `Default` technique via the `lit_default` material; lighting params bound per view |
-| `engine/Content/Content.mgcb` (models/textures today) | Not used for shaders either: `dotnet-mgfxc` via an MSBuild target |
-| `engine/.config/dotnet-tools.json` | Also pins `dotnet-mgfxc` |
+| `src/Sage.Host/Content/Content.mgcb` (models today) | Not used for shaders either: `dotnet-mgfxc` via an MSBuild target |
+| `.config/dotnet-tools.json` | Also pins `dotnet-mgfxc` |
 
 ## 11. v1 scope vs later
 - **v1:**

@@ -264,7 +264,7 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `Console.WriteLine("Component cannot be null.")` in `Entity.addComponent` (`engine/Classes/EnginClasses/ECS_base_classes/Entity.cs:37`) | `Log.Error(LogCat.World, …)` (with TODO #34: throw instead) |
+| `Console.WriteLine("Component cannot be null.")` in `Entity.addComponent` (`src/Sage.Engine/ECS/Entity.cs`) | `Log.Error(LogCat.World, …)` (with TODO #34: throw instead) |
 | `Console.WriteLine("group: " + group)` in `EntityContext.getAllEntitiesFromListOfGroups` (`EntityContext.cs:101`) | Removed with that method (TODO #36) or `Log.Trace(LogCat.World, …)` |
 | (removed 2026-09-22: the unused `InputSystem.isDebug` / `key_binds["toggle_debug"]`) | The `ToggleConsole` action (08), active when the console is available (01 §3.2) |
 | `EditorManager`'s commented-out `debugModes` | Overlay cvars (`stat …`, `r_drawbounds`, `phys_debug`) |

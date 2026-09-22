@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Simulation layer: core, world/ECS, components. Must never reference MonoGame
+    (ARCHITECTURE.md §2 rule 2); math is System.Numerics (decision D2).
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sage.Client" />
+    <InternalsVisibleTo Include="Sage.Editor" />
+    <InternalsVisibleTo Include="Sage.Host" />
+    <InternalsVisibleTo Include="Sage.Tests" />
+  </ItemGroup>
+</Project>
