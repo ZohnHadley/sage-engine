@@ -17,6 +17,13 @@
     "technique": "Unlit"
   },
   {
+    // Heightmap terrain (14 §3). v1 is one tiling texture; splat materials come with LOD (07 §11).
+    "type": "material",
+    "id": "terrain_default",
+    "base": "lit_default",
+    "params": { "Albedo": "textures/ground.png" }
+  },
+  {
     // Billboard sprites (06 §3.8). Point sampling and alpha test give the Daggerfall look; the sheet's
     // texture replaces Albedo per draw, so one material serves every sheet.
     "type": "material",

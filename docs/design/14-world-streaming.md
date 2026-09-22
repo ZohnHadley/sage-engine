@@ -42,6 +42,16 @@ In `Sage.Engine` (data, terrain generation), with client parts for terrain meshe
 - **Terrain:** per sector a 129×129 height grid (8 m spacing) plus LOD meshes; vertex-coloured / single-texture v1; splat materials later (07).
 - **Fast travel / teleport:** load the target sectors behind a loading screen, rebase the origin, place the player.
 
+### As built (F13, 2026-09-22): one sector, no streaming
+- **Code:** `src/Sage.Engine/World/Terrain.cs` (`SectorCoord`, `Heightfield`, `ITerrainGenerator`, `TerrainSector`, the `Terrain` world resource) and `src/Sage.Client/Rendering/TerrainMesh.cs` (`TerrainMeshSystem`).
+- **Every world has a `Terrain` resource.** A game sets `Generator` and `Seed` and calls `Load(sector)`; the sector's 129×129 heightfield (8 m spacing over 1024 m) is generated on the main thread, once per sector.
+- **Meshes:** `TerrainMeshSystem` (FrameUpdate) builds the chunk meshes of any sector it hasn't drawn yet: 4×4 chunks of 32×32 cells, each its own `Renderer.CreateMesh` and its own entity with a `MeshRenderer` holding the **`MeshHandle`** (R9: subsystems own the data, components hold handles). Chunks are ordinary mesh items, so they cull, sort and draw with everything else — there is no separate `TerrainExtract`.
+- **Material:** `sage:terrain_default` (one tiling ground texture over `lit.fx`). Splat materials come with LOD.
+- **Ground height:** `Terrain.HeightAt/NormalAt/OnGround` sample the heightfield bilinearly. The Sandbox places its scene with them. **This is the stand-in for collision until physics (F6) has a heightfield collider** — F13's "meshes + collision" is therefore only half done.
+- **`SectorCoord` exists but nothing rebases yet:** everything lives in sector (0, 0) and chunk vertices are absolute world positions. Sector-local transforms, `Origin` and rebasing are R6; until then the terrain must stay near the origin for float precision.
+- **Edges:** normals at a sector's border are computed from its own clamped heights, so neighbouring sectors will show a faint seam until streaming samples across them (F14).
+- **Not yet (F14):** streaming rings, LOD, per-sector asset scopes, dormancy, `stream_debug`, generation on jobs.
+
 ## 4. API sketch
 ```csharp
 public struct Origin { public SectorCoord Sector; }                     // world resource
@@ -76,5 +86,5 @@ The server tracks one streaming source per player. Origin space becomes per clie
 ## 14. Build steps
 1. `SectorCoord`/`Origin` + propagation relative to the origin + rebasing (with 03; TODO R6).
 2. Sector load/unload with asset scopes and dormancy (TODO F14).
-3. Heightfield terrain: generator interface, meshes, collision (TODO F13).
+3. Heightfield terrain: generator interface, meshes, collision (TODO F13). **Generator + meshes done 2026-09-22** ("As built"); collision waits for physics (F6).
 4. Interiors as spaces + door transitions.

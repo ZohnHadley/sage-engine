@@ -57,6 +57,7 @@ public sealed class World : IDisposable
         // Resources every world has (headless ones too, so simulation code can rely on them).
         Resources.Set(new ActiveCamera());
         Resources.Set(new RenderEnvironment());
+        Resources.Set(new Terrain());
         Resources.Set(new PlayerInput());
     }
 

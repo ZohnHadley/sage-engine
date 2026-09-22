@@ -27,6 +27,7 @@ internal sealed class MeshData
     public required string Name;
     public required MeshPart[] Parts;
     public bool IsError;
+    public bool Owned;   // buffers the renderer created (error mesh, terrain chunks): it disposes them
 }
 
 // The client renderer (docs/design/06): owns GPU-side meshes by id and the material cache, and draws a
@@ -132,6 +133,38 @@ public sealed class Renderer : IDisposable
     }
 
     internal MeshData Mesh(int id) => _meshes[id];
+
+    // A mesh built by the engine or a game (terrain chunks, 14 §3): the renderer owns the buffers and
+    // hands back a handle (06 §4). Destroy it with DestroyMesh when the chunk goes away.
+    public MeshHandle CreateMesh(ReadOnlySpan<VertexPositionNormalTexture> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name = "(procedural)")
+    {
+        var vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration, vertices.Length, BufferUsage.WriteOnly);
+        vb.SetData(vertices.ToArray());
+        var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, indices.Length, BufferUsage.WriteOnly);
+        ib.SetData(indices.ToArray());
+        var part = new MeshPart
+        {
+            VertexBuffer = vb,
+            IndexBuffer = ib,
+            PrimitiveCount = indices.Length / 3,
+            Bounds = bounds,
+        };
+        _meshes.Add(new MeshData { Name = name, Parts = new[] { part }, Owned = true });
+        return new MeshHandle(_meshes.Count - 1);
+    }
+
+    public void DestroyMesh(MeshHandle handle)
+    {
+        if (handle.IsEmpty || handle.Id >= _meshes.Count) return;
+        var mesh = _meshes[handle.Id];
+        if (mesh.IsError) return;
+        foreach (var part in mesh.Parts)
+        {
+            part.VertexBuffer.Dispose();
+            part.IndexBuffer.Dispose();
+        }
+        _meshes[handle.Id] = _meshes[0];   // the slot keeps its id; anything still drawing it gets the error mesh
+    }
 
     // The texture id for an asset path, loading it on first use. Missing → 0, the checker (05 §8).
     internal int ResolveTexture(AssetPath path)
@@ -336,17 +369,27 @@ public sealed class Renderer : IDisposable
         {
             Name = "(error)",
             IsError = true,
+            Owned = true,
             Parts = new[] { new MeshPart { VertexBuffer = vb, IndexBuffer = ib, PrimitiveCount = indices.Count / 3, Bounds = new BoundingSphere(Vector3.Zero, 0.87f) } },
         };
     }
 
     public void Dispose()
     {
-        var error = _meshes[0].Parts[0];
-        error.VertexBuffer.Dispose();
-        error.IndexBuffer.Dispose();
+        // Buffers the renderer made (the error mesh, terrain chunks). Model buffers, effects and
+        // textures belong to the ContentService.
+        var disposed = new HashSet<VertexBuffer>();
+        foreach (var mesh in _meshes)
+        {
+            if (!mesh.Owned) continue;
+            foreach (var part in mesh.Parts)
+            {
+                if (!disposed.Add(part.VertexBuffer)) continue;   // DestroyMesh leaves aliased slots
+                part.VertexBuffer.Dispose();
+                part.IndexBuffer.Dispose();
+            }
+        }
         _sprites.Dispose();
         Materials.Dispose();
-        // Model buffers, effects and textures belong to the ContentService.
     }
 }

@@ -21,7 +21,7 @@ These are against the **current** single-project code. Many disappear when the m
 
 | # | Issue | Where | Plan |
 |---|---|---|---|
-| [~] 41 | Per-frame allocations: **found** — the ImGui entity inspector builds a label string per listed entity per frame (~130 B each); the engine loop, renderer and host frame allocate **nothing** without it | `Sage.Editor/Screens/EntityContextMenuUI.cs` | Collapsing the window now costs nothing (F1). Left: cache the labels, or list only what's visible, when scenes get big (02 §4.6) |
+| [~] 41 | Per-frame allocations: **found** — the ImGui entity inspector builds a label string per listed entity per frame (~130 B each, so ~4 KB once terrain chunks are entities); the engine loop, renderer, terrain and host frame allocate **nothing** without it | `Sage.Editor/Screens/EntityContextMenuUI.cs` | Collapsing the window or `ui_entities 0` costs nothing (F1, F13). Left: cache the labels, or list only what's visible (02 §4.6) |
 
 Paths are relative to `src/`. The full detail for each item is in the history log.
 
@@ -87,7 +87,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F12. Attachment points.** Weapons, shields and riders on bones. → `12`
 
 #### Phase 4 — World
-- [ ] **F13. Heightmap terrain (v1: one sector, no LOD).** 129×129 grid per 1024 m sector, game-provided `ITerrainGenerator`, meshes + collision; LOD and splat materials later. → `14`
+- [~] **F13. Heightmap terrain (v1: one sector, no LOD).** *Done 2026-09-22 except collision: `Terrain` world resource, `Heightfield` (129×129 per 1024 m sector), game-provided `ITerrainGenerator`, chunk meshes through `Renderer.CreateMesh` + `MeshHandle`, `sage:terrain_default`, and `HeightAt`/`OnGround` for standing on the ground. Collision needs a heightfield collider (F6); LOD, splat materials and streaming are F14.* 129×129 grid per 1024 m sector, game-provided `ITerrainGenerator`, meshes + collision; LOD and splat materials later. → `14`
 - [ ] **F14. World streaming.** Streaming rings around the player (Daggerfall Unity model), per-sector asset scopes, dormancy into the save cache, origin rebasing. Depends on R6. → `14`
 - [ ] **F15. Procedural generation.** Seeded towns, dungeons and wilderness; deterministic from the seed so saves store only visited sectors. → `14`, `09`
 - [ ] **F16. Brush/level geometry.** TrenchBroom `.map` import (+ FGD export from component metadata); lightmaps later. → `15`
@@ -136,4 +136,5 @@ This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F1
 - **Main loop (step 4):** fixed tick + interpolation, schedules/phases, profiler, `stat frame`, `sys_list`, `pause`, `host_exitafter`.
 - **Rendering, materials, input (step 6):** Extract → `RenderSnapshot` → `Renderer`; material records and our own shaders; input actions/contexts → `PlayerCommand`; `r_stats`, `mat_list`/`mat_info`, `bindlist`, `in_tap`, `screenshot`.
 - **Sprites (F1):** `sprite_sheet` records, billboards with 8 direction groups, sprite animation at the tick rate, the CPU sprite batcher; `cam_set` and `screenshot [delay]` for repeatable viewpoint checks.
+- **Terrain (F13):** `Terrain`/`Heightfield`/`ITerrainGenerator` per world, chunk meshes from `Renderer.CreateMesh`, ground-height sampling; the Sandbox generates hills and stands its scene on them.
 - **Modules, VFS, records (step 5):** `IModule` + `game.json` + the `games/Sandbox` game module; VFS mounts with shadowing; the `RecordStore` (patch merge, inheritance, validation, hot reload); `modules`, `vfs_which`/`vfs_ls`/`vfs_mounts`, `rec_list`/`rec_get`/`rec_reload`.

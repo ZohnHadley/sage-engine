@@ -27,6 +27,7 @@ public class Game1 : Game
     private World world;
     private RecordHotReload recordHotReload;
     private CVar<bool> recHotReload;
+    private CVar<bool> showEntities;
 
     private readonly GraphicsDeviceManager graphics;
     private GraphicsDevice graphicsDevice;
@@ -88,6 +89,8 @@ public class Game1 : Game
         // Developer console (`~`), `stat` overlays and loop cvars; see docs/design/02 and 01 §3.2, §5.2.
         hostCVars = new HostCVars(cvars);
         hostCVars.VSync.Changed += _ => ApplyVSync();
+        showEntities = cvars.Register("ui_entities", true, CVarFlags.DevOnly | CVarFlags.Archive,
+            "Show the entity list window. It allocates per listed entity per frame (TODO #41).");
         recHotReload = cvars.Register("rec_hotreload", engine.Core.Developer.Value >= 1, CVarFlags.DevOnly,
             "Reload record files (data/**/*.json) when they change on disk.");
         console = new DevConsoleWindow(cvars, engine.Core);
@@ -212,7 +215,7 @@ public class Game1 : Game
         {
             guiRenderer.BeginLayout(gameTime);
             editorUI.Draw(this);
-            entityInspector.draw();
+            if (showEntities.Value) entityInspector.draw();
             console.Draw();
             stats.Draw();
             guiRenderer.EndLayout();

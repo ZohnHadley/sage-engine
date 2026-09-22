@@ -95,8 +95,8 @@ internal sealed class MeshExtract : ISystem
             for (int n = 0; n < g.Length; n++)
             {
                 ref readonly var mr = ref r[n];
-                if (mr.Mesh.IsEmpty) continue;
-                int meshId = _renderer.ResolveMesh(mr.Mesh);
+                if (mr.Handle.IsEmpty && mr.Mesh.IsEmpty) continue;
+                int meshId = mr.Handle.IsEmpty ? _renderer.ResolveMesh(mr.Mesh) : mr.Handle.Id;
                 var mesh = _renderer.Mesh(meshId);
                 int materialId = mesh.IsError ? 0 : materials.Resolve(mr.Material);
                 var material = materials.Get(materialId);

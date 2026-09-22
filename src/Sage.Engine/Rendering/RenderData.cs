@@ -11,11 +11,19 @@ namespace sage_engine;
 // Simulation-side rendering data (docs/design/06 §4, 07 §4). No MonoGame types: the client's Extract
 // phase reads these and builds the RenderSnapshot.
 
-// Draws a mesh asset at the entity's interpolated GlobalTransform (06 §3.2). An empty Material means
-// sage:lit_default.
+// A mesh the renderer built itself (terrain chunks, later procedural geometry): the GPU buffers live
+// in the renderer and components only hold the handle (R9, 06 §4). 0 = none.
+public readonly record struct MeshHandle(int Id)
+{
+    public bool IsEmpty => Id == 0;
+}
+
+// Draws a mesh at the entity's interpolated GlobalTransform (06 §3.2), either a mesh asset (Mesh) or
+// one the renderer built (Handle, which wins). An empty Material means sage:lit_default.
 public struct MeshRenderer : IComponent
 {
     public AssetPath Mesh;
+    public MeshHandle Handle;
     public RecordId Material;
     public byte Layer;   // sort layer (0..15), before material in the sort key (06 §3.5)
 }

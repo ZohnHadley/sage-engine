@@ -119,6 +119,9 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | Name | Meaning | Doc |
 |---|---|---|
 | `RenderSnapshot` | Pooled per-frame copy of everything rendering needs, built in Extract | 06 |
+| `SectorCoord` | Which 1024 m sector of the exterior something is in; today everything is in (0, 0) | 14, 03 |
+| `Heightfield` / `Terrain` | A square grid of heights, and the world resource holding the loaded sectors (ground height for gameplay, chunk meshes for the client) | 14 |
+| `MeshHandle` | A mesh the renderer built (terrain chunks): the buffers live in the renderer, components hold the handle | 06 |
 | `SpriteRenderer` / `sprite_sheet` | Billboard component, and the record holding a sheet's texture, direction groups, frames and animations | 06, 12 |
 | `BillboardMode` | `Cylindrical` (turns about Y: characters, trees) or `Spherical` (faces the camera fully) | 06 |
 | `SpriteAnimator` | Component with the playing clip index and its time, advanced by the simulation | 12 |

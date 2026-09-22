@@ -56,6 +56,8 @@ public sealed class ClientModule : IModule
         // Sprite animation is simulation, not rendering (12 §3): it runs at the tick rate, and a
         // headless server would run it too. It lives here until there is a framework module.
         world.AddSystem(new SpriteAnimationSystem(world), Phase.Animation);
+        // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
+        world.AddSystem(new TerrainMeshSystem(world, _renderer!), Phase.FrameUpdate);
         world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);
         world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new SpriteExtract(world, _renderer!, _records!), Phase.Extract, after: new[] { typeof(CameraExtract) });

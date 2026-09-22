@@ -27,6 +27,12 @@ public sealed class SandboxModule : IGameModule
 
     public void OnWorldCreated(World world)
     {
+        // Terrain first: the scene is placed on the ground (14 §3, TODO F13).
+        var terrain = world.Resources.Get<Terrain>();
+        terrain.Generator = new HillsGenerator();
+        terrain.Seed = 1;
+        terrain.Load(SectorCoord.Zero);
+
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
@@ -53,9 +59,14 @@ public sealed class SandboxModule : IGameModule
         foreach (var spawn in _records!.All<SpawnRecord>())
         {
             if (spawn.Model.IsEmpty && spawn.Sheet.IsEmpty) continue;
+            // A spawn's position is relative to the scene's spot in the sector, and its y is height
+            // above the ground: everything stands on the terrain.
+            var terrain = world.Resources.Get<Terrain>();
+            Vector3 position = HillsGenerator.SceneCenter + spawn.Position;
+            position.Y = terrain.HeightAt(position.X, position.Z) + spawn.Position.Y;
             var transform = new Transform
             {
-                LocalPosition = spawn.Position,
+                LocalPosition = position,
                 LocalRotation = Quaternion.CreateFromYawPitchRoll(spawn.Yaw * MathF.PI / 180f, 0, 0),
                 LocalScale = Vector3.One,
             };
@@ -70,7 +81,7 @@ public sealed class SandboxModule : IGameModule
                 world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
                 if (spawn.FacesCamera) e.AddTag<FacesCamera>();
             }
-            world.Add(e, new Hop { BaseY = spawn.Position.Y });
+            world.Add(e, new Hop { BaseY = position.Y });
             e.AddTag<FromSpawnRecord>();
         }
         Log.Info(LogCat.Gameplay, $"Sandbox: spawned {world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Count} entities in '{world.Name}'");
