@@ -5,38 +5,40 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
 
-// Draws every entity with Transform + ModelRenderer using BasicEffect. One instance per world
-// (no singleton). Replaced by Extract + RenderSnapshot + materials (docs/design/06, 07; TODO R9).
-internal sealed class ModelRendererSystem : IComponentSystem
+// Render phase: draws every entity with GlobalTransform + ModelRenderer using BasicEffect, at the
+// pose interpolated between the last two ticks (FrameTime.Alpha), so motion is smooth at any frame
+// rate. Replaced by Extract + RenderSnapshot + materials (docs/design/06, 07; TODO R9).
+internal sealed class ModelRendererSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, ModelRenderer> _renderables;
+    private readonly ArchetypeQuery<GlobalTransform, ModelRenderer> _renderables;
 
     public ModelRendererSystem(World world)
     {
-        _renderables = world.Query<Transform, ModelRenderer>();
+        _renderables = world.Query<GlobalTransform, ModelRenderer>();
     }
 
-    public void update(float deltaSeconds) { }
-
-    public void render(Matrix view, Matrix projection)
+    public void Run(in SystemContext ctx)
     {
-        foreach (var (transforms, renderers, _) in _renderables.Chunks)
+        var view = ctx.World.Resources.Get<RenderView>();
+        float alpha = ctx.Frame.Alpha;
+
+        foreach (var (globals, renderers, _) in _renderables.Chunks)
         {
-            var t = transforms.Span;
+            var g = globals.Span;
             var r = renderers.Span;
-            for (int n = 0; n < t.Length; n++)
+            for (int n = 0; n < g.Length; n++)
             {
                 Model? model = r[n].Model;
                 if (model == null) continue;
 
-                Matrix world = t[n].LocalMatrix;   // System.Numerics → MonoGame (implicit conversion)
+                Matrix world = g[n].Interpolated(alpha).ToMatrix();   // System.Numerics → MonoGame (implicit)
                 foreach (ModelMesh mesh in model.Meshes)
                 {
                     foreach (BasicEffect effect in mesh.Effects)
                     {
-                        effect.View = view;
+                        effect.View = view.View;
                         effect.World = world;
-                        effect.Projection = projection;
+                        effect.Projection = view.Projection;
                         effect.EnableDefaultLighting();
                     }
                     mesh.Draw();

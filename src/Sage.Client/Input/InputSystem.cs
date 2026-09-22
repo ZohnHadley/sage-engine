@@ -7,7 +7,7 @@ namespace sage_engine;
 
 // Device input facade over the keyboard and mouse listeners. One instance, owned by the host and
 // passed to whoever needs it (no singleton; becomes InputDevices + actions in TODO R3, docs/design/08).
-internal class InputSystem : IEngineSystem
+internal class InputSystem
 {
     private KeyboardListener _keyboardListener;
     private MouseListener _mouseListener;

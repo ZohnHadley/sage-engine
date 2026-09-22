@@ -74,7 +74,7 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `PersistentId` | Stable id for placed or saved entities, used by maps, saves, quests | 03, 09 |
 | Component | Plain data attached to an entity: a struct implementing `Friflo.Engine.ECS.IComponent`. No behaviour, no service references | 03 |
 | System | Code that runs over queries in a schedule phase | 03 |
-| `CommandBuffer` | Deferred structural changes (spawn, despawn, add/remove component): Friflo's, reached through `World.Commands`, applied at `FlushCommands` (at phase boundaries from step 4) | 03 |
+| `CommandBuffer` | Deferred structural changes (spawn, despawn, add/remove component): Friflo's, reached through `World.Commands`, applied at the end of every phase (and by `World.FlushCommands`) | 03 |
 | `Schedule.Fixed` | Runs at a fixed rate, `sim_tickrate` (default **60 Hz**). Gameplay, physics, AI | 01, 03 |
 | `Schedule.Frame` | Runs once per rendered frame. Camera, cosmetics, extract, render, UI | 01, 03 |
 | Fixed phases | `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late` | 03 |

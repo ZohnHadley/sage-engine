@@ -193,7 +193,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `src/Sage.Client/Rendering/ModelRendererSystem.cs`: iterates entities in `render()`, uses `BasicEffect`, calls `EnableDefaultLighting()` per mesh per frame, recomputes the world matrix per effect (TODO #25) | `MeshExtract` (reads `GlobalTransform` + `MeshRenderer`) + the opaque pass with material effects (07). Scale is part of the pose |
+| *(step 4: now a Render-phase `ISystem` that draws `GlobalTransform.Interpolated(alpha)`, with camera matrices from a `RenderView` world resource; a stand-in for Extract + snapshot)* `src/Sage.Client/Rendering/ModelRendererSystem.cs`: iterates entities in `render()`, uses `BasicEffect`, calls `EnableDefaultLighting()` per mesh per frame, recomputes the world matrix per effect (TODO #25) | `MeshExtract` (reads `GlobalTransform` + `MeshRenderer`) + the opaque pass with material effects (07). Scale is part of the pose |
 | `Game1.Draw`: sets `DepthStencilState.Default`, `RasterizerState.CullCounterClockwise`, clears to `DarkOliveGreen` | Pass setup (§3.4); the clear colour comes from `Environment` |
 | `DevCamera`: `projectionMatrix`/`viewMatrix`, 45° FOV, near 0.01 / far 1000 | `Camera` component + `CameraExtract`. The editor's free-fly camera (15) is one camera rig. Near plane raised (0.01 is too small for depth precision at 1000 far; 0.1 suggested) |
 | `TransformMath.Billboard` + the per-frame call in `Game1.Update` (TODO #26, #31) | `SpriteRenderer` with `BillboardMode` + direction selection at extract |

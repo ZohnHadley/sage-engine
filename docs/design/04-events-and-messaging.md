@@ -85,7 +85,8 @@ public sealed class EventReader<T> where T : struct
     public bool HasPending { get; }
 }
 
-// Systems get readers/writers through their access declaration:
+// Systems get readers/writers through their access declaration (ISystem.Declare arrives with this event bus;
+// step 4 built ISystem without it, 03 §3.5):
 //   public void Declare(SystemAccess a) => a.ReadsEvents<Damaged>(out _damaged).SendsEvents<Died>(out _died);
 
 public readonly struct IOContext { public EntityRef Activator, Caller; public IOValue Param; }

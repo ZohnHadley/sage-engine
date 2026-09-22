@@ -193,7 +193,7 @@ Built-in commands (engine): `help [name]`, `find <text>`, `cvarlist [prefix]`, `
 Launch arguments (`+name value`, `+command args`) and `config.cfg` run **after every cvar and command is registered**, so `+stat fps` works from the command line (01 §5.1).
 
 ### 4.3 Time
-*Arrives with the fixed tick in migration step 4 (TODO R2); not built in step 2.*
+*Built in migration step 4 (`Sage.Engine/Core/Time.cs`), as record structs `TickTime(Tick, Dt, SimTime)` and `FrameTime(Frame, Dt, Alpha, RealTime)`.*
 ```csharp
 public readonly struct TickTime  { public long Tick; public float Dt; public double SimTime; }   // Fixed schedule
 public readonly struct FrameTime { public long Frame; public float Dt; public float Alpha; public double RealTime; }
@@ -201,7 +201,7 @@ public readonly struct FrameTime { public long Frame; public float Dt; public fl
 Systems receive these through their run context (03), never through `DateTime.Now` or MonoGame's `GameTime`. That's what makes headless tests and time scaling work.
 
 ### 4.4 Profiler
-*Arrives in migration step 4, when there are tick phases for the host to wrap; not built in step 2. The `stat fps`/`stat mem` overlay and the allocation counter already exist.*
+*Built in migration step 4 (`Sage.Engine/Core/Diagnostics/Profiler.cs`). `World` wraps every phase (`Fixed.Gameplay`) and system (`Fixed.Gameplay/FaceCameraSystem`); the host adds `Frame.ImGui`. Per-frame totals and a ~20-frame moving average; enabled in dev builds, off in Shipping. Chrome-trace dump and Tracy are still later.*
 ```csharp
 public static class Profiler
 {
@@ -280,7 +280,7 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
 ## 9. Debug and tooling hooks
 - **Cvars:** `developer` (`DevOnly`, defaults setter, 01 §3.2), `con_enable` (`Archive`; Shipping console), `log_keep`, `log_queue_size`, `log_console_level`, `log_file_level`, `sv_cheats`, `mem_warn_bytes`, `mem_lowlatency`.
 - **Commands:** `help`, `find`, `cvarlist`, `cmdlist`, `echo`, `exec`, `log_level`, `log_list`, `mem`, `crash`; host/editor `quit`, `stat`, `clear`, `toggleconsole`. Later: `profile_start`, `profile_stop`.
-- **Overlays:** `stat fps` (fps, average and worst ms over 0.5 s) and `stat mem` (bytes allocated per frame, heap, GC counts, dropped log entries). `stat frame` (per-phase ms) arrives with the profiler.
+- **Overlays:** `stat fps` (fps, average and worst ms over 0.5 s) and `stat mem` (bytes allocated per frame, heap, GC counts, dropped log entries), and `stat frame` (average ms per phase and system, from the profiler; built in step 4).
 - **Later: visual logger** (Unreal's idea). `VLog.Shape(cat, entity, shape, color, text)` records world-space shapes with the tick. An editor timeline scrubs through them, which is especially useful for AI ("why did it path there?").
 
 ## 10. Mapping from today's code
@@ -301,7 +301,7 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
   - ✓ crash reports;
   - ✓ cvars/commands + `config.cfg` + launch arguments;
   - ✓ the allocation counter + `stat fps`/`stat mem`;
-  - `TickTime`/`FrameTime` and profiler scopes (step 4, with the fixed tick and phases);
+  - ✓ `TickTime`/`FrameTime` and profiler scopes + `stat frame` (step 4);
   - `JobSystem` over the thread pool (step 5, with async asset loading).
 - **Later:** console command history and Tab completion (`CVarRegistry.Complete` exists; the ImGui input callback isn't wired yet), editor log panel, Chrome-trace dump, Tracy, visual logger, structured-field search.
 
@@ -318,5 +318,5 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
 2. ✓ Build configurations + `SAGE_DEV` symbol + `developer` cvar + console availability (with 01; TODO R10).
 3. ✓ `CrashReporter` (TODO R10).
 4. ✓ `CVarRegistry` + console commands + `config.cfg` + launch arguments + the ImGui console window (TODO R10).
-5. Half done: ✓ the allocation counter and `stat fps`/`stat mem`; `Profiler` scopes + `stat frame` in step 4 (TODO F5, R2).
+5. ✓ The allocation counter and `stat fps`/`stat mem` (step 2); `Profiler` scopes + `stat frame` (step 4) (TODO F5, R2).
 6. `JobSystem` (with 05 async loading, step 5).

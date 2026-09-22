@@ -14,7 +14,10 @@ namespace sage_engine;
 // - Queries are Friflo's ArchetypeQuery types, returned as-is so nothing is lost to wrapping.
 //   Create a query once (e.g. in a system's constructor) and keep it; iterate `query.Chunks`
 //   in hot paths (zero allocations), `query.Entities` elsewhere.
-// - Structural changes inside a query loop throw; use `Commands` + FlushCommands() for those.
+// - Structural changes inside a query loop throw; use `Commands` for those. They're applied at the
+//   end of every phase (and by FlushCommands()).
+// - Systems run in schedules and phases (03 §3.5): the host calls RunFixed once per simulation tick
+//   and RunFrame once per rendered frame (01 §5.2).
 //
 // Structural notifications (04 §3.3), raised immediately on the world's thread:
 //   EntitySpawned  before any ComponentAdded for that entity
@@ -24,7 +27,11 @@ public sealed class World : IDisposable
 {
     private readonly EntityStore _store;
     private readonly Dictionary<PersistentId, Entity> _persistent = new();
+    private readonly SystemScheduler _scheduler = new();
+    private readonly TransformPropagation _propagation;
     private CommandBuffer? _commands;
+    private TickTime _lastTick;
+    private long _frame;
 
     public string Name { get; }
     public Engine? Engine { get; }
@@ -46,6 +53,7 @@ public sealed class World : IDisposable
         _store.OnComponentAdded += OnComponentAdded;
         _store.OnComponentRemoved += OnComponentRemoved;
         _store.OnEntityDelete += OnEntityDelete;
+        _propagation = new TransformPropagation(this);
     }
 
     // The underlying store, for engine code (editor listing, serializers). Game code uses the API below.
@@ -53,9 +61,17 @@ public sealed class World : IDisposable
 
     public int EntityCount => _store.Count;
 
+    // Fixed schedule systems with RunCondition WhenNotPaused (the default) are skipped while paused;
+    // Frame systems (camera, UI, rendering) keep running (01 §5.2).
+    public bool Paused { get; set; }
+
+    public long Tick => _lastTick.Tick;
+    public double SimTime => _lastTick.SimTime;
+
     // ---- Entities -------------------------------------------------------------------------------
 
-    // Every entity starts with a Transform (identity) and, when given, a name.
+    // Every entity starts with a Transform (identity unless given), a GlobalTransform at the same pose
+    // (so it doesn't interpolate in from the origin) and, when given, a name.
     // Outside query loops only; inside one, use Commands.
     public Entity Create(string? name = null) => Create(Transform.Identity, name);
 
@@ -63,6 +79,7 @@ public sealed class World : IDisposable
     {
         var entity = _store.CreateEntity();
         entity.AddComponent(transform);
+        entity.AddComponent(GlobalTransform.At(Pose.FromLocal(transform)));
         if (name != null)
             entity.AddComponent(new EntityName(name));
         return entity;
@@ -139,6 +156,16 @@ public sealed class World : IDisposable
         return true;
     }
 
+    // Moves a root entity without interpolating the jump (spawn points, doors, fast travel): sets
+    // Transform and both poses of GlobalTransform. Children follow at the next propagation.
+    public void Teleport(Entity entity, in Transform transform)
+    {
+        if (!Has<Transform>(entity)) { Assert.Ensure(false, $"Teleport: {Describe(entity)} has no Transform"); return; }
+        Get<Transform>(entity) = transform;
+        if (Has<GlobalTransform>(entity) && entity.Parent.IsNull)
+            Get<GlobalTransform>(entity) = GlobalTransform.At(Pose.FromLocal(transform));
+    }
+
     // ---- Hierarchy ------------------------------------------------------------------------------
 
     public void SetParent(Entity child, Entity parent)
@@ -172,17 +199,92 @@ public sealed class World : IDisposable
     // Every entity (editor, tools, debug commands).
     public ArchetypeQuery QueryAll() => _store.Query();
 
+    // ---- Systems and schedules ---------------------------------------------------------------------
+
+    // Registers a system in a phase. `before`/`after` name system types in the same phase; otherwise
+    // systems run in registration order. A cycle throws.
+    public SystemInfo AddSystem(ISystem system, Phase phase, RunCondition condition = RunCondition.Default,
+        Type[]? before = null, Type[]? after = null)
+    {
+        var info = _scheduler.Add(system, phase, condition, before ?? Type.EmptyTypes, after ?? Type.EmptyTypes);
+        Log.Debug(LogCat.World, $"System {info.Name} added to {phase} in '{Name}'");
+        return info;
+    }
+
+    public bool RemoveSystem(ISystem system) => _scheduler.Remove(system);
+
+    public IEnumerable<SystemInfo> Systems => _scheduler.All;
+
+    // One simulation tick: copy poses for interpolation, then every Fixed phase in order, applying
+    // buffered structural changes after each and propagating transforms after PostPhysics and Late.
+    public void RunFixed(float dt)
+    {
+        _lastTick = new TickTime(_lastTick.Tick + 1, dt, _lastTick.SimTime + dt);
+        Log.SetTick(_lastTick.Tick);
+        _propagation.BeginTick();
+
+        var frame = new FrameTime(_frame, 0, 1, 0);
+        for (var phase = Phase.Commands; phase < PhaseInfo.FirstFrame; phase++)
+        {
+            RunPhase(phase, _lastTick, frame);
+            if (phase == Phase.PostPhysics || phase == Phase.Late)
+            {
+                using var _ = Profiler.Begin("Fixed.TransformPropagation");
+                _propagation.Propagate();
+            }
+        }
+    }
+
+    // One rendered frame: FrameUpdate, Extract, Render, Overlay. `alpha` interpolates between the
+    // previous and the current tick (GlobalTransform.Interpolated).
+    public void RunFrame(float dt, float alpha, double realTime = 0)
+    {
+        var frame = new FrameTime(++_frame, dt, alpha, realTime);
+        for (var phase = PhaseInfo.FirstFrame; phase <= Phase.Overlay; phase++)
+            RunPhase(phase, _lastTick, frame);
+    }
+
+    private void RunPhase(Phase phase, in TickTime tick, in FrameTime frame)
+    {
+        var systems = _scheduler.In(phase);
+        if (systems.Count == 0 && !HasPendingCommands) return;
+
+        using (Profiler.Begin(_scheduler.PhaseProfileName(phase)))
+        {
+            var ctx = new SystemContext(this, phase, tick, frame);
+            for (int i = 0; i < systems.Count; i++)
+            {
+                var s = systems[i];
+                if (!s.Enabled || !ShouldRun(s)) continue;
+                using var _ = Profiler.Begin(s.ProfileName);
+                s.System.Run(ctx);
+            }
+            FlushCommands();
+        }
+    }
+
+    private bool ShouldRun(SystemInfo s) => s.Condition switch
+    {
+        RunCondition.Always => true,
+        RunCondition.WhenNotPaused => !Paused,
+        RunCondition.DevOnly => BuildInfo.IsDevBuild,
+        _ => PhaseInfo.ScheduleOf(s.Phase) == Schedule.Frame || !Paused,
+    };
+
     // ---- Deferred structural changes -------------------------------------------------------------
 
-    // Record structural changes here while iterating a query; they apply at FlushCommands().
-    // (Flush points move to the end of every schedule phase in migration step 4.)
+    // Record structural changes here while iterating a query; they're applied at the end of the
+    // current phase (or by FlushCommands()).
     public CommandBuffer Commands => _commands ??= CreateCommandBuffer();
+
+    private bool HasPendingCommands => _commands != null &&
+        (_commands.EntityCommandsCount > 0 || _commands.ComponentCommandsCount > 0 ||
+         _commands.TagCommandsCount > 0 || _commands.ChildCommandsCount > 0);
 
     public void FlushCommands()
     {
-        if (_commands != null && (_commands.EntityCommandsCount > 0 || _commands.ComponentCommandsCount > 0 ||
-                                  _commands.TagCommandsCount > 0 || _commands.ChildCommandsCount > 0))
-            _commands.Playback();
+        if (HasPendingCommands)
+            _commands!.Playback();
     }
 
     private CommandBuffer CreateCommandBuffer()

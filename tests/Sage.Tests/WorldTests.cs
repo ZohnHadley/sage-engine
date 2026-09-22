@@ -91,9 +91,10 @@ public class WorldTests
         world.Add(e, new Health());
         world.Destroy(e);
 
-        Assert.Equal(new[] { "spawned", "+Transform", "+Health" }, log.Take(3));
+        Assert.Equal(new[] { "spawned", "+Transform", "+GlobalTransform", "+Health" }, log.Take(4));
         Assert.Equal("destroyed", log[^1]);
         Assert.Contains("-Transform", log);
+        Assert.Contains("-GlobalTransform", log);
         Assert.Contains("-Health", log);
         Assert.True(log.IndexOf("-Health") < log.IndexOf("destroyed"));
     }

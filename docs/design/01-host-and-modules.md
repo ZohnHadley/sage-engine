@@ -173,10 +173,12 @@ each MonoGame Update/Draw pair:
   for each world: world.RunFrame(frameDt, alpha)       // FrameUpdate → Extract → Render → Overlay
 ```
 
-- `sim_tickrate` default **60 Hz**; `sim_maxframetime` default 0.25 s; `host_timescale` (DevOnly) default 1.
+- `sim_tickrate` default **60 Hz**; `sim_maxframetime` default 0.25 s; `host_timescale` (DevOnly, Cheat) default 1.
+- **Built in step 4** (`FixedStepClock` in `Sage.Engine/Core/Time.cs`, loop in `Game1`). Measured with `host_exitafter 3` and vsync off: ~2,250 fps with exactly 60.0 ticks/s at `sim_tickrate 60` and 5.0 ticks/s at `sim_tickrate 5`.
 - `Extract` interpolates transforms between the previous and current tick using `alpha` (06).
-- Pausing sets the world's time scale to 0; Frame systems (camera, UI) keep running.
-- Vsync is a cvar (`r_vsync`). With vsync off, `host_maxfps` caps the frame rate.
+- Pausing (`pause`, `World.Paused`) skips `WhenNotPaused` systems; ticks keep counting and Frame systems (camera, UI, rendering) keep running.
+- Vsync is a cvar (`r_vsync`, Archive). `host_maxfps` (a frame cap with vsync off) is **not built yet**.
+- `host_exitafter <seconds>` (DevOnly) quits after that much real time and logs frame and tick counts, for automated smoke runs.
 
 ### 5.3 Worlds
 Several worlds can exist (Warband's overworld and battle scene, the editor's edit/play worlds, tests). The host runs every *active* world each frame. Inactive worlds are kept but not ticked.
@@ -198,7 +200,7 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
 - The game assembly fails to load → fatal, with the `AssemblyLoadContext` error and the probed path.
 
 ## 9. Debug and tooling hooks
-- **Cvars:** `sim_tickrate`, `sim_maxframetime`, `host_timescale` (DevOnly), `host_maxfps`, `r_vsync`, `developer`.
+- **Cvars:** `sim_tickrate`, `sim_maxframetime`, `host_timescale` (DevOnly), `host_maxfps` (later), `r_vsync`, `host_exitafter` (DevOnly), `developer`.
 - **Commands:** `modules` (list with state and init time), `worlds`, `quit`, `restart_world`.
 - **Overlay:** frame time, ticks this frame, alpha, and the ms per phase (from the profiler, 02).
 - **Log category:** `Host`, `Modules`.
@@ -238,6 +240,6 @@ A dedicated server is a different host (`Sage.Host.Server`) running the same boo
 ## 14. Build steps
 1. ~~Solution split~~ **Done 2026-09-22** (ARCHITECTURE §7 step 1): `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `tests/Sage.Tests`. `games/Sandbox` waits for step 4 (`IGameModule`).
 2. `Engine` object + `IModule` + dependency sort; convert singletons (TODO R1, R8). **`Engine` + singleton removal done in step 3**; `IModule` in step 5.
-3. Custom fixed-tick loop + interpolation alpha (TODO R2).
+3. ~~Custom fixed-tick loop + interpolation alpha~~ **Done 2026-09-22** (ARCHITECTURE §7 step 4; TODO R2).
 4. `game.json` + VFS mounts (with 05).
 5. ~~Build configurations + `developer` cvar + console availability~~ **Done 2026-09-22** (ARCHITECTURE §7 step 2; TODO R10).

@@ -80,26 +80,29 @@ State that isn't per-entity lives in world **resources**, the equivalent of Over
 - A system is a class implementing `ISystem`, registered into a **schedule** and **phase**:
   - `Schedule.Fixed`, at `sim_tickrate` (01 §5.2): `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late`.
   - `Schedule.Frame`, once per rendered frame: `FrameUpdate → Extract → Render → Overlay`.
-- Ordering within a phase uses **system sets** and `Before`/`After` constraints. Otherwise registration order applies, deterministically.
-- Systems **declare the components they read and write, and the game events they read and send** (`ReadsEvents<T>`/`SendsEvents<T>`, 04 §4). v1 runs systems sequentially and uses the declarations for validation (a dev check flags an undeclared write or event) and to create event readers/writers. Later, the scheduler can run non-conflicting systems in parallel (Bevy).
-- **Run conditions:** `WhenNotPaused` (default for gameplay), `Always` (camera, UI), `DevOnly`.
+- Ordering within a phase: `before:`/`after:` constraints naming other system types (a stable topological sort; a cycle throws at registration). Otherwise registration order applies, deterministically. *(Built in step 4. "System sets" were dropped for now: type constraints cover today's needs.)*
+- **Access declarations** (components read/written, game events read/sent, 04 §4) are **not built yet**. They arrive with the event bus (whose readers/writers they create) and matter again for a parallel scheduler. v1 runs systems sequentially.
+- **Run conditions:** `Default` (= `WhenNotPaused` in Fixed phases, `Always` in Frame phases), `WhenNotPaused`, `Always`, `DevOnly`. `World.Paused` (console `pause`) skips `WhenNotPaused` systems; ticks still run.
 - **Command buffer flush points:** the end of every phase. Structural changes made during a phase become visible in the next phase.
+- Every phase and system is wrapped in a profiler scope (`Fixed.Gameplay`, `Fixed.Gameplay/FaceCameraSystem`), shown by `stat frame` and `sys_list`.
+- **Steady state allocates nothing**: a test runs 100 ticks + frames with systems and measures 0 bytes.
 
 ### 3.6 Transform hierarchy and large-world coordinates
 | Component | Fields | Written by |
 |---|---|---|
 | `Transform` | `Vector3 LocalPosition`, `Quaternion LocalRotation`, `Vector3 LocalScale` (relative to the parent, or to the entity's sector if it's a root) | gameplay, physics sync |
-| `SectorCoord` (root entities only) | `int X, Z`: which 1024 m sector the root's `LocalPosition` is relative to (14) | streaming, movement when crossing a sector edge |
+| `SectorCoord` (root entities only) | `int X, Z`: which 1024 m sector the root's `LocalPosition` is relative to (14). **Not built yet** (arrives with large-world coordinates, TODO R6); until then roots are relative to the world origin | streaming, movement when crossing a sector edge |
 | `Parent` / `Children` | Friflo's built-in hierarchy (`Entity.Parent`, `Entity.ChildEntities`) | `World.SetParent` / `ClearParent` only |
-| `GlobalTransform` | `Pose Current`, `Pose Previous` (a `Pose` is position + rotation + scale), relative to the world's **origin sector** | `TransformPropagationSystem` only |
+| `GlobalTransform` | `Pose Current`, `Pose Previous` (a `Pose` is position + rotation + scale), relative to the world's **origin sector** (today: the origin) | transform propagation only |
 
-- **`TransformPropagationSystem`** runs at the end of `PostPhysics` and `Late`. It walks roots → children and computes `GlobalTransform.Current` relative to `world.Resources.Get<Origin>().Sector`. At the start of each tick (in `Commands`), `Current` is copied to `Previous`, so Extract can interpolate (06). This replaces today's stub `TransformSystem` (TODO #35).
+- **Transform propagation** (built in step 4, `ECS/Systems/TransformPropagation.cs`) is run by `World` itself at the end of `PostPhysics` and `Late`, not registered as a user system. It walks roots → children and computes `GlobalTransform.Current` (relative to `world.Resources.Get<Origin>().Sector` once sectors exist). At the start of each tick, before `Commands`, `Current` is copied to `Previous`, so rendering can interpolate (06). This replaced the old stub `TransformSystem` (TODO #35).
+- `World.Create` gives every entity a `GlobalTransform` at its spawn pose (so it doesn't slide in from the origin), and `World.Teleport` moves a root without interpolating the jump.
 - Poses are stored as position/rotation/scale rather than matrices, because rendering interpolates them (lerp position and scale, slerp rotation). Interpolating matrices component-wise distorts rotations. Matrices are built at extract time.
 - When the origin sector changes (14), all `GlobalTransform` positions (including `Previous`) are shifted by the same offset, so interpolation doesn't jump.
 
 ## 4. Public API sketch
 
-Built in step 3 (`src/Sage.Engine/ECS/World.cs`); the scheduling part arrives in step 4.
+Built in steps 3 and 4 (`src/Sage.Engine/ECS/World.cs`, `ECS/Systems/*`).
 ```csharp
 public readonly record struct PersistentId(Guid Value) { public static PersistentId New(); }
 public struct Persistent : IComponent { public PersistentId Id; }
@@ -113,12 +116,13 @@ public sealed class World : IDisposable
     public int EntityCount { get; }
 
     // Entities (Friflo `Entity` handles)
-    public Entity Create(string? name = null);                    // identity Transform (+ EntityName)
+    public Entity Create(string? name = null);                    // identity Transform + GlobalTransform (+ EntityName)
     public Entity Create(in Transform transform, string? name = null);
     public void Destroy(Entity e);                                // immediate; inside a query loop use Commands
     public bool IsAlive(Entity e);                                // false for deleted/stale handles and other worlds' entities
     public Entity Resolve(PersistentId id);                       // default (IsNull) if not loaded
     public PersistentId MakePersistent(Entity e);
+    public void Teleport(Entity e, in Transform t);               // move a root without interpolating the jump
 
     // Components
     public ref T Get<T>(Entity e) where T : struct, IComponent;   // missing: Ensure; throws in dev builds, dummy in Shipping
@@ -135,8 +139,7 @@ public sealed class World : IDisposable
     public ArchetypeQuery<T1> Query<T1>();   /* also <T1,T2> and <T1,T2,T3> */
     public ArchetypeQuery QueryAll();
 
-    // Deferred structural changes (Friflo CommandBuffer, reused). Flushed by the host each frame
-    // today; at the end of every phase from step 4.
+    // Deferred structural changes (Friflo CommandBuffer, reused). Applied at the end of every phase.
     public CommandBuffer Commands { get; }
     public void FlushCommands();
 
@@ -145,24 +148,30 @@ public sealed class World : IDisposable
     public event Action<Entity, Type>? ComponentAdded, ComponentRemoved;
     public event Action<Entity>? EntityDestroyed;
 
-    // Scheduling (step 4)
-    public void AddSystem(ISystem system, Phase phase, Action<SystemOrdering>? ordering = null);
-    public void RunFixed(float dt);
-    public void RunFrame(float dt, float alpha);
+    // Scheduling
+    public SystemInfo AddSystem(ISystem system, Phase phase, RunCondition condition = RunCondition.Default,
+                                Type[]? before = null, Type[]? after = null);
+    public bool RemoveSystem(ISystem system);
+    public IEnumerable<SystemInfo> Systems { get; }               // name, phase, condition, Enabled (sys_toggle)
+    public void RunFixed(float dt);                               // one tick: every Fixed phase
+    public void RunFrame(float dt, float alpha, double realTime = 0);   // one frame: every Frame phase
+    public bool Paused { get; set; }
+    public long Tick { get; }  public double SimTime { get; }
 }
 
 public interface ISystem
 {
-    void Declare(SystemAccess access);         // access.Reads<Transform>().Writes<GlobalTransform>()
     void Run(in SystemContext ctx);
+    // void Declare(SystemAccess access);   // later, with the event bus / parallel scheduler (§3.5)
 }
 
 public readonly ref struct SystemContext
 {
     public World World { get; }
-    public TickTime Tick { get; }              // Fixed schedule
-    public FrameTime Frame { get; }            // Frame schedule
-    public CommandBuffer Commands { get; }     // structural changes, flushed at the end of the phase
+    public Phase Phase { get; }
+    public TickTime Tick { get; }              // Fixed schedule (the last tick, in Frame phases)
+    public FrameTime Frame { get; }            // Frame schedule: Dt, Alpha (interpolation), Frame, RealTime
+    public CommandBuffer Commands { get; }     // structural changes, applied at the end of the phase
 }
 
 // CommandBuffer is Friflo's (CreateEntity, DeleteEntity(id), AddComponent<T>(id, c), RemoveComponent<T>(id),
@@ -173,7 +182,7 @@ Example system:
 ```csharp
 sealed class DamageOverTimeSystem : ISystem                // Gameplay phase
 {
-    public void Declare(SystemAccess a) => a.Reads<Burning>().Writes<Health>();
+    // (with access declarations, later: public void Declare(SystemAccess a) => a.Reads<Burning>().Writes<Health>();)
     public void Run(in SystemContext ctx)
     {
         // for each (ref Health h, in Burning b): h.Current -= b.DamagePerSecond * ctx.Tick.Dt;
@@ -212,8 +221,9 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
   - `ent_list [filter]` (**built, step 3**; registered by the host for the main world)
   - `ent_dump <id|name>` (all components via the generated inspector metadata)
   - `ent_kill`
-  - `sys_list` (systems per phase with ms)
-  - `sys_toggle <name>` (DevOnly)
+  - `sys_list` (systems per world and phase with average ms) — **built, step 4**
+  - `sys_toggle <name>` (DevOnly) — **built, step 4**
+  - `pause` — **built, step 4**
 - **Overlay:** entity count per world, archetype count, command buffer ops per tick.
 - **Editor:** outliner and inspector (15), fed by structural notifications.
 - **Log category:** `World`. `log_level world trace` logs every structural change (with the system that caused it).
@@ -224,10 +234,10 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 | `EntityContext` (singleton, random `long` ids, `EntitiesDict`, string-keyed groups) | **Done (step 3):** `World` over Friflo; stale-detecting handles + `PersistentId`; no public mutable dictionaries (fixed #15, #38) |
 | `Entity` class (`Dictionary<Type, IComponent>`) | **Done (step 3):** Friflo `Entity` + `World.Get/TryGet/Has/Add/Remove<T>` |
 | `EntityContextListener` + `ArchetypeView` | **Done (step 3):** typed `ArchetypeQuery` (membership) + `World` notifications |
-| `IComponent` interface | **Done (step 3):** Friflo's `IComponent` on struct components. `IComponentSystem`/`IEngineSystem` remain until `ISystem` (step 4) |
+| `IComponent` interface | **Done (step 3):** Friflo's `IComponent` on struct components. `IComponentSystem`/`IEngineSystem` replaced by `ISystem` (step 4) |
 | `ComponentTransform` class (`LookAt`/`Billboard` methods) | **Done (step 3):** `Transform` struct (`LocalPosition/LocalRotation/LocalScale`, `Transform.Identity`) + `TransformMath`. `SectorCoord`/`GlobalTransform` + propagation in step 4 |
 | `ComponentMeshRenderer` class → **`ModelRenderer` struct** (step 3; still holds a MonoGame `Model`, so it lives in `Sage.Client`) | `MeshRenderer { AssetPath Mesh; RecordId Material; }` and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
-| (the `TransfomSystem.cs` stub, deleted 2026-09-22) | `TransformPropagationSystem` |
+| (the `TransfomSystem.cs` stub, deleted 2026-09-22) | **Done (step 4):** transform propagation, run by `World` after `PostPhysics` and `Late` |
 | `Sage.Client/Rendering/ModelRendererSystem.cs` (now one instance per world, iterating `Query<Transform, ModelRenderer>().Chunks`) | Extract system in the client (06) |
 
 ## 11. v1 scope vs later
@@ -236,9 +246,10 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
   - ✓ `World`, handles, `PersistentId`, struct components, typed queries, `CommandBuffer`, resources, notifications;
   - ✓ hierarchy (`SetParent`/`ClearParent`);
   - ✓ `Transform` + `TransformMath`;
-  - Fixed/Frame schedules with phases and ordering, access declarations (step 4);
-  - `SectorCoord`/`GlobalTransform` + propagation (step 4);
-  - dev commands: ✓ `ent_list`; `ent_dump`, `ent_kill`, `sys_list`, `sys_toggle` later.
+  - ✓ Fixed/Frame schedules with phases, `before`/`after` ordering, run conditions, per-phase command flushing (step 4);
+  - ✓ `GlobalTransform` + propagation + interpolation (step 4); `SectorCoord` with R6;
+  - access declarations (with the event bus);
+  - dev commands: ✓ `ent_list`, `sys_list`, `sys_toggle`, `pause`; `ent_dump`, `ent_kill` later.
 - **Later:** parallel system execution from the access declarations; several active worlds; per-system profiling in the editor.
 
 ## 12. Multiplayer-later notes
@@ -252,6 +263,6 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 ## 14. Build steps
 1. ✓ Friflo spike against E1–E9, with a written verdict (§3.1; ARCHITECTURE D4; TODO R5).
 2. ✓ `World` + handles + resources + `Engine`; static singletons removed (TODO R1, #15).
-3. Schedules, phases, `ISystem`, `CommandBuffer` (TODO R2, R4).
-4. `SectorCoord`/`GlobalTransform` + `TransformPropagationSystem` (TODO R4, R6). (✓ `Transform` struct + `TransformMath` done in step 3.)
+3. ✓ Schedules, phases, `ISystem`, per-phase `CommandBuffer` flushing (step 4; TODO R2, R4).
+4. ✓ `GlobalTransform` + propagation (step 4). `SectorCoord` + origin rebasing with TODO R6. (✓ `Transform` struct + `TransformMath` done in step 3.)
 5. ✓ Typed queries replace string-keyed groups and `ArchetypeView` (TODO #38).

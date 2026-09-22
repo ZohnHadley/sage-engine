@@ -5,13 +5,14 @@ using ImGuiNET;
 
 namespace sage_engine;
 
-// `stat fps` / `stat mem` overlays (docs/design/02 §4.6 and §9). Dev builds only (ImGui dev tools).
-// Per-phase timings (`stat frame`) arrive with the profiler and the tick phases in migration step 4.
+// `stat fps` / `stat mem` / `stat frame` overlays (docs/design/02 §4.4, §4.6 and §9). Dev builds only
+// (ImGui dev tools). `stat frame` shows the profiler: ms per phase and per system, averaged.
 internal sealed class StatOverlay
 {
     private readonly CoreCVars _core;
     private bool _showFps;
     private bool _showMem;
+    private bool _showFrame;
 
     // Frame timing, averaged over half a second so the numbers are readable.
     private double _accumSeconds;
@@ -29,16 +30,17 @@ internal sealed class StatOverlay
     public StatOverlay(CVarRegistry cvars, CoreCVars core)
     {
         _core = core;
-        cvars.RegisterCommand("stat", CVarFlags.None, "stat <fps|mem|all|none>: toggle performance overlays.", a =>
+        cvars.RegisterCommand("stat", CVarFlags.None, "stat <fps|mem|frame|all|none>: toggle performance overlays.", a =>
         {
             string what = a.Count > 0 ? a[0].ToLowerInvariant() : "";
             switch (what)
             {
                 case "fps": _showFps = !_showFps; break;
                 case "mem": _showMem = !_showMem; break;
-                case "all": _showFps = _showMem = true; break;
-                case "none": _showFps = _showMem = false; break;
-                default: Log.Warn(LogCat.Console, "stat <fps|mem|all|none>"); break;
+                case "frame": _showFrame = !_showFrame; break;
+                case "all": _showFps = _showMem = _showFrame = true; break;
+                case "none": _showFps = _showMem = _showFrame = false; break;
+                default: Log.Warn(LogCat.Console, "stat <fps|mem|frame|all|none>"); break;
             }
         });
     }
@@ -77,9 +79,28 @@ internal sealed class StatOverlay
         }
     }
 
+    // Phases ("Fixed.Gameplay") and their systems ("Fixed.Gameplay/FaceCameraSystem"), in run order.
+    // Fixed-phase numbers are per frame, so they include every tick that ran in the frame.
+    private static void DrawProfiler()
+    {
+        if (!Profiler.Enabled)
+        {
+            ImGui.Text("profiler disabled (Shipping build)");
+            return;
+        }
+        ImGui.Separator();
+        foreach (var e in Profiler.All)
+        {
+            if (e.AverageMs < 0.0005 && e.LastCalls == 0) continue;
+            int slash = e.Name.IndexOf('/');
+            string label = slash < 0 ? e.Name : "    " + e.Name.Substring(slash + 1);
+            ImGui.Text($"{e.AverageMs,7:F3} ms  {label}");
+        }
+    }
+
     public void Draw()
     {
-        if (!_showFps && !_showMem) return;
+        if (!_showFps && !_showMem && !_showFrame) return;
 
         var io = ImGui.GetIO();
         ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X - 10, 30), ImGuiCond.Always, new Vector2(1, 0));
@@ -99,6 +120,8 @@ internal sealed class StatOverlay
                 if (Log.DroppedCount > 0)
                     ImGui.Text($"log entries dropped: {Log.DroppedCount}");
             }
+            if (_showFrame)
+                DrawProfiler();
         }
         ImGui.End();
     }
