@@ -1,0 +1,18 @@
+[
+  // The test scene, as data (docs/design/05 §3.5). Edit while the game runs: with `developer 1`,
+  // record files hot-reload and the scene respawns.
+  {
+    "type": "spawn",
+    "id": "creature_base",
+    "abstract": true,
+    "model": "stanford_bunny",
+    "facesCamera": true
+  },
+  {
+    "type": "spawn",
+    "id": "bunny",
+    "base": "creature_base",
+    "name": "bunny",
+    "position": [0, 0, 0]
+  }
+]

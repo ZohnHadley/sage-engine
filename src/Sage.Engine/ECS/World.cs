@@ -54,6 +54,7 @@ public sealed class World : IDisposable
         _store.OnComponentRemoved += OnComponentRemoved;
         _store.OnEntityDelete += OnEntityDelete;
         _propagation = new TransformPropagation(this);
+        Resources.Set(new ActiveCamera());
     }
 
     // The underlying store, for engine code (editor listing, serializers). Game code uses the API below.

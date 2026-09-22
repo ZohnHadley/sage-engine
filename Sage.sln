@@ -25,6 +25,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sage.Tests", "tests\Sage.Tests\Sage.Tests.csproj", "{19BF69A2-980F-4FCB-9FF7-F93D8F29303E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "games", "games", "{04252BA6-B404-FD3B-81B5-D989EEE58EED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "games\Sandbox\Sandbox.csproj", "{047B3F59-D26A-40DF-872F-BD02442D7A2D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +72,12 @@ Global
 		{19BF69A2-980F-4FCB-9FF7-F93D8F29303E}.Development|Any CPU.Build.0 = Development|Any CPU
 		{19BF69A2-980F-4FCB-9FF7-F93D8F29303E}.Shipping|Any CPU.ActiveCfg = Shipping|Any CPU
 		{19BF69A2-980F-4FCB-9FF7-F93D8F29303E}.Shipping|Any CPU.Build.0 = Shipping|Any CPU
+		{047B3F59-D26A-40DF-872F-BD02442D7A2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{047B3F59-D26A-40DF-872F-BD02442D7A2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{047B3F59-D26A-40DF-872F-BD02442D7A2D}.Development|Any CPU.ActiveCfg = Development|Any CPU
+		{047B3F59-D26A-40DF-872F-BD02442D7A2D}.Development|Any CPU.Build.0 = Development|Any CPU
+		{047B3F59-D26A-40DF-872F-BD02442D7A2D}.Shipping|Any CPU.ActiveCfg = Shipping|Any CPU
+		{047B3F59-D26A-40DF-872F-BD02442D7A2D}.Shipping|Any CPU.Build.0 = Shipping|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -81,5 +91,6 @@ Global
 		{C842ADF3-2CA6-4389-8869-B047DE038A33} = {1EF4D47E-7006-E733-9498-003A5BCF710E}
 		{AB27E3B5-D0BB-4997-A26D-FFE4B392F056} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{19BF69A2-980F-4FCB-9FF7-F93D8F29303E} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{047B3F59-D26A-40DF-872F-BD02442D7A2D} = {04252BA6-B404-FD3B-81B5-D989EEE58EED}
 	EndGlobalSection
 EndGlobal

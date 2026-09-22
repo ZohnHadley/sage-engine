@@ -1,0 +1,10 @@
+{
+  // The Sandbox game (docs/design/01 §3.3). Loaded by the host with -game games/Sandbox (the default
+  // in dev builds). Mounts are relative to this folder and come after engine content, in order.
+  "name": "Sandbox",
+  "id": "sandbox",
+  "assembly": "bin/{config}/net8.0/Sandbox.dll",
+  "mounts": ["content"],
+  "modsDirectory": "mods",
+  "modules": { "disable": [] }
+}

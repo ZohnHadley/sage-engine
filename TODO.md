@@ -22,13 +22,12 @@ These are against the **current** single-project code. Many disappear when the m
 | # | Issue | Where | Plan |
 |---|---|---|---|
 | [~] 25 | Dead render code: unused `lightDirection`, redundant empty check, per-effect recompute, empty `update` | `Sage.Client/Rendering/ModelRendererSystem.cs` | Migration → R9 / F2 (Extract + materials replace this class) |
-| [~] 26 | Spawn loop is 1×1; only the last-spawned bunny is billboarded | `Sage.Host/Game1.cs` | Migration → the Sandbox game (billboarding moves to the renderer, F1) |
 | [~] 37 | `Game1` reads GamePad Back directly (Escape now goes through `InputSystem`, step 2) | `Sage.Host/Game1.cs` | Migration → R3 (`Menu` action) |
 | [ ] 39 | Mouse sensitivity scaled by back-buffer/display size (look speed depends on window size) | `Sage.Editor/Camera/DevCamera.cs` | Migration → R3 / F3 (editor camera rig on actions) |
 
 Paths are relative to `src/`. The full detail for each item is in the history log.
 
-**#15, #33, #34, #36, #38 resolved by the `World` rewrite (step 3), 2026-09-22.** **#24 (typos) resolved by the solution split, 2026-09-22.** **Quick "fix now" batch: done 2026-09-22.** #9 (light icon field + `light.png` removed), #21/#35 (`TransfomSystem.cs` deleted), #22 (`MouseButton` internal), #32 (scale applied), and the trivial part of #36. Details in the history log. Everything left above waits for the migration.
+**#26 resolved by the Sandbox game module (step 5), 2026-09-22.** **#15, #33, #34, #36, #38 resolved by the `World` rewrite (step 3), 2026-09-22.** **#24 (typos) resolved by the solution split, 2026-09-22.** **Quick "fix now" batch: done 2026-09-22.** #9 (light icon field + `light.png` removed), #21/#35 (`TransfomSystem.cs` deleted), #22 (`MouseButton` internal), #32 (scale applied), and the trivial part of #36. Details in the history log. Everything left above waits for the migration.
 
 ---
 
@@ -60,11 +59,11 @@ The structure these items fit into is in `ARCHITECTURE.md` (overview), with the 
 - [X] **R4. Data-only components, logic in systems.** *Done: struct components + `TransformMath` (step 3); `ISystem`, phases, ordering, per-phase command buffers (step 4). Access declarations come with the event bus.* Components are plain data. `LookAt`/`Billboard` move to `TransformMath`, and billboarding moves to the renderer (#26, #35). A system registry with phases, ordering and access declarations; command buffers. → `03`
 - [X] **R5. Typed queries + the ECS spike.** *Done 2026-09-22 (step 3): Friflo.Engine.ECS 3.6.0 adopted after passing E1–E9 (`docs/design/03` §3.1).* Replace string-keyed groups/`ArchetypeView` with typed queries (#38). Spike **Friflo.Engine.ECS** against requirements E1–E9 (ARCHITECTURE D4). → `03 §3.1`
 - [ ] **R6. Large-world coordinates.** `SectorCoord` (1024 m sectors) + a local `Transform` in the simulation. A world `Origin` rebased around the player (with hysteresis). Camera-relative rendering. Interiors as separate spaces. This is the Daggerfall Unity model, kept compatible with a future multi-player server. → `03 §3.6`, `14`
-- [ ] **R7. Content as data.** Superseded by **R11** (one record pipeline for all definitions).
-- [ ] **R8. Two-level module system.** csproj boundaries only at layers (`Sage.Engine`, `Sage.Client`, `Sage.Framework`, `Sage.Framework.Client`, `Sage.Editor`, `Sage.Host`, `Sage.Generators`). Logical `IModule`s with dependencies and `Init` (register) / `Start` (use) / `Shutdown`; `game.json`. → `01`
+- [X] **R7. Content as data.** Superseded by **R11** (one record pipeline for all definitions); the first content as data is the Sandbox scene (`spawn` records, step 5).
+- [X] **R8. Two-level module system.** *Done 2026-09-22 (migration step 5): `IModule`/`IGameModule`, `ModuleManager` (dependency sort, dependency-checked `Get<T>`, lifecycle), `ClientModule`, `game.json`, `games/Sandbox`. `Sage.Framework*` and `Sage.Generators` get created when there is code for them.* csproj boundaries only at layers (`Sage.Engine`, `Sage.Client`, `Sage.Framework`, `Sage.Framework.Client`, `Sage.Editor`, `Sage.Host`, `Sage.Generators`). Logical `IModule`s with dependencies and `Init` (register) / `Start` (use) / `Shutdown`; `game.json`. → `01`
 - [ ] **R9. Subsystem handles + Extract phase.** Heavy subsystems (renderer, physics, audio) own their data, and components hold handles. An Extract phase builds a pooled `RenderSnapshot` from interpolated, camera-relative poses. → `06`, `10`
 - [X] **R10. Build configurations + console + logging.** *Done 2026-09-22 (steps 2 and 4; the profiler landed with the tick phases in step 4).* `Debug`/`Development`/`Shipping` (no separate runtime dev mode): `developer` cvar as a defaults setter, `DevOnly` = compiled into dev builds only, restricted Shipping console via `con_enable`. `Log` with categories/levels/sinks (zero-cost when off); `Assert.Dev/Ensure/Check`; crash reports; cvars/console; the profiler + allocation counter. Replace the existing `Console.WriteLine` calls (#34, #36). → `02`
-- [ ] **R11. Unified data-record pipeline.** JSON records for *every* definition (items, spells, materials, input maps, sounds, prefabs…): namespaced `RecordId`s, `base` inheritance, per-field patch merge in load order, validation generated from `[Record]` schemas, hot reload. → `05 §3.5`, `09`
+- [~] **R11. Unified data-record pipeline.** *v1 done 2026-09-22 (migration step 5): VFS, `RecordStore` with namespaces, `base`/`abstract`, patch merge, validation, hot reload, `rec_*` commands (05 §3.6). Left: generated readers/validators (09), range checks, typed references, `RecordRef<T>`.* JSON records for *every* definition (items, spells, materials, input maps, sounds, prefabs…): namespaced `RecordId`s, `base` inheritance, per-field patch merge in load order, validation generated from `[Record]` schemas, hot reload. → `05 §3.5`, `09`
 - [ ] **R12. MonoGame 3.8.2 → 3.8.5.x upgrade, stay on DesktopGL.** Set `GraphicsProfile.HiDef`. Re-evaluate DesktopVK later (ARCHITECTURE D13). Remove the MGCB dependency: runtime asset loaders + `dotnet-mgfxc` for shaders (fixes #9). → `05`, `07`
 
 ### Feature phases
@@ -137,3 +136,4 @@ This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F1
 - **Look-at / billboard math:** `TransformMath.LookAt`/`Billboard` (#30/#31). Sprite facing moves to the renderer (F1).
 - **Core services (step 2):** logging, asserts, crash reports, cvars/console, build configurations.
 - **Main loop (step 4):** fixed tick + interpolation, schedules/phases, profiler, `stat frame`, `sys_list`, `pause`, `host_exitafter`.
+- **Modules, VFS, records (step 5):** `IModule` + `game.json` + the `games/Sandbox` game module; VFS mounts with shadowing; the `RecordStore` (patch merge, inheritance, validation, hot reload); `modules`, `vfs_which`/`vfs_ls`/`vfs_mounts`, `rec_list`/`rec_get`/`rec_reload`.

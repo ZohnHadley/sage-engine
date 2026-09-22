@@ -68,7 +68,7 @@ Like Source's `gameinfo.txt`: tells the host what to mount and load.
 {
   "name": "Sandbox",
   "id": "sandbox",
-  "assembly": "Sandbox.dll",
+  "assembly": "bin/{config}/net8.0/Sandbox.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
   "defaultMap": "maps/test_valley",
@@ -76,35 +76,37 @@ Like Source's `gameinfo.txt`: tells the host what to mount and load.
 }
 ```
 
-`id` is the game's record namespace (05). The host always mounts engine content, then framework content, first. The game's `mounts` are resolved relative to the manifest and mounted after them, in order (later wins). Mods come after the game, in load order (17). See 05 §3.1.
+`id` is the game's record namespace (05), so it follows record-id rules (lower case, digits, `_`, `.`, `-`). `assembly` is relative to the manifest; `{config}` becomes the build configuration (`Debug`/`Development`/`Shipping`), so a dev build loads the matching game build. The host always mounts engine content, then framework content, first. The game's `mounts` are resolved relative to the manifest and mounted after them, in order (later wins). Mods come after the game, in load order (17). See 05 §3.1.
+
+The host finds the game with `-game <folder>`; without it, dev builds use `games/Sandbox` (found by walking up to `Sage.sln`) and other builds use `game/` next to the exe.
+
+*As built (step 5):* `src/Sage.Engine/Core/GameManifest.cs`, `games/Sandbox/game.json`. `name`, `id`, `assembly`, `mounts` and `modules.disable` work. `modsDirectory` and `defaultMap` are parsed but unused until mods (17) and maps. `modules.add` logs a warning (nothing to add yet). There is no framework content mount yet.
 
 ## 4. Public API sketch
 
 ```csharp
 public enum ModuleKind { Runtime, Editor, Tool }
 
-public interface IModule
+public interface IModule                         // default interface members: implement only what you need
 {
-    string Name { get; }
-    ModuleKind Kind { get; }
-    IReadOnlyList<Type> Dependencies { get; }   // other IModule types
+    string Name => GetType().Name;
+    ModuleKind Kind => ModuleKind.Runtime;
+    IReadOnlyList<Type> Dependencies => [];      // other IModule types
     void Init(ModuleContext ctx);                // register services, systems, record types, cvars, loaders (nothing else)
     void Start(ModuleContext ctx) { }            // after records are loaded and the GPU exists: read records, load engine-scope assets
-    void Shutdown();
+    void OnWorldCreated(World world) { }         // install this module's per-world resources and systems
+    void Shutdown() { }
 }
 
 public sealed class ModuleContext
 {
-    public Engine Engine { get; }
-    public ModuleRegistry Registry { get; }       // add systems, record schemas, asset loaders, console commands
-    public T Get<T>() where T : class;            // services registered by modules this one depends on
+    public Engine Engine { get; }                 // registration goes through Engine (CVars, Records...) today;
+                                                  // a ModuleRegistry wrapper comes if module unloading ever needs it
+    public T Get<T>() where T : class;            // services from the host or from modules this one depends on
     public void Provide<T>(T service) where T : class;
 }
 
-public interface IGameModule : IModule
-{
-    void OnWorldCreated(World world);             // install GameRules, load the default map, etc.
-}
+public interface IGameModule : IModule { }        // marks the game assembly's one entry point (GameRules, default map...)
 
 public sealed class Engine                        // process-wide services; created by the host, passed in
 {
@@ -121,7 +123,9 @@ public sealed class Engine                        // process-wide services; crea
 }
 ```
 
-`ModuleContext.Get<T>` only resolves services from declared dependencies. Asking for anything else throws at init, which keeps the dependency list honest.
+`ModuleContext.Get<T>` only resolves services from declared dependencies (plus services the host provides with `ModuleManager.ProvideHostService`, such as `ClientHost`). Asking for anything else throws, which keeps the dependency list honest.
+
+**Deviation (step 5):** `OnWorldCreated` is on every `IModule`, not only `IGameModule`. Client modules need a per-world hook too: `ClientModule` installs the `RenderView` resource and `ModelRendererSystem` in every world. It runs in dependency order, so engine modules have set a world up before the game spawns into it.
 
 `Engine` lives in `Sage.Engine`, so it holds only core services. Client services (`Renderer`, `InputDevices`, `AudioSystem`) are provided by their client modules with `ctx.Provide(...)`, and consumers declare a dependency on those modules. `Log` is static (02) because it must work before `Engine` exists and from any thread.
 
@@ -152,7 +156,9 @@ Program.Main(args)
                     → asset scopes released → logs flushed last
 ```
 
-*Today (migration step 2):* steps 1–3, a stand-in for step 6 (config.cfg + launch args, run from `Game1.Initialize` once the host has registered `quit`/`stat`/`clear`/`toggleconsole`), then the game; shutdown saves Archive cvars and flushes the log. `-game` is parsed but has no effect until `game.json` exists (step 5); unknown options are logged as warnings.
+*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the default `ClientModule` unless `game.json` disables it, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: host cvars and commands, `config.cfg`, records, the `ClientHost` host service, module `Start`, the main world, and finally the `+launch` commands.
+
+**Deviation:** `+args` run **after** the main world exists, not with `config.cfg` in step 6, as Source runs `+map` last. That way `+rec_get spawn bunny`, `+ent_list` or `+pause` see the loaded game. Launch args still override `config.cfg`. What they can't do is change a cvar before a module's `Start` reads it; no module reads cvars in `Start` today. Shutdown destroys the worlds, then shuts modules down in reverse order, saves Archive cvars and flushes the log last. Unknown `-options` are logged as warnings.
 
 Each step is logged under `LogCat.Host` with its duration. A failure in steps 1–6 shows a native message box (if a window can't be created yet), writes the crash report (02) and exits non-zero.
 
@@ -201,15 +207,15 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
 
 ## 9. Debug and tooling hooks
 - **Cvars:** `sim_tickrate`, `sim_maxframetime`, `host_timescale` (DevOnly), `host_maxfps` (later), `r_vsync`, `host_exitafter` (DevOnly), `developer`.
-- **Commands:** `modules` (list with state and init time), `worlds`, `quit`, `restart_world`.
+- **Commands:** `modules` (list with lifecycle state and dependencies; **done, step 5**; per-module init time is logged at `Debug`), `worlds`, `quit`, `restart_world`.
 - **Overlay:** frame time, ticks this frame, alpha, and the ms per phase (from the profiler, 02).
 - **Log category:** `Host`, `Modules`.
 
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `src/Sage.Host/Program.cs` | `Sage.Host` `Program.Main`: boot sequence 5.1 |
-| `src/Sage.Host/Game1.cs` | The host's MonoGame `Game` subclass: loop 5.2 only. The bunny spawn and billboard test move to `games/Sandbox` |
+| `src/Sage.Host/Program.cs` | `Sage.Host` `Program.Main`: boot sequence 5.1. **Done (step 5)** |
+| `src/Sage.Host/Game1.cs` | The host's MonoGame `Game` subclass: loop 5.2 only. **Step 5:** the bunny spawn and billboard test moved to `games/Sandbox` (`SandboxModule`, `spawn` records); rendering setup moved to `ClientModule`. Still here: the dev camera and editor windows (15) |
 | `Game1.Update` Escape check (TODO #37) | An input action (08), not a direct `Keyboard.GetState()` |
 | `src/Sage.Editor/EditorManager.cs` | Window size → `r_width`/`r_height` cvars applied by the host. Camera ownership → editor (15) |
 | Singletons (`EntityContext.getInstance()`, `InputSystem.getInstance()`, `ModelRendererSystem.getInstance()`, `EditorUI`/`EntityContextMenuUI`) | **Done (step 3):** `Engine` (cvars, worlds) and the main `World` are created in `Program` and passed in; `InputSystem`, `ModelRendererSystem` and the editor windows are instances owned by `Game1` (TODO R1). `Log`/`CrashReporter` stay static by design (02) |
@@ -239,7 +245,7 @@ A dedicated server is a different host (`Sage.Host.Server`) running the same boo
 
 ## 14. Build steps
 1. ~~Solution split~~ **Done 2026-09-22** (ARCHITECTURE §7 step 1): `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `tests/Sage.Tests`. `games/Sandbox` waits for step 4 (`IGameModule`).
-2. `Engine` object + `IModule` + dependency sort; convert singletons (TODO R1, R8). **`Engine` + singleton removal done in step 3**; `IModule` in step 5.
+2. ~~`Engine` object + `IModule` + dependency sort; convert singletons~~ **Done** (TODO R1, R8): `Engine` + singleton removal in step 3; `IModule`, `ModuleManager`, `ClientModule` and the `games/Sandbox` game module in step 5.
 3. ~~Custom fixed-tick loop + interpolation alpha~~ **Done 2026-09-22** (ARCHITECTURE §7 step 4; TODO R2).
-4. `game.json` + VFS mounts (with 05).
+4. ~~`game.json` + VFS mounts (with 05)~~ **Done 2026-09-22** (ARCHITECTURE §7 step 5).
 5. ~~Build configurations + `developer` cvar + console availability~~ **Done 2026-09-22** (ARCHITECTURE §7 step 2; TODO R10).

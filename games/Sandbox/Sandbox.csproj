@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Sandbox game: the repo's dogfooding game module (docs/design/01 §3.3, ARCHITECTURE §7).
+    A plain library; the host loads bin/<config>/net8.0/Sandbox.dll through game.json. The engine
+    references are compile-time only (Private=false): at run time the host's own copies are used.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Sandbox</RootNamespace>
+    <!-- Don't copy MonoGame/Friflo etc. next to the game dll: the host already has them loaded. -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="game.json" />
+    <None Include="content\**\*" />
+  </ItemGroup>
+</Project>

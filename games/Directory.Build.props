@@ -1,0 +1,19 @@
+<Project>
+  <!-- Shared settings for game projects under games/. -->
+  <Import Project="..\build\Sage.Configurations.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- Every game file sees the engine and ECS namespaces. Friflo ships its own Transform (and Position,
+       Rotation, Scale3) components; the alias makes `Transform` mean Sage's (docs/design/03 §3.1). -->
+  <ItemGroup>
+    <Using Include="sage_engine" />
+    <Using Include="Friflo.Engine.ECS" />
+    <Using Include="sage_engine.Transform" Alias="Transform" />
+  </ItemGroup>
+</Project>

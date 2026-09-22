@@ -148,11 +148,12 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
   - `update(GameTime)` is an empty body.
 - Other new dead code is tracked in #36.
 
-### [~] 26. Bunny spawn loop size
+### [X] 26. Bunny spawn loop size
 - **File**: `engine/Game1.cs:58-66`
 - **History**: `z < 1` → 8×8 → 20×20 → now **`x < 1` × `z < 1`** again (changed in `dcfbd12`, probably to test Billboard on one entity).
 - **Related**: `Game1.cs:80` billboards only `bunnyEntity`, i.e. the *last* entity spawned. With a grid, only one bunny would face the camera.
 - **Fix**: Decide the intended grid size. If billboarding should apply to all renderables, move it into a system (e.g. the empty `TransformSystem`, #35) that iterates an archetype view.
+- **Resolution (2026-09-22, migration step 5)**: the spawn loop is gone. `games/Sandbox` spawns one entity per `spawn` record (`content/data/scene.json`), and `FaceCameraSystem` turns *every* entity tagged `FacesCamera` towards the camera. Proper sprite billboarding still moves to the renderer (F1).
 
 ---
 

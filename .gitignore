@@ -394,3 +394,5 @@ FodyWeavers.xsd
 *.sln.iml
 # Sage dev-build user folder (logs, config.cfg, crash reports; docs/design/05 §3.1)
 user/
+# ImGui window layout, written to the working directory by the dev UI
+imgui.ini

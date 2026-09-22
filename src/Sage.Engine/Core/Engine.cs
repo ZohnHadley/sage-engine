@@ -6,24 +6,29 @@ namespace sage_engine;
 
 // Process-wide core services (docs/design/01-host-and-modules.md §4, glossary). Created by the host
 // and passed in; never a static singleton. Lives in Sage.Engine, so it holds no MonoGame types:
-// client services (renderer, input devices, audio) are owned by client code (modules provide them
-// from migration step 5).
+// client services (renderer, input devices, audio) are provided by client modules (ModuleContext).
 //
-// Today: cvars and the worlds. VFS, AssetServer, RecordStore, JobSystem and EngineSignals join in
-// later migration steps.
+// Today: cvars, the VFS, records, modules and the worlds. AssetServer, JobSystem and EngineSignals
+// join in later steps.
 public sealed class Engine : IDisposable
 {
     private readonly List<World> _worlds = new();
 
-    public Engine(CVarRegistry cvars, CoreCVars core)
+    public Engine(CVarRegistry cvars, CoreCVars core, VirtualFileSystem? vfs = null, RecordStore? records = null)
     {
         CVars = cvars;
         Core = core;
+        Vfs = vfs ?? new VirtualFileSystem();
+        Records = records ?? new RecordStore();
+        Modules = new ModuleManager(this);
     }
 
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }
     public CoreCVars Core { get; }
+    public VirtualFileSystem Vfs { get; }
+    public RecordStore Records { get; }
+    public ModuleManager Modules { get; }
     public IReadOnlyList<World> Worlds => _worlds;
 
     // Creating a world initializes the ECS schema: every assembly that defines component types must
@@ -33,6 +38,7 @@ public sealed class Engine : IDisposable
         var world = new World(name, this);
         _worlds.Add(world);
         Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active)");
+        Modules.NotifyWorldCreated(world);   // modules install their resources and systems
         return world;
     }
 

@@ -89,7 +89,7 @@ sage-engine/
   docs/
 ```
 
-A game: `games/MyGame/` with `MyGame.csproj` (an `IGameModule`), `game.json`, `content/` (assets) and `data/` (records). See [01 §3.3](docs/design/01-host-and-modules.md).
+A game: `games/MyGame/` with `MyGame.csproj` (an `IGameModule`), `game.json` and `content/` (assets, with records in `content/data/`). See [01 §3.3](docs/design/01-host-and-modules.md) and `games/Sandbox`.
 
 Inside each assembly, features are **logical `IModule`s** (Renderer, Physics, Audio, Abilities…) with declared dependencies and `Init`/`Start`/`Shutdown`, like Bevy plugins or Unreal modules. There are csproj boundaries only between layers, not per feature ([01 §3.1](docs/design/01-host-and-modules.md)).
 
@@ -216,14 +216,14 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 
 | Today | Becomes |
 |---|---|
-| `Game1`, `Program` | `Sage.Host` boot + fixed-tick loop ([01](docs/design/01-host-and-modules.md)); test scene → `games/Sandbox` |
+| `Game1`, `Program` | `Sage.Host` boot + fixed-tick loop ([01](docs/design/01-host-and-modules.md)); test scene → `games/Sandbox` (**done, step 5**) |
 | ~~`EntityContext`, `Entity`, `EntityContextListener`, `ArchetypeView`~~ (step 3) | `World`, `EntityRef` (Friflo `Entity`), typed queries, structural notifications ([03](docs/design/03-world-and-ecs.md), [04](docs/design/04-events-and-messaging.md)) |
 | `Transform` struct + `TransformMath` (step 3; was `ComponentTransform`) | + `GlobalTransform` + transform propagation (step 4), `SectorCoord` later (R6); math in `TransformMath`; billboarding moves to the renderer |
 | `ModelRenderer` (struct, step 3), `ModelRendererSystem` | `MeshRenderer` (with `AssetPath`) + `MeshExtract` + material-based passes ([06](docs/design/06-rendering.md), [07](docs/design/07-materials-and-shaders.md)) |
 | `InputSystem`, listeners | `InputDevices` + actions/contexts + `PlayerCommand` ([08](docs/design/08-input.md)) |
 | `DevCamera` | Editor camera rig on actions ([15](docs/design/15-editor.md)) |
 | `EditorUI`, `EntityContextMenuUI` | Editor menu, outliner, generated inspector ([15](docs/design/15-editor.md)) |
-| `UtilAssets`, `Content.mgcb` | `AssetServer` + VFS + runtime loaders ([05](docs/design/05-assets-and-vfs.md)) |
+| `UtilAssets`, `Content.mgcb` | `AssetServer` + VFS + runtime loaders ([05](docs/design/05-assets-and-vfs.md)). **Step 5:** `UtilAssets` removed; VFS done; `.xnb` files load through the VFS (`ContentService`) until the runtime loaders (R12) |
 | `Console.WriteLine` | `Log` with categories ([02](docs/design/02-core-services-and-logging.md)) |
 
 **Suggested order** (each step keeps the engine running):
@@ -231,7 +231,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 2. ~~**Logging + build configurations + console/`developer`**~~ **Done 2026-09-22** (TODO R10). Debug/Development/Shipping configurations with `SAGE_DEV`; `Log` with categories, zero-cost disabled calls, file/stdout/ring sinks, duplicate collapse and rate limiting; `Assert.Dev/Ensure/Check`; crash reports; cvars, console commands, `config.cfg` and `+launch` args; the ImGui console (`~`) and `stat fps`/`stat mem`; 36 tests. Deferred on purpose: profiler scopes and `TickTime` (step 4, they need the tick phases) and the job system (step 5, with async asset loading).
 3. ~~**`World` + `Engine` objects replace the singletons**~~ **Done 2026-09-22** (R1, R5; D4 decided). Friflo.Engine.ECS 3.6.0 passed all nine requirements in a spike (03 §3.1) and is adopted behind a thin `World` (struct components, stale-detecting handles, typed queries, command buffer, notifications with the old ordering guarantees, `PersistentId`, resources, hierarchy). `Engine` owns cvars and worlds; no engine singletons remain (`Log`/`CrashReporter` are static by design). Fixed #15, #33, #34, #36, #38. 44 tests.
 4. ~~**Fixed tick + schedules + phases**~~ **Done 2026-09-22** (R2, R4). `FixedStepClock` (Fiedler accumulator, clamped frame time, time scale), `sim_tickrate` 60 Hz, render interpolation via `GlobalTransform` (previous/current poses) + transform propagation through the hierarchy, `ISystem` in Fixed/Frame phases with `before`/`after` ordering, run conditions, pause, per-phase command flushing, profiler scopes + `stat frame` + `sys_list`/`sys_toggle`. The loop allocates nothing in steady state (tested). Deferred: `SectorCoord`/origin rebasing (R6), access declarations (event bus), `host_maxfps`. 56 tests.
-5. **Modules + `game.json` + VFS + records** (R8, R11). Sandbox becomes a real game module.
+5. ~~**Modules + `game.json` + VFS + records**~~ **Done 2026-09-22** (R8, R11 v1). `IModule` (`Init` → `Start` → `OnWorldCreated` → `Shutdown`) with dependency sort and dependency-checked services; `game.json` (game id = record namespace, `{config}` in the assembly path, module disabling); the game assembly loads before the first `World`. VFS with priority folder mounts, shadowing and case-insensitive lookup; `RecordStore` with namespaced ids, per-field patch merge (`field+`/`field-`), `disabled`, `base` + `abstract`, validation (unknown fields, types, references), in-place hot reload; `vfs_*`, `rec_*`, `modules` commands. **`games/Sandbox` is now a real game module** (it was planned for step 4 in step 1's note): its scene is `spawn` records, and billboard facing is its own system. Deviations, all documented in 01 §4/§5.1 and 05 §3.6: `OnWorldCreated` is on every module, not only the game; `+launch` commands run after the main world exists; records use `System.Text.Json` reflection until the generator (09); models still come from MGCB `.xnb` files, now read through the VFS (`ContentService`), until R12. 89 tests.
 6. **Extract + snapshot + materials** (R9); **input actions → `PlayerCommand`** (R3).
 7. Then the **vertical slice**, alternating features with the infrastructure they prove they need.
 

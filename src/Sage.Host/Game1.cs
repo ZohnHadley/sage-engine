@@ -10,8 +10,9 @@ using MonoGame.ImGuiNet;
 namespace sage_engine;
 
 // The host's MonoGame Game: today it is both game and editor (docs/design/01 §10). It owns the
-// client-side services as plain instances (no singletons); the Engine and the main World come from
-// Program. The bunny test scene moves to games/Sandbox in migration step 5.
+// client-side services as plain instances (no singletons). The game itself (games/Sandbox) is a module
+// loaded from game.json; the host provides graphics to modules, loads records, starts modules and
+// creates the main World here, once the graphics device exists (01 §5.1).
 //
 // Main loop (01 §5.2): MonoGame's fixed-step mode is off; each frame the host polls input, runs
 // 0..N fixed ticks through FixedStepClock (sim_tickrate), then the Frame schedule with the
@@ -19,8 +20,11 @@ namespace sage_engine;
 public class Game1 : Game
 {
     private readonly Engine engine;
-    private readonly World world;
-    private readonly Action onCommandsRegistered;
+    private readonly Action applyConfig;
+    private readonly Action runLaunchCommands;
+    private World world;
+    private RecordHotReload recordHotReload;
+    private CVar<bool> recHotReload;
 
     private readonly GraphicsDeviceManager graphics;
     private GraphicsDevice graphicsDevice;
@@ -30,7 +34,7 @@ public class Game1 : Game
     private InputSystem input;
     private DevCamera cam;
     private RenderView renderView;
-    private CameraTarget cameraTarget;
+    private ActiveCamera activeCamera;
     private EditorUI editorUI;
     private EntityContextMenuUI entityInspector;
     private DevConsoleWindow console;
@@ -41,11 +45,11 @@ public class Game1 : Game
     private FixedStepResult step;
     private long frame;
 
-    internal Game1(Engine engine, World world, Action onCommandsRegistered)
+    internal Game1(Engine engine, Action applyConfig, Action runLaunchCommands)
     {
         this.engine = engine;
-        this.world = world;
-        this.onCommandsRegistered = onCommandsRegistered;
+        this.applyConfig = applyConfig;
+        this.runLaunchCommands = runLaunchCommands;
         graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
@@ -63,22 +67,15 @@ public class Game1 : Game
         cam.Position = new Vector3(0, 0, 1);
         editorManager.setCamera(cam);
 
-        // World resources and systems.
-        renderView = new RenderView();
-        cameraTarget = new CameraTarget();
-        world.Resources.Set(renderView);
-        world.Resources.Set(cameraTarget);
-        world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
-        world.AddSystem(new ModelRendererSystem(world), Phase.Render);
-
         guiRenderer = new ImGuiRenderer(this);
         editorUI = new EditorUI();
-        entityInspector = new EntityContextMenuUI(world);
 
         // Developer console (`~`), `stat` overlays and loop cvars; see docs/design/02 and 01 §3.2, §5.2.
         var cvars = engine.CVars;
         hostCVars = new HostCVars(cvars);
         hostCVars.VSync.Changed += _ => ApplyVSync();
+        recHotReload = cvars.Register("rec_hotreload", engine.Core.Developer.Value >= 1, CVarFlags.DevOnly,
+            "Reload record files (data/**/*.json) when they change on disk.");
         console = new DevConsoleWindow(cvars, engine.Core);
         stats = new StatOverlay(cvars, engine.Core);
         cvars.RegisterCommand("quit", CVarFlags.None, "Exit the game.", _ => Exit());
@@ -89,8 +86,21 @@ public class Game1 : Game
         };
         CrashReporter.AddSection("GPU", () => $"{GraphicsAdapter.DefaultAdapter.Description}, profile {graphics.GraphicsProfile}");
         Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
-        onCommandsRegistered();   // config.cfg + launch args, now that every command exists
+        applyConfig();   // config.cfg, now that every cvar and command exists
         ApplyVSync();
+
+        // Records, module Start, then the main world (01 §5.1). Modules install their resources and
+        // systems in OnWorldCreated; the game spawns its scene there.
+        engine.Records.Load(engine.Vfs);
+        if (BuildInfo.IsDevBuild)
+            recordHotReload = new RecordHotReload(engine.Records, engine.Vfs);
+        engine.Modules.ProvideHostService(new ClientHost(this));
+        engine.Modules.StartAll();
+        world = engine.CreateWorld("main");
+        renderView = world.Resources.Get<RenderView>();
+        activeCamera = world.Resources.Get<ActiveCamera>();
+        entityInspector = new EntityContextMenuUI(world);
+        runLaunchCommands();   // +args last, with the world up (Program.cs)
 
         base.Initialize();
     }
@@ -103,19 +113,6 @@ public class Game1 : Game
 
     protected override void LoadContent()
     {
-        UtilAssets.InitializeModels(Content);
-
-        for (int x = 0; x < 1; x++)
-        {
-            for (int z = 0; z < 1; z++)
-            {
-                var bunny = world.Create(Transform.At(new System.Numerics.Vector3(x, 0, z)), "bunny");
-                world.Add(bunny, new ModelRenderer { Model = UtilAssets.stanfordBunny });
-                bunny.AddTag<FacesCamera>();
-            }
-        }
-        Log.Info(LogCat.World, $"Test scene: {world.EntityCount} entities in '{world.Name}'");
-
         guiRenderer.RebuildFontAtlas();
         base.LoadContent();
     }
@@ -135,7 +132,9 @@ public class Game1 : Game
 
         // The editor camera runs at the display rate, not the tick rate (smooth at any refresh rate).
         cam.update(gameTime);
-        cameraTarget.Position = cam.Position.ToNumerics();
+        activeCamera.Position = cam.Position.ToNumerics();
+        activeCamera.Rotation = cam.Rotation.ToNumerics();
+        if (recHotReload.Value) recordHotReload?.Poll();
 
         step = clock.Advance(realDt, hostCVars.TickRate.Value, hostCVars.MaxFrameTime.Value, hostCVars.TimeScale.Value);
         for (int i = 0; i < step.Ticks; i++)
@@ -150,6 +149,12 @@ public class Game1 : Game
         }
 
         base.Update(gameTime);
+    }
+
+    protected override void UnloadContent()
+    {
+        recordHotReload?.Dispose();
+        base.UnloadContent();
     }
 
     // The Frame schedule (FrameUpdate → Extract → Render → Overlay), then the ImGui layer.

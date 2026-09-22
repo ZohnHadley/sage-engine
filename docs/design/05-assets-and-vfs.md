@@ -83,10 +83,10 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
   ]
   ```
 - **`RecordId` = `namespace:name`.** A bare `id` gets the namespace of the mount that defines it: the game's `id` from `game.json`, a mod's id, or `sage` for engine content.
-- **`base`:** single inheritance of field values from another record of the same type (Dungeon Siege templates). It's resolved after merging.
+- **`base`:** single inheritance of field values from another record of the same type (Dungeon Siege templates). It's resolved after merging. **`"abstract": true`** marks a template: it can be a `base` but never becomes a record itself (so `creature_base` doesn't spawn), and the flag isn't inherited.
 - **Localized text** is a key (`@items.iron_sword.name`) into string tables, not inline text (ARCHITECTURE §4.7).
 - **Load-order merge, per field, not whole-record:**
-  1. Records are read in mount order.
+  1. Records are read in mount order. Within one mount, every definition is read before any patch, so file names don't matter.
   2. The first definition of an id creates the record.
   3. A later record with `"patch": true` and the same id **merges field by field**: scalars overwrite, objects merge recursively, lists are replaced unless patched with `"tags+": [...]` (append) / `"tags-": [...]` (remove).
   4. A later *non-patch* definition of an existing id is an error (it would silently wipe the earlier one, which is Bethesda's "rule of one" problem). It's logged with both files, and the patch wins so the game still runs.
@@ -97,6 +97,18 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
   - `RecordId`/`AssetPath` references to things that don't exist → `Error` with the file and line.
 - **`RecordStore`** holds merged, validated records per type. Lookups by `RecordId` are dictionary-based. For hot paths, use `RecordRef<T>` (a cached index).
 - **Hot reload** (`rec_hotreload`, `DevOnly`, default on when `developer` ≥ 1): a changed `.json` re-runs load + merge + validate for that record type, replaces entries **in place** (so `RecordRef`s stay valid), then raises `RecordsReloaded(RecordType)` (04).
+
+### 3.6 As built (migration step 5)
+- **Code:** `src/Sage.Engine/Content/` (`VirtualFileSystem.cs`, `RecordId.cs`, `RecordStore.cs`, `RecordHotReload.cs`); tests in `tests/Sage.Tests/Content/ContentTests.cs`.
+- **VFS:** folder mounts only. Priority is mount order (`Mount(IMount)` has no priority argument). The host mounts engine content (`<exe>/Content`, namespace `sage`), then the game's `game.json` mounts (namespace = game id). `user://` is `UserPaths` (02), not a VFS root yet. `VirtualPath.Parse` rejects `.`, `..` and `:`.
+- **Records:** the rules above, deserialized with `System.Text.Json` reflection (fields and properties, case-insensitive names, comments and trailing commas allowed, `[x,y,z]` vectors, enums as strings). The generated readers (09) replace it later with the same rules. Differences from the design:
+  - errors name the file and the record's index in it (`scene.json[1]`), not a line number;
+  - no range checks yet (they come with `[Property]` attributes, 09);
+  - reference validation checks that a referenced `RecordId` exists, not that it has the right type; `AssetPath` references aren't checked (no `AssetPath` yet);
+  - no `RecordRef<T>` yet;
+  - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place.
+- **Hot reload** (`RecordHotReload`, dev builds): a `FileSystemWatcher` on each folder mount's `data/`, polled from the main thread and reloaded after 200 ms of quiet, while `rec_hotreload` is on. `games/Sandbox` respawns its scene on reload, so editing `content/data/scene.json` updates the running game.
+- **Assets (interim until R12):** `ContentService` (`src/Sage.Client/ClientModule.cs`) is a MonoGame `ContentManager` whose `OpenStream` reads `<name>.xnb` through the VFS. MGCB-built `.xnb` files can therefore come from any mount and be shadowed like any other file. `AssetServer`, `AssetRef`, scopes and runtime loaders are still to be built (§14 step 2).
 
 ## 4. Public API sketch
 
@@ -196,8 +208,8 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 
 ## 9. Debug and tooling hooks
 - **Cvars:** `asset_upload_ms`, `asset_cache_mb`, `asset_hotreload`, `rec_hotreload` (both `DevOnly`; default = `developer` ≥ 1), `vfs_log_overrides`.
-- **Commands:**
-  - `vfs_which <path>`, `vfs_ls <dir>`;
+- **Commands** (built in step 5: `vfs_which`, `vfs_ls`, `vfs_mounts`, `rec_get`, `rec_list`, `rec_reload`, and the `rec_hotreload` cvar):
+  - `vfs_which <path>`, `vfs_ls <dir>`, `vfs_mounts`;
   - `asset_list [filter]` (state, scope refs, size);
   - `asset_reload <path|*>`;
   - `rec_get <type> <id>` (dumps the merged record *with the file each field came from*);
@@ -211,10 +223,10 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | `AssetRef`s loaded into scopes; no statics |
+| `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | **Removed (step 5):** the Sandbox loads models through `ContentService` (VFS-backed, §3.6). Later: `AssetRef`s loaded into scopes |
 | `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | `stanford_bunny.glb` loaded at runtime via SharpGLTF. MGCB is no longer used: shaders compile with `dotnet-mgfxc` (07) |
 | The FreeImage failure that removed `light.png` (review #9, 2026-09-22) | Textures load with `Texture2D.FromStream` (StbImageSharp, no FreeImage) |
-| `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json` |
+| `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json`. **Done (step 5)** for game content; `Game1.Content` is only used by the ImGui renderer now |
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -237,8 +249,8 @@ A server needs the same records and simulation assets. The mod list plus record 
 - JSON library: `System.Text.Json` source-generated readers vs a custom reader that keeps line numbers for error messages. Leaning towards **`Utf8JsonReader` + a generated per-type reader** (fast, with position info for errors).
 
 ## 14. Build steps
-1. VFS (folder mounts, `user://`) + `game.json` mounts (with 01).
+1. ~~VFS (folder mounts) + `game.json` mounts (with 01)~~ **Done 2026-09-22** (ARCHITECTURE §7 step 5). `user://` as a VFS root is still to do.
 2. `AssetPath`, `AssetServer`, scopes, placeholders, texture + glTF + effect loaders; convert the bunny to `.glb`; fix TODO #9.
 3. Async decode + budgeted upload queue (with the 02 job system).
-4. `RecordStore`: parsing, namespaces, `base`, patch merge, validation (with 09's generator) (TODO R11).
-5. Hot reload for assets and records.
+4. `RecordStore`: parsing, namespaces, `base`, patch merge, validation (TODO R11). **v1 done in step 5** with `System.Text.Json` reflection (§3.6); 09's generator replaces it later.
+5. Hot reload for assets and records. **Records done in step 5**; assets come with the `AssetServer`.

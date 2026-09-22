@@ -17,6 +17,8 @@ internal class DevCamera
         get{return _camPosition;}
         set{_camPosition=value;}
     }
+    // Orientation (yaw, then pitch), the same rotation that builds camForward; published as ActiveCamera.Rotation.
+    public Quaternion Rotation => Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0);
     private Matrix projectionMatrix; // converts 3d to 2d a.k.a the lens (what the camera can see)
     private Matrix viewMatrix; // cameras physical position in the world (location and orientation) 
 

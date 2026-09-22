@@ -66,7 +66,7 @@ public sealed class ModManager                     // Engine service, used durin
 - **Later:** C# mod assemblies, an in-game mod manager UI, `.pak` packaging tool, Steam Workshop, per-field conflict UI in the editor (15).
 
 ## 14. Build steps
-1. `ModManager`: discovery, manifests, load order, mounting (with 05; TODO R11).
+1. `ModManager`: discovery, manifests, load order, mounting (with 05; TODO F37). *The pieces it builds on exist since migration step 5: VFS mounts with shadowing, per-mount record namespaces, the per-field patch merge and `rec_get`'s per-field origin (05 §3.6). `game.json` already has `modsDirectory`.*
 2. Conflict report (depends on the record merge reporting, 05).
 3. Save header mod list (with 09).
 4. C# mod assemblies (later).

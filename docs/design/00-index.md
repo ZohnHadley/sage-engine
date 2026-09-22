@@ -56,10 +56,12 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 ### Host and core
 | Name | Meaning | Doc |
 |---|---|---|
-| `Engine` | Process-wide core services object: cvars and worlds today; VFS, `AssetServer`, `RecordStore`, jobs and engine signals join in later steps. Created by the host, passed in (never a static singleton). Lives in `Sage.Engine`, so it has no MonoGame types. Client services (renderer, input devices, audio) are provided by client modules through `ModuleContext.Provide` | 01 |
-| `IModule` / `ModuleKind` | A logical engine or game unit with dependencies, `Init`, `Shutdown`. Kinds: `Runtime`, `Editor`, `Tool` | 01 |
-| `IGameModule` | The single entry point a game assembly implements | 01 |
-| `game.json` | Game manifest: name, mounts, default map, required modules | 01, 05 |
+| `Engine` | Process-wide core services object: cvars, VFS, `RecordStore`, modules and worlds today; `AssetServer`, jobs and engine signals join in later steps. Created by the host, passed in (never a static singleton). Lives in `Sage.Engine`, so it has no MonoGame types. Client services (renderer, input devices, audio) are provided by client modules through `ModuleContext.Provide` | 01 |
+| `IModule` / `ModuleKind` | A logical engine or game unit with dependencies and `Init` (register) → `Start` (use records/GPU) → `OnWorldCreated` (per world) → `Shutdown`. Kinds: `Runtime`, `Editor`, `Tool` | 01 |
+| `ModuleContext` | What a module gets in `Init`/`Start`: `Engine`, `Get<T>` (services from the host or declared dependencies only), `Provide<T>` | 01 |
+| `IGameModule` | The single entry point a game assembly implements (exactly one public class per game assembly) | 01 |
+| `game.json` | Game manifest: name, id (= record namespace), game assembly, mounts, modules to disable; later default map and mods folder | 01, 05 |
+| `ClientModule` / `ContentService` | The default client module (per-world `RenderView` + model rendering) and its interim VFS-backed model/texture loader, until the `AssetServer` | 01, 05 |
 | Build configurations | `Debug`, `Development`, `Shipping` (compile-time). "Dev builds" = `Debug` + `Development` (`SAGE_DEV`). There is no runtime dev mode | 01, 02 |
 | `developer` | `DevOnly` cvar that sets defaults (log verbosity, hot reload, `dev_override/`); each feature still has its own cvar | 01, 02 |
 | `DevOnly` | Cvar/command flag: compiled only into dev builds | 02 |
@@ -85,6 +87,7 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `GameRules` | Per-world object owning game flow (spawning, win/lose, time of day) | 16 |
 | Controller / Pawn | A `Controller` (player or AI) possesses a `Pawn` (the body) | 16 |
 | `PawnIntent` | Component both controllers write (move, look, actions); movement, combat and interaction read only this | 16 |
+| `ActiveCamera` | World resource: the camera position/rotation the view is rendered from (set by the host's camera today), for simulation code that needs it, like billboard facing | 03, 06 |
 
 ### Messaging
 | Name | Meaning | Doc |
@@ -103,7 +106,7 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `AssetRef<T>` | Cheap handle (slot + generation) to a loading or loaded asset; returns a placeholder until ready. Not ref-counted itself | 05 |
 | `AssetServer` | Loads, caches, reloads assets through `IAssetLoader<T>` | 05 |
 | `AssetScope` | Owns asset references: loading into a scope takes a reference; disposing it releases all of them (per engine, world, level, UI screen). Zero references → LRU cache → evicted | 05 |
-| Record | A data definition (item, spell, material, input map…) in JSON | 05 |
+| Record | A data definition (item, spell, material, input map…) in JSON, in `data/**/*.json` of any mount. `base` inherits, `"patch": true` merges field by field, `"abstract": true` marks a template | 05 |
 | `RecordId` | `namespace:name`, e.g. `sage:lit_default`, `mygame:iron_sword` | 05 |
 | `RecordStore` | Holds all records after load-order merge; typed lookup | 05 |
 | Effect | A compiled MonoGame shader file (`.mgfxo`) | 07 |
