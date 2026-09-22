@@ -18,6 +18,7 @@ public static class UserPaths
     public static string Root => _root ??= Resolve(GameId);
     public static string Logs => Path.Combine(Root, "logs");
     public static string ConfigFile => Path.Combine(Root, "config.cfg");
+    public static string Screenshots => Path.Combine(Root, "screenshots");
 
     // gameId becomes the game's id from game.json once games are modules (migration step 5).
     // overrideRoot is for tests and tools.

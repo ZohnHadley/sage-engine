@@ -79,6 +79,26 @@ public struct PlayerCommand                  // Sage.Engine (simulation data)
 ### 3.5 Text input
 Text typed into UI fields (the console, name entry, editor fields) comes from MonoGame's `Window.TextInput` (it handles keyboard layouts and repeat), routed to the focused widget in the top context. It is never derived from key states.
 
+### 3.6 As built (migration step 6)
+- **Code:**
+  - `src/Sage.Engine/Input/PlayerCommand.cs`: `ActionRegistry` (on `Engine.Actions`), `ActionId`, `ActionMask`, `PlayerCommand`, `CommandLatch`, the `PlayerInput` world resource, and the `input_map` record;
+  - `src/Sage.Client/Input/`: `InputDevices` (keyboard, mouse, the new `GamepadListener`) and `InputActions`.
+- **Actions** are registered by modules in `Init`. `ClientModule` registers `Move`, `Look`, `Jump`, `Attack`, `Use`, `Menu` and `ToggleConsole`, and their maps are in `engine_content/data/input.json` (`sage:console`, `sage:gameplay`).
+- **Contexts:** evaluated top-down with consumption. Console (while open) consumes the whole keyboard; UI takes whatever ImGui captures (its flags from the previous frame).
+- **Per frame:** the host resolves actions and feeds a `CommandLatch`. Before each tick it stores `latch.Sample(tick)` in the world's `PlayerInput`. `Menu` (Escape, gamepad Start/Back) closes the console or quits (#37); `ToggleConsole` replaces the old key event.
+- **Additions:**
+  - a binding option `"rate": true` (the value is per second and multiplied by the frame time, for sticks driving `Look`);
+  - `in_tap <action>` (DevOnly), which presses an action for one frame, for automated tests;
+  - `bindlist` and `in_contexts`;
+  - `m_sensitivity` and `m_invert_y` (Archive), which also drive the editor camera, whose look is now a plain radians-per-pixel rate (#39).
+- **Fixed on the way (#40):** the keyboard and mouse listeners rolled their previous state at the *end* of `Update`, so every polled edge (`IsKeyPressed`…) read false afterwards, and Escape-to-quit never worked. They now roll at the start.
+- **Not yet:**
+  - an `Editor` input map (the editor camera still reads devices, §14 step 4);
+  - mouse capture (it comes with a possessed pawn);
+  - `bind`/`unbind` + `user://input.json` (§14 step 5);
+  - `in_showactions`, `joy_deadzone` (dead zones are per binding);
+  - text input stays with ImGui.
+
 ## 4. Public API sketch
 
 ```csharp
@@ -158,10 +178,10 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 ## 10. Mapping from today's code
 | Today (`src/...`) | Becomes |
 |---|---|
-| `Sage.Client/Input/InputSystem.cs` (facade, events + polling; one instance owned by `Game1` since step 3) | `InputDevices` (devices) + `InputActions` (actions/contexts) as client module services. `toggle_debug` becomes the `ToggleConsole` action in the `Console`/`Gameplay` maps (dev only) |
+| `Sage.Client/Input/InputSystem.cs` (facade, events + polling; one instance owned by `Game1` since step 3) | **Done (step 6):** `InputDevices` + `InputActions`, owned by the host and provided to modules as host services; `ToggleConsole` is an action in the `Console`/`Gameplay` maps |
 | `Sage.Client/Input/KeyboardListener.cs`, `MouseListener.cs` | Kept as the device layer. (`MouseButton` is already `internal`) |
-| `Game1.Update` Escape/GamePad Back checks (TODO #37) | The `Menu` action |
-| `DevCamera` WASD polling + `OnMouseDrag` look, with display-size sensitivity scaling (TODO #39) | The editor camera rig reads `Move`/`Look` in the `Editor` context. Sensitivity is raw delta × `Look.scale` × `m_sensitivity` (radians per pixel), with no display-size factor |
+| `Game1.Update` Escape/GamePad Back checks (TODO #37) | **Done (step 6):** the `Menu` action |
+| `DevCamera` WASD polling + `OnMouseDrag` look, with display-size sensitivity scaling (TODO #39) | **#39 done (step 6):** raw delta × 0.004 rad/px × `m_sensitivity`. Still on devices; the editor camera rig reads `Move`/`Look` in the `Editor` context later (§14 step 4) |
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -182,8 +202,8 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 - 64 button actions enough? Probably for one pawn. Menus use UI navigation, not `PlayerCommand`. Revisit if a game needs more (e.g. Warband's many orders); those could be one `Command` action with a parameter instead.
 
 ## 14. Build steps
-1. Move the listeners into `InputDevices`; add gamepad.
-2. Actions + input-map records + contexts (with ImGui capture) (TODO R3).
-3. `PlayerCommand` + `CommandSampler` + latching; the `Menu` action replaces the Escape check (TODO R3, #37).
+1. ~~Move the listeners into `InputDevices`; add gamepad~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6).
+2. ~~Actions + input-map records + contexts (with ImGui capture)~~ **Done 2026-09-22** (TODO R3).
+3. ~~`PlayerCommand` + `CommandSampler` + latching; the `Menu` action replaces the Escape check~~ **Done 2026-09-22** (TODO R3, #37). The sampler is `CommandLatch` + the host's tick loop.
 4. Editor camera rig on actions; drop display-size scaling (TODO #39).
 5. `bind`/`unbind` + `user://input.json`.

@@ -99,6 +99,18 @@ The shared include defines:
 
 Game shaders that include it get lighting and fog consistent with engine materials.
 
+### 3.6 As built (migration step 6)
+- **Shaders:** `engine_content/shaders/`: `common.fxh` (the §3.5 contract), `lit.fx` (`Default`, `AlphaTest`, `Unlit`) and `error.fx`. `sprite.fx` and `debug.fx` come with sprites (F1) and `DebugDraw`.
+- **Build:** `build/Sage.EngineContent.targets` runs `dotnet mgfxc … /Profile:OpenGL` (pinned 3.8.2.1105 in `.config/dotnet-tools.json`) and copies `engine_content/` into the exe's `Content/`. Any `.fx`/`.fxh` change recompiles all; unchanged builds skip it. **Deviation:** the target is imported by `Sage.Host` (the exe owns the Content folder), not `Sage.Client`.
+- **Material records:** `MaterialRecord` in `src/Sage.Engine/Rendering/RenderData.cs`; engine materials `sage:lit_default`, `sage:unlit_default` and `sage:error` in `engine_content/data/materials.json`; the Sandbox inherits `sage:lit_default` for its bunny.
+- **`MaterialCache`** (client) builds a runtime per material on first use: effect, technique, material params and cached state objects. It binds the three tiers of §3.4, and rebuilds everything lazily when records reload (material hot reload works; **shader** hot reload is §14 step 4, not done).
+- **Deviations:**
+  - **Validation time:** missing effect parameters, unknown techniques and wrong param shapes are checked when the material is built (effect loaded), not at record load. The error names the material and the missing params, and the material draws as `sage:error`.
+  - **Fog switch:** a per-material `FogEnabled` parameter (from the record's `fog`) instead of zeroing the density. Frame-level `r_fog` and the environment's fog go into `FogParams.z`.
+  - **`AlbedoColor`:** `lit.fx` has a material-tier `AlbedoColor` that multiplies the texture (so materials can tint without a texture).
+  - **Point lights:** not yet (06 §3.9).
+- **Textures:** `.png`/`.jpg` load through the VFS with `Texture2D.FromStream` and are premultiplied on load (§13). A missing one becomes a magenta/black checker, with a warning.
+
 ## 4. Public API sketch
 
 ```csharp
@@ -167,9 +179,9 @@ dev:     .fx saved ─► watcher runs dotnet-mgfxc ─► success: Effect repla
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `BasicEffect` in `ModelRendererSystem.render` with `EnableDefaultLighting()` every draw and an unused `lightDirection` (TODO #25) | `lit.fx` `Default` technique via the `lit_default` material; lighting params bound per view |
-| `src/Sage.Host/Content/Content.mgcb` (models today) | Not used for shaders either: `dotnet-mgfxc` via an MSBuild target |
-| `.config/dotnet-tools.json` | Also pins `dotnet-mgfxc` |
+| `BasicEffect` in `ModelRendererSystem.render` with `EnableDefaultLighting()` every draw and an unused `lightDirection` (TODO #25) | **Done (step 6):** `lit.fx` `Default` technique via the `lit_default` material; lighting params bound per view |
+| `src/Sage.Host/Content/Content.mgcb` (models today) | Not used for shaders: `dotnet-mgfxc` via `build/Sage.EngineContent.targets` (**done, step 6**) |
+| `.config/dotnet-tools.json` | Also pins `dotnet-mgfxc` (**done, step 6**) |
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -190,7 +202,7 @@ None. Materials are client-only.
 - Premultiplied alpha everywhere (textures loaded with the `PremultiplyAlpha` processor, 05)? Yes. Blend states assume premultiplied.
 
 ## 14. Build steps
-1. `common.fxh` + `lit.fx` + `error.fx`; mgfxc MSBuild target; port the bunny to the `lit_default` material (TODO F2).
-2. Material record schema + validation + `MaterialCache` (with 05 records).
+1. ~~`common.fxh` + `lit.fx` + `error.fx`; mgfxc MSBuild target; port the bunny to the `lit_default` material~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO F2).
+2. ~~Material record schema + validation + `MaterialCache` (with 05 records)~~ **Done 2026-09-22** (validation when the material is built, §3.6).
 3. `sprite.fx` (with 06 sprites, TODO F1).
 4. Shader hot reload.

@@ -1,0 +1,26 @@
+[
+  // Engine materials (docs/design/07 §3.3), namespace "sage". Games and mods inherit from these with
+  // "base": "sage:lit_default" and override params; every param the effect uses has a value here.
+  {
+    "type": "material",
+    "id": "lit_default",
+    "effect": "shaders/lit.mgfxo",
+    "technique": "Default",
+    "pass": "Opaque",
+    "sampler": { "filter": "Linear", "address": "Wrap" },
+    "params": { "Albedo": "textures/white.png", "AlbedoColor": [1, 1, 1, 1], "AlphaCutoff": 0.5 }
+  },
+  {
+    "type": "material",
+    "id": "unlit_default",
+    "base": "lit_default",
+    "technique": "Unlit"
+  },
+  {
+    // The fallback for broken materials and the placeholder for missing meshes (07 §8).
+    "type": "material",
+    "id": "error",
+    "effect": "shaders/error.mgfxo",
+    "fog": false
+  }
+]

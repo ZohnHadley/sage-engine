@@ -24,7 +24,9 @@ internal class KeyboardListener
 
     public void Update()
     {
-        // Polling the latest hardware state
+        // Roll the state first, so the polling edges (IsKeyPressed/Released) stay valid until the next
+        // Update. (They used to roll at the end, which made every polled edge false; TODO #40.)
+        _previousKeySet = _currentKeySet;
         _currentKeySet = Keyboard.GetState();
 
         // Check all possible Enum keys for a state change
@@ -39,9 +41,6 @@ internal class KeyboardListener
                 OnKeyReleased?.Invoke(key);
             }
         }
-
-        // Cache state for the next frame comparisons
-        _previousKeySet = _currentKeySet;
     }
 
     // ---- Query API (polling) ----

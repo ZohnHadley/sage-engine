@@ -61,7 +61,7 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `ModuleContext` | What a module gets in `Init`/`Start`: `Engine`, `Get<T>` (services from the host or declared dependencies only), `Provide<T>` | 01 |
 | `IGameModule` | The single entry point a game assembly implements (exactly one public class per game assembly) | 01 |
 | `game.json` | Game manifest: name, id (= record namespace), game assembly, mounts, modules to disable; later default map and mods folder | 01, 05 |
-| `ClientModule` / `ContentService` | The default client module (per-world `RenderView` + model rendering) and its interim VFS-backed model/texture loader, until the `AssetServer` | 01, 05 |
+| `ClientModule` / `ContentService` / `Renderer` | The default client module (record types, engine input actions, per-world snapshot + Extract/Render systems), its interim VFS-backed loader for models, effects and textures (until the `AssetServer`), and the renderer service | 01, 05, 06 |
 | Build configurations | `Debug`, `Development`, `Shipping` (compile-time). "Dev builds" = `Debug` + `Development` (`SAGE_DEV`). There is no runtime dev mode | 01, 02 |
 | `developer` | `DevOnly` cvar that sets defaults (log verbosity, hot reload, `dev_override/`); each feature still has its own cvar | 01, 02 |
 | `DevOnly` | Cvar/command flag: compiled only into dev builds | 02 |
@@ -87,7 +87,9 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `GameRules` | Per-world object owning game flow (spawning, win/lose, time of day) | 16 |
 | Controller / Pawn | A `Controller` (player or AI) possesses a `Pawn` (the body) | 16 |
 | `PawnIntent` | Component both controllers write (move, look, actions); movement, combat and interaction read only this | 16 |
-| `ActiveCamera` | World resource: the camera position/rotation the view is rendered from (set by the host's camera today), for simulation code that needs it, like billboard facing | 03, 06 |
+| `ActiveCamera` | World resource: the camera position/rotation/fov/near/far the view is rendered from (set by the host's camera today; read by `CameraExtract` and by simulation code such as billboard facing) | 03, 06 |
+| `RenderEnvironment` | World resource: clear (sky) colour, sun, hemispheric ambient, fog | 06 |
+| `PlayerInput` | World resource: the local player's `PlayerCommand` for the tick being simulated | 08 |
 
 ### Messaging
 | Name | Meaning | Doc |

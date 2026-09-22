@@ -236,9 +236,9 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 | `EntityContextListener` + `ArchetypeView` | **Done (step 3):** typed `ArchetypeQuery` (membership) + `World` notifications |
 | `IComponent` interface | **Done (step 3):** Friflo's `IComponent` on struct components. `IComponentSystem`/`IEngineSystem` replaced by `ISystem` (step 4) |
 | `ComponentTransform` class (`LookAt`/`Billboard` methods) | **Done (step 3):** `Transform` struct (`LocalPosition/LocalRotation/LocalScale`, `Transform.Identity`) + `TransformMath`. `SectorCoord`/`GlobalTransform` + propagation in step 4 |
-| `ComponentMeshRenderer` class → **`ModelRenderer` struct** (step 3; still holds a MonoGame `Model`, so it lives in `Sage.Client`) | `MeshRenderer { AssetPath Mesh; RecordId Material; }` and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
+| `ComponentMeshRenderer` class → `ModelRenderer` struct (step 3) → **`MeshRenderer { AssetPath Mesh; RecordId Material; byte Layer; }` in Sage.Engine (done, step 6)** | `MeshRenderer` done; and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
 | (the `TransfomSystem.cs` stub, deleted 2026-09-22) | **Done (step 4):** transform propagation, run by `World` after `PostPhysics` and `Late` |
-| `Sage.Client/Rendering/ModelRendererSystem.cs` (now one instance per world, iterating `Query<Transform, ModelRenderer>().Chunks`) | Extract system in the client (06) |
+| `Sage.Client/Rendering/ModelRendererSystem.cs` | **Done (step 6):** `CameraExtract` + `MeshExtract` + `RenderSystem` (06 §3.11). Every `World` now also has `RenderEnvironment` and `PlayerInput` resources, next to `ActiveCamera` |
 
 ## 11. v1 scope vs later
 - **v1** (✓ = built in migration step 3):

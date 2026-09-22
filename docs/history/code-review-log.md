@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#39) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#41) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -139,7 +139,7 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
   - `EditorManager.windowWidth` vs `WindowHeight` — inconsistent casing (should be `WindowWidth`)
 - **Resolution (2026-09-22, solution split)**: the `EnginClasses/` folder and `TransfomSystem.cs` are gone, `IEnginSystem` → `IEngineSystem`, "cans see" and "dept" comments fixed, `windowWidth` → `WindowWidth`.
 
-### [~] 25. Dead / redundant code
+### [X] 25. Dead / redundant code
 - **Done**: Identity multiplication removed; manual light setup collapsed to `EnableDefaultLighting()`.
 - **Still present** in `engine/Classes/EnginClasses/ECS/systems/ModelRendererSystem.cs`:
   - Lines 53-54: `lightDirection` is computed and normalized but never used.
@@ -147,6 +147,7 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
   - Lines 43-45: `getComponent<ComponentTransform>()` and the World matrix are recomputed per effect inside the mesh loop. Hoist them to per-entity.
   - `update(GameTime)` is an empty body.
 - Other new dead code is tracked in #36.
+- **Resolution (2026-09-22, migration step 6)**: `ModelRendererSystem` and `BasicEffect` were replaced by Extract (`MeshExtract`) + `RenderSnapshot` + the `Renderer` with material records and `lit.fx` (docs/design/06 §3.11, 07 §3.6).
 
 ### [X] 26. Bunny spawn loop size
 - **File**: `engine/Game1.cs:58-66`
@@ -223,10 +224,11 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Resolution (2026-09-22, quick-fix batch)**: removed `InputSystem.isDebug`/`key_binds`, `Entity.context`, `EditorUI.context`, `DevCamera.Target`/`_camTarget`, and the stale `EntityContextSystem` comments in `ArchetypeView.cs`/`EntityContextListener.cs`. Remaining: `EditorManager.getCamera`, `getGroups`, `getAllEntitiesFromListOfGroups`, unused `using`s (tracked in `TODO.md`).
 - **Resolution (2026-09-22, migration step 3 — `World` over Friflo.Engine.ECS)**: `EditorManager.getCamera` removed; `getGroups`/`getAllEntitiesFromListOfGroups` went with `EntityContext`. (Unused `using`s aren't tracked any more.)
 
-### [ ] 37. Input bypasses `InputSystem` in `Game1` — **Severity: Cosmetic**
+### [X] 37. Input bypasses `InputSystem` in `Game1` — **Severity: Cosmetic**
 - **File**: `engine/Game1.cs:75`
 - **Problem**: Escape and GamePad Back are read via `Keyboard.GetState()` / `GamePad.GetState()` *before* `InputSystem.update`. That is the last direct hardware read outside the listeners.
 - **Fix**: Move `InputSystem.getInstance().update(gameTime)` first and use `input.IsKeyPressed(Keys.Escape)`. GamePad can stay direct until there's a gamepad listener.
+- **Resolution (2026-09-22, migration step 6)**: Escape and gamepad Start/Back are bindings of the `Menu` action (`engine_content/data/input.json`); `Game1` reads `actions.Pressed(Menu)`. There's a `GamepadListener` now. (The step-2 version, `input.IsKeyPressed(Keys.Escape)`, never fired: see #40.)
 
 ### [X] 38. Component groups/archetypes are keyed by type-name strings — **Severity: Latent**
 - **Files**: `EntityContext.cs:123, 140`, `Entity.cs:64-72`, `ArchetypeView.cs:12, 27-37`, `ModelRendererSystem.cs:16`
@@ -234,7 +236,19 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Fix**: Key on `Type`: `Track(params Type[])` or `Track<T1, T2>()`, `hasComponent(Type)` → `_components.ContainsKey(type)`, and `Dictionary<Type, Dictionary<long, Entity>>` for groups.
 - **Resolution (2026-09-22, migration step 3 — `World` over Friflo.Engine.ECS)**: string-keyed groups and `ArchetypeView` replaced by typed Friflo queries (`World.Query<T1, T2>()`).
 
-### [ ] 39. `DevCamera` mouse sensitivity scaling is odd — **Severity: Cosmetic**
+### [X] 39. `DevCamera` mouse sensitivity scaling is odd — **Severity: Cosmetic**
 - **File**: `engine/Classes/EnginClasses/CameraClasses/DevCamera.cs:104-107`
 - **Problem**: Dividing the delta by the display size and multiplying it by the back-buffer size makes look speed depend on window size (a small window gives slow look), which is the opposite of the comment's claim. It also queries `GraphicsAdapter.DefaultAdapter.CurrentDisplayMode` on every drag event.
 - **Fix**: Use raw pixel delta × a sensitivity constant (radians per pixel). Scale by nothing, or by DPI if needed.
+- **Resolution (2026-09-22, migration step 6)**: look = pixel delta × 0.004 rad/px × `m_sensitivity` (Archive cvar, shared with the `Look` action), with `m_invert_y`.
+
+### [X] 40. Polled input edges were always false — **Severity: Wiring** (found 2026-09-22, migration step 6)
+- **Files**: `src/Sage.Client/Input/KeyboardListener.cs`, `MouseListener.cs`
+- **Problem**: `Update` copied the current state into the previous one at the *end*, so after polling, `IsKeyPressed`/`IsKeyReleased`, `IsButtonPressed`/`Released`, `PositionDelta` and `ScrollWheelDelta` compared a state with itself. Only the events (raised inside `Update`) saw edges. So `Game1`'s `input.IsKeyPressed(Keys.Escape)` (step 2) could never fire, and Escape never quit.
+- **Resolution (2026-09-22, migration step 6)**: both listeners roll the previous state at the *start* of `Update`, so polled edges stay valid until the next poll. `InputActions` relies on this.
+
+### [ ] 41. The host allocates 176 bytes every frame — **Severity: Latent** (found 2026-09-22, migration step 6)
+- **Where**: the host frame (`src/Sage.Host/Game1.cs`), measured with `mem_warn_bytes 1` (`StatOverlay`).
+- **Problem**: steady-state frames should allocate nothing (02 §4.6). The world's systems don't: toggling the Extract, Render and gameplay systems off changes nothing. But the frame as a whole allocates 176 B, the same on the commit before step 6. Likely candidates are ImGui.NET's per-frame layout or MonoGame's input polling.
+- **Fix**: find it with an allocation profiler (dotnet-counters / dotnet-trace GC allocation ticks); fix it, or accept and document it as the baseline.
+

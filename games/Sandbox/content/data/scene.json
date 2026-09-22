@@ -1,11 +1,19 @@
 [
   // The test scene, as data (docs/design/05 §3.5). Edit while the game runs: with `developer 1`,
-  // record files hot-reload and the scene respawns.
+  // record files hot-reload and the scene respawns. Press Space (Jump) to make it hop.
+  {
+    // A game material inheriting from the engine's (07 §3.3): same effect and params, another colour.
+    "type": "material",
+    "id": "bunny",
+    "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.92, 0.86, 0.78, 1] }
+  },
   {
     "type": "spawn",
     "id": "creature_base",
     "abstract": true,
     "model": "stanford_bunny",
+    "material": "bunny",
     "facesCamera": true
   },
   {

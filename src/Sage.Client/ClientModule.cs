@@ -1,9 +1,5 @@
 #nullable enable
-using System;
-using System.IO;
-using Friflo.Engine.ECS;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
@@ -17,64 +13,51 @@ public sealed class ClientHost
     public GraphicsDevice GraphicsDevice => Game.GraphicsDevice;
 }
 
-// Loads MonoGame content (.xnb built by MGCB) through the VFS instead of a fixed Content folder, so
-// game mounts and mods can provide or shadow content by path (docs/design/05 §3.2). Interim: the
-// AssetServer with runtime PNG/glTF loaders replaces this (TODO R12).
-public sealed class ContentService : IDisposable
-{
-    private readonly VfsContentManager _content;
-
-    internal ContentService(ClientHost host, VirtualFileSystem vfs)
-    {
-        _content = new VfsContentManager(host.Game.Services, vfs);
-    }
-
-    // `name` is a virtual path without the .xnb extension, e.g. "stanford_bunny".
-    public Model LoadModel(string name) => _content.Load<Model>(name);
-    public Texture2D LoadTexture(string name) => _content.Load<Texture2D>(name);
-
-    public void Dispose() => _content.Dispose();
-
-    private sealed class VfsContentManager : ContentManager
-    {
-        private readonly VirtualFileSystem _vfs;
-
-        public VfsContentManager(IServiceProvider services, VirtualFileSystem vfs) : base(services) { _vfs = vfs; }
-
-        protected override Stream OpenStream(string assetName)
-        {
-            var path = VirtualPath.Parse(assetName + ".xnb");
-            var mount = _vfs.Which(path);
-            if (mount == null)
-            {
-                Log.Warn(LogCat.Assets, $"Content '{assetName}' not found in any mount");
-                throw new ContentLoadException($"Content '{assetName}' not found in any mount (looked for {path}).");
-            }
-            Log.Debug(LogCat.Assets, $"Loading {path} from {mount.Name}");
-            return mount.Open(path);
-        }
-    }
-}
-
-// The client engine module (a default module; docs/design/01 §3.1): content loading through the VFS,
-// and per world the RenderView resource + the model renderer.
+// The client engine module (a default module; docs/design/01 §3.1): registers the client record types
+// and the engine's input actions, provides ContentService and Renderer, and per world installs the
+// RenderSnapshot and the Extract/Render systems (06 §3.1).
 public sealed class ClientModule : IModule
 {
     private ContentService? _content;
+    private Renderer? _renderer;
 
-    public void Init(ModuleContext ctx) { }
+    public void Init(ModuleContext ctx)
+    {
+        ctx.Engine.Records.Register<MaterialRecord>();
+        ctx.Engine.Records.Register<InputMapRecord>();
+
+        // The engine's actions (08 §3.2); bindings are in engine_content/data/input.json. Move and Look
+        // feed PlayerCommand.Move and the view angles.
+        var actions = ctx.Engine.Actions;
+        actions.Register("Move", ActionKind.Axis2D);
+        actions.Register("Look", ActionKind.Axis2D);
+        actions.Register("Jump", ActionKind.Button);
+        actions.Register("Attack", ActionKind.Button);
+        actions.Register("Use", ActionKind.Button);
+        actions.Register("Menu", ActionKind.Button);
+        actions.Register("ToggleConsole", ActionKind.Button);
+    }
 
     public void Start(ModuleContext ctx)
     {
-        _content = new ContentService(ctx.Get<ClientHost>(), ctx.Engine.Vfs);
+        var host = ctx.Get<ClientHost>();
+        _content = new ContentService(host, ctx.Engine.Vfs);
+        _renderer = new Renderer(host, _content, ctx.Engine);
         ctx.Provide(_content);
+        ctx.Provide(_renderer);
     }
 
     public void OnWorldCreated(World world)
     {
-        world.Resources.Set(new RenderView());
-        world.AddSystem(new ModelRendererSystem(world), Phase.Render);
+        world.Resources.Set(new RenderSnapshot());
+        world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);
+        world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
+        world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
     }
 
-    public void Shutdown() => _content?.Dispose();
+    public void Shutdown()
+    {
+        _renderer?.Dispose();
+        _content?.Dispose();
+    }
 }

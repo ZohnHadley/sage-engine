@@ -125,7 +125,7 @@ public sealed class Engine                        // process-wide services; crea
 
 `ModuleContext.Get<T>` only resolves services from declared dependencies (plus services the host provides with `ModuleManager.ProvideHostService`, such as `ClientHost`). Asking for anything else throws, which keeps the dependency list honest.
 
-**Deviation (step 5):** `OnWorldCreated` is on every `IModule`, not only `IGameModule`. Client modules need a per-world hook too: `ClientModule` installs the `RenderView` resource and `ModelRendererSystem` in every world. It runs in dependency order, so engine modules have set a world up before the game spawns into it.
+**Deviation (step 5):** `OnWorldCreated` is on every `IModule`, not only `IGameModule`. Client modules need a per-world hook too: `ClientModule` installs the `RenderSnapshot` resource and the Extract/Render systems in every world (06 §3.11). It runs in dependency order, so engine modules have set a world up before the game spawns into it.
 
 `Engine` lives in `Sage.Engine`, so it holds only core services. Client services (`Renderer`, `InputDevices`, `AudioSystem`) are provided by their client modules with `ctx.Provide(...)`, and consumers declare a dependency on those modules. `Log` is static (02) because it must work before `Engine` exists and from any thread.
 
@@ -156,7 +156,7 @@ Program.Main(args)
                     → asset scopes released → logs flushed last
 ```
 
-*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the default `ClientModule` unless `game.json` disables it, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: host cvars and commands, `config.cfg`, records, the `ClientHost` host service, module `Start`, the main world, and finally the `+launch` commands.
+*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the default `ClientModule` unless `game.json` disables it, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: input devices and actions (08) and the host's cvars and commands, then `config.cfg`, then records, then the host services (`ClientHost`, `InputDevices`, `InputActions`), then module `Start`, then the main world, and finally the `+launch` commands. *Step 6:* each frame the host polls devices, resolves actions, feeds the `CommandLatch`, and hands every fixed tick its `PlayerCommand` through the world's `PlayerInput` resource (08 §3.6).
 
 **Deviation:** `+args` run **after** the main world exists, not with `config.cfg` in step 6, as Source runs `+map` last. That way `+rec_get spawn bunny`, `+ent_list` or `+pause` see the loaded game. Launch args still override `config.cfg`. What they can't do is change a cvar before a module's `Start` reads it; no module reads cvars in `Start` today. Shutdown destroys the worlds, then shuts modules down in reverse order, saves Archive cvars and flushes the log last. Unknown `-options` are logged as warnings.
 

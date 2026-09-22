@@ -212,15 +212,23 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 
 ## 7. From today's code to this structure
 
-**Today** (after step 4): `Sage.sln` with `src/Sage.Engine` (no MonoGame), `src/Sage.Client`, `src/Sage.Editor`, `src/Sage.Host` (exe) and `tests/Sage.Tests`; logging/console/build configurations (step 2); `Engine` + `World` over Friflo.Engine.ECS with no singletons (step 3); a fixed-tick loop with interpolated rendering, schedules/phases and the profiler (step 4). Still `BasicEffect` rendering and MGCB content. Each design doc has a "Mapping from today's code" table. The main moves:
+**Today** (after step 6):
+- **Solution:** `Sage.sln` with `src/Sage.Engine` (no MonoGame), `src/Sage.Client`, `src/Sage.Editor`, `src/Sage.Host` (exe), `games/Sandbox` and `tests/Sage.Tests`.
+- **By step:**
+  - step 2: logging, the console and build configurations;
+  - step 3: `Engine` + `World` over Friflo.Engine.ECS, with no singletons;
+  - step 4: a fixed-tick loop with interpolated rendering, schedules/phases and the profiler;
+  - step 5: modules, `game.json`, the VFS and records;
+  - step 6: Extract → `RenderSnapshot` → material-driven rendering with our own shaders, and input actions → `PlayerCommand`.
+- **Still to replace:** models are MGCB `.xnb` files until the runtime loaders (R12). Each design doc has a "Mapping from today's code" table. The main moves:
 
 | Today | Becomes |
 |---|---|
 | `Game1`, `Program` | `Sage.Host` boot + fixed-tick loop ([01](docs/design/01-host-and-modules.md)); test scene → `games/Sandbox` (**done, step 5**) |
 | ~~`EntityContext`, `Entity`, `EntityContextListener`, `ArchetypeView`~~ (step 3) | `World`, `EntityRef` (Friflo `Entity`), typed queries, structural notifications ([03](docs/design/03-world-and-ecs.md), [04](docs/design/04-events-and-messaging.md)) |
 | `Transform` struct + `TransformMath` (step 3; was `ComponentTransform`) | + `GlobalTransform` + transform propagation (step 4), `SectorCoord` later (R6); math in `TransformMath`; billboarding moves to the renderer |
-| `ModelRenderer` (struct, step 3), `ModelRendererSystem` | `MeshRenderer` (with `AssetPath`) + `MeshExtract` + material-based passes ([06](docs/design/06-rendering.md), [07](docs/design/07-materials-and-shaders.md)) |
-| `InputSystem`, listeners | `InputDevices` + actions/contexts + `PlayerCommand` ([08](docs/design/08-input.md)) |
+| `ModelRenderer` (struct, step 3), `ModelRendererSystem` | `MeshRenderer` (with `AssetPath`) + `MeshExtract` + material-based passes ([06](docs/design/06-rendering.md), [07](docs/design/07-materials-and-shaders.md)). **Done, step 6** |
+| `InputSystem`, listeners | `InputDevices` + actions/contexts + `PlayerCommand` ([08](docs/design/08-input.md)). **Done, step 6** |
 | `DevCamera` | Editor camera rig on actions ([15](docs/design/15-editor.md)) |
 | `EditorUI`, `EntityContextMenuUI` | Editor menu, outliner, generated inspector ([15](docs/design/15-editor.md)) |
 | `UtilAssets`, `Content.mgcb` | `AssetServer` + VFS + runtime loaders ([05](docs/design/05-assets-and-vfs.md)). **Step 5:** `UtilAssets` removed; VFS done; `.xnb` files load through the VFS (`ContentService`) until the runtime loaders (R12) |
@@ -232,8 +240,19 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 3. ~~**`World` + `Engine` objects replace the singletons**~~ **Done 2026-09-22** (R1, R5; D4 decided). Friflo.Engine.ECS 3.6.0 passed all nine requirements in a spike (03 §3.1) and is adopted behind a thin `World` (struct components, stale-detecting handles, typed queries, command buffer, notifications with the old ordering guarantees, `PersistentId`, resources, hierarchy). `Engine` owns cvars and worlds; no engine singletons remain (`Log`/`CrashReporter` are static by design). Fixed #15, #33, #34, #36, #38. 44 tests.
 4. ~~**Fixed tick + schedules + phases**~~ **Done 2026-09-22** (R2, R4). `FixedStepClock` (Fiedler accumulator, clamped frame time, time scale), `sim_tickrate` 60 Hz, render interpolation via `GlobalTransform` (previous/current poses) + transform propagation through the hierarchy, `ISystem` in Fixed/Frame phases with `before`/`after` ordering, run conditions, pause, per-phase command flushing, profiler scopes + `stat frame` + `sys_list`/`sys_toggle`. The loop allocates nothing in steady state (tested). Deferred: `SectorCoord`/origin rebasing (R6), access declarations (event bus), `host_maxfps`. 56 tests.
 5. ~~**Modules + `game.json` + VFS + records**~~ **Done 2026-09-22** (R8, R11 v1). `IModule` (`Init` → `Start` → `OnWorldCreated` → `Shutdown`) with dependency sort and dependency-checked services; `game.json` (game id = record namespace, `{config}` in the assembly path, module disabling); the game assembly loads before the first `World`. VFS with priority folder mounts, shadowing and case-insensitive lookup; `RecordStore` with namespaced ids, per-field patch merge (`field+`/`field-`), `disabled`, `base` + `abstract`, validation (unknown fields, types, references), in-place hot reload; `vfs_*`, `rec_*`, `modules` commands. **`games/Sandbox` is now a real game module** (it was planned for step 4 in step 1's note): its scene is `spawn` records, and billboard facing is its own system. Deviations, all documented in 01 §4/§5.1 and 05 §3.6: `OnWorldCreated` is on every module, not only the game; `+launch` commands run after the main world exists; records use `System.Text.Json` reflection until the generator (09); models still come from MGCB `.xnb` files, now read through the VFS (`ContentService`), until R12. 89 tests.
-6. **Extract + snapshot + materials** (R9); **input actions → `PlayerCommand`** (R3).
-7. Then the **vertical slice**, alternating features with the infrastructure they prove they need.
+6. ~~**Extract + snapshot + materials** (R9); **input actions → `PlayerCommand`** (R3)~~ **Done 2026-09-22.**
+   - **Rendering:** `MeshRenderer` (Sage.Engine) → `CameraExtract`/`MeshExtract` → a pooled `RenderSnapshot` (camera-relative, interpolated, frustum-culled, sort keys) → the `Renderer`'s fixed passes.
+   - **Materials and shaders:** material records (`sage:lit_default`, `sage:error`, `base` inheritance, hot reload) drawn with our own `lit.fx`/`error.fx`. Shaders are compiled by `dotnet-mgfxc` from `engine_content/` at build time, and `BasicEffect` is gone.
+   - **Input:** `InputDevices` (+ gamepad) → `InputActions` (input_map records, Editor/Console/UI/Gameplay contexts with consumption) → `CommandLatch` → a `PlayerCommand` per tick in the world's `PlayerInput`. The Sandbox hops on Jump, and `Menu` replaces the Escape check.
+   - **Fixed:** #25, #37, #39, and a new #40 (listener edges were always false).
+   - **Deviations, all written up in 06 §3.11, 07 §3.6 and 08 §3.6:**
+     - no `Camera` component yet (`ActiveCamera` is the view);
+     - material validation happens when a material is built, not at load;
+     - the shader build target lives in the host;
+     - the editor camera still reads devices.
+   - **Deferred:** sprites (F1), point lights, `DebugDraw`, shader hot reload, `bind`/`user://input.json`.
+   - 100 tests.
+7. **Next: the vertical slice**, alternating features with the infrastructure they prove they need (the "Suggested first milestone" in TODO.md). The first candidates are sprites/billboards (F1), with the terrain and player movement they need.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
 

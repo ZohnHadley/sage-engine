@@ -99,6 +99,24 @@ Sorting by material first minimises effect and texture switches; depth last give
 ### 3.10 Debug drawing
 `DebugDraw` is a static API usable from any system on the main thread: `Line`, `Box`, `Sphere`, `Arrow`, `Text3D`, each with a colour, a duration and a depth-test flag. It's compiled only with `SAGE_DEV` (like `Log.Debug`). Primitives are queued, copied into the snapshot at extract, and drawn in pass 5.
 
+### 3.11 As built (migration step 6)
+- **Code:** `src/Sage.Client/Rendering/` (`RenderSnapshot.cs`, `RenderSystems.cs`, `Renderer.cs`, `MaterialCache.cs`); components and the environment in `src/Sage.Engine/Rendering/RenderData.cs`.
+- **Extract → snapshot → Render:** `ClientModule` installs a `RenderSnapshot` resource in every world, plus `CameraExtract` and `MeshExtract` (Extract phase, in that order) and `RenderSystem` (Render phase). Only Extract reads components; the `Renderer` draws only from the snapshot.
+  - `MeshExtract`: `GlobalTransform` interpolated with alpha, camera-relative matrices, frustum culling per mesh part (bounding sphere), and sort keys (§3.5).
+  - The Render phase clears to the environment's colour (the v1 sky), sorts, and draws opaque → alpha-tested → transparent in key order. Materials switch only when the material id changes.
+- **Deviations and gaps:**
+  - **Camera:** there's no `Camera` component yet. `CameraExtract` reads the world's `ActiveCamera` resource (position, rotation, fov, near 0.1, far 1000), which the host fills from the editor camera.
+  - **Snapshot:** one view (`RenderSnapshot.View`), not a list.
+  - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
+  - **Tint:** always 1 (no per-entity tint component yet).
+  - **Allocations:** steady-state frames allocate nothing in these systems. Measured with `mem_warn_bytes 1`, the host allocates 176 B/frame, the same as before step 6 (TODO #41).
+- **Meshes:** `MeshRenderer.Mesh` is an `AssetPath` to an MGCB model, loaded through the VFS (`ContentService`) until R12. Model bone transforms are now applied; the old `ModelRendererSystem` ignored them. The bunny's FBX root bone scales ×100 and turns 180°, so `Content.mgcb` builds it with `Scale=0.01`, and it now faces the way the file says.
+- **Fallbacks:**
+  - a missing mesh draws a 1 m magenta cube with `sage:error`;
+  - a broken material draws as `sage:error` (07 §8).
+- **Not yet (v1 items left):** sprites and 8-direction billboards (F1), point lights, render scale, `DebugDraw`, `stat render`, `r_snapshot_dump`. Instancing stays "later".
+- `GraphicsProfile.HiDef` is set by the host.
+
 ## 4. Public API sketch
 
 ```csharp
@@ -174,6 +192,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 - Device lost/reset (MonoGame `DeviceReset`) → the renderer re-creates dynamic buffers and render targets; asset textures are managed by MonoGame.
 
 ## 9. Debug and tooling hooks
+- **Built in step 6:** `r_fog`, `r_wireframe` and `r_freezecull` (both DevOnly + Cheat), `r_stats`, `mat_list`, `mat_info`, and the host's `screenshot` command (saves the frame to `user://screenshots/`).
 - **Cvars:**
   - `r_instancing`, `r_instancing_min`;
   - `r_maxlights`;
@@ -193,9 +212,9 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| *(step 4: now a Render-phase `ISystem` that draws `GlobalTransform.Interpolated(alpha)`, with camera matrices from a `RenderView` world resource; a stand-in for Extract + snapshot)* `src/Sage.Client/Rendering/ModelRendererSystem.cs`: iterates entities in `render()`, uses `BasicEffect`, calls `EnableDefaultLighting()` per mesh per frame, recomputes the world matrix per effect (TODO #25) | `MeshExtract` (reads `GlobalTransform` + `MeshRenderer`) + the opaque pass with material effects (07). Scale is part of the pose |
-| `Game1.Draw`: sets `DepthStencilState.Default`, `RasterizerState.CullCounterClockwise`, clears to `DarkOliveGreen` | Pass setup (§3.4); the clear colour comes from `Environment` |
-| `DevCamera`: `projectionMatrix`/`viewMatrix`, 45° FOV, near 0.01 / far 1000 | `Camera` component + `CameraExtract`. The editor's free-fly camera (15) is one camera rig. Near plane raised (0.01 is too small for depth precision at 1000 far; 0.1 suggested) |
+| `src/Sage.Client/Rendering/ModelRendererSystem.cs` + `ModelRenderer` + the `RenderView` resource (BasicEffect, TODO #25) | **Done (step 6):** `MeshRenderer` (Sage.Engine) + `MeshExtract` + the `Renderer`'s passes with material effects (07); the old files are deleted |
+| `Game1.Draw`: sets `DepthStencilState.Default`, `RasterizerState.CullCounterClockwise`, clears to `DarkOliveGreen` | **Done (step 6):** the Renderer clears to `RenderEnvironment.ClearColor` (the same green by default); render state comes from materials |
+| `DevCamera`: `projectionMatrix`/`viewMatrix`, 45° FOV, near 0.01 / far 1000 | **Step 6:** `DevCamera` only moves a position and yaw/pitch; `CameraExtract` builds the matrices from `ActiveCamera` (near 0.1). A `Camera` component and rigs come with the pawn (16) |
 | `TransformMath.Billboard` + the per-frame call in `Game1.Update` (TODO #26, #31) | `SpriteRenderer` with `BillboardMode` + direction selection at extract |
 | `Game1.GuiRenderer` (ImGui) | The Overlay pass (13) |
 
@@ -229,9 +248,9 @@ Nothing changes: a client renders its own world's snapshot. A dedicated server d
 - Is SM3's constant budget enough for 4 point lights + fog + sun in one pass on DesktopGL/MojoShader? Verify with the first material. Fall back to 2 lights if not.
 
 ## 14. Build steps
-1. `RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass (TODO R9, #25).
-2. Sort keys + material-based drawing (with 07).
+1. ~~`RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO R9, #25).
+2. ~~Sort keys + material-based drawing (with 07)~~ **Done 2026-09-22** (radix sort later).
 3. Sprite batcher + `SpriteRenderer` + 8-direction selection (TODO F1; with 12).
 4. Lighting/fog/ambient + render scale (TODO F2).
-5. `DebugDraw` + `r_stats` + the overlay (TODO F5).
+5. `DebugDraw` + `r_stats` + the overlay (TODO F5). *`r_stats` done in step 6.*
 6. Instancing experiment behind `r_instancing` (later).

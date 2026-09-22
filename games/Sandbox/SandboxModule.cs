@@ -3,11 +3,12 @@ using System.Numerics;
 namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Directory.Build.props
 
 // The Sandbox game module (docs/design/01 §4): the dogfooding game that grows into the Daggerfall-like
-// vertical slice (TODO milestone). Today it spawns the test scene from `spawn` records.
+// vertical slice (TODO milestone). Today it spawns the test scene from `spawn` records, draws it with
+// material records, and makes it hop on the Jump action (PlayerCommand, 08 §3.4).
 public sealed class SandboxModule : IGameModule
 {
-    private ContentService? _content;
     private RecordStore? _records;
+    private ActionId _jump = ActionId.None;
     private readonly List<World> _worlds = new();
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule) };
@@ -19,13 +20,14 @@ public sealed class SandboxModule : IGameModule
 
     public void Start(ModuleContext ctx)
     {
-        _content = ctx.Get<ContentService>();
         _records = ctx.Engine.Records;
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
+        _jump = ctx.Engine.Actions.Get("Jump");   // registered by ClientModule
     }
 
     public void OnWorldCreated(World world)
     {
+        world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
         Spawn(world);
@@ -50,9 +52,10 @@ public sealed class SandboxModule : IGameModule
     {
         foreach (var spawn in _records!.All<SpawnRecord>())
         {
-            if (string.IsNullOrEmpty(spawn.Model)) continue;   // templates like creature_base
+            if (spawn.Model.IsEmpty) continue;
             var e = world.Create(Transform.At(spawn.Position), string.IsNullOrEmpty(spawn.Name) ? null : spawn.Name);
-            world.Add(e, new ModelRenderer { Model = _content!.LoadModel(spawn.Model) });
+            world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
+            world.Add(e, new Hop { BaseY = spawn.Position.Y });
             e.AddTag<FromSpawnRecord>();
             if (spawn.FacesCamera) e.AddTag<FacesCamera>();
         }
@@ -65,7 +68,8 @@ public sealed class SandboxModule : IGameModule
 public sealed class SpawnRecord
 {
     public string Name = "";
-    public string Model = "";          // content path without extension (loaded through the VFS)
+    public AssetPath Model;            // mesh asset path (an MGCB model: no extension)
+    public RecordId Material;          // empty = sage:lit_default
     public Vector3 Position;
     public bool FacesCamera;
 }
@@ -73,6 +77,51 @@ public sealed class SpawnRecord
 // Tags.
 public struct FacesCamera : ITag { }
 public struct FromSpawnRecord : ITag { }
+
+// A little vertical hop with gravity.
+public struct Hop : IComponent
+{
+    public float BaseY;
+    public float Velocity;
+}
+
+// Gameplay phase (Fixed): Jump (from the tick's PlayerCommand, never from the keyboard) launches
+// every hopping entity that is on the ground. A tap shorter than a tick still counts: the command
+// latches presses between ticks (08 §3.4).
+public sealed class HopSystem : ISystem
+{
+    private const float LaunchSpeed = 3.5f, Gravity = -12f;
+    private readonly ArchetypeQuery<Transform, Hop> _hoppers;
+    private readonly ActionId _jump;
+
+    public HopSystem(World world, ActionId jump)
+    {
+        _hoppers = world.Query<Transform, Hop>();
+        _jump = jump;
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        var input = ctx.World.Resources.Get<PlayerInput>();
+        bool jump = input.HasCommand && input.Command.Pressed.Has(_jump);
+        if (jump) Log.Debug(LogCat.Gameplay, $"Jump in the command for tick {input.Command.Tick}");
+        float dt = ctx.Tick.Dt;
+        foreach (var (transforms, hops, _) in _hoppers.Chunks)
+        {
+            var t = transforms.Span;
+            var h = hops.Span;
+            for (int n = 0; n < t.Length; n++)
+            {
+                bool grounded = t[n].LocalPosition.Y <= h[n].BaseY;
+                if (jump && grounded) h[n].Velocity = LaunchSpeed;
+                if (grounded && h[n].Velocity <= 0) continue;
+                h[n].Velocity += Gravity * dt;
+                t[n].LocalPosition.Y = MathF.Max(h[n].BaseY, t[n].LocalPosition.Y + h[n].Velocity * dt);
+                if (t[n].LocalPosition.Y <= h[n].BaseY) h[n].Velocity = 0;
+            }
+        }
+    }
+}
 
 // Gameplay phase (Fixed): turns FacesCamera entities towards the active camera. Running at the tick
 // rate and drawn interpolated, it also shows the loop at work: try `sim_tickrate 5`.

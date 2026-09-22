@@ -108,7 +108,13 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
   - no `RecordRef<T>` yet;
   - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place.
 - **Hot reload** (`RecordHotReload`, dev builds): a `FileSystemWatcher` on each folder mount's `data/`, polled from the main thread and reloaded after 200 ms of quiet, while `rec_hotreload` is on. `games/Sandbox` respawns its scene on reload, so editing `content/data/scene.json` updates the running game.
-- **Assets (interim until R12):** `ContentService` (`src/Sage.Client/ClientModule.cs`) is a MonoGame `ContentManager` whose `OpenStream` reads `<name>.xnb` through the VFS. MGCB-built `.xnb` files can therefore come from any mount and be shadowed like any other file. `AssetServer`, `AssetRef`, scopes and runtime loaders are still to be built (§14 step 2).
+- **Assets (interim until R12):** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads through the VFS, so anything can come from any mount and be shadowed like any other file:
+  - MGCB-built `.xnb` models;
+  - compiled effects (`.mgfxo`, step 6);
+  - `.png`/`.jpg` textures via `Texture2D.FromStream`, premultiplied (step 6).
+
+  Everything is cached for the process. `AssetPath` (the interned path, §3.2) exists since step 6 and is what `MeshRenderer` and material records store. `AssetServer`, `AssetRef`, scopes and async loading are still to be built (§14 step 2).
+- **Engine content** is `engine_content/` in the repo. The build copies it into the exe's `Content/`, the `engine` mount (07 §3.6).
 
 ## 4. Public API sketch
 

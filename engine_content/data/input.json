@@ -1,0 +1,28 @@
+[
+  // Engine input maps (docs/design/08 §3.2–3.3). Actions are registered by modules (ClientModule
+  // registers these); games add maps for their own actions, and player rebinds will be patches.
+  {
+    // Active while the console is open; consumes all other keyboard input.
+    "type": "input_map",
+    "id": "console",
+    "context": "Console",
+    "actions": {
+      "ToggleConsole": [ { "key": "OemTilde" } ],
+      "Menu":          [ { "key": "Escape" } ]
+    }
+  },
+  {
+    "type": "input_map",
+    "id": "gameplay",
+    "context": "Gameplay",
+    "actions": {
+      "Move":          [ { "composite": "WASD" }, { "gamepad": "LeftStick" } ],
+      "Look":          [ { "mouse": "Delta", "scale": 0.0025 }, { "gamepad": "RightStick", "scale": 3.0, "rate": true } ],
+      "Jump":          [ { "key": "Space" }, { "gamepad": "A" } ],
+      "Attack":        [ { "mouse": "Left" }, { "gamepad": "RightTrigger" } ],
+      "Use":           [ { "key": "E" }, { "gamepad": "X" } ],
+      "Menu":          [ { "key": "Escape" }, { "gamepad": "Start" }, { "gamepad": "Back" } ],
+      "ToggleConsole": [ { "key": "OemTilde" } ]
+    }
+  }
+]

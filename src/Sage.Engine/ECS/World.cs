@@ -54,7 +54,10 @@ public sealed class World : IDisposable
         _store.OnComponentRemoved += OnComponentRemoved;
         _store.OnEntityDelete += OnEntityDelete;
         _propagation = new TransformPropagation(this);
+        // Resources every world has (headless ones too, so simulation code can rely on them).
         Resources.Set(new ActiveCamera());
+        Resources.Set(new RenderEnvironment());
+        Resources.Set(new PlayerInput());
     }
 
     // The underlying store, for engine code (editor listing, serializers). Game code uses the API below.

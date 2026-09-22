@@ -8,7 +8,7 @@ namespace sage_engine;
 // and passed in; never a static singleton. Lives in Sage.Engine, so it holds no MonoGame types:
 // client services (renderer, input devices, audio) are provided by client modules (ModuleContext).
 //
-// Today: cvars, the VFS, records, modules and the worlds. AssetServer, JobSystem and EngineSignals
+// Today: cvars, the VFS, records, input actions, modules and the worlds. AssetServer, JobSystem and EngineSignals
 // join in later steps.
 public sealed class Engine : IDisposable
 {
@@ -22,6 +22,9 @@ public sealed class Engine : IDisposable
         Records = records ?? new RecordStore();
         Modules = new ModuleManager(this);
     }
+
+    // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
+    public ActionRegistry Actions { get; } = new();
 
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }

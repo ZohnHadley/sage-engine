@@ -42,7 +42,10 @@
     <ProjectReference Include="..\..\packages\MonoGame.ImGuiNet-main\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
   </ItemGroup>
 
-  <!-- The MGCB content tools come from the repo's .config/dotnet-tools.json. -->
+  <!-- engine_content/ → Content/ (shaders compiled with dotnet-mgfxc, data and textures copied). -->
+  <Import Project="..\..\build\Sage.EngineContent.targets" />
+
+  <!-- The MGCB and mgfxc content tools come from the repo's .config/dotnet-tools.json. -->
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />
     <Exec Command="dotnet tool restore" />

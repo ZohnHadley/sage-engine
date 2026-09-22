@@ -90,6 +90,9 @@ internal class MouseListener
 
     public void update()
     {
+        // Roll first: PositionDelta, ScrollWheelDelta and the button edges stay valid until the next
+        // update (TODO #40).
+        _previousMouseState = _currentMouseState;
         _currentMouseState = Mouse.GetState();
 
         Point delta = PositionDelta;
@@ -142,8 +145,6 @@ internal class MouseListener
         int scrollDelta = ScrollWheelDelta;
         if (scrollDelta != 0)
             OnScroll?.Invoke(scrollDelta);
-
-        _previousMouseState = _currentMouseState;
     }
 
     // ---- State helpers ----

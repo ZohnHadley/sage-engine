@@ -160,7 +160,7 @@ I/O connections are part of map/prefab entity data (09):
 |---|---|
 | (old) `EntityContext.OnEntityAdded/OnEntityRemoved/OnComponentAdded/OnComponentRemoved`, now `World.EntitySpawned/ComponentAdded/ComponentRemoved/EntityDestroyed` (step 3) | Structural notifications (§3.3): immediate internal listeners + queued `Spawned`/`Destroyed`/`Added<T>`/`Removed<T>` |
 | (old) `EntityContextListener` re-broadcast + `ArchetypeView.OnEnter/OnExit` | **Done (step 3):** typed Friflo queries (03); `Added<T>`/`Removed<T>` queued events later |
-| `InputSystem` C# events (`OnKeyPressed`, `OnMouseDrag`, …) used by `DevCamera` | Device-layer events stay for **UI/editor/camera** use (08). Gameplay reads `PlayerCommand` instead |
+| `InputSystem` C# events (`OnKeyPressed`, `OnMouseDrag`, …) used by `DevCamera` | **Done (step 6):** the listener events live on `InputDevices` for **UI/editor/camera** use (08); gameplay reads `PlayerCommand` (the Sandbox's `HopSystem`) |
 | `CVar`-like fields and ad-hoc delegates (none yet) | Engine signals |
 
 ## 11. v1 scope vs later

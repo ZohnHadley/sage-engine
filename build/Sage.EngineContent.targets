@@ -1,0 +1,37 @@
+<Project>
+  <!--
+    Engine content (docs/design/05 §3.1, 07 §3.1): engine_content/ becomes the exe's Content/ folder,
+    the "engine" VFS mount (record namespace "sage").
+      - shaders/*.fx are compiled with dotnet-mgfxc (pinned in .config/dotnet-tools.json) to
+        Content/shaders/*.mgfxo. A change to any .fx or .fxh recompiles all of them; a compile error
+        fails the build with mgfxc's output.
+      - everything else (data/, textures/) is copied as is.
+    Imported by the host project (the exe owns the Content folder).
+  -->
+  <PropertyGroup>
+    <SageEngineContentDir>$(MSBuildThisFileDirectory)..\engine_content\</SageEngineContentDir>
+    <SageShaderOutDir>$(BaseIntermediateOutputPath)$(Configuration)\shaders\</SageShaderOutDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SageShader Include="$(SageEngineContentDir)shaders\*.fx" />
+    <SageShaderInclude Include="$(SageEngineContentDir)shaders\*.fxh" />
+    <None Include="$(SageEngineContentDir)**\*" Exclude="$(SageEngineContentDir)shaders\**"
+          Link="Content\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="@(SageShader);@(SageShaderInclude)" Link="engine_content\shaders\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <Target Name="SageCompileShaders" BeforeTargets="AssignTargetPaths"
+          Inputs="@(SageShader);@(SageShaderInclude)"
+          Outputs="@(SageShader->'$(SageShaderOutDir)%(Filename).mgfxo')">
+    <MakeDir Directories="$(SageShaderOutDir)" />
+    <Exec Command="dotnet mgfxc &quot;%(SageShader.FullPath)&quot; &quot;$(SageShaderOutDir)%(SageShader.Filename).mgfxo&quot; /Profile:OpenGL" />
+  </Target>
+
+  <Target Name="SageIncludeShaders" BeforeTargets="AssignTargetPaths" DependsOnTargets="SageCompileShaders">
+    <ItemGroup>
+      <None Include="@(SageShader->'$(SageShaderOutDir)%(Filename).mgfxo')" Link="Content\shaders\%(Filename).mgfxo" CopyToOutputDirectory="PreserveNewest" />
+      <FileWrites Include="@(SageShader->'$(SageShaderOutDir)%(Filename).mgfxo')" />
+    </ItemGroup>
+  </Target>
+</Project>
