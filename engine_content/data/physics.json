@@ -1,0 +1,13 @@
+[
+  // Collision layers (docs/design/10 §3). Layer 0 is "default"; everything collides unless listed in
+  // "ignore" (which is symmetric). Games patch this record to add their own layers.
+  {
+    "type": "physics_layers",
+    "id": "default",
+    "layers": ["default", "player", "enemy", "projectile", "trigger", "debris"],
+    "ignore": {
+      "projectile": ["projectile", "debris"],
+      "debris": ["debris"]
+    }
+  }
+]

@@ -8,6 +8,7 @@ namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Direct
 public sealed class SandboxModule : IGameModule
 {
     private RecordStore? _records;
+    private Renderer? _renderer;
     private ActionId _jump = ActionId.None;
     private readonly List<World> _worlds = new();
 
@@ -21,6 +22,7 @@ public sealed class SandboxModule : IGameModule
     public void Start(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
+        _renderer = ctx.Get<Renderer>();
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
         _jump = ctx.Engine.Actions.Get("Jump");   // registered by ClientModule
     }
@@ -34,6 +36,7 @@ public sealed class SandboxModule : IGameModule
         terrain.Load(SectorCoord.Zero);
 
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
+        world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
         Spawn(world);
@@ -58,7 +61,7 @@ public sealed class SandboxModule : IGameModule
     {
         foreach (var spawn in _records!.All<SpawnRecord>())
         {
-            if (spawn.Model.IsEmpty && spawn.Sheet.IsEmpty) continue;
+            if (spawn.Model.IsEmpty && spawn.Sheet.IsEmpty && spawn.BoxMesh == Vector3.Zero && spawn.ColliderSize == Vector3.Zero) continue;
             // A spawn's position is relative to the scene's spot in the sector, and its y is height
             // above the ground: everything stands on the terrain.
             var terrain = world.Resources.Get<Terrain>();
@@ -75,13 +78,25 @@ public sealed class SandboxModule : IGameModule
             {
                 world.Add(e, new SpriteRenderer { Sheet = spawn.Sheet, Material = spawn.Material, Size = spawn.Size });
                 if (spawn.Animate) world.Add(e, SpriteAnimator.Play(0));
+                world.Add(e, new Hop { BaseY = position.Y });
             }
-            else
+            else if (spawn.BoxMesh != Vector3.Zero)
+            {
+                world.Add(e, new MeshRenderer { Handle = _renderer!.CreateBox(spawn.BoxMesh, spawn.Name), Material = spawn.Material });
+            }
+            else if (!spawn.Model.IsEmpty)
             {
                 world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
                 if (spawn.FacesCamera) e.AddTag<FacesCamera>();
+                world.Add(e, new Hop { BaseY = position.Y });
             }
-            world.Add(e, new Hop { BaseY = position.Y });
+
+            // Physics: a collider, and a mass if it should fall (10 §3).
+            if (spawn.ColliderSize != Vector3.Zero)
+            {
+                world.Add(e, new Collider { Shape = spawn.Collider, Size = spawn.ColliderSize, IsTrigger = spawn.Trigger });
+                world.Add(e, spawn.Mass > 0 ? RigidBody.Dynamic(spawn.Mass) : new RigidBody { Kind = BodyKind.Static });
+            }
             e.AddTag<FromSpawnRecord>();
         }
         Log.Info(LogCat.Gameplay, $"Sandbox: spawned {world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Count} entities in '{world.Name}'");
@@ -102,6 +117,14 @@ public sealed class SpawnRecord
     public Vector2 Size;               // sprite size in metres; 0 = the sheet's
     public bool Animate;               // play the sheet's first clip
     public bool FacesCamera;           // meshes only: the old billboard test
+
+    // Physics (docs/design/10): a box mesh drawn at BoxMesh size, a collider, and a mass that makes
+    // it a falling dynamic body instead of a static one.
+    public Vector3 BoxMesh;
+    public ColliderShape Collider = ColliderShape.Box;
+    public Vector3 ColliderSize;       // zero = no collider
+    public float Mass;                 // > 0 = dynamic
+    public bool Trigger;
 }
 
 // Tags.
@@ -174,5 +197,25 @@ public sealed class FaceCameraSystem : ISystem
             for (int n = 0; n < t.Length; n++)
                 TransformMath.Billboard(ref t[n], camera);
         }
+    }
+}
+
+// PostPhysics: says what fell through the trigger volume (10 §3). Once the event bus exists (04) this
+// becomes a TriggerEntered event instead of reading the space's lists.
+public sealed class TriggerLogSystem : ISystem
+{
+    private readonly PhysicsSpace _space;
+
+    public TriggerLogSystem(World world)
+    {
+        _space = world.Resources.Get<PhysicsSpace>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        foreach (var overlap in _space.TriggerEnter)
+            Log.Info(LogCat.Gameplay, $"{World.Describe(overlap.Other)} entered {World.Describe(overlap.Trigger)}");
+        foreach (var overlap in _space.TriggerExit)
+            Log.Info(LogCat.Gameplay, $"{World.Describe(overlap.Other)} left {World.Describe(overlap.Trigger)}");
     }
 }

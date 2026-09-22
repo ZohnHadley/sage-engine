@@ -59,6 +59,7 @@ if (manifest.Modules.Add.Count > 0)
 // Modules (01 §3.1, §5.1). The game assembly must be loaded before the first World exists (03 §3.1).
 try
 {
+    AddDefaultModule(new PhysicsModule());
     AddDefaultModule(new ClientModule());
     engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));
     engine.Modules.InitAll();

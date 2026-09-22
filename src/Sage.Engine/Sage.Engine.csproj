@@ -10,6 +10,7 @@
   <ItemGroup>
     <!-- ECS storage (decision D4; spike results in docs/design/03 §3.1). Components are structs
          implementing Friflo.Engine.ECS.IComponent; World (ECS/World.cs) is the thin wrapper. -->
+    <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="Friflo.Engine.ECS" Version="3.6.0" />
   </ItemGroup>
 

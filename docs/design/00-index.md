@@ -82,6 +82,9 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | Fixed phases | `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late` | 03 |
 | Frame phases | `FrameUpdate → Extract → Render → Overlay` | 03, 06 |
 | `Transform` | Local position/rotation/scale, relative to the parent (or to the root's sector) | 03 |
+| `PhysicsSpace` | World resource: the Bepu simulation, its queries (raycast, sweep, overlap) and trigger overlaps | 10 |
+| `Collider` / `RigidBody` / `PhysicsBody` | The shape and layer, how it moves (static, kinematic, dynamic), and the Bepu handle the engine manages | 10 |
+| `LayerMask` | Which collision layers a query or a contact considers | 10 |
 | `SectorCoord` | Component on root entities: which **1024 m** sector (int X, Z) their `Transform` is relative to | 03, 14 |
 | `GlobalTransform` | Computed `Pose Current` + `Pose Previous` relative to the world's origin sector; interpolated by Extract | 03, 06 |
 | `GameRules` | Per-world object owning game flow (spawning, win/lose, time of day) | 16 |

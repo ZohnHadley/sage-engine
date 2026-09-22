@@ -66,6 +66,36 @@
   { "type": "spawn", "id": "tree_b", "sheet": "tree", "name": "tree_b", "position": [-4.5, 0, -4] },
   { "type": "spawn", "id": "tree_c", "sheet": "tree", "name": "tree_c", "position": [0, 0, -7] },
 
+  // ---- physics (docs/design/10) -----------------------------------------------------------------
+  {
+    // Crates fall onto the terrain's collision mesh and settle. Position y is above the ground.
+    "type": "spawn",
+    "id": "crate_base",
+    "abstract": true,
+    "boxMesh": [0.6, 0.6, 0.6],
+    "colliderSize": [0.6, 0.6, 0.6],
+    "material": "crate",
+    "mass": 8
+  },
+  { "type": "spawn", "id": "crate_a", "base": "crate_base", "name": "crate_a", "position": [-0.7, 6, 1.5] },
+  { "type": "spawn", "id": "crate_b", "base": "crate_base", "name": "crate_b", "position": [0, 8, 1.8] },
+  { "type": "spawn", "id": "crate_c", "base": "crate_base", "name": "crate_c", "position": [0.7, 10, 1.4] },
+  {
+    // A trigger the crates fall through: it reports overlaps but never pushes anything.
+    "type": "spawn",
+    "id": "gate",
+    "name": "gate",
+    "position": [0, 3, 1.6],
+    "colliderSize": [4, 0.4, 3],
+    "trigger": true
+  },
+  {
+    "type": "material",
+    "id": "crate",
+    "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.72, 0.5, 0.26, 1] }
+  },
+
   {
     // The mesh from step 6 is still here: meshes and sprites share the passes and the sort order.
     "type": "spawn",

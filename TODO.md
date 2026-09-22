@@ -21,7 +21,7 @@ These are against the **current** single-project code. Many disappear when the m
 
 | # | Issue | Where | Plan |
 |---|---|---|---|
-| [~] 41 | Per-frame allocations: **found** — the ImGui entity inspector builds a label string per listed entity per frame (~130 B each, so ~4 KB once terrain chunks are entities); the engine loop, renderer, terrain and host frame allocate **nothing** without it | `Sage.Editor/Screens/EntityContextMenuUI.cs` | Collapsing the window or `ui_entities 0` costs nothing (F1, F13). Left: cache the labels, or list only what's visible (02 §4.6) |
+| [~] 41 | Per-frame allocations: **found** — the ImGui entity inspector builds a label string per listed entity per frame (~130 B each, so ~4 KB once terrain chunks are entities). With `ui_entities 0` the frame allocates only the ~40 B/tick that Bepu's own profiler allocates inside `Timestep` | `Sage.Editor/Screens/EntityContextMenuUI.cs`, BepuPhysics | Cache the inspector's labels or list only what's visible; Bepu's 40 B is out of our hands short of a custom build (02 §4.6) |
 
 Paths are relative to `src/`. The full detail for each item is in the history log.
 
@@ -76,7 +76,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [~] **F5. Debug overlays (v1 minimal).** *`stat fps` / `stat mem` (step 2), `stat frame` (step 4) and `r_stats` (step 6) done; `stat render`, `phys_debug`, `ai_debug` come with their systems.* `stat` overlays (frame, phases, memory), `r_stats`, `phys_debug`, `ai_debug`; later the visual logger. Properly replaces the overlays removed in review items #7/#8 (history log). → `02`, `06`
 
 #### Phase 2 — Physics and movement
-- [ ] **F6. Physics layer (v1).** BepuPhysics v2 per world; colliders/rigid bodies via handles; raycasts/sweeps/overlaps; triggers → events; layers. → `10`
+- [~] **F6. Physics layer (v1).** *Done 2026-09-22: BepuPhysics 2.4 per world through `PhysicsModule`, `Collider`/`RigidBody`/`PhysicsBody`, box/sphere/capsule/mesh shapes, terrain collision meshes, raycast/sweep/overlap with layers, trigger overlaps, `phys_stats`, deterministic stepping. Left: trigger and contact *events* (needs 04), `Collided`, `phys_debug` (needs `DebugDraw`), parented colliders, ragdolls (F11).* BepuPhysics v2 per world; colliders/rigid bodies via handles; raycasts/sweeps/overlaps; triggers → events; layers. → `10`
 - [ ] **F7. Kinematic character controller (v1).** Capsule, collide-and-slide, step-up, slopes, crouch, jump; `movement_profile` records; GoldSrc air-acceleration profile later. → `10`, `16`
 - [ ] **F8. Mounts.** Rideable-entity controller, rider attachment, speed-based bonus damage. → `10` (later)
 
@@ -87,7 +87,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F12. Attachment points.** Weapons, shields and riders on bones. → `12`
 
 #### Phase 4 — World
-- [~] **F13. Heightmap terrain (v1: one sector, no LOD).** *Done 2026-09-22 except collision: `Terrain` world resource, `Heightfield` (129×129 per 1024 m sector), game-provided `ITerrainGenerator`, chunk meshes through `Renderer.CreateMesh` + `MeshHandle`, `sage:terrain_default`, and `HeightAt`/`OnGround` for standing on the ground. Collision needs a heightfield collider (F6); LOD, splat materials and streaming are F14.* 129×129 grid per 1024 m sector, game-provided `ITerrainGenerator`, meshes + collision; LOD and splat materials later. → `14`
+- [X] **F13. Heightmap terrain (v1: one sector, no LOD).** *Done 2026-09-22 (collision landed with F6): `Terrain` world resource, `Heightfield` (129×129 per 1024 m sector), game-provided `ITerrainGenerator`, chunk meshes through `Renderer.CreateMesh` + `MeshHandle`, `sage:terrain_default`, and `HeightAt`/`OnGround` for standing on the ground. Collision is one static Bepu mesh per sector (F6). LOD, splat materials and streaming are F14.* 129×129 grid per 1024 m sector, game-provided `ITerrainGenerator`, meshes + collision; LOD and splat materials later. → `14`
 - [ ] **F14. World streaming.** Streaming rings around the player (Daggerfall Unity model), per-sector asset scopes, dormancy into the save cache, origin rebasing. Depends on R6. → `14`
 - [ ] **F15. Procedural generation.** Seeded towns, dungeons and wilderness; deterministic from the seed so saves store only visited sectors. → `14`, `09`
 - [ ] **F16. Brush/level geometry.** TrenchBroom `.map` import (+ FGD export from component metadata); lightmaps later. → `15`
@@ -137,4 +137,5 @@ This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F1
 - **Rendering, materials, input (step 6):** Extract → `RenderSnapshot` → `Renderer`; material records and our own shaders; input actions/contexts → `PlayerCommand`; `r_stats`, `mat_list`/`mat_info`, `bindlist`, `in_tap`, `screenshot`.
 - **Sprites (F1):** `sprite_sheet` records, billboards with 8 direction groups, sprite animation at the tick rate, the CPU sprite batcher; `cam_set` and `screenshot [delay]` for repeatable viewpoint checks.
 - **Terrain (F13):** `Terrain`/`Heightfield`/`ITerrainGenerator` per world, chunk meshes from `Renderer.CreateMesh`, ground-height sampling; the Sandbox generates hills and stands its scene on them.
+- **Physics (F6):** BepuPhysics per world via `PhysicsModule`, colliders and rigid bodies behind handles, terrain collision meshes, raycast/sweep/overlap with layers, trigger overlaps, `phys_stats`; the Sandbox drops crates through a trigger onto the hills.
 - **Modules, VFS, records (step 5):** `IModule` + `game.json` + the `games/Sandbox` game module; VFS mounts with shadowing; the `RecordStore` (patch merge, inheritance, validation, hot reload); `modules`, `vfs_which`/`vfs_ls`/`vfs_mounts`, `rec_list`/`rec_get`/`rec_reload`.

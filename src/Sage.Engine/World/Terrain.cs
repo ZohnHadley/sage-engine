@@ -78,7 +78,8 @@ public sealed class TerrainSector
 {
     public required SectorCoord Coord;
     public required Heightfield Heights;
-    public bool MeshBuilt;   // the client builds chunk meshes once per sector
+    public bool MeshBuilt;        // the client builds chunk meshes once per sector
+    public bool CollisionBuilt;   // physics builds a collision mesh once per sector (10)
 }
 
 // World resource: the loaded terrain sectors. Gameplay asks it for the ground height; the client

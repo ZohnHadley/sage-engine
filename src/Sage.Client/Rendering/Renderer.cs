@@ -153,6 +153,28 @@ public sealed class Renderer : IDisposable
         return new MeshHandle(_meshes.Count - 1);
     }
 
+    // A box mesh, for props and debug geometry (the same corner layout as the error cube).
+    public MeshHandle CreateBox(Vector3 size, string name = "(box)")
+    {
+        var vertices = new List<VertexPositionNormalTexture>();
+        var indices = new List<int>();
+        Vector3[] normals = { Vector3.Up, Vector3.Down, Vector3.Left, Vector3.Right, Vector3.Forward, Vector3.Backward };
+        foreach (var normal in normals)
+        {
+            var side1 = new Vector3(normal.Y, normal.Z, normal.X);
+            var side2 = Vector3.Cross(normal, side1);
+            int start = vertices.Count;
+            indices.AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
+            vertices.Add(new VertexPositionNormalTexture((normal - side1 - side2) * size * 0.5f, normal, Vector2.Zero));
+            vertices.Add(new VertexPositionNormalTexture((normal - side1 + side2) * size * 0.5f, normal, Vector2.UnitX));
+            vertices.Add(new VertexPositionNormalTexture((normal + side1 + side2) * size * 0.5f, normal, Vector2.One));
+            vertices.Add(new VertexPositionNormalTexture((normal + side1 - side2) * size * 0.5f, normal, Vector2.UnitY));
+        }
+        return CreateMesh(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(vertices),
+                          System.Runtime.InteropServices.CollectionsMarshal.AsSpan(indices),
+                          new BoundingSphere(Vector3.Zero, size.Length() * 0.5f), name);
+    }
+
     public void DestroyMesh(MeshHandle handle)
     {
         if (handle.IsEmpty || handle.Id >= _meshes.Count) return;

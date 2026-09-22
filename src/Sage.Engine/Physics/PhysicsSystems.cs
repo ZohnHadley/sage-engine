@@ -1,0 +1,235 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Friflo.Engine.ECS;
+
+namespace sage_engine;
+
+// The physics tick (docs/design/10 §3):
+//   PrePhysics   new colliders get bodies; kinematic and teleported transforms are pushed into Bepu
+//   Physics      Simulation.Timestep
+//   PostPhysics  dynamic bodies are written back to Transform; trigger overlaps are published
+
+// PrePhysics: keeps Bepu's contents in step with the world's colliders.
+internal sealed class PhysicsSyncSystem : ISystem
+{
+    private readonly PhysicsSpace _space;
+    private readonly ArchetypeQuery<Transform, Collider> _pending;
+    private readonly ArchetypeQuery<Transform, PhysicsBody> _bodies;
+    private readonly List<Entity> _toAdd = new();
+
+    public PhysicsSyncSystem(World world, PhysicsSpace space)
+    {
+        _space = space;
+        var withoutBody = ComponentTypes.Get<PhysicsBody>();
+        _pending = world.Query<Transform, Collider>().WithoutAllComponents(withoutBody);
+        _bodies = world.Query<Transform, PhysicsBody>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        var world = ctx.World;
+
+        // New colliders: collect first, then add the components (adding changes the archetypes we're
+        // iterating).
+        _toAdd.Clear();
+        foreach (var (_, _, entities) in _pending.Chunks)
+            for (int n = 0; n < entities.Length; n++)
+                _toAdd.Add(entities.EntityAt(n));
+
+        foreach (var entity in _toAdd)
+        {
+            if (!world.IsAlive(entity)) continue;
+            var collider = world.Get<Collider>(entity);
+            var body = world.TryGet<RigidBody>(entity, out var rigid) ? rigid : new RigidBody { Kind = BodyKind.Static };
+            var pose = world.Has<GlobalTransform>(entity)
+                ? world.Get<GlobalTransform>(entity).Current
+                : Pose.FromLocal(world.Get<Transform>(entity));
+            world.Add(entity, _space.Add(entity, collider, body, pose));
+        }
+
+        // Kinematic bodies (and anything gameplay moved directly) follow their transform. v1 assumes
+        // physics entities are roots, so the local transform is the world one; parented colliders
+        // would need GlobalTransform here and a local conversion on write-back.
+        foreach (var (transforms, handles, _) in _bodies.Chunks)
+        {
+            var t = transforms.Span;
+            var h = handles.Span;
+            for (int n = 0; n < t.Length; n++)
+            {
+                if (h[n].IsStatic) continue;
+                if (_space.IsDynamic(h[n])) continue;
+                _space.SetPose(h[n], Pose.FromLocal(t[n]));
+            }
+        }
+    }
+}
+
+// Physics: one Bepu step per tick.
+internal sealed class PhysicsStepSystem : ISystem
+{
+    private readonly PhysicsSpace _space;
+
+    public PhysicsStepSystem(PhysicsSpace space) { _space = space; }
+
+    public void Run(in SystemContext ctx) => _space.Step(ctx.Tick.Dt);
+}
+
+// PostPhysics: dynamic bodies win over their transform, and trigger overlaps become readable.
+internal sealed class PhysicsWriteBackSystem : ISystem
+{
+    private readonly PhysicsSpace _space;
+    private readonly ArchetypeQuery<Transform, PhysicsBody> _bodies;
+
+    public PhysicsWriteBackSystem(World world, PhysicsSpace space)
+    {
+        _space = space;
+        _bodies = world.Query<Transform, PhysicsBody>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        foreach (var (transforms, handles, _) in _bodies.Chunks)
+        {
+            var t = transforms.Span;
+            var h = handles.Span;
+            for (int n = 0; n < t.Length; n++)
+            {
+                if (!_space.IsDynamic(h[n])) continue;
+                var pose = _space.PoseOf(h[n]);
+                t[n].LocalPosition = pose.Position;
+                t[n].LocalRotation = pose.Rotation;
+            }
+        }
+
+        if (LogCat.Physics.IsEnabled(LogLevel.Trace))
+        {
+            foreach (var overlap in _space.TriggerEnter)
+                Log.Trace(LogCat.Physics, $"Trigger enter: {World.Describe(overlap.Other)} → {World.Describe(overlap.Trigger)}");
+            foreach (var overlap in _space.TriggerExit)
+                Log.Trace(LogCat.Physics, $"Trigger exit: {World.Describe(overlap.Other)} → {World.Describe(overlap.Trigger)}");
+        }
+    }
+}
+
+// PrePhysics: gives loaded terrain sectors a collision mesh (14 §3, closes F13's collision gap).
+// One static mesh per sector; with streaming this becomes per chunk and is built on a job (F14).
+internal sealed class TerrainCollisionSystem : ISystem
+{
+    private readonly PhysicsSpace _space;
+    private readonly Terrain _terrain;
+    private readonly World _world;
+    private Vector3[] _vertices = Array.Empty<Vector3>();
+    private int[] _indices = Array.Empty<int>();
+
+    public TerrainCollisionSystem(World world, PhysicsSpace space)
+    {
+        _world = world;
+        _space = space;
+        _terrain = world.Resources.Get<Terrain>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        var sectors = _terrain.Sectors;
+        for (int i = 0; i < sectors.Count; i++)
+        {
+            var sector = sectors[i];
+            if (sector.CollisionBuilt) continue;
+            Build(sector);
+            sector.CollisionBuilt = true;
+        }
+    }
+
+    private void Build(TerrainSector sector)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var heights = sector.Heights;
+        int side = heights.Resolution, cells = side - 1;
+        Vector3 origin = sector.Coord.Origin(Terrain.SectorSize);
+        float spacing = heights.Spacing;
+
+        if (_vertices.Length < side * side) _vertices = new Vector3[side * side];
+        if (_indices.Length < cells * cells * 6) _indices = new int[cells * cells * 6];
+
+        for (int z = 0; z < side; z++)
+            for (int x = 0; x < side; x++)
+                _vertices[z * side + x] = new Vector3(x * spacing, heights[x, z], z * spacing);
+
+        int index = 0;
+        for (int z = 0; z < cells; z++)
+            for (int x = 0; x < cells; x++)
+            {
+                int v = z * side + x;
+                _indices[index++] = v; _indices[index++] = v + 1; _indices[index++] = v + side;
+                _indices[index++] = v + 1; _indices[index++] = v + side + 1; _indices[index++] = v + side;
+            }
+
+        var entity = _world.Create(Transform.At(origin), $"terrain collision {sector.Coord}");
+        var body = _space.AddMesh(entity, _vertices.AsSpan(0, side * side), _indices.AsSpan(0, index), origin);
+        _world.Add(entity, body);
+        Log.Info(LogCat.Physics, $"Terrain sector {sector.Coord}: collision mesh with {index / 3} triangles in {watch.Elapsed.TotalMilliseconds:F1} ms");
+    }
+}
+
+// The engine's physics module (10 §14 steps 1–3): one space per world, the layer record, and the
+// tick systems. A headless server loads it exactly like the client does.
+public sealed class PhysicsModule : IModule
+{
+    private readonly List<PhysicsSpace> _spaces = new();
+    private RecordStore? _records;
+
+    public void Init(ModuleContext ctx)
+    {
+        _records = ctx.Engine.Records;
+        _records.Register<PhysicsLayersRecord>();
+        _records.Reloaded += ApplyLayers;
+
+        ctx.Engine.CVars.RegisterCommand("phys_stats", CVarFlags.None, "Physics bodies, statics and step time per world.", _ =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<PhysicsSpace>(out var space) || space == null) continue;
+                Log.Info(LogCat.Console, $"  '{world.Name}': {space.BodyCount} active bodies, {space.StaticCount} statics, " +
+                                         $"last step {space.LastStepMilliseconds:F2} ms, gravity {space.Gravity.Y:F2}");
+            }
+        });
+    }
+
+    public void OnWorldCreated(World world)
+    {
+        var space = new PhysicsSpace();
+        world.Resources.Set(space);          // disposed with the world
+        _spaces.Add(space);
+        ApplyLayers(space);
+
+        world.AddSystem(new TerrainCollisionSystem(world, space), Phase.PrePhysics);
+        world.AddSystem(new PhysicsSyncSystem(world, space), Phase.PrePhysics, after: new[] { typeof(TerrainCollisionSystem) });
+        world.AddSystem(new PhysicsStepSystem(space), Phase.Physics);
+        world.AddSystem(new PhysicsWriteBackSystem(world, space), Phase.PostPhysics);
+
+        // A destroyed entity takes its body with it.
+        world.EntityDestroyed += entity =>
+        {
+            if (world.TryGet<PhysicsBody>(entity, out var body)) space.Remove(body);
+        };
+    }
+
+    public void Shutdown()
+    {
+        if (_records != null) _records.Reloaded -= ApplyLayers;
+        _spaces.Clear();
+    }
+
+    private void ApplyLayers()
+    {
+        foreach (var space in _spaces) ApplyLayers(space);
+    }
+
+    private void ApplyLayers(PhysicsSpace space)
+    {
+        if (_records != null && _records.TryGet(PhysicsLayersRecord.Default, out PhysicsLayersRecord layers))
+            space.Layers.Apply(layers);
+    }
+}

@@ -238,7 +238,7 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 | `ComponentTransform` class (`LookAt`/`Billboard` methods) | **Done (step 3):** `Transform` struct (`LocalPosition/LocalRotation/LocalScale`, `Transform.Identity`) + `TransformMath`. `SectorCoord`/`GlobalTransform` + propagation in step 4 |
 | `ComponentMeshRenderer` class → `ModelRenderer` struct (step 3) → **`MeshRenderer { AssetPath Mesh; RecordId Material; byte Layer; }` in Sage.Engine (done, step 6)** | `MeshRenderer` done; and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
 | (the `TransfomSystem.cs` stub, deleted 2026-09-22) | **Done (step 4):** transform propagation, run by `World` after `PostPhysics` and `Late` |
-| `Sage.Client/Rendering/ModelRendererSystem.cs` | **Done (step 6):** `CameraExtract` + `MeshExtract` + `RenderSystem` (06 §3.11). Every `World` now also has `RenderEnvironment`, `PlayerInput` and `Terrain` (14) resources, next to `ActiveCamera` |
+| `Sage.Client/Rendering/ModelRendererSystem.cs` | **Done (step 6):** `CameraExtract` + `MeshExtract` + `RenderSystem` (06 §3.11). Every `World` now also has `RenderEnvironment`, `PlayerInput`, `Terrain` (14) and — with the physics module — `PhysicsSpace` (10) resources, next to `ActiveCamera` |
 
 ## 11. v1 scope vs later
 - **v1** (✓ = built in migration step 3):
