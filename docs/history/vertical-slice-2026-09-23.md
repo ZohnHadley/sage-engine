@@ -26,7 +26,7 @@ This is the retrospective on the slice as a whole. Its two companions:
 | Built over | 2026-09-22 and 2026-09-23 (the engine's solution split was 2026-09-21) |
 | Roadmap items closed or started | R1–R5, R7–R11, R13–R16; F1–F3, F5–F7, F13, F18–F22, F27, F31, F32 |
 | Still open from the milestone's own list | **F17** (entity I/O) and **F28–F30** (the editor) — neither was needed to close it; the console and hot reload stood in |
-| Tests | 315, all headless, no window and no graphics device |
+| Tests | 324, all headless, no window and no graphics device |
 
 The slice did not need the editor, and that is the single most useful thing it proved about the plan.
 Records with hot reload plus a console that can spawn, dump, cast, give, save and script input covered
@@ -54,7 +54,7 @@ is an effect that grants a tag. A creature's mana regeneration is an infinite ef
 authored in the Sandbox's own content with no engine change. Nothing anywhere subtracts a pool
 directly, so saves store which effects are running and get all of it back for free.
 
-**A simulation with no MonoGame dependency.** 315 headless tests, including three that build *two
+**A simulation with no MonoGame dependency.** 324 headless tests, including three that build *two
 engines in turn* — a save written by the first and loaded by the second, with the content changed in
 between — which is the only way to prove that what a save stores survives a content update. The
 two-*process* version of the same check is a pair of launch-argument runs against the real game. Both
@@ -100,7 +100,11 @@ has been pending since the design pass, and the slice reached the end without it
 it needed was a `Log.Info`. The next Daggerfall-like feature that is *worth playing* rather than
 *worth testing* is a screen, and there is no roadmap item for one. That is now F38.
 
-**Engine half built the same day.** A screen is "what to show" (a simulation question) plus "how to
+**Built the same day, both halves.** D8 was decided (our own, on `UiDraw`) and the spellbook and bag
+are openable with `I` and `B`. What follows was the reasoning for splitting it in two, which is what
+made the second half small.
+
+ A screen is "what to show" (a simulation question) plus "how to
 draw it" (decision D8, still open), and those separate cleanly: `Panel`/`PanelRow` and the
 `GameplayPanels` builders now answer the first, with each row carrying whether it can be used and why
 not — taken from the rule that would refuse the action. The console prints those panels, so it and a
@@ -161,14 +165,14 @@ test fixtures define two more record types, and several more modules and systems
 | Record types (`[Record]`) | **17** | 16 in `Sage.Engine`, 1 in the Sandbox (`scene`). Every definition in the game is one of these |
 | Console commands | **66** | across 15 files; the biggest groups are core (12), gameplay (10), input scripting (9) and entities/systems (8) |
 | Cvars | **33** | 10 core, 5 host, 5 renderer, 4 gameplay, the rest one or two per subsystem |
-| Input actions | **10** | `Move`, `Look`, `Jump`, `Crouch`, `Run`, `Attack`, `Use`, `Cast`, `Menu`, `ToggleConsole` |
+| Input actions | **17** | 10 for play (`Move`, `Look`, `Jump`, `Crouch`, `Run`, `Attack`, `Use`, `Cast`, `Menu`, `ToggleConsole`) and 7 for screens (`MenuUp`/`MenuDown`/`MenuConfirm`/`MenuAlternate`/`MenuBack`, `Inventory`, `Spellbook`) |
 | Logical modules (`IModule`) | **11** | 8 in the engine, 1 client, 2 game (simulation + client halves) |
 | Systems (`ISystem`) | **29** | across Fixed phases (Commands → Late) and Frame phases (FrameUpdate → Overlay) |
 | Components | **23** | in `Sage.Engine`, all plain data |
 | Game events (`[GameEvent]`) | **7** | `Damaged`, `Used`, `Said`, `AnimationEvent`, `AbilityCast`, `CastRefused`, `CueTriggered` |
 | Prefab parts | **11** | 9 from engine modules, 1 from the game, 1 client-only — that last one the simulation also declares `Optional`, so a headless run skips it instead of warning |
 | AI tasks | **5** | `Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`, `CastSpell` |
-| Tests | **315** | in 28 test files, every one headless |
+| Tests | **324** | in 29 test files, every one headless |
 
 Two of these are worth watching rather than celebrating. **66 console commands** is the interface the
 slice was authored through, and it is why F38 (a screen) kept not being urgent. **29 systems across 13

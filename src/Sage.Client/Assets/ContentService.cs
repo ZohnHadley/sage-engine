@@ -127,7 +127,16 @@ public sealed class ContentService : IDisposable
             Log.Warn(LogCat.Assets, $"Font '{path}': {ex.Message}");
             font = null;
         }
-        if (font != null) Log.Debug(LogCat.Assets, $"Loaded font {path}");
+        if (font != null)
+        {
+            // A character the font was not built with must not be fatal. `SpriteBatch.DrawString`
+            // throws on one, so an em dash in a hint line, a name a player typed, or the first
+            // localised string would crash the frame and the process with it (13 §3: glyph coverage is
+            // fixed at build time, which is the deviation this guards). A visible '?' is the right
+            // answer: it says "font", not "the game is broken".
+            font.DefaultCharacter = '?';
+            Log.Debug(LogCat.Assets, $"Loaded font {path}");
+        }
         _fonts[path] = font;
         return font;
     }

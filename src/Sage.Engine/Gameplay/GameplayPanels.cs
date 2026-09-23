@@ -74,11 +74,17 @@ public static class GameplayPanels
             ? $"Carrying — {carried:0.#} / {inventory.Capacity:0.#} kg"
             : $"Carrying — {carried:0.#} kg", who);
 
+        // Two swords are two stacks of one, because a sword does not stack (05 §3.5) — and only one of
+        // them is the one in your hand. Without this, both rows drew the "equipped" tick, which a
+        // screenshot showed and no amount of reading the code would have.
+        var ticked = new HashSet<RecordId>();
+
         foreach (var stack in inventory.Items)
         {
             if (stack.Count <= 0) continue;
             records.TryGet(stack.Item, out ItemRecord record);
-            bool equipped = record != null && record.Slot != EquipSlot.None && equipment.In(record.Slot) == stack.Item;
+            bool equipped = record != null && record.Slot != EquipSlot.None
+                         && equipment.In(record.Slot) == stack.Item && ticked.Add(stack.Item);
             bool can = Items.CanEquip(world, who, stack.Item, out string why);
 
             panel.Add(PanelRow.Of(

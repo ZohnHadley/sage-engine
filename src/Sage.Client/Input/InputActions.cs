@@ -170,7 +170,10 @@ public sealed class InputActions
     public bool UiWantsMouse { get; set; }
 
     public void SetActive(InputContext context, bool active) => _active[(int)context] = active;
-    public bool IsActive(InputContext context) => context == InputContext.UI ? UiWantsKeyboard || UiWantsMouse : _active[(int)context];
+    // The UI context is active when ImGui wants input *or* when a game screen is open (13 §3, F38):
+    // both need the gameplay bindings out of the way, and they arrive by different routes.
+    public bool IsActive(InputContext context) =>
+        context == InputContext.UI ? _active[(int)context] || UiWantsKeyboard || UiWantsMouse : _active[(int)context];
 
     // ---- Queries (this frame) ----
     public bool Held(ActionId a) => a.IsValid && a.Index < _held.Length && _held[a.Index];
@@ -247,6 +250,14 @@ public sealed class InputActions
             foreach (var b in list)
                 foreach (int slot in b.Slots) _consumed[slot] = true;
             if (context == InputContext.Console) ConsumeRange(0, 256);
+            // A game screen is modal: it reads its own actions first (above) and then swallows the
+            // rest, so nobody walks about or swings behind an open inventory.
+            if (context == InputContext.UI && _active[(int)InputContext.UI])
+            {
+                ConsumeRange(0, 256);
+                ConsumeRange(MouseButtonSlot, 8);
+                _consumed[MouseDeltaSlot] = true;
+            }
         }
         ApplyScripted(dt);
 

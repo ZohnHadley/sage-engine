@@ -45,8 +45,10 @@ internal sealed class UiRenderSystem : ISystem
         _ui.Size = new Vector2(viewport.Width, viewport.Height);
 
         // The crosshair is the engine's one piece of HUD: combat and the Use action both aim from the
-        // centre of the screen, so not drawing it is a handicap rather than a style.
-        if (_crosshair.Value && _camera.DrivenByRig)
+        // centre of the screen, so not drawing it is a handicap rather than a style. With a screen
+        // open there is nothing to aim at, and a cross floating over an inventory looks like a bug.
+        bool screenOpen = ctx.World.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen;
+        if (_crosshair.Value && _camera.DrivenByRig && !screenOpen)
         {
             const float Arm = 6f, Thickness = 2f;
             float x = viewport.Width * 0.5f, y = viewport.Height * 0.5f;

@@ -41,8 +41,20 @@ public sealed class SandboxClientModule : IModule
         _records = ctx.Engine.Records;
         _renderer = ctx.Get<Renderer>();
         _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
+        _actions = ctx.Engine.Actions;
     }
 
-    public void OnWorldCreated(World world) =>
+    private ActionRegistry? _actions;
+
+    public void OnWorldCreated(World world)
+    {
         world.AddSystem(new SandboxHud(world, _records!, _content!), Phase.FrameUpdate);   // 13 §3
+
+        // Which screens this game has, and what opens them (13 §3, F38). The engine draws and drives
+        // them; saying `I` is the bag and `B` is the spellbook is the game's decision, the same way
+        // the health bar's shape is.
+        var screens = world.Resources.Get<ScreenStack>();
+        screens.Bind(_actions!.Get("Inventory"), new InventoryScreen());
+        screens.Bind(_actions!.Get("Spellbook"), new SpellbookScreen());
+    }
 }

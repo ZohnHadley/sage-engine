@@ -16,6 +16,29 @@
         <Start>&#32;</Start>
         <End>&#126;</End>
       </CharacterRegion>
+      <!-- What the screens draw (13 §3, F38): multiplication sign for stack counts, bullet for the
+           equipped/readied tick, en and em dashes, ellipsis, and the four arrows a hint line uses.
+           Anything outside these regions draws as '?' rather than throwing (ContentService). -->
+      <CharacterRegion>
+        <Start>&#215;</Start>
+        <End>&#215;</End>
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#8211;</Start>
+        <End>&#8212;</End>
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#8226;</Start>
+        <End>&#8226;</End>
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#8230;</Start>
+        <End>&#8230;</End>
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#8592;</Start>
+        <End>&#8595;</End>
+      </CharacterRegion>
     </CharacterRegions>
   </Asset>
 </XnaContent>

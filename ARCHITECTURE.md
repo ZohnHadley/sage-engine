@@ -303,7 +303,7 @@ call against a record instead of eight calls in a particular order.
 | D5 | Physics | **BepuPhysics v2** + **own kinematic character controller** |
 | D6 | Level editing | Own editor for terrain/props/entities + **TrenchBroom `.map` import** for brush interiors (later) |
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |
-| D8 | Game UI | ImGui for dev/editor only. **Evaluate Gum / Myra vs custom** before inventory/dialogue screens ([13](docs/design/13-ui.md)) |
+| D8 | Game UI | **Decided 2026-09-23: our own, on `UiDraw`.** ImGui stays dev/editor only. The engine already produced a screen’s *contents* as data (`Panel`), so what a library would have added was a list, a selection and a box — about 300 lines, against a dependency with its own fonts, stylesheets or external layout editor. Gum and Myra stay reasonable answers if screens outgrow lists ([13](docs/design/13-ui.md)) |
 | D9 | Engine licence | Currently **CC0** (`LICENSE`). Recommend **MIT** or **Apache-2.0** (adds a patent grant) if other developers will build commercial games on it. Keep vendored licences (`packages/MonoGame.ImGuiNet-main/LICENSE`). **Needs your decision** |
 | D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; **MGCB no longer used** |
 | D11 | Model format for animation | **glTF 2.0** over FBX |

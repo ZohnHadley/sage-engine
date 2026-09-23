@@ -32,8 +32,9 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Rendering | Extract → pooled snapshot → fixed passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, heightmap terrain, debug draw |
 | Physics | BepuPhysics per world behind handles, layers, raycast/sweep/overlap, triggers, and our own kinematic character controller |
 | Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts |
+| Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 315 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 324 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -64,7 +65,8 @@ pressing `E` would pick up, and what just hit you.
 | `Left Shift`, `Left Ctrl` | run, crouch |
 | **Left mouse** | attack |
 | `E` | use |
-| `Escape` | quit (closes the console first) |
+| `I`, `B` | open your bag, open your spellbook (↑↓ choose, Enter use, Del drop, Esc close) |
+| `Escape` | quit (closes the console, or an open screen, first) |
 | `` ` `` | open the console |
 
 Bindings live in [`engine_content/data/input.json`](engine_content/data/input.json) and are records

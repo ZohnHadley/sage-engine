@@ -184,9 +184,7 @@ public static class Effects
     internal static float Clamp(RecordStore records, RecordId attribute, float value) =>
         records.TryGet(attribute, out AttributeRecord record) ? Math.Clamp(value, record.Min, record.Max) : value;
 
-    // Internal, not private: `AbilityRules` asks the same question from outside a system, and two
-    // spellings of "where the records live" is how they end up pointing at different stores.
-    internal static RecordStore Records(this World world) => world.Resources.Get<RecordStore>();
+
 }
 
 // Gameplay phase: ticks the running effects, recomputes current attribute values and the tags the

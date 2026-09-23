@@ -45,13 +45,17 @@ public sealed class SandboxHud : ISystem
         float width = _ui.Size.X, height = _ui.Size.Y;
         if (width < 1f) return;                       // before the first frame sized the viewport
 
+        // With a screen open the health bar and the message log stay — you want to read them while
+        // deciding what to equip — but the things that belong to *aiming* do not (13 §3, F38).
+        bool screenOpen = world.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen;
+
         float x = 24f, bottom = height - 28f;
         DrawMessages(x, bottom - 86f);
-        DrawPrompt(world, width * 0.5f, height * 0.5f + 28f);
+        if (!screenOpen) DrawPrompt(world, width * 0.5f, height * 0.5f + 28f);
 
         foreach (var player in _players.Entities)
         {
-            DrawViewmodel(world, player);             // behind the bars: it is the biggest thing here
+            if (!screenOpen) DrawViewmodel(world, player);   // behind the bars: it is the biggest thing here
             DrawHealth(world, player, x, bottom - 44f);
             DrawHands(world, player, x, bottom - 20f);
             return;                                   // one local player

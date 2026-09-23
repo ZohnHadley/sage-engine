@@ -27,6 +27,8 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _crosshair;
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
+    private InputActions? _actions;
+    private ActionRegistry? _actionIds;
 
     public void Init(ModuleContext ctx)
     {
@@ -41,6 +43,17 @@ public sealed class ClientModule : IModule
         actions.Register("Look", ActionKind.Axis2D);
         actions.Register("Menu", ActionKind.Button);
         actions.Register("ToggleConsole", ActionKind.Button);
+
+        // Screens (13 §3, F38). Navigation is the client's business because screens are: a headless
+        // server has no use for "the highlighted row moved down". What *opens* them is here too, so a
+        // game only says which screen a key opens.
+        actions.Register("MenuUp", ActionKind.Button);
+        actions.Register("MenuDown", ActionKind.Button);
+        actions.Register("MenuConfirm", ActionKind.Button);
+        actions.Register("MenuAlternate", ActionKind.Button);
+        actions.Register("MenuBack", ActionKind.Button);
+        actions.Register("Inventory", ActionKind.Button);
+        actions.Register("Spellbook", ActionKind.Button);
 
         // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
         // registered in Start does not exist yet when the saved value is read — the line is dropped
@@ -95,12 +108,17 @@ public sealed class ClientModule : IModule
         // Frame-phase system rather than the host loop, so the client keeps its own hot reload the
         // way records keep theirs.
         if (BuildInfo.IsDevBuild) _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
+        _actions = ctx.Get<InputActions>();   // the host provides it; screens navigate with it (13 §3)
+        _actionIds = ctx.Engine.Actions;
     }
 
     public void OnWorldCreated(World world)
     {
         world.Resources.Set(new RenderSnapshot());
         world.Resources.Set(new UiDraw());       // screen-space drawing for the game's HUD (13 §3)
+        // Screens (F38): the stack is a world resource because a screen acts on entities in a world.
+        // A game says which screen a key opens (`stack.Bind`); the drawing and the navigation are here.
+        world.Resources.Set(new ScreenStack());
         // Sprite animation is simulation, not rendering (12 §3), so AnimationModule installs it: a
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
@@ -112,6 +130,10 @@ public sealed class ClientModule : IModule
         world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
+        // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
+        // renders the queue.
+        world.AddSystem(new ScreenSystem(world, _actions!, _actionIds!), Phase.Overlay,
+                        before: new[] { typeof(UiRenderSystem) });
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!), Phase.FrameUpdate, RunCondition.DevOnly);
     }
 

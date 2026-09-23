@@ -14,6 +14,24 @@
     }
   },
   {
+    // Active while a screen is open (13 §3, F38). Its own keys are read first and then everything
+    // else is swallowed, so nobody walks about behind an open inventory. `Inventory`/`Spellbook` are
+    // bound here as well as in gameplay, so the key that opened a screen also closes it.
+    "type": "input_map",
+    "id": "ui",
+    "context": "UI",
+    "actions": {
+      "MenuUp":        [ { "key": "Up" }, { "key": "W" }, { "gamepad": "DPadUp" } ],
+      "MenuDown":      [ { "key": "Down" }, { "key": "S" }, { "gamepad": "DPadDown" } ],
+      "MenuConfirm":   [ { "key": "Enter" }, { "gamepad": "A" } ],
+      "MenuAlternate": [ { "key": "Delete" }, { "gamepad": "X" } ],
+      "MenuBack":      [ { "key": "Escape" }, { "gamepad": "B" } ],
+      "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
+      "Spellbook":     [ { "key": "B" } ],
+      "ToggleConsole": [ { "key": "OemTilde" } ]
+    }
+  },
+  {
     "type": "input_map",
     "id": "gameplay",
     "context": "Gameplay",
@@ -26,6 +44,8 @@
       "Run":           [ { "key": "LeftShift" }, { "gamepad": "LeftStickButton" } ],
       "Crouch":        [ { "key": "LeftControl" }, { "gamepad": "B" } ],
       "Menu":          [ { "key": "Escape" }, { "gamepad": "Start" }, { "gamepad": "Back" } ],
+      "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
+      "Spellbook":     [ { "key": "B" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   }

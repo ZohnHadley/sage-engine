@@ -28,6 +28,14 @@ namespace sage_engine;
 //
 // v1 deserializes with System.Text.Json reflection; the compile-time generated readers/validators
 // (docs/design/09) replace that later with the same rules.
+// Where a world's records live. Beside `world.Messages()` and `world.Debug()`, and public for the same
+// reason: a game's own systems and screens ask the record store as often as the engine's do, and two
+// spellings of "where the records live" is how they end up pointing at different stores.
+public static class RecordWorldExtensions
+{
+    public static RecordStore Records(this World world) => world.Resources.Get<RecordStore>();
+}
+
 public sealed class RecordStore
 {
     private static readonly HashSet<string> MetaKeys = new(StringComparer.Ordinal) { "type", "id", "base", "patch", "disabled", "abstract" };
