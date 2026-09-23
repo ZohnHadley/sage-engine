@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#53) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#54) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -320,6 +320,12 @@ pass; the first two were real, silent bugs.
 - **Files**: `src/Sage.Engine/Physics/PhysicsCallbackData.cs` (`Allows`), `PhysicsSpace.cs` (the three query handlers)
 - **Problem**: raycasts, sweeps and overlaps filtered by collision layer only, so a trigger — a thing with no surface, whose whole job is to report overlaps — blocked line of sight, stopped a character sweep and would have swallowed a sword swing. The Sandbox only escaped it because its one trigger hangs in the air.
 - **Resolution (2026-09-22, F20)**: queries skip triggers by default; `includeTriggers: true` asks for them. Test: `QueriesSeeThroughTriggersUnlessTheyAskForThem`.
+
+### [X] 54. The placeholder creature's art was mirrored, so its facing read wrong — **Severity: Cosmetic** (found 2026-09-23)
+- **Files**: the generator for `games/Sandbox/content/textures/creature.png` (now `games/Sandbox/tools/make_placeholder_art.py`), `src/Sage.Client/Rendering/SpriteBatcher.cs`
+- **Problem**: reported three times as "the sprite facing looks a bit off", and twice investigated in the *code*, which was right both times. The fault was in the art: the generator drew the nose at `+sin(angle)` when the projection of an entity's facing onto the screen's right axis is `-sin(angle)`, so every angled view showed the creature turned the wrong way — while the pack on its back, drawn with the correct sign, showed it turned the right way. Direction *selection* matched Doom's rotation order all along; the sheet it was selecting from did not.
+- **Resolution (2026-09-23)**: the generator's sign is fixed and the sheet regenerated; the generator now lives in the repo beside the art it makes, since an untracked script is how the convention got lost in the first place. `DirectionGroupsFollowDoomsRotationOrder` pins the numbering to the Doom wiki's description so it cannot drift again, and 06 §3.8 states what the art has to look like. Verified by measuring a rendered row of eight creatures at known yaws against the angles the geometry demands — all eight agree.
+- **Also**: billboards went back to **view-plane alignment**, which is what Doom and Daggerfall used. Turning each quad toward the camera's position (tried on 2026-09-22) is defensible at a distance and wrong up close, where a sprite rotates away as the player passes its origin; Daggerfall Unity's author reached the same conclusion. `r_sprite_facecamera 1` switches back for comparison.
 
 ### Noted, not fixed (carried into TODO)
 - `PhysicsSpace.OverlapBox` is broad-phase only: it can report entities whose shapes don't touch. The name should say so once a narrow-phase version exists (10 §4).

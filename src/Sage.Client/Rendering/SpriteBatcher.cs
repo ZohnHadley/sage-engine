@@ -6,8 +6,8 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
 
-// One camera-facing quad in the snapshot (docs/design/06 §3.2). Positions are camera-relative; the
-// quad corners are expanded by the batcher, from the view's right/up (Spherical) or world up
+// One billboard quad in the snapshot (docs/design/06 §3.2). Positions are camera-relative; the quad
+// corners are expanded by the batcher, from the view's right/up (Spherical) or world up
 // (Cylindrical), so nothing in the simulation knows about the camera.
 public struct SpriteInstance
 {
@@ -51,6 +51,14 @@ internal sealed class SpriteBatcher : IDisposable
     private int _quads;                      // quads written into _vertices this flush
     private Vector3 _right, _up, _normal;    // camera basis for this view
 
+    // How a quad is oriented (06 §3.8). Two choices, and Daggerfall's own remake settled the question
+    // for a game you can walk right up to:
+    //   false (default)  parallel to the **view plane**, as Doom and Daggerfall drew them. A sprite
+    //                    never turns as you walk past it, and it behaves at arm's length.
+    //   true             turned toward the camera's **position**. Slightly better at a distance, and
+    //                    visibly wrong up close, where it swings away as you cross its origin.
+    public bool FaceCameraPosition;
+
     public SpriteBatcher(GraphicsDevice device, int maxQuads = 4096)
     {
         _device = device;
@@ -69,8 +77,8 @@ internal sealed class SpriteBatcher : IDisposable
         _indexBuffer.SetData(indices);
     }
 
-    // The camera's own basis. Sprites orient themselves per quad (see Append); these are the
-    // fallbacks for the degenerate case of a sprite sitting exactly on the camera.
+    // The camera's own basis: what view-plane-aligned quads use directly, and the fallback for a
+    // camera-facing sprite that sits exactly on the camera.
     public void Begin(in RenderView view)
     {
         _right = new Vector3(view.View.M11, view.View.M21, view.View.M31);
@@ -103,29 +111,45 @@ internal sealed class SpriteBatcher : IDisposable
 
     private void Append(ref SpriteInstance s)
     {
-        // Each sprite turns to face the camera's *position*, not the screen plane (06 §3.8). Aligning
-        // quads with the view plane instead stretches them toward the edges of a wide view — two
-        // creatures the same distance apart end up drawn at different sizes — and it disagrees with
-        // the direction group, which is chosen from the angle to the camera.
-        //
         // Cylindrical turns about Y only, so characters and trees stay upright when the camera looks
-        // up or down; Spherical faces the camera fully (effects, item pickups).
-        Vector3 toCamera = -s.Center;   // positions are camera-relative, so the camera is the origin
+        // up or down; Spherical uses the full camera basis (effects, item pickups).
         Vector3 right, up, normal;
-        if (s.Mode == BillboardMode.Cylindrical)
+        if (!FaceCameraPosition)
         {
-            var flat = new Vector3(toCamera.X, 0, toCamera.Z);
-            normal = flat.LengthSquared() > 1e-8f ? Vector3.Normalize(flat) : FlattenedViewNormal();
-            right = Vector3.Cross(Vector3.Up, normal);
-            right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : _right;
-            up = Vector3.Up;
+            // Parallel to the view plane: every quad in the frame shares the camera's own basis, so
+            // nothing rotates as the camera moves sideways (06 §3.8).
+            if (s.Mode == BillboardMode.Cylindrical)
+            {
+                var flat = new Vector3(_right.X, 0, _right.Z);
+                right = flat.LengthSquared() > 1e-8f ? Vector3.Normalize(flat) : _right;
+                up = Vector3.Up;
+                normal = Vector3.Cross(right, up);
+            }
+            else
+            {
+                right = _right;
+                up = _up;
+                normal = _normal;
+            }
         }
         else
         {
-            normal = toCamera.LengthSquared() > 1e-8f ? Vector3.Normalize(toCamera) : _normal;
-            right = Vector3.Cross(Vector3.Up, normal);
-            right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : _right;   // straight up or down
-            up = Vector3.Normalize(Vector3.Cross(normal, right));
+            Vector3 toCamera = -s.Center;   // positions are camera-relative: the camera is the origin
+            if (s.Mode == BillboardMode.Cylindrical)
+            {
+                var flat = new Vector3(toCamera.X, 0, toCamera.Z);
+                normal = flat.LengthSquared() > 1e-8f ? Vector3.Normalize(flat) : FlattenedViewNormal();
+                right = Vector3.Cross(Vector3.Up, normal);
+                right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : _right;
+                up = Vector3.Up;
+            }
+            else
+            {
+                normal = toCamera.LengthSquared() > 1e-8f ? Vector3.Normalize(toCamera) : _normal;
+                right = Vector3.Cross(Vector3.Up, normal);
+                right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : _right;   // straight up or down
+                up = Vector3.Normalize(Vector3.Cross(normal, right));
+            }
         }
 
         // The pivot sits at the entity position: the quad spans left/right and up/down around it.

@@ -44,6 +44,7 @@ public sealed class Renderer : IDisposable
     private readonly Dictionary<AssetPath, int> _textureIds = new();
     private readonly SpriteBatcher _sprites;
     private readonly CVar<bool> _fog;
+    private readonly CVar<bool> _spriteFaceCamera;
     private readonly CVar<bool> _wireframe;
     private readonly CVar<bool> _freezeCull;
     private long _frame;
@@ -61,6 +62,8 @@ public sealed class Renderer : IDisposable
         var cvars = engine.CVars;
         _fog = cvars.Register("r_fog", true, CVarFlags.None, "Distance fog (the environment's fog settings).");
         _wireframe = cvars.Register("r_wireframe", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Draw the scene as wireframe.");
+        _spriteFaceCamera = cvars.Register("r_sprite_facecamera", false, CVarFlags.DevOnly,
+            "Turn billboards toward the camera's position instead of the view plane (06 §3.8; the classic look is off).");
         _freezeCull = cvars.Register("r_freezecull", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Keep the current culling frustum while the camera moves.");
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  items {LastFrame.Items}, sprites {LastFrame.Sprites}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
@@ -257,6 +260,7 @@ public sealed class Renderer : IDisposable
         for (int i = 0; i < sprites; i++) { s.SpriteKeys[i] = s.Sprites[i].SortKey; s.SpriteOrder[i] = i; }
         Array.Sort(s.SortKeys, s.Order, 0, items);       // TODO (06 §3.5): radix sort when counts grow
         Array.Sort(s.SpriteKeys, s.SpriteOrder, 0, sprites);
+        _sprites.FaceCameraPosition = _spriteFaceCamera.Value;
         _sprites.Begin(s.View);
 
         // Passes in order (06 §3.4). Both lists are sorted by a key whose top bits are the pass, so

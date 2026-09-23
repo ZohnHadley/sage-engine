@@ -68,6 +68,29 @@ public class SpriteMathTests
         Assert.Equal(6, SpriteMath.DirectionIndex(Vector3.Zero, camera, -90 * Deg, 8, out _));
     }
 
+    // The ordering is Doom's, so a sheet ripped from Doom or Daggerfall drops straight in
+    // (doomwiki.org/wiki/Sprite): rotation 1 is head-on, and 2..8 follow the thing turning 45° at a
+    // time *clockwise seen from above* — rotation 2 is it "facing diagonally to the left of the
+    // player", 3 side-on facing the player's left, 5 back-on. Our groups are 0-based, so Doom's
+    // rotation N is our group N-1.
+    [Fact]
+    public void DirectionGroupsFollowDoomsRotationOrder()
+    {
+        var camera = new Vector3(0, 0, 10);            // the player stands at +Z, looking at the thing
+        // Head-on: the thing faces +Z, which is yaw 180 (yaw 0 faces -Z, SageMath).
+        Assert.Equal(0, SpriteMath.DirectionIndex(Vector3.Zero, camera, 180 * Deg, 8, out _));
+        // Turned 45° clockwise from there — yaw counts counter-clockwise, so clockwise is 180 - 45 —
+        // and it now faces diagonally to the player's left: Doom's rotation 2.
+        Assert.Equal(1, SpriteMath.DirectionIndex(Vector3.Zero, camera, 135 * Deg, 8, out _));
+        Assert.Equal(2, SpriteMath.DirectionIndex(Vector3.Zero, camera, 90 * Deg, 8, out _));    // side on, facing the player's left
+        Assert.Equal(4, SpriteMath.DirectionIndex(Vector3.Zero, camera, 0f, 8, out _));          // back on
+        Assert.Equal(6, SpriteMath.DirectionIndex(Vector3.Zero, camera, 270 * Deg, 8, out _));   // side on, facing the player's right
+
+        // And the mirrored 5-direction sheets Doom and Daggerfall shipped: 6, 7, 8 reuse 4, 3, 2.
+        Assert.Equal(2, SpriteMath.DirectionIndex(Vector3.Zero, camera, 270 * Deg, 5, out bool flip));
+        Assert.True(flip);
+    }
+
     [Fact]
     public void Yaw_ReadsTheRotationAboutY()
     {
