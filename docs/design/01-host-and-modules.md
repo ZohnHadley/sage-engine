@@ -93,15 +93,15 @@ Like Source's `gameinfo.txt`: tells the host what to mount and load.
   "mounts": ["content"],
   "modsDirectory": "mods",
   "defaultMap": "maps/test_valley",
-  "modules": { "disable": [], "add": [] }
+  "modules": { "disable": [], "add": ["../Sandbox.Client/bin/{config}/net8.0/Sandbox.Client.dll"] }
 }
 ```
 
-`id` is the game's record namespace (05), so it follows record-id rules (lower case, digits, `_`, `.`, `-`). `assembly` is relative to the manifest; `{config}` becomes the build configuration (`Debug`/`Development`/`Shipping`), so a dev build loads the matching game build. The host always mounts engine content, then framework content, first. The game's `mounts` are resolved relative to the manifest and mounted after them, in order (later wins). Mods come after the game, in load order (17). See 05 §3.1.
+`id` is the game's record namespace (05), so it follows record-id rules (lower case, digits, `_`, `.`, `-`). `assembly` is relative to the manifest and holds the game's **one** `IGameModule`, its simulation; `{config}` becomes the build configuration (`Debug`/`Development`/`Shipping`), so a dev build loads the matching game build. `modules.add` lists further assemblies whose every public `IModule` is added after it — that is how a game ships its client half separately (R15), and how a trusted C# mod will ship a module later (17). Paths resolve the same way, `{config}` and all. The host always mounts engine content, then framework content, first. The game's `mounts` are resolved relative to the manifest and mounted after them, in order (later wins). Mods come after the game, in load order (17). See 05 §3.1.
 
 The host finds the game with `-game <folder>`; without it, dev builds use `games/Sandbox` (found by walking up to `Sage.sln`) and other builds use `game/` next to the exe.
 
-*As built (step 5):* `src/Sage.Engine/Core/GameManifest.cs`, `games/Sandbox/game.json`. `name`, `id`, `assembly`, `mounts` and `modules.disable` work. `modsDirectory` and `defaultMap` are parsed but unused until mods (17) and maps. `modules.add` logs a warning (nothing to add yet). There is no framework content mount yet.
+*As built (step 5, `modules.add` 2026-09-23):* `src/Sage.Engine/Core/GameManifest.cs`, `games/Sandbox/game.json`. `name`, `id`, `assembly`, `mounts`, `modules.disable` and `modules.add` work — the Sandbox uses `add` for its client half, and each added module still goes through the `disable` check, so one can be turned off by name. `modsDirectory` and `defaultMap` are parsed but unused until mods (17) and maps. A missing assembly named in `add` stops the host with a message, the same as a missing game assembly. There is no framework content mount yet.
 
 ## 4. Public API sketch
 

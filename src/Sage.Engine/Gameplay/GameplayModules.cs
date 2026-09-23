@@ -74,10 +74,9 @@ public sealed class AttributesModule : IModule
             }));
     }
 
-    public void Start(ModuleContext ctx) => ctx.Provide(Registries);
-
     public void OnWorldCreated(World world)
     {
+        // As a world resource, not a module service: everything that reads it has a world in hand.
         world.Resources.Set(Registries);
         Registries.Rebuild(_records!);
         world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);

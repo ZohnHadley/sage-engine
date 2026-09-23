@@ -2,9 +2,12 @@ using System.Numerics;
 
 namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Directory.Build.props
 
-// The Sandbox game module (docs/design/01 §4): the dogfooding game that grows into the Daggerfall-like
-// vertical slice (TODO milestone). Today it spawns the test scene from `spawn` records, draws it with
-// material records, and makes it hop on the Jump action (PlayerCommand, 08 §3.4).
+// The Sandbox game's *simulation* (docs/design/01 §4, §3.1): the dogfooding game that grows into the
+// Daggerfall-like vertical slice (TODO milestone). It places its scene from prefabs (F31), runs the
+// game's own rules, and makes things hop on the Jump action (PlayerCommand, 08 §3.4).
+//
+// It references `Sage.Engine` and nothing else, so all of this is testable headlessly (R15); the HUD
+// and anything else needing a screen live in `Sandbox.Client`.
 public sealed class SandboxModule : IGameModule
 {
     private RecordStore? _records;

@@ -85,6 +85,46 @@ public class ModuleTests
         Assert.Equal(2, engine.Worlds.Count);
     }
 
+    // 16 §3.4 says a game adds its own AI tasks before the first world exists. That is only true if
+    // the registry is reachable, which is what AIModule.Provide buys: a module declaring AIModule as
+    // a dependency can ask for it. Without this test the Provide would be an untested promise.
+    [Fact]
+    public void AGameCanReachTheAITaskRegistry()
+    {
+        var cvars = new CVarRegistry();
+        using var engine = new Engine(cvars, CoreCVars.Register(cvars));
+        engine.Modules.Add(new PhysicsModule());
+        engine.Modules.AddGameplay();
+        var game = new TaskAddingGame();
+        engine.Modules.Add(game);
+        engine.Modules.InitAll();
+        engine.Modules.StartAll();
+
+        Assert.NotNull(game.Tasks);
+        Assert.NotNull(game.Tasks!.Find("Loiter"));      // the game's own
+        Assert.NotNull(game.Tasks.Find("MeleeAttack"));  // and the engine's, in the same registry
+    }
+
+    private sealed class TaskAddingGame : IGameModule
+    {
+        public AITaskRegistry? Tasks;
+
+        public IReadOnlyList<Type> Dependencies => new[] { typeof(AIModule) };
+
+        public void Init(ModuleContext ctx) { }
+
+        public void Start(ModuleContext ctx)
+        {
+            Tasks = ctx.Get<AITaskRegistry>();
+            Tasks.Register("Loiter", new LoiterTask());
+        }
+    }
+
+    private sealed class LoiterTask : IAITask
+    {
+        public AITaskStatus Run(ref AITaskContext context) => AITaskStatus.Succeeded;
+    }
+
     [Fact]
     public void Lifecycle_RunsInDependencyOrder_ShutdownReversed()
     {
