@@ -136,10 +136,17 @@ dotnet run --project tools/DaggerfallImport
 It defaults to the Steam install and Daggerfall Imaging 2's DLL; pass `--arena2 <dir>` and
 `--connect <dll>` if yours live elsewhere, `--help` for the rest. It writes:
 
-- `games/Sandbox/content/textures/daggerfall/*.png` — a Skeleton Warrior sheet (5 directions, walk
-  and attack), two trees, a bush, ground and rock textures;
+- `games/Sandbox/content/textures/daggerfall/*.png` — seven creatures with walk and attack
+  animations (rat, spriggan, orc, skeleton, zombie, gargoyle and a human fighter), four townspeople,
+  ten woodland flats (trees, rocks, stumps, undergrowth) and three tiling textures;
 - `games/Sandbox/content/data/daggerfall.json` — the `sprite_sheet`, `material` and `spawn` records
-  that use them, including a patch that puts Daggerfall's grass on the terrain.
+  that use them: a line-up of creatures to walk around and hit, two that hunt you, a stone ruin to
+  break their line of sight, scattered woodland, and a patch putting Daggerfall's grass on the
+  terrain.
 
-Run the game and the skeleton is in the scene, fighting with the same records the placeholder
-creature uses — the art is all that changed. Delete `daggerfall.json` to go back.
+Everything in the scene is generated from tables at the top of `tools/DaggerfallImport/Program.cs`,
+so adding a monster is one row. `--contact <archive>` dumps a whole TEXTURE archive as one labelled
+grid, which is how to find out what is in it — that is how the ones above were chosen.
+
+The creatures fight with the same records the placeholder creature uses: the art is all that
+changed, which is the point of keeping gameplay in data. Delete `daggerfall.json` to go back.

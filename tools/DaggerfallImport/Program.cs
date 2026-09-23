@@ -51,27 +51,93 @@ float metresPerPixel = float.Parse(options.GetValueOrDefault("scale", "0.015625"
 if (!Directory.Exists(arena2)) return Missing("ARENA2 folder", arena2);
 if (!File.Exists(connect)) return Missing("DaggerfallConnect.dll", connect);
 
+// `--contact 504` dumps every record of an archive into one PNG, which is how you pick what to
+// import without opening a GUI: the records are numbered left to right, top to bottom.
+if (options.TryGetValue("contact", out var contactArg) && int.TryParse(contactArg, out int contactArchive))
+{
+    var contactReader = new Arena2Reader(connect, arena2);
+    var all = contactReader.Read(contactArchive, 0, 999);
+    var firsts = all.Where(f => f.Index == 0).ToList();
+    if (firsts.Count == 0) { Console.Error.WriteLine($"TEXTURE.{contactArchive:000}: nothing to show"); return 1; }
+
+    int cw = firsts.Max(f => f.Width), ch = firsts.Max(f => f.Height);
+    int cols = Math.Min(8, firsts.Count), rows = (firsts.Count + cols - 1) / cols;
+    var contact = new Sheet(cw * cols, ch * rows);
+    for (int i = 0; i < firsts.Count; i++) contact.Blit(firsts[i], cw, ch, i % cols, i / cols);
+    string contactPath = Path.Combine(options.GetValueOrDefault("out", Directory.GetCurrentDirectory()), $"contact_{contactArchive:000}.png");
+    contact.Save(contactPath);
+    Console.WriteLine($"TEXTURE.{contactArchive:000}: {firsts.Count} records, {cols}x{rows} grid of {cw}x{ch} cells -> {contactPath}");
+    for (int i = 0; i < firsts.Count; i++)
+        Console.WriteLine($"  record {firsts[i].Record,2}: cell ({i % cols},{i / cols})  {firsts[i].Width}x{firsts[i].Height}");
+    return 0;
+}
+
 var textureDir = Path.Combine(outDir, "textures", "daggerfall");
 Directory.CreateDirectory(textureDir);
 var reader = new Arena2Reader(connect, arena2);
 var records = new List<string>();
 
 // ---- what to import ---------------------------------------------------------------------------
-// Enough for the test scene: something to fight, something to stand on, something to hide behind.
+// The tables are the manifest: add a row to bring something else in. Archive numbers and record
+// meanings come from the files themselves — `--contact <archive>` dumps one as a labelled grid,
+// which is how these were chosen.
 
-// Skeleton Warrior: 5 directions x 4 walking frames, then 5 x 6 attacking frames.
-records.Add(Creature(reader, textureDir, archive: 270, id: "skeleton", metresPerPixel,
-                     walk: (0, 4), attack: (5, 9), hitFrame: 2));
+// Monsters and human enemies. Every one of them stores 5 views per animation (the other three are
+// mirrored), records 0-4 walking and 5-9 attacking, so one shape reads them all. `scale` is a
+// fudge over the shared metres-per-pixel: a Daggerfall rat is drawn nearly as tall as an orc.
+var creatures = new (int Archive, string Id, float Scale, int HitFrame)[]
+{
+    (255, "rat",      0.5f,  2),
+    (257, "spriggan", 1f,    2),
+    (262, "orc",      1f,    3),
+    (270, "skeleton", 1f,    2),
+    (272, "zombie",   1f,    2),
+    (277, "gargoyle", 1f,    3),
+    (487, "knight",   1f,    3),   // "Medium Fighter": a human enemy, same layout
+};
+foreach (var c in creatures)
+    records.Add(Creature(reader, textureDir, c.Archive, c.Id, metresPerPixel * c.Scale,
+                         walk: (0, 4), attack: (5, 9), hitFrame: c.HitFrame));
 
-// Temperate ground and rock: one for the terrain to wear, one for the crates.
+// Townspeople: single-view flats, the way Daggerfall dresses a street corner. Their art fills its
+// frame, where a monster's sits in a cell sized for its widest attack frame, so they need roughly
+// three quarters of the shared scale to stand the same height as everything else.
+const float PersonScale = 0.72f;
+var people = new (int Record, string Id, float Scale)[]
+{
+    (12, "guard_blue",  PersonScale),
+    (13, "guard_green", PersonScale),
+    (8,  "jester",      PersonScale),
+    (14, "noble",       PersonScale),
+};
+foreach (var person in people)
+    records.Add(Flat(reader, textureDir, archive: 357, record: person.Record, id: person.Id,
+                     metresPerPixel * person.Scale));
+
+// Temperate woodland flats: trees, rocks and undergrowth.
+var nature = new (int Record, string Id, float Scale)[]
+{
+    (13, "tree_pine",   2f),
+    (16, "tree_oak",    2f),
+    (17, "tree_autumn", 2f),
+    (12, "tree_gnarled",2f),
+    (30, "tree_dead",   2f),
+    (19, "stump",       1.5f),
+    (3,  "rocks",       1.6f),
+    (4,  "rock",        1.6f),
+    (28, "bush",        1.4f),
+    (29, "grass",       1.2f),
+};
+foreach (var flat in nature)
+    records.Add(Flat(reader, textureDir, archive: 504, record: flat.Record, id: "df_" + flat.Id,
+                     metresPerPixel * flat.Scale));
+
+// Flat textures, for the ground and for meshes: temperate grass, a boulder face, dungeon stone.
 records.Add(FlatTexture(reader, textureDir, archive: 302, record: 2, id: "df_ground"));
-records.Add(FlatTexture(reader, textureDir, archive: 302, record: 10, id: "df_rock"));
+records.Add(FlatTexture(reader, textureDir, archive: 302, record: 10, id: "df_rock_face"));
+records.Add(FlatTexture(reader, textureDir, archive: 322, record: 2, id: "df_stone"));
 
-// Woodland flats: two trees and a bush, as one-direction billboards.
-foreach (var (record, id, scale) in new[] { (13, "df_tree_a", 2f), (16, "df_tree_b", 2f), (19, "df_bush", 1.5f) })
-    records.Add(Flat(reader, textureDir, archive: 504, record: record, id: id, metresPerPixel * scale));
-
-records.Add(Scene());
+records.Add(Scene(creatures.Select(c => c.Id).ToArray(), people.Select(p => p.Id).ToArray()));
 
 var written = records.Where(r => r.Length > 0).ToList();
 var dataFile = Path.Combine(outDir, "data", "daggerfall.json");
@@ -208,43 +274,109 @@ static string FlatTexture(Arena2Reader reader, string outDir, int archive, int r
     """;
 }
 
-// Where the imported art lands in the test scene.
-static string Scene() => """
+// Where the imported art lands in the test scene. The layout is generated rather than written out,
+// so adding a creature to the table above puts it in the line-up without any more editing.
+static string Scene(string[] creatures, string[] people)
+{
+    var blocks = new List<string>
+    {
+        """
       {
-        // The ground wears Daggerfall's temperate terrain texture: patching the engine's material
-        // rather than replacing it is what record patches are for (05 §3.5).
+        // The ground wears Daggerfall's temperate grass: patching the engine's material rather than
+        // replacing it is what record patches are for (05 §3.5).
         "type": "material",
         "id": "sage:terrain_default",
         "patch": true,
         "params": { "Albedo": "textures/daggerfall/df_ground.png" }
-      },
-
+      }
+    ""","""
       {
-        // The crates are Daggerfall rock.
+        // The crates are Daggerfall boulder.
         "type": "material",
         "id": "crate",
         "patch": true,
-        "params": { "Albedo": "textures/daggerfall/df_rock.png", "AlbedoColor": [1, 1, 1, 1] }
-      },
-
+        "params": { "Albedo": "textures/daggerfall/df_rock_face.png", "AlbedoColor": [1, 1, 1, 1] }
+      }
+    ""","""
       {
-        // The skeleton fights with the same records the placeholder creature does (16 §3.2): the art
-        // is all that changed, which is the point of keeping gameplay in data.
+        // Dungeon stone, for the ruin.
+        "type": "material",
+        "id": "df_stone_wall",
+        "base": "sage:lit_default",
+        "params": { "Albedo": "textures/daggerfall/df_stone.png" }
+      }
+    ""","""
+      {
+        // Every imported creature fights with the records the placeholder one uses (16 §3.2): the
+        // art is all that changed, which is the point of keeping gameplay in data.
         "type": "spawn",
-        "id": "skeleton_base",
+        "id": "df_creature",
         "abstract": true,
-        "sheet": "skeleton",
         "animate": true,
+        "character": true,
         "attack": "claws",
         "effects": ["tough_hide"]
-      },
+      }
+    """,
+    };
 
-      { "type": "spawn", "id": "df_skeleton", "base": "skeleton_base", "name": "skeleton", "position": [3.5, 0, -9], "yaw": 180, "ai": true },
+    // A line-up you can walk along and inspect from any angle, and hit: they stand still because
+    // nothing is driving them (a character without a controller simply holds its ground).
+    float x = -(creatures.Length - 1) * 1.5f;
+    foreach (var id in creatures)
+    {
+        blocks.Add($$"""
+      { "type": "spawn", "id": "df_{{id}}", "base": "df_creature", "name": "{{id}}", "sheet": "{{id}}", "position": [{{F(x)}}, 0, -16], "yaw": 180 }
+    """);
+        x += 3f;
+    }
 
-      { "type": "spawn", "id": "df_tree_1", "sheet": "df_tree_a", "name": "df_tree_1", "collider": "Capsule", "colliderSize": [0.4, 3, 0], "position": [-7, 0, -9] },
-      { "type": "spawn", "id": "df_tree_2", "sheet": "df_tree_b", "name": "df_tree_2", "collider": "Capsule", "colliderSize": [0.4, 3, 0], "position": [8, 0, -13] },
-      { "type": "spawn", "id": "df_bush_1", "sheet": "df_bush",   "name": "df_bush_1", "position": [-3.5, 0, -6] }
-    """;
+    // Two that come after you, from opposite sides.
+    blocks.Add("""
+      { "type": "spawn", "id": "df_hunter_a", "base": "df_creature", "name": "skeleton hunter", "sheet": "skeleton", "position": [6, 0, -9], "yaw": 180, "ai": true }
+    """);
+    blocks.Add("""
+      { "type": "spawn", "id": "df_hunter_b", "base": "df_creature", "name": "orc hunter", "sheet": "orc", "position": [-6, 0, -10], "yaw": 180, "ai": true }
+    """);
+
+    // Townspeople: flats with a collider, so they are something to walk around rather than through.
+    var wherePeople = new (float X, float Z, string Id)[] { (-11, -6, ""), (-9.5f, -8, ""), (10.5f, -7, ""), (12, -9, "") };
+    for (int i = 0; i < people.Length && i < wherePeople.Length; i++)
+        blocks.Add($$"""
+      { "type": "spawn", "id": "df_person_{{i}}", "sheet": "{{people[i]}}", "name": "{{people[i]}}", "collider": "Capsule", "colliderSize": [0.35, 1.8, 0], "position": [{{F(wherePeople[i].X)}}, 0, {{F(wherePeople[i].Z)}}] }
+    """);
+
+    // A ruin to break the line of sight: four walls with a gap, which is also something for the AI
+    // to lose you behind (16 §3.4).
+    var walls = new (float X, float Z, float W, float D)[] { (-15, -20, 8, 0.6f), (-15, -14, 3, 0.6f), (-18.6f, -17, 0.6f, 6), (-11.4f, -17, 0.6f, 6) };
+    for (int i = 0; i < walls.Length; i++)
+        blocks.Add($$"""
+      { "type": "spawn", "id": "df_wall_{{i}}", "name": "ruin wall {{i}}", "boxMesh": [{{F(walls[i].W)}}, 3, {{F(walls[i].D)}}], "colliderSize": [{{F(walls[i].W)}}, 3, {{F(walls[i].D)}}], "material": "df_stone_wall", "position": [{{F(walls[i].X)}}, 1.5, {{F(walls[i].Z)}}] }
+    """);
+
+    // Woodland: trees get a collider, undergrowth does not.
+    var trees = new (string Id, float X, float Z, bool Solid)[]
+    {
+        ("df_tree_pine", -8, -12, true), ("df_tree_oak", 9, -13, true), ("df_tree_autumn", -12, -17, true),
+        ("df_tree_gnarled", 13, -18, true), ("df_tree_dead", 4, -21, true), ("df_tree_pine", -20, -10, true),
+        ("df_stump", -5, -7, false), ("df_rocks", 7, -5, false), ("df_rock", -3, -13, false),
+        ("df_bush", 2, -6, false), ("df_bush", -7, -19, false), ("df_grass", 5, -12, false),
+        ("df_grass", -2, -18, false), ("df_grass", 11, -11, false),
+    };
+    for (int i = 0; i < trees.Length; i++)
+    {
+        var t = trees[i];
+        // A plain escaped string: a raw one would need its own delimiter run to survive the quotes.
+        string collider = t.Solid ? "\"collider\": \"Capsule\", \"colliderSize\": [0.4, 3, 0], " : "";
+        blocks.Add($$"""
+      { "type": "spawn", "id": "df_flat_{{i}}", "sheet": "{{t.Id}}", "name": "{{t.Id}}_{{i}}", {{collider}}"position": [{{F(t.X)}}, 0, {{F(t.Z)}}] }
+    """);
+    }
+
+    return string.Join(",\n\n", blocks.Select(b => b.TrimEnd()));
+}
+
+static string F(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
 
 static string Size(float w, float h) =>
     $"[{w.ToString("0.##", CultureInfo.InvariantCulture)}, {h.ToString("0.##", CultureInfo.InvariantCulture)}]";

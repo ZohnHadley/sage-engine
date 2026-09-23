@@ -118,7 +118,9 @@ public sealed class SandboxModule : IGameModule
         if (!spawn.Sheet.IsEmpty)
         {
             world.Add(e, new SpriteRenderer { Sheet = spawn.Sheet, Material = spawn.Material, Size = spawn.Size });
-            if (spawn.Animate) world.Add(e, SpriteAnimator.Play(0));
+            // By name, not by index: clip 0 is whichever sorts first, which for a Daggerfall sheet
+            // is "attack" — every creature in the scene stood frozen mid-swing until this.
+            if (spawn.Animate) world.Add(e, SpriteAnimator.Play(ClipIndex(spawn)));
         }
         else if (spawn.BoxMesh != Vector3.Zero)
         {
@@ -169,6 +171,16 @@ public sealed class SandboxModule : IGameModule
         e.AddTag<FromSpawnRecord>();
         return e;
     }
+
+    // The clip a spawn starts on: what it asked for, else "idle", else the first one there is.
+    // Clip 0 is whichever name sorts first, which for a Daggerfall sheet is "attack" — asking by
+    // index left every creature in the scene frozen mid-swing.
+    private int ClipIndex(SpawnRecord spawn)
+    {
+        if (!_records!.TryGet(spawn.Sheet, out SpriteSheetRecord sheet)) return 0;
+        int clip = sheet.ClipIndex(string.IsNullOrEmpty(spawn.Animation) ? "idle" : spawn.Animation);
+        return clip >= 0 ? clip : 0;
+    }
 }
 
 // `spawn` records (content/data/*.json): what to place in the test scene. Either a mesh (`model`) or
@@ -183,7 +195,8 @@ public sealed class SpawnRecord
     public Vector3 Position;
     public float Yaw;                  // degrees about +Y, 0 faces -Z (SageMath): picks the sprite group
     public Vector2 Size;               // sprite size in metres; 0 = the sheet's
-    public bool Animate;               // play the sheet's first clip
+    public bool Animate;               // play a looping clip on spawn
+    public string Animation = "";      // which one; empty = "idle", or the first clip if there is none
     public bool FacesCamera;           // meshes only: the old billboard test
 
     // Physics (docs/design/10): a box mesh drawn at BoxMesh size, a collider, and a mass that makes

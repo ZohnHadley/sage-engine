@@ -196,7 +196,7 @@ public sealed class MeleeCombatSystem : ISystem
                             m[n].Phase = MeleePhase.Windup;
                             m[n].Timer = 0f;
                             m[n].Swung = false;
-                            PlayAnimation(world, entity, attack);
+                            PlayAnimation(world, entity, attack.Animation);
                         }
                         break;
 
@@ -221,6 +221,7 @@ public sealed class MeleeCombatSystem : ISystem
                     case MeleePhase.Recover:
                         m[n].Timer += dt;
                         if (m[n].Timer < attack.RecoverTime) break;
+                        PlayAnimation(world, entity, IdleAnimation);   // or it stands frozen mid-swing
                         m[n].Phase = MeleePhase.Ready;
                         m[n].Timer = 0f;
                         m[n].Cooldown = attack.Cooldown;
@@ -276,16 +277,22 @@ public sealed class MeleeCombatSystem : ISystem
         return info with { Target = hit.Entity, Point = eye + aim * hit.Distance };
     }
 
-    // Plays the swing's clip if the fighter has one (a first-person player has no sprite at all).
-    private void PlayAnimation(World world, Entity entity, AttackRecord attack)
+    // Plays a clip by name if the fighter has a sheet with one (a first-person player has no sprite
+    // at all). Combat driving animation directly is v1: an AnimationStateSystem picking clips from
+    // gameplay state is 12 §3's job once there is more than "swinging" and "not swinging".
+    private void PlayAnimation(World world, Entity entity, string name)
     {
-        if (string.IsNullOrEmpty(attack.Animation)) return;
+        if (string.IsNullOrEmpty(name)) return;
         if (!world.Has<SpriteAnimator>(entity) || !world.TryGet<SpriteRenderer>(entity, out var renderer)) return;
         if (!_records.TryGet(renderer.Sheet, out SpriteSheetRecord sheet)) return;
 
-        int clip = sheet.ClipIndex(attack.Animation);
+        int clip = sheet.ClipIndex(name);
         if (clip < 0) return;
         ref var animator = ref world.Get<SpriteAnimator>(entity);
         animator = SpriteAnimator.Play(clip);
     }
+
+    // What a fighter shows when it is not swinging. A sheet without an "idle" clip keeps whatever it
+    // was playing, which is the best a system this simple can do.
+    private const string IdleAnimation = "idle";
 }
