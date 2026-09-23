@@ -49,7 +49,7 @@ public class GameRulesTests
         using var engine = new Engine(cvars, CoreCVars.Register(cvars));
         var module = new RulesModule();
         engine.Modules.Add(new PhysicsModule());
-        engine.Modules.Add(new GameplayModule());
+        engine.Modules.AddGameplay();
         engine.Modules.Add(module);
         engine.Modules.InitAll();
         engine.Modules.StartAll();
@@ -67,7 +67,7 @@ public class GameRulesTests
         var cvars = new CVarRegistry();
         using var engine = new Engine(cvars, CoreCVars.Register(cvars));
         engine.Modules.Add(new PhysicsModule());
-        engine.Modules.Add(new GameplayModule());
+        engine.Modules.AddGameplay();
         engine.Modules.InitAll();
         engine.Modules.StartAll();
 
@@ -105,7 +105,7 @@ public class AITests
         var cvars = new CVarRegistry();
         var engine = new Engine(cvars, CoreCVars.Register(cvars));
         engine.Modules.Add(new PhysicsModule());
-        engine.Modules.Add(new GameplayModule());
+        engine.Modules.AddGameplay();
         engine.Modules.InitAll();
 
         var fixture = new MountFixture();
@@ -239,7 +239,7 @@ public class AITests
     // The regression guard for review #48, now that the promise is checked rather than commented
     // (03 §3.5, R16). `AIThinkSystem` used to run in Phase.AI while CharacterMovementSystem consumed
     // the intent in PrePhysics, so every creature acted a tick late. Move it back and this fails:
-    // GameplayModule declares PawnIntent final after Commands, and a real creature chasing a real
+    // CharacterModule declares PawnIntent final after Commands, and a real creature chasing a real
     // player exercises both controllers.
     [Fact]
     public void NothingWritesPawnIntentAfterTheCommandsPhase()

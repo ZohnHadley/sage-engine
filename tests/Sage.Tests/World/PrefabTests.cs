@@ -60,7 +60,7 @@ public class PrefabTests
         var cvars = new CVarRegistry();
         var engine = new Engine(cvars, CoreCVars.Register(cvars));
         engine.Modules.Add(new PhysicsModule());
-        engine.Modules.Add(new GameplayModule());
+        engine.Modules.AddGameplay();
         engine.Modules.InitAll();
 
         var fixture = new MountFixture();

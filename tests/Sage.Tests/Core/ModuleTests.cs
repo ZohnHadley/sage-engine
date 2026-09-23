@@ -74,7 +74,7 @@ public class ModuleTests
         var cvars = new CVarRegistry();
         using var engine = new Engine(cvars, CoreCVars.Register(cvars));
         engine.Modules.Add(new PhysicsModule());
-        engine.Modules.Add(new GameplayModule());
+        engine.Modules.AddGameplay();
         engine.Modules.InitAll();
         engine.Modules.StartAll();
 

@@ -101,7 +101,7 @@ public sealed class ClientModule : IModule
     {
         world.Resources.Set(new RenderSnapshot());
         world.Resources.Set(new UiDraw());       // screen-space drawing for the game's HUD (13 §3)
-        // Sprite animation is simulation, not rendering (12 §3), so GameplayModule installs it: a
+        // Sprite animation is simulation, not rendering (12 §3), so AnimationModule installs it: a
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
         world.AddSystem(new TerrainMeshSystem(world, _renderer!), Phase.FrameUpdate);

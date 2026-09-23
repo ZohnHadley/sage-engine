@@ -60,7 +60,14 @@ if (manifest.Modules.Add.Count > 0)
 try
 {
     AddDefaultModule(new PhysicsModule());
-    AddDefaultModule(new GameplayModule());
+    // One per feature since R15, and each still goes through AddDefaultModule, so `game.json` can
+    // disable them individually: a game with no items or no AI drops that module and nothing else.
+    AddDefaultModule(new AttributesModule());
+    AddDefaultModule(new CharacterModule());
+    AddDefaultModule(new AnimationModule());
+    AddDefaultModule(new CombatModule());
+    AddDefaultModule(new ItemsModule());
+    AddDefaultModule(new AIModule());
     AddDefaultModule(new ClientModule());
     engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));
     engine.Modules.InitAll();

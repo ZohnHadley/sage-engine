@@ -95,7 +95,7 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
 
 - **Why two halves and not one.** A `SpriteRenderer` is data. "Make this a character" is a collider,
   a controller, an intent and a pawn that have to agree about radius, height and layer, so it is a
-  part `GameplayModule` owns. The test is whether a game could get it wrong by writing the components
+  part `CharacterModule` owns. The test is whether a game could get it wrong by writing the components
   itself: if yes, it is a part. This is what stops the record becoming the god-object the Sandbox's
   `spawn` record was — **adding a feature registers a part, it does not edit this record.**
 - **Games and mods register their own** in their module's `Init`:

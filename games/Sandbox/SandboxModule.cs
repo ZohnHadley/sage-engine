@@ -41,7 +41,7 @@ public sealed class SandboxModule : IGameModule
         _renderer = ctx.Get<Renderer>();
         _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
-        _jump = ctx.Engine.Actions.Get("Jump");   // registered by GameplayModule (08 §3.2)
+        _jump = ctx.Engine.Actions.Get("Jump");   // registered by CharacterModule (08 §3.2)
     }
 
     public void OnWorldCreated(World world)

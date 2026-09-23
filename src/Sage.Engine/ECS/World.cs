@@ -65,7 +65,11 @@ public sealed class World : IDisposable
         Resources.Set(new PlayerInput());
         _contracts = new PhaseContracts(this);   // what each phase promises, checked in dev (03 §3.5)
         _events = new GameEvents();          // the one place gameplay facts cross systems (04 §3.2)
-        if (engine != null) _events.UseCVars(engine.Core.EventMaxAge, engine.Core.EventTrace);
+        if (engine != null)
+        {
+            _events.UseCVars(engine.Core.EventMaxAge, engine.Core.EventTrace);
+            Resources.Set(engine.Records);   // effects, attacks and items all look records up per world
+        }
         Resources.Set(_events);
         _debugDraw = new DebugDraw();        // always there, so `world.Debug()` needs no null check (06 §3.2)
         Resources.Set(_debugDraw);

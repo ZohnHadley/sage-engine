@@ -27,13 +27,14 @@ Not in scope: what the services do (02), how worlds run systems (03).
   | `Sage.Host` (exe) | everything runtime; `Sage.Editor` only in the editor host (*today:* the one exe is still game + editor, so it references `Sage.Editor` until the editor host exists, 15/F28) | — |
   | Game assemblies | `Sage.Framework`, `Sage.Framework.Client`, `Sage.Engine`, `Sage.Client` (a game can split its own sim/client parts the same way) | `Sage.Editor` (game editor extensions go in a separate `MyGame.Editor` assembly) |
 
-  *Today* this is the intended layering; only some of it exists. The assemblies that are actually in the solution are `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox` and `tests/Sage.Tests` — no `Sage.Framework` or `Sage.Framework.Client` yet (`GameplayModule` lives in `Sage.Engine`, 16 "As built", until there's enough in it to split out). `Sage.Engine`'s package references are **`Friflo.Engine.ECS` and `BepuPhysics`**, not SharpGLTF (glTF mesh loading is still to build, 05 §14 step 2). The rest of the reference graph matches the table: `Sage.Client`, `Sage.Editor` and `Sage.Host` add MonoGame; `Sage.Host` references `Sage.Editor` for the reason given above; `games/Sandbox` references `Sage.Engine` and `Sage.Client`; `tests/Sage.Tests` references `Sage.Engine`.
+  *Today* this is the intended layering; only some of it exists. The assemblies that are actually in the solution are `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox` and `tests/Sage.Tests` — no `Sage.Framework` or `Sage.Framework.Client` yet (the gameplay feature modules live in `Sage.Engine`, 16 §3.1, until there's enough in them to split out). `Sage.Engine`'s package references are **`Friflo.Engine.ECS` and `BepuPhysics`**, not SharpGLTF (glTF mesh loading is still to build, 05 §14 step 2). The rest of the reference graph matches the table: `Sage.Client`, `Sage.Editor` and `Sage.Host` add MonoGame; `Sage.Host` references `Sage.Editor` for the reason given above; `games/Sandbox` references `Sage.Engine` and `Sage.Client`; `tests/Sage.Tests` references `Sage.Engine`.
 
-> **The gameplay module has outgrown being one module (engine review 2026-09-23, item 5 → R15).**
-> `GameplayModule` registers nine record types, three cvars, seven console commands and six input
-> actions, and installs nine systems across six phases; the two-level design below is what it should be split along (Character, Combat,
-> Items, AI). The same applies to games: `Game` + `Game.Client`, so a game's simulation can be tested
-> headlessly the way the engine's can.
+> **Done for the engine (2026-09-23, R15).** `GameplayModule` — nine record types, three cvars, seven
+> console commands, six input actions, nine systems — is now `AttributesModule`, `CharacterModule`,
+> `AnimationModule`, `CombatModule`, `ItemsModule` and `AIModule`, each owning its own registrations
+> (16 §3.1). They are logical modules inside `Sage.Engine`, which is what the two-level design below
+> is for. Still to do: the same split for games, `Game` + `Game.Client`, so a game's own simulation
+> can be tested headlessly the way the engine's can.
 
 - **`IModule`s are logical units inside those assemblies** (Renderer, Physics, Audio, Streaming, Abilities…). Each declares its dependencies and gets `Init`/`Shutdown` in dependency order. Games can replace or disable engine modules (Bevy's `DefaultPlugins` idea) without touching engine code.
 
@@ -164,7 +165,7 @@ Program.Main(args)
                     → asset scopes released → logs flushed last
 ```
 
-*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the default `PhysicsModule`, `GameplayModule` and `ClientModule`, in that order, unless `game.json` disables any of them, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: input devices and actions (08) and the host's cvars and commands, then `config.cfg`, then records, then the host services (`ClientHost`, `InputDevices`, `InputActions`), then module `Start`, then the main world, and finally the `+launch` commands. *Step 6:* each frame the host polls devices, resolves actions, feeds the `CommandLatch`, and hands every fixed tick its `PlayerCommand` through the world's `PlayerInput` resource (08 §3.6).
+*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the defaults `PhysicsModule`, the six gameplay feature modules and `ClientModule`, in that order, unless `game.json` disables any of them, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: input devices and actions (08) and the host's cvars and commands, then `config.cfg`, then records, then the host services (`ClientHost`, `InputDevices`, `InputActions`), then module `Start`, then the main world, and finally the `+launch` commands. *Step 6:* each frame the host polls devices, resolves actions, feeds the `CommandLatch`, and hands every fixed tick its `PlayerCommand` through the world's `PlayerInput` resource (08 §3.6).
 
 **`quit [seconds]`** takes a delay (2026-09-23), so a launch line that says `+quit 30` runs for
 thirty seconds and then exits, which is what everyone writing one assumes. It used to ignore the

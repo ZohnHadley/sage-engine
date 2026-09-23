@@ -114,7 +114,7 @@ it in PrePhysics, so every creature acted a tick late, and the comment beside it
 opposite. A code review and a docs audit both missed it because both read the comment.
 
 ```csharp
-world.Contracts.FinalAfter<PawnIntent>(Phase.Commands);   // GameplayModule declares this
+world.Contracts.FinalAfter<PawnIntent>(Phase.Commands);   // CharacterModule declares this
 ```
 
 In a dev build the world copies every instance at the end of that phase and compares after each later

@@ -190,6 +190,10 @@ public sealed class PhysicsModule : IModule
     {
         _records = ctx.Engine.Records;
         _records.Register<PhysicsLayersRecord>();
+        // A collider and a body that agree about where the shape sits (review #44): physics owns
+        // the rule that a capsule stands on its point while a box is centred on it (F31).
+        ctx.Engine.Prefabs.Register("body", PrefabParts.Body);
+
         _debugDraw = ctx.Engine.CVars.Register("phys_debug", false, CVarFlags.DevOnly,
             "Draw colliders and character capsules (needs r_debugdraw 1).");
         _records.Reloaded += ApplyLayers;

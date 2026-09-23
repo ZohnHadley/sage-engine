@@ -72,7 +72,7 @@ public class EffectTests
         var engine = new Engine(cvars, CoreCVars.Register(cvars));
         var rules = new RulesModule();
         engine.Modules.Add(new PhysicsModule());
-        engine.Modules.Add(new GameplayModule());
+        engine.Modules.AddGameplay();
         engine.Modules.Add(rules);
         engine.Modules.InitAll();
 

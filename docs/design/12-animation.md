@@ -60,5 +60,5 @@ The per-frame `TransformMath.Billboard` call in `Game1` was presentation and mov
 - **Later:** everything under "Skeletal animation".
 
 ## 14. Build steps
-1. ~~`SpriteSheetData` + `SpriteAnimator` + frame events~~ **Done 2026-09-22** as the `sprite_sheet` record, `SpriteAnimationSystem` (installed by `GameplayModule`: animation is simulation) and frame events (TODO F1, F20, with 06); **on the event bus since 2026-09-23** (04, R13). `AnimationStateSystem` waits for gameplay state.
+1. ~~`SpriteSheetData` + `SpriteAnimator` + frame events~~ **Done 2026-09-22** as the `sprite_sheet` record, `SpriteAnimationSystem` (installed by `AnimationModule`: animation is simulation) and frame events (TODO F1, F20, with 06); **on the event bus since 2026-09-23** (04, R13). `AnimationStateSystem` waits for gameplay state.
 2. Skeletal pipeline (TODO F9–F12), when Phase 3 starts.
