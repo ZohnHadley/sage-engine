@@ -52,6 +52,7 @@ public class Game1 : Game
     private FixedStepResult step;
     private long frame;
     private double screenshotAt = -1;   // >= 0: take a screenshot once RealTime passes it
+    private double quitAt = -1;         // >= 0: exit once RealTime passes it (`quit <seconds>`)
 
     internal Game1(Engine engine, Action applyConfig, Action runLaunchCommands)
     {
@@ -97,7 +98,20 @@ public class Game1 : Game
             "Reload record files (data/**/*.json) when they change on disk.");
         console = new DevConsoleWindow(cvars, engine.Core);
         stats = new StatOverlay(cvars, engine.Core);
-        cvars.RegisterCommand("quit", CVarFlags.None, "Exit the game.", _ => Exit());
+        cvars.RegisterCommand("quit", CVarFlags.None, "quit [seconds]: exit now, or after this long.", a =>
+        {
+            // A delay, because a launch line that says `+quit 30` means "run for thirty seconds" to
+            // everyone who writes one. Without it the number was silently ignored and the game shut
+            // down during startup, which looks exactly like a game that cannot stay open.
+            if (a.Count > 0 && float.TryParse(a[0], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float seconds) && seconds > 0f)
+            {
+                quitAt = clock.RealTime + seconds;
+                Log.Info(LogCat.Console, $"quitting in {seconds:F1}s (`quit` now, Escape, or the window's close button end it sooner)");
+                return;
+            }
+            Exit();
+        });
         cvars.RegisterCommand("cam_set", CVarFlags.DevOnly, "cam_set <x> <y> <z> [yaw] [pitch]: place the editor camera (degrees).", a =>
         {
             if (a.Count < 3 || !float.TryParse(a[0], out float x) || !float.TryParse(a[1], out float y) || !float.TryParse(a[2], out float z))
@@ -233,6 +247,8 @@ public class Game1 : Game
             stats.Draw();
             guiRenderer.EndLayout();
         }
+
+        if (quitAt >= 0 && clock.RealTime >= quitAt) { quitAt = -1; Exit(); }
 
         if (screenshotAt >= 0 && clock.RealTime >= screenshotAt)
         {

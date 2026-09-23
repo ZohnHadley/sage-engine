@@ -66,6 +66,7 @@ searches both. Some worth knowing:
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
 | `in_axis Move 0 1 3`, `in_look 40 0 3`, `in_tap Attack` | drive the game without a keyboard (see below) |
 | `wait 2` | pause a script here; the rest runs later |
+| `quit [seconds]` | exit now, or after a while (Escape and the close button always work) |
 | `give <item>`, `inv`, `equip <item>`, `drop <item>` | items: `give practice_sword` then `equip practice_sword` and watch the combat log change |
 | `ui_crosshair 0` | hide the crosshair (it is on while a camera rig has the view) |
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |

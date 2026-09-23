@@ -20,7 +20,16 @@ namespace sage_engine;
 // no reason to drop the other four hundred because one changed.
 public sealed class AssetHotReload : IDisposable
 {
-    private static readonly string[] Extensions = { ".png", ".jpg", ".jpeg", ".mgfxo" };
+    // Everything the runtime loader can actually decode, checked against the decoders compiled into
+    // MonoGame 3.8.x DesktopGL (StbImageSharp: jpeg, png, bmp, gif, psd, hdr, tga) and confirmed by
+    // loading one of each. Notably TGA *is* supported despite MonoGame's own doc comment saying it
+    // is not, and TIFF, DDS and WebP are *not* despite the same comment saying they are — those need
+    // the content pipeline. A GIF gives its first frame; an HDR is tone-mapped to 8-bit.
+    private static readonly string[] Extensions =
+    {
+        ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".psd", ".hdr",   // Texture2D.FromStream
+        ".mgfxo",                                                          // compiled effects (07 §3.1)
+    };
 
     private readonly ContentService _content;
     private readonly VirtualFileSystem _vfs;
@@ -44,22 +53,39 @@ public sealed class AssetHotReload : IDisposable
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
             };
             w.Changed += OnChange; w.Created += OnChange; w.Renamed += OnChange;
+            w.Deleted += OnDelete;
             w.EnableRaisingEvents = true;
             _watchers.Add(w);
         }
         Log.Debug(LogCat.Assets, $"Asset hot reload watching {_watchers.Count} mounts for {string.Join(" ", Extensions)}");
     }
 
+    private static bool Wanted(string file)
+    {
+        string ext = Path.GetExtension(file);
+        foreach (string known in Extensions)
+            if (string.Equals(ext, known, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
     private void OnChange(object sender, FileSystemEventArgs e)
     {
-        string ext = Path.GetExtension(e.FullPath);
-        bool wanted = false;
-        foreach (string known in Extensions)
-            if (string.Equals(ext, known, StringComparison.OrdinalIgnoreCase)) { wanted = true; break; }
-        if (!wanted) return;
+        if (!Wanted(e.FullPath)) return;
 
         lock (_changed) _changed.Add(e.FullPath);
         Interlocked.Exchange(ref _lastChangeTicks, DateTime.UtcNow.Ticks);
+    }
+
+    // A deleted asset is not reloaded: whatever is on screen is better than a checkerboard, and the
+    // file usually comes back a moment later (an export that writes via delete-and-replace, a git
+    // checkout). It is said once, though, because "I deleted it and nothing happened" should not be
+    // a mystery.
+    private void OnDelete(object sender, FileSystemEventArgs e)
+    {
+        if (!Wanted(e.FullPath)) return;
+        if (_vfs.VirtualPathOf(e.FullPath) is not { } path) return;
+        Log.Once(LogCat.Assets, LogLevel.Info, $"asset-deleted:{path}",
+            $"{path} was deleted; the copy already loaded stays on screen until it comes back");
     }
 
     // Main thread, once a frame. Reloads whatever has settled; a file that is still being written

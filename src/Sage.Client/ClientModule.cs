@@ -63,8 +63,8 @@ public sealed class ClientModule : IModule
                 return;
             }
             int n = 0;
-            foreach (var path in System.Linq.Enumerable.ToList(_content.Cached))
-                if (_content.Reload(path)) n++;
+            foreach (var asset in System.Linq.Enumerable.ToList(_content.Cached))
+                if (asset.CanReload && _content.Reload(asset.Path)) n++;
             Log.Info(LogCat.Console, $"reloaded {n} asset(s)");
         });
 
@@ -72,7 +72,11 @@ public sealed class ClientModule : IModule
         {
             if (_content == null) return;
             int n = 0;
-            foreach (var path in _content.Cached) { Log.Info(LogCat.Console, $"  {path}"); n++; }
+            foreach (var (path, kind, canReload) in _content.Cached)
+            {
+                Log.Info(LogCat.Console, $"  {path,-48} {kind}{(canReload ? "" : "  (rebuild to change)")}");
+                n++;
+            }
             Log.Info(LogCat.Console, $"{n} asset(s) loaded");
         });
     }

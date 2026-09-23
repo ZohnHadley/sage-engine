@@ -155,8 +155,51 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
   (07 §3.1); that is the rest of F32.
 - **Console:** `asset_reload [path]` forces one (or all), `asset_list` shows what is loaded.
   `asset_hotreload` turns the watcher off; it defaults to on in a dev build with `developer 1`.
-- **Not done here:** `.xnb` models and fonts (they belong to the `ContentManager`, which has its own
-  cache), and the asset *server* with scopes, async loading and ref-counting (§3.3, R12).
+- **What is not reloadable, and says so.** `.xnb` models, fonts and textures belong to MonoGame's
+  `ContentManager`, which keeps its own cache and hands back *the same instance* — reloading one
+  would return the object we were about to dispose and destroy the live asset. Those are refused
+  with "rebuild the content to change it", and `asset_list` marks them, because a list that quietly
+  omits the models is worse than no list.
+- **Not done here:** the asset *server* with scopes, async loading and ref-counting (§3.3, R12).
+
+### What can be hot reloaded, and what formats load
+
+Checked against the decoders compiled into MonoGame 3.8.x DesktopGL (StbImageSharp) and confirmed by
+loading one of each through the sprite pipeline.
+
+| Kind | Loose file | Hot reload | Notes |
+|---|---|---|---|
+| Texture | `.png` `.jpg` `.bmp` `.tga` `.gif` `.psd` `.hdr` | yes | `Texture2D.FromStream`. GIF gives frame 0; HDR is tone-mapped to 8-bit; 16-bit PNG is truncated to 8 |
+| Compiled effect | `.mgfxo` | yes | the engine mount *is* the MGCB output folder, so a content rebuild swaps the shader |
+| Texture, model, font | `.xnb` | **no** | the `ContentManager` owns the instance and its own cache; rebuild the content |
+| `.tif` `.dds` `.webp` | — | — | **no runtime decoder**; they have to go through MGCB into `.xnb` |
+
+Two MonoGame details worth knowing, because its own documentation states both backwards: **TGA does
+load** at runtime, and **TIFF and DDS do not**. The stale comment dates from XNA, before MonoGame
+moved `FromStream` onto StbImageSharp.
+
+`FromStream` returns straight alpha and zeroes the colour of fully transparent pixels; the loader
+premultiplies afterwards (07 §13), which is what the blend states expect and is also what stops
+transparent texels bleeding dark halos into sprite edges under bilinear filtering.
+
+### When an asset is missing or broken
+
+Verified by deleting and corrupting files while the game ran. Nothing here stops the frame:
+
+| What | What happens |
+|---|---|
+| Texture missing at load | one warning naming the path; the material draws the **checker placeholder** (texture id 0) |
+| Mesh missing at load | one warning; the **error mesh** is drawn — a 1 m cube, never a silent gap (06 §8) |
+| Effect or material broken | the material fails to build and `sage:error` is drawn in its place |
+| Record id that does not resolve | `Ensure` fails once and a default-constructed record is returned |
+| Prefab id that does not resolve | the spawn is refused and logged; nothing else in the scene is affected |
+| Font missing | logged once; the HUD draws its bars and crosshair without text |
+| **Reload** of a corrupt or half-written file | the decode fails, **the copy already loaded stays on screen**, and it says so |
+| **Delete** while running | not reloaded at all: what is loaded stays. Said once, because "I deleted it and nothing happened" should not be a mystery. Export tools that write by delete-and-replace, and `git checkout`, both look like this |
+
+The rule behind the table: a missing asset costs *that asset*, drawn as something obviously wrong, and
+never the frame or the entity. The placeholder is deliberately ugly so that it reads as a bug rather
+than as art.
 
 - **Files:** `data/**/*.json` in any mount. A file holds an array of records:
   ```json

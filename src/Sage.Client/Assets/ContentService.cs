@@ -46,14 +46,30 @@ public sealed class ContentService : IDisposable
     // has nothing to do.
     //
     // The old GPU object is disposed *after* the reload so that a failed load leaves the old texture
-    // on screen rather than a black one: a typo in an image is not a reason to lose the frame.
+    // on screen rather than a black one: a typo in an image, or a file caught half-written, is not a
+    // reason to lose the frame. The warning from the loader says what went wrong; this says what was
+    // done about it.
     public bool Reload(AssetPath path)
     {
         if (_textures.TryGetValue(path, out var oldTexture))
         {
+            // An extensionless path is an MGCB .xnb, and the ContentManager owns that object and its
+            // own cache: reloading would hand back the very same instance, and disposing the "old"
+            // one would destroy the live texture. Rebuilding content is the way to change those.
+            if (path.Path.Extension.Length == 0)
+            {
+                Log.Debug(LogCat.Assets, $"{path} is built content (.xnb); rebuild to change it");
+                return false;
+            }
+
             _textures.Remove(path);
             var fresh = LoadTexture(path);
-            if (fresh == null) { _textures[path] = oldTexture; return false; }
+            if (fresh == null || ReferenceEquals(fresh, oldTexture))
+            {
+                _textures[path] = oldTexture;
+                Log.Warn(LogCat.Assets, $"{path} did not reload; keeping the copy already loaded");
+                return false;
+            }
             oldTexture?.Dispose();
             Log.Info(LogCat.Assets, $"Reloaded texture {path}");
             Reloaded?.Invoke(path);
@@ -64,23 +80,40 @@ public sealed class ContentService : IDisposable
         {
             _effects.Remove(path);
             var fresh = LoadEffect(path);
-            if (fresh == null) { _effects[path] = oldEffect; return false; }
+            if (fresh == null || ReferenceEquals(fresh, oldEffect))
+            {
+                _effects[path] = oldEffect;
+                Log.Warn(LogCat.Assets, $"{path} did not reload; keeping the effect already loaded");
+                return false;
+            }
             oldEffect?.Dispose();
             Log.Info(LogCat.Assets, $"Reloaded effect {path}");
             Reloaded?.Invoke(path);
             return true;
         }
 
+        // Loaded, but not by us: models and fonts are MGCB .xnb owned by the ContentManager, which
+        // has its own cache and hands back the same instance. Say so rather than "not loaded", which
+        // would be a lie about a thing that is plainly on screen.
+        if (_models.ContainsKey(path) || _fonts.ContainsKey(path))
+        {
+            Log.Info(LogCat.Assets, $"{path} is built content (.xnb); rebuild the content to change it");
+            return false;
+        }
+
         return false;
     }
 
-    // Everything currently cached, for `asset_list` and for a reload-everything command.
-    public IEnumerable<AssetPath> Cached
+    // Everything currently loaded, for `asset_list`: the whole truth, including what cannot be
+    // reloaded, because a list that quietly leaves out the models is worse than no list.
+    public IEnumerable<(AssetPath Path, string Kind, bool CanReload)> Cached
     {
         get
         {
-            foreach (var path in _textures.Keys) yield return path;
-            foreach (var path in _effects.Keys) yield return path;
+            foreach (var path in _textures.Keys) yield return (path, "texture", path.Path.Extension.Length > 0);
+            foreach (var path in _effects.Keys) yield return (path, "effect", true);
+            foreach (var path in _models.Keys) yield return (path, "model (.xnb)", false);
+            foreach (var path in _fonts.Keys) yield return (path, "font (.xnb)", false);
         }
     }
 
