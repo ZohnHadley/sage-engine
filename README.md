@@ -65,6 +65,7 @@ searches both. Some worth knowing:
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
 | `sandbox_autowalk 30`, `sandbox_autoattack 1.5` | walk and swing without a keyboard, for screenshots |
 | `give <item>`, `inv`, `equip <item>`, `drop <item>` | items: `give practice_sword` then `equip practice_sword` and watch the combat log change |
+| `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
 
 Anything can also be passed on the command line: `+sv_cheats 1 "+hurt 30"` runs them once the world

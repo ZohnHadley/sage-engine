@@ -41,6 +41,7 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
 - **Deviations:**
   - **Triggers are lists, not events.** `PhysicsSpace.TriggerEnter/TriggerExit` are spans a system reads in `PostPhysics`; they become `TriggerEntered`/`TriggerExited` game events when the event bus exists (04).
   - `OverlapBox` is **broad phase only**: it can report entities whose shapes don't quite touch.
+  - **`phys_debug` draws it all** (06 §3.2, needs `r_debugdraw 1`): every collider in its real place — cyan for solid, magenta for triggers — plus each character's swept capsule, green when it is grounded and orange when it is not, and an arrow along the ground normal that turns red on a slope too steep to stand on. A capsule sunk into the ground (review #44) is obvious at a glance in it.
   - **Queries see solid things.** A trigger has no surface, so it stops neither a ray, a sweep nor a sword; `includeTriggers: true` asks for them anyway. Before F20 a trigger volume blocked line of sight and swallowed a swing (review #53).
   - Physics entities are assumed to be **roots**: the sync uses the local transform, so a parented collider would be placed wrong.
   - `Collided` events, `phys_debug` (it needs `DebugDraw`, 06) and dynamic-vs-kinematic teleport smoothing are not built.

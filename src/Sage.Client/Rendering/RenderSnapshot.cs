@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
 
@@ -71,6 +72,7 @@ public sealed class RenderSnapshot
     public EnvironmentParams Environment;
     public readonly PooledList<RenderItem> Items = new(256);
     public readonly PooledList<SpriteInstance> Sprites = new(256);
+    public readonly PooledList<VertexPositionColor> DebugLines = new(512);   // pairs of vertices (06 §3.2)
     public int Culled;                   // items rejected by frustum culling this frame
     public bool HasView;
 
@@ -88,6 +90,7 @@ public sealed class RenderSnapshot
     {
         Items.Clear();
         Sprites.Clear();
+        DebugLines.Clear();
         Culled = 0;
         HasView = false;
     }

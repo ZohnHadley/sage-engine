@@ -9,7 +9,7 @@ namespace sage_engine;
 
 public struct RenderStats
 {
-    public int Items, Sprites, Culled, DrawCalls, Triangles, MaterialSwitches;
+    public int Items, Sprites, Culled, DrawCalls, Triangles, MaterialSwitches, DebugLines;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -43,10 +43,12 @@ public sealed class Renderer : IDisposable
     private readonly List<Texture2D> _textures = new();
     private readonly Dictionary<AssetPath, int> _textureIds = new();
     private readonly SpriteBatcher _sprites;
+    private readonly DebugLineBatch _debugLines;
     private readonly CVar<bool> _fog;
     private readonly CVar<bool> _spriteFaceCamera;
     private readonly CVar<bool> _wireframe;
     private readonly CVar<bool> _freezeCull;
+    private readonly CVar<bool> _debugThroughWalls;
     private long _frame;
 
     internal Renderer(ClientHost host, ContentService content, Engine engine)
@@ -58,6 +60,7 @@ public sealed class Renderer : IDisposable
         _meshes.Add(CreateErrorMesh(_device));    // id 0
         _textures.Add(Materials.MissingTexture);  // id 0: the checker placeholder
         _sprites = new SpriteBatcher(_device);
+        _debugLines = new DebugLineBatch(_device);
 
         var cvars = engine.CVars;
         _fog = cvars.Register("r_fog", true, CVarFlags.None, "Distance fog (the environment's fog settings).");
@@ -65,8 +68,10 @@ public sealed class Renderer : IDisposable
         _spriteFaceCamera = cvars.Register("r_sprite_facecamera", false, CVarFlags.DevOnly,
             "Turn billboards toward the camera's position instead of the view plane (06 §3.8; the classic look is off).");
         _freezeCull = cvars.Register("r_freezecull", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Keep the current culling frustum while the camera moves.");
+        _debugThroughWalls = cvars.Register("r_debugdraw_xray", false, CVarFlags.DevOnly,
+            "Draw debug geometry through walls (06 §3.2): what the AI is chasing is usually behind something).");
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
-            Log.Info(LogCat.Console, $"  items {LastFrame.Items}, sprites {LastFrame.Sprites}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
+            Log.Info(LogCat.Console, $"  items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}; " +
                                      $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials"));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
@@ -277,6 +282,14 @@ public sealed class Renderer : IDisposable
             item = itemEnd;
             sprite = spriteEnd;
         }
+
+        // Pass 5 (06 §3.4): debug geometry, over everything the world drew and under the UI.
+        if (s.DebugLines.Count >= 2 && _debugLines.Ready(_content))
+        {
+            stats.DrawCalls += _debugLines.Draw(s.DebugLines, s.View.ViewProj, _debugThroughWalls.Value);
+            stats.DebugLines = s.DebugLines.Count / 2;
+            _current = -1;   // the debug effect changed the device state out from under the material cache
+        }
         LastFrame = stats;
     }
 
@@ -415,6 +428,7 @@ public sealed class Renderer : IDisposable
             }
         }
         _sprites.Dispose();
+        _debugLines.Dispose();
         Materials.Dispose();
     }
 }

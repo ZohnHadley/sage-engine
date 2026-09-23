@@ -1,6 +1,8 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
 
@@ -151,6 +153,61 @@ internal sealed class RenderSystem : ISystem
 // Extract: one SpriteInstance per visible billboard (06 §3.8). It picks the direction group from the
 // angle between the sprite and the camera, and the animation frame from the animator's time (12 §3);
 // the batcher expands the quads. Sprites without a SpriteAnimator show frame 0 of their first clip.
+// Extract: copies the simulation's debug shapes into the snapshot, camera-relative like everything
+// else, and ages the queue (06 §3.2). It also carries `r_debugdraw` the other way, so nothing in the
+// simulation records shapes nobody is going to look at.
+internal sealed class DebugExtract : ISystem
+{
+    private readonly RenderSnapshot _snapshot;
+    private readonly DebugDraw _debug;
+    private readonly CVar<bool> _enabled;
+    private readonly List<DebugLine> _lines = new(256);   // reused: the frame budget allows no garbage
+
+    public DebugExtract(World world, CVar<bool> enabled)
+    {
+        _snapshot = world.Resources.Get<RenderSnapshot>();
+        _debug = world.Resources.Get<DebugDraw>();
+        _enabled = enabled;
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        _debug.Enabled = _enabled.Value;
+        if (!_enabled.Value) { _debug.Clear(); return; }
+
+        _lines.Clear();
+        _debug.CopyTo(_lines);
+
+        var s = _snapshot;
+        var camera = s.View.CameraPosition;
+        foreach (var line in _lines)
+        {
+            var colour = new Color((byte)(line.Rgba >> 24), (byte)(line.Rgba >> 16), (byte)(line.Rgba >> 8), (byte)line.Rgba);
+            Vector3 a = line.A, b = line.B;   // System.Numerics → MonoGame (implicit)
+            a -= camera;
+            b -= camera;
+            if (!ClipToNear(s.View, ref a, ref b)) continue;
+            s.DebugLines.Add() = new VertexPositionColor(a, colour);
+            s.DebugLines.Add() = new VertexPositionColor(b, colour);
+        }
+        _debug.Advance((float)ctx.Frame.Dt);
+    }
+
+    // A line list is not clipped for you: a segment with an endpoint behind the camera comes out as a
+    // streak across the whole screen (you see it the moment you draw your own capsule from inside it).
+    // Both ends are camera-relative, so "in front" is just a dot with the view direction.
+    private static bool ClipToNear(in RenderView view, ref Vector3 a, ref Vector3 b)
+    {
+        float near = view.Near + 0.01f;
+        float da = Vector3.Dot(a, view.Forward) - near;
+        float db = Vector3.Dot(b, view.Forward) - near;
+        if (da < 0f && db < 0f) return false;                     // wholly behind: nothing to draw
+        if (da < 0f) a = Vector3.Lerp(a, b, da / (da - db));      // crosses the plane: pull it forward
+        else if (db < 0f) b = Vector3.Lerp(b, a, db / (db - da));
+        return true;
+    }
+}
+
 internal sealed class SpriteExtract : ISystem
 {
     private readonly Renderer _renderer;

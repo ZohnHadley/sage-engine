@@ -21,6 +21,7 @@ public sealed class ClientModule : IModule
     private ContentService? _content;
     private Renderer? _renderer;
     private RecordStore? _records;
+    private CVar<bool>? _debugDraw;
 
     public void Init(ModuleContext ctx)
     {
@@ -41,6 +42,8 @@ public sealed class ClientModule : IModule
     {
         var host = ctx.Get<ClientHost>();
         _records = ctx.Engine.Records;
+        _debugDraw = ctx.Engine.CVars.Register("r_debugdraw", false, CVarFlags.DevOnly,
+            "Draw debug geometry from the simulation: sweeps, sight cones, colliders (06 §3.2).");
         _content = new ContentService(host, ctx.Engine.Vfs);
         _renderer = new Renderer(host, _content, ctx.Engine);
         ctx.Provide(_content);
@@ -57,6 +60,8 @@ public sealed class ClientModule : IModule
         world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);
         world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new SpriteExtract(world, _renderer!, _records!), Phase.Extract, after: new[] { typeof(CameraExtract) });
+        // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
+        world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
     }
 

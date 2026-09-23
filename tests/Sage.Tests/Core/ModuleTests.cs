@@ -65,6 +65,26 @@ public class ModuleTests
         return new Engine(cvars, CoreCVars.Register(cvars));
     }
 
+    // A game with an overworld and a battle scene has two worlds (03 §3.3, ARCHITECTURE §4.2), and
+    // modules install their systems in each. Anything a system registers per world — a cvar, a
+    // command — would be registered twice, and the registry rightly refuses that.
+    [Fact]
+    public void ModulesCanInstallTheirSystemsInMoreThanOneWorld()
+    {
+        var cvars = new CVarRegistry();
+        using var engine = new Engine(cvars, CoreCVars.Register(cvars));
+        engine.Modules.Add(new PhysicsModule());
+        engine.Modules.Add(new GameplayModule());
+        engine.Modules.InitAll();
+        engine.Modules.StartAll();
+
+        var overworld = engine.CreateWorld("overworld");
+        var battle = engine.CreateWorld("battle");
+
+        Assert.NotSame(overworld, battle);
+        Assert.Equal(2, engine.Worlds.Count);
+    }
+
     [Fact]
     public void Lifecycle_RunsInDependencyOrder_ShutdownReversed()
     {

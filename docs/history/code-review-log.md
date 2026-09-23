@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#56) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#57) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -336,6 +336,11 @@ pass; the first two were real, silent bugs.
 - **File**: `src/Sage.Engine/Content/RecordStore.cs` (`ResolveBases`)
 - **Problem**: base records are merged as JSON and the result is deserialized in the *child's* namespace, so a bare id written by the base was resolved against the wrong namespace. A Sandbox attack inheriting `sage:default_attack` came out referring to `sandbox:physical`, which does not exist — and the failure mode is a validation error at load, so every engine record with a `RecordId` field was effectively un-inheritable by a game. Found the moment F19 gave a sword an attack record of its own.
 - **Resolution (2026-09-23)**: the merge qualifies the base's ids with the base's namespace before merging, walking the record type's own fields so that only `RecordId` (and lists, dictionaries and nested records of them) are touched — paths, labels and animation names are left alone. Test: `Base_InheritedIdsKeepTheBasesNamespace`, which also checks that a child writing the field itself still means its own namespace.
+
+### [X] 57. Cvars registered per world crashed the second world — **Severity: Wiring** (found 2026-09-23, F5)
+- **Files**: `src/Sage.Engine/Gameplay/GameplayDebug.cs`, `Items.cs`, `Combat.cs`, `src/Sage.Engine/Physics/PhysicsSystems.cs`, `src/Sage.Client/Rendering/RenderSystems.cs`
+- **Problem**: the new debug systems registered their cvars in their own constructors, and a system is constructed **once per world**. `CVarRegistry` rightly refuses a duplicate name, so `engine.CreateWorld` a second time threw `A cvar or command named 'phys_debug' is already registered`. The engine is built for several worlds (an overworld and a battle scene, an editor's edit and play worlds, 03 §3.3), so this was a crash waiting for the first game that used two. F19's `g_interact_range` had the same fault, introduced the day before.
+- **Resolution (2026-09-23)**: cvars belong to the module that owns them, registered once in `Init`, and the `CVar<T>` is handed to the systems that read it — which is what `god`, `hurt` and `phys_stats` already did. Test: `ModulesCanInstallTheirSystemsInMoreThanOneWorld`, which creates two worlds through the real modules.
 
 ### Noted, not fixed (carried into TODO)
 - `PhysicsSpace.OverlapBox` is broad-phase only: it can report entities whose shapes don't touch. The name should say so once a narrow-phase version exists (10 §4).

@@ -150,11 +150,15 @@ public sealed class MeleeCombatSystem : ISystem
     private readonly CombatEvents _events;
     private readonly AnimationEvents _animation;
     private readonly ActionId _attack;
+    private readonly DebugDraw _debug;
+    private readonly CVar<bool> _debugSwings;
     private readonly List<(DamageInfo Hit, AttackRecord Attack)> _pending = new();   // dealt after the
                         // loop: applying an effect touches another entity's components
 
-    public MeleeCombatSystem(World world, RecordStore records, ActionRegistry actions)
+    public MeleeCombatSystem(World world, RecordStore records, ActionRegistry actions, CVar<bool> debugSwings)
     {
+        _debug = world.Debug();
+        _debugSwings = debugSwings;
         _fighters = world.Query<Transform, PawnIntent, CharacterController, Melee>();
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
@@ -267,14 +271,34 @@ public sealed class MeleeCombatSystem : ISystem
                                aim, attack.Reach, LayerMask.All);
 
         var info = new DamageInfo(attacker, default, attack.DamageType, attack.Damage, eye + aim * attack.Reach, aim);
-        if (!hit.Hit || hit.Entity.IsNull || hit.Entity == attacker) return info;
-        if (!world.IsAlive(hit.Entity) || !world.Has<Attributes>(hit.Entity)) return info;   // scenery: the swing just stops
+        if (Connects(world, attacker, in transform, in intent, attack, hit))
+            info = info with { Target = hit.Entity, Point = eye + aim * hit.Distance };
+
+        DrawSwing(eye, aim, attack, in info);
+        return info;
+    }
+
+    // Did the sweep find something this swing is allowed to hurt?
+    private static bool Connects(World world, Entity attacker, in Transform transform, in PawnIntent intent,
+                                 AttackRecord attack, in SweepHit hit)
+    {
+        if (!hit.Hit || hit.Entity.IsNull || hit.Entity == attacker) return false;
+        if (!world.IsAlive(hit.Entity) || !world.Has<Attributes>(hit.Entity)) return false;   // scenery: the swing just stops
 
         // A target dead ahead is the easy case; the arc decides how much of a glancing angle counts.
         Vector3 toTarget = world.Get<Transform>(hit.Entity).LocalPosition - transform.LocalPosition;
-        if (!SageMath.InCone(intent.Yaw, Vector3.Zero, toTarget, attack.ArcDegrees)) return info;
+        return SageMath.InCone(intent.Yaw, Vector3.Zero, toTarget, attack.ArcDegrees);
+    }
 
-        return info with { Target = hit.Entity, Point = eye + aim * hit.Distance };
+    // What a swing reached and whether it found anything, left on screen long enough to look at:
+    // a miss is the hard thing to debug, and a miss draws too.
+    private void DrawSwing(Vector3 eye, Vector3 aim, AttackRecord attack, in DamageInfo info)
+    {
+        if (!_debugSwings.Value || !_debug.Enabled) return;
+        uint colour = info.Target.IsNull ? DebugColour.Red : DebugColour.Green;
+        _debug.Arrow(eye, eye + aim * attack.Reach, colour, 0.6f);
+        _debug.Sphere(eye + aim * attack.Reach, attack.Radius, colour, 0.6f);
+        if (!info.Target.IsNull) _debug.Cross(info.Point, 0.25f, DebugColour.Yellow, 0.6f);
     }
 
     // Plays a clip by name if the fighter has a sheet with one (a first-person player has no sprite

@@ -184,11 +184,14 @@ public sealed class PhysicsModule : IModule
 {
     private readonly List<PhysicsSpace> _spaces = new();
     private RecordStore? _records;
+    private CVar<bool>? _debugDraw;
 
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
         _records.Register<PhysicsLayersRecord>();
+        _debugDraw = ctx.Engine.CVars.Register("phys_debug", false, CVarFlags.DevOnly,
+            "Draw colliders and character capsules (needs r_debugdraw 1).");
         _records.Reloaded += ApplyLayers;
 
         ctx.Engine.CVars.RegisterCommand("phys_stats", CVarFlags.None, "Physics bodies, statics and step time per world.", _ =>
@@ -213,6 +216,7 @@ public sealed class PhysicsModule : IModule
         world.AddSystem(new PhysicsSyncSystem(world, space), Phase.PrePhysics, after: new[] { typeof(TerrainCollisionSystem) });
         world.AddSystem(new PhysicsStepSystem(space), Phase.Physics);
         world.AddSystem(new PhysicsWriteBackSystem(world, space), Phase.PostPhysics);
+        world.AddSystem(new PhysicsDebugSystem(world, _records!, _debugDraw!), Phase.Late);   // 10 §9
 
         // A destroyed entity takes its body with it.
         world.EntityDestroyed += entity =>

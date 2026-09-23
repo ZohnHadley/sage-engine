@@ -65,7 +65,9 @@ public sealed class GameplayModule : IModule
 {
     private RecordStore? _records;
     private ActionRegistry? _actions;
-    private CVarRegistry? _cvars;
+    private CVar<bool>? _aiDebug;
+    private CVar<bool>? _combatDebug;
+    private CVar<float>? _interactRange;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(PhysicsModule) };   // characters sweep the space
 
@@ -73,7 +75,14 @@ public sealed class GameplayModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        _cvars = ctx.Engine.CVars;
+
+        // Registered here, once, rather than in the systems: systems are per world (review #57).
+        _aiDebug = ctx.Engine.CVars.Register("ai_debug", false, CVarFlags.DevOnly,
+            "Draw each agent's sight cone, target and state (needs r_debugdraw 1).");
+        _combatDebug = ctx.Engine.CVars.Register("combat_debug", false, CVarFlags.DevOnly,
+            "Draw every swing: where it reached and what it found (needs r_debugdraw 1).");
+        _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
+            "How far the Use action reaches, in metres (16 §3.2).", 0.5f, 10f);
         _records.Register<MovementProfileRecord>();
         _records.Register<AIProfileRecord>();
         _records.Register<AIScheduleRecord>();
@@ -216,9 +225,9 @@ public sealed class GameplayModule : IModule
 
         // Combat resolves before effects tick, so a blow struck this tick is felt this tick: the
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
-        world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!), Phase.Gameplay,
+        world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!), Phase.Gameplay,
             before: new[] { typeof(EffectSystem) });
-        world.AddSystem(new InteractionSystem(world, _records!, _actions!, _cvars!), Phase.Gameplay,
+        world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!), Phase.Gameplay,
             before: new[] { typeof(EffectSystem) });
         world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,
@@ -226,6 +235,7 @@ public sealed class GameplayModule : IModule
         // Animation is simulation too (12 §3): it runs at the tick rate, and its frame events are
         // what lands a sprite's blow. It moves to an animation module when skeletal animation lands.
         world.AddSystem(new SpriteAnimationSystem(world, _records!), Phase.Animation);
+        world.AddSystem(new AIDebugSystem(world, _records!, _aiDebug!), Phase.Late);   // 16 §11
         world.AddSystem(new FirstPersonCameraSystem(world, _records!), Phase.FrameUpdate);
     }
 }

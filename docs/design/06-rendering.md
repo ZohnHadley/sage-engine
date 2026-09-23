@@ -38,7 +38,7 @@ Pooled; its arrays grow but are never freed during play, so steady-state frames 
 | `Sprites` | `SpriteInstance`: centre (camera-relative), size, UV rect, tint, billboard mode, material | `SpriteExtract` |
 | `Lights` | sun, ambient, point lights (position, radius, colour) | `LightExtract` |
 | `Environment` | fog params, sky colours, time | `EnvironmentExtract` |
-| `Debug` | lines, boxes, spheres, 3D text | `DebugDraw` queue |
+| `DebugLines` | pairs of `VertexPositionColor`, camera-relative and near-plane clipped | `DebugExtract` from the `DebugDraw` queue |
 
 ### 3.3 Interpolation and camera-relative coordinates
 - For each renderable, Extract interpolates `GlobalTransform.Previous → Current` with the frame's `alpha` (03 §3.6, 01 §5.2): lerp position and scale, slerp rotation. Then it builds the matrix.
@@ -101,7 +101,15 @@ Sorting by material first minimises effect and texture switches; depth last give
 - **Render scale:** the scene can render into a lower-resolution target and be upscaled with point filtering (`r_scale 0.5`) for a retro look and cheap performance. UI always renders at full resolution.
 
 ### 3.10 Debug drawing
-`DebugDraw` is a static API usable from any system on the main thread: `Line`, `Box`, `Sphere`, `Arrow`, `Text3D`, each with a colour, a duration and a depth-test flag. It's compiled only with `SAGE_DEV` (like `Log.Debug`). Primitives are queued, copied into the snapshot at extract, and drawn in pass 5.
+
+**Built (2026-09-23, TODO F5).** `DebugDraw` is a **world resource** (`src/Sage.Engine/Rendering/DebugDraw.cs`), not the static API sketched below: the engine has no static singletons (01 §4, 03 §3.4), and a per-world queue is what lets an editor's edit world and play world draw different things. Any simulation system can call it — `Line`, `Ray`, `Arrow`, `Cross`, `Box`, `Sphere`, `Capsule`, `Circle`, `Cone` — with a colour and an optional duration in seconds.
+
+- **Everything becomes line segments in the engine**, so the client stays a line list and nothing in `Sage.Engine` needs a graphics type. A capsule is two rings, four sides and four arcs; a sphere is three rings.
+- **Runtime-gated, not compiled out.** Nothing is recorded while `Enabled` is false, which the client sets from `r_debugdraw` each frame, so a Shipping build pays one bool test per call and a Development build (optimised, the one you profile in) still has the tool. `[Conditional("SAGE_DEV")]` would have stripped the argument evaluation too, but it also strips it from Development.
+- **Momentary shapes belong to the tick that drew them.** `World.RunFixed` clears them at the start of every tick, so a frame draws the newest state rather than every tick since it last looked — at 60 Hz against 50 fps that difference is a few hundred lines against sixteen thousand. A duration keeps a shape alive across frames, which is how you see something that happened in one tick (a swing that missed).
+- **Depth is a cvar, not a per-shape flag**: `r_debugdraw_xray 1` draws through walls, which is what you want when the thing you are chasing is behind something. Shapes are drawn in pass 5, after the world and under the UI, and near-plane clipped at extract (an unclipped line with an endpoint behind the camera draws as a streak across the whole screen).
+- **Consumers:** `phys_debug` (colliders, character capsules, ground normals, 10 §9), `ai_debug` (sight cones, targets, melee range, 16 §11), `combat_debug` (every swing and what it found, 16 §3.2). Each is off by default and costs one bool test.
+- **Not built:** `Text3D` (there is no runtime text yet, 13), per-shape depth flags, and the visual logger (02 §12).
 
 ### 3.11 As built (migration step 6)
 - **Code:** `src/Sage.Client/Rendering/` (`RenderSnapshot.cs`, `RenderSystems.cs`, `Renderer.cs`, `MaterialCache.cs`, `SpriteBatcher.cs` — expands `SpriteInstance`s into quads in a `DynamicVertexBuffer`, §3.7 — and `TerrainMesh.cs` — `TerrainMeshSystem`, builds a sector's chunk meshes the frame it appears, 14 §3); components and the environment in `src/Sage.Engine/Rendering/RenderData.cs`.
@@ -124,7 +132,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - One draw per run of sprites sharing a material **and** a texture, so a sheet's creatures batch together. The sheet's texture overrides the material's `Albedo`, so `sage:sprite_default` serves every sheet.
   - Frame UVs are inset by half a texel, or the quad's edge samples the next frame in the atlas.
   - Meshes and sprites are interleaved by pass: each pass draws its meshes, then its sprites. Mixing *transparent* meshes and sprites by depth is not handled yet (nothing is transparent yet).
-- **Not yet (v1 items left):** point lights, render scale, `DebugDraw`, `stat render`, `r_snapshot_dump`. Instancing stays "later".
+- **Not yet (v1 items left):** point lights, render scale, `stat render`, `r_snapshot_dump`. Instancing stays "later".
 - `GraphicsProfile.HiDef` is set by the host.
 
 ## 4. Public API sketch
@@ -160,19 +168,25 @@ public struct SpriteRenderer { public RecordId Sheet; public RecordId Material; 
 public struct Camera         { public float FovY; public float Near; public float Far; public bool Active; }   // not built: ActiveCamera is a resource, not a component (§3.11)
 public struct PointLight     { public Vector3 Color; public float Radius; public float Intensity; }             // not built (§3.9)
 
-// In Sage.Engine (simulation code calls it too), so System.Numerics and Sage types only. Not built (§3.10).
-public static class DebugDraw                          // [Conditional("SAGE_DEV")] members
+// In Sage.Engine (simulation code calls it too), so System.Numerics and Sage types only. A world
+// resource, reached with world.Debug() — see §3.10 for why it is not static.
+public sealed class DebugDraw
 {
-    public static void Line(Vector3 a, Vector3 b, Rgba c, float duration = 0, bool depthTest = true);
-    public static void Box(Vector3 min, Vector3 max, Rgba c, float duration = 0);
-    public static void Sphere(Vector3 center, float r, Rgba c, float duration = 0);
-    public static void Text3D(Vector3 at, string text, Rgba c, float duration = 0);
+    public bool Enabled;                               // the client sets this from r_debugdraw
+    public void Line(Vector3 from, Vector3 to, uint rgba = DebugColour.White, float seconds = 0);
+    public void Ray(Vector3 from, Vector3 direction, float length, uint rgba = DebugColour.White, float seconds = 0);
+    public void Arrow(Vector3 from, Vector3 to, uint rgba = DebugColour.White, float seconds = 0);
+    public void Cross(Vector3 at, float size = 0.15f, uint rgba = DebugColour.White, float seconds = 0);
+    public void Box(Vector3 center, Vector3 halfExtents, Quaternion rotation, uint rgba = DebugColour.White, float seconds = 0);
+    public void Sphere(Vector3 center, float radius, uint rgba = DebugColour.White, float seconds = 0);
+    public void Capsule(Vector3 feet, float radius, float height, uint rgba = DebugColour.White, float seconds = 0);
+    public void Cone(Vector3 at, float yaw, float degrees, float range, uint rgba = DebugColour.White, float seconds = 0);
 }
 ```
 
 Positions passed to `DebugDraw` are in origin space (the same space as `GlobalTransform`). `Material`/`Mesh`/`Texture` above are plain `int` ids — `MaterialCache`'s and the `Renderer`'s own compact indices — not wrapper structs. `RenderItem`, `SpriteInstance` and `Renderer` are client types and may use MonoGame types. The components (`MeshRenderer`, `SpriteRenderer`, `Camera`, `PointLight`) and `DebugDraw` live in `Sage.Engine`, so they use `System.Numerics` and the Sage types, not MonoGame types.
 
-**Still design-only** (everything above this line is shipped): `RenderView` as a list (`Views`, for split screen, mirrors, shadow views — v1 has one `RenderSnapshot.View`); `LightSet`/`Lights` and `PointLight` (§3.9); the `Camera` component (the camera is the `ActiveCamera` resource today, §3.11); `PooledList<DebugPrimitive> Debug` and all of `DebugDraw` (§3.10); `Renderer.UpdateMesh` (only `CreateMesh`/`CreateBox`/`DestroyMesh` exist); `SpriteInstance.FlipU` as a field (the flip is folded into `Uv` at extract instead); per-object tint beyond the always-1 `RenderItem.Tint`/`SpriteInstance.Tint`.
+**Still design-only** (everything above this line is shipped): `RenderView` as a list (`Views`, for split screen, mirrors, shadow views — v1 has one `RenderSnapshot.View`); `LightSet`/`Lights` and `PointLight` (§3.9); the `Camera` component (the camera is the `ActiveCamera` resource today, §3.11); `Renderer.UpdateMesh` (only `CreateMesh`/`CreateBox`/`DestroyMesh` exist); `SpriteInstance.FlipU` as a field (the flip is folded into `Uv` at extract instead); per-object tint beyond the always-1 `RenderItem.Tint`/`SpriteInstance.Tint`.
 
 ## 5. Data flow (one frame)
 

@@ -299,15 +299,14 @@ public sealed class InteractionSystem : ISystem
                                                            // destroys an entity, which a query forbids
     private readonly Entity[] _nearby = new Entity[32];    // reused: the tick budget allows no garbage
 
-    public InteractionSystem(World world, RecordStore records, ActionRegistry actions, CVarRegistry cvars)
+    public InteractionSystem(World world, RecordStore records, ActionRegistry actions, CVar<float> range)
     {
         _users = world.Query<Transform, PawnIntent, CharacterController>();
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
         _events = world.Resources.Get<InteractionEvents>();
         _use = actions.Get("Use");
-        _range = cvars.Register("g_interact_range", 2.5f, CVarFlags.None,
-            "How far the Use action reaches, in metres (16 §3.2).", 0.5f, 10f);
+        _range = range;
     }
 
     public void Run(in SystemContext ctx)

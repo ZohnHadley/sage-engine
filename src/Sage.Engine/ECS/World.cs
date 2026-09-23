@@ -30,6 +30,7 @@ public sealed class World : IDisposable
     private readonly SystemScheduler _scheduler = new();
     private readonly TransformPropagation _propagation;
     private CommandBuffer? _commands;
+    private readonly DebugDraw _debugDraw;
     private TickTime _lastTick;
     private long _frame;
 
@@ -59,6 +60,8 @@ public sealed class World : IDisposable
         Resources.Set(new RenderEnvironment());
         Resources.Set(new Terrain());
         Resources.Set(new PlayerInput());
+        _debugDraw = new DebugDraw();        // always there, so `world.Debug()` needs no null check (06 §3.2)
+        Resources.Set(_debugDraw);
     }
 
     // The underlying store, for engine code (editor listing, serializers). Game code uses the API below.
@@ -231,6 +234,7 @@ public sealed class World : IDisposable
         _lastTick = new TickTime(_lastTick.Tick + 1, dt, _lastTick.SimTime + dt);
         Log.SetTick(_lastTick.Tick);
         _propagation.BeginTick();
+        _debugDraw.BeginTick();                   // momentary debug shapes are this tick's (06 §3.2)
 
         var frame = new FrameTime(_frame, 0, 1, 0);
         for (var phase = Phase.Commands; phase < PhaseInfo.FirstFrame; phase++)
