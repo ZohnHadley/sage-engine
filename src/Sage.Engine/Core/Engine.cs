@@ -20,11 +20,17 @@ public sealed class Engine : IDisposable
         Core = core;
         Vfs = vfs ?? new VirtualFileSystem();
         Records = records ?? new RecordStore();
+        Components = new ComponentSchema(Records.Json);
+        Records.Register<PrefabRecord>();     // every game places things, so the engine owns the type
         Modules = new ModuleManager(this);
     }
 
     // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
     public ActionRegistry Actions { get; } = new();
+
+    // Components and tags by name, and the prefab parts modules have registered (05 §3.5, F31).
+    public ComponentSchema Components { get; }
+    public PrefabRegistry Prefabs { get; } = new();
 
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }

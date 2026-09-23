@@ -115,6 +115,23 @@ public sealed class LayerMatrix
 
     public bool Collide(int a, int b) => (_masks[a & 31] & (1u << (b & 31))) != 0;
 
+    // A layer by name, for data that names one (a prefab's "character" part). The engine's own four
+    // are answered from the resolved indices rather than the name table, so a game that never wrote
+    // a physics_layers record still gets "enemy" instead of silently getting the default layer.
+    public bool TryIndexOf(string name, out byte layer)
+    {
+        switch (name.ToLowerInvariant())
+        {
+            case "default": layer = Default; return true;
+            case "player":  layer = Player;  return true;
+            case "enemy":   layer = Enemy;   return true;
+            case "trigger": layer = Trigger; return true;
+        }
+        int index = IndexOf(name);
+        layer = index < 0 ? Default : (byte)index;
+        return index >= 0;
+    }
+
     // The index of a layer the engine expects to exist, or `fallback` with a warning: a game may drop
     // one, and losing a layer should not take the simulation down.
     private byte Named(string name, byte fallback)

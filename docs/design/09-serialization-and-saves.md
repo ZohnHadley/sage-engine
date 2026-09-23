@@ -78,6 +78,11 @@ maps/<name>/
   interiors/<id>.json      placed entities per interior space (14)
 ```
 - Each placed entity: `persistentId`, optional `name` (for I/O), `prefab` (`RecordId`), the components that **override** the prefab (only differing fields), and `io` connections (04 §7).
+- **Built (F31, 2026-09-23):** the prefab half. `world.Populate(entity, record, id)` applies a prefab
+  to an entity that already exists, which is what a map load needs after it has created one with its
+  saved id. Component data is read by name through `ComponentSchema`, the same path a save's
+  per-component data will take — written against reflection now, against the generated readers later
+  (§3.2), with the record pipeline's JSON dialect either way. See 05 "As built (prefabs)".
 - Per-sector files match streaming (14) and keep map diffs small in git. **Later:** one file per placed entity (UE One File Per Actor) if team editing makes per-sector files conflict.
 
 ### 3.5 Saves: what's saved

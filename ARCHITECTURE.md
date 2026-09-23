@@ -264,9 +264,10 @@ MonoGame dependency are all paying for themselves, while the **glue between syst
 debt is — four hand-rolled event queues instead of the bus 04 designed, three hand-rolled deferral
 lists, a `GameplayModule` that has outgrown being one module, no prefabs, and phase guarantees that
 live in prose rather than in an assertion. That became R13–R16 in TODO.md, with F31 (prefabs) and
-F27 (saves) promoted out of Phase 6. **R13 is done** (2026-09-23): one event bus with per-reader
-cursors, and the four queues retired into it — though building it showed that two of them were
-state rather than events, which the review now records.
+F27 (saves) promoted out of Phase 6. **R13 and F31 are done** (2026-09-23): one event bus with
+per-reader cursors, and the four queues retired into it — though building it showed that two of them
+were state rather than events, which the review now records; and prefabs, so placing a thing is one
+call against a record instead of eight calls in a particular order.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
 

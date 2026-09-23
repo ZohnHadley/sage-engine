@@ -73,6 +73,58 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 ### 3.5 Data records
 One pipeline for **every** definition: items, spells, creatures, factions, loot tables, materials (07), input maps (08), sprite animation sets, and **prefabs** (a prefab record's body is component data, parsed by the serializer from 09).
 
+### As built (prefabs, 2026-09-23 — F31)
+
+- **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabRegistry`,
+  `world.Spawn`), `ComponentSchema.cs` (components and tags by name),
+  `src/Sage.Engine/Gameplay/PrefabParts.cs` (the parts the engine's modules register). Tests in
+  `tests/Sage.Tests/World/PrefabTests.cs`.
+- **A prefab is a record**, so `base` inheritance, per-field patching, load order, validation and hot
+  reload all come from §3.5 for nothing. A `goblin_chief` can `base` a `goblin` and override one
+  field of one component, because the merge runs on the JSON tree before anything is deserialized.
+- **Its body is two halves.** `"components"` is component data by type name, applied as written.
+  `"parts"` are named setups a **module registered** — for the cases that are not one component.
+
+  ```json
+  { "type": "prefab", "id": "goblin", "base": "creature", "name": "goblin",
+    "components": { "SpriteRenderer": { "sheet": "goblin", "size": [1.6, 1.9] } },
+    "tags": ["Hostile"],
+    "parts": { "character": { "layer": "enemy" }, "attributes": {},
+               "melee": { "attack": "claw" }, "effects": ["tough_hide"] } }
+  ```
+
+- **Why two halves and not one.** A `SpriteRenderer` is data. "Make this a character" is a collider,
+  a controller, an intent and a pawn that have to agree about radius, height and layer, so it is a
+  part `GameplayModule` owns. The test is whether a game could get it wrong by writing the components
+  itself: if yes, it is a part. This is what stops the record becoming the god-object the Sandbox's
+  `spawn` record was — **adding a feature registers a part, it does not edit this record.**
+- **Games and mods register their own** in their module's `Init`:
+  `ctx.Engine.Prefabs.Register("loot", (world, entity, options, where) => …)`.
+- **Component names come from the ECS schema**, which Friflo builds by scanning loaded assemblies, so
+  a component type is addressable the moment it is declared — nothing to register, and a game's own
+  components work. The schema is read on **first use**, never when the `Engine` is constructed, because
+  the host loads the game assembly after that (03 §3.1). Names match case-insensitively.
+- **Bare record ids inside a body** (`"attack": "claw"`) mean one in the prefab's own namespace, the
+  same rule record fields follow. The pipeline qualifies its own fields at merge time (review #56) but
+  cannot see inside a component body, whose shape isn't known until the component type is, so `Populate`
+  sets the parse namespace around the whole build.
+- **Order:** components, then tags, then parts in the order their modules registered them (module
+  dependency order), so `character` has built the body before `melee` hangs an attack on it. The
+  placement transform is set **before** the body (parts read it — `character` seeds the pawn's yaw
+  from it, review #43) **and again after**, so a prefab may carry a `Transform` for a scale it always
+  wants without deciding where this one went.
+- **Failure is local.** An unknown component, tag or part costs that one thing and says so with the
+  prefab id; the rest of the entity still comes up. An unknown *prefab* costs the spawn.
+- **Known limitation:** parts run after components, so a part wins where both touch the same
+  component — a prefab cannot shrink the capsule `character` builds by writing a `Collider`. The
+  alternative (components last, as overrides) would let data silently break a character, so parts win
+  until a part needs options for it.
+- **Console:** `ent_spawn <prefab> [x y z] [yaw]` places one (3 m in front of the camera by default),
+  `ent_dump <id|name>` prints every component on an entity with its non-default fields, and
+  `ent_types [filter]` lists the names a prefab can use.
+- **Not done here:** placement/map files and overrides per placed entity (F27 §3.4), "revert to
+  prefab" in the editor (15), and nested prefabs.
+
 - **Files:** `data/**/*.json` in any mount. A file holds an array of records:
   ```json
   [

@@ -71,6 +71,13 @@ gameplay cases, removes a recurring class of mistake.
 ### 3. No entity templates, so every game invents spawning (05/09 → **F31**, promoted)
 The Sandbox invented `spawn` records; when the Daggerfall importer needed to place things it had to
 generate *Sandbox-specific* JSON, because the engine has no opinion about "a thing you can place".
+**Resolved 2026-09-23 (F31 v1).** `world.Spawn(prefab, at)`, with the record split into
+`components` (data by type name) and `parts` (named setups a module registers). The split is the
+part worth keeping: the obvious design was one record with a field per engine feature — which is
+exactly the `spawn` record being replaced, and would have moved the god-object into the engine
+instead of removing it. A part is registered by the module that owns the feature, so adding one
+touches no shared type. Still to do: the Sandbox and the importer move off `spawn`.
+
 Prefabs are the designed answer and they are sitting in Phase 6. The longer they wait, the more
 games write their own placement layer and the more tools are written against it. A prefab record
 would also give the engine one obvious entry point (`world.Spawn(prefab, at)`) where today a creature

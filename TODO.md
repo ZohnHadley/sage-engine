@@ -114,7 +114,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F28. Editor host + inspector (v1 minimal).** Separate host; documents; outliner; editable inspector generated from metadata; wire up the File → New/Open/Save stubs. → `15`
 - [ ] **F29. Gizmos + picking (v1: translate).** → `15`
 - [ ] **F30. Undo/redo via the command log (v1).** → `15`
-- [ ] **F31. Prefabs. *(Promoted by the 2026-09-23 engine review, item 3: do this early, not in Phase 6.)*** Prefab records with overrides; `world.Spawn(prefab, at)` as the one entry point for placing a thing (today a creature takes eight calls across five static classes); `ent_spawn <prefab>` falls out of it; "revert to prefab" UI later. The Sandbox invented `spawn` records and the Daggerfall importer had to generate game-specific JSON because the engine has no opinion here. → `05`, `09`, `15`
+- [~] **F31. Prefabs.** *v1 done 2026-09-23 (promoted by the engine review, item 3): `prefab` records with `components` (by type name, through `ComponentSchema`) and `parts` (named setups modules register, so the record never becomes a god-object), `base` inheritance and patching for free from the record pipeline, `world.Spawn(prefab, at)` and `world.Populate`, plus `ent_spawn`, `ent_dump` and `ent_types`. Left: placement/map files with per-entity overrides (with F27), "revert to prefab" UI (15), nested prefabs, and moving the Sandbox and the Daggerfall importer off their own `spawn` records.* → `05`, `09`, `15`
 - [ ] **F32. Asset/record/shader hot reload (v1 for folders).** → `05`, `07`
 
 #### Phase 7 — Multiplayer (later)

@@ -92,6 +92,19 @@ public sealed class GameplayModule : IModule
         _records.Register<DamageTypeRecord>();
         _records.Register<AttackRecord>();
         _records.Register<ItemRecord>();
+
+        // How a prefab says "a character", "a thing that fights", "a thing on the ground" (F31).
+        // Each is a setup several components have to agree about, so it is a part rather than data;
+        // Collider, RigidBody, AIState and SpriteRenderer stay plain components. Registration order
+        // is apply order, and character comes first because the rest hang off its body. When
+        // GameplayModule splits (R15) each part moves with the feature that owns it.
+        var prefabs = ctx.Engine.Prefabs;
+        prefabs.Register("character", PrefabParts.Character);
+        prefabs.Register("attributes", PrefabParts.Attributes);
+        prefabs.Register("melee", PrefabParts.Melee);
+        prefabs.Register("inventory", PrefabParts.Inventory);
+        prefabs.Register("pickup", PrefabParts.Pickup);
+        prefabs.Register("effects", PrefabParts.Effects);
         _records.Reloaded += () => Registries.Rebuild(_records);
 
         // `god`: the player stops taking damage. It is a tag, so effects block themselves with it

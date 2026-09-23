@@ -62,6 +62,9 @@ public sealed class RecordStore
         };
     }
 
+    // How Sage reads JSON: one dialect, so a prefab's component fields parse exactly like a record's.
+    public JsonSerializerOptions Json => _json;
+
     public int Count => _records.Count;
     public int ErrorCount { get; private set; }
 
