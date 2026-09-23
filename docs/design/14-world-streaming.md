@@ -87,5 +87,5 @@ The server tracks one streaming source per player. Origin space becomes per clie
 ## 14. Build steps
 1. `SectorCoord`/`Origin` + propagation relative to the origin + rebasing (with 03; TODO R6).
 2. Sector load/unload with asset scopes and dormancy (TODO F14).
-3. Heightfield terrain: generator interface, meshes, collision (TODO F13). **Generator + meshes done 2026-09-22** ("As built"); collision waits for physics (F6).
+3. ~~Heightfield terrain: generator interface, meshes, collision~~ **Done 2026-09-22** (TODO F13, "As built"): generator + meshes in step 6; collision (`TerrainCollisionSystem`, `src/Sage.Engine/Physics/PhysicsSystems.cs`) with physics (F6).
 4. Interiors as spaces + door transitions.

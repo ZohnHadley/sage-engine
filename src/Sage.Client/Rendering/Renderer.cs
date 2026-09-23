@@ -153,11 +153,21 @@ public sealed class Renderer : IDisposable
         return new MeshHandle(_meshes.Count - 1);
     }
 
-    // A box mesh, for props and debug geometry (the same corner layout as the error cube).
+    // A box mesh, for props and debug geometry.
     public MeshHandle CreateBox(Vector3 size, string name = "(box)")
     {
         var vertices = new List<VertexPositionNormalTexture>();
         var indices = new List<int>();
+        BuildBox(size, vertices, indices);
+        return CreateMesh(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(vertices),
+                          System.Runtime.InteropServices.CollectionsMarshal.AsSpan(indices),
+                          new BoundingSphere(Vector3.Zero, size.Length() * 0.5f), name);
+    }
+
+    // The corners of a box centred on the origin, six quads with outward normals. Shared by CreateBox
+    // and the error mesh, which were the same fourteen lines twice (review #52).
+    private static void BuildBox(Vector3 size, List<VertexPositionNormalTexture> vertices, List<int> indices)
+    {
         Vector3[] normals = { Vector3.Up, Vector3.Down, Vector3.Left, Vector3.Right, Vector3.Forward, Vector3.Backward };
         foreach (var normal in normals)
         {
@@ -170,9 +180,6 @@ public sealed class Renderer : IDisposable
             vertices.Add(new VertexPositionNormalTexture((normal + side1 + side2) * size * 0.5f, normal, Vector2.One));
             vertices.Add(new VertexPositionNormalTexture((normal + side1 - side2) * size * 0.5f, normal, Vector2.UnitY));
         }
-        return CreateMesh(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(vertices),
-                          System.Runtime.InteropServices.CollectionsMarshal.AsSpan(indices),
-                          new BoundingSphere(Vector3.Zero, size.Length() * 0.5f), name);
     }
 
     public void DestroyMesh(MeshHandle handle)
@@ -370,23 +377,15 @@ public sealed class Renderer : IDisposable
     private static MeshData CreateErrorMesh(GraphicsDevice device)
     {
         var vertices = new List<VertexPositionNormalTexture>();
-        var indices = new List<short>();
-        Vector3[] normals = { Vector3.Up, Vector3.Down, Vector3.Left, Vector3.Right, Vector3.Forward, Vector3.Backward };
-        foreach (var normal in normals)
-        {
-            var side1 = new Vector3(normal.Y, normal.Z, normal.X);
-            var side2 = Vector3.Cross(normal, side1);
-            short start = (short)vertices.Count;
-            indices.AddRange(new[] { start, (short)(start + 1), (short)(start + 2), start, (short)(start + 2), (short)(start + 3) });
-            vertices.Add(new VertexPositionNormalTexture((normal - side1 - side2) * 0.5f, normal, Vector2.Zero));
-            vertices.Add(new VertexPositionNormalTexture((normal - side1 + side2) * 0.5f, normal, Vector2.UnitX));
-            vertices.Add(new VertexPositionNormalTexture((normal + side1 + side2) * 0.5f, normal, Vector2.One));
-            vertices.Add(new VertexPositionNormalTexture((normal + side1 - side2) * 0.5f, normal, Vector2.UnitY));
-        }
+        var indices = new List<int>();
+        BuildBox(Vector3.One, vertices, indices);
+        var shortIndices = new short[indices.Count];
+        for (int i = 0; i < indices.Count; i++) shortIndices[i] = (short)indices[i];
+
         var vb = new VertexBuffer(device, VertexPositionNormalTexture.VertexDeclaration, vertices.Count, BufferUsage.WriteOnly);
         vb.SetData(vertices.ToArray());
-        var ib = new IndexBuffer(device, IndexElementSize.SixteenBits, indices.Count, BufferUsage.WriteOnly);
-        ib.SetData(indices.ToArray());
+        var ib = new IndexBuffer(device, IndexElementSize.SixteenBits, shortIndices.Length, BufferUsage.WriteOnly);
+        ib.SetData(shortIndices);
         return new MeshData
         {
             Name = "(error)",

@@ -52,23 +52,47 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
   - A step-up moves forward at least a capsule radius before sweeping down, or the capsule lands on the *edge* of the step, whose blended normal looks like a cliff and gets rejected.
   - On a face steeper than the slope limit the character slides down it and cannot push itself up: projecting motion onto a steep plane otherwise turns "walk into the cliff" into "climb it".
   - Crouching is instant and checks headroom before standing up.
-- **Limitations:** no depenetration — a sweep that starts already overlapping carries no normal, so it is ignored and the skin width does the work (a shape-overlap query, §4, would fix it); no moving platforms; no smooth crouch interpolation; the GoldSrc air-strafe profile is still "later".
+- **One call to place one:** `world.AddCharacter(entity, layer, profile)` adds the controller, a `Pawn`, a `PawnIntent` **seeded from the entity's rotation**, a `Collider.Standing` on the same layer and a kinematic `RigidBody`. Doing it by hand is what let the sweep layer, the collider layer and the capsule height drift apart, and what silently discarded the direction a scene placed a character facing (review #43).
+- **Limitations:** no depenetration — a sweep that starts already overlapping carries no normal, so it is ignored and the skin width does the work (a shape-overlap query, §4, would fix it); no moving platforms; no smooth crouch interpolation; **crouching shrinks the sweep capsule but not the `Collider`**, so a crouching character still blocks the world at full height until `PhysicsSpace` can update a shape; the GoldSrc air-strafe profile is still "later".
 
 - **Not yet:** the origin rebasing hook (`Rebase` exists but nothing calls it until R6).
 
 ## 4. API sketch
 ```csharp
-public sealed class PhysicsSpace                         // world resource
+public sealed class PhysicsSpace                          // world resource, one Bepu Simulation
 {
-    public bool Raycast(Vector3 from, Vector3 dir, float maxDist, LayerMask mask, out RayHit hit);
-    public int  RaycastAll(Vector3 from, Vector3 dir, float maxDist, LayerMask mask, Span<RayHit> hits);
-    public bool Sweep(in ShapeDesc shape, in Pose from, Vector3 dir, float maxDist, LayerMask mask, out SweepHit hit);
-    public int  Overlap(in ShapeDesc shape, in Pose at, LayerMask mask, Span<EntityRef> results);
-    public void Rebase(Vector3 offset);                  // origin sector changed (14)
+    public LayerMatrix Layers { get; }                   // named layers: Player, Enemy, Trigger
+
+    public RayHit   Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default);
+    public SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default);
+    public int      OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default);   // broad phase only
+
+    public Pose    PoseOf(in PhysicsBody body);          // the shape's pose, centre included
+    public void    SetPose(in PhysicsBody body, in Collider collider, in Pose pose);   // pose is the entity's
+    public Vector3 VelocityOf(in PhysicsBody body);
+    public void    Rebase(Vector3 offset);               // origin sector changed (14; no caller yet)
+
+    public ReadOnlySpan<TriggerOverlap> TriggerEnter { get; }   // events when 04 exists
+    public ReadOnlySpan<TriggerOverlap> TriggerExit { get; }
 }
 
-public struct CharacterController { public float Radius, Height, StepHeight, MaxSlopeDeg; public RecordId Profile; [Transient] public bool Grounded; public Vector3 Velocity; }
+public struct Collider : IComponent
+{
+    public ColliderShape Shape; public Vector3 Size; public Vector3 Center; public byte Layer; public bool IsTrigger;
+    public static Collider Box(Vector3 size, byte layer = 0);
+    public static Collider Standing(float radius, float totalHeight, byte layer = 0);   // stands on the origin
+}
+
+public struct CharacterController : IComponent
+{
+    public RecordId Profile; public byte Layer; public Vector3 Velocity; public float Height;
+    public Vector3 GroundNormal; public bool Grounded, OnSteep, Crouching;
+    public static CharacterController Create(byte layer, RecordId profile = default);
+}
+
+public static void AddCharacter(this World world, Entity entity, byte layer, RecordId profile = default);
 ```
+*Still design, not built:* `RaycastAll`, a narrow-phase `Overlap` (which depenetration needs), and `[Transient]` field metadata (09).
 
 ## 10. Mapping from today's code
 The terrain's `HeightAt` (14) stopped being the only "collision" once F6 landed: it stays as a cheap ground query, while real collision goes through the sector's static mesh.

@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#42) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#52) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -259,3 +259,67 @@ Path note: engine code now lives under `engine/Classes/EnginClasses/` (ECS, came
 - **Cause (2026-09-22, F1)**: the ImGui entity inspector (`EntityContextMenuUI`). It allocates about 130 bytes per listed entity per frame (the `$"{World.Describe(entity)}##{id}"` label, and reflection when a node is expanded). With the inspector's draw call removed, frames allocate **0 bytes** — the engine loop, the renderer and the rest of the host frame are allocation-free, as `SteadyStateTicksAndFrames_DoNotAllocate` also asserts for 200 entities.
 - **Partly fixed (F1, F13)**: the window skips its whole listing when collapsed, and `ui_entities 0` hides it entirely. With it hidden the frame allocates 0 bytes, including the terrain chunks' meshes and the sprite batcher. Still open: while it is open the cost grows with entity count, so cache the labels (or list only visible rows) before scenes get big. It is a dev-build tool only (02 §4.6).
 
+---
+
+## Consistency pass over steps 1-19 (2026-09-22)
+
+Read the whole of `src/` and `games/` against the design docs before starting combat (F20), looking
+for conventions that had drifted apart rather than for new features. Items #43-#52 come from that
+pass; the first two were real, silent bugs.
+
+### [X] 43. Two facing conventions, bridged by a single `+PI` — **Severity: Wiring** (found 2026-09-22)
+- **Files**: `src/Sage.Engine/Rendering/SpriteData.cs`, `src/Sage.Engine/Gameplay/CharacterController.cs`, `games/Sandbox/SandboxModule.cs`
+- **Problem**: the sprite system read an entity's front as its local **+Z** while movement, the camera, `TransformMath.Forward`, the AI and the input code all used **-Z**. The two only agreed because `CharacterMovementSystem` wrote `Quaternion.CreateFromYawPitchRoll(yaw + MathF.PI, ...)` — one half turn, in a movement system, holding two subsystems together. Consequences: `TransformMath.LookAt` pointed a sprite 180° away from its target; a `spawn` record's `yaw` meant one direction for a prop and the opposite for a character; and because `PawnIntent.Yaw` was never seeded from the transform, the first tick spun every character to yaw 0 and discarded the direction the scene had placed it facing. The Sandbox's "watcher", authored to look at the player, stood with its back to them.
+- **Resolution**: `src/Sage.Engine/Core/SageMath.cs` states the convention once (+Y up, front is local -Z, yaw 0 faces -Z, positive yaw counter-clockwise seen from above) and owns `WrapPi/WrapTau`, `ForwardFromYaw`, `RotationFromYaw`, `YawOf`, `YawTo`, `DistanceXZ`, `TurnToward` and `InCone` — the four private copies of those helpers (AI, input, sprites, dev camera) are gone. `SpriteMath.DirectionIndex` reads the entity's -Z, the `+PI` is deleted, and `World.AddCharacter` seeds `PawnIntent.Yaw` from the transform. Tests: `DirectionZeroIsAlwaysTheViewFromWhereTheEntityLooks`, `ACharacterKeepsFacingTheWayItWasPlaced`.
+
+### [X] 44. Colliders were anchored at the shape's centre, so anything standing on its feet was buried — **Severity: Wiring** (found 2026-09-22)
+- **Files**: `src/Sage.Engine/Physics/PhysicsData.cs`, `PhysicsSpace.cs`, `PhysicsSystems.cs`
+- **Problem**: Bepu poses a shape by its centre, and `PhysicsSyncSystem` pushed the entity's transform in as that centre. But a character's transform is its **feet** (`CharacterController`), and the Sandbox's trees were authored standing on the ground. Their capsules therefore spanned `feet - h/2 .. feet + h/2`: half underground, half the height they looked. The character controller's own sweeps used a different pose (`feet + h/2`), so the shape a character swept with and the shape the world collided with were in different places.
+- **Resolution**: `Collider` gained an explicit `Center` offset and a `Collider.Standing(radius, totalHeight)` factory that owns the height-to-cylinder conversion; `Add`, `SetPose`, `Sweep` and the dynamic write-back all apply (and undo) it. The character controller sweeps with `Collider.Standing` too, so there is one shape. Tests: `AStandingCapsuleIsAnchoredAtItsFeet`, `ADynamicColliderWithAnOffsetCentreWritesBackTheEntitysPosition`.
+
+### [X] 45. Physics layer indices were hard-coded — **Severity: Latent** (found 2026-09-22)
+- **Files**: `src/Sage.Engine/Gameplay/AI.cs`, `AIThinkSystem.cs`, `CharacterController.cs`, `games/Sandbox/SandboxModule.cs`
+- **Problem**: `LayerMask.All.Except(2)`, `const int AgentLayer = 2`, `byte layer = 1` — five sites carried literals for layers the `physics_layers` record names. `LayerMatrix.IndexOf`/`Name` existed for exactly this and were called only from tests, so a game that reordered its layers would silently repoint AI vision and self-exclusion sweeps.
+- **Resolution**: `LayerMatrix` resolves `Player`, `Enemy` and `Trigger` once when the record is applied (with a warning and a documented fallback when a game drops one), and every site reads them from the space. `CharacterController.Create` no longer defaults its layer, since that default disagreed with `Collider`'s.
+
+### [X] 46. `ActiveCamera` had two overlapping camera flags — **Severity: Cosmetic** (found 2026-09-22)
+- **File**: `src/Sage.Engine/ECS/ActiveCamera.cs`
+- **Problem**: `OwnedByRig` (set by the rig) and `RigEnabled` (added for `cam_free`) read as two names for one thing, and `Game1` tested both, one of them redundantly.
+- **Resolution**: kept both — they are genuinely policy and status — but named and documented as such: `RigEnabled` (the host: may rigs drive at all?) and `DrivenByRig` (a rig: I drove it this frame).
+
+### [X] 47. The default-`GameRules` guard could never fire — **Severity: Cosmetic** (found 2026-09-22)
+- **Files**: `src/Sage.Engine/Gameplay/PawnIntent.cs`, `src/Sage.Engine/Core/Engine.cs`
+- **Problem**: `GameplayModule.OnWorldCreated` installed `DefaultGameRules` only "if the game hasn't" — but engine modules always run before the game module, so the check was always true and the instance was always thrown away a moment later.
+- **Resolution**: the default is installed in `Engine.CreateWorld` after `NotifyWorldCreated`, which is the first point where the question has an answer. Test: `AWorldWithoutAGamesRulesGetsTheDefaultOnes` (unchanged, still passes).
+
+### [X] 48. AI intent was acted on a tick late — **Severity: Latent** (found 2026-09-22)
+- **File**: `src/Sage.Engine/Gameplay/PawnIntent.cs`
+- **Problem**: `AIThinkSystem` ran in `Phase.AI` (5) while `CharacterMovementSystem`, which consumes `PawnIntent`, runs in `Phase.PrePhysics` (1). Every creature's decisions were therefore executed on the *next* tick, while the player's (written in `Phase.Commands`) were same-tick — and `AIThinkSystem`'s own comment claimed the opposite. `FaceTarget` also tested convergence against a yaw the body had not adopted yet.
+- **Resolution**: `AIThinkSystem` moved to `Phase.Commands`, after `PlayerControlSystem`. Both controllers now write intent in the same phase, and everything downstream reads it in the tick it was decided; death from an AI hit is likewise noticed in the same tick.
+
+### [X] 49. `WorldResources` claimed an ordering `Dictionary` does not give — **Severity: Latent** (found 2026-09-22)
+- **File**: `src/Sage.Engine/ECS/WorldResources.cs`
+- **Problem**: teardown documented "reverse insertion order" but enumerated `Dictionary.Values`, whose order is unspecified and shifts after a `Remove`. The physics space's disposal depends on it.
+- **Resolution**: installation order is kept in a parallel list; `Set` re-registers a replaced instance, `Remove` drops it, and a resource installed under two types is disposed once.
+
+### [X] 50. The AI's sight cone was authored but never checked — **Severity: Wiring** (found 2026-09-22)
+- **File**: `src/Sage.Engine/Gameplay/AIThinkSystem.cs`
+- **Problem**: `AIProfileRecord.SightAngleDegrees` (200°) was in the record and in `ai.json`, and `FindNearestPlayer`'s comment said "inside the sight cone" — but there was no cone test, so creatures noticed the player through the backs of their heads.
+- **Resolution**: perception takes the agent's yaw and checks `SageMath.InCone`. Test: `ItDoesNotNoticeAPlayerBehindItsBack`.
+
+### [X] 51. `sandbox_autowalk` never turned — **Severity: Cosmetic** (found 2026-09-22)
+- **File**: `games/Sandbox/SandboxModule.cs`
+- **Problem**: the cvar promised "turning this many degrees per second" and added a step to `PawnIntent.Yaw` each tick — but `PlayerControlSystem` had already overwritten that field with the (unchanging) view yaw, so the result was a constant offset and the pawn walked in a straight line. The smoke-test coverage it was written for wasn't happening.
+- **Resolution**: the system accumulates its own yaw, seeded from the pawn's when it is switched on.
+
+### [X] 52. The same code, written twice — **Severity: Cosmetic** (found 2026-09-22)
+- **Where**: four angle-wrap helpers (`AIMath`, `CommandLatch`, `SpriteMath`, `DevCamera`), two forward-from-yaw expressions, two capsule height conversions with different clamps, and the box mesh built once in `Renderer.CreateBox` and once in `CreateErrorMesh`.
+- **Resolution**: angles live in `SageMath` (`AIMath` is a public thin wrapper, since `IAITask` is public and games write their own tasks); capsule dimensions in `Collider.Standing`; the box corners in `Renderer.BuildBox`.
+
+### Noted, not fixed (carried into TODO)
+- `PhysicsSpace.OverlapBox` is broad-phase only: it can report entities whose shapes don't touch. The name should say so once a narrow-phase version exists (10 §4).
+- An empty `LayerMask` means "every layer", so a fully-`Except`-ed mask inverts its own intent. Wants `LayerMask?` for "unspecified" and `Bits == 0` meaning "nothing".
+- Crouching shrinks the character's sweep capsule but not its `Collider`, so a crouching character still blocks the world at full height. Needs a shape update path in `PhysicsSpace`.
+- `AICondition.TaskFailed`/`ScheduleDone` are set and then overwritten by the next `Perceive`; only conditions listed in a schedule's `interrupts` are ever read. A schedule's `interrupts` also can't fire on its first task (that guard stops an immediate re-interrupt), so single-task schedules rely on schedule *choice* instead.
+- The dev camera's look scale (`DevCamera.LookRadiansPerPixel`) is 1.6x the `Look` action's, and it re-implements invert-Y. It should bind through the action (08 §14 step 4).
+- `PhysicsSpace.Rebase`, `SetVelocity`, `IsAwake` and `EntityOf` have no callers yet (14/F20 work); `Pawn`, `GameplayTags.HasAll/HasAny` and `Effects.Remove` likewise.

@@ -58,10 +58,13 @@
     "sheet": "creature",
     "animate": true
   },
-  { "type": "spawn", "id": "watcher",  "base": "creature_base", "name": "watcher",  "position": [0, 0, -3],    "yaw": 0, "ai": true },
-  { "type": "spawn", "id": "eastward", "base": "creature_base", "name": "eastward", "position": [2.5, 0, 0],   "yaw": 90 },
-  { "type": "spawn", "id": "away",     "base": "creature_base", "name": "away",     "position": [-2.5, 0, 0],  "yaw": 180 },
+  // Yaw is the engine's one convention (SageMath): degrees about +Y, 0 faces -Z, growing
+  // counter-clockwise seen from above. The player starts away at +Z, so "yaw": 180 looks back at them.
+  { "type": "spawn", "id": "watcher",  "base": "creature_base", "name": "watcher",  "position": [0, 0, -3],    "yaw": 180, "ai": true },
+  { "type": "spawn", "id": "eastward", "base": "creature_base", "name": "eastward", "position": [2.5, 0, 0],   "yaw": -90 },
+  { "type": "spawn", "id": "away",     "base": "creature_base", "name": "away",     "position": [-2.5, 0, 0],  "yaw": 0 },
 
+  // A capsule collider's size is [radius, total height]: it stands on the spawn point, like the art.
   { "type": "spawn", "id": "tree_a", "sheet": "tree", "name": "tree_a", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [4.5, 0, -3] },
   { "type": "spawn", "id": "tree_b", "sheet": "tree", "name": "tree_b", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [-4.5, 0, -4] },
   { "type": "spawn", "id": "tree_c", "sheet": "tree", "name": "tree_c", "collider": "Capsule", "colliderSize": [0.35, 2.2, 0], "position": [0, 0, -7] },

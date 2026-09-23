@@ -8,7 +8,7 @@ namespace sage_engine;
 // on a future server. Rendering only reads the time to pick a frame (06 §3.8); it never advances it.
 public struct SpriteAnimator : IComponent
 {
-    public int Clip;        // index into the sheet's AnimationNames
+    public int Clip;        // index into the sheet's ClipNames
     public float Time;      // seconds into the clip
     public float Speed;     // 0 or 1 = normal speed
     public bool Playing;

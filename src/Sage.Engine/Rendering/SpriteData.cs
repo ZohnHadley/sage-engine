@@ -80,9 +80,12 @@ public sealed class SpriteSheetRecord
 // The pure parts of sprite rendering, in the engine so they can be tested headlessly.
 public static class SpriteMath
 {
-    // Which of the sheet's direction groups faces the camera (06 §3.8): the angle from the sprite to
-    // the camera, relative to the entity's own yaw, rounded to the nearest 45°.
-    //   0 = seen from the front, 2 = its left side, 4 = from behind, 6 = its right side.
+    // Which of the sheet's direction groups faces the camera (06 §3.8): the yaw from the sprite to the
+    // camera, relative to the entity's own yaw, rounded to the nearest 45°. The index grows as the
+    // camera moves from the entity's front toward its left, so art is authored in that order:
+    //   0 = seen from the front, 1 = front-left, 2 = its left side, 4 = from behind, 6 = its right side.
+    // An entity faces its local -Z, like everything else in the engine (SageMath), so a sheet's
+    // direction 0 is the art for someone standing where the entity is looking.
     // With 5 directions the sheet stores front..back (0..4) and the other three mirror them (Doom and
     // Daggerfall did this), so `flipU` is set and the quad's U runs backwards.
     public static int DirectionIndex(Vector3 spritePosition, Vector3 cameraPosition, float entityYaw, int directions, out bool flipU)
@@ -90,20 +93,12 @@ public static class SpriteMath
         flipU = false;
         if (directions <= 1) return 0;
 
-        Vector3 toCamera = cameraPosition - spritePosition;
-        float viewAngle = MathF.Atan2(toCamera.X, toCamera.Z);      // 0 = camera along +Z, growing clockwise seen from above
-        int index = (int)MathF.Round(WrapTau(viewAngle - entityYaw) / (MathF.PI / 4f)) & 7;
+        float toCamera = SageMath.YawTo(spritePosition, cameraPosition);
+        int index = (int)MathF.Round(SageMath.WrapTau(toCamera - entityYaw) / (MathF.PI / 4f)) & 7;
         if (directions >= 8 || index <= 4) return index;
 
         flipU = true;                                               // 5, 6, 7 mirror 3, 2, 1
         return 8 - index;
-    }
-
-    // The entity's yaw (rotation about Y) from its rotation quaternion.
-    public static float Yaw(Quaternion rotation)
-    {
-        Vector3 forward = Vector3.Transform(new Vector3(0, 0, 1), rotation);
-        return MathF.Atan2(forward.X, forward.Z);
     }
 
     // The frame of `clip` at `time` seconds, or -1 when the clip has no frames for this direction.
@@ -117,11 +112,5 @@ public static class SpriteMath
         int step = (int)MathF.Floor(MathF.Max(time, 0f) * fps);
         int index = clip.Loop ? step % frames.Count : Math.Min(step, frames.Count - 1);
         return frames[index];
-    }
-
-    private static float WrapTau(float a)
-    {
-        a %= MathF.Tau;
-        return a < 0 ? a + MathF.Tau : a;
     }
 }

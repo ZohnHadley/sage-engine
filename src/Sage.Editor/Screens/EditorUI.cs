@@ -1,7 +1,5 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 using ImGuiNET;
-using sage_engine;
 
 namespace sage_engine;
 internal class EditorUI
@@ -15,18 +13,8 @@ internal class EditorUI
         ImGui.BeginMainMenuBar();
         if (ImGui.BeginMenu("File"))
         {
-            if (ImGui.MenuItem("New"))
-            {
-                // New file action
-            }
-            if (ImGui.MenuItem("Open"))
-            {
-                // Open file action
-            }
-            if (ImGui.MenuItem("Save"))
-            {
-                // Save file action
-            }
+            // New/Open/Save arrive with editor documents and the command log (15 §3, F28). There is
+            // nothing to open until a document format exists, so the menu doesn't pretend otherwise.
             if (ImGui.MenuItem("Exit"))
             {
                 game.Exit();

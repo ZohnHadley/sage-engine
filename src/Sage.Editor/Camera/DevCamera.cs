@@ -45,10 +45,10 @@ internal class DevCamera
 
         yaw = MathHelper.ToRadians(rotationDegrees.Y);
         pitch = MathHelper.Clamp(MathHelper.ToRadians(rotationDegrees.X), -PitchLimit, PitchLimit);
-        rebuildForward();
+        RebuildForward();
     }
 
-    private void rebuildForward()
+    private void RebuildForward()
     {
         camForward = Vector3.Transform(Vector3.Forward, Matrix.CreateFromYawPitchRoll(yaw, pitch, 0));
     }
@@ -58,10 +58,10 @@ internal class DevCamera
     {
         yaw = MathHelper.WrapAngle(MathHelper.ToRadians(yawDegrees));
         pitch = MathHelper.Clamp(MathHelper.ToRadians(pitchDegrees), -PitchLimit, PitchLimit);
-        rebuildForward();
+        RebuildForward();
     }
 
-    public void update(GameTime gameTime)
+    public void Update(GameTime gameTime)
     {
         // Devices are polled centrally in Game1.Update (before this), so their state is current.
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -95,6 +95,6 @@ internal class DevCamera
         float rate = LookRadiansPerPixel * actions.MouseSensitivity;
         yaw = MathHelper.WrapAngle(yaw - delta.X * rate);
         pitch = MathHelper.Clamp(pitch - delta.Y * rate * (actions.InvertMouseY ? -1 : 1), -PitchLimit, PitchLimit);
-        rebuildForward();
+        RebuildForward();
     }
 }

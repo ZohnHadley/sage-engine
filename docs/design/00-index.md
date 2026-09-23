@@ -2,7 +2,7 @@
 
 Detailed subsystem designs. `ARCHITECTURE.md` is the overview (layers, rules, decisions); these docs say *how* each part works. The research behind them is in `docs/research/engine-survey.md`, the plan that produced them in `docs/ENGINE_DESIGN_PLAN.md`, and the build tasks in `TODO.md`.
 
-Status: design, 2026-09-22. Nothing here is built yet unless a doc's "Mapping from today's code" section says so.
+Status: design, 2026-09-22. Nothing here is built yet unless a doc's "As built" section (usually in §3, sometimes its own numbered heading) or its §10 "Mapping from today's code" says so.
 
 ## Reading order
 
@@ -56,7 +56,7 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 ### Host and core
 | Name | Meaning | Doc |
 |---|---|---|
-| `Engine` | Process-wide core services object: cvars, VFS, `RecordStore`, modules and worlds today; `AssetServer`, jobs and engine signals join in later steps. Created by the host, passed in (never a static singleton). Lives in `Sage.Engine`, so it has no MonoGame types. Client services (renderer, input devices, audio) are provided by client modules through `ModuleContext.Provide` | 01 |
+| `Engine` | Process-wide core services object: cvars (`CVars`), core cvars (`Core`), VFS, `RecordStore`, input actions (`Actions`), modules and worlds today; `AssetServer`, jobs and engine signals join in later steps. Created by the host, passed in (never a static singleton). Lives in `Sage.Engine`, so it has no MonoGame types. Client services (renderer, input devices, audio) are provided by client modules through `ModuleContext.Provide` | 01 |
 | `IModule` / `ModuleKind` | A logical engine or game unit with dependencies and `Init` (register) → `Start` (use records/GPU) → `OnWorldCreated` (per world) → `Shutdown`. Kinds: `Runtime`, `Editor`, `Tool` | 01 |
 | `ModuleContext` | What a module gets in `Init`/`Start`: `Engine`, `Get<T>` (services from the host or declared dependencies only), `Provide<T>` | 01 |
 | `IGameModule` | The single entry point a game assembly implements (exactly one public class per game assembly) | 01 |
@@ -84,20 +84,18 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `Transform` | Local position/rotation/scale, relative to the parent (or to the root's sector) | 03 |
 | `Attributes` / `GameplayTags` | Components: an entity's attribute values (health, mana, armour…) and its 64-tag bitset | 16 |
 | `effect` / `ActiveEffects` | The record describing a change (modifiers, duration, period, stacking, tags) and the instances running on an entity | 16 |
-| `GameRules` | World resource a game subclasses: spawning the player, deaths, loading hooks. Started by `Engine.CreateWorld` once every module has seen the world | 16 |
+| `GameRules` | Per-world resource a game subclasses: `OnWorldStarted` (populate the world), `SpawnPlayer`, `OnEntityDied` (called by `EffectSystem` when health runs out), `OnLoaded` (after a save load). Installed by the game's module in `OnWorldCreated`; `Engine.CreateWorld` installs `DefaultGameRules` if none was set, and calls `OnWorldStarted` once every module has seen the world | 16 |
 | `AIState` / `ai_schedule` / `ai_profile` | An agent's conditions, schedule and current task; the record listing a schedule's tasks and interrupts; the record with its sight, melee and think tuning | 16 |
 | `CharacterController` | Component: the kinematic capsule the engine moves (collide-and-slide, step-up, slopes, crouch, jump) | 10 |
-| `Pawn` / `PawnIntent` / `PlayerControlled` | A possessable body, what its controller wants this tick, and the tag marking the local player's pawn | 16 |
+| Controller / `Pawn` / `PawnIntent` / `PlayerControlled` | A `Controller` (player or AI) possesses a `Pawn` (a component marking a possessable body); both write the same `PawnIntent` component (move, look, actions) that movement, combat and interaction only ever read; `PlayerControlled` tags the local player's pawn | 16 |
 | `movement_profile` | Record with speeds, acceleration, jump, gravity, slope and step limits | 10, 16 |
+| `SageMath` | The engine's one angles/directions convention, stated once so movement, AI, sprites and the camera can't disagree: +Y up, an entity's front is its local -Z, yaw 0 faces -Z, positive yaw turns counter-clockwise seen from above | 03, 10 |
 | `PhysicsSpace` | World resource: the Bepu simulation, its queries (raycast, sweep, overlap) and trigger overlaps | 10 |
-| `Collider` / `RigidBody` / `PhysicsBody` | The shape and layer, how it moves (static, kinematic, dynamic), and the Bepu handle the engine manages | 10 |
+| `Collider` / `RigidBody` / `PhysicsBody` | The shape and layer, how it moves (static, kinematic, dynamic), and the Bepu handle the engine manages. `Collider.Standing` builds a capsule anchored at the entity's feet via `Collider.Center` | 10 |
 | `LayerMask` | Which collision layers a query or a contact considers | 10 |
-| `SectorCoord` | Component on root entities: which **1024 m** sector (int X, Z) their `Transform` is relative to | 03, 14 |
+| `World.AddCharacter` | Adds a `CharacterController` + `Pawn` + a `PawnIntent` seeded from the entity's facing + a standing capsule `Collider` + a kinematic `RigidBody`, so the sweep layer, collider layer and capsule height can't drift apart | 10, 16 |
 | `GlobalTransform` | Computed `Pose Current` + `Pose Previous` relative to the world's origin sector; interpolated by Extract | 03, 06 |
-| `GameRules` | Per-world object owning game flow (spawning, win/lose, time of day) | 16 |
-| Controller / Pawn | A `Controller` (player or AI) possesses a `Pawn` (the body) | 16 |
-| `PawnIntent` | Component both controllers write (move, look, actions); movement, combat and interaction read only this | 16 |
-| `ActiveCamera` | World resource: the camera position/rotation/fov/near/far the view is rendered from (set by the host's camera today; read by `CameraExtract` and by simulation code such as billboard facing) | 03, 06 |
+| `ActiveCamera` | World resource: the camera position/rotation/fov/near/far the view is rendered from. A camera rig (`FirstPersonCameraSystem`) fills it and sets `DrivenByRig` when one is driving; otherwise the host's editor camera fills it. `RigEnabled` (cleared by `cam_free`) hands the camera back to the editor. Read by `CameraExtract` and by simulation code such as billboard facing | 03, 06, 16 |
 | `RenderEnvironment` | World resource: clear (sky) colour, sun, hemispheric ambient, fog | 06 |
 | `PlayerInput` | World resource: the local player's `PlayerCommand` for the tick being simulated | 08 |
 
@@ -129,15 +127,14 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | Name | Meaning | Doc |
 |---|---|---|
 | `RenderSnapshot` | Pooled per-frame copy of everything rendering needs, built in Extract | 06 |
-| `SectorCoord` | Which 1024 m sector of the exterior something is in; today everything is in (0, 0) | 14, 03 |
+| `SectorCoord` | `readonly record struct (X, Z)`: which **1024 m** sector of the exterior something is in, used as a key by `Terrain`/`TerrainSector`, not a component; today everything is in (0, 0) | 14, 03 |
 | `Heightfield` / `Terrain` | A square grid of heights, and the world resource holding the loaded sectors (ground height for gameplay, chunk meshes for the client) | 14 |
-| `MeshHandle` | A mesh the renderer built (terrain chunks): the buffers live in the renderer, components hold the handle | 06 |
+| `MeshHandle` | A mesh the renderer built itself (terrain chunks, other procedural geometry): `Renderer.CreateMesh` returns one, GPU buffers live in the renderer, `MeshRenderer.Handle` holds it (0 = none). Renderer texture ids are plain `int`s; there is no texture handle type | 06 |
 | `SpriteRenderer` / `sprite_sheet` | Billboard component, and the record holding a sheet's texture, direction groups, frames and animations | 06, 12 |
 | `BillboardMode` | `Cylindrical` (turns about Y: characters, trees) or `Spherical` (faces the camera fully) | 06 |
 | `SpriteAnimator` | Component with the playing clip index and its time, advanced by the simulation | 12 |
 | `RenderItem` | One drawable in the snapshot: mesh, material, world matrix, sort key | 06 |
 | `SpriteInstance` | One billboard sprite in the snapshot | 06 |
-| `MeshHandle`, `TextureHandle` | Handles to GPU resources owned by the renderer | 06 |
 | Action | A named input (`MoveForward`, `Attack`) bound to keys/buttons by an input-map record | 08 |
 | Input context | A layer (`Editor`, `UI`, `Gameplay`) that can consume input | 08 |
 | `PlayerCommand` | One tick's worth of player intent (move, look, actions), sampled from actions | 08 |

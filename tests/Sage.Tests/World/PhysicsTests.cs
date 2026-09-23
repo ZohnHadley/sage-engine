@@ -55,6 +55,46 @@ public class PhysicsTests
         Assert.True(MathF.Abs(space.VelocityOf(world.Get<PhysicsBody>(crate)).Y) < 0.05f, "it should have settled");
     }
 
+    // Bepu poses a shape by its centre. Anything that stands on its transform — a character, a tree —
+    // says so with Collider.Standing, or its collider ends up buried to the waist (review #44).
+    [Fact]
+    public void AStandingCapsuleIsAnchoredAtItsFeet()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("physics");
+        var space = world.Resources.Get<PhysicsSpace>();
+
+        var post = world.Create(Transform.At(new Vector3(3, 0, -2)), "post");
+        world.Add(post, Collider.Standing(0.35f, 2.2f));
+        Tick(world, 1);
+
+        Assert.Equal(1.1f, space.PoseOf(world.Get<PhysicsBody>(post)).Position.Y, 3);   // the shape's centre
+        Assert.Equal(0f, world.Get<Transform>(post).LocalPosition.Y, 3);                // where it stands
+
+        // It really occupies 0..2.2 m: a shin-high ray hits it and nothing is above its head.
+        var shin = space.Raycast(new Vector3(3, 0.2f, 6), -Vector3.UnitZ, 20f);
+        Assert.True(shin.Hit && shin.Entity == post, "a shin-high ray should hit a capsule standing on the ground");
+        Assert.False(space.Raycast(new Vector3(3, 3f, 6), -Vector3.UnitZ, 20f).Hit, "nothing should be above its head");
+    }
+
+    [Fact]
+    public void ADynamicColliderWithAnOffsetCentreWritesBackTheEntitysPosition()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("physics");
+        var space = world.Resources.Get<PhysicsSpace>();
+
+        var faller = world.Create(Transform.At(new Vector3(0, 6, 0)), "faller");
+        world.Add(faller, Collider.Standing(0.3f, 1.8f));
+        world.Add(faller, RigidBody.Dynamic(5f));
+        Tick(world, 10);
+
+        float centre = space.PoseOf(world.Get<PhysicsBody>(faller)).Position.Y;
+        float feet = world.Get<Transform>(faller).LocalPosition.Y;
+        Assert.True(feet < 6f, "it should be falling");
+        Assert.Equal(0.9f, centre - feet, 2);   // the offset is put back on the way out, not baked in
+    }
+
     [Fact]
     public void DestroyingAnEntityRemovesItsBody()
     {

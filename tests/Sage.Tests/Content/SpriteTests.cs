@@ -14,11 +14,11 @@ public class SpriteMathTests
 {
     private const float Deg = MathF.PI / 180f;
 
-    // The camera stands around a sprite at the origin that faces +Z (yaw 0).
+    // The camera stands `degrees` around a sprite at the origin, measured from the sprite's front
+    // (yaw 0 faces -Z, SageMath) and growing counter-clockwise seen from above: toward its left.
     private static int FromAngle(float degrees, int directions, out bool flip)
     {
-        float a = degrees * Deg;
-        var camera = new Vector3(MathF.Sin(a) * 10f, 0, MathF.Cos(a) * 10f);
+        var camera = SageMath.ForwardFromYaw(degrees * Deg) * 10f;
         return SpriteMath.DirectionIndex(Vector3.Zero, camera, 0f, directions, out flip);
     }
 
@@ -58,21 +58,42 @@ public class SpriteMathTests
     [Fact]
     public void TheEntitysOwnYawTurnsTheSelection()
     {
-        // The camera is in front (+Z). Turning the entity 90° left shows the camera its other side.
+        // The camera stands at +Z, which is *behind* an entity at yaw 0 (it faces -Z). Turning the
+        // entity toward the camera walks the group back round to the front view.
         var camera = new Vector3(0, 0, 10);
-        Assert.Equal(0, SpriteMath.DirectionIndex(Vector3.Zero, camera, 0f, 8, out _));
-        Assert.Equal(6, SpriteMath.DirectionIndex(Vector3.Zero, camera, 90 * Deg, 8, out _));
-        Assert.Equal(4, SpriteMath.DirectionIndex(Vector3.Zero, camera, 180 * Deg, 8, out _));
-        Assert.Equal(2, SpriteMath.DirectionIndex(Vector3.Zero, camera, -90 * Deg, 8, out _));
+        Assert.Equal(4, SpriteMath.DirectionIndex(Vector3.Zero, camera, 0f, 8, out _));
+        Assert.Equal(2, SpriteMath.DirectionIndex(Vector3.Zero, camera, 90 * Deg, 8, out _));
+        Assert.Equal(0, SpriteMath.DirectionIndex(Vector3.Zero, camera, 180 * Deg, 8, out _));
+        Assert.Equal(6, SpriteMath.DirectionIndex(Vector3.Zero, camera, -90 * Deg, 8, out _));
     }
 
     [Fact]
     public void Yaw_ReadsTheRotationAboutY()
     {
-        Assert.Equal(0f, SpriteMath.Yaw(Quaternion.Identity), 5);
-        Assert.Equal(90 * Deg, SpriteMath.Yaw(Quaternion.CreateFromYawPitchRoll(90 * Deg, 0, 0)), 4);
+        Assert.Equal(0f, SageMath.YawOf(Quaternion.Identity), 5);
+        Assert.Equal(90 * Deg, SageMath.YawOf(Quaternion.CreateFromYawPitchRoll(90 * Deg, 0, 0)), 4);
         // Pitch and roll don't change the yaw of a character standing up.
-        Assert.Equal(30 * Deg, SpriteMath.Yaw(Quaternion.CreateFromYawPitchRoll(30 * Deg, 0.2f, 0)), 3);
+        Assert.Equal(30 * Deg, SageMath.YawOf(Quaternion.CreateFromYawPitchRoll(30 * Deg, 0.2f, 0)), 3);
+    }
+
+    // The bug this convention replaced: a sprite's art was chosen as if its front were +Z while every
+    // other subsystem faced -Z, so the two only agreed because the character controller added half a
+    // turn on the way out (review #43). A sheet's direction 0 must be the art for a camera standing
+    // where the entity is looking, whichever way that is.
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(90f)]
+    [InlineData(-135f)]
+    [InlineData(200f)]
+    public void DirectionZeroIsAlwaysTheViewFromWhereTheEntityLooks(float yawDegrees)
+    {
+        float yaw = yawDegrees * Deg;
+        var rotation = SageMath.RotationFromYaw(yaw);
+        var inFront = SageMath.ForwardFromYaw(yaw) * 6f;                 // where it is looking
+        var behind = -inFront;
+
+        Assert.Equal(0, SpriteMath.DirectionIndex(Vector3.Zero, inFront, SageMath.YawOf(rotation), 8, out _));
+        Assert.Equal(4, SpriteMath.DirectionIndex(Vector3.Zero, behind, SageMath.YawOf(rotation), 8, out _));
     }
 
     [Fact]

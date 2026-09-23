@@ -57,23 +57,25 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Later:** utility scoring for schedule choice, behaviour trees if schedules get unwieldy, squads/formations (Warband), daily routines (Daggerfall townsfolk).
 
 ### As built (F7, 2026-09-22)
-- **`GameplayModule`** (`src/Sage.Engine/Gameplay/PawnIntent.cs`) is the seed of this doc's framework: an engine module that registers the gameplay actions (Move, Jump, Run, Crouch, Attack, Use) and the `movement_profile` records, and installs the character systems in every world. It moves to `Sage.Framework` when there is more in it.
+- **`GameplayModule`** (`src/Sage.Engine/Gameplay/PawnIntent.cs`) is the seed of this doc's framework: an engine module that registers the `movement_profile`, `ai_profile`, `ai_schedule`, `attribute`, `tag` and `effect` records, the `god` cheat (toggles `state.invulnerable` on the local player) and the gameplay input actions (Move, Jump, Run, Crouch, Attack, Use), and installs `PlayerControlSystem`, `AIThinkSystem`, `EffectSystem`, `CharacterMovementSystem` and `FirstPersonCameraSystem` in every world. It moves to `Sage.Framework` when there is more in it.
 - **Controller → intent → movement** works as designed: `PlayerControlSystem` (Commands) copies the tick's `PlayerCommand` into `PawnIntent` on `PlayerControlled` pawns, and `CharacterMovementSystem` reads only the intent (10 "The character controller"). An AI controller writing the same component gets the same movement for free.
-- **First-person camera** (`FirstPersonCameraSystem`, FrameUpdate) puts `ActiveCamera` in the pawn's head from the interpolated pose and the command's view angles, at display rate. It sets `ActiveCamera.OwnedByRig`, and the editor's free camera steps aside unless `cam_free 1`.
+- **First-person camera** (`FirstPersonCameraSystem`, FrameUpdate) puts `ActiveCamera` in the pawn's head from the interpolated pose and the command's view angles, at display rate. It sets `ActiveCamera.DrivenByRig`, and the editor's free camera steps aside unless `cam_free 1` clears `ActiveCamera.RigEnabled` (the flag was called `OwnedByRig` until 2026-09-22).
 ### As built (GameRules and the first creature, 2026-09-22)
-- **`GameRules`** (`src/Sage.Engine/Gameplay/GameRules.cs`) is a world resource a game subclasses and installs in its module's `OnWorldCreated`. `Engine.CreateWorld` calls `OnWorldStarted` **after every module has seen the new world**, so the rules can populate a world that is fully set up; a world without a game's rules gets `DefaultGameRules`. `SpawnPlayer`, `OnEntityDied` and `OnLoaded` are there for combat (F20) and saves (09) to call.
+- **`GameRules`** (`src/Sage.Engine/Gameplay/GameRules.cs`) is a world resource a game subclasses and installs in its module's `OnWorldCreated`. `Engine.CreateWorld` calls `OnWorldStarted` **after every module has seen the new world**, so the rules can populate a world that is fully set up; a world without a game's rules gets `DefaultGameRules`. `SpawnPlayer` and `OnLoaded` are there for combat (F20) and saves (09) to call; `OnEntityDied` is already called by `EffectSystem` when an entity's health runs out (§3.3). The default is installed by `Engine.CreateWorld` itself, after every module has had its turn — inside `GameplayModule` the "has the game installed its own?" check could never be false (review #47).
 - **AI** (`AI.cs`, `AIThinkSystem.cs`) is the HL1 shape of §3.4:
   - **conditions** (`SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`);
   - **schedules as records** (`ai_schedule`: an ordered task list plus the conditions that interrupt it), parsed once per record;
   - **tasks registered by name** (`Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`), with an optional number after a colon (`"MoveToTarget:1.6"`). A game adds its own through `GameplayModule.AITasks`;
   - **`ai_profile` records** for sight range, melee range, think rate, attack cooldown and turn speed;
-  - **perception** is a distance check plus a line-of-sight raycast from eye height, so terrain, walls and props hide the player;
+  - **perception** is a distance check, a **sight cone** (`ai_profile.sightAngleDegrees`, 200° by default, so a creature has a blind spot behind it) and a line-of-sight raycast from eye height, so terrain, walls and props hide the player;
   - **think rate** is a few times a second, staggered by entity id; the current task runs every tick because it writes `PawnIntent`.
+- **Both controllers write intent in `Phase.Commands`**, `AIThinkSystem` after `PlayerControlSystem`, so movement (`PrePhysics`) acts on a creature's decision in the same tick it was made. `AIThinkSystem` originally sat in `Phase.AI`, four phases *after* the movement that reads `PawnIntent`, which cost every creature a tick of lag and made `FaceTarget` test a yaw the body had not adopted (review #48).
+- **A creature keeps the direction the scene placed it facing**: `world.AddCharacter` seeds `PawnIntent.Yaw` from the entity's rotation (10 "The character controller", review #43).
 - **The creature walks with the player's controller.** Its tasks write `PawnIntent`, exactly like `PlayerControlSystem`, so chasing uses the same capsule, slopes and step-ups. That is the payoff of the controller/pawn split.
 - **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side). Real pathfinding is F23.
 - **Deviations and gaps:**
   - schedule *selection* is code (`ChooseSchedule`), as in HL1's `GetSchedule`; utility scoring or a behaviour tree can replace it without touching the tasks;
-  - attacks are published as an `AIEvents` list the game reads in a later phase, until the event bus (04) and combat (F20) exist — nothing takes damage yet;
+  - attacks already deal damage: `MeleeAttackTask` applies the profile's `AttackEffect` with `Effects.Apply` (F18), so `EffectSystem` runs it like any other effect. The hit is also published to an `AIEvents` list the game reads in a later phase, which is still how cues and reactions work until the event bus (04) exists;
   - perception is sight only (no hearing), one enemy type (the local player), and no squads;
   - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
 
@@ -92,22 +94,24 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 ```csharp
 public abstract class GameRules                               // world resource; games subclass it
 {
-    public virtual void OnWorldStarted(World w) { }
-    public virtual EntityRef SpawnPlayer(World w) => EntityRef.None;
-    public virtual void OnEntityDied(World w, EntityRef e, EntityRef killer) { }
-    public virtual void OnLoaded(World w) { }                 // after a save load (09)
+    public virtual void OnWorldStarted(World world) { }
+    public virtual Entity SpawnPlayer(World world) => default;
+    public virtual void OnEntityDied(World world, Entity victim, Entity killer) { }
+    public virtual void OnLoaded(World world) { }              // after a save load (09)
 }
 
-public struct Pawn       { public EntityRef Controller; }
+public struct Pawn { }                                         // marker: a body a controller can drive, nothing else
 public struct PawnIntent { public Vector2 Move; public float Yaw, Pitch; public ActionMask Held, Pressed; }   // written by controllers only
-public struct PlayerControlled { }                            // tag: PlayerController reads PlayerCommand into PawnIntent
-public struct AIState    { public RecordId Schedule; public int TaskIndex; public ulong Conditions; public EntityRef Target; public float NextThink; }
+public struct PlayerControlled { }                             // tag: PlayerController reads PlayerCommand into PawnIntent
+public struct AIState { public RecordId Profile, Schedule; public int TaskIndex; public ulong Conditions; public Entity Target; public float NextThink, TaskTime, Cooldown; public bool TaskStarted; }
 
-[Record("effect")]  public sealed class EffectDef  { public List<AttributeModifier> Modifiers; public EffectDuration Duration; public float Period; public List<RecordId> GrantTags, RequireTags, BlockTags, Cues; }
-[Record("ability")] public sealed class AbilityDef { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public Targeting Targeting; public List<RecordId> Effects, Cues; public string Animation; }
+[Record("effect")]  public sealed class EffectRecord { public List<AttributeModifier> Modifiers; public EffectDuration Duration; public float Period; public EffectStacking Stacking; public List<RecordId> GrantTags, RequireTags, BlockTags, Cues; }
+[Record("ability")] public sealed class AbilityDef  { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public Targeting Targeting; public List<RecordId> Effects, Cues; public string Animation; }
 
-public interface IAITask { TaskStatus Start(in AITaskContext c); TaskStatus Run(in AITaskContext c); }   // registered by name
+public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStatus.Running; AITaskStatus Run(ref AITaskContext c); }   // registered by name
 ```
+
+**Still design-only:** `AbilityDef`, `Targeting` and the whole `ability` record (F21, §3.3); combat, inventory and interaction aren't sketched here yet (§3.2). Everything else above is shipped: `Pawn` really is that empty (no `Controller` back-reference — a controller only ever writes `PawnIntent`, nothing points the other way); `EntityRef` is `Entity` in code everywhere (glossary, 03); `AIState` carries `Profile`, `TaskTime` and `Cooldown` too, not just the fields shown before.
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -127,4 +131,4 @@ public interface IAITask { TaskStatus Start(in AITaskContext c); TaskStatus Run(
 2. ~~Attributes/effects/tags + `EffectSystem`~~ **Done 2026-09-22** (TODO F18).
 3. Abilities + cues + fireball (TODO F21).
 4. Combat + inventory + interaction (TODO F19, F20).
-5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22); damage on its hits waits for F20.
+5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22); its hits already deal damage through the F18 `EffectSystem` (`AttackEffect`). Combat proper (hit detection via physics queries, resistances, F20) is still to build.

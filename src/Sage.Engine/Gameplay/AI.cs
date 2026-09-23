@@ -189,7 +189,7 @@ internal sealed class MoveToTargetTask : IAITask
         const float Probe = 2.2f, Side = 0.7f;   // metres, radians
         // Just above step height: anything lower it simply walks over, anything higher is in the way.
         Vector3 eye = self + Vector3.UnitY * 0.5f;
-        var mask = LayerMask.All.Except(2);      // not other creatures: they are handled by chasing
+        var mask = LayerMask.All.Except(c.Space.Layers.Enemy);   // not other creatures: chasing handles them
 
         float ahead = Clearance(ref c, eye, wantedYaw, Probe, mask);
         if (ahead >= Probe) return 0f;
@@ -202,8 +202,7 @@ internal sealed class MoveToTargetTask : IAITask
 
     private static float Clearance(ref AITaskContext c, Vector3 from, float yaw, float distance, LayerMask mask)
     {
-        var direction = new Vector3(-MathF.Sin(yaw), 0, -MathF.Cos(yaw));
-        var hit = c.Space.Raycast(from, direction, distance, mask);
+        var hit = c.Space.Raycast(from, SageMath.ForwardFromYaw(yaw), distance, mask);
         return hit.Hit ? hit.Distance : distance;
     }
 }
@@ -243,31 +242,16 @@ public sealed class AIEvents
 
 public readonly record struct AIAttack(Entity Attacker, Entity Target);
 
-internal static class AIMath
+// Was the AI's private copy of the angle helpers, which is how the conventions drifted (review #43).
+// Everything here now lives in SageMath, which games can use too: IAITask is public, so a game's own
+// task needs the same maths the engine's tasks use.
+public static class AIMath
 {
-    // The view yaw that looks from `self` toward `target` (the same convention as PawnIntent.Yaw:
-    // 0 looks toward -Z).
-    public static float YawTo(Vector3 self, Vector3 target)
-    {
-        Vector3 to = target - self;
-        return MathF.Atan2(-to.X, -to.Z);
-    }
+    public static float YawTo(Vector3 self, Vector3 target) => SageMath.YawTo(self, target);
 
-    public static float DistanceXZ(Vector3 a, Vector3 b)
-    {
-        float dx = a.X - b.X, dz = a.Z - b.Z;
-        return MathF.Sqrt(dx * dx + dz * dz);
-    }
+    public static float DistanceXZ(Vector3 a, Vector3 b) => SageMath.DistanceXZ(a, b);
 
-    public static float WrapPi(float angle)
-    {
-        angle = MathF.IEEERemainder(angle, MathF.Tau);
-        return angle <= -MathF.PI ? angle + MathF.Tau : angle;
-    }
+    public static float WrapPi(float angle) => SageMath.WrapPi(angle);
 
-    public static float TurnToward(float from, float to, float maxStep)
-    {
-        float delta = WrapPi(to - from);
-        return WrapPi(from + Math.Clamp(delta, -maxStep, maxStep));
-    }
+    public static float TurnToward(float from, float to, float maxStep) => SageMath.TurnToward(from, to, maxStep);
 }

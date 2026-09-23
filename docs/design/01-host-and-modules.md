@@ -27,6 +27,8 @@ Not in scope: what the services do (02), how worlds run systems (03).
   | `Sage.Host` (exe) | everything runtime; `Sage.Editor` only in the editor host (*today:* the one exe is still game + editor, so it references `Sage.Editor` until the editor host exists, 15/F28) | — |
   | Game assemblies | `Sage.Framework`, `Sage.Framework.Client`, `Sage.Engine`, `Sage.Client` (a game can split its own sim/client parts the same way) | `Sage.Editor` (game editor extensions go in a separate `MyGame.Editor` assembly) |
 
+  *Today* this is the intended layering; only some of it exists. The assemblies that are actually in the solution are `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox` and `tests/Sage.Tests` — no `Sage.Framework` or `Sage.Framework.Client` yet (`GameplayModule` lives in `Sage.Engine`, 16 "As built", until there's enough in it to split out). `Sage.Engine`'s package references are **`Friflo.Engine.ECS` and `BepuPhysics`**, not SharpGLTF (glTF mesh loading is still to build, 05 §14 step 2). The rest of the reference graph matches the table: `Sage.Client`, `Sage.Editor` and `Sage.Host` add MonoGame; `Sage.Host` references `Sage.Editor` for the reason given above; `games/Sandbox` references `Sage.Engine` and `Sage.Client`; `tests/Sage.Tests` references `Sage.Engine`.
+
 - **`IModule`s are logical units inside those assemblies** (Renderer, Physics, Audio, Streaming, Abilities…). Each declares its dependencies and gets `Init`/`Shutdown` in dependency order. Games can replace or disable engine modules (Bevy's `DefaultPlugins` idea) without touching engine code.
 
 ### 3.2 Build configurations, the console and `developer`
@@ -156,7 +158,7 @@ Program.Main(args)
                     → asset scopes released → logs flushed last
 ```
 
-*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the default `ClientModule` unless `game.json` disables it, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: input devices and actions (08) and the host's cvars and commands, then `config.cfg`, then records, then the host services (`ClientHost`, `InputDevices`, `InputActions`), then module `Start`, then the main world, and finally the `+launch` commands. *Step 6:* each frame the host polls devices, resolves actions, feeds the `CommandLatch`, and hands every fixed tick its `PlayerCommand` through the world's `PlayerInput` resource (08 §3.6).
+*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the default `PhysicsModule`, `GameplayModule` and `ClientModule`, in that order, unless `game.json` disables any of them, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: input devices and actions (08) and the host's cvars and commands, then `config.cfg`, then records, then the host services (`ClientHost`, `InputDevices`, `InputActions`), then module `Start`, then the main world, and finally the `+launch` commands. *Step 6:* each frame the host polls devices, resolves actions, feeds the `CommandLatch`, and hands every fixed tick its `PlayerCommand` through the world's `PlayerInput` resource (08 §3.6).
 
 **Deviation:** `+args` run **after** the main world exists, not with `config.cfg` in step 6, as Source runs `+map` last. That way `+rec_get spawn bunny`, `+ent_list` or `+pause` see the loaded game. Launch args still override `config.cfg`. What they can't do is change a cvar before a module's `Start` reads it; no module reads cvars in `Start` today. Shutdown destroys the worlds, then shuts modules down in reverse order, saves Archive cvars and flushes the log last. Unknown `-options` are logged as warnings.
 
@@ -167,6 +169,7 @@ MonoGame's own fixed-step mode catches up by calling `Update` repeatedly without
 
 ```
 each MonoGame Update/Draw pair:
+  realTime += realElapsed                             // unscaled, for host_exitafter, screenshot delay, shader Time
   frameDt   = min(realElapsed, maxFrameTime)          // sim_maxframetime, default 0.25 s → no spiral of death
   frameDt  *= host_timescale                          // dev cvar
   input devices poll; input contexts resolve; Look added to the view angles   (08 §3.4)
@@ -176,7 +179,7 @@ each MonoGame Update/Draw pair:
       for each world: world.RunFixed(tickDt)           // Fixed phases (03)
       accumulator -= tickDt
   alpha = accumulator / tickDt                        // interpolation factor for rendering
-  for each world: world.RunFrame(frameDt, alpha)       // FrameUpdate → Extract → Render → Overlay
+  for each world: world.RunFrame(frameDt, alpha, realTime)   // FrameUpdate → Extract → Render → Overlay
 ```
 
 - `sim_tickrate` default **60 Hz**; `sim_maxframetime` default 0.25 s; `host_timescale` (DevOnly, Cheat) default 1.
@@ -216,7 +219,7 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
 |---|---|
 | `src/Sage.Host/Program.cs` | `Sage.Host` `Program.Main`: boot sequence 5.1. **Done (step 5)** |
 | `src/Sage.Host/Game1.cs` | The host's MonoGame `Game` subclass: loop 5.2 only. **Step 5:** the bunny spawn and billboard test moved to `games/Sandbox` (`SandboxModule`, `spawn` records); rendering setup moved to `ClientModule`. Still here: the dev camera and editor windows (15) |
-| `Game1.Update` Escape check (TODO #37) | An input action (08), not a direct `Keyboard.GetState()` |
+| `Game1.Update` Escape check (TODO #37) | **Done:** the `Menu` action (08), bound to `Escape` in `engine_content/data/input.json`; `Game1.Update` closes the console if it's open, otherwise calls `Exit()`. Not a direct `Keyboard.GetState()` |
 | `src/Sage.Editor/EditorManager.cs` | Window size → `r_width`/`r_height` cvars applied by the host. Camera ownership → editor (15) |
 | Singletons (`EntityContext.getInstance()`, `InputSystem.getInstance()`, `ModelRendererSystem.getInstance()`, `EditorUI`/`EntityContextMenuUI`) | **Done (step 3):** `Engine` (cvars, worlds) and the main `World` are created in `Program` and passed in; `InputSystem`, `ModelRendererSystem` and the editor windows are instances owned by `Game1` (TODO R1). `Log`/`CrashReporter` stay static by design (02) |
 

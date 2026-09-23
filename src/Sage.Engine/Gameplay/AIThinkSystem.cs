@@ -68,7 +68,8 @@ public sealed class AIThinkSystem : ISystem
     private void Perceive(World world, Entity self, ref Transform transform, ref AIState state, AIProfileRecord profile)
     {
         ulong conditions = 0;
-        Entity target = FindNearestPlayer(world, transform.LocalPosition, profile, self, out float distance, out bool visible);
+        float yaw = SageMath.YawOf(transform.LocalRotation);
+        Entity target = FindNearestPlayer(world, transform.LocalPosition, yaw, profile, self, out float distance, out bool visible);
 
         if (target.IsNull)
         {
@@ -95,8 +96,10 @@ public sealed class AIThinkSystem : ISystem
     }
 
     // The nearest player inside the sight cone with a clear line of sight (a raycast from eye height,
-    // so walls and terrain block it).
-    private Entity FindNearestPlayer(World world, Vector3 position, AIProfileRecord profile, Entity self, out float distance, out bool visible)
+    // so walls and terrain block it). The cone is the agent's own facing (`yaw`) widened by the
+    // profile's SightAngleDegrees: before this was checked, creatures noticed you through the back of
+    // their heads, which the field was authored to prevent (review #50).
+    private Entity FindNearestPlayer(World world, Vector3 position, float yaw, AIProfileRecord profile, Entity self, out float distance, out bool visible)
     {
         distance = float.MaxValue;
         visible = false;
@@ -107,8 +110,9 @@ public sealed class AIThinkSystem : ISystem
             var t = transforms.Span;
             for (int n = 0; n < t.Length; n++)
             {
-                float d = AIMath.DistanceXZ(position, t[n].LocalPosition);
+                float d = SageMath.DistanceXZ(position, t[n].LocalPosition);
                 if (d > profile.SightRange || d >= distance) continue;
+                if (d > 0.01f && !SageMath.InCone(yaw, position, t[n].LocalPosition, profile.SightAngleDegrees)) continue;
                 best = entities.EntityAt(n);
                 distance = d;
             }
@@ -121,12 +125,10 @@ public sealed class AIThinkSystem : ISystem
         float length = toTarget.Length();
         if (length < 0.001f) { visible = true; return best; }
 
-        var hit = _space.Raycast(eye, toTarget / length, length, LayerMask.All.Except(AgentLayer));
+        var hit = _space.Raycast(eye, toTarget / length, length, LayerMask.All.Except(_space.Layers.Enemy));
         visible = !hit.Hit || hit.Entity == best;
         return best;
     }
-
-    private const int AgentLayer = 2;   // "enemy" in the default physics_layers record
 
     // Which schedule fits what it knows. Code, like HL1's GetSchedule; utility scoring or a behaviour
     // tree can replace this without touching the tasks (16 §3.4).

@@ -43,7 +43,7 @@ public class Game1 : Game
     private DevCamera cam;
     private ActiveCamera activeCamera;
     private EditorUI editorUI;
-    private EntityContextMenuUI entityInspector;
+    private EntityOutlinerWindow entityOutliner;
     private DevConsoleWindow console;
     private StatOverlay stats;
 
@@ -68,7 +68,7 @@ public class Game1 : Game
     protected override void Initialize()
     {
         editorManager = new EditorManager();
-        editorManager.setGraphicsDeviceManager(graphics, 800, 410);
+        editorManager.SetGraphicsDeviceManager(graphics, 800, 410);
         graphicsDevice = graphics.GraphicsDevice;
 
         // Input (08): devices, then actions (their bindings are built when the records load).
@@ -82,7 +82,6 @@ public class Game1 : Game
 
         cam = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0));
         cam.Position = new Vector3(0, 0, 1);
-        editorManager.setCamera(cam);
 
         guiRenderer = new ImGuiRenderer(this);
         editorUI = new EditorUI();
@@ -131,7 +130,7 @@ public class Game1 : Game
         world = engine.CreateWorld("main");
         activeCamera = world.Resources.Get<ActiveCamera>();
         playerInput = world.Resources.Get<PlayerInput>();
-        entityInspector = new EntityContextMenuUI(world);
+        entityOutliner = new EntityOutlinerWindow(world);
         runLaunchCommands();   // +args last, with the world up (Program.cs)
 
         base.Initialize();
@@ -177,13 +176,14 @@ public class Game1 : Game
         latch.AddLook(actions.Axis2(lookAction));
 
         // The editor camera runs at the display rate, not the tick rate (smooth at any refresh rate).
-        // A first-person rig takes the camera over (ActiveCamera.OwnedByRig) unless cam_free is on.
-        cam.update(gameTime);
-        if (camFree.Value || !activeCamera.OwnedByRig)
+        // `cam_free` switches camera rigs off (ActiveCamera.RigEnabled); otherwise a rig that drove the
+        // camera this frame (DrivenByRig) keeps it.
+        cam.Update(gameTime);
+        activeCamera.RigEnabled = !camFree.Value;
+        if (!activeCamera.DrivenByRig)
         {
             activeCamera.Position = cam.Position.ToNumerics();
             activeCamera.Rotation = cam.Rotation.ToNumerics();
-            activeCamera.OwnedByRig = false;
         }
         if (recHotReload.Value) recordHotReload?.Poll();
 
@@ -223,7 +223,7 @@ public class Game1 : Game
         {
             guiRenderer.BeginLayout(gameTime);
             editorUI.Draw(this);
-            if (showEntities.Value) entityInspector.draw();
+            if (showEntities.Value) entityOutliner.Draw();
             console.Draw();
             stats.Draw();
             guiRenderer.EndLayout();

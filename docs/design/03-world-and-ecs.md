@@ -88,6 +88,17 @@ State that isn't per-entity lives in world **resources**, the equivalent of Over
 - **Steady state allocates nothing**: a test runs 100 ticks + frames with systems and measures 0 bytes.
 
 ### 3.6 Transform hierarchy and large-world coordinates
+
+**Directions and angles (`SageMath`, one convention for the whole engine).** +Y is up. An entity's
+front is its local **-Z** (`TransformMath.Forward`), as in MonoGame. **Yaw** is the rotation about +Y
+in radians: 0 faces -Z, positive turns counter-clockwise seen from above (the sense of
+`Quaternion.CreateFromYawPitchRoll`), so +90° faces -X. **Pitch** is positive looking up.
+`PawnIntent.Yaw`, `PlayerCommand.ViewYaw`, a `spawn` record's `yaw`, AI steering and sprite direction
+groups all mean this same angle, and `SageMath` owns the helpers that convert between a yaw, a
+direction and a rotation (`ForwardFromYaw`, `RotationFromYaw`, `YawOf`, `YawTo`, `WrapPi`, `WrapTau`,
+`TurnToward`, `InCone`). Subsystems keeping private copies of those helpers is how the sprite system
+came to read +Z as "front" while everything else read -Z (review #43): don't.
+
 | Component | Fields | Written by |
 |---|---|---|
 | `Transform` | `Vector3 LocalPosition`, `Quaternion LocalRotation`, `Vector3 LocalScale` (relative to the parent, or to the entity's sector if it's a root) | gameplay, physics sync |

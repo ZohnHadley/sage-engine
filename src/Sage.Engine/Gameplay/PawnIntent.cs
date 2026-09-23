@@ -16,7 +16,8 @@ public struct Pawn : IComponent { }
 // Tag: this pawn is driven by the local player's PlayerCommand (08).
 public struct PlayerControlled : ITag { }
 
-// What a controller wants the pawn to do this tick. Written by controllers only.
+// What a controller wants the pawn to do this tick: written by controllers in the Commands phase,
+// read by movement, combat and interaction later in the same tick. Written by controllers only.
 public struct PawnIntent : IComponent
 {
     public Vector2 Move;        // x = right, y = forward; length <= 1
@@ -114,10 +115,13 @@ public sealed class GameplayModule : IModule
         world.Resources.Set(Registries);
         world.Resources.Set(_records!);      // effects look up their records through the world
         Registries.Rebuild(_records!);
-        if (!world.Resources.TryGet<GameRules>(out _)) world.Resources.Set<GameRules>(new DefaultGameRules());
 
+        // Both controllers write PawnIntent in the Commands phase, so movement (PrePhysics) acts on it
+        // in the same tick it was decided. AI used to sit in Phase.AI, four phases *after* the movement
+        // that reads it, which cost every creature a tick of lag (review #48).
         world.AddSystem(new PlayerControlSystem(world), Phase.Commands);
-        world.AddSystem(new AIThinkSystem(world, _records!, AITasks), Phase.AI);
+        world.AddSystem(new AIThinkSystem(world, _records!, AITasks), Phase.Commands,
+            after: new[] { typeof(PlayerControlSystem) });
         world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,
             before: new[] { typeof(PhysicsSyncSystem) });

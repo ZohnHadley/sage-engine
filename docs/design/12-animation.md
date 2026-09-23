@@ -26,7 +26,7 @@
 public struct SpriteAnimator { public int Clip; public float Time; public float Speed; public bool Playing; }
 [GameEvent] public struct AnimationEvent { public EntityRef Entity; public int EventName; }
 ```
-`SpriteAnimator` has no sheet field of its own. The animation system reads the sheet from the entity's `SpriteRenderer.Sheet` (06 §4) and loads its `SpriteSheetData` sim-side.
+`SpriteAnimator` has no sheet field of its own. It only carries the clip index and its time; the sheet itself is read from the entity's `SpriteRenderer.Sheet` (06 §4) by rendering, at extract, which is also where the direction group and the frame are picked (06 §3.8) — the animation system never touches the sheet.
 
 ### As built (F1, 2026-09-22)
 - **Code:** `src/Sage.Engine/Rendering/SpriteData.cs` (`SpriteSheetRecord`, `SpriteRenderer`, `SpriteMath`) and `src/Sage.Engine/Animation/SpriteAnimation.cs` (`SpriteAnimator`, `SpriteAnimationSystem`); frame selection in the client's `SpriteExtract` (06 §3.11).

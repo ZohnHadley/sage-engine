@@ -31,14 +31,19 @@ public sealed class MovementProfileRecord
     public float EyeOffset = -0.18f;        // eye height relative to the top of the capsule
 
     public static readonly RecordId Default = new("sage", "default_movement");
+
+    // The values above, for when the record is missing: one shared instance, so the controller and the
+    // camera can never disagree about a default (review #43).
+    internal static readonly MovementProfileRecord Fallback = new();
 }
 
-// A character the engine moves. The entity's Transform is its feet position. Give it a capsule
-// Collider plus a kinematic RigidBody so other things collide with it (10 "As built").
+// A character the engine moves. The entity's Transform is its feet position, and its Collider is a
+// Collider.Standing capsule anchored there (10 "As built"). Add one with World.AddCharacter, which
+// gives it the collider, the kinematic body and the intent to match.
 public struct CharacterController : IComponent
 {
     public RecordId Profile;
-    public byte Layer;              // its own layer, excluded from its sweeps (default 1 = "player")
+    public byte Layer;              // its own layer, excluded from its sweeps ("player" or "enemy")
     public Vector3 Velocity;
     public float Height;            // current capsule height; 0 = take the profile's StandHeight
     public Vector3 GroundNormal;
@@ -46,8 +51,34 @@ public struct CharacterController : IComponent
     public bool OnSteep;        // touching a surface steeper than the slope limit: it slides down it
     public bool Crouching;
 
-    public static CharacterController Create(RecordId profile = default, byte layer = 1) =>
+    // The layer is required: it is both what the character collides as and what its sweeps ignore, so
+    // a default here would silently disagree with the entity's Collider (review #43). World.AddCharacter
+    // keeps the two in step.
+    public static CharacterController Create(byte layer, RecordId profile = default) =>
         new() { Profile = profile, Layer = layer, GroundNormal = Vector3.UnitY };
+}
+
+// Adding a character to a world (16 §3.1).
+public static class CharacterExtensions
+{
+    // Everything a controller needs to drive a body: the controller, a Pawn, an intent already facing
+    // the way the entity was placed, a standing capsule on the character's own layer, and a kinematic
+    // body so the world collides with it. Doing this in one place is what keeps the sweep layer, the
+    // collider layer and the capsule's height in agreement (review #43, #44).
+    public static void AddCharacter(this World world, Entity entity, byte layer, RecordId profileId = default)
+    {
+        var records = world.Resources.Get<RecordStore>();
+        var id = profileId.IsEmpty ? MovementProfileRecord.Default : profileId;
+        var profile = records.TryGet(id, out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+
+        world.Add(entity, CharacterController.Create(layer, profileId));
+        world.Add(entity, new Pawn());
+        // Seeded from the transform, or the first tick would spin every character to yaw 0 and throw
+        // away the direction the scene placed it facing (review #43).
+        world.Add(entity, new PawnIntent { Yaw = SageMath.YawOf(world.Get<Transform>(entity).LocalRotation) });
+        world.Add(entity, Collider.Standing(profile.Radius, profile.StandHeight, layer));
+        world.Add(entity, RigidBody.Kinematic());
+    }
 }
 
 // PrePhysics, before the bodies are synced (10 §3): turns intent into movement, resolves it against
@@ -98,7 +129,7 @@ public sealed class CharacterMovementSystem : ISystem
 
         // Which way the player wants to go, in the view's frame.
         float yaw = intent.Yaw;
-        var forward = new Vector3(-MathF.Sin(yaw), 0, -MathF.Cos(yaw));
+        var forward = SageMath.ForwardFromYaw(yaw);
         var right = new Vector3(-forward.Z, 0, forward.X);
         Vector3 wish = right * intent.Move.X + forward * intent.Move.Y;
         if (wish.LengthSquared() > 1f) wish = Vector3.Normalize(wish);
@@ -154,15 +185,17 @@ public sealed class CharacterMovementSystem : ISystem
             }
         }
 
-        // The body faces where its controller is looking. Sprite sheets treat +Z as the front while a
-        // view yaw of 0 looks toward -Z, hence the half turn (06 §3.8).
-        transform.LocalRotation = Quaternion.CreateFromYawPitchRoll(yaw + MathF.PI, 0, 0);
+        // The body faces where its controller is looking. One yaw convention engine-wide (SageMath),
+        // so this is all of it: no correction between movement, sprites and the camera.
+        transform.LocalRotation = SageMath.RotationFromYaw(yaw);
 
         bool wasGrounded = character.Grounded;
         Vector3 motion = character.Velocity * dt;
-        position = SlideHorizontal(position, motion with { Y = 0 }, ref character, profile, mask);
+        // The steepest ground that still counts as ground, once per move instead of once per sweep.
+        float cosSlope = MathF.Cos(profile.MaxSlopeDegrees * MathF.PI / 180f);
+        position = SlideHorizontal(position, motion with { Y = 0 }, ref character, profile, cosSlope, mask);
         position = MoveVertical(position, motion.Y, ref character, profile, mask);
-        GroundCheck(ref position, ref character, profile, mask, wasGrounded);
+        GroundCheck(ref position, ref character, profile, cosSlope, mask, wasGrounded);
         transform.LocalPosition = position;
     }
 
@@ -188,9 +221,8 @@ public sealed class CharacterMovementSystem : ISystem
     // Horizontal movement: collide-and-slide, with a step-up attempt when something low blocks the
     // way (10 §3). The sweeps start a little above the feet, or the ground the capsule is resting on
     // answers every horizontal sweep at zero distance and the character can never move.
-    private Vector3 SlideHorizontal(Vector3 position, Vector3 motion, ref CharacterController character, MovementProfileRecord profile, LayerMask mask)
+    private Vector3 SlideHorizontal(Vector3 position, Vector3 motion, ref CharacterController character, MovementProfileRecord profile, float cosSlope, LayerMask mask)
     {
-        float cosSlope = MathF.Cos(profile.MaxSlopeDegrees * MathF.PI / 180f);
         float lift = MathF.Min(GroundOffset, profile.StepHeight * 0.5f);
         float height = MathF.Max(character.Height - lift, 0.2f);
 
@@ -275,9 +307,8 @@ public sealed class CharacterMovementSystem : ISystem
     }
 
     // Is there ground under the feet? Snaps onto it while walking, so going downhill doesn't launch.
-    private void GroundCheck(ref Vector3 position, ref CharacterController character, MovementProfileRecord profile, LayerMask mask, bool wasGrounded)
+    private void GroundCheck(ref Vector3 position, ref CharacterController character, MovementProfileRecord profile, float cosSlope, LayerMask mask, bool wasGrounded)
     {
-        float cosSlope = MathF.Cos(profile.MaxSlopeDegrees * MathF.PI / 180f);
         float reach = wasGrounded && character.Velocity.Y <= 0.01f ? profile.GroundSnap : Skin * 2f;
         var hit = Sweep(position + Vector3.UnitY * Skin, character.Height, profile.Radius, -Vector3.UnitY, reach + Skin, mask);
 
@@ -328,16 +359,18 @@ public sealed class CharacterMovementSystem : ISystem
     // of surfaces. Real depenetration needs a shape-overlap query (10 §4, not built yet).
     private SweepHit Sweep(Vector3 feet, float height, float radius, Vector3 direction, float distance, LayerMask mask)
     {
-        float cylinder = MathF.Max(height - 2f * radius, 0.01f);
-        var shape = Collider.Capsule(radius, cylinder);
-        var pose = new Pose { Position = feet + Vector3.UnitY * (height * 0.5f), Rotation = Quaternion.Identity, Scale = Vector3.One };
+        // The same factory the entity's own collider uses, so the shape it sweeps and the shape the
+        // world sees are the same size in the same place (review #44).
+        var shape = Collider.Standing(radius, height);
+        var pose = new Pose { Position = feet, Rotation = Quaternion.Identity, Scale = Vector3.One };
         return _space.Sweep(shape, pose, direction, MathF.Max(distance, 1e-4f), mask);
     }
 }
 
 // FrameUpdate: puts the camera in the player's head, at display rate, from the interpolated pose and
-// the view angles the command carried (06 §3.3, 16 §3.2). The editor's free camera stands aside while
-// this runs (ActiveCamera.OwnedByRig) unless cam_free is on.
+// the view angles the command carried (06 §3.3, 16 §3.2). While this drives the camera it says so
+// (ActiveCamera.DrivenByRig) and the editor's free camera stands aside; cam_free clears
+// ActiveCamera.RigEnabled and this system gives the camera back.
 public sealed class FirstPersonCameraSystem : ISystem
 {
     private readonly ArchetypeQuery<GlobalTransform, CharacterController, PawnIntent> _pawns;
@@ -353,6 +386,12 @@ public sealed class FirstPersonCameraSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
+        if (!_camera.RigEnabled)   // cam_free: the editor camera is flying instead
+        {
+            _camera.DrivenByRig = false;
+            return;
+        }
+
         float alpha = ctx.Frame.Alpha;
         foreach (var (globals, characters, intents, _) in _pawns.Chunks)
         {
@@ -360,10 +399,10 @@ public sealed class FirstPersonCameraSystem : ISystem
             ref readonly var character = ref characters.Span[0];   // one local player
             var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile, out MovementProfileRecord found)
                 ? found : null;
-            float eye = character.Height + (profile?.EyeOffset ?? -0.18f);
+            float eye = character.Height + (profile ?? MovementProfileRecord.Fallback).EyeOffset;
             _camera.Position = globals.Span[0].Interpolated(alpha).Position + Vector3.UnitY * eye;
             _camera.Rotation = Quaternion.CreateFromYawPitchRoll(intents.Span[0].Yaw, intents.Span[0].Pitch, 0);
-            _camera.OwnedByRig = true;
+            _camera.DrivenByRig = true;
             return;
         }
     }

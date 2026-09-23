@@ -37,11 +37,33 @@ public class CharacterTests
     private static Entity Character(World world, Vector3 feet)
     {
         var entity = world.Create(Transform.At(feet), "character");
-        world.Add(entity, CharacterController.Create());
-        world.Add(entity, new PawnIntent());
-        world.Add(entity, Collider.Capsule(0.35f, 1.1f, PlayerLayer));
-        world.Add(entity, RigidBody.Kinematic());
+        world.AddCharacter(entity, PlayerLayer);
         return entity;
+    }
+
+    // Placing a character used to be four Add calls a game had to get right, and PawnIntent.Yaw was
+    // never seeded, so the first tick spun every creature to yaw 0 and threw away the direction the
+    // scene placed it facing (review #43).
+    [Fact]
+    public void ACharacterKeepsFacingTheWayItWasPlaced()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("characters");
+        Floor(world, new Vector3(0, -0.5f, 0), new Vector3(20, 1, 20));
+
+        float yaw = 90f * MathF.PI / 180f;
+        var entity = world.Create(new Transform
+        {
+            LocalPosition = Vector3.Zero,
+            LocalRotation = SageMath.RotationFromYaw(yaw),
+            LocalScale = Vector3.One,
+        }, "sentry");
+        world.AddCharacter(entity, PlayerLayer);
+
+        Assert.Equal(yaw, world.Get<PawnIntent>(entity).Yaw, 3);
+
+        Walk(world, entity, Vector2.Zero, 10);
+        Assert.Equal(yaw, SageMath.YawOf(world.Get<Transform>(entity).LocalRotation), 3);
     }
 
     private static void Walk(World world, Entity character, Vector2 move, int ticks, ActionMask held = default, ActionMask pressed = default)

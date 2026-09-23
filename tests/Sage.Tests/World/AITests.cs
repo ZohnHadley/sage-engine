@@ -119,18 +119,17 @@ public class AITests
     private static Entity Creature(World world, Vector3 position)
     {
         var entity = world.Create(Transform.At(position), "creature");
-        world.Add(entity, CharacterController.Create(layer: 2));
-        world.Add(entity, new PawnIntent());
+        world.AddCharacter(entity, EnemyLayer);
         world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
-        world.Add(entity, Collider.Capsule(0.35f, 1.1f, 2));
-        world.Add(entity, RigidBody.Kinematic());
         return entity;
     }
+
+    private const byte EnemyLayer = 2, PlayerLayer = 1;
 
     private static Entity Player(World world, Vector3 position)
     {
         var entity = world.Create(Transform.At(position), "player");
-        world.Add(entity, Collider.Capsule(0.35f, 1.1f, 1));
+        world.Add(entity, Collider.Standing(0.35f, 1.8f, PlayerLayer));
         world.Add(entity, RigidBody.Kinematic());
         entity.AddTag<PlayerControlled>();
         return entity;
@@ -179,6 +178,29 @@ public class AITests
 
         Assert.True(after < before - 5f, $"it should have closed the distance ({before:F1} → {after:F1} m)");
         Assert.True(after < 2.5f, $"and reached melee range (it is {after:F1} m away)");
+    }
+
+    // The profile has carried a sight angle since F22, but nothing read it, so creatures noticed the
+    // player through the backs of their heads (review #50).
+    [Fact]
+    public void ItDoesNotNoticeAPlayerBehindItsBack()
+    {
+        using var engine = NewEngine();
+        var world = NewWorld(engine);
+        var creature = Creature(world, new Vector3(0, 0.1f, 0));    // placed facing -Z
+        Player(world, new Vector3(0, 0.1f, 12));                    // directly behind it
+
+        Tick(world, 30);
+        Assert.False(((AICondition)world.Get<AIState>(creature).Conditions).HasFlag(AICondition.SeeEnemy),
+            "a 200° cone leaves a blind spot behind it");
+        Assert.Equal(AIThinkSystem.Schedules.Idle, world.Get<AIState>(creature).Schedule);
+
+        // Turn it round: same distance, same clear line of sight, now inside the cone.
+        ref var intent = ref world.Get<PawnIntent>(creature);
+        intent.Yaw = MathF.PI;
+        Tick(world, 30);
+
+        Assert.True(((AICondition)world.Get<AIState>(creature).Conditions).HasFlag(AICondition.SeeEnemy));
     }
 
     [Fact]

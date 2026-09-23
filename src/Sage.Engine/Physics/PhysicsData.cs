@@ -17,16 +17,41 @@ public enum BodyKind { Static, Kinematic, Dynamic }
 //   Sphere  X = radius
 //   Capsule X = radius, Y = length of the cylinder between the caps
 //   Mesh    a mesh the game registered with the space (terrain does this itself)
+//
+// A shape is centred on `Center`, an offset from the entity's own origin. Bepu poses a shape by its
+// centre, so anything whose transform sits at its *feet* — a character, a tree — needs an offset of
+// half its height, or its collider ends up buried to the waist while the thing appears to stand on
+// the ground (review #44). Standing() does that for you.
 public struct Collider : IComponent
 {
     public ColliderShape Shape;
     public Vector3 Size;
+    public Vector3 Center;    // local offset from the entity's origin to the shape's centre
     public byte Layer;        // index into the physics_layers record (0 = "default")
     public bool IsTrigger;    // generates overlap events, never a collision response
+
+    // The shortest cylinder a capsule may keep: two hemispheres and nothing between them is still a
+    // capsule, but a negative length is not a shape.
+    internal const float MinCylinder = 0.01f;
 
     public static Collider Box(Vector3 size, byte layer = 0) => new() { Shape = ColliderShape.Box, Size = size, Layer = layer };
     public static Collider Sphere(float radius, byte layer = 0) => new() { Shape = ColliderShape.Sphere, Size = new Vector3(radius, 0, 0), Layer = layer };
     public static Collider Capsule(float radius, float length, byte layer = 0) => new() { Shape = ColliderShape.Capsule, Size = new Vector3(radius, length, 0), Layer = layer };
+
+    // A capsule of `totalHeight` standing on the entity's origin: the shape for anything with feet.
+    // It owns the height -> cylinder conversion, so the character controller's sweeps and the body it
+    // pushes into Bepu can't drift apart.
+    public static Collider Standing(float radius, float totalHeight, byte layer = 0) => new()
+    {
+        Shape = ColliderShape.Capsule,
+        Size = new Vector3(radius, MathF.Max(totalHeight - 2f * radius, MinCylinder), 0),
+        Center = new Vector3(0, totalHeight * 0.5f, 0),
+        Layer = layer,
+    };
+
+    // Where the shape's centre is, for an entity at `pose`.
+    public Vector3 CenterAt(in Pose pose) =>
+        Center == Vector3.Zero ? pose.Position : pose.Position + Vector3.Transform(Center, pose.Rotation);
 }
 
 // How the collider moves. Static never moves, Kinematic is moved by gameplay (the transform wins),
@@ -73,6 +98,14 @@ public sealed class LayerMatrix
 
     public string Name(int layer) => _names[layer & 31];
 
+    // The layers the engine's own code needs by name (10 §3). Resolved from the record once, so a game
+    // that reorders physics_layers can't silently repoint AI vision or a character's self-exclusion at
+    // the wrong layer (review #45).
+    public byte Default { get; private set; }
+    public byte Player { get; private set; } = 1;
+    public byte Enemy { get; private set; } = 2;
+    public byte Trigger { get; private set; } = 4;
+
     public int IndexOf(string name)
     {
         for (int i = 0; i < 32; i++)
@@ -82,11 +115,26 @@ public sealed class LayerMatrix
 
     public bool Collide(int a, int b) => (_masks[a & 31] & (1u << (b & 31))) != 0;
 
+    // The index of a layer the engine expects to exist, or `fallback` with a warning: a game may drop
+    // one, and losing a layer should not take the simulation down.
+    private byte Named(string name, byte fallback)
+    {
+        int index = IndexOf(name);
+        if (index >= 0) return (byte)index;
+        Log.Warn(LogCat.Physics, $"physics_layers has no '{name}' layer; the engine falls back to index {fallback} ('{Name(fallback)}')");
+        return fallback;
+    }
+
     public void Apply(PhysicsLayersRecord record)
     {
         for (int i = 0; i < 32; i++) { _masks[i] = uint.MaxValue; _names[i] = i == 0 ? "default" : $"layer{i}"; }
         for (int i = 0; i < record.Layers.Count && i < 32; i++) _names[i] = record.Layers[i];
         if (record.Layers.Count > 32) Log.Error(LogCat.Physics, $"physics_layers: {record.Layers.Count} layers, only the first 32 are used");
+
+        Default = 0;
+        Player = Named("player", 1);
+        Enemy = Named("enemy", 2);
+        Trigger = Named("trigger", 4);
 
         foreach (var (name, ignored) in record.Ignore)
         {
@@ -144,7 +192,6 @@ public struct SweepHit
     public Vector3 Normal;
     public float Distance;      // along the sweep direction
     public bool Hit;
-    public bool StartsTouching;  // already overlapping at the start
 }
 
 // Trigger overlaps collected during the step, drained in PostPhysics (10 §3). Game events come with

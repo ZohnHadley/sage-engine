@@ -17,7 +17,11 @@ public sealed class ActiveCamera
     public float Near = 0.1f;                             // 06 §10: 0.01 wasted depth precision
     public float Far = 1000f;
 
-    // A camera rig (the first-person one, 16 §3.2) is driving this camera; the editor's free camera
-    // leaves it alone unless cam_free is on.
-    public bool OwnedByRig;
+    // Two different things, and they are both needed (review #46):
+    //   RigEnabled   policy, written by the host: may camera rigs drive this camera at all? `cam_free`
+    //                clears it so the editor camera can fly while the game keeps running.
+    //   DrivenByRig  status, written by a rig: one drove the camera this frame, so the editor's free
+    //                camera must leave it alone.
+    public bool RigEnabled = true;
+    public bool DrivenByRig;
 }

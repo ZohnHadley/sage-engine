@@ -69,8 +69,8 @@ internal sealed class SpriteBatcher : IDisposable
         _indexBuffer.SetData(indices);
     }
 
-    // The camera basis the quads are built from (the view matrix is camera-relative, so its rows are
-    // the camera's axes in world space).
+    // The camera's own basis. Sprites orient themselves per quad (see Append); these are the
+    // fallbacks for the degenerate case of a sprite sitting exactly on the camera.
     public void Begin(in RenderView view)
     {
         _right = new Vector3(view.View.M11, view.View.M21, view.View.M31);
@@ -103,16 +103,29 @@ internal sealed class SpriteBatcher : IDisposable
 
     private void Append(ref SpriteInstance s)
     {
-        // Cylindrical sprites keep world up and only turn about Y, so they don't lean when the camera
-        // looks up or down (characters, trees). Spherical ones use the full camera basis.
-        Vector3 right = _right, up = _up, normal = _normal;
+        // Each sprite turns to face the camera's *position*, not the screen plane (06 §3.8). Aligning
+        // quads with the view plane instead stretches them toward the edges of a wide view — two
+        // creatures the same distance apart end up drawn at different sizes — and it disagrees with
+        // the direction group, which is chosen from the angle to the camera.
+        //
+        // Cylindrical turns about Y only, so characters and trees stay upright when the camera looks
+        // up or down; Spherical faces the camera fully (effects, item pickups).
+        Vector3 toCamera = -s.Center;   // positions are camera-relative, so the camera is the origin
+        Vector3 right, up, normal;
         if (s.Mode == BillboardMode.Cylindrical)
         {
-            right = new Vector3(_right.X, 0, _right.Z);
-            right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : Vector3.Right;
+            var flat = new Vector3(toCamera.X, 0, toCamera.Z);
+            normal = flat.LengthSquared() > 1e-8f ? Vector3.Normalize(flat) : FlattenedViewNormal();
+            right = Vector3.Cross(Vector3.Up, normal);
+            right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : _right;
             up = Vector3.Up;
-            normal = new Vector3(_normal.X, 0, _normal.Z);
-            normal = normal.LengthSquared() > 1e-8f ? Vector3.Normalize(normal) : Vector3.Backward;
+        }
+        else
+        {
+            normal = toCamera.LengthSquared() > 1e-8f ? Vector3.Normalize(toCamera) : _normal;
+            right = Vector3.Cross(Vector3.Up, normal);
+            right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : _right;   // straight up or down
+            up = Vector3.Normalize(Vector3.Cross(normal, right));
         }
 
         // The pivot sits at the entity position: the quad spans left/right and up/down around it.
@@ -126,6 +139,12 @@ internal sealed class SpriteBatcher : IDisposable
         Set(v + 2, s.Center + right * rightEdge + up * bottom, normal, new Vector2(s.Uv.Z, s.Uv.W), color);
         Set(v + 3, s.Center + right * left + up * bottom, normal, new Vector2(s.Uv.X, s.Uv.W), color);
         _quads++;
+    }
+
+    private Vector3 FlattenedViewNormal()
+    {
+        var flat = new Vector3(_normal.X, 0, _normal.Z);
+        return flat.LengthSquared() > 1e-8f ? Vector3.Normalize(flat) : Vector3.Backward;
     }
 
     private void Set(int index, Vector3 position, Vector3 normal, Vector2 uv, Color color)

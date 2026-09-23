@@ -193,7 +193,7 @@ internal sealed class SpriteExtract : ISystem
                 Vector3 position = pose.Position;   // System.Numerics → MonoGame (implicit)
 
                 // Which way does it face the camera, and which frame is playing?
-                int direction = SpriteMath.DirectionIndex(pose.Position, camera.ToNumerics(), SpriteMath.Yaw(pose.Rotation), sheet.Directions, out bool flipU);
+                int direction = SpriteMath.DirectionIndex(pose.Position, camera.ToNumerics(), SageMath.YawOf(pose.Rotation), sheet.Directions, out bool flipU);
                 int frameIndex = 0;
                 var entity = entities.EntityAt(n);
                 if (entity.TryGetComponent(out SpriteAnimator animator) && sheet.Clip(animator.Clip) is { } clip)

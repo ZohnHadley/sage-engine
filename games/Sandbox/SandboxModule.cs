@@ -26,7 +26,7 @@ public sealed class SandboxModule : IGameModule
         _cvars = ctx.Engine.CVars;
         _renderer = ctx.Get<Renderer>();
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
-        _jump = ctx.Engine.Actions.Get("Jump");   // registered by ClientModule
+        _jump = ctx.Engine.Actions.Get("Jump");   // registered by GameplayModule (08 §3.2)
     }
 
     public void OnWorldCreated(World world)
@@ -132,13 +132,8 @@ public sealed class SandboxModule : IGameModule
             // A capsule the engine moves, so the world collides with it and it collides with the
             // world, plus an intent for its controller to write (10, 16). The player's controller is
             // the local PlayerCommand; a creature's is its AI schedules.
-            var profile = _records!.TryGet(MovementProfileRecord.Default, out MovementProfileRecord p) ? p : new MovementProfileRecord();
-            byte layer = (byte)(spawn.Player ? 1 : 2);   // "player" / "enemy" in physics_layers
-            world.Add(e, CharacterController.Create(layer: layer));
-            world.Add(e, new Pawn());
-            world.Add(e, new PawnIntent());
-            world.Add(e, Collider.Capsule(profile.Radius, profile.StandHeight - 2 * profile.Radius, layer));
-            world.Add(e, RigidBody.Kinematic());
+            var layers = world.Resources.Get<PhysicsSpace>().Layers;
+            world.AddCharacter(e, spawn.Player ? layers.Player : layers.Enemy);
             if (spawn.Player) e.AddTag<PlayerControlled>();
             if (spawn.Ai) world.Add(e, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
             world.AddAttributes(e);   // health, mana and the rest, from the attribute records (16)
@@ -148,7 +143,13 @@ public sealed class SandboxModule : IGameModule
             // Props: a collider (and a mass if it should fall), or the old hop toy for scenery.
             if (spawn.ColliderSize != Vector3.Zero)
             {
-                world.Add(e, new Collider { Shape = spawn.Collider, Size = spawn.ColliderSize, IsTrigger = spawn.Trigger });
+                // A capsule stands on the spawn point, like the art above it; a box or a sphere is
+                // centred on it, which is what a crate or a trigger volume wants (10 §3).
+                var collider = spawn.Collider == ColliderShape.Capsule
+                    ? Collider.Standing(spawn.ColliderSize.X, spawn.ColliderSize.Y)
+                    : new Collider { Shape = spawn.Collider, Size = spawn.ColliderSize };
+                collider.IsTrigger = spawn.Trigger;
+                world.Add(e, collider);
                 world.Add(e, spawn.Mass > 0 ? RigidBody.Dynamic(spawn.Mass) : new RigidBody { Kind = BodyKind.Static });
             }
             else if (!spawn.Sheet.IsEmpty || !spawn.Model.IsEmpty)
@@ -172,7 +173,7 @@ public sealed class SpawnRecord
     public RecordId Sheet;             // sprite sheet record
     public RecordId Material;          // empty = the default for the kind
     public Vector3 Position;
-    public float Yaw;                  // degrees; which way it faces (picks the sprite's direction)
+    public float Yaw;                  // degrees about +Y, 0 faces -Z (SageMath): picks the sprite group
     public Vector2 Size;               // sprite size in metres; 0 = the sheet's
     public bool Animate;               // play the sheet's first clip
     public bool FacesCamera;           // meshes only: the old billboard test
@@ -181,7 +182,7 @@ public sealed class SpawnRecord
     // it a falling dynamic body instead of a static one.
     public Vector3 BoxMesh;
     public ColliderShape Collider = ColliderShape.Box;
-    public Vector3 ColliderSize;       // zero = no collider
+    public Vector3 ColliderSize;       // zero = none; box: full extents, capsule: [radius, total height]
     public float Mass;                 // > 0 = dynamic
     public bool Trigger;
 
@@ -292,6 +293,8 @@ public sealed class AutoWalkSystem : ISystem
 {
     private readonly ArchetypeQuery<PawnIntent> _pawns;
     private readonly CVar<float> _autoWalk;
+    private float _yaw;
+    private bool _turning;
 
     public AutoWalkSystem(World world, CVarRegistry cvars)
     {
@@ -302,15 +305,20 @@ public sealed class AutoWalkSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        if (_autoWalk.Value <= 0f) return;
+        if (_autoWalk.Value <= 0f) { _turning = false; return; }
         float turn = _autoWalk.Value * MathF.PI / 180f * ctx.Tick.Dt;
         foreach (var (intents, _) in _pawns.Chunks)
         {
             var intent = intents.Span;
             for (int n = 0; n < intent.Length; n++)
             {
+                // The yaw has to be accumulated here: PlayerControlSystem ran first this tick and
+                // overwrote intent.Yaw with the (unchanging) view yaw, so turning it by a step per tick
+                // only ever produced a constant offset and the pawn walked in a straight line (#51).
+                if (!_turning) { _yaw = intent[n].Yaw; _turning = true; }
+                _yaw = SageMath.WrapPi(_yaw - turn);
                 intent[n].Move = new Vector2(0, 1);
-                intent[n].Yaw -= turn;
+                intent[n].Yaw = _yaw;
             }
         }
     }

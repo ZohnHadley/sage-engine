@@ -1,6 +1,8 @@
 [
   // Engine input maps (docs/design/08 §3.2–3.3). Actions are registered by modules (ClientModule
-  // registers these); games add maps for their own actions, and player rebinds will be patches.
+  // registers the client's own: Console, editor and UI; GameplayModule registers the simulation's:
+  // Move, Jump, Run, Crouch, Attack, Use); games add maps for their own actions, and player rebinds
+  // will be patches.
   {
     // Active while the console is open; consumes all other keyboard input.
     "type": "input_map",

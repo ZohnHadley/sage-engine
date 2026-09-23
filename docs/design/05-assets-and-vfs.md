@@ -110,7 +110,7 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
   - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place.
 - **Hot reload** (`RecordHotReload`, dev builds): a `FileSystemWatcher` on each folder mount's `data/`, polled from the main thread and reloaded after 200 ms of quiet, while `rec_hotreload` is on. `games/Sandbox` respawns its scene on reload, so editing `content/data/scene.json` updates the running game.
 - **Assets (interim until R12):** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads through the VFS, so anything can come from any mount and be shadowed like any other file:
-  - MGCB-built `.xnb` models;
+  - MGCB-built `.xnb` models and textures (a path with no extension loads through the `ContentManager`, same as models);
   - compiled effects (`.mgfxo`, step 6);
   - `.png`/`.jpg` textures via `Texture2D.FromStream`, premultiplied (step 6).
 

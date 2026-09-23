@@ -12,20 +12,20 @@ namespace sage_engine;
 // Uses reflection and per-entity label strings, so it allocates about 130 bytes per listed entity
 // per frame while the window is open (TODO #41): fine for a dev tool, and replaced by the generated
 // inspector metadata later (docs/design/09, 15). Collapsing the window costs nothing.
-internal sealed class EntityContextMenuUI
+internal sealed class EntityOutlinerWindow
 {
     private readonly World _world;
     private readonly ArchetypeQuery _all;
     private readonly List<Entity> _entities = new();
     private readonly ImGuiWindowFlags _flags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
 
-    public EntityContextMenuUI(World world)
+    public EntityOutlinerWindow(World world)
     {
         _world = world;
         _all = world.QueryAll();
     }
 
-    public void draw()
+    public void Draw()
     {
         if (!ImGui.Begin($"Entities ({_world.Name})", _flags))
         {

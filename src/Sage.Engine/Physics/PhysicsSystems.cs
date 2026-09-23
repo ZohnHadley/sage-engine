@@ -16,7 +16,7 @@ internal sealed class PhysicsSyncSystem : ISystem
 {
     private readonly PhysicsSpace _space;
     private readonly ArchetypeQuery<Transform, Collider> _pending;
-    private readonly ArchetypeQuery<Transform, PhysicsBody> _bodies;
+    private readonly ArchetypeQuery<Transform, Collider, PhysicsBody> _bodies;
     private readonly List<Entity> _toAdd = new();
 
     public PhysicsSyncSystem(World world, PhysicsSpace space)
@@ -24,7 +24,7 @@ internal sealed class PhysicsSyncSystem : ISystem
         _space = space;
         var withoutBody = ComponentTypes.Get<PhysicsBody>();
         _pending = world.Query<Transform, Collider>().WithoutAllComponents(withoutBody);
-        _bodies = world.Query<Transform, PhysicsBody>();
+        _bodies = world.Query<Transform, Collider, PhysicsBody>();
     }
 
     public void Run(in SystemContext ctx)
@@ -52,15 +52,16 @@ internal sealed class PhysicsSyncSystem : ISystem
         // Kinematic bodies (and anything gameplay moved directly) follow their transform. v1 assumes
         // physics entities are roots, so the local transform is the world one; parented colliders
         // would need GlobalTransform here and a local conversion on write-back.
-        foreach (var (transforms, handles, _) in _bodies.Chunks)
+        foreach (var (transforms, colliders, handles, _) in _bodies.Chunks)
         {
             var t = transforms.Span;
+            var c = colliders.Span;
             var h = handles.Span;
             for (int n = 0; n < t.Length; n++)
             {
                 if (h[n].IsStatic) continue;
                 if (_space.IsDynamic(h[n])) continue;
-                _space.SetPose(h[n], Pose.FromLocal(t[n]));
+                _space.SetPose(h[n], c[n], Pose.FromLocal(t[n]));
             }
         }
     }
@@ -80,26 +81,30 @@ internal sealed class PhysicsStepSystem : ISystem
 internal sealed class PhysicsWriteBackSystem : ISystem
 {
     private readonly PhysicsSpace _space;
-    private readonly ArchetypeQuery<Transform, PhysicsBody> _bodies;
+    private readonly ArchetypeQuery<Transform, Collider, PhysicsBody> _bodies;
 
     public PhysicsWriteBackSystem(World world, PhysicsSpace space)
     {
         _space = space;
-        _bodies = world.Query<Transform, PhysicsBody>();
+        _bodies = world.Query<Transform, Collider, PhysicsBody>();
     }
 
     public void Run(in SystemContext ctx)
     {
-        foreach (var (transforms, handles, _) in _bodies.Chunks)
+        foreach (var (transforms, colliders, handles, _) in _bodies.Chunks)
         {
             var t = transforms.Span;
+            var c = colliders.Span;
             var h = handles.Span;
             for (int n = 0; n < t.Length; n++)
             {
                 if (!_space.IsDynamic(h[n])) continue;
                 var pose = _space.PoseOf(h[n]);
-                t[n].LocalPosition = pose.Position;
                 t[n].LocalRotation = pose.Rotation;
+                // Bepu poses the shape's centre; the transform is the entity's origin (review #44).
+                t[n].LocalPosition = c[n].Center == Vector3.Zero
+                    ? pose.Position
+                    : pose.Position - Vector3.Transform(c[n].Center, pose.Rotation);
             }
         }
 

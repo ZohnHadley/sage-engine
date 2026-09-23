@@ -64,7 +64,7 @@ public sealed class PhysicsSpace : IDisposable
     internal PhysicsBody Add(Entity entity, in Collider collider, in RigidBody body, in Pose pose)
     {
         var shape = ShapeFor(collider, out BodyInertia inertia, body.Mass <= 0 ? 1f : body.Mass);
-        var rigidPose = new RigidPose(pose.Position, pose.Rotation);
+        var rigidPose = new RigidPose(collider.CenterAt(pose), pose.Rotation);
         float friction = body.Friction <= 0 ? 0.7f : body.Friction;
 
         if (body.Kind == BodyKind.Dynamic)
@@ -128,7 +128,13 @@ public sealed class PhysicsSpace : IDisposable
         return new Pose { Position = bodyPose.Position, Rotation = bodyPose.Orientation, Scale = Vector3.One };
     }
 
-    public void SetPose(in PhysicsBody body, in Pose pose)
+    // `pose` is the entity's pose; the collider's Center offsets the shape (review #44).
+    public void SetPose(in PhysicsBody body, in Collider collider, in Pose pose)
+    {
+        SetShapePose(body, new Pose { Position = collider.CenterAt(pose), Rotation = pose.Rotation, Scale = pose.Scale });
+    }
+
+    private void SetShapePose(in PhysicsBody body, in Pose pose)
     {
         if (body.IsStatic)
         {
@@ -201,7 +207,7 @@ public sealed class PhysicsSpace : IDisposable
     public SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default)
     {
         var handler = new SweepHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask };
-        var pose = new RigidPose(from.Position, from.Rotation);
+        var pose = new RigidPose(shape.CenterAt(from), from.Rotation);   // `from` is the entity, not the shape
         var velocity = new BodyVelocity(Vector3.Normalize(direction) * maxDistance);
         switch (shape.Shape)
         {
@@ -392,12 +398,10 @@ public sealed class PhysicsSpace : IDisposable
         }
 
         // Already touching at the start: Bepu has no normal for it, and it happens constantly (a
-        // character rests a skin width above the floor). Note it, but don't let it hide the hits
-        // further along the sweep, and don't cut the sweep short.
-        public void OnHitAtZeroT(ref float maximumT, CollidableReference collidable)
-        {
-            Hit.StartsTouching = true;
-        }
+        // character rests a skin width above the floor). Deliberately ignored — recording it here once
+        // hid the real hits further along the sweep. Getting out of a surface needs a shape-overlap
+        // query and a depenetration pass (10 §4, not built).
+        public void OnHitAtZeroT(ref float maximumT, CollidableReference collidable) { }
     }
 
     private struct OverlapEnumerator : IBreakableForEach<CollidableReference>
