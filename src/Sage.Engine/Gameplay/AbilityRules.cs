@@ -38,6 +38,19 @@ public static class AbilityRules
         return CanCast(world, world.Records(), caster, ability, in abilities, out _, out why);
     }
 
+    // A refusal in words, for anything that shows one to a player: a greyed-out row's tooltip, a HUD
+    // line, a console command. The enum is what code branches on; this is what a person reads, and
+    // having one copy of it means a screen cannot invent its own vocabulary for "no".
+    public static string Explain(CastRefusal why) => why switch
+    {
+        CastRefusal.NotKnown => "you do not know it",
+        CastRefusal.OnCooldown => "not ready yet",
+        CastRefusal.TooExpensive => "not enough to cast it with",
+        CastRefusal.Blocked => "something is stopping you",
+        CastRefusal.AlreadyCasting => "you are already casting",
+        _ => "you cannot cast it",
+    };
+
     // An ability is on cooldown when the caster already has a tag its cooldown effect grants. No
     // second clock, and dispelling the tag makes it ready again (16 §3.3).
     public static bool OnCooldown(World world, RecordStore records, Entity caster, AbilityRecord record)

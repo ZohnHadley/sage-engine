@@ -225,32 +225,23 @@ public sealed class ItemsModule : IModule
             });
         });
 
+        // Prints the inventory *panel* (13 §3): the same rows a screen will draw, so the console and
+        // the screen cannot disagree about what you are carrying, and a `*` is what is in your hands.
         ctx.Engine.CVars.RegisterCommand("inv", CVarFlags.None, "What the local player is carrying and wearing.", _ =>
             GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
-            {
-                if (!world.TryGet<Inventory>(entity, out var inventory) || inventory.Items == null)
-                {
-                    Log.Info(LogCat.Console, $"{World.Describe(entity)} carries nothing at all");
-                    return;
-                }
-                world.TryGet<Equipment>(entity, out var equipment);
-                Log.Info(LogCat.Console, $"{World.Describe(entity)}: {inventory.Items.Count} stacks, " +
-                                         $"{world.WeightOf(entity):F1} kg" +
-                                         (inventory.Capacity > 0 ? $" of {inventory.Capacity:F0} kg" : "") +
-                                         $", holding {(equipment.MainHand.IsEmpty ? "nothing" : equipment.MainHand.Name)}" +
-                                         $"{(equipment.OffHand.IsEmpty ? "" : " and " + equipment.OffHand.Name)}");
-                foreach (var stack in inventory.Items)
-                    Log.Info(LogCat.Console, $"    {stack.Count,3}x {stack.Item}");
-            }));
+                GameplayPanels.Inventory(world, entity).Log(LogCat.Console)));
 
         ctx.Engine.CVars.RegisterCommand("equip", CVarFlags.Cheat, "equip <item>: wield or wear something the local player carries.", a =>
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "equip <item>"); return; }
             var item = ctx.Engine.Records.Resolve("item", a[0]);
+            if (item.IsEmpty) return;   // Resolve has already said there is no such item
+            // Asks before doing (R17), so the refusal says *why* and `Equip` does not log a second
+            // copy of it.
             GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
-                Log.Info(LogCat.Console, world.Equip(entity, item)
+                Log.Info(LogCat.Console, world.CanEquip(entity, item, out string why) && world.Equip(entity, item)
                     ? $"{World.Describe(entity)} equips {item.Name}"
-                    : $"{World.Describe(entity)} cannot equip {item.Name}"));
+                    : $"{World.Describe(entity)} cannot equip {item.Name}: {why}"));
         });
 
         ctx.Engine.CVars.RegisterCommand("unequip", CVarFlags.Cheat, "unequip [main|off]: put away what the local player is holding.", a =>
@@ -327,23 +318,23 @@ public sealed class AbilitiesModule : IModule
             });
         });
 
+        // The spellbook panel, printed (13 §3). A `*` is the readied spell and a greyed row says why it
+        // cannot be cast right now — the same words a screen will show, from the same rules the cast
+        // system applies (R17).
         ctx.Engine.CVars.RegisterCommand("spells", CVarFlags.None, "What the local player can cast, and what is ready.", _ =>
             GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
-            {
-                if (!world.TryGet<Abilities>(entity, out var abilities) || abilities.Known is not { Count: > 0 })
-                {
-                    Log.Info(LogCat.Console, $"{World.Describe(entity)} knows no abilities");
-                    return;
-                }
-                foreach (var id in abilities.Known)
-                {
-                    // No record at all: an ability from content that is gone, or a composed spell
-                    // that was forgotten. Casting it is refused, so the listing says so too.
-                    string cost = !ctx.Engine.Records.TryGet(id, out AbilityRecord record) ? "(no longer exists)"
-                        : record.Cost > 0f ? $"{record.Cost:F0} {record.CostAttribute.Name}" : "free";
-                    Log.Info(LogCat.Console, $"  {id,-28} {cost}");
-                }
-            }));
+                GameplayPanels.Spellbook(world, entity).Log(LogCat.Console)));
+
+        ctx.Engine.CVars.RegisterCommand("ready", CVarFlags.None, "ready <ability>: make it the spell the Cast button fires.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "ready <ability>"); return; }
+            var ability = ctx.Engine.Records.Resolve("ability", a[0]);
+            if (ability.IsEmpty) return;
+            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+                Log.Info(LogCat.Console, world.Ready(entity, ability)
+                    ? $"{World.Describe(entity)} readies {ability.Name}"
+                    : $"{World.Describe(entity)} does not know {ability.Name}"));
+        });
     }
 
     public void OnWorldCreated(World world)

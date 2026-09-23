@@ -316,7 +316,9 @@ public sealed class RecordStore                                   // as built (2
     public IReadOnlyList<T> All<T>() where T : class;
     public IEnumerable<RecordId> Ids(string type);
     public bool Exists(RecordId id);
-    public RecordId Resolve(string type, string text);            // a bare name from a console command
+    public RecordId Resolve(string type, string text);            // a bare name from a console command;
+                                                                  // warns "there is no item called 'x'" and
+                                                                  // returns empty rather than a blank id
     public void Load(VirtualFileSystem vfs);
     public void Reload();                                        // hot reload; keeps existing instances
     public event Action? Reloaded;

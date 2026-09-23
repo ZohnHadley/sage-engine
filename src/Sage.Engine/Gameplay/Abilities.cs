@@ -131,6 +131,15 @@ public static class AbilityExtensions
         if (abilities.Selected.IsEmpty) abilities.Selected = ability;   // the first one learned is readied
     }
 
+    // Readies a spell: what the Cast button fires and what a spellbook screen ticks (Daggerfall's
+    // readied spell). Refuses one it does not know, so a stale screen cannot ready nothing.
+    public static bool Ready(this World world, Entity entity, RecordId ability)
+    {
+        if (!world.Knows(entity, ability)) return false;
+        world.Get<Abilities>(entity).Selected = ability;
+        return true;
+    }
+
     public static bool Knows(this World world, Entity entity, RecordId ability) =>
         world.TryGet<Abilities>(entity, out var abilities) && abilities.Known != null && abilities.Known.Contains(ability);
 

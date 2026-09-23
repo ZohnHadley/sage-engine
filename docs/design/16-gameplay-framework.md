@@ -5,7 +5,10 @@
 > `AbilityPayload` (what a spell does, at a point) and `AbilityRules` (whether a cast is allowed) were
 > both extracted within a day of their second caller appearing. The same shape is still locked inside
 > melee ("may I swing now?"), interaction ("can I pick this up, and why not?") and items ("can I equip
-> this?"), and each one is what a HUD or an AI will need. Separately, `ChooseSchedule` is now a
+> this?"), and each one is what a HUD or an AI will need. **First slice done 2026-09-23:**
+> `Items.CanEquip(world, entity, item, out reason)` came out of `Equip`, and `AbilityRules.Explain`
+> turns a `CastRefusal` into words, both feeding the panel model (13 "As built (the panel model)").
+> Melee and interaction are still to do. Separately, `ChooseSchedule` is now a
 > five-branch if-chain and is one branch from wanting utility scoring (§3.4's "left"). See
 > [`../history/vertical-slice-2026-09-23.md`](../history/vertical-slice-2026-09-23.md).
 

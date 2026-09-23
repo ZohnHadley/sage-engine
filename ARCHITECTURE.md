@@ -190,7 +190,7 @@ When the phase starts: a server-authoritative **snapshot** model (not lockstep o
 | Physics | [10](docs/design/10-physics.md) | BepuPhysics v2 per world; components hold handles; triggers → events; **own kinematic character controller** |
 | Audio | [11](docs/design/11-audio.md) | Event-driven presentation; `sound` records; buses; MonoGame backend behind an interface |
 | Animation | [12](docs/design/12-animation.md) | v1 sprite animation with sim-owned time and frame events ("hit" frames); skeletal glTF later |
-| UI | [13](docs/design/13-ui.md) | ImGui for dev/editor only; game UI library decision D8 |
+| UI | [13](docs/design/13-ui.md) | ImGui for dev/editor only; game UI library decision D8. **A screen’s *contents* are simulation data** (`Panel`/`PanelRow`, F38’s engine half): what to show and whether each row can be used, with the reason taken from the rule that would refuse it — so a screen is testable headlessly and the library choice stays open |
 | World streaming | [14](docs/design/14-world-streaming.md) | 1024 m sectors, origin rebasing, streaming rings (Daggerfall Unity model), separate interior spaces, dormancy |
 | Editor | [15](docs/design/15-editor.md) | Separate host; documents + command log + undo; generated inspector; play-in-editor |
 | Gameplay framework | [16](docs/design/16-gameplay-framework.md) | `GameRules`, Controller/Pawn/`PawnIntent`, GAS-like attributes/effects/abilities, HL1-style AI schedules |

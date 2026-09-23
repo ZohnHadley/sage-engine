@@ -186,17 +186,31 @@ public static class Items
     }
 
     // Wears or wields something already carried. Whatever was in that slot comes off first.
+    // Whether this could be equipped, and why not (R17). Asked by a screen to grey a row out, and by
+    // `Equip` itself to decide — one set of gates, so the two cannot disagree about what is wieldable.
+    public static bool CanEquip(this World world, Entity entity, RecordId item, out string reason)
+    {
+        var records = world.Resources.Get<RecordStore>();
+        if (!records.TryGet(item, out ItemRecord record)) { reason = "there is no such thing"; return false; }
+        if (record.Slot == EquipSlot.None) { reason = "not something you can wear or wield"; return false; }
+        if (!world.Has<Equipment>(entity)) { reason = "nothing to hold it with"; return false; }
+        if (world.CountOf(entity, item) == 0) { reason = "you are not carrying it"; return false; }
+        reason = "";
+        return true;
+    }
+
     public static bool Equip(this World world, Entity entity, RecordId item)
     {
         var records = world.Resources.Get<RecordStore>();
-        if (!records.TryGet(item, out ItemRecord record)) return false;
-        if (record.Slot == EquipSlot.None)
+        if (!world.CanEquip(entity, item, out string reason))
         {
-            Log.Info(LogCat.Gameplay, $"{record.Describe(item)} is not something you can wear or wield");
+            // Said once, here, rather than in each caller: the console, a screen and an AI all get the
+            // same sentence, and only the ones that ask first avoid needing it.
+            Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot equip {item.Name}: {reason}");
             return false;
         }
-        if (world.CountOf(entity, item) == 0 || !world.Has<Equipment>(entity)) return false;
 
+        records.TryGet(item, out ItemRecord record);
         world.Unequip(entity, record.Slot);
         ref var equipment = ref world.Get<Equipment>(entity);
         if (record.Slot == EquipSlot.OffHand) equipment.OffHand = item; else equipment.MainHand = item;

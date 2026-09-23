@@ -505,7 +505,14 @@ public sealed class RecordStore
         RecordId id;
         try { id = RecordId.Parse(text, "sage"); }
         catch (FormatException ex) { Log.Warn(LogCat.Console, ex.Message); return default; }
-        return text.Contains(':') ? id : Ids(type).FirstOrDefault(i => i.Name == id.Name);
+        // Says so here rather than handing back an empty id for the caller to print as a blank:
+        // every console command that resolves a name got "cannot equip : there is no such thing"
+        // otherwise, and the useful half of that sentence is the name the player typed.
+        var found = text.Contains(':')
+            ? (_records.ContainsKey((type, id)) ? id : default)
+            : Ids(type).FirstOrDefault(i => i.Name == id.Name);
+        if (found.IsEmpty) Log.Warn(LogCat.Console, $"there is no {type} called '{text}'");
+        return found;
     }
 
     private static IEnumerable<MemberInfo> SettableMembers(Type type) =>
