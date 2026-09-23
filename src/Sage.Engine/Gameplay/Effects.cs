@@ -191,12 +191,15 @@ public sealed class EffectSystem : ISystem
     private readonly GameplayRegistries _registries;
     private readonly List<Entity> _died = new();   // deaths are reported after the loop: the rules may
                                                    // add or destroy entities, which a query forbids
+    private readonly EventReader<Damaged> _damage; // for "who killed me" (16 §3.2)
+    private readonly List<Damaged> _hits = new();
 
     public EffectSystem(World world, RecordStore records)
     {
         _affected = world.Query<Attributes, ActiveEffects>();
         _records = records;
         _registries = world.Resources.Get<GameplayRegistries>();
+        _damage = world.Events.Reader<Damaged>(this);
     }
 
     public void Run(in SystemContext ctx)
@@ -207,6 +210,13 @@ public sealed class EffectSystem : ISystem
         int deadTag = _registries.Tag(TagRecord.Dead);
 
         _died.Clear();
+
+        // Whatever hurt anything since this system last ran, so a death can name its killer. Combat
+        // runs before this system in the Gameplay phase, so a blow struck this tick is credited this
+        // tick; a blow from an ability in a later phase is credited on the next one, which is the
+        // cursor doing its job rather than an ordering rule in a comment.
+        _hits.Clear();
+        foreach (ref readonly var hit in _damage.Read()) _hits.Add(hit);
         foreach (var (attributeChunk, effectChunk, entities) in _affected.Chunks)
         {
             var a = attributeChunk.Span;
@@ -324,14 +334,19 @@ public sealed class EffectSystem : ISystem
     // Health has run out: tag it dead once and tell the rules (16 §3.1). What death *means* — ragdoll,
     // loot, respawn — is the game's business, so this runs outside the query loop.
     //
-    // The killer comes from the tick's combat events (16 §3.2), so nothing on the damage path has to
-    // carry "who to blame" around; a death from drowning or poison simply has no killer.
-    private static void Die(World world, Entity entity, int deadTag)
+    // The killer comes from the Damaged events this system drained (16 §3.2), so nothing on the
+    // damage path has to carry "who to blame" around; a death from drowning or poison has no killer.
+    private void Die(World world, Entity entity, int deadTag)
     {
         if (!world.IsAlive(entity) || IsDead(world, entity, deadTag)) return;
         if (world.Has<GameplayTags>(entity)) world.Get<GameplayTags>(entity).Add(deadTag);
-        var killer = world.Resources.TryGet<CombatEvents>(out var combat) && combat != null
-            ? combat.LastAttackerOf(entity) : default;
-        world.Resources.Get<GameRules>().OnEntityDied(world, entity, killer);
+        world.Resources.Get<GameRules>().OnEntityDied(world, entity, LastAttackerOf(entity));
+    }
+
+    private Entity LastAttackerOf(Entity victim)
+    {
+        for (int i = _hits.Count - 1; i >= 0; i--)
+            if (_hits[i].Hit.Target == victim && _hits[i].Applied > 0f) return _hits[i].Hit.Attacker;
+        return default;
     }
 }

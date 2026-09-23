@@ -9,7 +9,7 @@ namespace sage_engine;
 // Combat (docs/design/16 §3.2, TODO F20). One pipeline for every hit, whoever threw it:
 //
 //   a swing or a spell  ->  Combat.ApplyDamage  ->  the damage type's resistance attribute
-//                       ->  an effect on the victim's health (16 §3.3)  ->  CombatEvents
+//                       ->  an effect on the victim's health (16 §3.3)  ->  a Damaged event (04)
 //
 // Nothing subtracts health directly. Damage is an *effect* with a magnitude, so resistances, the
 // `god` tag, damage over time and saves all keep working through the single path F18 built, and a
@@ -56,23 +56,14 @@ public sealed class AttackRecord
     public static readonly RecordId Default = new("sage", "default_attack");
 }
 
-// The tick's hits, for anything that reacts to them: the death seam's "who killed me", the Sandbox's
-// log, AI's "heavy damage" interrupt and cues (F21). Proper game events come with the bus (04).
-public sealed class CombatEvents
-{
-    public readonly List<DamageInfo> Damage = new();
-
-    public void Clear() => Damage.Clear();
-
-    // Who last hurt this entity this tick. The death seam uses it so a game's rules know who gets the
-    // credit without every damage path having to remember it.
-    public Entity LastAttackerOf(Entity victim)
-    {
-        for (int i = Damage.Count - 1; i >= 0; i--)
-            if (Damage[i].Target == victim && Damage[i].Applied > 0) return Damage[i].Attacker;
-        return default;
-    }
-}
+// A hit that landed, for anything that reacts to one: the death seam's "who killed me", the game's
+// combat log, AI's "heavy damage" interrupt, cues (F21). `DamageInfo` is what was asked for and this
+// is what happened, which is why `Applied` lives here and not on the request.
+//
+// Sent in whatever phase does the damage and read by anyone with a cursor (04 §3.2), so there is no
+// longer a rule about who must run after whom to see the tick's hits.
+[GameEvent]
+public readonly record struct Damaged(DamageInfo Hit, float Applied);
 
 public static class Combat
 {
@@ -109,7 +100,7 @@ public static class Combat
         if (alsoApply != null)
             foreach (var effect in alsoApply) Effects.Apply(world, hit.Target, effect, hit.Attacker);
 
-        world.Resources.Get<CombatEvents>().Damage.Add(hit with { Applied = applied });
+        world.Events.Send(new Damaged(hit, applied));
         return applied;
     }
 
@@ -149,8 +140,9 @@ public sealed class MeleeCombatSystem : ISystem
     private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController, Melee> _fighters;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
-    private readonly CombatEvents _events;
-    private readonly AnimationEvents _animation;
+    private readonly EventReader<AnimationEvent> _animation;
+    private readonly List<AnimationEvent> _fired = new();   // the previous tick's animation events,
+                                                            // drained once so Lands can ask per entity
     private readonly ActionId _attack;
     private readonly DebugDraw _debug;
     private readonly CVar<bool> _debugSwings;
@@ -164,8 +156,7 @@ public sealed class MeleeCombatSystem : ISystem
         _fighters = world.Query<Transform, PawnIntent, CharacterController, Melee>();
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
-        _events = world.Resources.Get<CombatEvents>();
-        _animation = world.Resources.Get<AnimationEvents>();
+        _animation = world.Events.Reader<AnimationEvent>(this);
         _attack = actions.Get("Attack");
     }
 
@@ -174,11 +165,11 @@ public sealed class MeleeCombatSystem : ISystem
         var world = ctx.World;
         float dt = ctx.Tick.Dt;
 
-        // The tick's hits start empty here. This is the only thing that deals damage inside a tick in
-        // v1, and everything that reads the list (the death seam, the game's log) runs later in the
-        // tick. Anything else that damages (abilities, F21) must run *after* this system, or the clear
-        // moves to its own system at the start of the Commands phase.
-        _events.Clear();
+        // Animation raises its events in a later phase, so what this drains is the previous tick's
+        // (see Lands). The cursor makes that exact: every event once, none missed, whatever else ran.
+        _fired.Clear();
+        foreach (ref readonly var e in _animation.Read()) _fired.Add(e);
+
         _pending.Clear();
 
         foreach (var (transforms, intents, characters, melees, entities) in _fighters.Chunks)
@@ -253,7 +244,15 @@ public sealed class MeleeCombatSystem : ISystem
     // record's windup time. The event is raised in the Animation phase, which runs after this one, so
     // a sprite's hit lands one tick (16 ms) after the frame that shows it — not worth a phase shuffle.
     private bool Lands(World world, Entity entity, AttackRecord attack, float timer) =>
-        _animation.Fired(entity, "hit") || timer >= attack.WindupTime;
+        Fired(entity, "hit") || timer >= attack.WindupTime;
+
+    private bool Fired(Entity entity, string name)
+    {
+        for (int i = 0; i < _fired.Count; i++)
+            if (_fired[i].Entity == entity && string.Equals(_fired[i].Name, name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
 
     // The swing itself: a sphere swept along the attacker's aim (10 §4), first thing it touches that
     // can be hurt. One target per swing in v1; cleaving through several is a later flag.

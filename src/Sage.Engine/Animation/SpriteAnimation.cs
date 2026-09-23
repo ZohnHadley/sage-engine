@@ -20,25 +20,8 @@ public struct SpriteAnimator : IComponent
 
 // A named moment in a clip (12 §3): "the blow lands here", "a foot hits the ground here". Gameplay
 // reacts to the name, so the timing of a swing lives with the art instead of being guessed at in code.
+[GameEvent]
 public readonly record struct AnimationEvent(Entity Entity, string Name);
-
-// The tick's animation events. Cleared and refilled by SpriteAnimationSystem, read by gameplay —
-// which runs *earlier* in the tick, so a reader sees the previous tick's events (one tick, 16 ms).
-// They become proper game events with the bus (04).
-public sealed class AnimationEvents
-{
-    public readonly List<AnimationEvent> Events = new();
-
-    public void Clear() => Events.Clear();
-
-    public bool Fired(Entity entity, string name)
-    {
-        for (int i = 0; i < Events.Count; i++)
-            if (Events[i].Entity == entity && string.Equals(Events[i].Name, name, StringComparison.OrdinalIgnoreCase))
-                return true;
-        return false;
-    }
-}
 
 // Animation phase (Fixed): advances every playing clip and raises the events its frames carry.
 public sealed class SpriteAnimationSystem : ISystem
@@ -47,19 +30,18 @@ public sealed class SpriteAnimationSystem : ISystem
 
     private readonly ArchetypeQuery<SpriteAnimator, SpriteRenderer> _animators;
     private readonly RecordStore _records;
-    private readonly AnimationEvents _events;
+    private readonly GameEvents _events;
 
     public SpriteAnimationSystem(World world, RecordStore records)
     {
         _animators = world.Query<SpriteAnimator, SpriteRenderer>();
         _records = records;
-        _events = world.Resources.Get<AnimationEvents>();
+        _events = world.Events;
     }
 
     public void Run(in SystemContext ctx)
     {
         float dt = ctx.Tick.Dt;
-        _events.Clear();
 
         foreach (var (animators, renderers, entities) in _animators.Chunks)
         {
@@ -97,7 +79,7 @@ public sealed class SpriteAnimationSystem : ISystem
             if (index >= frames) return;      // a non-looping clip has finished: it holds its last frame
             foreach (var e in clip.Events)
                 if (e.Frame == index && !string.IsNullOrEmpty(e.Name))
-                    _events.Events.Add(new AnimationEvent(entity, e.Name));
+                    _events.Send(new AnimationEvent(entity, e.Name));
         }
     }
 }

@@ -10,12 +10,36 @@ How parts of the engine and game tell each other that something happened, withou
 - Global buses as the main coupling hurt debuggability (O3DE EBus): survey §2.6.
 - Unreal's event-driven, mostly idle scripts: survey §1.4.
 
-> **Not built, and the cost is now visible (engine review 2026-09-23, item 1 → R13).** Four features
-> have each invented their own queue instead: `CombatEvents`, `InteractionEvents`, `AnimationEvents`
-> and `MessageLog`. They differ in exactly the way this doc's cursors exist to
-> normalise — one is cleared at the start of the Gameplay phase, one is refilled in Animation and read
-> a tick later, one ages per frame — and each rule lives in a comment rather than in a type. Build the
-> bus before abilities (F21) adds a fifth.
+### As built (game events, 2026-09-23 — R13)
+
+- **Code:** `src/Sage.Engine/ECS/Events/GameEvents.cs` — `GameEvents` (the world's bus, `world.Events`),
+  `EventQueue<T>`, `EventReader<T>` with its cursor, `EventIterator<T>`, and the `[GameEvent]` marker.
+  Tests in `tests/Sage.Tests/World/GameEventTests.cs`; `EventProbe<T>` is the test-side reader.
+- **What it replaced.** Four features had each grown their own queue with its own `Clear()` and its
+  own lifetime rule in a comment (engine review 2026-09-23, item 1). Migrating them turned up that
+  only two were really queues:
+
+  | Was | Is now | Why |
+  |---|---|---|
+  | `CombatEvents.Damage` | `Damaged` event | A fact. `DamageInfo` is what was asked for, `Damaged` is what happened, so `Applied` moved to the event |
+  | `AnimationEvents` | `AnimationEvent` event | A fact. Raised in Animation, read in Gameplay, so a reader still sees it one tick later — now by cursor rather than by comment |
+  | `InteractionEvents.Interactions` | `Used` event | A fact nothing in the engine read; games and entity I/O (§3.4) will |
+  | `InteractionEvents.Hovered` | `InteractionState` resource | **Not an event.** "What is in reach right now" is state: a HUD drawn a frame later must get an answer, not a change |
+  | `MessageLog` | `Said` event + `MessageLog` as its reader | The simulation sends; the log is the presentation buffer that reads with a cursor and ages in display time (§3.1) |
+
+- **Ordering rules became cursors.** Combat's "anything else that damages must run *after* this
+  system, or the clear moves elsewhere" is gone: `EffectSystem` and the game's combat log each hold
+  their own reader, so a hit from an ability in a later phase is simply credited on the next pass.
+- **Retention.** An event lives until every registered reader has passed it, then goes. A queue with
+  no readers drops at once, so a headless server sending messages nobody draws does not grow.
+  `ev_maxage` (default 8 ticks) is the backstop and names the reader that is behind.
+- **Pruning is end-of-schedule, never mid-phase.** Readers hold sequence numbers; moving a queue
+  under a system that hasn't run yet this tick would skip events for it.
+- **A reader must keep up.** `MessageLog` drains at the end of every tick as well as every frame,
+  because a dedicated server never draws and would otherwise be reported as the laggard.
+- **Not done here:** `Added<T>`/`Removed<T>` structural events (§3.3), entity I/O (§3.4), `ISystem`
+  access declarations. A reader is asked for in a system's constructor (`world.Events.Reader<T>(this)`)
+  rather than declared, until `SystemAccess` exists (03 §3.5, R16).
 
 ## 3. Concepts
 
@@ -155,10 +179,12 @@ I/O connections are part of map/prefab entity data (09):
 - An exception in an I/O input handler is caught per dispatch and logged with the connection; the remaining dispatches continue. In dev with a debugger attached, it breaks.
 
 ## 9. Debug and tooling hooks
-- **Cvars:** `ev_maxage`, `io_trace` (log every I/O dispatch at `Info`), `ev_trace <EventType|*>` (DevOnly; logs sends at `Trace`).
+- **Cvars:** `ev_maxage` and `ev_trace <EventType|*>` (DevOnly; logs sends at `Trace`) are **built**;
+  `io_trace` (log every I/O dispatch at `Info`) comes with entity I/O.
 - **Commands:**
-  - `ent_fire <name> <input> [param]` (fire an input from the console, like Source's `ent_fire`);
-  - `ev_stats` (queue sizes, readers, oldest event age).
+  - `ev_stats` (queue sizes, readers, oldest event age) is **built**, in `WorldCommands`;
+  - `ent_fire <name> <input> [param]` (fire an input from the console, like Source's `ent_fire`)
+    comes with entity I/O.
 - **Editor:** I/O links drawn between entities (red = unresolved). Per-entity "recent I/O" in the inspector.
 - **Log category:** `Events`.
 

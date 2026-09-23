@@ -399,28 +399,32 @@ public sealed class AutoAttackSystem : ISystem
 
 // Late phase: reports every hit the tick landed, whoever threw it (16 §3.2). A real game would
 // play a sound and flash the screen here (cues, F21); the slice prints a line.
+//
+// It reads the same Damaged events the death seam does, with its own cursor (04 §3.2): two readers
+// of one queue, neither aware of the other, and no rule about which phase has to run first.
 public sealed class CombatLogSystem : ISystem
 {
-    private readonly CombatEvents _events;
+    private readonly EventReader<Damaged> _damage;
 
     public CombatLogSystem(World world)
     {
-        _events = world.Resources.Get<CombatEvents>();
+        _damage = world.Events.Reader<Damaged>(this);
     }
 
     public void Run(in SystemContext ctx)
     {
         var world = ctx.World;
-        foreach (var hit in _events.Damage)
+        foreach (ref readonly var ev in _damage.Read())
         {
+            var hit = ev.Hit;
             Log.Info(LogCat.Gameplay, $"{World.Describe(hit.Attacker)} hits {World.Describe(hit.Target)} " +
-                                      $"for {hit.Applied:F0} ({hit.Amount:F0} before armour): " +
+                                      $"for {ev.Applied:F0} ({hit.Amount:F0} before armour): " +
                                       $"health {world.Attribute(hit.Target, AttributeRecord.Health):F0}");
 
             // And on screen, from the player's point of view: what hit me, or what I hit (13 §3).
             bool mine = IsPlayer(world, hit.Attacker);
-            if (mine) world.Say($"You hit {Name(world, hit.Target)} for {hit.Applied:F0}", MessageKind.Good, 3f);
-            else if (IsPlayer(world, hit.Target)) world.Say($"{Name(world, hit.Attacker)} hits you for {hit.Applied:F0}", MessageKind.Bad, 3f);
+            if (mine) world.Say($"You hit {Name(world, hit.Target)} for {ev.Applied:F0}", MessageKind.Good, 3f);
+            else if (IsPlayer(world, hit.Target)) world.Say($"{Name(world, hit.Attacker)} hits you for {ev.Applied:F0}", MessageKind.Bad, 3f);
         }
     }
 

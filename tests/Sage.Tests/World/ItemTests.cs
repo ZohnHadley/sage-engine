@@ -125,7 +125,7 @@ public class ItemTests
             var attacker = Carrier(world, Vector3.Zero, "attacker", new Vector3(0, 0, -2));
             var target = Carrier(world, new Vector3(0, 0, -1.5f), "target", Vector3.Zero);
             var attack = engine.Actions.Get("Attack");
-            var events = world.Resources.Get<CombatEvents>();
+            var damage = new EventProbe<Damaged>(world);
 
             float Swing()
             {
@@ -134,7 +134,7 @@ public class ItemTests
                 for (int i = 0; i < 40; i++)
                 {
                     world.RunFixed(1f / 60f);
-                    foreach (var hit in events.Damage) if (hit.Target == target) dealt += hit.Applied;
+                    foreach (var ev in damage.Since()) if (ev.Hit.Target == target) dealt += ev.Applied;
                     world.Get<PawnIntent>(attacker).Pressed = default;
                 }
                 return dealt;
@@ -205,16 +205,17 @@ public class ItemTests
             var player = Carrier(world, Vector3.Zero, "player", new Vector3(0, 0, -2));
             player.AddTag<PlayerControlled>();
             var sword = world.SpawnPickup(Sword, 1, new Vector3(0, 0, -1.4f));
-            var events = world.Resources.Get<InteractionEvents>();
+            var state = world.Resources.Get<InteractionState>();
+            var used = new EventProbe<Used>(world);
             Tick(world, 2);
 
-            Assert.Equal(sword, events.Hovered);              // without pressing anything
-            Assert.Empty(events.Interactions);
+            Assert.Equal(sword, state.Hovered);               // without pressing anything
+            Assert.Empty(used.All);
             Assert.Equal(0, world.CountOf(player, Sword));    // and without taking it
 
             world.Destroy(sword);
             Tick(world, 2);
-            Assert.True(events.Hovered.IsNull);
+            Assert.True(state.Hovered.IsNull);
         }
     }
 

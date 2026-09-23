@@ -69,22 +69,19 @@ public struct Pickup : IComponent
 // tag raises an interaction its game can react to (a door, a lever, a corpse).
 public struct Interactable : ITag { }
 
-// What the Use action reached this tick. Entity I/O and proper game events replace it with 04.
-public readonly record struct Interaction(Entity User, Entity Target);
+// Somebody used something: the fact, for whatever a game wants to do with it (a door, a lever, a
+// quest trigger). The engine itself only knows how to pick things up. Entity I/O (04 §3.4) will give
+// designers the wiring; this is the code path.
+[GameEvent]
+public readonly record struct Used(Entity User, Entity Target);
 
-public sealed class InteractionEvents
+// What the local player is within reach of right now, whether or not they pressed anything. This is
+// *state*, not an event, which is why it is a resource and not on the bus: a HUD drawn a frame later
+// asks "what is in reach" and must get an answer, not "what changed since you last looked" (04 §3.1).
+// It costs one ray per tick.
+public sealed class InteractionState
 {
-    public readonly List<Interaction> Interactions = new();
-
-    // What the local player is within reach of right now, whether or not they pressed anything. A HUD
-    // needs this to offer the press at all ("E  Pick up a sword"), and it costs one ray per tick.
     public Entity Hovered;
-
-    public void Clear()
-    {
-        Interactions.Clear();
-        Hovered = default;
-    }
 }
 
 public static class Items
@@ -301,10 +298,10 @@ public sealed class InteractionSystem : ISystem
     private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController> _users;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
-    private readonly InteractionEvents _events;
+    private readonly InteractionState _state;
     private readonly ActionId _use;
     private readonly CVar<float> _range;
-    private readonly List<Interaction> _pending = new();   // acted on after the loop: taking an item
+    private readonly List<Used> _pending = new();          // acted on after the loop: taking an item
                                                            // destroys an entity, which a query forbids
     private readonly Entity[] _nearby = new Entity[32];    // reused: the tick budget allows no garbage
 
@@ -313,7 +310,7 @@ public sealed class InteractionSystem : ISystem
         _users = world.Query<Transform, PawnIntent, CharacterController>();
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
-        _events = world.Resources.Get<InteractionEvents>();
+        _state = world.Resources.Get<InteractionState>();
         _use = actions.Get("Use");
         _range = range;
     }
@@ -321,7 +318,7 @@ public sealed class InteractionSystem : ISystem
     public void Run(in SystemContext ctx)
     {
         var world = ctx.World;
-        _events.Clear();
+        _state.Hovered = default;      // recomputed below; nothing in reach until something is
         _pending.Clear();
 
         foreach (var (transforms, intents, characters, entities) in _users.Chunks)
@@ -337,15 +334,15 @@ public sealed class InteractionSystem : ISystem
                 if (!pressed && !isPlayer) continue;      // creatures only look when they act
 
                 var target = Reach(world, in t[n], in i[n], in c[n]);
-                if (isPlayer) _events.Hovered = target;   // for the prompt, pressed or not
-                if (pressed && !target.IsNull) _pending.Add(new Interaction(entity, target));
+                if (isPlayer) _state.Hovered = target;    // for the prompt, pressed or not
+                if (pressed && !target.IsNull) _pending.Add(new Used(entity, target));
             }
         }
 
         foreach (var interaction in _pending)
         {
             if (!world.IsAlive(interaction.User) || !world.IsAlive(interaction.Target)) continue;
-            _events.Interactions.Add(interaction);
+            world.Events.Send(interaction);
 
             // The one interaction the engine knows about: picking something up.
             if (!world.TryGet<Pickup>(interaction.Target, out var pickup)) continue;

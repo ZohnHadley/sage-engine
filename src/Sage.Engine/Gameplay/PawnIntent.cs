@@ -209,9 +209,7 @@ public sealed class GameplayModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        world.Resources.Set(new CombatEvents());
-        world.Resources.Set(new AnimationEvents());
-        world.Resources.Set(new InteractionEvents());
+        world.Resources.Set(new InteractionState());
         world.Resources.Set(Registries);
         world.Resources.Set(_records!);      // effects look up their records through the world
         Registries.Rebuild(_records!);

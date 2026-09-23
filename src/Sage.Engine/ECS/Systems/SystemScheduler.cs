@@ -31,8 +31,9 @@ public sealed class SystemInfo
 }
 
 // Systems per phase, in a deterministic order: `before`/`after` constraints first, registration
-// order otherwise (docs/design/03 §3.5). Access declarations (reads/writes) come with the event bus
-// and the parallel scheduler; v1 runs systems sequentially.
+// order otherwise (docs/design/03 §3.5). Access declarations (reads/writes) come with the parallel
+// scheduler and phase contracts (R16); v1 runs systems sequentially. The event bus (04) landed
+// without them: a system asks for its readers in its constructor rather than declaring them.
 internal sealed class SystemScheduler
 {
     private readonly List<SystemInfo>[] _phases = Enumerable.Range(0, PhaseInfo.Count).Select(_ => new List<SystemInfo>()).ToArray();

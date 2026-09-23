@@ -147,10 +147,11 @@ public class CombatTests
             var victim = Fighter(world, Vector3.Zero, "victim", Vector3.UnitZ, armed: false);
             world.AddTag(victim, Invulnerable);
             float before = world.Attribute(victim, Health);
+            var damage = new EventProbe<Damaged>(world);
 
             Assert.Equal(0f, Combat.ApplyDamage(world, Hit(victim, 35f)));
             Assert.Equal(before, world.Attribute(victim, Health));
-            Assert.Empty(world.Resources.Get<CombatEvents>().Damage);   // nothing happened, so nothing to react to
+            Assert.Empty(damage.All);   // nothing happened, so nothing to react to
         }
     }
 
@@ -185,15 +186,16 @@ public class CombatTests
             var attacker = Fighter(world, Vector3.Zero, "attacker", new Vector3(0, 0, -2));
             var target = Fighter(world, new Vector3(0, 0, -1.5f), "target", Vector3.Zero, armed: false);
             var attack = engine.Actions.Get("Attack");
-            var events = world.Resources.Get<CombatEvents>();
+            var damage = new EventProbe<Damaged>(world);
 
-            int hits = 0;
             for (int i = 0; i < 120; i++)          // two seconds of holding the button down
             {
                 Press(world, attacker, attack);
                 world.RunFixed(1f / 60f);
-                foreach (var hit in events.Damage) if (hit.Target == target) hits++;
             }
+
+            int hits = 0;
+            foreach (var ev in damage.All) if (ev.Hit.Target == target) hits++;
 
             // windup 0.2 + recover 0.1 + cooldown 0.5 = a swing every 0.8 s.
             Assert.InRange(hits, 2, 3);
@@ -233,13 +235,14 @@ public class CombatTests
             var wall = world.Create(Transform.At(new Vector3(0, 1, -1.5f)), "wall");
             world.Add(wall, Collider.Box(new Vector3(4, 2, 0.4f)));
             var attack = engine.Actions.Get("Attack");
+            var damage = new EventProbe<Damaged>(world);
 
             Press(world, attacker, attack);
             Tick(world, 1);
             Release(world, attacker);
             Tick(world, 20);
 
-            Assert.Empty(world.Resources.Get<CombatEvents>().Damage);
+            Assert.Empty(damage.All);
         }
     }
 

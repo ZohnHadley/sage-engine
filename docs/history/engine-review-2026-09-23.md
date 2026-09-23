@@ -47,6 +47,14 @@ moves elsewhere"* — a constraint the compiler cannot see and a test will not c
 the fix (typed events per schedule, per-reader cursors) and it is unbuilt, so every new feature
 invents another queue. Abilities, cues and quests are all queue-shaped.
 
+**Resolved 2026-09-23 (R13).** `GameEvents` with per-reader cursors; all four retired. Building it
+corrected this item in one way worth recording: **two of the four were not event queues at all.**
+`InteractionEvents.Hovered` ("what is in reach right now") is state a HUD must be able to *ask*, not
+a change to be read once, and `MessageLog` is a display buffer aged in display time. They became an
+`InteractionState` resource and a `Said` event the log reads. The lesson generalises — "several
+features grew their own container" is not the same as "several features grew their own queue", and
+the fix for the first is not always the bus. Only `CombatEvents` and `AnimationEvents` were queues.
+
 **Worse than it looks:** the lifetimes genuinely differ (`AnimationEvents` is refilled in the
 Animation phase and read a tick later by combat; `CombatEvents` is cleared at the start of Gameplay;
 `MessageLog` ages per frame). That variety is exactly what a bus with cursors exists to normalise.

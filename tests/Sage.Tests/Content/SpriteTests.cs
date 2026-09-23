@@ -225,7 +225,6 @@ public class SpriteAnimationSystemTests
         records.Load(fx.Vfs);
 
         var world = new World("anim");
-        world.Resources.Set(new AnimationEvents());
         world.AddSystem(new SpriteAnimationSystem(world, records), Phase.Animation);
         return (world, records);
     }
@@ -265,13 +264,13 @@ public class SpriteAnimationSystemTests
         {
             int swing = records.Get<SpriteSheetRecord>(new RecordId("sage", "goblin")).ClipIndex("swing");
             var fighter = Sprite(world, swing);
-            var events = world.Resources.Get<AnimationEvents>();
+            var anim = new EventProbe<AnimationEvent>(world);
 
             int hits = 0;
             for (int i = 0; i < 40; i++)      // 0.4 s: well past the end of a two-frame clip at 10 fps
             {
                 world.RunFixed(1f / 60f);
-                if (events.Fired(fighter, "hit")) hits++;
+                foreach (var e in anim.Since()) if (e.Entity == fighter && e.Name == "hit") hits++;
             }
 
             Assert.Equal(1, hits);            // once, on frame 1, and never again: the clip doesn't loop
@@ -286,17 +285,21 @@ public class SpriteAnimationSystemTests
         {
             int idle = records.Get<SpriteSheetRecord>(new RecordId("sage", "goblin")).ClipIndex("idle");
             var walker = Sprite(world, idle);
-            var events = world.Resources.Get<AnimationEvents>();
+            var anim = new EventProbe<AnimationEvent>(world);
 
-            int steps = 0;
+            int steps = 0, wrong = 0;
             for (int i = 0; i < 60; i++)      // 1 s of a 0.2 s loop
             {
                 world.RunFixed(1f / 60f);
-                if (events.Fired(walker, "step")) steps++;
+                foreach (var e in anim.Since())
+                {
+                    if (e.Entity == walker && e.Name == "step") steps++;
+                    if (e.Entity == walker && e.Name == "hit") wrong++;
+                }
             }
 
             Assert.Equal(5, steps);
-            Assert.False(events.Fired(walker, "hit"), "a clip only raises its own events");
+            Assert.Equal(0, wrong);          // a clip only raises its own events
         }
     }
 }

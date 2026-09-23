@@ -243,15 +243,14 @@ public class AITests
         var world = NewWorld(engine);
         var creature = Creature(world, new Vector3(0, 0.1f, 0));
         var player = Player(world, new Vector3(0, 0.1f, -1.2f));
-        var events = world.Resources.Get<CombatEvents>();
+        var damage = new EventProbe<Damaged>(world);
+
+        for (int i = 0; i < 180; i++)   // three seconds
+            world.RunFixed(1f / 60f);
 
         int attacks = 0;
-        for (int i = 0; i < 180; i++)   // three seconds
-        {
-            world.RunFixed(1f / 60f);
-            foreach (var hit in events.Damage)
-                if (hit.Attacker == creature && hit.Target == player) attacks++;
-        }
+        foreach (var ev in damage.All)
+            if (ev.Hit.Attacker == creature && ev.Hit.Target == player) attacks++;
 
         Assert.Equal(AIThinkSystem.Schedules.Attack, world.Get<AIState>(creature).Schedule);
         Assert.InRange(attacks, 2, 4);   // once per ~1 s cooldown, not every tick

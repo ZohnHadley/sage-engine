@@ -17,7 +17,7 @@ public sealed class SandboxHud : ISystem
     private readonly UiDraw _ui;
     private readonly MessageLog _messages;
     private readonly RecordStore _records;
-    private readonly InteractionEvents _interactions;
+    private readonly InteractionState _interactions;
     private readonly ContentService _content;
     private readonly ActiveCamera _camera;
 
@@ -36,7 +36,7 @@ public sealed class SandboxHud : ISystem
         _ui = world.Resources.Get<UiDraw>();
         _messages = world.Messages();
         _records = records;
-        _interactions = world.Resources.Get<InteractionEvents>();
+        _interactions = world.Resources.Get<InteractionState>();
     }
 
     public void Run(in SystemContext ctx)

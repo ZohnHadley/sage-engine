@@ -18,6 +18,8 @@ public sealed class CoreCVars
     public CVar<LogLevel> LogConsoleLevel { get; }
     public CVar<int> LogQueueSize { get; }
     public CVar<int> MemWarnBytes { get; }
+    public CVar<int> EventMaxAge { get; }
+    public CVar<string> EventTrace { get; }
 
     // True when the console may be opened: always in dev builds, via con_enable in Shipping.
     public bool ConsoleAvailable => BuildInfo.IsDevBuild || ConsoleEnabled.Value;
@@ -40,6 +42,10 @@ public sealed class CoreCVars
             "Log queue capacity; beyond it Trace/Debug entries are dropped (and counted).", 256, 1 << 20);
         MemWarnBytes = r.Register("mem_warn_bytes", 0, CVarFlags.DevOnly,
             "Warn when steady-state frames allocate more than this many bytes (0 = off). See `stat mem`.", 0, int.MaxValue);
+        EventMaxAge = r.Register("ev_maxage", 8, CVarFlags.None,
+            "Ticks a game event may go unread before it is dropped and the lagging reader named (-1 = never).", -1, 1 << 16);
+        EventTrace = r.Register("ev_trace", "", CVarFlags.DevOnly,
+            "Log every send of this game event type, or * for all. Empty = off. See `ev_stats`.");
 
         Developer.Changed += _ => ApplyDeveloperDefaults();
         LogKeep.Changed += _ => Log.File?.Prune(LogKeep.Value);

@@ -30,6 +30,7 @@ public sealed class World : IDisposable
     private readonly SystemScheduler _scheduler = new();
     private readonly TransformPropagation _propagation;
     private CommandBuffer? _commands;
+    private readonly GameEvents _events;
     private readonly DebugDraw _debugDraw;
     private readonly MessageLog _messages;
     private TickTime _lastTick;
@@ -61,9 +62,12 @@ public sealed class World : IDisposable
         Resources.Set(new RenderEnvironment());
         Resources.Set(new Terrain());
         Resources.Set(new PlayerInput());
+        _events = new GameEvents();          // the one place gameplay facts cross systems (04 §3.2)
+        if (engine != null) _events.UseCVars(engine.Core.EventMaxAge, engine.Core.EventTrace);
+        Resources.Set(_events);
         _debugDraw = new DebugDraw();        // always there, so `world.Debug()` needs no null check (06 §3.2)
         Resources.Set(_debugDraw);
-        _messages = new MessageLog();        // and `world.Say(...)` works with or without a HUD (13 §3)
+        _messages = new MessageLog(_events); // and `world.Say(...)` works with or without a HUD (13 §3)
         Resources.Set(_messages);
     }
 
@@ -230,6 +234,9 @@ public sealed class World : IDisposable
 
     public IEnumerable<SystemInfo> Systems => _scheduler.All;
 
+    // Gameplay facts between systems (04 §3.2). Get a reader once, in a constructor, and keep it.
+    public GameEvents Events => _events;
+
     // One simulation tick: copy poses for interpolation, then every Fixed phase in order, applying
     // buffered structural changes after each and propagating transforms after PostPhysics and Late.
     public void RunFixed(float dt)
@@ -237,6 +244,7 @@ public sealed class World : IDisposable
         _lastTick = new TickTime(_lastTick.Tick + 1, dt, _lastTick.SimTime + dt);
         Log.SetTick(_lastTick.Tick);
         _propagation.BeginTick();
+        _events.NowTick = _lastTick.Tick;
         _debugDraw.BeginTick();                   // momentary debug shapes are this tick's (06 §3.2)
 
         var frame = new FrameTime(_frame, 0, 1, 0);
@@ -249,6 +257,13 @@ public sealed class World : IDisposable
                 _propagation.Propagate();
             }
         }
+
+        _messages.Take();   // the log keeps up with the ticks; frames only age it (13 §3)
+
+        // Once every Fixed system has had its turn: drop what every reader has passed (04 §3.2).
+        // Never mid-phase — readers hold sequence numbers, and moving the queue under one would skip
+        // events for a system that hasn't run yet this tick.
+        _events.EndOfSchedule(Schedule.Fixed, _lastTick.Tick);
     }
 
     // One rendered frame: FrameUpdate, Extract, Render, Overlay. `alpha` interpolates between the
@@ -259,6 +274,8 @@ public sealed class World : IDisposable
         _messages.Advance(dt);               // messages age in display time, not ticks (13 §3)
         for (var phase = PhaseInfo.FirstFrame; phase <= Phase.Overlay; phase++)
             RunPhase(phase, _lastTick, frame);
+
+        _events.EndOfSchedule(Schedule.Frame, _lastTick.Tick);
     }
 
     private void RunPhase(Phase phase, in TickTime tick, in FrameTime frame)

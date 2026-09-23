@@ -41,6 +41,27 @@ public static class WorldCommands
             }
         });
 
+        // What the bus is holding and who is behind (04 §9). The answer to "why is this queue growing"
+        // is always a reader whose phase stopped running.
+        cvars.RegisterCommand("ev_stats", CVarFlags.None, "Game event queues: size, readers and how long the oldest has waited.", _ =>
+        {
+            foreach (var world in engine.Worlds)
+            {
+                long tick = world.Tick;
+                int shown = 0;
+                foreach (var (name, schedule, count, readers, oldest) in world.Events.Stats())
+                {
+                    if (count == 0 && readers == 0) continue;
+                    string age = count == 0 ? "-" : $"{tick - oldest} ticks";
+                    Log.Info(LogCat.Console, $"  {name} ({schedule}): {count} queued, {readers} reader(s), oldest {age}");
+                    shown++;
+                }
+                Log.Info(LogCat.Console, shown == 0
+                    ? $"{world.Name}: no game events in use"
+                    : $"{world.Name}: {shown} event type(s), ev_maxage {world.Events.MaxAge}");
+            }
+        });
+
         cvars.RegisterCommand("sys_toggle", CVarFlags.DevOnly, "sys_toggle <name>: enable/disable a system in every world.", a =>
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "sys_toggle <name>"); return; }
