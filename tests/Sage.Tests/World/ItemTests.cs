@@ -194,6 +194,30 @@ public class ItemTests
         }
     }
 
+    // A HUD can only offer "press E" if something says what is in reach, so the system publishes that
+    // every tick for the player, pressed or not (13 §3).
+    [Fact]
+    public void WhatThePlayerIsLookingAtIsPublishedForTheHud()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var player = Carrier(world, Vector3.Zero, "player", new Vector3(0, 0, -2));
+            player.AddTag<PlayerControlled>();
+            var sword = world.SpawnPickup(Sword, 1, new Vector3(0, 0, -1.4f));
+            var events = world.Resources.Get<InteractionEvents>();
+            Tick(world, 2);
+
+            Assert.Equal(sword, events.Hovered);              // without pressing anything
+            Assert.Empty(events.Interactions);
+            Assert.Equal(0, world.CountOf(player, Sword));    // and without taking it
+
+            world.Destroy(sword);
+            Tick(world, 2);
+            Assert.True(events.Hovered.IsNull);
+        }
+    }
+
     [Fact]
     public void WhatIsOutOfReachStaysOnTheGround()
     {

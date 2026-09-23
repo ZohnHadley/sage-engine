@@ -31,6 +31,7 @@ public sealed class World : IDisposable
     private readonly TransformPropagation _propagation;
     private CommandBuffer? _commands;
     private readonly DebugDraw _debugDraw;
+    private readonly MessageLog _messages;
     private TickTime _lastTick;
     private long _frame;
 
@@ -62,6 +63,8 @@ public sealed class World : IDisposable
         Resources.Set(new PlayerInput());
         _debugDraw = new DebugDraw();        // always there, so `world.Debug()` needs no null check (06 §3.2)
         Resources.Set(_debugDraw);
+        _messages = new MessageLog();        // and `world.Say(...)` works with or without a HUD (13 §3)
+        Resources.Set(_messages);
     }
 
     // The underlying store, for engine code (editor listing, serializers). Game code uses the API below.
@@ -253,6 +256,7 @@ public sealed class World : IDisposable
     public void RunFrame(float dt, float alpha, double realTime = 0)
     {
         var frame = new FrameTime(++_frame, dt, alpha, realTime);
+        _messages.Advance(dt);               // messages age in display time, not ticks (13 §3)
         for (var phase = PhaseInfo.FirstFrame; phase <= Phase.Overlay; phase++)
             RunPhase(phase, _lastTick, frame);
     }

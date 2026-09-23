@@ -19,9 +19,12 @@ public sealed class ClientHost
 public sealed class ClientModule : IModule
 {
     private ContentService? _content;
+    private ClientHost? _host;
+    private UiResources? _ui;
     private Renderer? _renderer;
     private RecordStore? _records;
     private CVar<bool>? _debugDraw;
+    private CVar<bool>? _crosshair;
 
     public void Init(ModuleContext ctx)
     {
@@ -40,12 +43,15 @@ public sealed class ClientModule : IModule
 
     public void Start(ModuleContext ctx)
     {
-        var host = ctx.Get<ClientHost>();
+        var host = _host = ctx.Get<ClientHost>();
         _records = ctx.Engine.Records;
         _debugDraw = ctx.Engine.CVars.Register("r_debugdraw", false, CVarFlags.DevOnly,
             "Draw debug geometry from the simulation: sweeps, sight cones, colliders (06 §3.2).");
+        _crosshair = ctx.Engine.CVars.Register("ui_crosshair", true, CVarFlags.Archive,
+            "Draw the crosshair while a camera rig has the view (13 §3).");
         _content = new ContentService(host, ctx.Engine.Vfs);
         _renderer = new Renderer(host, _content, ctx.Engine);
+        _ui = new UiResources(host.GraphicsDevice);
         ctx.Provide(_content);
         ctx.Provide(_renderer);
     }
@@ -53,6 +59,7 @@ public sealed class ClientModule : IModule
     public void OnWorldCreated(World world)
     {
         world.Resources.Set(new RenderSnapshot());
+        world.Resources.Set(new UiDraw());       // screen-space drawing for the game's HUD (13 §3)
         // Sprite animation is simulation, not rendering (12 §3), so GameplayModule installs it: a
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
@@ -63,10 +70,12 @@ public sealed class ClientModule : IModule
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
         world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
+        world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
     }
 
     public void Shutdown()
     {
+        _ui?.Dispose();
         _renderer?.Dispose();
         _content?.Dispose();
     }

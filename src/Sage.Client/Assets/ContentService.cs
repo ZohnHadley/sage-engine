@@ -23,12 +23,28 @@ public sealed class ContentService : IDisposable
     private readonly Dictionary<AssetPath, Effect?> _effects = new();
     private readonly Dictionary<AssetPath, Texture2D?> _textures = new();
     private readonly Dictionary<AssetPath, Model?> _models = new();
+    private readonly Dictionary<AssetPath, SpriteFont?> _fonts = new();
 
     internal ContentService(ClientHost host, VirtualFileSystem vfs)
     {
         _device = host.GraphicsDevice;
         _vfs = vfs;
         _content = new VfsContentManager(host.Game.Services, vfs);
+    }
+
+    // A SpriteFont built by MGCB (13 §3), by path without the extension, like a model.
+    public SpriteFont? LoadFont(AssetPath path)
+    {
+        if (_fonts.TryGetValue(path, out var font)) return font;
+        try { font = _content.Load<SpriteFont>(path.ToString()); }
+        catch (Exception ex) when (ex is ContentLoadException or System.IO.FileNotFoundException)
+        {
+            Log.Warn(LogCat.Assets, $"Font '{path}': {ex.Message}");
+            font = null;
+        }
+        if (font != null) Log.Debug(LogCat.Assets, $"Loaded font {path}");
+        _fonts[path] = font;
+        return font;
     }
 
     public Model? LoadModel(AssetPath path)

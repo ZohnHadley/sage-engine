@@ -75,7 +75,16 @@ public readonly record struct Interaction(Entity User, Entity Target);
 public sealed class InteractionEvents
 {
     public readonly List<Interaction> Interactions = new();
-    public void Clear() => Interactions.Clear();
+
+    // What the local player is within reach of right now, whether or not they pressed anything. A HUD
+    // needs this to offer the press at all ("E  Pick up a sword"), and it costs one ray per tick.
+    public Entity Hovered;
+
+    public void Clear()
+    {
+        Interactions.Clear();
+        Hovered = default;
+    }
 }
 
 public static class Items
@@ -322,9 +331,14 @@ public sealed class InteractionSystem : ISystem
             var c = characters.Span;
             for (int n = 0; n < t.Length; n++)
             {
-                if (!i[n].Pressed.Has(_use)) continue;
+                var entity = entities.EntityAt(n);
+                bool pressed = i[n].Pressed.Has(_use);
+                bool isPlayer = entity.Tags.Has<PlayerControlled>();
+                if (!pressed && !isPlayer) continue;      // creatures only look when they act
+
                 var target = Reach(world, in t[n], in i[n], in c[n]);
-                if (!target.IsNull) _pending.Add(new Interaction(entities.EntityAt(n), target));
+                if (isPlayer) _events.Hovered = target;   // for the prompt, pressed or not
+                if (pressed && !target.IsNull) _pending.Add(new Interaction(entity, target));
             }
         }
 
@@ -338,8 +352,9 @@ public sealed class InteractionSystem : ISystem
             if (!world.Give(interaction.User, pickup.Item, pickup.Count)) continue;
 
             _records.TryGet(pickup.Item, out ItemRecord record);
-            Log.Info(LogCat.Gameplay, $"{World.Describe(interaction.User)} picks up " +
-                                      $"{(pickup.Count > 1 ? pickup.Count + "x " : "")}{record?.Describe(pickup.Item) ?? pickup.Item.Name}");
+            string what = $"{(pickup.Count > 1 ? pickup.Count + "x " : "")}{record?.Describe(pickup.Item) ?? pickup.Item.Name}";
+            Log.Info(LogCat.Gameplay, $"{World.Describe(interaction.User)} picks up {what}");
+            world.Say($"Picked up {what}", MessageKind.Good, 3f);
             world.Destroy(interaction.Target);
         }
     }

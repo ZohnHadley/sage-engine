@@ -44,6 +44,7 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new AutoWalkSystem(world, _cvars!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
         world.AddSystem(new AutoAttackSystem(world, _cvars!, _actions!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
         world.AddSystem(new CombatLogSystem(world), Phase.Late);
+        world.AddSystem(new SandboxHud(world, _records!), Phase.FrameUpdate);   // 13 §3
         world.Resources.Set<GameRules>(new SandboxRules(this));
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
@@ -407,11 +408,26 @@ public sealed class CombatLogSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
+        var world = ctx.World;
         foreach (var hit in _events.Damage)
+        {
             Log.Info(LogCat.Gameplay, $"{World.Describe(hit.Attacker)} hits {World.Describe(hit.Target)} " +
                                       $"for {hit.Applied:F0} ({hit.Amount:F0} before armour): " +
-                                      $"health {ctx.World.Attribute(hit.Target, AttributeRecord.Health):F0}");
+                                      $"health {world.Attribute(hit.Target, AttributeRecord.Health):F0}");
+
+            // And on screen, from the player's point of view: what hit me, or what I hit (13 §3).
+            bool mine = IsPlayer(world, hit.Attacker);
+            if (mine) world.Say($"You hit {Name(world, hit.Target)} for {hit.Applied:F0}", MessageKind.Good, 3f);
+            else if (IsPlayer(world, hit.Target)) world.Say($"{Name(world, hit.Attacker)} hits you for {hit.Applied:F0}", MessageKind.Bad, 3f);
+        }
     }
+
+    private static bool IsPlayer(World world, Entity entity) =>
+        !entity.IsNull && world.IsAlive(entity) && entity.Tags.Has<PlayerControlled>();
+
+    private static string Name(World world, Entity entity) =>
+        entity.IsNull || !world.IsAlive(entity) ? "something"
+        : entity.TryGetComponent(out EntityName name) ? name.value : "something";
 }
 
 // The Sandbox's rules (docs/design/16): what happens when the world starts, and where the player
@@ -437,6 +453,8 @@ public sealed class SandboxRules : GameRules
         Log.Info(LogCat.Gameplay, killer.IsNull
             ? $"{World.Describe(victim)} died"
             : $"{World.Describe(victim)} was killed by {World.Describe(killer)}");
+        if (victim.Tags.Has<PlayerControlled>()) world.Say("You died", MessageKind.Bad, 4f);
+        else world.Say($"{(victim.TryGetComponent(out EntityName n) ? n.value : "Something")} dies", MessageKind.Good, 4f);
         if (!world.HasTag(victim, new RecordId("sage", "state.dead"))) return;
 
         if (world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList().Contains(victim))

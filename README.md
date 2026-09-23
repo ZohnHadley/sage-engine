@@ -31,7 +31,8 @@ No arguments needed: a development build walks up from the executable looking fo
 loads `games/Sandbox`. `-c Development` is the same thing optimised, and noticeably smoother.
 
 You should get a hilly field, three creatures, some crates falling through a trigger, and a creature
-that notices you and comes over to hit you.
+that notices you and comes over to hit you. The HUD shows your health, what is in your hands, what
+pressing `E` would pick up, and what just hit you.
 
 ### Controls
 
@@ -65,6 +66,7 @@ searches both. Some worth knowing:
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
 | `sandbox_autowalk 30`, `sandbox_autoattack 1.5` | walk and swing without a keyboard, for screenshots |
 | `give <item>`, `inv`, `equip <item>`, `drop <item>` | items: `give practice_sword` then `equip practice_sword` and watch the combat log change |
+| `ui_crosshair 0` | hide the crosshair (it is on while a camera rig has the view) |
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
 
