@@ -66,6 +66,25 @@ public class CharacterTests
         Assert.Equal(yaw, SageMath.YawOf(world.Get<Transform>(entity).LocalRotation), 3);
     }
 
+    // Placed a little inside the ground — which is what happens when a scene's height data and the
+    // collision mesh disagree by a few centimetres — a character used to fall through the world for
+    // ever: its sweeps started overlapping, which the space reports as nothing at all (review #55).
+    [Fact]
+    public void ACharacterStandingInsideTheGroundIsPutBackOnTopOfIt()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("characters");
+        Floor(world, new Vector3(0, -0.5f, 0), new Vector3(20, 1, 20));   // its top is y = 0
+
+        var sunk = world.Create(Transform.At(new Vector3(0, -0.3f, 0)), "sunk");
+        world.AddCharacter(sunk, PlayerLayer);
+
+        Walk(world, sunk, Vector2.Zero, 10);
+
+        Assert.InRange(Position(world, sunk).Y, -0.05f, 0.1f);
+        Assert.True(world.Get<CharacterController>(sunk).Grounded, "and it should know it is standing on something");
+    }
+
     private static void Walk(World world, Entity character, Vector2 move, int ticks, ActionMask held = default, ActionMask pressed = default)
     {
         for (int i = 0; i < ticks; i++)

@@ -6,7 +6,7 @@ The working tracker: **open bugs in today's code** and the **roadmap**. Updated 
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Overview, layers, decisions (D1–D13), migration order (§7) |
 | [`docs/design/`](docs/design/00-index.md) | How each subsystem works; every roadmap item below links to its doc |
-| [`docs/history/code-review-log.md`](docs/history/code-review-log.md) | Full history of review items #1–#54 (problems, fixes, resolution notes). Closed items live only there |
+| [`docs/history/code-review-log.md`](docs/history/code-review-log.md) | Full history of review items #1–#55 (problems, fixes, resolution notes). Closed items live only there |
 
 Legend: `[ ]` open · `[~]` partly done · `[X]` done. When an item is done, tick it here. Once a phase is finished, move its detail to the history log.
 

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A local content tool, deliberately outside Sage.sln: it needs a Daggerfall install and the
+       Daggerfall Workshop reader, neither of which the engine depends on. Run it by path:
+         dotnet run  project tools/DaggerfallImport  (see Program.cs for the options) -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DaggerfallImport</AssemblyName>
+    <RootNamespace>DaggerfallImport</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+  </ItemGroup>
+
+</Project>

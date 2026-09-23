@@ -396,3 +396,9 @@ FodyWeavers.xsd
 user/
 # ImGui window layout, written to the working directory by the dev UI
 imgui.ini
+
+# Imported Daggerfall art and the records that use it (tools/DaggerfallImport). The art is
+# Bethesda's: the tool reads the copy of the game you own and writes here, and none of it is
+# redistributed. Delete these to go back to the placeholder art.
+games/Sandbox/content/textures/daggerfall/
+games/Sandbox/content/data/daggerfall.json

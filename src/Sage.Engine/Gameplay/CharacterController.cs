@@ -322,6 +322,26 @@ public sealed class CharacterMovementSystem : ISystem
             return;
         }
 
+        // Nothing under the capsule. Before believing that, check whether the capsule is *inside* the
+        // ground: a sweep that starts overlapping carries no normal, so the space reports nothing at
+        // all (10 §4), and a character placed a few centimetres into a hill would fall through the
+        // world for ever. A ray down from the capsule's centre still finds the surface, so the feet
+        // can be put back on top of it (review #55).
+        if (!hit.Hit)
+        {
+            float half = character.Height * 0.5f;
+            var recovery = _space.Raycast(position + Vector3.UnitY * half, -Vector3.UnitY, half + reach + Skin, mask);
+            if (recovery.Hit && recovery.Normal.Y >= cosSlope)
+            {
+                position = recovery.Position + Vector3.UnitY * Skin;
+                character.Grounded = true;
+                character.OnSteep = false;
+                character.GroundNormal = recovery.Normal;
+                if (character.Velocity.Y < 0) character.Velocity.Y = 0;
+                return;
+            }
+        }
+
         character.Grounded = false;
         character.OnSteep = hit.Hit;                                     // a steep face: slide off it
         character.GroundNormal = hit.Hit ? hit.Normal : Vector3.UnitY;

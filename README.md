@@ -1,0 +1,145 @@
+# Sage
+
+A game engine in C# and MonoGame, built by writing a game with it. The target is a **Daggerfall-like
+first-person RPG**: a big outdoor world, billboard creatures, a kinematic character controller,
+data-driven records you can edit while the game runs, and mods that are data first and trusted C#
+second. Later targets — an HL1-like, a Lugaru-like, a Warband-like — are what keep the design honest
+about skeletal animation, melee and large battles. Multiplayer is deliberately later, and until then
+the code follows a short list of readiness rules so adding it isn't a rewrite.
+
+Nothing here is a product. It is an engine that grows one feature at a time, each one dogfooded by
+the `games/Sandbox` test game in the same commit.
+
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — the overview: layers, rules, decisions and why.
+- [`docs/design/`](docs/design) — one document per subsystem, each with an "As built" section saying
+  what actually exists today. [`00-index.md`](docs/design/00-index.md) is the reading order and the
+  glossary.
+- [`TODO.md`](TODO.md) — the roadmap, with every item's id (F7, R9…) as the docs reference them.
+- [`docs/history/code-review-log.md`](docs/history/code-review-log.md) — every bug worth remembering,
+  with what it was and why it happened.
+
+## Running it
+
+You need the [.NET 8 SDK](https://dotnet.microsoft.com/download) or newer (the projects target
+net8.0 and roll forward). From the repo root:
+
+```bash
+dotnet run --project src/Sage.Host -c Debug
+```
+
+No arguments needed: a development build walks up from the executable looking for `Sage.sln` and
+loads `games/Sandbox`. `-c Development` is the same thing optimised, and noticeably smoother.
+
+You should get a hilly field, three creatures, some crates falling through a trigger, and a creature
+that notices you and comes over to hit you.
+
+### Controls
+
+| Input | Does |
+|---|---|
+| `W` `A` `S` `D`, mouse | move, look |
+| `Space` | jump |
+| `Left Shift`, `Left Ctrl` | run, crouch |
+| **Left mouse** | attack |
+| `E` | use |
+| `Escape` | quit (closes the console first) |
+| `` ` `` | open the console |
+
+Bindings live in [`engine_content/data/input.json`](engine_content/data/input.json) and are records
+like everything else, so a game or a mod patches them rather than replacing them.
+
+### The console
+
+`` ` `` opens it. `help` lists what to type, `cmdlist` and `cvarlist` dump everything, `find <text>`
+searches both. Some worth knowing:
+
+| | |
+|---|---|
+| `sv_cheats 1`, then `god`, `hurt 30` | invulnerability; run damage through the pipeline by hand |
+| `r_stats`, `phys_stats`, `mem`, `stat` | draw calls and batches, bodies and step time, allocations |
+| `cam_free 1`, `cam_set <x> <y> <z> [yaw] [pitch]` | detach the camera from the player and fly it |
+| `screenshot [delay]` | PNG into `user/sandbox/screenshots` |
+| `rec_list`, `rec_get spawn watcher`, `rec_reload` | what records loaded, one record's values and where each field came from, reload them |
+| `vfs_mounts`, `vfs_which textures/creature.png` | the mount stack, and which mount a path resolves to |
+| `pause`, `host_timescale 0.3`, `sim_tickrate 30` | stop time, slow it, change the tick rate |
+| `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
+| `sandbox_autowalk 30`, `sandbox_autoattack 1.5` | walk and swing without a keyboard, for screenshots |
+| `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
+
+Anything can also be passed on the command line: `+sv_cheats 1 "+hurt 30"` runs them once the world
+is up, and `-dev`-style options are plain `+cvar value` pairs.
+
+### Editing content while it runs
+
+`developer` defaults to 1 in a Debug build, which turns on record hot reload. Edit
+`games/Sandbox/content/data/scene.json` (what is in the world) or `engine_content/data/*.json`
+(movement, AI, combat, materials, input) and save: the records reload and the scene respawns. Tuning
+the creature's claws or your own reach mid-fight is the intended way to work.
+
+## Building and testing
+
+```bash
+dotnet build Sage.sln -c Debug          # Debug | Development | Shipping
+dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug
+```
+
+Three configurations, as UE does it: **Debug** (asserts, verbose logs, `developer 1`), **Development**
+(optimised, still has the console, cheats and dev tools) and **Shipping** (no dev cvars, no console;
+it needs `-game <folder>` because it looks for a `game` folder beside the executable). `SAGE_DEV` is
+defined in the first two.
+
+The tests are all headless — no window, no graphics device — because the simulation has no MonoGame
+dependency. That is the same property a dedicated server would need, so it is checked by the build.
+
+## What's in the repo
+
+| Path | What |
+|---|---|
+| `src/Sage.Engine` | The simulation: ECS, records/VFS, physics, gameplay, animation. **No MonoGame.** |
+| `src/Sage.Client` | Rendering, input devices, assets, sprite batching — the MonoGame half |
+| `src/Sage.Editor` | Dev camera, console window, entity outliner, stat overlay (ImGui) |
+| `src/Sage.Host` | The executable: boot sequence and the main loop |
+| `games/Sandbox` | The test game: its module, scene records, placeholder art and tools |
+| `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
+| `tests/Sage.Tests` | xUnit, headless |
+| `tools/` | Content tools that are not part of the build (the Daggerfall importer) |
+| `user/` | Written at runtime: logs, config, screenshots, crash reports (not in git) |
+
+## Placeholder art
+
+`games/Sandbox/tools/make_placeholder_art.py` generates the Sandbox's creature and tree sprites. The
+creature is deliberately crude but it encodes the engine's direction convention: a nose that swings
+with the view angle, a pack when seen from behind, and bars at its feet counting the direction group,
+so a screenshot says which of the eight groups was picked. Regenerate with:
+
+```bash
+python games/Sandbox/tools/make_placeholder_art.py
+```
+
+## Daggerfall art (your own copy)
+
+The engine is aimed at a Daggerfall-like game, so the Sandbox can dress itself in Daggerfall's own
+art — which is a good test of the sprite pipeline, because Daggerfall stores five views of a monster
+and mirrors the other three, exactly what a `sprite_sheet` record calls `directions: 5`.
+
+**The art is Bethesda's and none of it is in this repository.** The importer reads the copy of the
+game you own and writes into two paths `.gitignore` keeps out of git, the same arrangement Daggerfall
+Unity uses: the project supplies the engine, you supply the assets.
+
+You need the game (Steam, GOG or Bethesda's own free release) and `DaggerfallConnect.dll`, which
+comes with [Daggerfall Imaging 2](https://www.dfworkshop.net/daggerfall-imaging-2/). Then:
+
+```bash
+dotnet run --project tools/DaggerfallImport
+```
+
+It defaults to the Steam install and Daggerfall Imaging 2's DLL; pass `--arena2 <dir>` and
+`--connect <dll>` if yours live elsewhere, `--help` for the rest. It writes:
+
+- `games/Sandbox/content/textures/daggerfall/*.png` — a Skeleton Warrior sheet (5 directions, walk
+  and attack), two trees, a bush, ground and rock textures;
+- `games/Sandbox/content/data/daggerfall.json` — the `sprite_sheet`, `material` and `spawn` records
+  that use them, including a patch that puts Daggerfall's grass on the terrain.
+
+Run the game and the skeleton is in the scene, fighting with the same records the placeholder
+creature uses — the art is all that changed. Delete `daggerfall.json` to go back.
