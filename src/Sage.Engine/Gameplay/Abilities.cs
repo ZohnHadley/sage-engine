@@ -21,7 +21,8 @@ public enum AbilityTargeting
     Self,        // the caster
     Touch,       // the first thing within Range along the aim, like a swing
     Area,        // everything within Radius of the caster
-    TouchArea,   // everything within Radius of the point Touch would have hit (a fireball's burst)
+    TouchArea,   // everything within Radius of the point Touch would have hit, *instantly*
+    Projectile,  // a thing that flies, and delivers the same payload where it arrives
 }
 
 [Record("ability")]
@@ -64,6 +65,11 @@ public sealed class AbilityRecord
 
     public List<RecordId> Cues = new();       // presentation only (§3.3): sounds, particles, a flash
     public string Animation = "";
+
+    // Projectile targeting only: the prefab that flies (F31 — so what a fireball looks like is data)
+    // and how fast. `Radius` is still the burst it makes on arrival, `Width` how fat it is in flight.
+    public RecordId Projectile;
+    public float ProjectileSpeed = 18f;
 }
 
 // A cue is a *name for something to show*, and deliberately almost empty: the simulation raises it,

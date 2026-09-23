@@ -48,6 +48,18 @@ public class AbilityTests
       { "type": "ability", "id": "flame_bolt", "name": "flame bolt",
         "targeting": "Touch", "range": 12, "damage": 40, "damageType": "fire" },
 
+      { "type": "ability", "id": "bolt", "name": "bolt",
+        "targeting": "Projectile", "range": 20, "projectileSpeed": 10, "width": 0.3,
+        "damage": 15, "damageType": "fire" },
+
+      { "type": "ability", "id": "fast_bolt", "name": "fast bolt",
+        "targeting": "Projectile", "range": 60, "projectileSpeed": 400, "width": 0.3,
+        "damage": 15, "damageType": "fire" },
+
+      { "type": "ability", "id": "grenade", "name": "grenade",
+        "targeting": "Projectile", "range": 20, "projectileSpeed": 10, "width": 0.3, "radius": 3,
+        "damage": 10, "damageType": "fire" },
+
       { "type": "ability", "id": "chant", "name": "chant",
         "targeting": "Self", "effects": ["mend"], "magnitude": 5,
         "blockTags": ["silenced"] }
@@ -273,6 +285,119 @@ public class AbilityTests
             Tick(world, 2);
 
             Assert.Equal(Id("boom"), cues.All.Single().Cue);
+        }
+    }
+
+    // ---- projectiles (F21) -----------------------------------------------------------------------
+
+    // A projectile is not instant, which is the whole point: before this a fireball arrived the tick
+    // it was cast, so it could not be seen coming or dodged.
+    [Xunit.Fact]
+    public void AProjectileTakesTimeToArrive()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var caster = Caster(world, new Vector3(0, 0.1f, 0), "caster", "bolt");
+            var target = Caster(world, new Vector3(0, 0.1f, -9), "target");
+            var damage = new EventProbe<Damaged>(world);
+
+            world.Cast(caster, Id("bolt"));
+            Tick(world, 2);
+            Assert.Empty(damage.All);                  // 9 m away at 10 m/s: nothing yet
+            Assert.Single(world.Query<Transform, Projectile>().Entities.ToEntityList());
+
+            Tick(world, 70);                           // rather more than a second
+            Assert.Single(damage.All);
+            Assert.Equal(target, damage.All[0].Hit.Target);
+            Assert.Empty(world.Query<Transform, Projectile>().Entities.ToEntityList());   // and it is gone
+        }
+    }
+
+    // The bug this design exists to avoid, and the reason movement is a sweep rather than a teleport
+    // plus an overlap test. At 400 m/s a projectile covers 6.7 m in a single tick, so a target 6 m
+    // away is *behind* it by the time anything looks at where it ended up. This test fails against
+    // the obvious implementation and passes against the sweep.
+    [Xunit.Fact]
+    public void AFastProjectileCannotPassThroughSomethingItShouldHit()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var caster = Caster(world, new Vector3(0, 0.1f, 0), "caster", "fast_bolt");
+            var target = Caster(world, new Vector3(0, 0.1f, -6), "target");
+            var far = Caster(world, new Vector3(0, 0.1f, -18), "far");
+            var damage = new EventProbe<Damaged>(world);
+
+            world.Cast(caster, Id("fast_bolt"));
+            Tick(world, 200);
+
+            // It stopped at the first thing, not the last: one hit, and it is the near one.
+            Assert.Single(damage.All);
+            Assert.Equal(target, damage.All[0].Hit.Target);
+            Assert.Equal(100f, world.Attribute(far, Id("health")));
+        }
+    }
+
+    // The payload is the same whether it travelled or not, because both go through AbilityPayload.
+    [Xunit.Fact]
+    public void AProjectileBurstsWhereItArrives()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var caster = Caster(world, new Vector3(0, 0.1f, 0), "caster", "grenade");
+            var struck = Caster(world, new Vector3(0, 0.1f, -8), "struck");
+            var beside = Caster(world, new Vector3(2f, 0.1f, -8), "beside");
+            var casts = new EventProbe<AbilityCast>(world);
+
+            world.Cast(caster, Id("grenade"));
+            Tick(world, 200);
+
+            Assert.True(world.Attribute(struck, Id("health")) < 100f);
+            Assert.True(world.Attribute(beside, Id("health")) < 100f, "the burst should catch its neighbour");
+            Assert.True(casts.All.Single().Targets >= 2);
+        }
+    }
+
+    // A spell that hits nothing has to stop somewhere, or it flies to the edge of the world forever.
+    [Xunit.Fact]
+    public void AProjectileThatHitsNothingExpires()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var caster = Caster(world, new Vector3(0, 40f, 0), "caster", "bolt");   // aimed at open sky
+            world.Get<PawnIntent>(caster).Pitch = 0.6f;
+
+            world.Cast(caster, Id("bolt"));
+            Tick(world, 5);
+            Assert.Single(world.Query<Transform, Projectile>().Entities.ToEntityList());
+
+            Tick(world, 300);
+            Assert.Empty(world.Query<Transform, Projectile>().Entities.ToEntityList());
+        }
+    }
+
+    // A fireball thrown by something that dies mid-flight still lands: the projectile carries who
+    // threw it, not a pointer to a live caster.
+    [Xunit.Fact]
+    public void AProjectileOutlivesItsCaster()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var caster = Caster(world, new Vector3(0, 0.1f, 0), "caster", "bolt");
+            var target = Caster(world, new Vector3(0, 0.1f, -9), "target");
+            var damage = new EventProbe<Damaged>(world);
+
+            world.Cast(caster, Id("bolt"));
+            Tick(world, 2);
+            world.Destroy(caster);
+
+            Tick(world, 100);
+            Assert.Single(damage.All);
+            Assert.Equal(target, damage.All[0].Hit.Target);
         }
     }
 }

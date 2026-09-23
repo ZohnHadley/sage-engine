@@ -20,13 +20,12 @@ public sealed class AbilitySystem : ISystem
     private readonly ActionId _cast;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
+    private readonly AbilityPayload _payload;
     private readonly DebugDraw _debug;
     private readonly CVar<bool> _debugCasts;
 
     // Resolved after the loop: applying an effect touches another entity's components (R14).
     private readonly Deferred<Pending> _pending = new();
-    private readonly List<Entity> _targets = new();
-    private readonly Entity[] _nearby = new Entity[64];
 
     private readonly record struct Pending(Entity Caster, RecordId Ability, Vector3 Point, Vector3 Aim);
 
@@ -36,6 +35,7 @@ public sealed class AbilitySystem : ISystem
         _cast = actions.Get("Cast");
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
+        _payload = new AbilityPayload(world);
         _debug = world.Debug();
         _debugCasts = debugCasts;
     }
@@ -162,18 +162,22 @@ public sealed class AbilitySystem : ISystem
         if (!world.IsAlive(cast.Caster)) return;
         if (!_records.TryGet(cast.Ability, out AbilityRecord record)) return;
 
-        _targets.Clear();
         Vector3 point = cast.Point;
+        Entity struck = default;
 
         switch (record.Targeting)
         {
             case AbilityTargeting.Self:
-                _targets.Add(cast.Caster);
-                break;
+                break;   // the payload knows what "on me" means
+
+            case AbilityTargeting.Projectile:
+                // Nothing lands now: the payload is delivered by ProjectileSystem when it arrives.
+                world.Launch(cast.Caster, cast.Ability, record, cast.Point + cast.Aim * 0.4f, cast.Aim);
+                foreach (var cue in record.Cues) world.Events.Send(new CueTriggered(cue, cast.Caster, cast.Point));
+                return;
 
             case AbilityTargeting.Area:
-                Gather(world, cast.Point, record.Radius, cast.Caster, includeCaster: true);
-                break;
+                break;   // the burst is on the caster; the payload gathers around `point`
 
             case AbilityTargeting.Touch:
             case AbilityTargeting.TouchArea:
@@ -190,73 +194,20 @@ public sealed class AbilitySystem : ISystem
                     ? cast.Point + cast.Aim * record.Range
                     : cast.Point + cast.Aim * hit.Distance;
 
-                if (record.Targeting == AbilityTargeting.TouchArea) Gather(world, point, record.Radius, cast.Caster, includeCaster: false);
-                else if (CanBeAffected(world, hit.Entity) && hit.Entity != cast.Caster) _targets.Add(hit.Entity);
+                struck = hit.Entity;
                 break;
             }
         }
 
-        foreach (var target in _targets)
-        {
-            if (!world.IsAlive(target)) continue;
-
-            // Damage first, through the one pipeline (16 §3.2): resistance, then an effect on health,
-            // then a Damaged event. Its riders are applied with it, so a target that shrugs the whole
-            // thing off shrugs off the burning as well, the way a poisoned blade already works.
-            if (record.Damage > 0f)
-                Combat.ApplyDamage(world, new DamageInfo(cast.Caster, target, record.DamageType, record.Damage,
-                    point, Vector3.Normalize(SafeDirection(world, target, point))), record.Effects);
-            else
-                foreach (var effect in record.Effects)
-                    Effects.Apply(world, target, effect, cast.Caster, record.Magnitude);
-        }
-
-        world.Events.Send(new AbilityCast(cast.Caster, cast.Ability, point, _targets.Count));
-        foreach (var cue in record.Cues) world.Events.Send(new CueTriggered(cue, cast.Caster, point));
+        _payload.Deliver(world, cast.Caster, cast.Ability, record, point, struck);
 
         if (_debugCasts.Value) Draw(cast, record, point);
     }
-
-    // Everything solid within `radius`. Who a spell is *allowed* to burn is a rules question
-    // (factions, F24), not a physics one, so this gathers all of it and the caster is the only
-    // special case — and only when the ability says so.
-    //
-    // The space offers a box, and the box is the broad phase: the distance check below is what makes
-    // the burst round. `OverlapBox` can also report things whose shapes don't quite touch (10 §4),
-    // which matters less for a blast than it would for a sword.
-    private void Gather(World world, Vector3 point, float radius, Entity caster, bool includeCaster)
-    {
-        if (radius <= 0f) return;
-        int count = _space.OverlapBox(point, new Vector3(radius), _nearby, LayerMask.All);
-        for (int i = 0; i < count; i++)
-        {
-            var entity = _nearby[i];
-            if (!CanBeAffected(world, entity) || (!includeCaster && entity == caster)) continue;
-            if (!world.TryGet<Transform>(entity, out var transform)) continue;
-            if (Vector3.Distance(transform.LocalPosition, point) > radius + 0.5f) continue;   // +half a body
-            if (!_targets.Contains(entity)) _targets.Add(entity);
-        }
-    }
-
-    // Away from the burst, so a knockback (later) pushes outward. Never a zero vector, which
-    // Normalize would turn into NaN and quietly poison a transform.
-    private static Vector3 SafeDirection(World world, Entity target, Vector3 point)
-    {
-        var to = world.TryGet<Transform>(target, out var transform) ? transform.LocalPosition - point : Vector3.Zero;
-        return to.LengthSquared() > 1e-6f ? to : Vector3.UnitY;
-    }
-
-    // A blast lands on the world, and most of the world is scenery. Only things that can *hold* an
-    // effect are targets: a fireball bursting against a tree is a normal Tuesday, not a mis-set-up
-    // entity, and warning about it once per trunk would bury the log (the warning in Effects.Apply
-    // is for the other case — a creature somebody forgot to give attributes to).
-    private static bool CanBeAffected(World world, Entity entity) =>
-        !entity.IsNull && world.IsAlive(entity) && world.Has<Attributes>(entity);
 
     private void Draw(in Pending cast, AbilityRecord record, Vector3 point)
     {
         _debug.Line(cast.Point, point, DebugColour.Magenta, 1.5f);
         if (record.Radius > 0f) _debug.Sphere(point, record.Radius, DebugColour.Magenta, 1.5f);
-        foreach (var target in _targets) if (!target.IsNull) _debug.Cross(point, 0.3f, DebugColour.Yellow, 1.5f);
+        foreach (var target in _payload.Targets) if (!target.IsNull) _debug.Cross(point, 0.3f, DebugColour.Yellow, 1.5f);
     }
 }

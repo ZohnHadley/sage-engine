@@ -136,8 +136,8 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   phases. The event is already on the bus, so the day something listens the spell needs no change.
 - **Console:** `cast <ability>`, `learn <ability>`, `spells`, and `cast_debug 1` to draw where a cast
   reached and what it caught.
-- **Not done here:** projectiles that actually travel (a fireball arrives the instant it is cast),
-  the spellmaker composing effects into new abilities at runtime, and AI that casts.
+- **Not done here:** the spellmaker composing effects into new abilities at runtime, AI that casts,
+  and projectiles that arc, bounce or stick (they fly straight and stop at the first thing).
 
 - **Not yet:** blocking and parries, directional melee and reversals (Lugaru/Warband, later), knockback and hit reactions, cleaving several targets with one swing, ranged and projectile attacks (F21), friendly-fire rules (F24), and damage over time routed through resistances (a periodic effect still changes health directly).
 - **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side). Real pathfinding is F23.

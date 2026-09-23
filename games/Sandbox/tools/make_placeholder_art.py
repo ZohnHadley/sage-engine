@@ -158,10 +158,23 @@ def tree(path, w=96, h=128):
     c.write(path)
 
 
+def fireball(path, w=32, h=32, frames=2):
+    """A little burning ball, two frames so it flickers on its way (F21)."""
+    c = Canvas(w * frames, h)
+    for f in range(frames):
+        ox = f * w
+        r = 11 if f == 0 else 13
+        c.ellipse(ox + w // 2, h // 2, r, r, (255, 140, 20, 190))
+        c.ellipse(ox + w // 2, h // 2, r - 4, r - 4, (255, 214, 10, 255))
+        c.ellipse(ox + w // 2, h // 2, r - 8, r - 8, (255, 255, 235, 255))
+    c.write(path)
+
+
 os.makedirs(OUT, exist_ok=True)
 creature(os.path.join(OUT, 'creature.png'))
+fireball(os.path.join(OUT, 'fireball.png'))
 tree(os.path.join(OUT, 'tree.png'))
 sword(os.path.join(OUT, 'sword.png'))
 viewmodel(os.path.join(OUT, 'hands.png'))
 viewmodel(os.path.join(OUT, 'sword_fp.png'), weapon=True)
-print('wrote creature.png, tree.png, sword.png, hands.png and sword_fp.png')
+print('wrote creature.png, tree.png, sword.png, fireball.png, hands.png and sword_fp.png')

@@ -336,9 +336,16 @@ public sealed class AbilitiesModule : IModule
             }));
     }
 
-    public void OnWorldCreated(World world) =>
+    public void OnWorldCreated(World world)
+    {
         world.AddSystem(new AbilitySystem(world, _records!, _actions!, _debugCasts!), Phase.Gameplay,
             before: new[] { typeof(EffectSystem) });
+
+        // Flight resolves before effects tick too, so a spell that arrives this tick is felt this
+        // tick — and after the cast system, so one thrown *this* tick starts moving next (16 §3.2).
+        world.AddSystem(new ProjectileSystem(world, _records!, _debugCasts!), Phase.Gameplay,
+            after: new[] { typeof(AbilitySystem) }, before: new[] { typeof(EffectSystem) });
+    }
 }
 
 // Creatures that decide for themselves (16 §3.4): HL1-style schedules of tasks, writing the same

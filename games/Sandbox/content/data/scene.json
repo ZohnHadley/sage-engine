@@ -224,6 +224,29 @@
     "description": "A fireball bursting"
   },
   {
+    // What the fireball looks like on its way: two frames so it flickers, one direction because a ball
+    // of fire has no front. The clip loops while it flies.
+    "type": "sprite_sheet",
+    "id": "fireball_flat",
+    "texture": "textures/fireball.png",
+    "directions": 1,
+    "size": [0.45, 0.45],
+    "material": "sage:sprite_lit",
+    "frames": [ { "rect": [0, 0, 32, 32] }, { "rect": [32, 0, 32, 32] } ],
+    "animations": {
+      "idle": { "fps": 12, "loop": true, "dirs": [[0, 1]] }
+    }
+  },
+  {
+    // The thing that flies, as a prefab (F31): the spell says how fast and what it does on arrival,
+    // and this says what it looks like. No collider — it is the projectile's own sweep that decides
+    // what it hits, and giving it a body would make it shove the world on its way.
+    "type": "prefab",
+    "id": "fireball_bolt",
+    "name": "fireball",
+    "parts": { "sprite": { "sheet": "fireball_flat", "animation": "idle" } }
+  },
+  {
     // A fireball: it flies to whatever you are looking at, bursts, and sets what it caught alight.
     // The damage goes through the combat pipeline so `fire_resist` means something, and `burning` is
     // the engine's own effect riding along with it — no part of this spell is new code.
@@ -233,9 +256,12 @@
     "costAttribute": "sage:mana",
     "cost": 12,
     "cooldown": "fireball_cooldown",
-    "targeting": "TouchArea",
-    "range": 14,
+    "targeting": "Projectile",
+    "projectile": "fireball_bolt",
+    "projectileSpeed": 16,
+    "range": 20,
     "radius": 2.5,
+    "width": 0.25,
     "castTime": 0.35,
     "damage": 28,
     "damageType": "sage:fire",
