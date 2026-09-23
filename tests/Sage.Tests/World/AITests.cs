@@ -236,6 +236,27 @@ public class AITests
         Assert.Equal(AIThinkSystem.Schedules.Idle, state.Schedule);
     }
 
+    // The regression guard for review #48, now that the promise is checked rather than commented
+    // (03 §3.5, R16). `AIThinkSystem` used to run in Phase.AI while CharacterMovementSystem consumed
+    // the intent in PrePhysics, so every creature acted a tick late. Move it back and this fails:
+    // GameplayModule declares PawnIntent final after Commands, and a real creature chasing a real
+    // player exercises both controllers.
+    [Fact]
+    public void NothingWritesPawnIntentAfterTheCommandsPhase()
+    {
+        using var engine = NewEngine();
+        var world = NewWorld(engine);
+        var creature = Creature(world, new Vector3(0, 0.1f, 0));
+        var player = Player(world, new Vector3(0, 0.1f, -3f));
+
+        Assert.True(world.Contracts.Count > 0, "GameplayModule should declare the PawnIntent contract");
+
+        for (int i = 0; i < 180; i++)   // three seconds: idle, notice, chase and attack all happen
+            world.RunFixed(1f / 60f);
+
+        Assert.Equal(0, world.Contracts.Violations);
+    }
+
     [Fact]
     public void InMeleeRangeItSwitchesToAttacking_AndAttacksOnItsCooldown()
     {

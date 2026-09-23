@@ -68,6 +68,11 @@ and the F18 `StructuralChangeException` before it). The `CommandBuffer` exists b
 "do this, with this data, after the loop". A `Defer(...)` helper, or command-buffer support for the
 gameplay cases, removes a recurring class of mistake.
 
+**Resolved 2026-09-23 (R14).** `Deferred<T>`, used by all three. Writing it clarified what the
+duplication actually cost: not the four lines, but the `Clear()` inside them — the only part that
+can be forgotten, and whose failure looks like a gameplay bug. So `Drain()` empties the queue as it
+hands it over and there is nothing left to forget.
+
 ### 3. No entity templates, so every game invents spawning (05/09 → **F31**, promoted)
 The Sandbox invented `spawn` records; when the Daggerfall importer needed to place things it had to
 generate *Sandbox-specific* JSON, because the engine has no opinion about "a thing you can place".
@@ -120,6 +125,13 @@ big enough for it to hurt.
 a tick late) was precisely a violated prose guarantee, and it survived a docs audit because the docs
 agreed with the comment, not with the code. Dev-build assertions (a phase declaring which components
 it may write, checked when `SAGE_DEV` is on) would turn that class into a failing test.
+
+**Resolved 2026-09-23 (R16).** `world.Contracts.FinalAfter<PawnIntent>(Phase.Commands)`, checked by
+snapshot and compare after each later phase, naming the entity and the phase that broke it. The
+approach ended up simpler than the one this item imagined: rather than have every system *declare*
+what it writes — which needs the access declarations the parallel scheduler will bring, and which a
+system can get wrong — the world watches the value itself, so an accidental write is caught as
+readily as a declared one. Verified by reintroducing #48 and watching the test fail.
 
 ### 8. Discoverability of the gameplay API
 Making a creature today is `world.Create`, `Add(MeshRenderer)`, `AddCharacter`, `Add(AIState)`,

@@ -78,22 +78,58 @@ State that isn't per-entity lives in world **resources**, the equivalent of Over
 
 ### 3.5 Systems and schedules
 
-> **Two gaps the slice exposed (engine review 2026-09-23 → R14, R16).** A system that touches another
-> entity inside a query loop has to defer it, and three systems now hand-roll the same list and
-> post-loop pass on top of the buffer `World` already keeps; a `Defer(...)` helper belongs here. And what a phase *guarantees* ("PawnIntent is
-> final after Commands", "transforms are settled after PostPhysics") lives only in comments, which is
-> how review #48 survived both a code review and a docs audit — dev-build assertions would make it a
-> failing test instead.
-
 - A system is a class implementing `ISystem`, registered into a **schedule** and **phase**:
   - `Schedule.Fixed`, at `sim_tickrate` (01 §5.2): `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late`.
   - `Schedule.Frame`, once per rendered frame: `FrameUpdate → Extract → Render → Overlay`.
 - Ordering within a phase: `before:`/`after:` constraints naming other system types (a stable topological sort; a cycle throws at registration). Otherwise registration order applies, deterministically. *(Built in step 4. "System sets" were dropped for now: type constraints cover today's needs.)*
-- **Access declarations** (components read/written, game events read/sent, 04 §4) are **not built yet**. They arrive with the event bus (whose readers/writers they create) and matter again for a parallel scheduler. v1 runs systems sequentially.
+- **Access declarations** (components read/written, game events read/sent, 04 §4) are **not built yet**. The event bus (R13) landed without them — a system asks for its readers in its constructor — so they are now purely the parallel scheduler's concern. What a phase *guarantees* is covered instead by contracts (below, R16), which watch the value rather than trust a declaration. v1 runs systems sequentially.
 - **Run conditions:** `Default` (= `WhenNotPaused` in Fixed phases, `Always` in Frame phases), `WhenNotPaused`, `Always`, `DevOnly`. `World.Paused` (console `pause`) skips `WhenNotPaused` systems; ticks still run.
 - **Command buffer flush points:** the end of every phase. Structural changes made during a phase become visible in the next phase.
 - Every phase and system is wrapped in a profiler scope (`Fixed.Gameplay`, `Fixed.Gameplay/FaceCameraSystem`), shown by `stat frame` and `sys_list`.
 - **Steady state allocates nothing**: a test runs 100 ticks + frames with systems and measures 0 bytes.
+
+### As built (deferred work and phase contracts, 2026-09-23 — R14, R16)
+
+Both came out of the engine review (items 2 and 7).
+
+**`Deferred<T>`** (`src/Sage.Engine/ECS/Deferred.cs`). Touching another entity's components inside a
+query throws, so a system that reacts to what its loop found has to collect the work and run it
+afterwards. Three features had grown the same four lines to do it: a `List<T>` field, `Clear()` at
+the top of `Run`, `Add` in the loop, `foreach` after.
+
+The four lines were not the problem — the `Clear()` was. Forget it and last tick's work runs again,
+which reads as a gameplay bug rather than a bookkeeping one. `Deferred<T>.Drain()` hands over
+everything queued *and empties the queue in one step*, so there is no clear to forget and no way to
+run the same work twice. Work added while draining waits for the next drain, which is the difference
+between "runs later" and "runs forever". Melee hits, interactions and deaths all use it.
+
+It is not the `CommandBuffer`: that defers *component* changes and the world plays it back at the end
+of every phase. This defers a system's own work, with its own data, to a point the system chooses.
+
+**`PhaseContracts`** (`src/Sage.Engine/ECS/Systems/PhaseContracts.cs`). `before:`/`after:` fixes the
+order systems run in; what it cannot express is the promise downstream code depends on — "by the end
+of Commands, `PawnIntent` is what this tick will act on". That lived in a comment, and review #48 is
+what it cost: `AIThinkSystem` wrote intent in the AI phase while `CharacterMovementSystem` consumed
+it in PrePhysics, so every creature acted a tick late, and the comment beside it claimed the
+opposite. A code review and a docs audit both missed it because both read the comment.
+
+```csharp
+world.Contracts.FinalAfter<PawnIntent>(Phase.Commands);   // GameplayModule declares this
+```
+
+In a dev build the world copies every instance at the end of that phase and compares after each later
+Fixed phase, reporting the entity and the **phase that wrote it**. `Contracts.Violations` is a count a
+test can assert is zero — which is the point: `NothingWritesPawnIntentAfterTheCommandsPhase` in
+`AITests` fails if `AIThinkSystem` moves back to `Phase.AI`, verified by doing exactly that.
+
+Costs a copy per guarded component per entity per tick, and nothing in Shipping or with no contracts
+declared. It is opt-in per component on purpose: guard the small things others build on (an intent, a
+command), not a transform half the engine writes by design. A component that appears mid-tick has no
+baseline and is not reported.
+
+**Still prose:** "transforms are settled after PostPhysics" — `Transform` is written all over the
+place by design, so guarding it needs a contract that says *which* systems may, which is the access
+declaration that comes with the parallel scheduler.
 
 ### 3.6 Transform hierarchy and large-world coordinates
 

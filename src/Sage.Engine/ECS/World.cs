@@ -31,6 +31,7 @@ public sealed class World : IDisposable
     private readonly TransformPropagation _propagation;
     private CommandBuffer? _commands;
     private readonly GameEvents _events;
+    private readonly PhaseContracts _contracts;
     private readonly DebugDraw _debugDraw;
     private readonly MessageLog _messages;
     private TickTime _lastTick;
@@ -62,6 +63,7 @@ public sealed class World : IDisposable
         Resources.Set(new RenderEnvironment());
         Resources.Set(new Terrain());
         Resources.Set(new PlayerInput());
+        _contracts = new PhaseContracts(this);   // what each phase promises, checked in dev (03 §3.5)
         _events = new GameEvents();          // the one place gameplay facts cross systems (04 §3.2)
         if (engine != null) _events.UseCVars(engine.Core.EventMaxAge, engine.Core.EventTrace);
         Resources.Set(_events);
@@ -237,6 +239,9 @@ public sealed class World : IDisposable
     // Gameplay facts between systems (04 §3.2). Get a reader once, in a constructor, and keep it.
     public GameEvents Events => _events;
 
+    // What a phase guarantees, checked in dev builds rather than described in a comment (R16).
+    public PhaseContracts Contracts => _contracts;
+
     // One simulation tick: copy poses for interpolation, then every Fixed phase in order, applying
     // buffered structural changes after each and propagating transforms after PostPhysics and Late.
     public void RunFixed(float dt)
@@ -251,6 +256,7 @@ public sealed class World : IDisposable
         for (var phase = Phase.Commands; phase < PhaseInfo.FirstFrame; phase++)
         {
             RunPhase(phase, _lastTick, frame);
+            if (_contracts.Count > 0) _contracts.AfterPhase(phase);
             if (phase == Phase.PostPhysics || phase == Phase.Late)
             {
                 using var _ = Profiler.Begin("Fixed.TransformPropagation");

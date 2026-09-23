@@ -189,8 +189,9 @@ public sealed class EffectSystem : ISystem
     private readonly ArchetypeQuery<Attributes, ActiveEffects> _affected;
     private readonly RecordStore _records;
     private readonly GameplayRegistries _registries;
-    private readonly List<Entity> _died = new();   // deaths are reported after the loop: the rules may
-                                                   // add or destroy entities, which a query forbids
+    private readonly Deferred<Entity> _died = new();   // deaths are reported after the loop: the rules
+                                                       // may add or destroy entities, which a query
+                                                       // forbids (R14)
     private readonly EventReader<Damaged> _damage; // for "who killed me" (16 §3.2)
     private readonly List<Damaged> _hits = new();
 
@@ -209,7 +210,6 @@ public sealed class EffectSystem : ISystem
         int health = _registries.Attribute(AttributeRecord.Health);
         int deadTag = _registries.Tag(TagRecord.Dead);
 
-        _died.Clear();
 
         // Whatever hurt anything since this system last ran, so a death can name its killer. Combat
         // runs before this system in the Gameplay phase, so a blow struck this tick is credited this
@@ -232,7 +232,7 @@ public sealed class EffectSystem : ISystem
             }
         }
 
-        foreach (var entity in _died) Die(world, entity, deadTag);
+        foreach (var entity in _died.Drain()) Die(world, entity, deadTag);
     }
 
     // Durations, periodic ticks and expiry.

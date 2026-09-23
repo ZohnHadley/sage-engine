@@ -146,8 +146,8 @@ public sealed class MeleeCombatSystem : ISystem
     private readonly ActionId _attack;
     private readonly DebugDraw _debug;
     private readonly CVar<bool> _debugSwings;
-    private readonly List<(DamageInfo Hit, AttackRecord Attack)> _pending = new();   // dealt after the
-                        // loop: applying an effect touches another entity's components
+    private readonly Deferred<(DamageInfo Hit, AttackRecord Attack)> _pending = new();   // dealt after
+                        // the loop: applying an effect touches another entity's components (R14)
 
     public MeleeCombatSystem(World world, RecordStore records, ActionRegistry actions, CVar<bool> debugSwings)
     {
@@ -169,8 +169,6 @@ public sealed class MeleeCombatSystem : ISystem
         // (see Lands). The cursor makes that exact: every event once, none missed, whatever else ran.
         _fired.Clear();
         foreach (ref readonly var e in _animation.Read()) _fired.Add(e);
-
-        _pending.Clear();
 
         foreach (var (transforms, intents, characters, melees, entities) in _fighters.Chunks)
         {
@@ -228,7 +226,7 @@ public sealed class MeleeCombatSystem : ISystem
             }
         }
 
-        foreach (var (hit, attack) in _pending)
+        foreach (var (hit, attack) in _pending.Drain())
             if (!hit.Target.IsNull) Combat.ApplyDamage(world, hit, attack.Effects);
     }
 

@@ -301,8 +301,8 @@ public sealed class InteractionSystem : ISystem
     private readonly InteractionState _state;
     private readonly ActionId _use;
     private readonly CVar<float> _range;
-    private readonly List<Used> _pending = new();          // acted on after the loop: taking an item
-                                                           // destroys an entity, which a query forbids
+    private readonly Deferred<Used> _pending = new();      // acted on after the loop: taking an item
+                                                           // destroys an entity, which a query forbids (R14)
     private readonly Entity[] _nearby = new Entity[32];    // reused: the tick budget allows no garbage
 
     public InteractionSystem(World world, RecordStore records, ActionRegistry actions, CVar<float> range)
@@ -319,7 +319,6 @@ public sealed class InteractionSystem : ISystem
     {
         var world = ctx.World;
         _state.Hovered = default;      // recomputed below; nothing in reach until something is
-        _pending.Clear();
 
         foreach (var (transforms, intents, characters, entities) in _users.Chunks)
         {
@@ -339,7 +338,7 @@ public sealed class InteractionSystem : ISystem
             }
         }
 
-        foreach (var interaction in _pending)
+        foreach (var interaction in _pending.Drain())
         {
             if (!world.IsAlive(interaction.User) || !world.IsAlive(interaction.Target)) continue;
             world.Events.Send(interaction);

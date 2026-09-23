@@ -224,6 +224,12 @@ public sealed class GameplayModule : IModule
 
     public void OnWorldCreated(World world)
     {
+        // What the Commands phase promises everything downstream: by the end of it, a pawn's intent
+        // is what this tick will act on. Both controllers write it there and CharacterMovementSystem
+        // consumes it in PrePhysics, so anything writing it later is acting a tick late — which is
+        // exactly review #48, found by reading code rather than by the engine saying so (03 §3.5).
+        world.Contracts.FinalAfter<PawnIntent>(Phase.Commands);
+
         world.Resources.Set(new InteractionState());
         world.Resources.Set(Registries);
         world.Resources.Set(_records!);      // effects look up their records through the world
