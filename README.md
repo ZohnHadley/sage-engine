@@ -60,18 +60,42 @@ searches both. Some worth knowing:
 | `r_stats`, `phys_stats`, `mem`, `stat` | draw calls and batches, bodies and step time, allocations |
 | `cam_free 1`, `cam_set <x> <y> <z> [yaw] [pitch]` | detach the camera from the player and fly it |
 | `screenshot [delay]` | PNG into `user/sandbox/screenshots` |
-| `rec_list`, `rec_get spawn watcher`, `rec_reload` | what records loaded, one record's values and where each field came from, reload them |
+| `rec_list`, `rec_get prefab watcher`, `rec_reload` | what records loaded, one record's values and where each field came from, reload them |
 | `vfs_mounts`, `vfs_which textures/creature.png` | the mount stack, and which mount a path resolves to |
 | `pause`, `host_timescale 0.3`, `sim_tickrate 30` | stop time, slow it, change the tick rate |
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
-| `sandbox_autowalk 30`, `sandbox_autoattack 1.5` | walk and swing without a keyboard, for screenshots |
+| `in_axis Move 0 1 3`, `in_look 40 0 3`, `in_tap Attack` | drive the game without a keyboard (see below) |
+| `wait 2` | pause a script here; the rest runs later |
 | `give <item>`, `inv`, `equip <item>`, `drop <item>` | items: `give practice_sword` then `equip practice_sword` and watch the combat log change |
 | `ui_crosshair 0` | hide the crosshair (it is on while a camera rig has the view) |
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
+| `ent_dump watcher`, `ent_types`, `ent_spawn goblin` | every component on a thing with its values; the names a prefab can use; place one in front of you |
 
 Anything can also be passed on the command line: `+sv_cheats 1 "+hurt 30"` runs them once the world
 is up, and `-dev`-style options are plain `+cvar value` pairs.
+
+### Driving it without a keyboard
+
+Scripted input drives the *actions*, not the simulation, so it goes through bindings → `PlayerCommand`
+→ the character controller exactly as a keyboard does — which is what makes it worth checking. Add
+`wait` and a sequence of launch arguments is an automated check:
+
+```bash
+dotnet run --project src/Sage.Host -c Development --   "+in_axis Move 0 1 3" "+in_look 40 0 3" "+wait 3" "+in_tap Attack" "+wait 1" "+screenshot"
+```
+
+| Command | What it does |
+|---|---|
+| `in_axis <action> <x> [y] [seconds]` | drive an axis (`Move 0 1` is forward); no seconds means until `in_clear` |
+| `in_hold <action> <seconds>` | hold a button down |
+| `in_tap <action>` | press it for one frame |
+| `in_look <yaw°/s> [pitch°/s] [seconds]` | turn the view at a steady rate, in degrees per second |
+| `in_release <action>`, `in_clear` | hand control back |
+| `in_scripted` | what a script is holding right now |
+| `wait [seconds]`, `wait_cancel` | pace a script; no argument means next frame |
+
+`exec <file>` runs a file of these from the user folder, and `wait` works inside it.
 
 ### Editing content while it runs
 

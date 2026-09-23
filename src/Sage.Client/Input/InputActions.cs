@@ -56,7 +56,20 @@ public sealed class InputActions
     private bool[] _wasHeld = Array.Empty<bool>();
     private Vector2[] _axis = Array.Empty<Vector2>();
     private ulong _heldBits, _pressedBits, _releasedBits;
-    private readonly List<ActionId> _taps = new();   // in_tap: held for exactly one frame
+    // Scripted input (08 §9): actions driven from the console instead of a device, for automated
+    // checks and for repeating a bug without a person at the keyboard. Injected *after* the bindings
+    // are evaluated, so a script goes through the same PlayerCommand path a keyboard does — what it
+    // exercises is the real chain, not a shortcut into the simulation.
+    private readonly List<Scripted> _scripted = new();
+
+    private struct Scripted
+    {
+        public ActionId Action;
+        public Vector2 Value;      // buttons: held when Remaining > 0; axes: the value to report
+        public float Remaining;    // seconds; <= 0 after this frame's use, so 0 means "one frame"
+        public bool OneFrame;
+        public bool Rate;          // Value is per *second*, scaled by dt (turning, not a stick position)
+    }
 
     public InputActions(ActionRegistry registry, RecordStore records, InputDevices devices, CVarRegistry cvars)
     {
@@ -72,7 +85,78 @@ public sealed class InputActions
         {
             if (a.Count == 0 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)
                 Log.Warn(LogCat.Console, "in_tap <button action>");
-            else _taps.Add(info.Id);
+            else Inject(info.Id, Vector2.One, 0f, oneFrame: true);
+        });
+
+        cvars.RegisterCommand("in_hold", CVarFlags.DevOnly,
+            "in_hold <action> <seconds>: hold a button action down for a while (0 releases it).", a =>
+        {
+            if (a.Count < 1 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)
+            {
+                Log.Warn(LogCat.Console, "in_hold <button action> <seconds>");
+                return;
+            }
+            float seconds = a.Count > 1 ? Number(a[1]) : 1f;
+            if (seconds <= 0f) Release(info.Id);
+            else Inject(info.Id, Vector2.One, seconds, oneFrame: false);
+        });
+
+        cvars.RegisterCommand("in_axis", CVarFlags.DevOnly,
+            "in_axis <action> <x> [y] [seconds]: drive an axis action (no seconds = until in_axis 0 or in_clear).", a =>
+        {
+            if (a.Count < 2 || !_registry.TryGet(a[0], out var info) || info.Kind == ActionKind.Button)
+            {
+                Log.Warn(LogCat.Console, "in_axis <axis action> <x> [y] [seconds]");
+                return;
+            }
+            var value = new Vector2(Number(a[1]), a.Count > 2 ? Number(a[2]) : 0f);
+            float seconds = a.Count > 3 ? Number(a[3]) : float.PositiveInfinity;
+            if (value == Vector2.Zero) Release(info.Id);
+            else Inject(info.Id, value, seconds, oneFrame: false);
+        });
+
+        cvars.RegisterCommand("in_look", CVarFlags.DevOnly,
+            "in_look <yaw°/s> [pitch°/s] [seconds]: turn the view at a steady rate (0 stops).", a =>
+        {
+            if (!_registry.TryGet("Look", out var look) || look.Kind != ActionKind.Axis2D)
+            {
+                Log.Warn(LogCat.Console, "in_look: there is no Look axis action");
+                return;
+            }
+            // Degrees per second, not the raw axis: Look is a per-frame delta in radians (the client
+            // has already scaled the mouse), so a script that wrote it directly would turn at a rate
+            // that depended on the frame rate — and an automated check that is not reproducible is
+            // not a check. The rate is converted here and multiplied by dt where it is applied.
+            float yaw = a.Count > 0 ? Number(a[0]) : 0f;
+            float pitch = a.Count > 1 ? Number(a[1]) : 0f;
+            float seconds = a.Count > 2 ? Number(a[2]) : float.PositiveInfinity;
+            const float ToRadians = MathF.PI / 180f;
+            // +x turns right, and AddLook subtracts it (yaw is counter-clockwise), so a positive
+            // "yaw" here means "turn right" the way a player would describe it.
+            if (yaw == 0f && pitch == 0f) Release(look.Id);
+            else Inject(look.Id, new Vector2(yaw * ToRadians, pitch * ToRadians), seconds, oneFrame: false, rate: true);
+        });
+
+        cvars.RegisterCommand("in_release", CVarFlags.DevOnly, "in_release <action>: stop driving one action from a script.", a =>
+        {
+            if (a.Count == 0 || !_registry.TryGet(a[0], out var info)) Log.Warn(LogCat.Console, "in_release <action>");
+            else Release(info.Id);
+        });
+
+        cvars.RegisterCommand("in_clear", CVarFlags.DevOnly, "Stop driving every action from a script (hands control back).", _ =>
+        {
+            _scripted.Clear();
+            Log.Info(LogCat.Console, "scripted input cleared");
+        });
+
+        cvars.RegisterCommand("in_scripted", CVarFlags.DevOnly, "What a script is currently holding down.", _ =>
+        {
+            if (_scripted.Count == 0) { Log.Info(LogCat.Console, "  nothing scripted"); return; }
+            foreach (var s in _scripted)
+            {
+                string left = float.IsPositiveInfinity(s.Remaining) ? "held" : $"{s.Remaining:F2}s left";
+                Log.Info(LogCat.Console, $"  {_registry.All[s.Action.Index].Name} = [{s.Value.X:F2}, {s.Value.Y:F2}] ({left})");
+            }
         });
         _records.Reloaded += Rebuild;   // the first record load builds the bindings
         _active[(int)InputContext.Gameplay] = true;
@@ -94,6 +178,47 @@ public sealed class InputActions
     public bool Released(ActionId a) => a.IsValid && a.Index < _held.Length && !_held[a.Index] && _wasHeld[a.Index];
     public float Axis(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index].X : 0f;
     public Vector2 Axis2(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index] : Vector2.Zero;
+
+    // ---- Scripted input ----------------------------------------------------------------------------
+
+    private static float Number(string text) =>
+        float.TryParse(text, System.Globalization.NumberStyles.Float,
+                       System.Globalization.CultureInfo.InvariantCulture, out float value) ? value : 0f;
+
+    private void Inject(ActionId action, Vector2 value, float seconds, bool oneFrame, bool rate = false)
+    {
+        Release(action);   // driving an action twice is a script contradicting itself; the last wins
+        _scripted.Add(new Scripted { Action = action, Value = value, Remaining = seconds, OneFrame = oneFrame, Rate = rate });
+    }
+
+    private void Release(ActionId action)
+    {
+        for (int i = _scripted.Count - 1; i >= 0; i--)
+            if (_scripted[i].Action == action) _scripted.RemoveAt(i);
+    }
+
+    // After the bindings, so a script adds to a device rather than fighting it: holding W while a
+    // script drives Move forward is still forward, and releasing the script hands control straight
+    // back. Ages in real time, like the console's `wait`, so a paused game still runs its script.
+    private void ApplyScripted(float dt)
+    {
+        for (int i = _scripted.Count - 1; i >= 0; i--)
+        {
+            var s = _scripted[i];
+            int index = s.Action.Index;
+            if (index >= _held.Length) { _scripted.RemoveAt(i); continue; }
+
+            if (_registry.All[index].Kind == ActionKind.Button) _held[index] = true;
+            else _axis[index] = s.Rate ? s.Value * dt : s.Value;
+
+            if (s.OneFrame) { _scripted.RemoveAt(i); continue; }
+            if (float.IsPositiveInfinity(s.Remaining)) continue;
+
+            s.Remaining -= dt;
+            if (s.Remaining <= 0f) _scripted.RemoveAt(i);
+            else _scripted[i] = s;
+        }
+    }
 
     public ActionMask HeldMask => new(_heldBits);
     public ActionMask PressedMask => new(_pressedBits);
@@ -123,8 +248,7 @@ public sealed class InputActions
                 foreach (int slot in b.Slots) _consumed[slot] = true;
             if (context == InputContext.Console) ConsumeRange(0, 256);
         }
-        foreach (var tap in _taps) _held[tap.Index] = true;
-        _taps.Clear();
+        ApplyScripted(dt);
 
         _heldBits = _pressedBits = _releasedBits = 0;
         var all = _registry.All;

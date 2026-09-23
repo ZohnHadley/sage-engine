@@ -10,10 +10,8 @@ public sealed class SandboxModule : IGameModule
     private RecordStore? _records;
     private Renderer? _renderer;
     private ContentService? _content;
-    private CVarRegistry? _cvars;
     private ActionId _jump = ActionId.None;
     private readonly List<World> _worlds = new();
-    private ActionRegistry? _actions;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule) };
 
@@ -40,11 +38,9 @@ public sealed class SandboxModule : IGameModule
     public void Start(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
-        _cvars = ctx.Engine.CVars;
         _renderer = ctx.Get<Renderer>();
         _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
-        _actions = ctx.Engine.Actions;
         _jump = ctx.Engine.Actions.Get("Jump");   // registered by GameplayModule (08 §3.2)
     }
 
@@ -58,8 +54,6 @@ public sealed class SandboxModule : IGameModule
 
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
-        world.AddSystem(new AutoWalkSystem(world, _cvars!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
-        world.AddSystem(new AutoAttackSystem(world, _cvars!, _actions!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
         world.AddSystem(new CombatLogSystem(world), Phase.Late);
         world.AddSystem(new SandboxHud(world, _records!, _content!), Phase.FrameUpdate);   // 13 §3
         world.Resources.Set<GameRules>(new SandboxRules(this));
@@ -242,75 +236,6 @@ public sealed class TriggerLogSystem : ISystem
     }
 }
 
-// Commands phase, after the player controller: walks the pawn forward on its own while
-// `sandbox_autowalk` is on. It is how the character controller gets exercised without a person at the
-// keyboard (screenshots, smoke runs); a real game would never ship this.
-public sealed class AutoWalkSystem : ISystem
-{
-    private readonly ArchetypeQuery<PawnIntent> _pawns;
-    private readonly CVar<float> _autoWalk;
-    private float _yaw;
-    private bool _turning;
-
-    public AutoWalkSystem(World world, CVarRegistry cvars)
-    {
-        _pawns = world.Query<PawnIntent>().AllTags(Tags.Get<PlayerControlled>());
-        _autoWalk = cvars.Register("sandbox_autowalk", 0f, CVarFlags.DevOnly,
-            "Walk the player forward by itself, turning this many degrees per second (0 = off).", 0f, 180f);
-    }
-
-    public void Run(in SystemContext ctx)
-    {
-        if (_autoWalk.Value <= 0f) { _turning = false; return; }
-        float turn = _autoWalk.Value * MathF.PI / 180f * ctx.Tick.Dt;
-        foreach (var (intents, _) in _pawns.Chunks)
-        {
-            var intent = intents.Span;
-            for (int n = 0; n < intent.Length; n++)
-            {
-                // The yaw has to be accumulated here: PlayerControlSystem ran first this tick and
-                // overwrote intent.Yaw with the (unchanging) view yaw, so turning it by a step per tick
-                // only ever produced a constant offset and the pawn walked in a straight line (#51).
-                if (!_turning) { _yaw = intent[n].Yaw; _turning = true; }
-                _yaw = SageMath.WrapPi(_yaw - turn);
-                intent[n].Move = new Vector2(0, 1);
-                intent[n].Yaw = _yaw;
-            }
-        }
-    }
-}
-
-// The other half of the keyboardless smoke test (`sandbox_autowalk`): swing every so often, so a
-// scripted run exercises the player's side of combat. A real game would never ship this.
-public sealed class AutoAttackSystem : ISystem
-{
-    private readonly ArchetypeQuery<PawnIntent> _pawns;
-    private readonly CVar<float> _autoAttack;
-    private readonly ActionId _attack;
-    private float _next;
-
-    public AutoAttackSystem(World world, CVarRegistry cvars, ActionRegistry actions)
-    {
-        _pawns = world.Query<PawnIntent>().AllTags(Tags.Get<PlayerControlled>());
-        _attack = actions.Get("Attack");
-        _autoAttack = cvars.Register("sandbox_autoattack", 0f, CVarFlags.DevOnly,
-            "Swing the player's weapon this many seconds apart by itself (0 = off).", 0f, 30f);
-    }
-
-    public void Run(in SystemContext ctx)
-    {
-        if (_autoAttack.Value <= 0f) return;
-        _next -= ctx.Tick.Dt;
-        if (_next > 0f) return;
-        _next = _autoAttack.Value;
-
-        foreach (var (intents, _) in _pawns.Chunks)
-        {
-            var intent = intents.Span;
-            for (int n = 0; n < intent.Length; n++) intent[n].Pressed = intent[n].Pressed.With(_attack);
-        }
-    }
-}
 
 // Late phase: reports every hit the tick landed, whoever threw it (16 §3.2). A real game would
 // play a sound and flash the screen here (cues, F21); the slice prints a line.

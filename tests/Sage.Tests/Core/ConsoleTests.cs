@@ -176,4 +176,108 @@ public class ConsoleTests
         }
         finally { LogCat.DefaultLevel = before; }
     }
+
+    // ---- `wait` and the deferred queue (02 §4.2) -------------------------------------------------
+    //
+    // A console script is only a script once it can pace itself. These pin the rules a script relies
+    // on: order is order, a wait stops the *rest*, and an exec inside a script runs where it is
+    // written rather than after everything else.
+
+    private static (CVarRegistry Registry, System.Collections.Generic.List<string> Ran) Scripted()
+    {
+        var r = new CVarRegistry();
+        var ran = new System.Collections.Generic.List<string>();
+        r.RegisterCommand("wait", CVarFlags.None, "wait [seconds]", a =>
+            a.Registry.Wait(a.Count > 0 ? float.Parse(a[0], System.Globalization.CultureInfo.InvariantCulture) : 0f));
+        r.RegisterCommand("mark", CVarFlags.None, "mark <name>", a => ran.Add(a.Count > 0 ? a[0] : ""));
+        return (r, ran);
+    }
+
+    [Xunit.Fact]
+    public void StatementsWithoutAWaitAllRunAtOnce()
+    {
+        var (r, ran) = Scripted();
+        r.Execute("mark a; mark b; mark c");
+        Assert.Equal(new[] { "a", "b", "c" }, ran);
+        Assert.False(r.HasPendingStatements);
+    }
+
+    [Xunit.Fact]
+    public void AWaitStopsTheRestUntilItsTimeIsUp()
+    {
+        var (r, ran) = Scripted();
+        r.Execute("mark a; wait 0.5; mark b");
+
+        Assert.Equal(new[] { "a" }, ran);
+        Assert.True(r.HasPendingStatements);
+
+        r.Pump(0.2f);
+        Assert.Equal(new[] { "a" }, ran);     // not yet
+
+        r.Pump(0.4f);
+        Assert.Equal(new[] { "a", "b" }, ran);
+        Assert.False(r.HasPendingStatements);
+    }
+
+    // No argument means "next frame", which is the common case: let one tick happen between two
+    // commands. Any pump at all is enough, however small.
+    [Xunit.Fact]
+    public void AWaitWithNoArgumentIsOneFrame()
+    {
+        var (r, ran) = Scripted();
+        r.Execute("mark a; wait; mark b");
+        Assert.Equal(new[] { "a" }, ran);
+
+        r.Pump(1f / 60f);
+        Assert.Equal(new[] { "a", "b" }, ran);
+    }
+
+    [Xunit.Fact]
+    public void SeveralWaitsRunInOrder()
+    {
+        var (r, ran) = Scripted();
+        r.Execute("mark a; wait 0.1; mark b; wait 0.1; mark c");
+
+        Assert.Equal(new[] { "a" }, ran);
+        r.Pump(0.2f);
+        Assert.Equal(new[] { "a", "b" }, ran);   // one wait at a time, not both at once
+        r.Pump(0.2f);
+        Assert.Equal(new[] { "a", "b", "c" }, ran);
+    }
+
+    // A script that execs another expects the inner one to run *here*. Without the front-insert, the
+    // inner statements would land after the rest of the outer script and silently reorder it.
+    [Xunit.Fact]
+    public void AScriptRunFromInsideAScriptRunsWhereItIsWritten()
+    {
+        var (r, ran) = Scripted();
+        r.RegisterCommand("inner", CVarFlags.None, "inner", a => a.Registry.Execute("mark x; mark y"));
+        r.Execute("mark a; inner; mark b");
+
+        Assert.Equal(new[] { "a", "x", "y", "b" }, ran);
+    }
+
+    [Xunit.Fact]
+    public void AnInnerScriptsWaitHoldsUpTheOuterOne()
+    {
+        var (r, ran) = Scripted();
+        r.RegisterCommand("inner", CVarFlags.None, "inner", a => a.Registry.Execute("mark x; wait 0.1; mark y"));
+        r.Execute("mark a; inner; mark b");
+
+        Assert.Equal(new[] { "a", "x" }, ran);
+        r.Pump(0.2f);
+        Assert.Equal(new[] { "a", "x", "y", "b" }, ran);
+    }
+
+    [Xunit.Fact]
+    public void PendingStatementsCanBeDropped()
+    {
+        var (r, ran) = Scripted();
+        r.Execute("mark a; wait 10; mark b");
+        r.ClearPending();
+        r.Pump(20f);
+
+        Assert.Equal(new[] { "a" }, ran);
+        Assert.False(r.HasPendingStatements);
+    }
 }

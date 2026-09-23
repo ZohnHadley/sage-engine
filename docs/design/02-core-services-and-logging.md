@@ -243,6 +243,14 @@ Built on the .NET thread pool (`Task`/`Parallel.For`), with no custom fibers (C#
 - **Measurement:** `GC.GetAllocatedBytesForCurrentThread()` is sampled per frame and shown in the overlay. A dev warning fires when steady-state frames allocate more than `mem_warn_bytes` for 60 frames in a row. The default is **0 (off)** for now: today's editor inspector and ImGui layer allocate every frame, so a 1 KB default would only produce noise. Turn it on to measure, and raise the default once the renderer and editor are rewritten. `mem` prints GC counts per generation and the heap size.
 - `GCSettings.LatencyMode = SustainedLowLatency` during gameplay (cvar `mem_lowlatency`).
 
+> **Built (2026-09-23): `wait` and the deferred statement queue (§4.2).** A console script paces
+> itself: `wait [seconds]` stops the rest of a statement list, and the host pumps the queue once a
+> frame in **real** time, so a paused game still runs its script. No argument means "next frame". A
+> nested `exec` runs where it is written (its statements go to the front of the queue, not the back),
+> and `wait_cancel` drops what is left. This is what turns `+cmd` launch arguments and `exec` files
+> into automated checks; before it, every command that needed to happen later grew its own delay
+> argument, which is what `screenshot <delay>` was.
+
 ## 5. Data flow
 
 ```

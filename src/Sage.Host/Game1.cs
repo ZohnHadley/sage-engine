@@ -154,6 +154,11 @@ public class Game1 : Game
         Log.SetFrame(++frame);
         float realDt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+        // A console script paces itself with `wait` (02 §4.2), which means somebody has to age it.
+        // Real time, not simulation time: a script that waits two seconds means two seconds even
+        // when the game is paused, which is what an automated check wants.
+        engine.CVars.Pump(realDt);
+
         // Input (08 §5): devices → contexts (the console's; ImGui's capture from its last frame) → actions.
         devices.Poll();
         var io = ImGui.GetIO();

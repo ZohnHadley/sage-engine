@@ -16,6 +16,15 @@ public sealed class CVarRegistry
     private readonly Dictionary<string, ConsoleCommand> _commands = new(StringComparer.OrdinalIgnoreCase);
     private CVar<bool>? _cheats;
 
+    // Statements waiting on a `wait` (02 §4.2). A console script is only a script once it can pace
+    // itself: "walk forward, wait two seconds, swing, wait, screenshot" is the shape of every
+    // automated check, and without this each command would have to grow its own delay argument
+    // (which is what `screenshot <delay>` was).
+    private readonly List<(string Statement, ExecSource Source)> _pending = new();
+    private bool _waiting;        // a `wait` is holding the queue; seconds may be 0 ("next frame")
+    private float _wait;          // seconds before the next pending statement runs
+    private bool _draining;       // inside Drain: a nested exec belongs *next*, not last
+
     public IEnumerable<CVar> CVars => _cvars.Values.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase);
     public IEnumerable<ConsoleCommand> Commands => _commands.Values.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase);
 
@@ -73,12 +82,75 @@ public sealed class CVarRegistry
     // ---- Execution -------------------------------------------------------------------------------
 
     // Runs one or more statements ("a 1; b 2"). Returns false if any statement failed.
+    // Runs `text`, which may be several statements. Anything after a `wait` is queued and run later
+    // by Pump, so the return value means "everything up to the first wait succeeded".
     public bool Execute(string text, ExecSource source = ExecSource.Console)
     {
+        var statements = CommandLine.SplitStatements(text).ToList();
+        if (statements.Count == 0) return true;
+
+        // A script that execs another script expects the inner one to run *here*, not after the rest
+        // of the outer one — so a nested call goes to the front of the queue.
+        var queued = statements.Select(s => (s, source));
+        if (_draining) _pending.InsertRange(0, queued);
+        else _pending.AddRange(queued);
+
+        return Drain();
+    }
+
+    // True while a script is paced out over frames, so the host knows to keep pumping.
+    public bool HasPendingStatements => _pending.Count > 0;
+
+    // Called once a frame by the host. Ages the current `wait` and runs whatever is due.
+    public void Pump(float dt)
+    {
+        if (_waiting)
+        {
+            _wait -= dt;
+            if (_wait > 0f) return;
+            _waiting = false;
+            _wait = 0f;
+        }
+        if (_pending.Count > 0) Drain();
+    }
+
+    // `wait` with no argument means "next frame", the way Quake's does: the common case is letting
+    // one tick happen between two commands. Zero seconds is still a wait — it is cleared by the next
+    // Pump, not by the rest of this statement list, or `wait` on its own would do nothing at all.
+    public void Wait(float seconds)
+    {
+        _waiting = true;
+        _wait = MathF.Max(seconds, 0f);
+    }
+
+    private bool Drain()
+    {
+        if (_draining) return true;      // re-entered from a command: it already queued its work
+        _draining = true;
         bool ok = true;
-        foreach (string statement in CommandLine.SplitStatements(text))
-            ok &= ExecuteStatement(statement, source);
+        try
+        {
+            while (!_waiting && _pending.Count > 0)
+            {
+                var (statement, source) = _pending[0];
+                _pending.RemoveAt(0);
+                ok &= ExecuteStatement(statement, source);
+            }
+        }
+        finally
+        {
+            _draining = false;
+        }
         return ok;
+    }
+
+    // Drops anything still queued: `wait` in a config file that never finishes should not outlive
+    // the thing that started it, and a person typing at the console wants a way out.
+    public void ClearPending()
+    {
+        _pending.Clear();
+        _waiting = false;
+        _wait = 0f;
     }
 
     private bool ExecuteStatement(string statement, ExecSource source)

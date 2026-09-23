@@ -110,6 +110,25 @@ public sealed class CoreCVars
 
         r.RegisterCommand("echo", CVarFlags.None, "echo <text>: print text.", a => Log.Info(LogCat.Console, a.Rest));
 
+        r.RegisterCommand("wait", CVarFlags.None,
+            "wait [seconds]: pause a script here and run the rest later (no argument = next frame).", a =>
+        {
+            float seconds = 0f;
+            if (a.Count > 0 && !float.TryParse(a[0], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out seconds))
+            {
+                Log.Warn(LogCat.Console, "wait [seconds]");
+                return;
+            }
+            a.Registry.Wait(seconds);
+        });
+
+        r.RegisterCommand("wait_cancel", CVarFlags.None, "Drop whatever a script still had queued behind a `wait`.", a =>
+        {
+            a.Registry.ClearPending();
+            Log.Info(LogCat.Console, "queued script statements dropped");
+        });
+
         r.RegisterCommand("exec", CVarFlags.None, "exec <file>: run a config file from the user folder.", a =>
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "exec <file>"); return; }

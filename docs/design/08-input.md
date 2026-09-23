@@ -88,7 +88,11 @@ Text typed into UI fields (the console, name entry, editor fields) comes from Mo
 - **Per frame:** the host resolves actions and feeds a `CommandLatch`. Before each tick it stores `latch.Sample(tick)` in the world's `PlayerInput`. `Menu` (Escape, gamepad Start/Back) closes the console or quits (#37); `ToggleConsole` replaces the old key event.
 - **Additions:**
   - a binding option `"rate": true` (the value is per second and multiplied by the frame time, for sticks driving `Look`);
-  - `in_tap <action>` (DevOnly), which presses an action for one frame, for automated tests;
+  - **scripted input** (DevOnly, 2026-09-23): `in_tap <action>` presses a button for one frame,
+    `in_hold <action> <seconds>` holds one, `in_axis <action> <x> [y] [seconds]` drives an axis,
+    `in_look <yaw°/s> [pitch°/s] [seconds]` turns the view at a steady rate, `in_release <action>`
+    and `in_clear` hand control back, and `in_scripted` shows what is currently held. See
+    "As built (scripted input)" below;
   - `bindlist` and `in_contexts`;
   - `m_sensitivity` and `m_invert_y` (Archive), which also drive the editor camera, whose look is now a plain radians-per-pixel rate (#39).
 - **Fixed on the way (#40):** the keyboard and mouse listeners rolled their previous state at the *end* of `Update`, so every polled edge (`IsKeyPressed`…) read false afterwards, and Escape-to-quit never worked. They now roll at the start.
@@ -194,6 +198,37 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
   - text input routing;
   - `bind` + `user://input.json`.
 - **Later:** an in-game rebinding UI, command recording/replay, touch.
+
+### As built (scripted input, 2026-09-23)
+
+- **Code:** `src/Sage.Client/Input/InputActions.cs` (the `Scripted` list and the `in_*` commands),
+  `src/Sage.Engine/Core/Console/CVarRegistry.cs` (`wait` and the deferred statement queue).
+- **Injected after the bindings, not instead of them.** A scripted action is written into the same
+  per-frame action state a device writes, so it goes through binding → `PlayerCommand` → `PawnIntent`
+  → the character controller like a keyboard does. That is the point: an automated check that takes
+  a shortcut into the simulation proves the shortcut works.
+- **What it replaced.** The Sandbox had grown `sandbox_autowalk` and `sandbox_autoattack`, two systems
+  that wrote `PawnIntent` **directly** in the Commands phase — a readiness-rule violation (§2:
+  presentation reaches the simulation only through `PlayerCommand`) that also skipped everything the
+  smoke test was meant to exercise. Both are gone. It is the same shape as the `spawn` record (F31):
+  a game invented a thing because the engine had no opinion, and the fix belongs in the engine.
+- **`in_look` is degrees per second, not raw axis.** `Look` is a per-frame delta in radians because a
+  mouse is, so a script writing it directly would turn at a rate that depended on the frame rate —
+  and a check that is not reproducible is not a check. The rate is converted once and scaled by `dt`.
+- **Contexts do not gate it.** Scripted input is applied after every context has had its say, so it
+  works with the console open. A person driving a script wants it to run, not to be consumed by the
+  window they typed it in.
+- **`wait` makes it a script.** `wait [seconds]` pauses a statement list and the rest runs later,
+  pumped once a frame in **real** time (a paused game still runs its script). No argument means
+  "next frame". An `exec` inside a script runs where it is written — nested statements go to the
+  front of the queue, not the back — and `wait_cancel` drops whatever is queued.
+
+  ```
+  sage.exe "+in_axis Move 0 1 3" "+in_look 40 0 3" "+wait 3" "+in_tap Attack" "+screenshot"
+  ```
+
+- **Not done here:** recording a session to a `.sagedemo` and playing it back (§3, "Later"), which is
+  the same queue plus a per-tick `PlayerCommand` log.
 
 ## 12. Multiplayer-later notes
 `PlayerCommand` is exactly what a client will send to a server each tick (with the tick number). The local controller's view angles become predicted state. Nothing about sampling changes.
