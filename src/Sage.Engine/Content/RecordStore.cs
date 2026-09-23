@@ -321,7 +321,14 @@ public sealed class RecordStore
                     Error($"{record.DefinedIn}: {key.Type} {key.Id}: base {baseId} not found (or broken)");
                 else if (baseFields != null)
                 {
-                    var merged = (JsonObject)baseFields.DeepClone();
+                    // A base in another namespace wrote its ids in its own terms: "physical" in an
+                    // engine record means sage:physical even when a game's record inherits it. The
+                    // merged JSON is deserialized in the *child's* namespace, so those ids are
+                    // qualified here first (review #56). Only fields the record type declares as
+                    // RecordId are touched — paths, labels and clip names are left alone.
+                    var merged = baseId.Namespace == record.Id.Namespace || !_typesByName.TryGetValue(key.Type, out var baseClr)
+                        ? (JsonObject)baseFields.DeepClone()
+                        : (JsonObject)Qualify(baseFields, baseClr, baseId.Namespace)!;
                     merged.Remove("base");
                     var own = (JsonObject)record.Fields.DeepClone();
                     own.Remove("base");
@@ -394,6 +401,68 @@ public sealed class RecordStore
         }
     }
 
+    // Rewrites every bare RecordId inside `node` to `ns:id`, guided by the record type's own fields so
+    // that only ids are affected. Runs once per inherited record at load, so it builds fresh nodes
+    // rather than trying to re-parent the base's.
+    private static JsonNode? Qualify(JsonNode? node, Type type, string ns)
+    {
+        if (node == null) return null;
+
+        if (type == typeof(RecordId))
+        {
+            if (node.GetValueKind() != JsonValueKind.String) return node.DeepClone();
+            string? text = (string?)node;
+            return string.IsNullOrEmpty(text) || text.Contains(':') ? node.DeepClone() : JsonValue.Create($"{ns}:{text}");
+        }
+
+        if (node is JsonArray array)
+        {
+            var element = ElementType(type);
+            if (element == null) return node.DeepClone();
+            var result = new JsonArray();
+            foreach (var item in array) result.Add(Qualify(item, element, ns));
+            return result;
+        }
+
+        if (node is JsonObject obj)
+        {
+            var result = new JsonObject();
+            var valueType = DictionaryValueType(type);
+            foreach (var (name, value) in obj)
+            {
+                var member = valueType != null ? null
+                    : SettableMembers(type).FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+                var memberType = valueType ?? (member == null ? null : MemberType(member));
+                result[name] = memberType == null ? value?.DeepClone() : Qualify(value, memberType, ns);
+            }
+            return result;
+        }
+        return node.DeepClone();
+    }
+
+    private static Type? ElementType(Type type) =>
+        type.IsArray ? type.GetElementType()
+        : type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>) ? type.GetGenericArguments()[0]
+        : null;
+
+    private static Type? DictionaryValueType(Type type) =>
+        type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>) ? type.GetGenericArguments()[1] : null;
+
+    private static Type MemberType(MemberInfo member) =>
+        member is FieldInfo field ? field.FieldType : ((PropertyInfo)member).PropertyType;
+
+    // An id as a person types it: "practice_sword" finds sandbox:practice_sword wherever it lives,
+    // while "sandbox:practice_sword" is taken as written. For consoles and cheats — game code names
+    // records in full (05 §3.5).
+    public RecordId Resolve(string type, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return default;
+        RecordId id;
+        try { id = RecordId.Parse(text, "sage"); }
+        catch (FormatException ex) { Log.Warn(LogCat.Console, ex.Message); return default; }
+        return text.Contains(':') ? id : Ids(type).FirstOrDefault(i => i.Name == id.Name);
+    }
+
     private static IEnumerable<MemberInfo> SettableMembers(Type type) =>
         type.GetFields(BindingFlags.Public | BindingFlags.Instance).Cast<MemberInfo>()
             .Concat(type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanWrite && p.GetIndexParameters().Length == 0));
@@ -439,12 +508,7 @@ public sealed class RecordStore
         cvars.RegisterCommand("rec_get", CVarFlags.None, "rec_get <type> <id>: the merged record and which file set each field.", a =>
         {
             if (a.Count < 2) { Log.Warn(LogCat.Console, "rec_get <type> <id>"); return; }
-            RecordId id;
-            try { id = RecordId.Parse(a[1], "sage"); }
-            catch (FormatException ex) { Log.Warn(LogCat.Console, ex.Message); return; }
-            if (!a[1].Contains(':'))
-                id = Ids(a[0]).FirstOrDefault(i => i.Name == a[1]);
-            Log.Info(LogCat.Console, Describe(a[0], id));
+            Log.Info(LogCat.Console, Describe(a[0], Resolve(a[0], a[1])));
         });
         cvars.RegisterCommand("rec_reload", CVarFlags.None, "Reload and re-merge all record files.", _ => Reload());
     }

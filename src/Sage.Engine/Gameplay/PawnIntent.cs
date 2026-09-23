@@ -65,6 +65,7 @@ public sealed class GameplayModule : IModule
 {
     private RecordStore? _records;
     private ActionRegistry? _actions;
+    private CVarRegistry? _cvars;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(PhysicsModule) };   // characters sweep the space
 
@@ -72,6 +73,7 @@ public sealed class GameplayModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
+        _cvars = ctx.Engine.CVars;
         _records.Register<MovementProfileRecord>();
         _records.Register<AIProfileRecord>();
         _records.Register<AIScheduleRecord>();
@@ -80,6 +82,7 @@ public sealed class GameplayModule : IModule
         _records.Register<EffectRecord>();
         _records.Register<DamageTypeRecord>();
         _records.Register<AttackRecord>();
+        _records.Register<ItemRecord>();
         _records.Reloaded += () => Registries.Rebuild(_records);
 
         // `god`: the player stops taking damage. It is a tag, so effects block themselves with it
@@ -100,7 +103,7 @@ public sealed class GameplayModule : IModule
         ctx.Engine.CVars.RegisterCommand("hurt", CVarFlags.Cheat, "hurt <amount> [damage type]: damage the local player.", a =>
         {
             float amount = a.Count > 0 && float.TryParse(a[0], out float parsed) ? parsed : 10f;
-            var type = a.Count > 1 ? RecordId.Parse(a[1], "sage") : DamageTypeRecord.Physical;
+            var type = a.Count > 1 ? ctx.Engine.Records.Resolve("damage_type", a[1]) : DamageTypeRecord.Physical;
             foreach (var world in ctx.Engine.Worlds)
                 foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities)
                 {
@@ -109,6 +112,66 @@ public sealed class GameplayModule : IModule
                     Log.Info(LogCat.Console, $"{World.Describe(entity)} takes {applied:F0} {type.Name} damage: " +
                                              $"health {world.Attribute(entity, AttributeRecord.Health):F0}");
                 }
+        });
+
+        // Items (16 §3.2, F19). There is no inventory screen yet — 13 is a later phase — so these are
+        // how you handle things: `give` puts one in your pack, `equip` puts it in your hand, and the
+        // combat log shows the difference the moment you swing.
+        ctx.Engine.CVars.RegisterCommand("give", CVarFlags.Cheat, "give <item> [count]: put an item in the local player's inventory.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "give <item> [count]"); return; }
+            var item = ctx.Engine.Records.Resolve("item", a[0]);
+            int count = a.Count > 1 && int.TryParse(a[1], out int parsed) ? parsed : 1;
+            ForEachPlayer(ctx.Engine, (world, entity) =>
+            {
+                if (world.Give(entity, item, count))
+                    Log.Info(LogCat.Console, $"{World.Describe(entity)} receives {count}x {item.Name}");
+            });
+        });
+
+        ctx.Engine.CVars.RegisterCommand("inv", CVarFlags.None, "What the local player is carrying and wearing.", _ =>
+            ForEachPlayer(ctx.Engine, (world, entity) =>
+            {
+                if (!world.TryGet<Inventory>(entity, out var inventory) || inventory.Items == null)
+                {
+                    Log.Info(LogCat.Console, $"{World.Describe(entity)} carries nothing at all");
+                    return;
+                }
+                world.TryGet<Equipment>(entity, out var equipment);
+                Log.Info(LogCat.Console, $"{World.Describe(entity)}: {inventory.Items.Count} stacks, " +
+                                         $"{world.WeightOf(entity):F1} kg" +
+                                         (inventory.Capacity > 0 ? $" of {inventory.Capacity:F0} kg" : "") +
+                                         $", holding {(equipment.MainHand.IsEmpty ? "nothing" : equipment.MainHand.Name)}" +
+                                         $"{(equipment.OffHand.IsEmpty ? "" : " and " + equipment.OffHand.Name)}");
+                foreach (var stack in inventory.Items)
+                    Log.Info(LogCat.Console, $"    {stack.Count,3}x {stack.Item}");
+            }));
+
+        ctx.Engine.CVars.RegisterCommand("equip", CVarFlags.Cheat, "equip <item>: wield or wear something the local player carries.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "equip <item>"); return; }
+            var item = ctx.Engine.Records.Resolve("item", a[0]);
+            ForEachPlayer(ctx.Engine, (world, entity) =>
+                Log.Info(LogCat.Console, world.Equip(entity, item)
+                    ? $"{World.Describe(entity)} equips {item.Name}"
+                    : $"{World.Describe(entity)} cannot equip {item.Name}"));
+        });
+
+        ctx.Engine.CVars.RegisterCommand("unequip", CVarFlags.Cheat, "unequip [main|off]: put away what the local player is holding.", a =>
+        {
+            var slot = a.Count > 0 && a[0].StartsWith("off", StringComparison.OrdinalIgnoreCase) ? EquipSlot.OffHand : EquipSlot.MainHand;
+            ForEachPlayer(ctx.Engine, (world, entity) => { world.Unequip(entity, slot); Log.Info(LogCat.Console, $"{World.Describe(entity)} puts away its {slot}"); });
+        });
+
+        ctx.Engine.CVars.RegisterCommand("drop", CVarFlags.Cheat, "drop <item> [count]: put an item on the ground in front of the local player.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "drop <item> [count]"); return; }
+            var item = ctx.Engine.Records.Resolve("item", a[0]);
+            int count = a.Count > 1 && int.TryParse(a[1], out int parsed) ? parsed : 1;
+            ForEachPlayer(ctx.Engine, (world, entity) =>
+                Log.Info(LogCat.Console, world.Drop(entity, item, count).IsNull
+                    ? $"{World.Describe(entity)} has no {item.Name} to drop"
+                    : $"{World.Describe(entity)} drops {count}x {item.Name}"));
         });
 
         // Gameplay actions (08 §3.2): the simulation defines them, so a headless server has the same
@@ -121,6 +184,14 @@ public sealed class GameplayModule : IModule
         _actions.Register("Use", ActionKind.Button);
     }
 
+    // Every cheat that acts on "the player" means the same thing by it (16 §3.1).
+    private static void ForEachPlayer(Engine engine, Action<World, Entity> act)
+    {
+        foreach (var world in engine.Worlds)
+            foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities)
+                act(world, entity);
+    }
+
     // Games add their own tasks to this before the first world is created (16 §3.4).
     public AITaskRegistry AITasks { get; } = new();
 
@@ -131,6 +202,7 @@ public sealed class GameplayModule : IModule
     {
         world.Resources.Set(new CombatEvents());
         world.Resources.Set(new AnimationEvents());
+        world.Resources.Set(new InteractionEvents());
         world.Resources.Set(Registries);
         world.Resources.Set(_records!);      // effects look up their records through the world
         Registries.Rebuild(_records!);
@@ -145,6 +217,8 @@ public sealed class GameplayModule : IModule
         // Combat resolves before effects tick, so a blow struck this tick is felt this tick: the
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!), Phase.Gameplay,
+            before: new[] { typeof(EffectSystem) });
+        world.AddSystem(new InteractionSystem(world, _records!, _actions!, _cvars!), Phase.Gameplay,
             before: new[] { typeof(EffectSystem) });
         world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,

@@ -26,13 +26,16 @@
 
   {
     // Bare hands: short reach, quick, and it shows. A weapon hands its wielder a better record (F19).
+    // The reach is not arbitrary: an AI closes to its profile's meleeRange (1.8 m) to swing, so
+    // anything shorter than that leaves a creature standing where it can hit you and you cannot
+    // reach back.
     // `windupTime` is when the blow lands, unless the attacker's animation has a "hit" event (12 §3),
     // which wins: that way the timing of a swing lives with the art.
     "type": "attack",
     "id": "default_attack",
     "damage": 8,
     "damageType": "physical",
-    "reach": 1.8,
+    "reach": 2,
     "radius": 0.3,
     "arcDegrees": 120,
     "windupTime": 0.18,

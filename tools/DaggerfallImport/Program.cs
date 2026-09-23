@@ -132,6 +132,20 @@ foreach (var flat in nature)
     records.Add(Flat(reader, textureDir, archive: 504, record: flat.Record, id: "df_" + flat.Id,
                      metresPerPixel * flat.Scale));
 
+// Equipment lying on the ground (16 §3.2, F19). Each one becomes a billboard, an `item` record and
+// — for the weapons — the `attack` record equipping it hands to the wielder's Melee.
+var equipment = new (int Record, string Id, string Label, EquipKind Kind, float Damage, float Reach, float Cooldown, float Weight)[]
+{
+    (3,  "df_sword",  "iron longsword", EquipKind.Weapon, 26f, 2.5f, 0.6f, 5f),
+    (6,  "df_mace",   "spiked mace",    EquipKind.Weapon, 34f, 2.2f, 0.95f, 9f),
+    (10, "df_shield", "kite shield",    EquipKind.Shield, 0f,  0f,   0f,    7f),
+};
+foreach (var e in equipment)
+{
+    records.Add(Flat(reader, textureDir, archive: 207, record: e.Record, id: e.Id + "_flat", metresPerPixel * 1.3f));
+    records.Add(Equipment(e.Id, e.Label, e.Kind, e.Damage, e.Reach, e.Cooldown, e.Weight));
+}
+
 // Flat textures, for the ground and for meshes: temperate grass, a boulder face, dungeon stone.
 records.Add(FlatTexture(reader, textureDir, archive: 302, record: 2, id: "df_ground"));
 records.Add(FlatTexture(reader, textureDir, archive: 302, record: 10, id: "df_rock_face"));
@@ -274,6 +288,58 @@ static string FlatTexture(Arena2Reader reader, string outDir, int archive, int r
     """;
 }
 
+// An item record, plus whatever equipping it gives you: a weapon's swing, or a shield's armour.
+static string Equipment(string id, string label, EquipKind kind, float damage, float reach, float cooldown, float weight)
+{
+    if (kind == EquipKind.Shield)
+        return $$"""
+      {
+        // Armour as an effect, so the same record could come from a spell (16 §3.3).
+        "type": "effect",
+        "id": "{{id}}_guard",
+        "duration": "Infinite",
+        "modifiers": [ { "attribute": "sage:armor", "op": "Add", "value": 25 } ]
+      },
+
+      {
+        "type": "item",
+        "id": "{{id}}",
+        "label": "{{label}}",
+        "sheet": "{{id}}_flat",
+        "slot": "OffHand",
+        "effects": ["{{id}}_guard"],
+        "weight": {{F(weight)}},
+        "value": 60
+      }
+    """;
+
+    return $$"""
+      {
+        "type": "attack",
+        "id": "{{id}}_swing",
+        "base": "sage:default_attack",
+        "damage": {{F(damage)}},
+        "reach": {{F(reach)}},
+        "radius": 0.4,
+        "windupTime": 0.25,
+        "recoverTime": 0.2,
+        "cooldown": {{F(cooldown)}}
+      },
+
+      {
+        // Equipping it hands `attack` to the wielder's Melee: combat never learns that swords exist.
+        "type": "item",
+        "id": "{{id}}",
+        "label": "{{label}}",
+        "sheet": "{{id}}_flat",
+        "slot": "MainHand",
+        "attack": "{{id}}_swing",
+        "weight": {{F(weight)}},
+        "value": 120
+      }
+    """;
+}
+
 // Where the imported art lands in the test scene. The layout is generated rather than written out,
 // so adding a creature to the table above puts it in the line-up without any more editing.
 static string Scene(string[] creatures, string[] people)
@@ -330,6 +396,13 @@ static string Scene(string[] creatures, string[] people)
     """);
         x += 3f;
     }
+
+    // Loot: a weapon where you start, and the rest out by the ruin.
+    var loot = new (string Id, float X, float Z)[] { ("df_sword", 1.2f, 3.5f), ("df_mace", -13f, -16f), ("df_shield", -17f, -18f) };
+    for (int i = 0; i < loot.Length; i++)
+        blocks.Add($$"""
+      { "type": "spawn", "id": "df_loot_{{i}}", "name": "{{loot[i].Id}}", "item": "{{loot[i].Id}}", "position": [{{F(loot[i].X)}}, 0, {{F(loot[i].Z)}}] }
+    """);
 
     // Two that come after you, from opposite sides.
     blocks.Add("""
@@ -401,3 +474,6 @@ static string DefaultContentDir()
             return Path.Combine(d.FullName, "games", "Sandbox", "content");
     return Path.Combine(Directory.GetCurrentDirectory(), "games", "Sandbox", "content");
 }
+
+// Kinds of equipment this tool knows how to write records for.
+enum EquipKind { Weapon, Shield }

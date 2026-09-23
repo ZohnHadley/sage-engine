@@ -255,6 +255,13 @@ A server needs the same records and simulation assets. The mod list plus record 
 - OGG decoding: MonoGame's `Song`/`SoundEffect` support differs per platform. Evaluate NVorbis (managed OGG decoder) for music streaming when audio (11) starts. **[unverified which formats `SoundEffect.FromStream` accepts beyond WAV on DesktopGL]**
 - JSON library: `System.Text.Json` source-generated readers vs a custom reader that keeps line numbers for error messages. Leaning towards **`Utf8JsonReader` + a generated per-type reader** (fast, with position info for errors).
 
+### Namespaces and inheritance
+A bare id means "in this file's namespace", and that rule follows the *value*, not the record that
+ends up holding it: a base in another namespace wrote `"damageType": "physical"` meaning
+`sage:physical`, and a game record inheriting it gets `sage:physical`, not `sandbox:physical`. The
+merge qualifies inherited ids using the record type's own fields, so only ids are rewritten — paths,
+labels and clip names are left exactly as the base wrote them (review #56).
+
 ## 14. Build steps
 1. ~~VFS (folder mounts) + `game.json` mounts (with 01)~~ **Done 2026-09-22** (ARCHITECTURE §7 step 5). `user://` as a VFS root is still to do.
 2. `AssetPath`, `AssetServer`, scopes, placeholders, texture + glTF + effect loaders; convert the bunny to `.glb`; fix TODO #9.

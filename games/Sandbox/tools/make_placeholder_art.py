@@ -10,6 +10,7 @@ creature.png: 8 view directions x 2 animation frames, 64x96 each (512x192).
   player". Each cell draws the body, a "nose" whose horizontal offset follows the view angle, a pack
   when seen from behind, and d small bars at the feet, so a screenshot says which group was picked.
 tree.png: one 96x128 frame, trunk + canopy.
+sword.png: one 48x64 frame, the item F19 leaves lying in the grass.
 """
 import math, zlib, struct, os
 
@@ -55,6 +56,10 @@ HEAD = (196, 170, 140, 255)
 NOSE = (230, 90, 70, 255)
 PACK = (120, 82, 48, 255)
 MARK = (250, 230, 60, 255)
+STEEL = (168, 172, 180, 255)
+STEEL_LIGHT = (214, 218, 226, 255)
+GUARD = (122, 96, 48, 255)
+GRIP = (78, 54, 36, 255)
 TRUNK = (96, 68, 44, 255)
 LEAF = (64, 122, 58, 255)
 LEAF_DARK = (44, 92, 44, 255)
@@ -93,6 +98,19 @@ def creature(path, fw=64, fh=96, directions=8, frames=2):
     c.write(path)
 
 
+def sword(path, w=48, h=64):
+    """A sword lying in the grass: the placeholder item for F19 (docs/design/16 3.2)."""
+    c = Canvas(w, h)
+    cx = w // 2
+    c.rect(cx - 2, 6, 4, 40, STEEL)            # blade
+    c.rect(cx - 1, 6, 1, 40, STEEL_LIGHT)      # a highlight down one edge
+    c.rect(cx - 8, 46, 16, 3, GUARD)           # crossguard
+    c.rect(cx - 2, 49, 4, 10, GRIP)            # grip
+    c.rect(cx - 3, 59, 6, 3, GUARD)            # pommel
+    c.set(cx, 4, STEEL_LIGHT)                  # tip
+    c.write(path)
+
+
 def tree(path, w=96, h=128):
     c = Canvas(w, h)
     c.rect(w // 2 - 6, h - 42, 12, 42, TRUNK)
@@ -104,4 +122,5 @@ def tree(path, w=96, h=128):
 os.makedirs(OUT, exist_ok=True)
 creature(os.path.join(OUT, 'creature.png'))
 tree(os.path.join(OUT, 'tree.png'))
-print('wrote creature.png (512x192) and tree.png (96x128)')
+sword(os.path.join(OUT, 'sword.png'))
+print('wrote creature.png (512x192), tree.png (96x128) and sword.png (48x64)')

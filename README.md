@@ -64,6 +64,7 @@ searches both. Some worth knowing:
 | `pause`, `host_timescale 0.3`, `sim_tickrate 30` | stop time, slow it, change the tick rate |
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
 | `sandbox_autowalk 30`, `sandbox_autoattack 1.5` | walk and swing without a keyboard, for screenshots |
+| `give <item>`, `inv`, `equip <item>`, `drop <item>` | items: `give practice_sword` then `equip practice_sword` and watch the combat log change |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
 
 Anything can also be passed on the command line: `+sv_cheats 1 "+hurt 30"` runs them once the world
@@ -138,7 +139,8 @@ It defaults to the Steam install and Daggerfall Imaging 2's DLL; pass `--arena2 
 
 - `games/Sandbox/content/textures/daggerfall/*.png` — seven creatures with walk and attack
   animations (rat, spriggan, orc, skeleton, zombie, gargoyle and a human fighter), four townspeople,
-  ten woodland flats (trees, rocks, stumps, undergrowth) and three tiling textures;
+  ten woodland flats (trees, rocks, stumps, undergrowth), a sword, a mace, a shield and three
+  tiling textures;
 - `games/Sandbox/content/data/daggerfall.json` — the `sprite_sheet`, `material` and `spawn` records
   that use them: a line-up of creatures to walk around and hit, two that hunt you, a stone ruin to
   break their line of sight, scattered woodland, and a patch putting Daggerfall's grass on the

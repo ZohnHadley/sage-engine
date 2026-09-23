@@ -56,6 +56,14 @@ public struct CharacterController : IComponent
     // keeps the two in step.
     public static CharacterController Create(byte layer, RecordId profile = default) =>
         new() { Profile = profile, Layer = layer, GroundNormal = Vector3.UnitY };
+
+    // Where this character looks from, given its feet: the camera, a swing and the Use action all
+    // start here, and they must agree (16 §3.2).
+    public static Vector3 EyeOf(Vector3 feet, in CharacterController character, MovementProfileRecord profile)
+    {
+        float height = character.Height > 0f ? character.Height : profile.StandHeight;
+        return feet + Vector3.UnitY * MathF.Max(height + profile.EyeOffset, 0.2f);
+    }
 }
 
 // Adding a character to a world (16 §3.1).

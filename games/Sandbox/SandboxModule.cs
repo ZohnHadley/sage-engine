@@ -142,11 +142,18 @@ public sealed class SandboxModule : IGameModule
             if (spawn.Player) e.AddTag<PlayerControlled>();
             if (spawn.Ai) world.Add(e, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
             if (!spawn.Attack.IsEmpty) world.Add(e, Melee.With(spawn.Attack));   // what it swings (16 §3.2)
+            if (spawn.Capacity > 0f) world.AddInventory(e, spawn.Capacity);      // and what it carries (F19)
             world.AddAttributes(e);   // health, mana and the rest, from the attribute records (16)
 
             // Starting effects: the creature's tough hide is armour, so the player's fists do less to
             // it than to a person. An effect rather than a starting value, so a spell could strip it.
             foreach (var effect in spawn.Effects) Effects.Apply(world, e, effect);
+        }
+        else if (!spawn.Item.IsEmpty)
+        {
+            // An item on the ground: the engine builds the whole thing (sprite, pickup, collider)
+            // from the item record, so one spawn line is a lootable thing (16 §3.2).
+            world.MakePickup(e, spawn.Item, spawn.Count);
         }
         else
         {
@@ -216,6 +223,12 @@ public sealed class SpawnRecord
     // Combat (16 §3.2): what it swings, and the effects it starts with (armour from a hide, a buff).
     public RecordId Attack;
     public List<RecordId> Effects = new();
+
+    // Items (16 §3.2, F19). `item` makes this a pickup lying on the ground; `capacity` gives a
+    // character a pack to put things in, in kilograms.
+    public RecordId Item;
+    public int Count = 1;
+    public float Capacity;
 }
 
 // Tags.

@@ -262,6 +262,36 @@ public class RecordStoreTests
         Assert.Equal(0, store.ErrorCount);
     }
 
+    // A base writes its ids in its own terms: "firebolt" in an engine record means sage:firebolt, even
+    // when a game's record inherits it. Getting this wrong made every engine record with a RecordId
+    // field un-inheritable by a game (review #56).
+    [Fact]
+    public void Base_InheritedIdsKeepTheBasesNamespace()
+    {
+        var fx = new MountFixture();
+        fx.Write("engine", "data/spells.json", """
+            [{ "type": "test_item", "id": "firebolt", "name": "Firebolt" },
+             { "type": "test_item", "id": "wand_base", "abstract": true, "spell": "firebolt", "value": 3 }]
+            """);
+        fx.Write("game", "data/wands.json", """
+            [{ "type": "test_item", "id": "firebolt", "name": "the game's own firebolt" },
+             { "type": "test_item", "id": "apprentice_wand", "base": "sage:wand_base", "name": "Apprentice wand" },
+             { "type": "test_item", "id": "master_wand", "base": "sage:wand_base", "name": "Master wand", "spell": "firebolt" }]
+            """);
+        fx.Mount("engine", "sage");
+        fx.Mount("game", "sandbox");
+        var store = fx.Load();
+
+        Assert.True(store.TryGet(new RecordId("sandbox", "apprentice_wand"), out TestItem apprentice));
+        Assert.Equal(new RecordId("sage", "firebolt"), apprentice.Spell);   // the base's id, as the base meant it
+        Assert.Equal(3, apprentice.Value);
+
+        // A record that writes the field itself still means its own namespace.
+        Assert.True(store.TryGet(new RecordId("sandbox", "master_wand"), out TestItem master));
+        Assert.Equal(new RecordId("sandbox", "firebolt"), master.Spell);
+        Assert.Equal(0, store.ErrorCount);
+    }
+
     [Fact]
     public void Base_Inherits_AbstractIsNotBuilt_AndBrokenBasesAreErrors()
     {

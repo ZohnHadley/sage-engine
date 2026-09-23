@@ -129,13 +129,14 @@ public enum MeleePhase { Ready, Windup, Recover }
 // task both just press the Attack action; this component and MeleeCombatSystem are the whole swing.
 public struct Melee : IComponent
 {
-    public RecordId Attack;     // empty = sage:default_attack
+    public RecordId Attack;     // what it swings now; empty = sage:default_attack
+    public RecordId Natural;    // and what it goes back to when a weapon comes off (16 §3.2, F19)
     public MeleePhase Phase;
     public float Timer;         // seconds in the current phase
     public float Cooldown;      // seconds until the next swing may start
     public bool Swung;          // this swing has landed (or missed): don't resolve it twice
 
-    public static Melee With(RecordId attack) => new() { Attack = attack };
+    public static Melee With(RecordId attack) => new() { Attack = attack, Natural = attack };
 }
 
 // Gameplay phase, before effects tick: turns "the Attack action was pressed" into a hit, for players
@@ -255,8 +256,7 @@ public sealed class MeleeCombatSystem : ISystem
     {
         var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile,
                                       out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
-        float height = character.Height > 0f ? character.Height : profile.StandHeight;
-        Vector3 eye = transform.LocalPosition + Vector3.UnitY * MathF.Max(height + profile.EyeOffset, 0.2f);
+        Vector3 eye = CharacterController.EyeOf(transform.LocalPosition, in character, profile);
         Vector3 aim = Vector3.Transform(TransformMath.Forward, Quaternion.CreateFromYawPitchRoll(intent.Yaw, intent.Pitch, 0));
 
         // Every solid thing counts, including the attacker's own kind: a swing is physical, and who it

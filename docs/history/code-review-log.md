@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#55) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#56) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -331,6 +331,11 @@ pass; the first two were real, silent bugs.
 - **File**: `src/Sage.Engine/Gameplay/CharacterController.cs` (`GroundCheck`)
 - **Problem**: found while dressing the Sandbox in Daggerfall art. A skeleton spawned at terrain height vanished; it was at **y = -16 m** and still falling. Its capsule had started a few centimetres *inside* the collision mesh, where every sweep begins overlapping — and an overlapping sweep carries no normal, so the space reports nothing at all (10 §4). The ground check read "nothing below me", the character fell, and the next tick was no different. It only showed up now because `Terrain.HeightAt` interpolates the heightfield bilinearly while the collision mesh is triangulated, so the two disagree by a little, either way, depending on the spot. The Sandbox's player start has sat at `y: 1` since F7 — a workaround for this, written before anyone knew what it was working around.
 - **Resolution (2026-09-23)**: when the downward sweep finds nothing, the controller casts a ray down from the capsule's centre before believing it. If that finds walkable ground within reach, the feet are put back on top of it. One ray, only in the case that used to be unrecoverable. Test: `ACharacterStandingInsideTheGroundIsPutBackOnTopOfIt`.
+
+### [X] 56. An inherited record id was re-namespaced to the child's namespace — **Severity: Wiring** (found 2026-09-23, F19)
+- **File**: `src/Sage.Engine/Content/RecordStore.cs` (`ResolveBases`)
+- **Problem**: base records are merged as JSON and the result is deserialized in the *child's* namespace, so a bare id written by the base was resolved against the wrong namespace. A Sandbox attack inheriting `sage:default_attack` came out referring to `sandbox:physical`, which does not exist — and the failure mode is a validation error at load, so every engine record with a `RecordId` field was effectively un-inheritable by a game. Found the moment F19 gave a sword an attack record of its own.
+- **Resolution (2026-09-23)**: the merge qualifies the base's ids with the base's namespace before merging, walking the record type's own fields so that only `RecordId` (and lists, dictionaries and nested records of them) are touched — paths, labels and animation names are left alone. Test: `Base_InheritedIdsKeepTheBasesNamespace`, which also checks that a child writing the field itself still means its own namespace.
 
 ### Noted, not fixed (carried into TODO)
 - `PhysicsSpace.OverlapBox` is broad-phase only: it can report entities whose shapes don't touch. The name should say so once a narrow-phase version exists (10 §4).
