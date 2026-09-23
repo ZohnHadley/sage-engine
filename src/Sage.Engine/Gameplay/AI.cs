@@ -23,6 +23,22 @@ public enum AICondition : ulong
     NoEnemy = 1 << 3,
     TaskFailed = 1 << 4,
     ScheduleDone = 1 << 5,
+
+    // Magic (16 §3.3, F21). `CanCastAtEnemy` is not "knows a spell": it is the whole question asked
+    // and answered — a spell it knows, off cooldown, affordable, allowed, and whose own range covers
+    // where the enemy is standing. `AbilityRules` answers it, so a creature never winds up something
+    // the cast system would refuse.
+    CanCastAtEnemy = 1 << 6,
+    // A spell that would reach, held up only by its own cooldown. The difference from
+    // `CanCastAtEnemy` is *why* it cannot cast, and it decides whether waiting is worth anything:
+    // a cooldown ends on its own, an empty mana pool does not.
+    SpellComingBack = 1 << 8,
+    // Mid wind-up. A think during a cast sees every spell refused as `AlreadyCasting`, and without
+    // this the agent decided it had no magic and walked off in the middle of its own spell.
+    Casting = 1 << 9,
+    // Whether swinging is even an option. Without it a creature with no `Melee` walks into reach and
+    // runs a melee schedule that can only fail, once a tick, for ever.
+    CanMelee = 1 << 7,
 }
 
 // How an agent senses and fights (16 §3.4). Tuning is data, like movement profiles.
@@ -84,6 +100,7 @@ public struct AIState : IComponent
     public RecordId Schedule;
     public int TaskIndex;                  // where in the schedule; bounds-checked on use
     [Transient] public ulong Conditions;   // Perceive rebuilds it wholesale every think
+    [Transient] public RecordId Spell;     // what Perceive picked to cast; rebuilt with the conditions
     public Entity Target;                  // by PersistentId in a save; null if it is gone
     public float NextThink;
     public float TaskTime;      // seconds the current task has been running
@@ -124,6 +141,7 @@ public sealed class AITaskRegistry
         Register("FaceTarget", new FaceTargetTask());
         Register("MoveToTarget", new MoveToTargetTask());
         Register("MeleeAttack", new MeleeAttackTask());
+        Register("CastSpell", new CastSpellTask());
     }
 
     public void Register(string name, IAITask task) => _tasks[name] = task;
@@ -239,6 +257,58 @@ internal sealed class MeleeAttackTask : IAITask
 
         c.Intent.Pressed = c.Intent.Pressed.With(c.Attack);
         return c.State.TaskTime > (c.Param > 0 ? c.Param : 1.5f) ? AITaskStatus.Failed : AITaskStatus.Running;
+    }
+}
+
+// Cast the spell the think picked (16 §3.3, §3.4). The agent asks for the cast the same way the
+// console and a pressed button do — `world.Cast` queues it and `AbilitySystem` applies the rules — so
+// a creature's fireball is the player's fireball, cooldown, mana and all.
+//
+// It aims with **pitch as well as yaw**, because a projectile leaves the caster's eye and the target's
+// chest is lower: without it a creature firing across a room shoots over your head.
+//
+// `param` is how long to keep trying before giving up (default 2 s), which covers a wind-up and lets
+// the schedule end tidily if something eats the cast.
+internal sealed class CastSpellTask : IAITask
+{
+    public AITaskStatus Start(ref AITaskContext c)
+    {
+        if (c.State.Spell.IsEmpty) return AITaskStatus.Failed;
+        if (!c.World.IsAlive(c.State.Target)) return AITaskStatus.Failed;
+        if (!c.World.Has<Abilities>(c.Entity))
+        {
+            Log.Once(LogCat.AI, LogLevel.Warn, $"ai-cast:{World.Describe(c.Entity)}",
+                $"{World.Describe(c.Entity)} runs a CastSpell task but has no Abilities component, so it cannot cast (16 §3.3)");
+            return AITaskStatus.Failed;
+        }
+
+        c.World.Cast(c.Entity, c.State.Spell);
+        return AITaskStatus.Running;
+    }
+
+    public AITaskStatus Run(ref AITaskContext c)
+    {
+        c.Intent.Move = Vector2.Zero;
+        if (!c.World.IsAlive(c.State.Target)) return AITaskStatus.Failed;
+
+        // Keep tracking through the wind-up: the aim is read when the spell goes off, not when it
+        // was asked for, so a target that steps aside during a slow cast is still followed.
+        Vector3 self = c.Transform.LocalPosition;
+        Vector3 target = c.World.Get<Transform>(c.State.Target).LocalPosition;
+        c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, AIMath.YawTo(self, target),
+                                         c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
+        c.Intent.Pitch = SageMath.PitchTo(self + Vector3.UnitY * 1.4f, target + Vector3.UnitY * 1.0f);
+
+        // Still winding up. `Casting` is set by AbilitySystem on the tick after the ask (the AI phase
+        // runs after Gameplay), so "empty" only means finished once it has had a tick to start.
+        if (!c.World.TryGet<Abilities>(c.Entity, out var abilities)) return AITaskStatus.Failed;
+        if (!abilities.Casting.IsEmpty) return AITaskStatus.Running;
+        if (c.State.TaskTime < c.Dt * 2f) return AITaskStatus.Running;
+
+        // Gone off, or refused — either way this agent has had its go. A refusal sent `CastRefused`
+        // and the next think will find `CanCastAtEnemy` false, so it chases or waits instead of
+        // standing here asking again.
+        return c.State.TaskTime > (c.Param > 0 ? c.Param : 2f) ? AITaskStatus.Failed : AITaskStatus.Succeeded;
     }
 }
 

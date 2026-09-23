@@ -30,8 +30,8 @@ dotnet run --project src/Sage.Host -c Debug
 No arguments needed: a development build walks up from the executable looking for `Sage.sln` and
 loads `games/Sandbox`. `-c Development` is the same thing optimised, and noticeably smoother.
 
-You should get a hilly field, three creatures, some crates falling through a trigger, and a creature
-that notices you and comes over to hit you. The HUD shows your health, what is in your hands, what
+You should get a hilly field, some creatures, some crates falling through a trigger, a creature that
+notices you and comes over to hit you, and a firebug that stands off and throws bolts of fire at you. The HUD shows your health, what is in your hands, what
 pressing `E` would pick up, and what just hit you.
 
 ### Controls

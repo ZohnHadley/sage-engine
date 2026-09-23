@@ -74,13 +74,13 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 ### As built (GameRules and the first creature, 2026-09-22)
 - **`GameRules`** (`src/Sage.Engine/Gameplay/GameRules.cs`) is a world resource a game subclasses and installs in its module's `OnWorldCreated`. `Engine.CreateWorld` calls `OnWorldStarted` **after every module has seen the new world**, so the rules can populate a world that is fully set up; a world without a game's rules gets `DefaultGameRules`. `SpawnPlayer` and `OnLoaded` are there for combat (F20) and saves (09) to call; `OnEntityDied` is already called by `EffectSystem` when an entity's health runs out (§3.3). The default is installed by `Engine.CreateWorld` itself, after every module has had its turn — inside a gameplay module the "has the game installed its own?" check could never be false (review #47).
 - **AI** (`AI.cs`, `AIThinkSystem.cs`) is the HL1 shape of §3.4:
-  - **conditions** (`SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`);
+  - **conditions** (`SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`, and from F21 `CanMelee`, `CanCastAtEnemy`, `SpellComingBack`, `Casting`);
   - **schedules as records** (`ai_schedule`: an ordered task list plus the conditions that interrupt it), parsed once per record;
-  - **tasks registered by name** (`Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`), with an optional number after a colon (`"MoveToTarget:1.6"`). A game adds its own through the registry `AIModule` provides — declare `AIModule` as a dependency and `ctx.Get<AITaskRegistry>()` in `Start` (tested by `AGameCanReachTheAITaskRegistry`);
+  - **tasks registered by name** (`Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`, `CastSpell`), with an optional number after a colon (`"MoveToTarget:1.6"`). A game adds its own through the registry `AIModule` provides — declare `AIModule` as a dependency and `ctx.Get<AITaskRegistry>()` in `Start` (tested by `AGameCanReachTheAITaskRegistry`);
   - **`ai_profile` records** for sight range, melee range, think rate, attack cooldown and turn speed;
   - **perception** is a distance check, a **sight cone** (`ai_profile.sightAngleDegrees`, 200° by default, so a creature has a blind spot behind it) and a line-of-sight raycast from eye height, so terrain, walls and props hide the player;
   - **think rate** is a few times a second, staggered by entity id; the current task runs every tick because it writes `PawnIntent`;
-  - **`ai_debug`** (with `r_debugdraw 1`) draws what each agent knows: its sight cone on the ground, a line to its target — grey when it has lost you, yellow when it can see you, red when it thinks it can reach you — and its melee range as a ring, which answers "why is it just standing there?" without a single log line.
+  - **`ai_debug`** (with `r_debugdraw 1`) draws what each agent knows: its sight cone on the ground, a line to its target — grey when it has lost you, yellow when it can see you, red when it thinks it can reach you — and its melee range as a ring — plus, for a caster, the reach of the spell it chose — which answers "why is it just standing there?" without a single log line.
 - **Both controllers write intent in `Phase.Commands`**, `AIThinkSystem` after `PlayerControlSystem`, so movement (`PrePhysics`) acts on a creature's decision in the same tick it was made. `AIThinkSystem` originally sat in `Phase.AI`, four phases *after* the movement that reads `PawnIntent`, which cost every creature a tick of lag and made `FaceTarget` test a yaw the body had not adopted (review #48).
 - **A creature keeps the direction the scene placed it facing**: `world.AddCharacter` seeds `PawnIntent.Yaw` from the entity's rotation (10 "The character controller", review #43).
 - **The creature walks with the player's controller.** Its tasks write `PawnIntent`, exactly like `PlayerControlSystem`, so chasing uses the same capsule, slopes and step-ups. That is the payoff of the controller/pawn split.
@@ -136,8 +136,40 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   phases. The event is already on the bus, so the day something listens the spell needs no change.
 - **Console:** `cast <ability>`, `learn <ability>`, `spells`, and `cast_debug 1` to draw where a cast
   reached and what it caught.
-- **Not done here:** AI that casts, and projectiles that arc, bounce or stick (they fly straight and
-  stop at the first thing).
+- **Not done here:** projectiles that arc, bounce or stick (they fly straight and stop at the first
+  thing). AI casting arrived the same day — see "As built (AI casting)" in §3.4.
+
+### As built (AI casting, F21/F22, 2026-09-23)
+A creature's spell is the player's spell. The agent asks with `world.Cast`, the same call the console
+and a pressed button make, and `AbilitySystem` applies the rules — so a creature pays mana, waits out
+a cooldown, can be blocked by a tag and can miss, all without the AI knowing any of it.
+
+- **Code:** `CastSpellTask` and the `cast_spell` / `hold_ground` schedules, `ChooseSpell` in
+  `AIThinkSystem`, and `AbilityRules` (`src/Sage.Engine/Gameplay/AbilityRules.cs`).
+- **One set of rules, asked twice.** The gates came out of `AbilitySystem` into `AbilityRules` so that
+  *deciding to cast* and *being allowed to cast* cannot answer differently. Written twice they drift,
+  and the visible symptom is a creature that walks into range and winds up a spell it cannot pay for,
+  every think, for ever. A HUD greying out a spell should ask the same question.
+- **The decision is the whole question**, not "does it know a spell": known, off cooldown, affordable,
+  allowed, and the enemy inside that spell's own `Range` (times 0.9, because at the very edge a
+  projectile times out as it arrives). It picks the **dearest** castable spell — a creature leads with
+  its best and falls back as its mana goes. Utility scoring goes here when there is more to weigh.
+- **Why it cannot cast decides what it does instead.** On cooldown is worth waiting for, so a creature
+  that cannot swing holds its ground (`hold_ground`) and faces its target; out of mana or out of range
+  is not, so it closes in. Before that distinction a caster charged between casts and ended up in
+  melee reach with nothing to do there.
+- **`CanMelee`**, because a creature with no `Melee` used to walk into reach and run a melee schedule
+  that could only fail, once a tick.
+- **It does not re-decide mid-cast.** A think during a wind-up sees every spell refused as
+  `AlreadyCasting`; without a condition for that the agent concluded it had no magic and wandered off
+  in the middle of its own spell.
+- **It aims with pitch as well as yaw** (`SageMath.PitchTo`): a spell leaves the eye and a body is
+  lower, so without it a creature on a ledge fires over the player's head. It keeps tracking through
+  the wind-up, because the aim is read when the spell goes off.
+- **Left:** keeping distance (a caster stands where it is rather than backing away), casting at
+  anything other than the player, self-buffs and healing — a creature that healed itself instead of
+  fighting would be worse than one that does not try — and friendly fire rules (F24: a firebug's bolt
+  will happily burn the watcher standing in front of it).
 
 ### As built (the spellmaker, F21, 2026-09-23)
 Composing spells cost the engine almost nothing, which is the whole argument for F18–F21: a spell is
@@ -189,6 +221,7 @@ and the cast system cannot tell a composed spell from one in a content file.
 - **Effects never add components.** They are applied from inside system loops (the AI's melee task), where a structural change throws, so an entity is set up once with `world.AddAttributes(entity)` and an effect on anything else is reported and ignored.
 - **Built (F21, 2026-09-23):** abilities and cues, projectiles, and the spellmaker — see "As built (abilities)" and "As built (the spellmaker)" below. **Not yet:** skill progression.
 
+- **Built (F21, 2026-09-23):** creatures that cast — see "As built (AI casting)".
 - **Not yet:** possession, combat, inventory, interaction — the rest of this doc.
 
 ## 4. API sketch
@@ -204,7 +237,7 @@ public abstract class GameRules                               // world resource;
 public struct Pawn { }                                         // marker: a body a controller can drive, nothing else
 public struct PawnIntent { public Vector2 Move; public float Yaw, Pitch; public ActionMask Held, Pressed; }   // written by controllers only
 public struct PlayerControlled { }                             // tag: PlayerController reads PlayerCommand into PawnIntent
-public struct AIState { public RecordId Profile, Schedule; public int TaskIndex; public ulong Conditions; public Entity Target; public float NextThink, TaskTime, Cooldown; public bool TaskStarted; }
+public struct AIState { public RecordId Profile, Schedule; public int TaskIndex; public ulong Conditions; public RecordId Spell; public Entity Target; public float NextThink, TaskTime; public bool TaskStarted; }
 
 [Record("effect")]  public sealed class EffectRecord { public List<AttributeModifier> Modifiers; public EffectDuration Duration; public float Period; public EffectStacking Stacking; public List<RecordId> GrantTags, RequireTags, BlockTags, Cues; }
 [Record("ability")] public sealed class AbilityRecord { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public AbilityTargeting Targeting; public float Range, Radius, Width, CastTime, Damage, Magnitude; public RecordId DamageType; public List<RecordId> Effects, RequireTags, BlockTags, Cues; public string Animation; }
@@ -235,7 +268,7 @@ public static class Spellmaker
   - attributes/effects/tags/abilities (health, mana, damage, burning, fireball);
   - the spellmaker (composing effects into an `ability` record, saved as the drafts behind it);
   - minimal combat, inventory and interaction;
-  - AI schedules for one melee creature;
+  - AI schedules for one melee creature and one that casts;
   - log categories `Gameplay`, `AI`;
   - `ai_debug` overlay (schedule, task and conditions above each agent);
   - `give <item>`, `god`, `notarget` cheats.
@@ -246,4 +279,4 @@ public static class Spellmaker
 2. ~~Attributes/effects/tags + `EffectSystem`~~ **Done 2026-09-22** (TODO F18).
 3. ~~Abilities + cues + fireball~~ **Done 2026-09-23** (F21 v1, "As built (abilities)"), and with them ~~projectiles~~ and ~~the spellmaker~~ the same day. AI that casts is left.
 4. ~~Combat, inventory and interaction~~ **Done 2026-09-22/23** (TODO F20, F19).
-5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22). Its swings go through the same `MeleeCombatSystem` a player's do (F20), so a creature can miss, and what its claws do is an `attack` record.
+5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22), and ~~one that casts~~ 2026-09-23 with F21. Its swings go through the same `MeleeCombatSystem` a player's do (F20), so a creature can miss, and what its claws do is an `attack` record.

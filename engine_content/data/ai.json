@@ -23,6 +23,25 @@
     "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"]
   },
   {
+    // Magic (16 §3.3). Face it, ask for the spell the think picked, then pause — the pause is what
+    // paces a caster with no cooldown on its spell, and a cooldown effect paces one that has it.
+    // Casting is chosen over chasing, so a creature that cannot swing stops walking into reach.
+    "type": "ai_schedule",
+    "id": "hold_ground",
+    "tasks": ["FaceTarget", "Wait:0.3"],
+    "interrupts": ["LostEnemy", "NoEnemy"]
+  },
+  {
+    // Waiting out a cooldown with the enemy already in range (16 §3.4): keep facing it, and think
+    // again shortly, so the tick the spell comes back is close to the tick it is thrown. Without
+    // this a creature that cannot swing charges between casts and ends up in melee reach with
+    // nothing to do there.
+    "type": "ai_schedule",
+    "id": "cast_spell",
+    "tasks": ["FaceTarget", "CastSpell:2", "Wait:0.8"],
+    "interrupts": ["LostEnemy", "NoEnemy"]
+  },
+  {
     "type": "ai_schedule",
     "id": "melee_attack",
     // MeleeAttack presses the Attack action and waits: what the swing does, how long it takes and

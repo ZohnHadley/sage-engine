@@ -48,6 +48,18 @@ public static class SageMath
     // The yaw that looks from `from` toward `to`, ignoring height.
     public static float YawTo(Vector3 from, Vector3 to) => YawOf(to - from);
 
+    // The pitch whose forward points along `direction`: positive looks **up**, matching
+    // `CreateFromYawPitchRoll(yaw, pitch, 0)` applied to the local forward (−Z).
+    public static float PitchOf(Vector3 direction)
+    {
+        float horizontal = MathF.Sqrt(direction.X * direction.X + direction.Z * direction.Z);
+        return horizontal < 1e-6f && MathF.Abs(direction.Y) < 1e-6f ? 0f : MathF.Atan2(direction.Y, horizontal);
+    }
+
+    // The pitch that looks from `from` toward `to` — what an AI needs to aim a projectile at a body
+    // rather than over its head (16 §3.4).
+    public static float PitchTo(Vector3 from, Vector3 to) => PitchOf(to - from);
+
     // Distance in the XZ plane: the "how far away on foot" that AI and interaction want.
     public static float DistanceXZ(Vector3 a, Vector3 b)
     {

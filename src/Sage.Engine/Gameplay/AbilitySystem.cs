@@ -83,17 +83,16 @@ public sealed class AbilitySystem : ISystem
         foreach (var cast in _pending.Drain()) Resolve(world, cast);
     }
 
-    // The gates, in the order a player would think of them: do I know it, is it ready, can I afford
-    // it, am I allowed. Each refusal says which, so a HUD can say why without guessing.
+    // Applies the gates and, if they all pass, starts the wind-up. The gates themselves live in
+    // `AbilityRules` so that asking "could I cast this?" and actually casting it cannot answer
+    // differently — an AI deciding to cast (16 §3.4) is the first thing that needed to ask.
     private void Begin(World world, Entity entity, ref Abilities abilities, RecordId ability)
     {
-        if (!abilities.Casting.IsEmpty) { Refuse(world, entity, ability, CastRefusal.AlreadyCasting); return; }
-        if (abilities.Known == null || !abilities.Known.Contains(ability)) { Refuse(world, entity, ability, CastRefusal.NotKnown); return; }
-        if (!_records.TryGet(ability, out AbilityRecord record)) { Refuse(world, entity, ability, CastRefusal.NotKnown); return; }
-
-        if (OnCooldown(world, entity, record)) { Refuse(world, entity, ability, CastRefusal.OnCooldown); return; }
-        if (!TagsAllow(world, entity, record)) { Refuse(world, entity, ability, CastRefusal.Blocked); return; }
-        if (!CanAfford(world, entity, record)) { Refuse(world, entity, ability, CastRefusal.TooExpensive); return; }
+        if (!AbilityRules.CanCast(world, _records, entity, ability, in abilities, out var record, out var why))
+        {
+            Refuse(world, entity, ability, why);
+            return;
+        }
 
         // Paid for at the start of the cast, like every game that has ever had an interrupt: the mana
         // is gone whether or not the spell lands, and the cooldown starts now rather than on impact.
@@ -104,27 +103,6 @@ public sealed class AbilitySystem : ISystem
         abilities.Timer = 0f;
         world.PlayClip(entity, record.Animation, _records);
     }
-
-    // An ability is on cooldown when the caster already has a tag its cooldown effect grants. No
-    // second clock, and dispelling the tag makes it ready again (16 §3.3).
-    private bool OnCooldown(World world, Entity entity, AbilityRecord record)
-    {
-        if (record.Cooldown.IsEmpty || !_records.TryGet(record.Cooldown, out EffectRecord cooldown)) return false;
-        foreach (var tag in cooldown.GrantTags)
-            if (world.HasTag(entity, tag)) return true;
-        return false;
-    }
-
-    private bool TagsAllow(World world, Entity entity, AbilityRecord record)
-    {
-        foreach (var tag in record.RequireTags) if (!world.HasTag(entity, tag)) return false;
-        foreach (var tag in record.BlockTags) if (world.HasTag(entity, tag)) return false;
-        return true;
-    }
-
-    private bool CanAfford(World world, Entity entity, AbilityRecord record) =>
-        record.CostAttribute.IsEmpty || record.Cost <= 0f ||
-        world.Attribute(entity, record.CostAttribute) >= record.Cost;
 
     // Spending is an effect with a magnitude, exactly as damage is (16 §3.3): the record says
     // "this attribute, -1", the cast says how many. Nothing subtracts a pool directly anywhere.

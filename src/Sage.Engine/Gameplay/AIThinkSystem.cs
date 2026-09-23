@@ -68,10 +68,13 @@ public sealed class AIThinkSystem : ISystem
         float yaw = SageMath.YawOf(transform.LocalRotation);
         Entity target = FindNearestPlayer(world, transform.LocalPosition, yaw, profile, self, out float distance, out bool visible);
 
+        if (world.Has<Melee>(self)) conditions |= (ulong)AICondition.CanMelee;
+
         if (target.IsNull)
         {
             state.Target = default;
-            state.Conditions = (ulong)AICondition.NoEnemy;
+            state.Spell = default;
+            state.Conditions = conditions | (ulong)AICondition.NoEnemy;
             return;
         }
 
@@ -80,6 +83,10 @@ public sealed class AIThinkSystem : ISystem
             state.Target = target;
             conditions |= (ulong)AICondition.SeeEnemy;
             if (distance <= profile.MeleeRange) conditions |= (ulong)AICondition.EnemyInMeleeRange;
+            state.Spell = ChooseSpell(world, self, distance, out bool comingBack, out bool busy);
+            if (busy) conditions |= (ulong)AICondition.Casting;
+            else if (!state.Spell.IsEmpty) conditions |= (ulong)AICondition.CanCastAtEnemy;
+            if (comingBack) conditions |= (ulong)AICondition.SpellComingBack;
         }
         else if (!state.Target.IsNull)
         {
@@ -89,7 +96,54 @@ public sealed class AIThinkSystem : ISystem
         {
             conditions |= (ulong)AICondition.NoEnemy;
         }
+        if ((conditions & (ulong)(AICondition.CanCastAtEnemy | AICondition.Casting)) == 0) state.Spell = default;
         state.Conditions = conditions;
+    }
+
+    // Which spell to throw, if any (16 §3.3). Every gate the cast system would apply is applied here
+    // through `AbilityRules`, so a creature never winds up something that would be refused — and the
+    // spell's own `Range` decides whether the enemy is close enough, because that is the number the
+    // cast will actually be resolved against.
+    //
+    // It picks the **dearest** one it can cast: a creature uses its best spell first and falls back to
+    // cheaper ones as its mana goes. Utility scoring belongs here when there is more to weigh than
+    // cost (16 §3.4), and nothing about the tasks changes when it arrives.
+    private RecordId ChooseSpell(World world, Entity self, float distance, out bool comingBack, out bool busy)
+    {
+        comingBack = false;
+        busy = false;
+        if (!world.TryGet<Abilities>(self, out var abilities) || abilities.Known is not { Count: > 0 }) return default;
+
+        // Already winding one up: there is nothing to choose, and every gate would answer
+        // `AlreadyCasting` anyway. Saying so keeps the agent in its cast schedule until the spell
+        // goes off, instead of concluding mid-cast that it has no magic and wandering away.
+        if (!abilities.Casting.IsEmpty) { busy = true; return abilities.Casting; }
+
+        RecordId best = default;
+        float dearest = -1f;
+        foreach (var ability in abilities.Known)
+        {
+            if (!AbilityRules.CanCast(world, _records, self, ability, in abilities, out var record, out var why))
+            {
+                // Only a cooldown is worth waiting for, and only for a spell that would reach from
+                // here. Anything else (no mana, a blocking tag) needs the agent to do something else.
+                if (why == CastRefusal.OnCooldown && record != null && distance <= record.Range * 0.9f
+                    && record.Targeting != AbilityTargeting.Self)
+                    comingBack = true;
+                continue;
+            }
+            // A self-targeted spell is a buff, not an attack: casting one *at* an enemy is a decision
+            // of its own, and a creature that healed itself instead of fighting would be worse than
+            // one that does not try (16 §3.4, left for the ranged/support behaviours).
+            if (record.Targeting == AbilityTargeting.Self) continue;
+            // A little short of the full range: at the very edge a projectile's flight time runs out
+            // just as it arrives, and a touch sweep grazes past.
+            if (distance > record.Range * 0.9f) continue;
+            if (record.Cost <= dearest) continue;
+            best = ability;
+            dearest = record.Cost;
+        }
+        return best;
     }
 
     // The nearest player inside the sight cone with a clear line of sight (a raycast from eye height,
@@ -132,8 +186,17 @@ public sealed class AIThinkSystem : ISystem
     private static void ChooseSchedule(ref AIState state)
     {
         var conditions = (AICondition)state.Conditions;
+        // Reach first, then magic, then closing the distance. A creature that can swing and is close
+        // enough swings — cheaper, and no mana — and one that cannot swing at all casts instead of
+        // walking into reach to do nothing, which is what a caster with no `Melee` used to do.
         RecordId wanted =
-            conditions.HasFlag(AICondition.EnemyInMeleeRange) ? Schedules.Attack :
+            conditions.HasFlag(AICondition.Casting) ? Schedules.Cast :
+            conditions.HasFlag(AICondition.EnemyInMeleeRange) && conditions.HasFlag(AICondition.CanMelee) ? Schedules.Attack :
+            conditions.HasFlag(AICondition.CanCastAtEnemy) ? Schedules.Cast :
+            // Between casts, a creature that cannot swing holds where it is rather than charging: it
+            // is already in range, and its spell is seconds away. Charging is what it did before this
+            // line existed, and it walked a pure caster into melee reach to stand there empty-handed.
+            conditions.HasFlag(AICondition.SpellComingBack) && !conditions.HasFlag(AICondition.CanMelee) ? Schedules.Hold :
             conditions.HasFlag(AICondition.SeeEnemy) ? Schedules.Chase :
             Schedules.Idle;
 
@@ -149,6 +212,8 @@ public sealed class AIThinkSystem : ISystem
         public static readonly RecordId Idle = new("sage", "idle");
         public static readonly RecordId Chase = new("sage", "chase");
         public static readonly RecordId Attack = new("sage", "melee_attack");
+        public static readonly RecordId Cast = new("sage", "cast_spell");
+        public static readonly RecordId Hold = new("sage", "hold_ground");
     }
 
     // Runs the current task, advancing through the schedule as tasks succeed. An interrupt condition

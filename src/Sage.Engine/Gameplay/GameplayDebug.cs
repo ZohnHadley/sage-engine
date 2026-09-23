@@ -148,6 +148,12 @@ public sealed class AIDebugSystem : ISystem
                 if (conditions.HasFlag(AICondition.SeeEnemy))
                     _debug.Circle(t[n].LocalPosition + Vector3.UnitY * 0.05f, Vector3.UnitX, Vector3.UnitZ,
                                   profile.MeleeRange, DebugColour.Orange);
+
+                // And the spell's reach for a caster, which is the other ring its decisions turn on
+                // (16 §3.4): inside it the agent casts or holds, outside it closes in.
+                if (!s[n].Spell.IsEmpty && _records.TryGet(s[n].Spell, out AbilityRecord spell))
+                    _debug.Circle(t[n].LocalPosition + Vector3.UnitY * 0.05f, Vector3.UnitX, Vector3.UnitZ,
+                                  spell.Range * 0.9f, DebugColour.Magenta);
             }
         }
     }

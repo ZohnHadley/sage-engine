@@ -271,6 +271,58 @@
 
   // ---- the player (docs/design/10 §3, 16 §3.1) ---------------------------------------------------
   {
+    // A creature's spell: cheaper, weaker and slower than the player's, so a firebug is a nuisance at
+    // range rather than an execution. No burst — it hits what it hits.
+    "type": "ability",
+    "id": "ember_bolt",
+    "name": "ember bolt",
+    "costAttribute": "sage:mana",
+    "cost": 4,
+    "cooldown": "ember_cooldown",
+    "targeting": "Projectile",
+    "projectile": "fireball_bolt",
+    "projectileSpeed": 12,
+    "range": 16,
+    "width": 0.25,
+    "castTime": 0.5,
+    "damage": 9,
+    "damageType": "sage:fire",
+    "cues": ["fireball_boom"]
+  },
+  { "type": "tag", "id": "cooldown.ember", "description": "Just threw an ember bolt" },
+  {
+    // Where a firebug's magic comes from: mana back on a timer, for ever. Nothing in the engine
+    // regenerates anything (16 §3.3) — it is an infinite effect with a period, which is the same
+    // machinery as poison running the other way. Without it the creature spends its fifty mana and
+    // then follows the player around unable to act, which is honest and dull.
+    "type": "effect",
+    "id": "ember_font",
+    "duration": "Infinite",
+    "period": 2,
+    "modifiers": [ { "attribute": "sage:mana", "op": "Add", "value": 5 } ]
+  },
+  {
+    "type": "effect",
+    "id": "ember_cooldown",
+    "duration": "Timed",
+    "time": 2,
+    "grantTags": ["cooldown.ember"],
+    "modifiers": []
+  },
+  {
+    // The one that casts (16 §3.4, F21). It has no `melee` part on purpose: a creature that cannot
+    // swing must not walk into reach to do nothing, and this is what proves it doesn't — it stands at
+    // range and throws bolts, because the AI prefers casting to closing when it cannot fight in reach.
+    "type": "prefab", "id": "firebug", "base": "creature", "name": "firebug",
+    "components": { "AIState": { "schedule": "sage:idle" } },
+    "parts": {
+      "character": { "layer": "enemy" },
+      "attributes": {},
+      "abilities": ["ember_bolt"],
+      "effects": ["ember_font"]
+    }
+  },
+  {
     // The same parts as the creature, plus the tag that says the local PlayerCommand drives this one.
     // Where the player starts is the scene's "player" placement, not this record.
     "type": "prefab",
@@ -338,6 +390,7 @@
     "player": { "prefab": "player", "at": [0, 1, 6] },
     "place": [
       { "prefab": "watcher",      "at": [0, 0, -3],    "yaw": 180 },
+      { "prefab": "firebug",      "at": [-7, 0, -6],   "yaw": 150 },
       { "prefab": "hopper",       "at": [2.5, 0, 0],   "yaw": -90, "name": "eastward" },
       { "prefab": "hopper",       "at": [-2.5, 0, 0],  "yaw": 0,   "name": "away" },
       { "prefab": "tree",         "at": [4.5, 0, -3] },
