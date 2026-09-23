@@ -23,6 +23,12 @@ Not in scope: the record merge rules (05), I/O semantics (04), streaming (14).
 - **Never save behaviour/script state:** Skyrim Papyrus orphaned-script saves (survey §1.5).
 - **One file per placed entity** for merge-friendly maps: UE World Partition's One File Per Actor (survey §2.2).
 
+> **Nothing has pressure-tested the component shapes yet (engine review 2026-09-23, item 4 → F27).**
+> `Inventory.Items` and `ActiveEffects.Effects` are lists; `AIState.Target` and `ActiveEffect.Source`
+> are `Entity` handles; several components hold `RecordId`s. Entity references need stable ids across
+> a save and lists need ownership and versioning rules — so either build saves sooner than the roadmap
+> says, or fix the contract here now so that new components are born compliant.
+
 ## 3. Concepts
 
 ### 3.1 Attribute contract

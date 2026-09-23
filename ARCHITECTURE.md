@@ -253,7 +253,18 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
      - the editor camera still reads devices.
    - **Deferred:** sprites (F1), point lights, `DebugDraw`, shader hot reload, `bind`/`user://input.json`.
    - 100 tests.
-7. **The vertical slice**, alternating features with the infrastructure they prove they need (the "Suggested first milestone" in TODO.md). **Started 2026-09-22 with F1 (billboard sprites), F13 (terrain), F6 (physics), F7 (the character controller with a first-person camera) and the first gameplay: `GameRules` plus HL1-style AI (F22).** The engine is walkable and something chases you. A consistency pass over those nineteen steps (2026-09-22, review #43-#52) then settled the conventions they had each grown their own version of: one facing axis and one set of angle helpers (`SageMath`), collider anchors stated explicitly, physics layers by name, and both controllers writing pawn intent in the same phase. F20 then made the fight real: one damage pipeline (resistance attributes → an effect on health → combat events), `attack` records, and a single melee system both the player and the AI drive by pressing the same button, with swings landing on the animation frame that shows them. F19 then added items: an inventory of record ids and counts, pickups you walk up to and take, and equipment that changes what you swing by handing the weapon's own `attack` record to the wielder. Next: abilities and magic (F21), with saves (F27) closing the slice.
+7. **The vertical slice**, alternating features with the infrastructure they prove they need (the "Suggested first milestone" in TODO.md). **Started 2026-09-22 with F1 (billboard sprites), F13 (terrain), F6 (physics), F7 (the character controller with a first-person camera) and the first gameplay: `GameRules` plus HL1-style AI (F22).** The engine is walkable and something chases you.
+
+A consistency pass over those nineteen steps (2026-09-22, review #43-#52) then settled the conventions they had each grown their own version of: one facing axis and one set of angle helpers (`SageMath`), collider anchors stated explicitly, physics layers by name, and both controllers writing pawn intent in the same phase. F20 then made the fight real: one damage pipeline (resistance attributes → an effect on health → combat events), `attack` records, and a single melee system both the player and the AI drive by pressing the same button, with swings landing on the animation frame that shows them. F19 then added items: an inventory of record ids and counts, pickups you walk up to and take, and equipment that changes what you swing by handing the weapon's own `attack` record to the wielder. Next: abilities and magic (F21), with saves (F27) closing the slice.
+
+**What the slice taught us about the engine** is written up in
+[`docs/history/engine-review-2026-09-23.md`](docs/history/engine-review-2026-09-23.md): records, the
+controller → pawn-intent split, effects as the only way attributes change and a simulation with no
+MonoGame dependency are all paying for themselves, while the **glue between systems** is where the
+debt is — four hand-rolled event queues instead of the bus 04 designed, three hand-rolled deferral
+lists, a `GameplayModule` that has outgrown being one module, no prefabs, and phase guarantees that
+live in prose rather than in an assertion. That became R13–R16 in TODO.md, with F31 (prefabs) and
+F27 (saves) promoted out of Phase 6.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
 

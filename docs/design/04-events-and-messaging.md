@@ -10,6 +10,13 @@ How parts of the engine and game tell each other that something happened, withou
 - Global buses as the main coupling hurt debuggability (O3DE EBus): survey §2.6.
 - Unreal's event-driven, mostly idle scripts: survey §1.4.
 
+> **Not built, and the cost is now visible (engine review 2026-09-23, item 1 → R13).** Four features
+> have each invented their own queue instead: `CombatEvents`, `InteractionEvents`, `AnimationEvents`
+> and `MessageLog`. They differ in exactly the way this doc's cursors exist to
+> normalise — one is cleared at the start of the Gameplay phase, one is refilled in Animation and read
+> a tick later, one ages per frame — and each rule lives in a comment rather than in a type. Build the
+> bus before abilities (F21) adds a fifth.
+
 ## 3. Concepts
 
 ### 3.1 The four mechanisms

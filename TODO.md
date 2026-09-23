@@ -1,12 +1,13 @@
 # Sage Engine — TODO
 
-The working tracker: **open bugs in today's code** and the **roadmap**. Updated 2026-09-22.
+The working tracker: **open bugs in today's code** and the **roadmap**. Updated 2026-09-23.
 
 | Where else to look | For |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Overview, layers, decisions (D1–D13), migration order (§7) |
 | [`docs/design/`](docs/design/00-index.md) | How each subsystem works; every roadmap item below links to its doc |
 | [`docs/history/code-review-log.md`](docs/history/code-review-log.md) | Full history of review items #1–#57 (problems, fixes, resolution notes). Closed items live only there |
+| [`docs/history/engine-review-2026-09-23.md`](docs/history/engine-review-2026-09-23.md) | The level above the bug log: what building the slice taught us about the architecture, and the R13–R16/F31/F27 items that came out of it |
 
 Legend: `[ ]` open · `[~]` partly done · `[X]` done. When an item is done, tick it here. Once a phase is finished, move its detail to the history log.
 
@@ -63,6 +64,10 @@ The structure these items fit into is in `ARCHITECTURE.md` (overview), with the 
 - [X] **R10. Build configurations + console + logging.** *Done 2026-09-22 (steps 2 and 4; the profiler landed with the tick phases in step 4).* `Debug`/`Development`/`Shipping` (no separate runtime dev mode): `developer` cvar as a defaults setter, `DevOnly` = compiled into dev builds only, restricted Shipping console via `con_enable`. `Log` with categories/levels/sinks (zero-cost when off); `Assert.Dev/Ensure/Check`; crash reports; cvars/console; the profiler + allocation counter. Replace the existing `Console.WriteLine` calls (#34, #36). → `02`
 - [~] **R11. Unified data-record pipeline.** *v1 done 2026-09-22 (migration step 5): VFS, `RecordStore` with namespaces, `base`/`abstract`, patch merge, validation, hot reload, `rec_*` commands (05 §3.6). Left: generated readers/validators (09), range checks, typed references, `RecordRef<T>`.* JSON records for *every* definition (items, spells, materials, input maps, sounds, prefabs…): namespaced `RecordId`s, `base` inheritance, per-field patch merge in load order, validation generated from `[Record]` schemas, hot reload. → `05 §3.5`, `09`
 - [ ] **R12. MonoGame 3.8.2 → 3.8.5.x upgrade, stay on DesktopGL.** Set `GraphicsProfile.HiDef`. Re-evaluate DesktopVK later (ARCHITECTURE D13). Remove the MGCB dependency: runtime asset loaders + `dotnet-mgfxc` for shaders (fixes #9). → `05`, `07`
+- [ ] **R13. Game events: one bus, not a queue per feature.** *(From the 2026-09-23 engine review, item 1.)* Typed struct events per schedule with per-reader cursors (04 §3.2), replacing the hand-rolled `CombatEvents`, `InteractionEvents`, `AnimationEvents` and `MessageLog` resources — each of which carries its own clear-and-lifetime rule in a comment today. Do this **before** abilities (F21), which is queue-shaped. → `04`
+- [ ] **R14. Deferred structural changes.** *(Engine review, item 2.)* A `Defer(...)` helper (or command-buffer support for the gameplay cases) so systems stop hand-rolling a `_pending` list and a post-loop pass; three copies exist (melee hits, interactions, deaths) on top of the world's own structural-change buffer, and the pattern has already produced bugs (#48, F18's structural-change throw). → `03`
+- [ ] **R15. Feature modules, and the game sim/client split.** *(Engine review, items 5 and 6.)* Split `GameplayModule` (nine record types, three cvars, seven commands, six input actions, nine systems across six phases) into Character/Combat/Items/AI modules, and make `Game` + `Game.Client` the documented shape for games so a game's own simulation can be tested headlessly. → `01 §3.1`, `16`
+- [ ] **R16. Phase contracts with dev assertions.** *(Engine review, item 7.)* Let a phase declare what may be written in it and check that under `SAGE_DEV`, so "PawnIntent is final after Commands" is a failing test rather than a comment (review #48 was exactly that). → `03 §3.5`
 
 ### Feature phases
 
@@ -103,13 +108,13 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F24. Factions, reputation, dialogue and quests.** Records + entity I/O + events. → `16`
 - [ ] **F25. Economy and life paths.** Production chains, markets, professions as data; coarse offline simulation (ties into F14 dormancy). → `16`
 - [ ] **F26. Overworld / party layer.** A second world type (depends on R1). → `16`
-- [ ] **F27. Save/load (v1).** Generated serializers; visited-sector rule; tombstones; saved resources; tagged binary; temp + rename; no behaviour state. → `09`
+- [ ] **F27. Save/load (v1). *(Engine review, item 4: write the contract early even if the feature waits.)*** Nothing has pressure-tested the component shapes for saving — `Inventory.Items` and `ActiveEffects.Effects` are lists, `AIState.Target` and `ActiveEffect.Source` are `Entity` handles — and every feature adds more. Generated serializers; visited-sector rule; tombstones; saved resources; tagged binary; temp + rename; no behaviour state. → `09`
 
 #### Phase 6 — Editor
 - [ ] **F28. Editor host + inspector (v1 minimal).** Separate host; documents; outliner; editable inspector generated from metadata; wire up the File → New/Open/Save stubs. → `15`
 - [ ] **F29. Gizmos + picking (v1: translate).** → `15`
 - [ ] **F30. Undo/redo via the command log (v1).** → `15`
-- [ ] **F31. Prefabs.** Prefab records with overrides; "revert to prefab" UI. → `05`, `09`, `15`
+- [ ] **F31. Prefabs. *(Promoted by the 2026-09-23 engine review, item 3: do this early, not in Phase 6.)*** Prefab records with overrides; `world.Spawn(prefab, at)` as the one entry point for placing a thing (today a creature takes eight calls across five static classes); `ent_spawn <prefab>` falls out of it; "revert to prefab" UI later. The Sandbox invented `spawn` records and the Daggerfall importer had to generate game-specific JSON because the engine has no opinion here. → `05`, `09`, `15`
 - [ ] **F32. Asset/record/shader hot reload (v1 for folders).** → `05`, `07`
 
 #### Phase 7 — Multiplayer (later)
@@ -126,7 +131,7 @@ Not built now. The readiness rules (ARCHITECTURE §4.9) keep it from being a rew
 
 > A first-person player walks on one heightmap terrain sector with a few billboard-sprite trees. One billboard-sprite creature chases the player and attacks in melee. The player can swing a weapon, cast one data-defined fireball, pick up an item, then save and reload.
 
-This needs R1–R6 and R8–R12, plus the **(v1)** parts of F1–F3, F5–F7, F13, F17–F22, F27–F30 and F32. It leaves out skeletal animation and networking, the two biggest items, while keeping the architecture ready for both. Build it by **alternating** infrastructure and features (ARCHITECTURE §7).
+This needs R1–R6 and R8–R16, plus the **(v1)** parts of F1–F3, F5–F7, F13, F17–F22, F27–F30 and F32. The 2026-09-23 engine review added R13–R16 and changed the order of what was already there: **R13 (the event bus) before F21**, because abilities are queue-shaped; **F31 (prefabs) before the rest of Phase 6**, because every game and tool is inventing its own spawning meanwhile; and F27's serialization *contract* written now even though saves themselves stay where they are. R14–R16 are cheap and can land alongside whatever is being built. It leaves out skeletal animation and networking, the two biggest items, while keeping the architecture ready for both. Build it by **alternating** infrastructure and features (ARCHITECTURE §7).
 
 ### Already present
 - **Input devices:** `KeyboardListener` + `MouseListener` (edge events, polling, exact-match chords, threshold-gated drag). They become the device layer of R3 (`08 §3.1`).

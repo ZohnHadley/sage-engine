@@ -77,6 +77,14 @@ The rest of this doc is written against the `World` API.
 State that isn't per-entity lives in world **resources**, the equivalent of Overwatch's singleton components: `GameRules`, the physics space, the current `TickTime`, the origin sector, the event queues (04). Accessed as `world.Resources.Get<T>()`. No static singletons (TODO R1).
 
 ### 3.5 Systems and schedules
+
+> **Two gaps the slice exposed (engine review 2026-09-23 → R14, R16).** A system that touches another
+> entity inside a query loop has to defer it, and three systems now hand-roll the same list and
+> post-loop pass on top of the buffer `World` already keeps; a `Defer(...)` helper belongs here. And what a phase *guarantees* ("PawnIntent is
+> final after Commands", "transforms are settled after PostPhysics") lives only in comments, which is
+> how review #48 survived both a code review and a docs audit — dev-build assertions would make it a
+> failing test instead.
+
 - A system is a class implementing `ISystem`, registered into a **schedule** and **phase**:
   - `Schedule.Fixed`, at `sim_tickrate` (01 §5.2): `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late`.
   - `Schedule.Frame`, once per rendered frame: `FrameUpdate → Extract → Render → Overlay`.

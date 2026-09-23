@@ -29,6 +29,12 @@ Not in scope: what the services do (02), how worlds run systems (03).
 
   *Today* this is the intended layering; only some of it exists. The assemblies that are actually in the solution are `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox` and `tests/Sage.Tests` — no `Sage.Framework` or `Sage.Framework.Client` yet (`GameplayModule` lives in `Sage.Engine`, 16 "As built", until there's enough in it to split out). `Sage.Engine`'s package references are **`Friflo.Engine.ECS` and `BepuPhysics`**, not SharpGLTF (glTF mesh loading is still to build, 05 §14 step 2). The rest of the reference graph matches the table: `Sage.Client`, `Sage.Editor` and `Sage.Host` add MonoGame; `Sage.Host` references `Sage.Editor` for the reason given above; `games/Sandbox` references `Sage.Engine` and `Sage.Client`; `tests/Sage.Tests` references `Sage.Engine`.
 
+> **The gameplay module has outgrown being one module (engine review 2026-09-23, item 5 → R15).**
+> `GameplayModule` registers nine record types, three cvars, seven console commands and six input
+> actions, and installs nine systems across six phases; the two-level design below is what it should be split along (Character, Combat,
+> Items, AI). The same applies to games: `Game` + `Game.Client`, so a game's simulation can be tested
+> headlessly the way the engine's can.
+
 - **`IModule`s are logical units inside those assemblies** (Renderer, Physics, Audio, Streaming, Abilities…). Each declares its dependencies and gets `Init`/`Shutdown` in dependency order. Games can replace or disable engine modules (Bevy's `DefaultPlugins` idea) without touching engine code.
 
 ### 3.2 Build configurations, the console and `developer`
