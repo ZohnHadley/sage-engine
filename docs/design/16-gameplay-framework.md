@@ -47,7 +47,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **`ActiveEffects`** component: running effect instances (record, source `EntityRef`, remaining time, stacks). An `EffectSystem` (Gameplay phase) ticks them and recomputes current attribute values.
 - **`ability` records:** cost (attribute), cooldown (an effect granting a cooldown tag), targeting (self / projectile / area / touch), effects to apply, cue ids, and the animation to play.
 - **Cues:** presentation-only reactions (sound, particles, screen flash), played by Frame-schedule systems from `CueTriggered` events (04, 11).
-- **Spellmaker:** composing effect records into a *new* `ability` record at runtime. It's saved as data in the save game (09 saved resource), exactly as Daggerfall's custom spells were.
+- **Spellmaker:** composing effect records into a *new* `ability` record at runtime. It's saved as data in the save game (09 saved resource), exactly as Daggerfall's custom spells were. **Built 2026-09-23** — see "As built (the spellmaker)".
 
 ### 3.4 AI (HL1-style first)
 - **`schedule` records:** an ordered task list + an **interrupt condition mask** (`new_enemy`, `heavy_damage`, `lost_target`, `heard_noise`…).
@@ -136,8 +136,41 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   phases. The event is already on the bus, so the day something listens the spell needs no change.
 - **Console:** `cast <ability>`, `learn <ability>`, `spells`, and `cast_debug 1` to draw where a cast
   reached and what it caught.
-- **Not done here:** the spellmaker composing effects into new abilities at runtime, AI that casts,
-  and projectiles that arc, bounce or stick (they fly straight and stop at the first thing).
+- **Not done here:** AI that casts, and projectiles that arc, bounce or stick (they fly straight and
+  stop at the first thing).
+
+### As built (the spellmaker, F21, 2026-09-23)
+Composing spells cost the engine almost nothing, which is the whole argument for F18–F21: a spell is
+already "a cost, targeting and a list of effects", so making one is *filling in an `ability` record*,
+and the cast system cannot tell a composed spell from one in a content file.
+
+- **Code:** `src/Sage.Engine/Gameplay/Spellmaker.cs` — `SpellDraft` (what the player chose),
+  `Spellbook` (a `[SavedResource]` world resource: the drafts, nothing else), and `Spellmaker`
+  (`Price`, `Compose`, `Restore`, `Forget`).
+- **The draft is the data; the record is derived from it.** The save holds the choices (09
+  "As built (saved resources)") and loading composes the records again, so a rebalanced effect changes
+  a player's old spell rather than being frozen into it — and no `AbilityRecord` is ever serialized.
+  Proved by a test that triples an effect's cost between two runs of the game.
+- **Records made at run time** live in their own layer of the `RecordStore` (05 "As built"), under the
+  `custom` namespace of their own, and survive a content hot reload — nothing on disk could rebuild a
+  player's spell.
+- **Effects are priced by the effect record** (`EffectRecord.Cost`), so a mod prices what it adds in
+  the file that adds it. **Cost 0 means "not for sale"**: `spend_mana` and cooldowns are effects the
+  game applies itself, and without that rule "a spell that drains your own mana" is composable.
+- **Price** is one function, separate from composing, because a spellmaker screen has to show a number
+  before the player commits: effects plus damage, scaled by magnitude, multiplied by what the delivery
+  costs, and only counting the range and radius the delivery actually uses. Minimum one.
+- **Refusals carry words a screen can show** (no name, no effects, an effect not for sale, a name
+  already used, an id already taken), because composing is the one place a player's idea meets the rules.
+- **No cooldown yet:** a composed spell is gated by cost, which is the bargain Daggerfall's spellmaker
+  struck. When a cooldown becomes a choice it is a field on the draft and a term in the price.
+- **v1 assumes mana:** a composed spell draws on `sage:mana`, the engine's own pool. A game whose magic
+  runs on something else needs that to become a choice (a field on the draft, or a rule on `GameRules`).
+- **Console:** `spell_effects` (what can be built with, and what each costs), `spell_make <name>
+  <effect|key=value>...`, `spell_list`, `spell_forget <name>`. The spellmaker *screen* waits for UI
+  (13); the rules are what needed building, and a screen will call exactly these.
+- **Forgetting** removes the draft and the record, and an entity that still knows the id is refused
+  with `NotKnown` — the same thing that happens to any ability whose record went away with a mod.
 
 - **Not yet:** blocking and parries, directional melee and reversals (Lugaru/Warband, later), knockback and hit reactions, cleaving several targets with one swing, ranged and projectile attacks (F21), friendly-fire rules (F24), and damage over time routed through resistances (a periodic effect still changes health directly).
 - **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side). Real pathfinding is F23.
@@ -154,7 +187,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Tags gate application**: `requireTags` and `blockTags` decide whether an effect lands. The `god` cheat is exactly that — it gives the player `state.invulnerable`, and damage effects block themselves on it, instead of every damage path checking a flag.
 - **Death is a seam, not a feature.** When health reaches 0 the system tags the entity `state.dead` and calls `GameRules.OnEntityDied` once, outside the query loop. What death means is the game's business; the Sandbox respawns the player.
 - **Effects never add components.** They are applied from inside system loops (the AI's melee task), where a structural change throws, so an entity is set up once with `world.AddAttributes(entity)` and an effect on anything else is reported and ignored.
-- **Built (F21, 2026-09-23):** abilities and cues — see "As built (abilities)" below. **Not yet:** the spellmaker, projectiles that travel, and skill progression.
+- **Built (F21, 2026-09-23):** abilities and cues, projectiles, and the spellmaker — see "As built (abilities)" and "As built (the spellmaker)" below. **Not yet:** skill progression.
 
 - **Not yet:** possession, combat, inventory, interaction — the rest of this doc.
 
@@ -177,6 +210,19 @@ public struct AIState { public RecordId Profile, Schedule; public int TaskIndex;
 [Record("ability")] public sealed class AbilityRecord { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public AbilityTargeting Targeting; public float Range, Radius, Width, CastTime, Damage, Magnitude; public RecordId DamageType; public List<RecordId> Effects, RequireTags, BlockTags, Cues; public string Animation; }
 
 public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStatus.Running; AITaskStatus Run(ref AITaskContext c); }   // registered by name
+
+// The spellmaker (§3.3). A draft is what the player chose and the only thing saved; the record is
+// composed from it, here and again on load.
+public sealed class SpellDraft { public string Name; public AbilityTargeting Targeting; public List<RecordId> Effects; public float Magnitude, Range, Radius, Damage, ProjectileSpeed; public RecordId DamageType, Projectile; }
+[SavedResource("spellbook")] public sealed class Spellbook : ISavedResource { public List<SpellDraft> Drafts { get; set; } }
+
+public static class Spellmaker
+{
+    public static float Price(RecordStore records, SpellDraft draft);    // for a screen, before committing
+    public static SpellResult Compose(World world, SpellDraft draft);    // rules, price, record, book
+    public static int Restore(World world);                             // after a load: drafts → records
+    public static bool Forget(World world, string name);
+}
 ```
 
 **Still design-only:** combat, inventory and interaction aren't sketched here yet (§3.2). Everything else above is shipped: `Pawn` really is that empty (no `Controller` back-reference — a controller only ever writes `PawnIntent`, nothing points the other way); `EntityRef` is `Entity` in code everywhere (glossary, 03); `AIState` carries `Profile`, `TaskTime` and `Cooldown` too, not just the fields shown before.
@@ -187,6 +233,7 @@ public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStat
   - Controller/Pawn/`PawnIntent`;
   - Character + first-person rig;
   - attributes/effects/tags/abilities (health, mana, damage, burning, fireball);
+  - the spellmaker (composing effects into an `ability` record, saved as the drafts behind it);
   - minimal combat, inventory and interaction;
   - AI schedules for one melee creature;
   - log categories `Gameplay`, `AI`;
@@ -197,6 +244,6 @@ public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStat
 ## 14. Build steps
 1. ~~Controller/Pawn/`PawnIntent` + Character + `GameRules`~~ **Done 2026-09-22** (TODO F7, with 10).
 2. ~~Attributes/effects/tags + `EffectSystem`~~ **Done 2026-09-22** (TODO F18).
-3. ~~Abilities + cues + fireball~~ **Done 2026-09-23** (F21 v1, "As built (abilities)"). Projectiles that travel, the spellmaker and AI casting are left.
+3. ~~Abilities + cues + fireball~~ **Done 2026-09-23** (F21 v1, "As built (abilities)"), and with them ~~projectiles~~ and ~~the spellmaker~~ the same day. AI that casts is left.
 4. ~~Combat, inventory and interaction~~ **Done 2026-09-22/23** (TODO F20, F19).
 5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22). Its swings go through the same `MeleeCombatSystem` a player's do (F20), so a creature can miss, and what its claws do is an `attack` record.

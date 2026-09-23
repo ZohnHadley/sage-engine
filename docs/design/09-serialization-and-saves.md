@@ -42,7 +42,7 @@ Not in scope: the record merge rules (05), I/O semantics (04), streaming (14).
 | `[Record("item")]` | class | A record schema (05 §3.5); its fields use `[Property]`/`[Saved]` the same way |
 | `[GameEvent]` | struct | Game event (04) |
 | `[Output]` / `[Input("Open")]` | field / static method | Entity I/O (04) |
-| `[SavedResource("time_of_day", Version = 1)]` | class/struct | Per-world state saved with the world (`GameRules` state, quest log, calendar) |
+| `[SavedResource("time_of_day", Version = 1)]` | class/struct | Per-world state saved with the world (`GameRules` state, quest log, calendar). **As built:** the name only — versioning waits for the first format change, as everywhere else here |
 
 A field with neither `[Saved]` nor `[Transient]` gets a **compile-time warning** from the generator, so nothing is left out of saves by accident.
 
@@ -90,7 +90,8 @@ maps/<name>/
 - **Rule: every sector (or interior) that has been loaded during the playthrough is saved in full**, meaning all its entities that have a `Persistent` component. Unvisited sectors cost nothing. This is simpler and more robust than tracking field-level deltas. Finer change tracking can come later if saves get large.
 - **Destroyed baseline entities** in a saved sector are recorded as tombstones (their `PersistentId`). On load they're skipped when the baseline is instantiated.
 - **Runtime-spawned entities** that should persist (dropped items, recruited NPCs) get a `Persistent` component when spawned. Everything else (projectiles, effects, corpses on a timer) is simply not saved.
-- **Saved resources** (`[SavedResource]`): game rules state, time, quest log, faction standings.
+- **Saved resources** (`[SavedResource]`): game rules state, time, quest log, faction standings, the
+  spellbook of composed spells (16 §3.3). Built 2026-09-23 — see "As built (saved resources)".
 - **Never saved:**
   - system state (systems are stateless by rule, 03);
   - delegates, coroutines or scripts;
@@ -154,9 +155,27 @@ user://saves/<slot>/
   a component that also carries its own UTF-8 bytes).
 - **`Remaining = +∞`** is how an everlasting effect says so, so the dialect allows named floating-point
   literals. Without that, one such effect failed the *whole* component silently.
-- **Not done here:** maps, sectors, tombstones, binary, upgraders, saved resources
-  (`[SavedResource]` — `GameRules` state is not yet saved), thumbnails, autosave rotation, and the mod
-  list in the header.
+- **Not done here:** maps, sectors, tombstones, binary, upgraders, thumbnails, autosave rotation, and
+  the mod list in the header. `GameRules` state is still not saved — the mechanism exists now, and
+  nothing in the Sandbox's rules has state worth keeping yet.
+
+### As built (saved resources, F21/F27, 2026-09-23)
+A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
+spells a player composed are the *world's*, not any one entity's.
+
+- **`[SavedResource("name")]`** on a world-resource class (03 §3.4), and
+  `engine.Saves.RegisterResource<T>()` in the owning module's `Init` — explicit, exactly as record
+  types are registered, so a mod's resource is only in the save when the game that reads it back knows
+  what to do with it. The attribute's *name* is the key in the file, so renaming the class is free.
+- Written into the world file beside `entities`, read back in the same JSON dialect, and installed with
+  `world.Resources.Set`.
+- **A load replaces every registered resource, including the ones the file says nothing about.** Absent
+  means "you had none", not "keep what you have" — otherwise a spell composed since the save would
+  survive loading, which is a different game.
+- **`ISavedResource.AfterLoad(world)`** for a resource whose data implies something to rebuild. The
+  spellbook's drafts become `ability` records again through exactly the code path that composes one in
+  the first place, so **no `AbilityRecord` is ever serialized** and a rebalanced effect changes a
+  player's old spell instead of being frozen into it (records made at run time: 05 "As built").
 
 ## 4. Public API sketch
 
@@ -179,6 +198,12 @@ public sealed class SaveSystem                            // per Engine
     public SaveResult Save(string slot, World world);     // at a tick boundary, never mid-tick
     public LoadResult Load(string slot);                  // tears down worlds, rebuilds from baseline + save
     public IReadOnlyList<SaveHeader> List();
+    public void RegisterResource<T>() where T : class, new();   // a [SavedResource]; in the owning module's Init
+}
+
+public interface ISavedResource                           // optional, for a resource that implies more
+{
+    void AfterLoad(World world);                          // e.g. a spellbook's drafts become records again (16 §3.3)
 }
 
 public interface IComponentSerializer<T> where T : struct  // generated

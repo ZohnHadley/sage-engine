@@ -25,7 +25,10 @@
     "stacking": "Refresh",
     "grantTags": ["state.burning"],
     "blockTags": ["state.invulnerable"],
-    "modifiers": [ { "attribute": "health", "op": "Add", "value": -4 } ]
+    "modifiers": [ { "attribute": "health", "op": "Add", "value": -4 } ],
+    // What it costs to build a spell out of (F21's spellmaker). An effect with no cost is one the
+    // game applies itself and no player composes with, which is why `spend_mana` below has none.
+    "cost": 10
   },
   {
     // How mana leaves you. A spell's cost is this effect at the cost's magnitude, so "free casting"
@@ -40,6 +43,15 @@
     "id": "vigour",
     "duration": "Timed",
     "time": 10,
-    "modifiers": [ { "attribute": "stamina", "op": "Add", "value": 25 } ]
+    "modifiers": [ { "attribute": "stamina", "op": "Add", "value": 25 } ],
+    "cost": 8
+  },
+  {
+    // Healing: instant, so it moves the base value there and then. The first spell anyone makes in a
+    // spellmaker is a cheap heal, and it is the one that proves a composed spell needs no damage.
+    "type": "effect",
+    "id": "mend",
+    "modifiers": [ { "attribute": "health", "op": "Add", "value": 10 } ],
+    "cost": 6
   }
 ]

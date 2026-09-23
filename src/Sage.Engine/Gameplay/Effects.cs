@@ -33,6 +33,12 @@ public sealed class EffectRecord
     public List<RecordId> RequireTags = new();  // the target must have all of these
     public List<RecordId> BlockTags = new();    // the target must have none of these
     public List<RecordId> Cues = new();         // presentation only (16 §3.3); played once cues exist
+
+    // What this effect costs to *build a spell out of* (16 §3.3, F21's spellmaker). Zero means it is
+    // not for sale: an effect the game applies itself — a cooldown, a mana spend, a trap's poison —
+    // has no price because no player composes with it. It lives on the effect rather than in the
+    // spellmaker so that a mod adding an effect prices it in the same file it defines it in.
+    public float Cost;
 }
 
 // A running effect on an entity.

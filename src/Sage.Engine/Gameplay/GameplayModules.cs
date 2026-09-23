@@ -296,6 +296,10 @@ public sealed class AbilitiesModule : IModule
         _actions = ctx.Engine.Actions;
         _records.Register<AbilityRecord>();
         _records.Register<CueRecord>();
+        // The player's own spells are data in the save, and the records are made from it on load
+        // (F21's spellmaker, 09 §3.1).
+        ctx.Engine.Saves.RegisterResource<Spellbook>();
+        Spellmaker.RegisterCommands(ctx.Engine);
         ctx.Engine.Prefabs.Register("abilities", PrefabParts.Abilities);
         _actions.Register("Cast", ActionKind.Button);
 
@@ -333,8 +337,10 @@ public sealed class AbilitiesModule : IModule
                 }
                 foreach (var id in abilities.Known)
                 {
-                    string cost = ctx.Engine.Records.TryGet(id, out AbilityRecord record) && record.Cost > 0f
-                        ? $"{record.Cost:F0} {record.CostAttribute.Name}" : "free";
+                    // No record at all: an ability from content that is gone, or a composed spell
+                    // that was forgotten. Casting it is refused, so the listing says so too.
+                    string cost = !ctx.Engine.Records.TryGet(id, out AbilityRecord record) ? "(no longer exists)"
+                        : record.Cost > 0f ? $"{record.Cost:F0} {record.CostAttribute.Name}" : "free";
                     Log.Info(LogCat.Console, $"  {id,-28} {cost}");
                 }
             }));

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Friflo.Engine.ECS;
@@ -23,6 +24,9 @@ namespace sage_engine;
 //    because that is when the baseline starts being re-instantiated underneath the save.
 // 3. *Reflection, not the generator.* As with records (05 §3.5), and it goes the same way.
 //
+// A world is not only its entities: a `[SavedResource]` singleton (the spellbook, later the quest log)
+// is written beside them and replaced on load, and can rebuild whatever it implies (`ISavedResource`).
+//
 // What is *not* a deviation: an entity is rebuilt by spawning its prefab and laying the saved
 // components over the top. That is why `Populate` was split out in F31 — a character's collider,
 // controller and intent come back because the prefab puts them there, not because they were saved.
@@ -37,6 +41,33 @@ public sealed class SaveSystem
     {
         _engine = engine;
         _serializer = new SaveSerializer(engine.Components);
+    }
+
+    // ---- saved world resources ----------------------------------------------------------------------
+
+    // A registered `[SavedResource]` type, with the three things a save needs doing to it. They are
+    // closures made where `T` is still known, because `WorldResources` is keyed on `typeof(T)` and
+    // reflecting a generic `Set` back into shape would be a lot of machinery for no gain.
+    private readonly record struct SavedResource(
+        string Name, Type Type, Func<World, object?> Read, Action<World, object> Write, Func<object> Create);
+
+    private readonly Dictionary<string, SavedResource> _resources = new(StringComparer.Ordinal);
+
+    // Modules register theirs in Init, beside their record types (01 §5.1). Explicit, like records:
+    // scanning assemblies for the attribute would put a mod's resource in every save whether the game
+    // that reads it back knows what to do with it or not.
+    public void RegisterResource<T>() where T : class, new()
+    {
+        var attr = typeof(T).GetCustomAttribute<SavedResourceAttribute>()
+                   ?? throw new InvalidOperationException($"{typeof(T).Name} has no [SavedResource(\"name\")] attribute.");
+        if (_resources.TryGetValue(attr.Name, out var existing) && existing.Type != typeof(T))
+            throw new InvalidOperationException($"Saved resource '{attr.Name}' is already registered by {existing.Type.Name}.");
+
+        _resources[attr.Name] = new SavedResource(
+            attr.Name, typeof(T),
+            world => world.Resources.TryGet<T>(out var r) ? r : null,
+            (world, value) => world.Resources.Set((T)value),
+            () => new T());
     }
 
     private string? _root;
@@ -125,6 +156,23 @@ public sealed class SaveSystem
         }
 
         var root = new JsonObject { ["entities"] = entities };
+
+        var resources = new JsonObject();
+        foreach (var kind in _resources.Values.OrderBy(r => r.Name, StringComparer.Ordinal))
+        {
+            object? value = kind.Read(world);
+            if (value is null) continue;   // this world does not have one: nothing to say about it
+            try
+            {
+                resources[kind.Name] = JsonSerializer.SerializeToNode(value, kind.Type, json);
+            }
+            catch (Exception ex) when (ex is NotSupportedException or JsonException or ArgumentException)
+            {
+                Log.Error(LogCat.Save, $"Saved resource '{kind.Name}' cannot be written: {ex.Message}");
+            }
+        }
+        if (resources.Count > 0) root["resources"] = resources;
+
         return (root.ToJsonString(Indented), entities.Count);
     }
 
@@ -225,8 +273,38 @@ public sealed class SaveSystem
                 _serializer.ReadTags(world, entity, tags, where);
         }
 
+        ReadResources(world, root["resources"] as JsonObject, dialect, where);
+
         world.FlushCommands();
         return rebuilt.Count;
+    }
+
+    // Every registered resource is replaced, including the ones the file says nothing about: a load
+    // is a different game, and a spellbook left over from the last one would be a set of spells the
+    // player never made. Absent in the file means "you had none", not "keep what you have".
+    private void ReadResources(World world, JsonObject? saved, JsonSerializerOptions dialect, string where)
+    {
+        foreach (var kind in _resources.Values)
+        {
+            object? value = null;
+            if (saved?[kind.Name] is JsonNode node)
+            {
+                try
+                {
+                    value = JsonSerializer.Deserialize(node.ToJsonString(), kind.Type, dialect);
+                }
+                catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
+                {
+                    Log.Error(LogCat.Save, $"{where}: resource '{kind.Name}': {ex.Message}");
+                }
+            }
+
+            kind.Write(world, value ?? kind.Create());
+        }
+
+        // After they are all installed, because one may look at another.
+        foreach (var kind in _resources.Values)
+            if (kind.Read(world) is ISavedResource restored) restored.AfterLoad(world);
     }
 
     // ---- listing ------------------------------------------------------------------------------------

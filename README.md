@@ -69,6 +69,7 @@ searches both. Some worth knowing:
 | `quit [seconds]` | exit now, or after a while (Escape and the close button always work) |
 | `give <item>`, `inv`, `equip <item>`, `drop <item>` | items: `give practice_sword` then `equip practice_sword` and watch the combat log change |
 | `spells`, `cast fireball`, `learn <ability>` | magic: `cast fireball` throws a burning ball that bursts on what it hits, and costs mana |
+| `spell_effects`, `spell_make "my fire" sage:burning target=projectile damage=20`, `spell_list`, `spell_forget` | the spellmaker: build a spell out of effects and cast it like any other. It goes in the save as *what you chose*, so loading composes it again |
 | `ui_crosshair 0` | hide the crosshair (it is on while a camera rig has the view) |
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |

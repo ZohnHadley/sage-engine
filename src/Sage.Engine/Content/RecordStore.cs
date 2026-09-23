@@ -46,6 +46,13 @@ public sealed class RecordStore
     private readonly Dictionary<string, Type> _typesByName = new(StringComparer.Ordinal);
     private readonly Dictionary<Type, string> _namesByType = new();
     private readonly Dictionary<(string Type, RecordId Id), object> _records = new();
+
+    // Records made at run time rather than read from a file: a custom spell the player composed
+    // (F21's spellmaker), and later a quest generated for them. They are kept apart because a
+    // content reload rebuilds `_records` from disk, and a player's own spell must survive that — it
+    // did not come from disk and there is nothing on disk to rebuild it from. The *data* behind them
+    // lives in the save (09 §3.1), so this is a cache, not a store of record.
+    private readonly Dictionary<(string Type, RecordId Id), object> _runtime = new();
     private readonly Dictionary<(string Type, RecordId Id), RawRecord> _raw = new();
     private readonly JsonSerializerOptions _json;
     private VirtualFileSystem? _vfs;
@@ -145,12 +152,47 @@ public sealed class RecordStore
         }
         _records.Clear();
         foreach (var kv in result) _records[kv.Key] = kv.Value;
+        foreach (var kv in _runtime) _records[kv.Key] = kv.Value;   // re-applied over the fresh set
         _raw.Clear();
         foreach (var kv in raw) _raw[kv.Key] = kv.Value;
 
         Log.Info(LogCat.Records, $"Loaded {_records.Count} records of {_records.Keys.Select(k => k.Type).Distinct().Count()} types in {watch.ElapsedMilliseconds} ms" +
                                   (ErrorCount > 0 ? $" ({ErrorCount} errors, see above)" : ""));
         Reloaded?.Invoke();
+    }
+
+    // Adds or replaces a record that was made rather than loaded. Survives `Reload`, which is the
+    // whole point: a player's custom spell is not content and cannot be rebuilt from a file.
+    public void AddRuntime<T>(RecordId id, T record) where T : class
+    {
+        string type = TypeNameOf<T>();
+        if (type.Length == 0) return;
+        _runtime[(type, id)] = record;
+        _records[(type, id)] = record;
+    }
+
+    public bool RemoveRuntime<T>(RecordId id) where T : class
+    {
+        string type = TypeNameOf<T>();
+        // Only what was added at run time: a file could define the same id, and "remove my spell"
+        // must never take a content record with it.
+        if (type.Length == 0 || !_runtime.Remove((type, id))) return false;
+        _records.Remove((type, id));
+        return true;
+    }
+
+    // Everything added at run time, so whatever owns the data behind it can withdraw what it no longer
+    // accounts for — a load replacing a spellbook, for one (09 §3.1).
+    public IEnumerable<(string Type, RecordId Id, object Record)> RuntimeRecords =>
+        _runtime.Select(kv => (kv.Key.Type, kv.Key.Id, kv.Value));
+
+    // `TypeName<T>` for a caller that must not be thrown at: a record made at run time is made while
+    // the game is running, and a misregistered type is a bug to report, not a reason to stop play.
+    private string TypeNameOf<T>()
+    {
+        if (_namesByType.TryGetValue(typeof(T), out string? name)) return name;
+        Assert.Ensure(false, $"{typeof(T).Name} is not a registered record type; register it in a module's Init");
+        return "";
     }
 
     public void Reload()

@@ -27,3 +27,23 @@ public struct FromPrefab : Friflo.Engine.ECS.IComponent
 {
     public RecordId Prefab;
 }
+
+// A world resource that belongs in the save (docs/design/09 §3.1). Not everything about a world is
+// on an entity: the spells the player composed, the quests they are on, how the world feels about
+// them. Those are per-world singletons (03 §3.4), and a save that only wrote entities would lose them.
+//
+// The name is the key in the save file and is what makes it survive a rename of the class, so it is
+// chosen once and left alone.
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class SavedResourceAttribute : Attribute
+{
+    public SavedResourceAttribute(string name) { Name = name; }
+    public string Name { get; }
+}
+
+// For a saved resource whose data implies something else that has to be rebuilt — a spellbook's
+// drafts become `ability` records again (F21). Called once the world around it has finished loading.
+public interface ISavedResource
+{
+    void AfterLoad(World world);
+}

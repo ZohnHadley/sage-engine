@@ -73,6 +73,21 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 ### 3.5 Data records
 One pipeline for **every** definition: items, spells, creatures, factions, loot tables, materials (07), input maps (08), sprite animation sets, and **prefabs** (a prefab record's body is component data, parsed by the serializer from 09).
 
+### As built (records made at run time, 2026-09-23 — F21)
+Not every record comes from a file. A spell the player composed in the spellmaker (16 §3.3) is an
+`ability` record that no mount defines, and later a generated quest will be the same shape.
+
+- `records.AddRuntime<T>(id, record)` / `RemoveRuntime<T>(id)` / `RuntimeRecords`. They are kept in a
+  layer of their own and **re-applied after every load and hot reload**, because a reload rebuilds the
+  record set from disk and there is nothing on disk to rebuild a player's spell from.
+- `RemoveRuntime` only withdraws what was added at run time, so it can never take a record a file
+  defines with it.
+- **It is a cache, not a store of record.** The data behind such a record lives in the save (09
+  "As built (saved resources)"), and the record is composed from it again on load. Nothing serializes
+  a record.
+- Composed records take a **namespace of their own** (`custom:`), so nothing a player made can shadow
+  content, and `rec_list` shows at a glance which is which.
+
 ### As built (prefabs, 2026-09-23 — F31)
 
 - **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabRegistry`,
