@@ -115,7 +115,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F29. Gizmos + picking (v1: translate).** → `15`
 - [ ] **F30. Undo/redo via the command log (v1).** → `15`
 - [~] **F31. Prefabs.** *v1 done 2026-09-23 (promoted by the engine review, item 3): `prefab` records with `components` (by type name, through `ComponentSchema`) and `parts` (named setups modules register, so the record never becomes a god-object), `base` inheritance and patching for free from the record pipeline, `world.Spawn(prefab, at)` and `world.Populate`, plus `ent_spawn`, `ent_dump` and `ent_types`. The Sandbox and the Daggerfall importer moved onto it the same day: `SpawnRecord` and its spawn loop are gone, replaced by a four-field `scene` record of placements, and the importer appends its own with a `"place+"` patch. Left: placement/map files with per-entity overrides (with F27), "revert to prefab" UI (15), nested prefabs.* → `05`, `09`, `15`
-- [ ] **F32. Asset/record/shader hot reload (v1 for folders).** → `05`, `07`
+- [~] **F32. Asset/record/shader hot reload (v1 for folders).** *Records done 2026-09-22 (R11). Textures and compiled effects done 2026-09-23: `AssetHotReload` watches every folder mount, reloads individually with a 200 ms debounce, and the renderer and material cache re-resolve; `asset_reload`, `asset_list`, `asset_hotreload`. Left: running `mgfxc` when a `.fx` source changes (with the magenta error shader, 07), and `.xnb` models and fonts.* → `05`, `07`
 
 #### Phase 7 — Multiplayer (later)
 Not built now. The readiness rules (ARCHITECTURE §4.9) keep it from being a rewrite. Research and design notes: `docs/research/engine-survey.md` §5 and each design doc's "Multiplayer-later notes".

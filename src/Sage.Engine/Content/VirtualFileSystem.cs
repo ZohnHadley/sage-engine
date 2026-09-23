@@ -121,6 +121,35 @@ public sealed class VirtualFileSystem
 
     public bool Exists(VirtualPath path) => Which(path) != null;
 
+    // The other direction: a file on disk to the virtual path it is mounted at, for a watcher that
+    // only knows what the operating system told it (05 §3.6). Null when the file is under no folder
+    // mount. The *shallowest* match wins where mounts nest, because that is the path anything asking
+    // for it would have used.
+    public VirtualPath? VirtualPathOf(string diskPath)
+    {
+        string full;
+        try { full = Path.GetFullPath(diskPath); }
+        catch (ArgumentException) { return null; }
+
+        VirtualPath? best = null;
+        int bestRootLength = -1;
+        foreach (var mount in Mounts)
+        {
+            if (mount is not FolderMount folder) continue;
+            string root = folder.Root;
+            if (full.Length <= root.Length + 1) continue;
+            if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase)) continue;
+            if (full[root.Length] != Path.DirectorySeparatorChar && full[root.Length] != Path.AltDirectorySeparatorChar) continue;
+            if (root.Length <= bestRootLength) continue;
+
+            bestRootLength = root.Length;
+            best = VirtualPath.Parse(full[(root.Length + 1)..]
+                .Replace(Path.DirectorySeparatorChar, '/')
+                .Replace(Path.AltDirectorySeparatorChar, '/'));
+        }
+        return best;
+    }
+
     // The highest-priority mount that has the path.
     public IMount? Which(VirtualPath path)
     {

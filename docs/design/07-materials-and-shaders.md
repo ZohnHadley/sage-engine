@@ -135,6 +135,11 @@ public sealed class MaterialCache                           // Sage.Client
 }
 ```
 
+> **Built in part (2026-09-23):** a compiled effect (`.mgfxo`) that changes on disk is reloaded and
+> every material rebuilt (05 "As built (asset hot reload)"), because the engine mount is the MGCB
+> output folder. What is still missing is running `mgfxc` when the `.fx` *source* changes, and the
+> magenta error shader on a compile failure — the rest of F32.
+
 ## 5. Data flow
 
 ```

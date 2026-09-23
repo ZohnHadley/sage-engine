@@ -132,6 +132,32 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
 - **Not done here:** placement/map files and overrides per placed entity (F27 §3.4), "revert to
   prefab" in the editor (15), and nested prefabs. A `scene` record is a game's own until then.
 
+### As built (asset hot reload, 2026-09-23 — part of F32)
+
+- **Code:** `src/Sage.Client/Assets/AssetHotReload.cs` (the watcher), `ContentService.Reload` and its
+  `Reloaded` event, `VirtualFileSystem.VirtualPathOf` (disk path → virtual path). Tests for the path
+  mapping in `tests/Sage.Tests/Content/ContentTests.cs`.
+- **What it is for.** Records have hot-reloaded since R11; this is the other half. Regenerate a
+  sprite sheet, alt-tab, and it is on the creature — which is most of what dressing a game in art
+  consists of, and the Daggerfall import made the absence obvious.
+- **Individually, not wholesale.** A record reload rebuilds every record because they are cheap and
+  entangled. A texture is a GPU object with holders, so only the file that changed is reloaded.
+- **Holders re-resolve.** The renderer keeps textures in a table by index and a built material keeps
+  them by reference, so both listen: the table entry is repointed and `MaterialCache.Invalidate()`
+  rebuilds materials lazily (which also picks up a reloaded effect, since its bindings are dropped).
+  Anything that calls `LoadTexture` every frame — the HUD — needs nothing.
+- **A failed reload keeps the old asset.** The new file is loaded before the old object is disposed,
+  so a half-written PNG or a typo leaves what was on screen rather than a black square.
+- **Debounced 200 ms**, like records: an art tool writing eight files produces one reload, and a file
+  still being written is not read.
+- **Compiled effects reload too** (`.mgfxo`), because the engine mount *is* the MGCB output folder —
+  rebuild the content and the shader swaps. Recompiling a `.fx` on change is still the build's job
+  (07 §3.1); that is the rest of F32.
+- **Console:** `asset_reload [path]` forces one (or all), `asset_list` shows what is loaded.
+  `asset_hotreload` turns the watcher off; it defaults to on in a dev build with `developer 1`.
+- **Not done here:** `.xnb` models and fonts (they belong to the `ContentManager`, which has its own
+  cache), and the asset *server* with scopes, async loading and ref-counting (§3.3, R12).
+
 - **Files:** `data/**/*.json` in any mount. A file holds an array of records:
   ```json
   [

@@ -57,6 +57,16 @@ public sealed class Renderer : IDisposable
         _content = content;
         Materials = new MaterialCache(_device, content, engine.Records);
         engine.Records.Reloaded += Materials.Invalidate;
+
+        // An asset changed on disk (05 §3.6, F32). The renderer holds textures by index and a built
+        // material holds them by reference, so both have to let go: the table is repointed at the new
+        // object and every material is rebuilt lazily, which also picks up a reloaded effect.
+        content.Reloaded += path =>
+        {
+            if (_textureIds.TryGetValue(path, out int id) && _content.LoadTexture(path) is { } texture)
+                _textures[id] = texture;
+            Materials.Invalidate();
+        };
         _meshes.Add(CreateErrorMesh(_device));    // id 0
         _textures.Add(Materials.MissingTexture);  // id 0: the checker placeholder
         _sprites = new SpriteBatcher(_device);

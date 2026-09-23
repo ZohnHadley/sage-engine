@@ -70,6 +70,7 @@ searches both. Some worth knowing:
 | `ui_crosshair 0` | hide the crosshair (it is on while a camera rig has the view) |
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
+| `asset_list`, `asset_reload [path]` | what art is loaded; reload one file or all of it |
 | `ent_dump watcher`, `ent_types`, `ent_spawn goblin` | every component on a thing with its values; the names a prefab can use; place one in front of you |
 
 Anything can also be passed on the command line: `+sv_cheats 1 "+hurt 30"` runs them once the world
@@ -99,10 +100,16 @@ dotnet run --project src/Sage.Host -c Development --   "+in_axis Move 0 1 3" "+i
 
 ### Editing content while it runs
 
-`developer` defaults to 1 in a Debug build, which turns on record hot reload. Edit
-`games/Sandbox/content/data/scene.json` (what is in the world) or `engine_content/data/*.json`
+`developer` defaults to 1 in a Debug build, which turns on hot reload for both records and assets.
+
+Edit `games/Sandbox/content/data/scene.json` (what is in the world) or `engine_content/data/*.json`
 (movement, AI, combat, materials, input) and save: the records reload and the scene respawns. Tuning
 the creature's claws or your own reach mid-fight is the intended way to work.
+
+Save a **texture** over one the game has loaded and it swaps on the spot — repaint a sprite sheet or
+re-run the Daggerfall importer and the creatures change without a restart. Only the file that changed
+is reloaded, and a half-written one leaves what was already on screen. `asset_reload` forces it,
+`asset_list` shows what is loaded, and `asset_hotreload 0` turns the watching off.
 
 ## Building and testing
 

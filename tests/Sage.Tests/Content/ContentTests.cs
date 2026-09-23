@@ -34,6 +34,66 @@ public sealed class TestSpell
 }
 
 // Temp folders as VFS mounts: `Write("game", "data/items.json", json)`, then `Mount("game", "sandbox")`.
+// Disk path -> virtual path, which is what an asset watcher has to do: the operating system tells it
+// about a file, and everything else in the engine speaks virtual paths (05 §3.6, F32).
+public class VfsReverseLookupTests
+{
+    public VfsReverseLookupTests() { _ = TestEnv.UserRoot; }
+
+    [Xunit.Fact]
+    public void AFileUnderAMountResolvesToItsVirtualPath()
+    {
+        var fx = new MountFixture();
+        fx.Write("game", "textures/creature.png", "x");
+        fx.Mount("game", "sandbox");
+
+        var path = fx.Vfs.VirtualPathOf(Path.Combine(fx.Dir("game"), "textures", "creature.png"));
+        Assert.NotNull(path);
+        Assert.Equal("textures/creature.png", path!.Value.ToString());
+    }
+
+    [Xunit.Fact]
+    public void AFileOutsideEveryMountResolvesToNothing()
+    {
+        var fx = new MountFixture();
+        fx.Mount("game", "sandbox");
+        Assert.Null(fx.Vfs.VirtualPathOf(Path.Combine(TestEnv.NewTempDir(), "stray.png")));
+    }
+
+    // Mount roots are not a prefix test: "…/game2/x.png" must not resolve against the "…/game" mount,
+    // or a sibling folder would quietly shadow another mount's assets.
+    [Xunit.Fact]
+    public void ASiblingFolderWithASharedPrefixIsNotAMatch()
+    {
+        var fx = new MountFixture();
+        fx.Mount("game", "sandbox");
+        Directory.CreateDirectory(fx.Dir("game2"));
+        Assert.Null(fx.Vfs.VirtualPathOf(Path.Combine(fx.Dir("game2"), "x.png")));
+    }
+
+    // Where one mount is inside another, the deeper root is the one the file belongs to: that is the
+    // mount whose name anything asking for the file would have used.
+    [Xunit.Fact]
+    public void TheDeepestMountWins()
+    {
+        var fx = new MountFixture();
+        fx.Mount("game", "sandbox");
+        Directory.CreateDirectory(Path.Combine(fx.Dir("game"), "mods", "extra"));
+        fx.Vfs.Mount(new FolderMount("extra", Path.Combine(fx.Dir("game"), "mods", "extra"), "extra"));
+
+        var path = fx.Vfs.VirtualPathOf(Path.Combine(fx.Dir("game"), "mods", "extra", "textures", "a.png"));
+        Assert.Equal("textures/a.png", path!.Value.ToString());
+    }
+
+    [Xunit.Fact]
+    public void TheMountRootItselfIsNotAFile()
+    {
+        var fx = new MountFixture();
+        fx.Mount("game", "sandbox");
+        Assert.Null(fx.Vfs.VirtualPathOf(fx.Dir("game")));
+    }
+}
+
 internal sealed class MountFixture
 {
     public readonly string Root = TestEnv.NewTempDir();

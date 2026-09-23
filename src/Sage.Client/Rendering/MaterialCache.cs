@@ -129,6 +129,7 @@ internal sealed class MaterialCache : IDisposable
     {
         Array.Clear(_runtimes);
         _error = null;
+        _effects.Clear();   // an effect may have been reloaded under us; its bindings are dead
     }
 
     public IEnumerable<(int Id, RecordId Record, MaterialRuntime? Runtime)> Entries =>

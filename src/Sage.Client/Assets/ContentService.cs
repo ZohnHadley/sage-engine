@@ -15,6 +15,12 @@ namespace sage_engine;
 //   - textures (.png/.jpg via Texture2D.FromStream, premultiplied on load, 07 §13; or .xnb).
 // Everything loaded is cached for the process and disposed with the service. A failed load logs once
 // and returns null; callers draw placeholders (05 §8).
+//
+// Dev hot reload (05 §3.6, F32): `Reload` drops one asset and raises `Reloaded`. Anything holding the
+// old object by reference — the renderer's texture table, a built material — listens and re-resolves;
+// anything that calls Load every frame picks the new one up by itself. When there is a second engine
+// signal to raise this becomes `EngineSignals.AssetReloaded` (04 §3.5); one signal does not need a
+// bus yet.
 public sealed class ContentService : IDisposable
 {
     private readonly GraphicsDevice _device;
@@ -30,6 +36,52 @@ public sealed class ContentService : IDisposable
         _device = host.GraphicsDevice;
         _vfs = vfs;
         _content = new VfsContentManager(host.Game.Services, vfs);
+    }
+
+    // Raised on the main thread after an asset has been reloaded, with the path that changed.
+    public event Action<AssetPath>? Reloaded;
+
+    // Drops one asset and loads it again, keeping the cache key. Returns false when nothing was
+    // cached under that path — reloading something nobody has asked for yet is not an error, it just
+    // has nothing to do.
+    //
+    // The old GPU object is disposed *after* the reload so that a failed load leaves the old texture
+    // on screen rather than a black one: a typo in an image is not a reason to lose the frame.
+    public bool Reload(AssetPath path)
+    {
+        if (_textures.TryGetValue(path, out var oldTexture))
+        {
+            _textures.Remove(path);
+            var fresh = LoadTexture(path);
+            if (fresh == null) { _textures[path] = oldTexture; return false; }
+            oldTexture?.Dispose();
+            Log.Info(LogCat.Assets, $"Reloaded texture {path}");
+            Reloaded?.Invoke(path);
+            return true;
+        }
+
+        if (_effects.TryGetValue(path, out var oldEffect))
+        {
+            _effects.Remove(path);
+            var fresh = LoadEffect(path);
+            if (fresh == null) { _effects[path] = oldEffect; return false; }
+            oldEffect?.Dispose();
+            Log.Info(LogCat.Assets, $"Reloaded effect {path}");
+            Reloaded?.Invoke(path);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Everything currently cached, for `asset_list` and for a reload-everything command.
+    public IEnumerable<AssetPath> Cached
+    {
+        get
+        {
+            foreach (var path in _textures.Keys) yield return path;
+            foreach (var path in _effects.Keys) yield return path;
+        }
     }
 
     // A SpriteFont built by MGCB (13 §3), by path without the extension, like a model.

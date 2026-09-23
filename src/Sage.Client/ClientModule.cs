@@ -25,6 +25,8 @@ public sealed class ClientModule : IModule
     private RecordStore? _records;
     private CVar<bool>? _debugDraw;
     private CVar<bool>? _crosshair;
+    private CVar<bool>? _assetHotReload;
+    private AssetHotReload? _watcher;
 
     public void Init(ModuleContext ctx)
     {
@@ -47,6 +49,32 @@ public sealed class ClientModule : IModule
             "Draw debug geometry from the simulation: sweeps, sight cones, colliders (06 §3.2).");
         _crosshair = ctx.Engine.CVars.Register("ui_crosshair", true, CVarFlags.Archive,
             "Draw the crosshair while a camera rig has the view (13 §3).");
+        _assetHotReload = ctx.Engine.CVars.Register("asset_hotreload", BuildInfo.IsDevBuild && ctx.Engine.Core.Developer.Value >= 1,
+            CVarFlags.DevOnly, "Reload textures and compiled effects when they change on disk (05 §3.6).");
+
+        ctx.Engine.CVars.RegisterCommand("asset_reload", CVarFlags.DevOnly,
+            "asset_reload [path]: reload one loaded asset, or every loaded asset.", a =>
+        {
+            if (_content == null) { Log.Warn(LogCat.Assets, "asset_reload: no content service yet"); return; }
+            if (a.Count > 0)
+            {
+                Log.Info(LogCat.Console, _content.Reload(AssetPath.Intern(a[0]))
+                    ? $"reloaded {a[0]}" : $"asset_reload: {a[0]} is not loaded (see asset_list)");
+                return;
+            }
+            int n = 0;
+            foreach (var path in System.Linq.Enumerable.ToList(_content.Cached))
+                if (_content.Reload(path)) n++;
+            Log.Info(LogCat.Console, $"reloaded {n} asset(s)");
+        });
+
+        ctx.Engine.CVars.RegisterCommand("asset_list", CVarFlags.None, "Every asset currently loaded.", _ =>
+        {
+            if (_content == null) return;
+            int n = 0;
+            foreach (var path in _content.Cached) { Log.Info(LogCat.Console, $"  {path}"); n++; }
+            Log.Info(LogCat.Console, $"{n} asset(s) loaded");
+        });
     }
 
     public void Start(ModuleContext ctx)
@@ -58,6 +86,11 @@ public sealed class ClientModule : IModule
         _ui = new UiResources(host.GraphicsDevice);
         ctx.Provide(_content);
         ctx.Provide(_renderer);
+
+        // Watching belongs here, with the thing that owns the cache (05 §3.6). It is polled by a
+        // Frame-phase system rather than the host loop, so the client keeps its own hot reload the
+        // way records keep theirs.
+        if (BuildInfo.IsDevBuild) _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
     }
 
     public void OnWorldCreated(World world)
@@ -75,12 +108,33 @@ public sealed class ClientModule : IModule
         world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
+        if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!), Phase.FrameUpdate, RunCondition.DevOnly);
     }
 
     public void Shutdown()
     {
+        _watcher?.Dispose();
         _ui?.Dispose();
         _renderer?.Dispose();
         _content?.Dispose();
+    }
+}
+
+// FrameUpdate: gives the watcher its once-a-frame look on the main thread. A system rather than a
+// host-loop call so that a world without a client (a headless test) simply never has one.
+public sealed class AssetReloadSystem : ISystem
+{
+    private readonly AssetHotReload _watcher;
+    private readonly CVar<bool> _enabled;
+
+    public AssetReloadSystem(AssetHotReload watcher, CVar<bool> enabled)
+    {
+        _watcher = watcher;
+        _enabled = enabled;
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        if (_enabled.Value) _watcher.Poll();
     }
 }
