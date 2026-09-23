@@ -1,7 +1,7 @@
 [
   // Attributes, tags and effects (docs/design/16 3.3). Games add their own and patch these.
   { "type": "attribute", "id": "health",  "start": 100, "min": 0, "max": 100 },
-  { "type": "attribute", "id": "mana",    "start": 50,  "min": 0, "max": 50 },
+  { "type": "attribute", "id": "mana",    "start": 50,  "min": 0, "max": 50, "spendEffect": "spend_mana" },
   { "type": "attribute", "id": "stamina", "start": 100, "min": 0, "max": 100 },
   { "type": "attribute", "id": "armor",   "start": 0,   "min": 0, "max": 95 },
 
@@ -26,6 +26,13 @@
     "grantTags": ["state.burning"],
     "blockTags": ["state.invulnerable"],
     "modifiers": [ { "attribute": "health", "op": "Add", "value": -4 } ]
+  },
+  {
+    // How mana leaves you. A spell's cost is this effect at the cost's magnitude, so "free casting"
+    // or "double cost" are effects on top rather than special cases in the caster (16 §3.3).
+    "type": "effect",
+    "id": "spend_mana",
+    "modifiers": [ { "attribute": "mana", "op": "Add", "value": -1 } ]
   },
   {
     // A buff: while it runs, health's maximum contribution is raised.

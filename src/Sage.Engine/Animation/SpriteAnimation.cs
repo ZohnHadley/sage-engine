@@ -23,6 +23,23 @@ public struct SpriteAnimator : IComponent
 [GameEvent]
 public readonly record struct AnimationEvent(Entity Entity, string Name);
 
+public static class SpriteAnimationExtensions
+{
+    // Starts a clip *by name* on whatever sheet the entity is wearing. By name, never by index: clip
+    // 0 is whichever name sorts first, which for a Daggerfall sheet is "attack" (12 §3). Silent when
+    // the entity has no sheet or the sheet has no such clip — a creature with no art still fights.
+    public static void PlayClip(this World world, Entity entity, string name, RecordStore records)
+    {
+        if (string.IsNullOrEmpty(name)) return;
+        if (!world.Has<SpriteAnimator>(entity) || !world.TryGet<SpriteRenderer>(entity, out var renderer)) return;
+        if (!records.TryGet(renderer.Sheet, out SpriteSheetRecord sheet)) return;
+
+        int clip = sheet.ClipIndex(name);
+        if (clip < 0) return;
+        world.Get<SpriteAnimator>(entity) = SpriteAnimator.Play(clip);
+    }
+}
+
 // Animation phase (Fixed): advances every playing clip and raises the events its frames carry.
 public sealed class SpriteAnimationSystem : ISystem
 {

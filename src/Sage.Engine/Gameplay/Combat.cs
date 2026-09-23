@@ -303,17 +303,7 @@ public sealed class MeleeCombatSystem : ISystem
     // Plays a clip by name if the fighter has a sheet with one (a first-person player has no sprite
     // at all). Combat driving animation directly is v1: an AnimationStateSystem picking clips from
     // gameplay state is 12 §3's job once there is more than "swinging" and "not swinging".
-    private void PlayAnimation(World world, Entity entity, string name)
-    {
-        if (string.IsNullOrEmpty(name)) return;
-        if (!world.Has<SpriteAnimator>(entity) || !world.TryGet<SpriteRenderer>(entity, out var renderer)) return;
-        if (!_records.TryGet(renderer.Sheet, out SpriteSheetRecord sheet)) return;
-
-        int clip = sheet.ClipIndex(name);
-        if (clip < 0) return;
-        ref var animator = ref world.Get<SpriteAnimator>(entity);
-        animator = SpriteAnimator.Play(clip);
-    }
+    private void PlayAnimation(World world, Entity entity, string name) => world.PlayClip(entity, name, _records);
 
     // What a fighter shows when it is not swinging. A sheet without an "idle" clip keeps whatever it
     // was playing, which is the best a system this simple can do.

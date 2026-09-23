@@ -30,6 +30,7 @@ public static class GameplayModules
         modules.Add(new AnimationModule());
         modules.Add(new CombatModule());
         modules.Add(new ItemsModule());
+        modules.Add(new AbilitiesModule());
         modules.Add(new AIModule());
     }
 
@@ -272,6 +273,72 @@ public sealed class ItemsModule : IModule
         world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!), Phase.Gameplay,
             before: new[] { typeof(EffectSystem) });
     }
+}
+
+// Spells and everything else that is cast (16 §3.3, F21). Almost all of what an ability *does* is
+// effects, which Attributes already owns; what lives here is the gating — cost, cooldown, tags — and
+// choosing what it lands on.
+public sealed class AbilitiesModule : IModule
+{
+    private RecordStore? _records;
+    private ActionRegistry? _actions;
+    private CVar<bool>? _debugCasts;
+
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CharacterModule) };
+
+    public void Init(ModuleContext ctx)
+    {
+        _records = ctx.Engine.Records;
+        _actions = ctx.Engine.Actions;
+        _records.Register<AbilityRecord>();
+        _records.Register<CueRecord>();
+        ctx.Engine.Prefabs.Register("abilities", PrefabParts.Abilities);
+        _actions.Register("Cast", ActionKind.Button);
+
+        _debugCasts = ctx.Engine.CVars.Register("cast_debug", false, CVarFlags.DevOnly,
+            "Draw every cast: where it reached and what it caught (needs r_debugdraw 1).");
+
+        ctx.Engine.CVars.RegisterCommand("cast", CVarFlags.Cheat, "cast <ability>: cast it as the local player.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "cast <ability>"); return; }
+            var ability = ctx.Engine.Records.Resolve("ability", a[0]);
+            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+                Log.Info(LogCat.Console, world.Cast(entity, ability)
+                    ? $"{World.Describe(entity)} casts {ability.Name}"
+                    : $"{World.Describe(entity)} knows no magic at all"));
+        });
+
+        ctx.Engine.CVars.RegisterCommand("learn", CVarFlags.Cheat, "learn <ability>: teach the local player an ability.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "learn <ability>"); return; }
+            var ability = ctx.Engine.Records.Resolve("ability", a[0]);
+            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            {
+                world.Teach(entity, ability);
+                Log.Info(LogCat.Console, $"{World.Describe(entity)} learns {ability.Name}");
+            });
+        });
+
+        ctx.Engine.CVars.RegisterCommand("spells", CVarFlags.None, "What the local player can cast, and what is ready.", _ =>
+            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            {
+                if (!world.TryGet<Abilities>(entity, out var abilities) || abilities.Known is not { Count: > 0 })
+                {
+                    Log.Info(LogCat.Console, $"{World.Describe(entity)} knows no abilities");
+                    return;
+                }
+                foreach (var id in abilities.Known)
+                {
+                    string cost = ctx.Engine.Records.TryGet(id, out AbilityRecord record) && record.Cost > 0f
+                        ? $"{record.Cost:F0} {record.CostAttribute.Name}" : "free";
+                    Log.Info(LogCat.Console, $"  {id,-28} {cost}");
+                }
+            }));
+    }
+
+    public void OnWorldCreated(World world) =>
+        world.AddSystem(new AbilitySystem(world, _records!, _actions!, _debugCasts!), Phase.Gameplay,
+            before: new[] { typeof(EffectSystem) });
 }
 
 // Creatures that decide for themselves (16 §3.4): HL1-style schedules of tasks, writing the same

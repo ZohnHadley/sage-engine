@@ -68,6 +68,7 @@ searches both. Some worth knowing:
 | `wait 2` | pause a script here; the rest runs later |
 | `quit [seconds]` | exit now, or after a while (Escape and the close button always work) |
 | `give <item>`, `inv`, `equip <item>`, `drop <item>` | items: `give practice_sword` then `equip practice_sword` and watch the combat log change |
+| `spells`, `cast fireball`, `learn <ability>` | magic: `cast fireball` burns everything near where it lands, and costs mana |
 | `ui_crosshair 0` | hide the crosshair (it is on while a camera rig has the view) |
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |

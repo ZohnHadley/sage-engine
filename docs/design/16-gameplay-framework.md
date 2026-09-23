@@ -104,6 +104,41 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Cheats:** `give <item> [count]`, `inv`, `equip <item>`, `unequip [main|off]`, `drop <item> [count]`. Ids may be typed bare (`give practice_sword`), which `RecordStore.Resolve` looks up across namespaces — game code always names records in full.
 - **Not yet:** containers and looting corpses, an inventory screen (13), item conditions and repair, enchantments, gold and trade, stacks that split on drop, and the entity-I/O side of interaction (a door that opens, 04).
 
+### As built (abilities, 2026-09-23 — F21 v1)
+
+- **Code:** `src/Sage.Engine/Gameplay/Abilities.cs` (the `ability` and `cue` records, the `Abilities`
+  component, the `AbilityCast`/`CastRefused`/`CueTriggered` events) and `AbilitySystem.cs`. Tests in
+  `tests/Sage.Tests/World/AbilityTests.cs`; the Sandbox's fireball is in its `scene.json`.
+- **Almost none of it is new machinery.** An ability is a cost, a cooldown, a way of choosing targets
+  and a list of effects. Everything it does to anybody is an effect (§3.3) or damage through the
+  combat pipeline (§3.2) — so the `god` tag stops a fireball for the same reason it stops a sword,
+  `fire_resist` works without the spell knowing it exists, and a kill by spell names its killer. The
+  two genuinely new things are the gates.
+- **The gates, in the order a player would think of them:** do I know it, is it ready, can I afford
+  it, am I allowed. Each refusal is a `CastRefused` event carrying *which*, so a HUD can say "not
+  enough mana" without the cast system knowing what a HUD is.
+- **Cost is spent as an effect.** An `attribute` record names its own `spendEffect`, and a cast
+  applies it at the cost's magnitude. So mana leaves you the way health does, and "free casting" is
+  an effect on top rather than a special case in the caster.
+- **A cooldown is an effect that grants a tag**, exactly as this doc asked. There is no second clock:
+  it shows up in a save, a dispel makes the spell ready again, and the ability only has to name the
+  effect — the system reads *its* granted tags to decide whether you are still on it.
+- **Targeting:** `Self`, `Touch` (the first thing along your aim), `Area` (around you), `TouchArea`
+  (a burst where a Touch would have landed — a fireball). `Range` is how far it reaches, `Radius` is
+  how wide it bursts, and `Width` is how fat the thing that travels is. Those last two started as one
+  field and it was a bug: sweeping with the *burst* radius makes a fireball start already overlapping
+  its own caster, and an overlapping sweep reports nothing (10 §4, review #55), so a three-metre
+  burst reached exactly nothing.
+- **Only things that can hold an effect are targets.** A blast lands on the world and most of the
+  world is scenery; a fireball bursting against a tree is a normal Tuesday, not a mis-configured
+  entity.
+- **Cues** (`CueTriggered`) are raised and nothing listens yet: audio (11) and particles are later
+  phases. The event is already on the bus, so the day something listens the spell needs no change.
+- **Console:** `cast <ability>`, `learn <ability>`, `spells`, and `cast_debug 1` to draw where a cast
+  reached and what it caught.
+- **Not done here:** projectiles that actually travel (a fireball arrives the instant it is cast),
+  the spellmaker composing effects into new abilities at runtime, and AI that casts.
+
 - **Not yet:** blocking and parries, directional melee and reversals (Lugaru/Warband, later), knockback and hit reactions, cleaving several targets with one swing, ranged and projectile attacks (F21), friendly-fire rules (F24), and damage over time routed through resistances (a periodic effect still changes health directly).
 - **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side). Real pathfinding is F23.
 - **Deviations and gaps:**
@@ -119,7 +154,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Tags gate application**: `requireTags` and `blockTags` decide whether an effect lands. The `god` cheat is exactly that — it gives the player `state.invulnerable`, and damage effects block themselves on it, instead of every damage path checking a flag.
 - **Death is a seam, not a feature.** When health reaches 0 the system tags the entity `state.dead` and calls `GameRules.OnEntityDied` once, outside the query loop. What death means is the game's business; the Sandbox respawns the player.
 - **Effects never add components.** They are applied from inside system loops (the AI's melee task), where a structural change throws, so an entity is set up once with `world.AddAttributes(entity)` and an effect on anything else is reported and ignored.
-- **Not yet:** abilities and cues (F21), the spellmaker, resistances in a damage pipeline (F20), skill progression.
+- **Built (F21, 2026-09-23):** abilities and cues — see "As built (abilities)" below. **Not yet:** the spellmaker, projectiles that travel, and skill progression.
 
 - **Not yet:** possession, combat, inventory, interaction — the rest of this doc.
 
@@ -139,12 +174,12 @@ public struct PlayerControlled { }                             // tag: PlayerCon
 public struct AIState { public RecordId Profile, Schedule; public int TaskIndex; public ulong Conditions; public Entity Target; public float NextThink, TaskTime, Cooldown; public bool TaskStarted; }
 
 [Record("effect")]  public sealed class EffectRecord { public List<AttributeModifier> Modifiers; public EffectDuration Duration; public float Period; public EffectStacking Stacking; public List<RecordId> GrantTags, RequireTags, BlockTags, Cues; }
-[Record("ability")] public sealed class AbilityDef  { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public Targeting Targeting; public List<RecordId> Effects, Cues; public string Animation; }
+[Record("ability")] public sealed class AbilityRecord { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public AbilityTargeting Targeting; public float Range, Radius, Width, CastTime, Damage, Magnitude; public RecordId DamageType; public List<RecordId> Effects, RequireTags, BlockTags, Cues; public string Animation; }
 
 public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStatus.Running; AITaskStatus Run(ref AITaskContext c); }   // registered by name
 ```
 
-**Still design-only:** `AbilityDef`, `Targeting` and the whole `ability` record (F21, §3.3); combat, inventory and interaction aren't sketched here yet (§3.2). Everything else above is shipped: `Pawn` really is that empty (no `Controller` back-reference — a controller only ever writes `PawnIntent`, nothing points the other way); `EntityRef` is `Entity` in code everywhere (glossary, 03); `AIState` carries `Profile`, `TaskTime` and `Cooldown` too, not just the fields shown before.
+**Still design-only:** combat, inventory and interaction aren't sketched here yet (§3.2). Everything else above is shipped: `Pawn` really is that empty (no `Controller` back-reference — a controller only ever writes `PawnIntent`, nothing points the other way); `EntityRef` is `Entity` in code everywhere (glossary, 03); `AIState` carries `Profile`, `TaskTime` and `Cooldown` too, not just the fields shown before.
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -162,6 +197,6 @@ public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStat
 ## 14. Build steps
 1. ~~Controller/Pawn/`PawnIntent` + Character + `GameRules`~~ **Done 2026-09-22** (TODO F7, with 10).
 2. ~~Attributes/effects/tags + `EffectSystem`~~ **Done 2026-09-22** (TODO F18).
-3. Abilities + cues + fireball (TODO F21).
+3. ~~Abilities + cues + fireball~~ **Done 2026-09-23** (F21 v1, "As built (abilities)"). Projectiles that travel, the spellmaker and AI casting are left.
 4. ~~Combat, inventory and interaction~~ **Done 2026-09-22/23** (TODO F20, F19).
 5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22). Its swings go through the same `MeleeCombatSystem` a player's do (F20), so a creature can miss, and what its claws do is an `attack` record.

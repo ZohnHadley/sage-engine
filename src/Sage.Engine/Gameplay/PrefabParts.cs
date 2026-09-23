@@ -178,6 +178,18 @@ public static class PrefabParts
         }
     }
 
+    // "abilities": ["fireball", "heal"] — what it can cast (16 §3.3, F21).
+    public static void Abilities(World world, Entity entity, JsonNode? options, string where)
+    {
+        if (options is not JsonArray)
+        {
+            Log.Error(LogCat.Records, $"{where}: \"abilities\" must be a list of ability ids");
+            return;
+        }
+        foreach (var ability in Read<List<RecordId>>(world, options, "abilities", where))
+            if (!ability.IsEmpty) world.Teach(entity, ability);
+    }
+
     // "attributes": {} — health, mana and the rest, built from the attribute records (16 §3.3).
     public static void Attributes(World world, Entity entity, JsonNode? options, string where) =>
         world.AddAttributes(entity);

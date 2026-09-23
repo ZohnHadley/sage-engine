@@ -64,6 +64,7 @@ try
     AddDefaultModule(new AnimationModule());
     AddDefaultModule(new CombatModule());
     AddDefaultModule(new ItemsModule());
+    AddDefaultModule(new AbilitiesModule());
     AddDefaultModule(new AIModule());
     AddDefaultModule(new ClientModule());
     engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));

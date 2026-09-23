@@ -199,6 +199,50 @@
     "parts": { "pickup": { "item": "practice_sword" } }
   },
 
+  // ---- magic (docs/design/16 §3.3, F21) ----------------------------------------------------------
+  {
+    // The cooldown is an effect that grants a tag, not a timer: one clock for everything, it shows up
+    // in a save, and a dispel would make the spell ready again.
+    "type": "tag",
+    "id": "cooldown.fireball",
+    "description": "Just threw a fireball"
+  },
+  {
+    "type": "effect",
+    "id": "fireball_cooldown",
+    "duration": "Timed",
+    "time": 2.5,
+    "grantTags": ["cooldown.fireball"],
+    "modifiers": []
+  },
+  {
+    // Presentation only: the simulation says "a fireball went off here" and the client decides what
+    // that looks like. Nothing draws it yet (particles and audio are later phases), but the event is
+    // already raised, so the day something listens the spell needs no change.
+    "type": "cue",
+    "id": "fireball_boom",
+    "description": "A fireball bursting"
+  },
+  {
+    // A fireball: it flies to whatever you are looking at, bursts, and sets what it caught alight.
+    // The damage goes through the combat pipeline so `fire_resist` means something, and `burning` is
+    // the engine's own effect riding along with it — no part of this spell is new code.
+    "type": "ability",
+    "id": "fireball",
+    "name": "fireball",
+    "costAttribute": "sage:mana",
+    "cost": 12,
+    "cooldown": "fireball_cooldown",
+    "targeting": "TouchArea",
+    "range": 14,
+    "radius": 2.5,
+    "castTime": 0.35,
+    "damage": 28,
+    "damageType": "sage:fire",
+    "effects": ["sage:burning"],
+    "cues": ["fireball_boom"]
+  },
+
   // ---- the player (docs/design/10 §3, 16 §3.1) ---------------------------------------------------
   {
     // The same parts as the creature, plus the tag that says the local PlayerCommand drives this one.
@@ -211,7 +255,8 @@
       "character": { "layer": "player" },
       "attributes": {},
       "melee": { "attack": "sage:default_attack" },
-      "inventory": { "capacity": 60 }
+      "inventory": { "capacity": 60 },
+      "abilities": ["fireball"]
     }
   },
 
