@@ -176,6 +176,13 @@ When the phase starts: a server-authoritative **snapshot** model (not lockstep o
   - tagged binary with upgraders;
   - temp-file + rename writes;
   - **never behaviour/script state** (the Skyrim Papyrus lesson).
+- **As built (F27, 2026-09-23):** JSON rather than tagged binary and reflection rather than the
+  generator, both deliberate and reversible; every persistent entity written in full (no maps yet, so
+  no visited-sector rule and no tombstones); opt-**out** with `[Transient]` until the generator can
+  warn about a field that decided neither way; `[SavedResource]` world resources with an `AfterLoad`
+  hook, which is how the spellmaker's drafts become `ability` records again. Entity references,
+  attribute values and gameplay tags are written by **identity or name**, never by the index they
+  happen to occupy this run. Details and the four deviations: [09](docs/design/09-serialization-and-saves.md).
 
 ### 4.11 Other subsystems (short docs, expanded when their phase starts)
 | Subsystem | Doc | One-line summary |
@@ -257,6 +264,16 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 
 A consistency pass over those nineteen steps (2026-09-22, review #43-#52) then settled the conventions they had each grown their own version of: one facing axis and one set of angle helpers (`SageMath`), collider anchors stated explicitly, physics layers by name, and both controllers writing pawn intent in the same phase. F20 then made the fight real: one damage pipeline (resistance attributes → an effect on health → combat events), `attack` records, and a single melee system both the player and the AI drive by pressing the same button, with swings landing on the animation frame that shows them. F19 then added items: an inventory of record ids and counts, pickups you walk up to and take, and equipment that changes what you swing by handing the weapon's own `attack` record to the wielder. F21 then made magic real: an `ability` is a cost, a cooldown, a way of choosing targets and a list of effects, so a fireball reaches the world through the same damage pipeline a sword does and `fire_resist` means something without the spell knowing it exists — and it travels, as an ordinary entity whose looks are a prefab. F27 then closed it: a save writes every persistent entity as JSON and a load rebuilds each one by spawning its prefab and laying the saved state over the top, with entity references, attribute values and tags written by *identity* rather than by the index they happen to occupy this run. The slice is walkable, fightable, lootable, castable and resumable.
 
+Two features then pushed on what the slice had built rather than adding to it, and both paid off in
+the same way — by making something the engine could already do reachable from somewhere new. The
+**spellmaker** composes effect records into an `ability` record *at run time*, which needed records
+that were not read from a file and a save that holds the player's choices rather than the record they
+produced; the cast system cannot tell the difference. **AI casting** then asked the cast system a
+question it had only ever answered: the gates moved out into `AbilityRules` so that deciding to cast
+and being allowed to cast cannot drift apart, and a creature throws a spell through the same
+`world.Cast` a button does. **The first milestone is met** — what it cost and what it taught is in
+[`docs/history/vertical-slice-2026-09-23.md`](docs/history/vertical-slice-2026-09-23.md).
+
 **What the slice taught us about the engine** is written up in
 [`docs/history/engine-review-2026-09-23.md`](docs/history/engine-review-2026-09-23.md): records, the
 controller → pawn-intent split, effects as the only way attributes change and a simulation with no
@@ -297,7 +314,23 @@ call against a record instead of eight calls in a particular order.
 
 ## 9. Revision history
 
-### 9.1 Third pass — research-backed (2026-09-22)
+### 9.1 Fourth pass — the slice, built (2026-09-23)
+Not a design pass: the first vertical slice was **built**, and this records where the plan met the
+code. Full write-up in [`docs/history/vertical-slice-2026-09-23.md`](docs/history/vertical-slice-2026-09-23.md);
+the mid-slice architecture review that produced R13–R16 is in
+[`docs/history/engine-review-2026-09-23.md`](docs/history/engine-review-2026-09-23.md).
+
+| Area | What the plan said | What building it showed |
+|---|---|---|
+| Events | One bus, four mechanisms | Right, but **two of the four "queues" it was meant to replace were state, not events** — "what is in reach right now" is asked, not read once. A bus is not the fix for every shared container |
+| Serialization | `[Saved]` opt-in, generated, tagged binary | Inverted to **`[Transient]` opt-out** until the generator exists, because opt-in without a compile-time warning silently loses new fields. JSON and reflection first; the format change is what upgraders are for |
+| Saves | Entities, sectors, tombstones | Entities were not enough: a world's own state (a composed spellbook) needed **`[SavedResource]`**, and what it saves are the player's *choices*, with the records derived from them on load |
+| Records | Loaded from files | A record can also be **made at run time** (`AddRuntime`), which a content hot reload must not delete. The data behind it lives in the save, so the store is a cache for those |
+| Gameplay rules | Systems own their rules | Twice now the rule had to be **asked as well as applied** — `AbilityPayload` (what a spell does, at a point) and `AbilityRules` (whether a cast is allowed). Extract on second use, and the second use arrived both times within a day |
+| Modules | One gameplay module | Outgrew itself at nine record types and nine systems; split per feature (R15). The cost is two registration points for a new system, which is the trade |
+| Phase guarantees | Prose in the docs | Prose was already wrong (creatures acted a tick late for a week). **`world.Contracts.FinalAfter<T>`** asserts it in dev |
+
+### 9.2 Third pass — research-backed (2026-09-22)
 Based on three research passes (classic engines, modern engines, cross-cutting patterns; [survey](docs/research/engine-survey.md)) and your decisions (multiplayer later, Daggerfall-like first, data + trusted C# modding).
 
 | Area | Before | Now | Why / source |
@@ -325,5 +358,5 @@ Based on three research passes (classic engines, modern engines, cross-cutting p
 - **F:** sprite sheet data is a simulation-side asset (animation events drive melee hits).
 - **G:** no separate dev mode; build configurations + console + `developer` cvar.
 
-### 9.2 Second pass (2026-09-21)
+### 9.3 Second pass (2026-09-21)
 System.Numerics in simulation; ECS spike before hand-rolling storage; generational/persistent ids and `EntityRef`; source-generated metadata with versioning; runtime asset loaders and a sim/client asset split; own kinematic character controller; frame phase for camera/cosmetics; job layer and GC rules; .NET Hot Reload before assembly reloading; tests/profiler/replays; fixed pass list instead of a render graph; localization and mod-trust rules; licence recommendation; alternating infrastructure with the vertical slice.

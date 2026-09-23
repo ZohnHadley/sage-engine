@@ -1,5 +1,11 @@
 # 01 — Host, Modules and the Main Loop
 
+> **From the slice retrospective (2026-09-23), finding 3.** One module per feature (R15) cost one
+> thing worth writing down: a new system is registered **twice** — in its module, and the module in the
+> host's list. F21 forgot the second one once, and the symptom was a spell that silently did nothing.
+> A discovery pass over `[Module]`-attributed types would remove it, and is not worth building until a
+> game other than the Sandbox exists. See [`../history/vertical-slice-2026-09-23.md`](../history/vertical-slice-2026-09-23.md).
+
 ## 1. Purpose and scope
 The host owns the process: it parses arguments, starts core services, mounts content, loads modules (engine, framework, game), creates worlds, runs the main loop and shuts everything down. It also defines the **build configurations** and how the **console** and the `developer` cvar replace a separate dev mode.
 
@@ -43,7 +49,8 @@ Not in scope: what the services do (02), how worlds run systems (03).
 
 > **Done for the engine (2026-09-23, R15).** `GameplayModule` — nine record types, three cvars, seven
 > console commands, six input actions, nine systems — is now `AttributesModule`, `CharacterModule`,
-> `AnimationModule`, `CombatModule`, `ItemsModule` and `AIModule`, each owning its own registrations
+> `AnimationModule`, `CombatModule`, `ItemsModule`, `AbilitiesModule` (added with F21 the same day) and
+> `AIModule`, each owning its own registrations
 > (16 §3.1). They are logical modules inside `Sage.Engine`, which is what the two-level design below
 > is for. Still to do: the same split for games, `Game` + `Game.Client`, so a game's own simulation
 > can be tested headlessly the way the engine's can.

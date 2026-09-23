@@ -1,5 +1,14 @@
 # 16 — Gameplay Framework (short)
 
+> **From the slice retrospective (2026-09-23), findings 2 and 5 — now R17.** Building magic taught the
+> same lesson twice: **a rule a system applies is usually a rule something else needs to ask.**
+> `AbilityPayload` (what a spell does, at a point) and `AbilityRules` (whether a cast is allowed) were
+> both extracted within a day of their second caller appearing. The same shape is still locked inside
+> melee ("may I swing now?"), interaction ("can I pick this up, and why not?") and items ("can I equip
+> this?"), and each one is what a HUD or an AI will need. Separately, `ChooseSchedule` is now a
+> five-branch if-chain and is one branch from wanting utility scoring (§3.4's "left"). See
+> [`../history/vertical-slice-2026-09-23.md`](../history/vertical-slice-2026-09-23.md).
+
 ## 1. Purpose and scope
 The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framework.Client` for presentation parts such as camera rigs, 01 §3.1). Games use, extend or ignore each module. v1 covers what the Daggerfall-like vertical slice needs; each module is expanded when it's built (roadmap Phase 5).
 
@@ -66,6 +75,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   | `AnimationModule` | the `sprite` part, `SpriteAnimationSystem` | — |
   | `CombatModule` | `damage_type`/`attack`, `combat_debug`, `hurt`, Attack, the `melee` part, `MeleeCombatSystem` | Attributes, Character |
   | `ItemsModule` | `item`, `g_interact_range`, `give`/`inv`/`equip`/`unequip`/`drop`, Use, the `inventory` and `pickup` parts, `InteractionState`, `InteractionSystem` | Attributes, Combat |
+  | `AbilitiesModule` | `ability`/`cue` records, the `Spellbook` saved resource, `cast_debug`, the `Cast` action, the `abilities` prefab part, `AbilitySystem`, `ProjectileSystem` | Attributes, Character |
   | `AIModule` | `ai_profile`/`ai_schedule`, `ai_debug`, `AITasks`, `AIThinkSystem`, `AIDebugSystem` | Character, Combat |
 
   These are **logical** modules inside `Sage.Engine`, not assemblies (01 §3.1). `engine.Modules.AddGameplay()` adds them all, because "gameplay" is the unit a game wants; the host adds them one at a time so `game.json` can disable a single feature. Dependencies set `OnWorldCreated` order — combat needs attributes to exist before it can damage one — but **not** system order within a phase, which stays `before:`/`after:` and works across module boundaries. The `body` part moved to `PhysicsModule`, which owns where a shape sits.
@@ -222,7 +232,7 @@ and the cast system cannot tell a composed spell from one in a content file.
 - **Built (F21, 2026-09-23):** abilities and cues, projectiles, and the spellmaker — see "As built (abilities)" and "As built (the spellmaker)" below. **Not yet:** skill progression.
 
 - **Built (F21, 2026-09-23):** creatures that cast — see "As built (AI casting)".
-- **Not yet:** possession, combat, inventory, interaction — the rest of this doc.
+- **Not yet:** possession (a controller that changes pawn), and the rest of the module table — narrative, factions, quests, economy. Combat, inventory and interaction were built on 2026-09-22/23; see their "As built" sections above.
 
 ## 4. API sketch
 ```csharp
@@ -240,7 +250,7 @@ public struct PlayerControlled { }                             // tag: PlayerCon
 public struct AIState { public RecordId Profile, Schedule; public int TaskIndex; public ulong Conditions; public RecordId Spell; public Entity Target; public float NextThink, TaskTime; public bool TaskStarted; }
 
 [Record("effect")]  public sealed class EffectRecord { public List<AttributeModifier> Modifiers; public EffectDuration Duration; public float Period; public EffectStacking Stacking; public List<RecordId> GrantTags, RequireTags, BlockTags, Cues; }
-[Record("ability")] public sealed class AbilityRecord { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public AbilityTargeting Targeting; public float Range, Radius, Width, CastTime, Damage, Magnitude; public RecordId DamageType; public List<RecordId> Effects, RequireTags, BlockTags, Cues; public string Animation; }
+[Record("ability")] public sealed class AbilityRecord { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public AbilityTargeting Targeting; public float Range, Radius, Width, CastTime, Damage, Magnitude; public RecordId DamageType; public List<RecordId> Effects, RequireTags, BlockTags, Cues; public string Animation; public RecordId Projectile; public float ProjectileSpeed; }
 
 public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStatus.Running; AITaskStatus Run(ref AITaskContext c); }   // registered by name
 
@@ -258,7 +268,7 @@ public static class Spellmaker
 }
 ```
 
-**Still design-only:** combat, inventory and interaction aren't sketched here yet (§3.2). Everything else above is shipped: `Pawn` really is that empty (no `Controller` back-reference — a controller only ever writes `PawnIntent`, nothing points the other way); `EntityRef` is `Entity` in code everywhere (glossary, 03); `AIState` carries `Profile`, `TaskTime` and `Cooldown` too, not just the fields shown before.
+**Still design-only:** combat, inventory and interaction aren't sketched here yet (§3.2) — they are built, just not written out above. Everything sketched above is shipped: `Pawn` really is that empty (no `Controller` back-reference — a controller only ever writes `PawnIntent`, nothing points the other way), and `EntityRef` is `Entity` in code everywhere (glossary, 03). `AIState` has **no** cooldown field, despite an earlier revision of this line claiming one: what paces a creature is its schedule and its abilities' own cooldown effects.
 
 ## 11. v1 scope vs later
 - **v1:**

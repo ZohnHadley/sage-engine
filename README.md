@@ -18,6 +18,27 @@ the `games/Sandbox` test game in the same commit.
 - [`docs/history/code-review-log.md`](docs/history/code-review-log.md) — every bug worth remembering,
   with what it was and why it happened.
 
+## What runs today
+
+The first vertical slice is finished (2026-09-23): **you walk a heightmap sector, a creature hunts you
+down and swings, you swing back with a sword you picked up, you throw a fireball that flies and bursts
+— or one you invented yourself — and a save brings all of it back in a new process.**
+
+| Area | What exists |
+|---|---|
+| Core | Fixed 60 Hz tick with render interpolation, phases with ordering and dev-asserted contracts, logging with categories, cvars and a console, crash reports, three build configurations |
+| World | Friflo ECS behind a thin `World`, several worlds per engine, hierarchy and transform propagation, one typed event bus with per-reader cursors, world resources |
+| Content | One JSON record pipeline for every definition (items, spells, materials, AI, input maps, prefabs…) with namespaces, inheritance, per-field patch merge, validation and hot reload; a layered VFS; records that can also be made at run time |
+| Rendering | Extract → pooled snapshot → fixed passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, heightmap terrain, debug draw |
+| Physics | BepuPhysics per world behind handles, layers, raycast/sweep/overlap, triggers, and our own kinematic character controller |
+| Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts |
+| Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 303 headless tests |
+
+What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
+factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
+one sits.
+
 ## Running it
 
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download) or newer (the projects target

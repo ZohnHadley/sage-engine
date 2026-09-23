@@ -308,13 +308,26 @@ public readonly struct RecordRef<T> where T : class { public T Value { get; } }
 
 [AttributeUsage(AttributeTargets.Class)] public sealed class RecordAttribute : Attribute { public RecordAttribute(string type); }
 
-public sealed class RecordStore
+public sealed class RecordStore                                   // as built (2026-09-23)
 {
-    public T Get<T>(RecordId id) where T : class;                 // Ensure + placeholder record on miss
+    public void Register<T>() where T : class, new();             // a [Record] type, in a module's Init
+    public T Get<T>(RecordId id) where T : class, new();          // Ensure + placeholder record on miss
     public bool TryGet<T>(RecordId id, out T value) where T : class;
-    public RecordRef<T> Ref<T>(RecordId id) where T : class;
     public IReadOnlyList<T> All<T>() where T : class;
+    public IEnumerable<RecordId> Ids(string type);
+    public bool Exists(RecordId id);
+    public RecordId Resolve(string type, string text);            // a bare name from a console command
+    public void Load(VirtualFileSystem vfs);
+    public void Reload();                                        // hot reload; keeps existing instances
+    public event Action? Reloaded;
+
+    // Records made rather than loaded (F21's spellmaker). Re-applied after every load.
+    public void AddRuntime<T>(RecordId id, T record) where T : class;
+    public bool RemoveRuntime<T>(RecordId id) where T : class;
+    public IEnumerable<(string Type, RecordId Id, object Record)> RuntimeRecords { get; }
 }
+// No `RecordRef<T>` yet: a reference is a `RecordId` plus a lookup. The typed handle waits for the
+// generator (R11's "left"), which is also what would validate it.
 ```
 
 ## 5. Data flow

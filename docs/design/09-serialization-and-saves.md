@@ -193,13 +193,15 @@ public struct Health
     [Transient] public float LastDamageTime;
 }
 
-public sealed class SaveSystem                            // per Engine
+public sealed class SaveSystem                             // per Engine; as built (2026-09-23)
 {
-    public SaveResult Save(string slot, World world);     // at a tick boundary, never mid-tick
-    public LoadResult Load(string slot);                  // tears down worlds, rebuilds from baseline + save
-    public IReadOnlyList<SaveHeader> List();
+    public string Root { get; set; }                       // default user://saves; settable for tools and tests
+    public bool Save(string slot);                         // every world in the engine, at a tick boundary
+    public bool Load(string slot);                         // rebuilds each persistent entity from its prefab + saved state
+    public bool Exists(string slot);
+    public IEnumerable<(string Slot, DateTime SavedUtc, int Entities)> List();
     public void RegisterResource<T>() where T : class, new();   // a [SavedResource]; in the owning module's Init
-}
+}                                                          // richer result types (SaveResult/LoadResult) when a caller needs them
 
 public interface ISavedResource                           // optional, for a resource that implies more
 {
@@ -259,7 +261,7 @@ Summarised above:
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `EntityContextMenuUI` inspector: `GetType().GetProperties()` + `GetValue` per frame (runtime reflection, allocating) | Generated inspector metadata (15) |
+| `EntityOutlinerWindow` inspector: runtime reflection over components, and a label string per listed entity per frame (allocating — open bug #41) | Generated inspector metadata (15) |
 | `EditorUI` File → New/Open/Save stubs | Map documents (15) + `SaveSystem` |
 | Random `long` ids (old `EntityContext.createEntity`) | **Done (step 3):** Friflo handles at runtime + `PersistentId`/`Persistent` for anything saved or placed (03) |
 
@@ -269,6 +271,10 @@ Summarised above:
   - the generator (JSON, binary, inspector metadata, registration, I/O tables, record validation);
   - maps as per-sector/interior JSON;
   - saves with the visited-sector rule, tombstones, saved resources, tagged binary, a header with mods, temp+rename;
+    **As built (2026-09-23):** saved resources, the header and temp+rename are in; the visited-sector
+    rule and tombstones wait for maps to exist at all; tagged binary and the mod list in the header are
+    deliberately deferred (see the deviations above). What replaced the first two is simpler: every
+    persistent entity written in full, so a destroyed one's tombstone is its absence;
   - `ser_check`.
 - **Later:** upgraders beyond v1 (none are needed until the first format change), finer change tracking, one-file-per-entity maps, save thumbnails, compression tuning.
 
@@ -283,5 +289,5 @@ The same generated metadata gains a `[Replicated]` flag and a quantization hint,
 1. Attributes + `Sage.Generators` with JSON read/write and registration; the `ser_check` round-trip test (TODO R11, R4).
 2. Inspector metadata output (with 15).
 3. Map files: per-sector JSON, `PersistentId`, prefab overrides (TODO F27, with 14).
-4. `SaveSystem`: header, visited-sector rule, tombstones, saved resources, tagged binary, temp+rename (TODO F27).
+4. ~~`SaveSystem`: header, saved resources, temp+rename~~ **Done 2026-09-23** (TODO F27, "As built (saves v1)"): as JSON, with every persistent entity written in full. The visited-sector rule and tombstones arrive with maps; tagged binary is a format change, which is what the upgraders in §3.6 are for.
 5. I/O dispatch tables (with 04, TODO F17).
