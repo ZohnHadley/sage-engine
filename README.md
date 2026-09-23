@@ -144,7 +144,7 @@ It defaults to the Steam install and Daggerfall Imaging 2's DLL; pass `--arena2 
   animations (rat, spriggan, orc, skeleton, zombie, gargoyle and a human fighter), four townspeople,
   ten woodland flats (trees, rocks, stumps, undergrowth), a sword, a mace, a shield, the
   first-person weapons those two swing (`WEAPON*.CIF`) and three tiling textures;
-- `games/Sandbox/content/data/daggerfall.json` — the `sprite_sheet`, `material` and `spawn` records
+- `games/Sandbox/content/data/daggerfall.json` — the `sprite_sheet`, `material` and `prefab` records
   that use them: a line-up of creatures to walk around and hit, two that hunt you, a stone ruin to
   break their line of sight, scattered woodland, and a patch putting Daggerfall's grass on the
   terrain.

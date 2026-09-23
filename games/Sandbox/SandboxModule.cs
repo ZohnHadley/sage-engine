@@ -19,8 +19,23 @@ public sealed class SandboxModule : IGameModule
 
     public void Init(ModuleContext ctx)
     {
-        ctx.Engine.Records.Register<SpawnRecord>();
+        ctx.Engine.Records.Register<SceneRecord>();
+
+        // What a game adding to prefabs looks like (05 "As built (prefabs)"): two setups the engine
+        // has no business knowing about. `box_mesh` needs the renderer, which is client-side; `hop`
+        // is a toy that has to read where the thing was placed.
+        ctx.Engine.Prefabs.Register("box_mesh", (world, entity, options, where) =>
+        {
+            var o = PrefabParts.Read<BoxMeshOptions>(world, options, "box_mesh", where);
+            if (o.Size == Vector3.Zero) { Log.Error(LogCat.Records, $"{where}: box_mesh needs a \"size\""); return; }
+            world.Add(entity, new MeshRenderer { Handle = _renderer!.CreateBox(o.Size, World.Describe(entity)), Material = o.Material });
+        });
+
+        ctx.Engine.Prefabs.Register("hop", (world, entity, _, _) =>
+            world.Add(entity, new Hop { BaseY = world.Get<Transform>(entity).LocalPosition.Y }));
     }
+
+    private sealed class BoxMeshOptions { public Vector3 Size; public RecordId Material; }
 
     public void Start(ModuleContext ctx)
     {
@@ -62,181 +77,81 @@ public sealed class SandboxModule : IGameModule
     {
         foreach (var world in _worlds)
         {
-            foreach (var e in world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Entities.ToEntityList())
+            foreach (var e in world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList())
                 world.Destroy(e);
             Spawn(world);
         }
     }
 
+    private SceneRecord? Scene => _records!.TryGet(new RecordId("sandbox", "main"), out SceneRecord scene) ? scene : null;
+
     private void Spawn(World world)
     {
-        foreach (var spawn in _records!.All<SpawnRecord>())
-        {
-            if (spawn.Player) continue;   // the rules spawn the player when the world starts (16)
-            SpawnOne(world, spawn);
-        }
-        Log.Info(LogCat.Gameplay, $"Sandbox: spawned {world.Query<Transform>().AllTags(Tags.Get<FromSpawnRecord>()).Count} entities in '{world.Name}'");
+        var scene = Scene;
+        if (scene == null) { Log.Warn(LogCat.Gameplay, "No `scene` record 'sandbox:main': the world is empty"); return; }
+
+        foreach (var placement in scene.Place) Place(world, placement);
+        Log.Info(LogCat.Gameplay, $"Sandbox: placed {world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Count} entities in '{world.Name}'");
     }
 
-    // Where the player starts: the position of the spawn record marked "player".
-    public Vector3 PlayerStart(World world)
-    {
-        foreach (var spawn in _records!.All<SpawnRecord>())
-            if (spawn.Player)
-            {
-                Vector3 position = HillsGenerator.SceneCenter + spawn.Position;
-                position.Y = world.Resources.Get<Terrain>().HeightAt(position.X, position.Z) + spawn.Position.Y;
-                return position;
-            }
-        return HillsGenerator.SceneCenter;
-    }
+    // Where the player starts, without placing anything: the camera needs it before the rules run.
+    public Vector3 PlayerStart(World world) =>
+        Scene?.Player is { } start ? Ground(world, start) : HillsGenerator.SceneCenter;
 
     // Called by SandboxRules once every module has set the world up.
     public Entity SpawnPlayer(World world)
     {
-        foreach (var spawn in _records!.All<SpawnRecord>())
-            if (spawn.Player) return SpawnOne(world, spawn);
-
-        Log.Warn(LogCat.Gameplay, "No spawn record marked \"player\": there is nothing to control");
+        if (Scene?.Player is { } start) return Place(world, start);
+        Log.Warn(LogCat.Gameplay, "The scene has no \"player\" placement: there is nothing to control");
         return default;
     }
 
-    private Entity SpawnOne(World world, SpawnRecord spawn)
+    // A placement's `at` is relative to the scene's spot in the sector, and its y is height above the
+    // ground, so everything stands on the terrain however the hills came out.
+    private static Vector3 Ground(World world, ScenePlacement placement)
     {
-        // A spawn's position is relative to the scene's spot in the sector, and its y is height above
-        // the ground: everything stands on the terrain.
-        var terrain = world.Resources.Get<Terrain>();
-        Vector3 position = HillsGenerator.SceneCenter + spawn.Position;
-        position.Y = terrain.HeightAt(position.X, position.Z) + spawn.Position.Y;
-        var transform = new Transform
-        {
-            LocalPosition = position,
-            LocalRotation = Quaternion.CreateFromYawPitchRoll(spawn.Yaw * MathF.PI / 180f, 0, 0),
-            LocalScale = Vector3.One,
-        };
-        var e = world.Create(transform, string.IsNullOrEmpty(spawn.Name) ? null : spawn.Name);
-        bool character = spawn.Character || spawn.Ai;
-
-        // What it looks like.
-        if (!spawn.Sheet.IsEmpty)
-        {
-            world.Add(e, new SpriteRenderer { Sheet = spawn.Sheet, Material = spawn.Material, Size = spawn.Size });
-            // By name, not by index: clip 0 is whichever sorts first, which for a Daggerfall sheet
-            // is "attack" — every creature in the scene stood frozen mid-swing until this.
-            if (spawn.Animate) world.Add(e, SpriteAnimator.Play(ClipIndex(spawn)));
-        }
-        else if (spawn.BoxMesh != Vector3.Zero)
-        {
-            world.Add(e, new MeshRenderer { Handle = _renderer!.CreateBox(spawn.BoxMesh, spawn.Name), Material = spawn.Material });
-        }
-        else if (!spawn.Model.IsEmpty)
-        {
-            world.Add(e, new MeshRenderer { Mesh = spawn.Model, Material = spawn.Material });
-            if (spawn.FacesCamera) e.AddTag<FacesCamera>();
-        }
-
-        if (character)
-        {
-            // A capsule the engine moves, so the world collides with it and it collides with the
-            // world, plus an intent for its controller to write (10, 16). The player's controller is
-            // the local PlayerCommand; a creature's is its AI schedules.
-            var layers = world.Resources.Get<PhysicsSpace>().Layers;
-            world.AddCharacter(e, spawn.Player ? layers.Player : layers.Enemy);
-            if (spawn.Player) e.AddTag<PlayerControlled>();
-            if (spawn.Ai) world.Add(e, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
-            if (!spawn.Attack.IsEmpty) world.Add(e, Melee.With(spawn.Attack));   // what it swings (16 §3.2)
-            if (spawn.Capacity > 0f) world.AddInventory(e, spawn.Capacity);      // and what it carries (F19)
-            world.AddAttributes(e);   // health, mana and the rest, from the attribute records (16)
-
-            // Starting effects: the creature's tough hide is armour, so the player's fists do less to
-            // it than to a person. An effect rather than a starting value, so a spell could strip it.
-            foreach (var effect in spawn.Effects) Effects.Apply(world, e, effect);
-        }
-        else if (!spawn.Item.IsEmpty)
-        {
-            // An item on the ground: the engine builds the whole thing (sprite, pickup, collider)
-            // from the item record, so one spawn line is a lootable thing (16 §3.2).
-            world.MakePickup(e, spawn.Item, spawn.Count);
-        }
-        else
-        {
-            // Props: a collider (and a mass if it should fall), or the old hop toy for scenery.
-            if (spawn.ColliderSize != Vector3.Zero)
-            {
-                // A capsule stands on the spawn point, like the art above it; a box or a sphere is
-                // centred on it, which is what a crate or a trigger volume wants (10 §3).
-                var collider = spawn.Collider == ColliderShape.Capsule
-                    ? Collider.Standing(spawn.ColliderSize.X, spawn.ColliderSize.Y)
-                    : new Collider { Shape = spawn.Collider, Size = spawn.ColliderSize };
-                collider.IsTrigger = spawn.Trigger;
-                world.Add(e, collider);
-                world.Add(e, spawn.Mass > 0 ? RigidBody.Dynamic(spawn.Mass) : new RigidBody { Kind = BodyKind.Static });
-            }
-            else if (!spawn.Sheet.IsEmpty || !spawn.Model.IsEmpty)
-            {
-                world.Add(e, new Hop { BaseY = position.Y });
-            }
-        }
-
-        e.AddTag<FromSpawnRecord>();
-        return e;
+        Vector3 position = HillsGenerator.SceneCenter + placement.At;
+        position.Y = world.Resources.Get<Terrain>().HeightAt(position.X, position.Z) + placement.At.Y;
+        return position;
     }
 
-    // The clip a spawn starts on: what it asked for, else "idle", else the first one there is.
-    // Clip 0 is whichever name sorts first, which for a Daggerfall sheet is "attack" — asking by
-    // index left every creature in the scene frozen mid-swing.
-    private int ClipIndex(SpawnRecord spawn)
+    // One line, and the engine builds the whole thing from the prefab (F31). What used to live here
+    // was a hundred lines of "if it has a sheet... else if it has a box mesh... else if it is a
+    // character", which is the engine's job and is now done once, in one order, for every game.
+    private Entity Place(World world, ScenePlacement placement)
     {
-        if (!_records!.TryGet(spawn.Sheet, out SpriteSheetRecord sheet)) return 0;
-        int clip = sheet.ClipIndex(string.IsNullOrEmpty(spawn.Animation) ? "idle" : spawn.Animation);
-        return clip >= 0 ? clip : 0;
+        var entity = world.Spawn(placement.Prefab, Ground(world, placement), placement.Yaw);
+        if (entity.IsNull) return entity;
+        if (!string.IsNullOrEmpty(placement.Name)) entity.Name = new EntityName(placement.Name);
+        entity.AddTag<FromScene>();
+        return entity;
     }
+
 }
 
-// `spawn` records (content/data/*.json): what to place in the test scene. Either a mesh (`model`) or
-// a billboard sprite (`sheet`, docs/design/06 §3.8).
-[Record("spawn")]
-public sealed class SpawnRecord
+
+// Where the scene's instances go (content/data/scene.json). A prefab says what a thing *is* (05
+// §3.5); this says where the copies of it are. Map files with persistent ids and per-entity overrides
+// are F27 — this is the four fields that need until then.
+[Record("scene")]
+public sealed class SceneRecord
 {
-    public string Name = "";
-    public AssetPath Model;            // mesh asset path (an MGCB model: no extension)
-    public RecordId Sheet;             // sprite sheet record
-    public RecordId Material;          // empty = the default for the kind
-    public Vector3 Position;
-    public float Yaw;                  // degrees about +Y, 0 faces -Z (SageMath): picks the sprite group
-    public Vector2 Size;               // sprite size in metres; 0 = the sheet's
-    public bool Animate;               // play a looping clip on spawn
-    public string Animation = "";      // which one; empty = "idle", or the first clip if there is none
-    public bool FacesCamera;           // meshes only: the old billboard test
+    public ScenePlacement? Player;            // where the local player starts
+    public List<ScenePlacement> Place = new();
+}
 
-    // Physics (docs/design/10): a box mesh drawn at BoxMesh size, a collider, and a mass that makes
-    // it a falling dynamic body instead of a static one.
-    public Vector3 BoxMesh;
-    public ColliderShape Collider = ColliderShape.Box;
-    public Vector3 ColliderSize;       // zero = none; box: full extents, capsule: [radius, total height]
-    public float Mass;                 // > 0 = dynamic
-    public bool Trigger;
-
-    // A character (docs/design/10 §3): a capsule the engine moves. `player` makes it the pawn the
-    // local PlayerCommand drives, with the first-person camera in its head.
-    public bool Character;
-    public bool Player;
-    public bool Ai;                    // a creature that chases the player (16 3.4)
-
-    // Combat (16 §3.2): what it swings, and the effects it starts with (armour from a hide, a buff).
-    public RecordId Attack;
-    public List<RecordId> Effects = new();
-
-    // Items (16 §3.2, F19). `item` makes this a pickup lying on the ground; `capacity` gives a
-    // character a pack to put things in, in kilograms.
-    public RecordId Item;
-    public int Count = 1;
-    public float Capacity;
+public sealed class ScenePlacement
+{
+    public RecordId Prefab;
+    public Vector3 At;                        // relative to the scene centre; y is height above ground
+    public float Yaw;                         // degrees about +Y, 0 faces -Z (SageMath)
+    public string Name = "";                  // optional, so `ent_list` can tell two copies apart
 }
 
 // Tags.
 public struct FacesCamera : ITag { }
-public struct FromSpawnRecord : ITag { }
+// Placed by the scene record, so hot reload knows what to sweep away and put back.
+public struct FromScene : ITag { }
 
 // A little vertical hop with gravity.
 public struct Hop : IComponent

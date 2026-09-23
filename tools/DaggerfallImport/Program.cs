@@ -7,7 +7,7 @@
 //
 // What it writes:
 //   games/Sandbox/content/textures/daggerfall/*.png   sprite sheets and flat textures
-//   games/Sandbox/content/data/daggerfall.json        sprite_sheet, material and spawn records
+//   games/Sandbox/content/data/daggerfall.json        sprite_sheet, material and prefab records
 //
 // Creature archives suit this engine almost exactly. Daggerfall stores five views of a monster
 // (front, front-side, side, back-side, back) and mirrors the other three, which is what a
@@ -425,16 +425,28 @@ static string Scene(string[] creatures, string[] people)
       {
         // Every imported creature fights with the records the placeholder one uses (16 §3.2): the
         // art is all that changed, which is the point of keeping gameplay in data.
-        "type": "spawn",
+        //
+        // A prefab, not a `spawn` record: since F31 the engine has an opinion about a thing you can
+        // place, so this tool writes engine-shaped records instead of Sandbox-shaped ones. The `base`
+        // does the same job it did before, and `sprite`/`character`/`melee` are parts modules
+        // registered rather than fields somebody had to add to a game's record.
+        "type": "prefab",
         "id": "df_creature",
         "abstract": true,
-        "animate": true,
-        "character": true,
-        "attack": "claws",
-        "effects": ["tough_hide"]
+        "parts": {
+          "character": { "layer": "enemy" },
+          "attributes": {},
+          "melee": { "attack": "claws" },
+          "effects": ["tough_hide"]
+        }
       }
     """,
     };
+
+    // Placements go into the scene the Sandbox already has, as a patch that appends to its list
+    // (05 §3.5): "place+" adds without owning, so this file never redefines `sandbox:main` and the
+    // hand-written scene keeps working with or without the import.
+    var places = new List<string>();
 
     // A line-up you can walk along and inspect from any angle, and hit: they stand still because
     // nothing is driving them (a character without a controller simply holds its ground).
@@ -442,7 +454,11 @@ static string Scene(string[] creatures, string[] people)
     foreach (var id in creatures)
     {
         blocks.Add($$"""
-      { "type": "spawn", "id": "df_{{id}}", "base": "df_creature", "name": "{{id}}", "sheet": "{{id}}", "position": [{{F(x)}}, 0, -16], "yaw": 180 }
+      { "type": "prefab", "id": "df_{{id}}", "base": "df_creature", "name": "{{id}}",
+        "parts": { "sprite": { "sheet": "{{id}}", "animation": "idle" } } }
+    """);
+        places.Add($$"""
+      { "prefab": "df_{{id}}", "at": [{{F(x)}}, 0, -16], "yaw": 180 }
     """);
         x += 3f;
     }
@@ -450,32 +466,62 @@ static string Scene(string[] creatures, string[] people)
     // Loot: a weapon where you start, and the rest out by the ruin.
     var loot = new (string Id, float X, float Z)[] { ("df_sword", 1.2f, 3.5f), ("df_mace", -13f, -16f), ("df_shield", -17f, -18f) };
     for (int i = 0; i < loot.Length; i++)
+    {
         blocks.Add($$"""
-      { "type": "spawn", "id": "df_loot_{{i}}", "name": "{{loot[i].Id}}", "item": "{{loot[i].Id}}", "position": [{{F(loot[i].X)}}, 0, {{F(loot[i].Z)}}] }
+      { "type": "prefab", "id": "df_pickup_{{i}}", "name": "{{loot[i].Id}}",
+        "parts": { "pickup": { "item": "{{loot[i].Id}}" } } }
     """);
+        places.Add($$"""
+      { "prefab": "df_pickup_{{i}}", "at": [{{F(loot[i].X)}}, 0, {{F(loot[i].Z)}}] }
+    """);
+    }
 
     // Two that come after you, from opposite sides.
     blocks.Add("""
-      { "type": "spawn", "id": "df_hunter_a", "base": "df_creature", "name": "skeleton hunter", "sheet": "skeleton", "position": [6, 0, -9], "yaw": 180, "ai": true }
+      { "type": "prefab", "id": "df_hunter_a", "base": "df_creature", "name": "skeleton hunter",
+        "components": { "AIState": { "schedule": "sage:idle" } },
+        "parts": { "sprite": { "sheet": "skeleton", "animation": "idle" } } }
     """);
     blocks.Add("""
-      { "type": "spawn", "id": "df_hunter_b", "base": "df_creature", "name": "orc hunter", "sheet": "orc", "position": [-6, 0, -10], "yaw": 180, "ai": true }
+      { "type": "prefab", "id": "df_hunter_b", "base": "df_creature", "name": "orc hunter",
+        "components": { "AIState": { "schedule": "sage:idle" } },
+        "parts": { "sprite": { "sheet": "orc", "animation": "idle" } } }
+    """);
+    places.Add("""
+      { "prefab": "df_hunter_a", "at": [6, 0, -9], "yaw": 180 }
+    """);
+    places.Add("""
+      { "prefab": "df_hunter_b", "at": [-6, 0, -10], "yaw": 180 }
     """);
 
     // Townspeople: flats with a collider, so they are something to walk around rather than through.
     var wherePeople = new (float X, float Z, string Id)[] { (-11, -6, ""), (-9.5f, -8, ""), (10.5f, -7, ""), (12, -9, "") };
     for (int i = 0; i < people.Length && i < wherePeople.Length; i++)
+    {
         blocks.Add($$"""
-      { "type": "spawn", "id": "df_person_{{i}}", "sheet": "{{people[i]}}", "name": "{{people[i]}}", "collider": "Capsule", "colliderSize": [0.35, 1.8, 0], "position": [{{F(wherePeople[i].X)}}, 0, {{F(wherePeople[i].Z)}}] }
+      { "type": "prefab", "id": "df_person_{{i}}", "name": "{{people[i]}}",
+        "parts": { "sprite": { "sheet": "{{people[i]}}" }, "body": { "shape": "Capsule", "radius": 0.35, "height": 1.8 } } }
     """);
+        places.Add($$"""
+      { "prefab": "df_person_{{i}}", "at": [{{F(wherePeople[i].X)}}, 0, {{F(wherePeople[i].Z)}}] }
+    """);
+    }
 
     // A ruin to break the line of sight: four walls with a gap, which is also something for the AI
     // to lose you behind (16 §3.4).
     var walls = new (float X, float Z, float W, float D)[] { (-15, -20, 8, 0.6f), (-15, -14, 3, 0.6f), (-18.6f, -17, 0.6f, 6), (-11.4f, -17, 0.6f, 6) };
     for (int i = 0; i < walls.Length; i++)
+    {
+        // `box_mesh` is the Sandbox's own prefab part (it needs the renderer); `body` is the engine's.
         blocks.Add($$"""
-      { "type": "spawn", "id": "df_wall_{{i}}", "name": "ruin wall {{i}}", "boxMesh": [{{F(walls[i].W)}}, 3, {{F(walls[i].D)}}], "colliderSize": [{{F(walls[i].W)}}, 3, {{F(walls[i].D)}}], "material": "df_stone_wall", "position": [{{F(walls[i].X)}}, 1.5, {{F(walls[i].Z)}}] }
+      { "type": "prefab", "id": "df_wall_{{i}}", "name": "ruin wall {{i}}",
+        "parts": { "box_mesh": { "size": [{{F(walls[i].W)}}, 3, {{F(walls[i].D)}}], "material": "df_stone_wall" },
+                   "body": { "size": [{{F(walls[i].W)}}, 3, {{F(walls[i].D)}}] } } }
     """);
+        places.Add($$"""
+      { "prefab": "df_wall_{{i}}", "at": [{{F(walls[i].X)}}, 1.5, {{F(walls[i].Z)}}] }
+    """);
+    }
 
     // Woodland: trees get a collider, undergrowth does not.
     var trees = new (string Id, float X, float Z, bool Solid)[]
@@ -490,11 +536,28 @@ static string Scene(string[] creatures, string[] people)
     {
         var t = trees[i];
         // A plain escaped string: a raw one would need its own delimiter run to survive the quotes.
-        string collider = t.Solid ? "\"collider\": \"Capsule\", \"colliderSize\": [0.4, 3, 0], " : "";
+        string body = t.Solid ? ", \"body\": { \"shape\": \"Capsule\", \"radius\": 0.4, \"height\": 3 }" : "";
         blocks.Add($$"""
-      { "type": "spawn", "id": "df_flat_{{i}}", "sheet": "{{t.Id}}", "name": "{{t.Id}}_{{i}}", {{collider}}"position": [{{F(t.X)}}, 0, {{F(t.Z)}}] }
+      { "type": "prefab", "id": "df_flat_{{i}}", "name": "{{t.Id}}_{{i}}",
+        "parts": { "sprite": { "sheet": "{{t.Id}}" }{{body}} } }
+    """);
+        places.Add($$"""
+      { "prefab": "df_flat_{{i}}", "at": [{{F(t.X)}}, 0, {{F(t.Z)}}] }
     """);
     }
+
+    blocks.Add($$"""
+      {
+        // Adds to the Sandbox's scene without owning it: a patch with "place+" appends to the list
+        // the hand-written scene.json defines, so the demo works with or without this import.
+        "type": "scene",
+        "id": "sandbox:main",
+        "patch": true,
+        "place+": [
+    {{string.Join(",\n", places.Select(x => "      " + x.Trim()))}}
+        ]
+      }
+    """);
 
     return string.Join(",\n\n", blocks.Select(b => b.TrimEnd()));
 }

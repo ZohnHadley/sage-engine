@@ -38,6 +38,7 @@ public class PrefabTests
 
       { "type": "prefab", "id": "goblin", "base": "creature",
         "name": "goblin",
+        "components": { "AIState": { "schedule": "chase" } },
         "parts": { "effects": ["tough_hide"] } },
 
       { "type": "prefab", "id": "goblin_chief", "base": "goblin",
@@ -161,6 +162,21 @@ public class PrefabTests
         {
             var goblin = world.Spawn(Id("goblin"));
             Assert.Equal("sage", world.Get<Melee>(goblin).Attack.Namespace);   // written as "claw"
+        }
+    }
+
+    // A component holding an Entity has to be readable even though a prefab can never fill one in:
+    // `Entity` exposes a ref struct, which System.Text.Json refuses outright, so without a converter
+    // AIState, ActiveEffect and anything else with a handle in it would crash the spawn.
+    [Fact]
+    public void AComponentHoldingAnEntityHandleStillReads()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var goblin = world.Spawn(Id("goblin"));
+            Assert.Equal(Id("chase"), world.Get<AIState>(goblin).Schedule);
+            Assert.True(world.Get<AIState>(goblin).Target.IsNull);   // nothing to point at yet
         }
     }
 

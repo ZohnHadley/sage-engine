@@ -171,7 +171,7 @@ public static class WorldCommands
         {
             object? got = field.GetValue(value);
             if (blank != null && Equals(got, field.GetValue(blank))) continue;
-            parts.Add($"{Lower(field.Name)}={Format(got)}");
+            parts.Add($"{Lower(field.Name)}={Short(Format(got))}");
         }
         foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
@@ -184,12 +184,15 @@ public static class WorldCommands
                 try { other = property.GetValue(blank); } catch { /* fall through and show it */ }
                 if (Equals(got, other)) continue;
             }
-            parts.Add($"{Lower(property.Name)}={Format(got)}");
+            parts.Add($"{Lower(property.Name)}={Short(Format(got))}");
         }
         return parts.Count == 0 ? "(defaults)" : string.Join("  ", parts);
     }
 
     private static string Lower(string name) => char.ToLowerInvariant(name[0]) + name[1..];
+
+    // A dump is for reading. A derived matrix or a packed buffer says nothing at this width.
+    private static string Short(string value) => value.Length <= 48 ? value : value[..45] + "...";
 
     private static string Format(object? value) => value switch
     {

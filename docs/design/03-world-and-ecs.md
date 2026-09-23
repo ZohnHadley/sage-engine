@@ -101,7 +101,7 @@ State that isn't per-entity lives in world **resources**, the equivalent of Over
 front is its local **-Z** (`TransformMath.Forward`), as in MonoGame. **Yaw** is the rotation about +Y
 in radians: 0 faces -Z, positive turns counter-clockwise seen from above (the sense of
 `Quaternion.CreateFromYawPitchRoll`), so +90° faces -X. **Pitch** is positive looking up.
-`PawnIntent.Yaw`, `PlayerCommand.ViewYaw`, a `spawn` record's `yaw`, AI steering and sprite direction
+`PawnIntent.Yaw`, `PlayerCommand.ViewYaw`, a placement's `yaw`, AI steering and sprite direction
 groups all mean this same angle, and `SageMath` owns the helpers that convert between a yaw, a
 direction and a rotation (`ForwardFromYaw`, `RotationFromYaw`, `YawOf`, `YawTo`, `WrapPi`, `WrapTau`,
 `TurnToward`, `InCone`). Subsystems keeping private copies of those helpers is how the sprite system

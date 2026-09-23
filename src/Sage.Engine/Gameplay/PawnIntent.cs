@@ -99,6 +99,8 @@ public sealed class GameplayModule : IModule
         // is apply order, and character comes first because the rest hang off its body. When
         // GameplayModule splits (R15) each part moves with the feature that owns it.
         var prefabs = ctx.Engine.Prefabs;
+        prefabs.Register("body", PrefabParts.Body);
+        prefabs.Register("sprite", PrefabParts.Sprite);
         prefabs.Register("character", PrefabParts.Character);
         prefabs.Register("attributes", PrefabParts.Attributes);
         prefabs.Register("melee", PrefabParts.Melee);

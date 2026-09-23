@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Friflo.Engine.ECS;
@@ -54,6 +55,89 @@ public static class PrefabParts
         if (!string.IsNullOrEmpty(o.Layer) && !layers.TryIndexOf(o.Layer, out layer))
             Log.Warn(LogCat.Records, $"{where}: character: no physics layer '{o.Layer}'; using '{layers.Name(layer)}'");
         world.AddCharacter(entity, layer, o.Profile);
+    }
+
+    private sealed class BodyOptions
+    {
+        public ColliderShape Shape = ColliderShape.Box;
+        public Vector3 Size;               // box only: full extents
+        public float Radius;               // sphere and capsule
+        public float Height;               // capsule only: total height, feet to head
+        public float Mass;                 // > 0 = a dynamic body that falls; 0 = static
+        public bool Trigger;
+        public string Layer = "";
+    }
+
+    // "body": { "size": [0.6, 0.6, 0.6], "mass": 8 }
+    // "body": { "shape": "Capsule", "radius": 0.35, "height": 2.2 }
+    //
+    // A part rather than a Collider written by hand because of where a shape sits: a capsule stands
+    // *on* the placement point, like the art above it, while a box or a sphere is centred on it.
+    // Getting that wrong buries a crate half in the ground and floats every creature (review #44),
+    // and the offset lives in Collider.Standing rather than in whoever is writing the JSON.
+    //
+    // Each shape is given its own dimensions rather than three numbers meaning different things per
+    // shape, which is what the Sandbox's old spawn record did and what made review #44 possible.
+    public static void Body(World world, Entity entity, JsonNode? options, string where)
+    {
+        var o = Read<BodyOptions>(world, options, "body", where);
+
+        byte layer = 0;
+        var layers = world.Resources.Get<PhysicsSpace>().Layers;
+        if (!string.IsNullOrEmpty(o.Layer) && !layers.TryIndexOf(o.Layer, out layer))
+            Log.Warn(LogCat.Records, $"{where}: body: no physics layer '{o.Layer}'");
+
+        Collider collider;
+        switch (o.Shape)
+        {
+            case ColliderShape.Capsule:
+                if (o.Radius <= 0f || o.Height <= 0f) { Log.Error(LogCat.Records, $"{where}: a capsule body needs \"radius\" and \"height\""); return; }
+                collider = Collider.Standing(o.Radius, o.Height, layer);
+                break;
+            case ColliderShape.Sphere:
+                if (o.Radius <= 0f) { Log.Error(LogCat.Records, $"{where}: a sphere body needs a \"radius\""); return; }
+                collider = Collider.Sphere(o.Radius, layer);
+                break;
+            default:
+                if (o.Size == Vector3.Zero) { Log.Error(LogCat.Records, $"{where}: a box body needs a \"size\""); return; }
+                collider = Collider.Box(o.Size, layer);
+                break;
+        }
+
+        collider.IsTrigger = o.Trigger;
+        world.Add(entity, collider);
+        world.Add(entity, o.Mass > 0f ? RigidBody.Dynamic(o.Mass) : new RigidBody { Kind = BodyKind.Static });
+    }
+
+    private sealed class SpriteOptions
+    {
+        public RecordId Sheet;
+        public RecordId Material;
+        public Vector2 Size;               // metres; 0 = the sheet's own
+        public string Animation = "";      // a clip *name*; empty = don't animate
+    }
+
+    // "sprite": { "sheet": "goblin", "size": [1.6, 1.9], "animation": "idle" }
+    //
+    // A part rather than a SpriteRenderer written by hand for the animation: clips are started by
+    // name, never by index. Clip 0 is whichever name sorts first, which for a Daggerfall sheet is
+    // "attack" — asking by index left every creature in the scene standing frozen mid-swing (12 §3).
+    public static void Sprite(World world, Entity entity, JsonNode? options, string where)
+    {
+        var o = Read<SpriteOptions>(world, options, "sprite", where);
+        if (o.Sheet.IsEmpty) { Log.Error(LogCat.Records, $"{where}: sprite needs a \"sheet\""); return; }
+        world.Add(entity, new SpriteRenderer { Sheet = o.Sheet, Material = o.Material, Size = o.Size });
+
+        if (string.IsNullOrEmpty(o.Animation)) return;
+        var records = world.Resources.Get<RecordStore>();
+        if (!records.TryGet(o.Sheet, out SpriteSheetRecord sheet)) return;
+        int clip = sheet.ClipIndex(o.Animation);
+        if (clip < 0)
+        {
+            Log.Warn(LogCat.Records, $"{where}: sprite: sheet {o.Sheet} has no clip '{o.Animation}'");
+            return;
+        }
+        world.Add(entity, SpriteAnimator.Play(clip));
     }
 
     // ---- gameplay --------------------------------------------------------------------------------

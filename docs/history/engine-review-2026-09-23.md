@@ -76,7 +76,14 @@ generate *Sandbox-specific* JSON, because the engine has no opinion about "a thi
 part worth keeping: the obvious design was one record with a field per engine feature — which is
 exactly the `spawn` record being replaced, and would have moved the god-object into the engine
 instead of removing it. A part is registered by the module that owns the feature, so adding one
-touches no shared type. Still to do: the Sandbox and the importer move off `spawn`.
+touches no shared type.
+
+The Sandbox and the importer moved over the same day, which is what proves it: `SpawnRecord` and its
+hundred-line spawn loop are gone, replaced by a four-field `scene` record of placements and one call
+to `world.Spawn`. The importer now emits `prefab` records and appends its placements to the scene
+with a patch (`"place+"`) rather than owning one — so the thing this item complained about, a tool
+generating game-shaped JSON, is gone rather than relocated. Two parts stayed with the game
+(`box_mesh`, `hop`), which is the extension point working as intended.
 
 Prefabs are the designed answer and they are sitting in Phase 6. The longer they wait, the more
 games write their own placement layer and the more tools are written against it. A prefab record

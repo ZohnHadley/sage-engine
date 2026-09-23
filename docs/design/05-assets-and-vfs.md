@@ -122,8 +122,15 @@ One pipeline for **every** definition: items, spells, creatures, factions, loot 
 - **Console:** `ent_spawn <prefab> [x y z] [yaw]` places one (3 m in front of the camera by default),
   `ent_dump <id|name>` prints every component on an entity with its non-default fields, and
   `ent_types [filter]` lists the names a prefab can use.
+- **The Sandbox and the importer moved onto it the same day.** `SpawnRecord` (twenty fields, one per
+  engine feature, with a hundred-line "if it has a sheet… else if it has a box mesh… else if it is a
+  character" behind it) is gone; the Sandbox now has a four-field `scene` record of placements and
+  calls `world.Spawn` once. The Daggerfall importer emits `prefab` records instead of game-shaped
+  ones, and adds its placements with a **patch** (`"place+"`) on the scene it does not own — which is
+  §3.5's list-append doing exactly the job it was designed for. The Sandbox registers two parts of
+  its own, `box_mesh` (it needs the renderer, which is client-side) and `hop`.
 - **Not done here:** placement/map files and overrides per placed entity (F27 §3.4), "revert to
-  prefab" in the editor (15), and nested prefabs.
+  prefab" in the editor (15), and nested prefabs. A `scene` record is a game's own until then.
 
 - **Files:** `data/**/*.json` in any mount. A file holds an array of records:
   ```json
