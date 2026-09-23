@@ -33,7 +33,8 @@ public struct SpriteAnimator { public int Clip; public float Time; public float 
 - **Deviation — the sheet is a record**, `sprite_sheet` in `data/**/*.json`, not a `*.sheet.json` asset: records already give hot reload, mod patches and cross-type reference validation, and there is no `AssetServer` yet (05 §3.5 does list sprite animation sets as records). The JSON is otherwise the shape sketched above, plus `texture`, `directions`, `size`, `mode` and an optional `material`.
 - **Clips are indexed, not named, in components:** `SpriteAnimator.Clip` is an index into the sheet's clip names sorted alphabetically (`SpriteSheetRecord.ClipIndex("walk")` looks one up), so components hold no strings.
 - **The simulation owns time:** `SpriteAnimationSystem` runs in the `Animation` phase at the tick rate and only advances `Time`; the renderer picks the frame with `SpriteMath.FrameAt` (looping clips wrap, others hold their last frame).
-- **Not yet:** frame events (`AnimationEvent` needs the event bus, 04), `AnimationStateSystem` picking clips from gameplay state (there is no gameplay state yet), the `anim_debug` overlay.
+- **Frame events are built (F20):** a clip carries `events: [{ "frame": 1, "name": "hit" }]`, where `frame` is a step of *that clip* (not an index into the sheet), so re-cutting the art doesn't move the events. `SpriteAnimationSystem` fires every step the tick crossed — once per pass for a looping clip, never again for one that has finished — into the `AnimationEvents` world resource, and combat lands a blow on `hit` (16 §3.2). Two consequences worth knowing: the Animation phase runs *after* Gameplay, so a reader sees the previous tick's events (one tick, 16 ms), and the system needs the sheet, so an animator without a `SpriteRenderer` no longer advances. They become proper game events with the bus (04).
+- **Not yet:** `AnimationStateSystem` picking clips from gameplay state (combat plays the swing clip directly today), the `anim_debug` overlay.
 
 ### Skeletal animation (later)
 - **glTF skins and clips via SharpGLTF.** Skeletons and clips are simulation-side assets (the pose is needed for hit detection); GPU skinning is the `Skinned` technique (07).
@@ -58,5 +59,5 @@ The per-frame `TransformMath.Billboard` call in `Game1` was presentation and mov
 - **Later:** everything under "Skeletal animation".
 
 ## 14. Build steps
-1. ~~`SpriteSheetData` + `SpriteAnimator`~~ **Done 2026-09-22** as the `sprite_sheet` record + `SpriteAnimationSystem` (TODO F1, with 06). `AnimationStateSystem` and `AnimationEvent` wait for gameplay state and the event bus (04).
+1. ~~`SpriteSheetData` + `SpriteAnimator` + frame events~~ **Done 2026-09-22** as the `sprite_sheet` record, `SpriteAnimationSystem` (installed by `GameplayModule`: animation is simulation) and `AnimationEvents` (TODO F1, F20, with 06). `AnimationStateSystem` waits for gameplay state, and the events become bus events with 04.
 2. Skeletal pipeline (TODO F9–F12), when Phase 3 starts.

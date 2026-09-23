@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using Friflo.Engine.ECS;
 using sage_engine;
 
 namespace sage_engine.Tests;
@@ -182,22 +183,97 @@ public class SpriteAnimationSystemTests
 {
     public SpriteAnimationSystemTests() { _ = TestEnv.UserRoot; }
 
+    // "idle" loops with a "step" event halfway; "swing" plays once with the "hit" that lands a blow.
+    private const string Sheet = """
+        [{ "type": "sprite_sheet", "id": "goblin", "texture": "textures/goblin.png", "directions": 1,
+           "frames": [ { "rect": [0, 0, 64, 96] }, { "rect": [64, 0, 64, 96] } ],
+           "animations": {
+             "idle":  { "fps": 10, "loop": true,  "dirs": [[0, 1]], "events": [ { "frame": 1, "name": "step" } ] },
+             "swing": { "fps": 10, "loop": false, "dirs": [[0, 1]], "events": [ { "frame": 1, "name": "hit" } ] } } }]
+        """;
+
+    private static (World World, RecordStore Records) NewWorld()
+    {
+        var fx = new MountFixture();
+        fx.Write("engine", "data/sheets.json", Sheet);
+        fx.Mount("engine", "sage");
+        var records = new RecordStore();
+        records.Register<SpriteSheetRecord>();
+        records.Load(fx.Vfs);
+
+        var world = new World("anim");
+        world.Resources.Set(new AnimationEvents());
+        world.AddSystem(new SpriteAnimationSystem(world, records), Phase.Animation);
+        return (world, records);
+    }
+
+    private static Entity Sprite(World world, int clip, float speed = 1f, bool playing = true)
+    {
+        var entity = world.Create();
+        world.Add(entity, new SpriteRenderer { Sheet = new RecordId("sage", "goblin") });
+        world.Add(entity, playing ? SpriteAnimator.Play(clip, speed) : new SpriteAnimator { Clip = clip });
+        return entity;
+    }
+
     [Fact]
     public void AdvancesPlayingAnimatorsByTheTick()   // 12 §3: the simulation owns animation time
     {
-        using var world = new World("anim");
-        var playing = world.Create();
-        world.Add(playing, SpriteAnimator.Play(0));
-        var stopped = world.Create();
-        world.Add(stopped, new SpriteAnimator { Clip = 0, Playing = false });
-        var fast = world.Create();
-        world.Add(fast, SpriteAnimator.Play(1, speed: 2f));
-        world.AddSystem(new SpriteAnimationSystem(world), Phase.Animation);
+        var (world, _) = NewWorld();
+        using (world)
+        {
+            var playing = Sprite(world, 0);
+            var stopped = Sprite(world, 0, playing: false);
+            var fast = Sprite(world, 1, speed: 2f);
 
-        for (int i = 0; i < 10; i++) world.RunFixed(0.1f);
+            for (int i = 0; i < 10; i++) world.RunFixed(0.1f);
 
-        Assert.Equal(1f, world.Get<SpriteAnimator>(playing).Time, 4);
-        Assert.Equal(0f, world.Get<SpriteAnimator>(stopped).Time);
-        Assert.Equal(2f, world.Get<SpriteAnimator>(fast).Time, 4);
+            Assert.Equal(1f, world.Get<SpriteAnimator>(playing).Time, 4);
+            Assert.Equal(0f, world.Get<SpriteAnimator>(stopped).Time);
+            Assert.Equal(2f, world.Get<SpriteAnimator>(fast).Time, 4);
+        }
+    }
+
+    // 12 §3: a clip's frames carry named moments, and combat lands its blow on one (16 §3.2).
+    [Fact]
+    public void FrameEventsFireOnceAsTheClipPassesThem()
+    {
+        var (world, records) = NewWorld();
+        using (world)
+        {
+            int swing = records.Get<SpriteSheetRecord>(new RecordId("sage", "goblin")).ClipIndex("swing");
+            var fighter = Sprite(world, swing);
+            var events = world.Resources.Get<AnimationEvents>();
+
+            int hits = 0;
+            for (int i = 0; i < 40; i++)      // 0.4 s: well past the end of a two-frame clip at 10 fps
+            {
+                world.RunFixed(1f / 60f);
+                if (events.Fired(fighter, "hit")) hits++;
+            }
+
+            Assert.Equal(1, hits);            // once, on frame 1, and never again: the clip doesn't loop
+        }
+    }
+
+    [Fact]
+    public void ALoopingClipRaisesItsEventEveryTimeRound()
+    {
+        var (world, records) = NewWorld();
+        using (world)
+        {
+            int idle = records.Get<SpriteSheetRecord>(new RecordId("sage", "goblin")).ClipIndex("idle");
+            var walker = Sprite(world, idle);
+            var events = world.Resources.Get<AnimationEvents>();
+
+            int steps = 0;
+            for (int i = 0; i < 60; i++)      // 1 s of a 0.2 s loop
+            {
+                world.RunFixed(1f / 60f);
+                if (events.Fired(walker, "step")) steps++;
+            }
+
+            Assert.Equal(5, steps);
+            Assert.False(events.Fired(walker, "hit"), "a clip only raises its own events");
+        }
     }
 }

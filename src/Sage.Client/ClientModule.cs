@@ -50,9 +50,8 @@ public sealed class ClientModule : IModule
     public void OnWorldCreated(World world)
     {
         world.Resources.Set(new RenderSnapshot());
-        // Sprite animation is simulation, not rendering (12 §3): it runs at the tick rate, and a
-        // headless server would run it too. It lives here until there is a framework module.
-        world.AddSystem(new SpriteAnimationSystem(world), Phase.Animation);
+        // Sprite animation is simulation, not rendering (12 §3), so GameplayModule installs it: a
+        // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
         world.AddSystem(new TerrainMeshSystem(world, _renderer!), Phase.FrameUpdate);
         world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);

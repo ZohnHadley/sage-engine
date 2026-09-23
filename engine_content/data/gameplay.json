@@ -5,12 +5,18 @@
   { "type": "attribute", "id": "stamina", "start": 100, "min": 0, "max": 100 },
   { "type": "attribute", "id": "armor",   "start": 0,   "min": 0, "max": 95 },
 
+  // Resistances are percentages of the damage they stop (16 §3.2), capped below immunity.
+  { "type": "attribute", "id": "fire_resist", "start": 0, "min": -100, "max": 90 },
+
   { "type": "tag", "id": "state.dead",         "description": "Health ran out" },
   { "type": "tag", "id": "state.invulnerable", "description": "Takes no damage (the god cheat)" },
   { "type": "tag", "id": "state.burning",      "description": "On fire" },
+  { "type": "tag", "id": "element.fire",       "description": "This hit or effect is fire" },
 
   {
-    // Fire damage over time: a timed effect that applies its modifier every period (16 3.3).
+    // Fire damage over time: a timed effect that applies its modifier every period (16 3.3). It
+    // changes health directly rather than going through the damage pipeline, so fire_resist does not
+    // reduce it yet — periodic damage routed through Combat.ApplyDamage comes with abilities (F21).
     "type": "effect",
     "id": "burning",
     "duration": "Timed",

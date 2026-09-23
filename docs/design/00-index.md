@@ -83,6 +83,10 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | Frame phases | `FrameUpdate → Extract → Render → Overlay` | 03, 06 |
 | `Transform` | Local position/rotation/scale, relative to the parent (or to the root's sector) | 03 |
 | `Attributes` / `GameplayTags` | Components: an entity's attribute values (health, mana, armour…) and its 64-tag bitset | 16 |
+| `damage_type` / `attack` | Records: a kind of damage and the attribute that resists it; one swing's reach, arc, damage and timing | 16 |
+| `Combat.ApplyDamage` / `CombatEvents` | The one damage pipeline (resistance → an effect on health) and the tick's hits, which the death seam reads to name a killer | 16 |
+| `Melee` | Component: what a character swings and how far through a swing it is; `MeleeCombatSystem` is the only thing that swings, for players and AI alike | 16 |
+| `AnimationEvent` / `AnimationEvents` | A named moment in a clip ("hit") and the tick's raised events; combat lands a blow on one | 12, 16 |
 | `effect` / `ActiveEffects` | The record describing a change (modifiers, duration, period, stacking, tags) and the instances running on an entity | 16 |
 | `GameRules` | Per-world resource a game subclasses: `OnWorldStarted` (populate the world), `SpawnPlayer`, `OnEntityDied` (called by `EffectSystem` when health runs out), `OnLoaded` (after a save load). Installed by the game's module in `OnWorldCreated`; `Engine.CreateWorld` installs `DefaultGameRules` if none was set, and calls `OnWorldStarted` once every module has seen the world | 16 |
 | `AIState` / `ai_schedule` / `ai_profile` | An agent's conditions, schedule and current task; the record listing a schedule's tasks and interrupts; the record with its sight, melee and think tuning | 16 |

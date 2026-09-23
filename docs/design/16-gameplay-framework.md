@@ -24,7 +24,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 | **Character** | yes | Uses the KCC (10). `movement_profile` records. First-person camera rig (client, `FrameUpdate`). Third-person later |
 | **Attributes / Effects / Tags** (GAS-like) | yes (minimal) | See 3.3 |
 | **Abilities** | yes (fireball) | See 3.3 |
-| **Combat** | yes (minimal) | Damage pipeline: `Damaged` → resistances (attributes) → health. Hit detection with physics queries (10); sprite melee hits on animation "hit" events (12) |
+| **Combat** | yes (minimal) | **Built (F20):** `Combat.ApplyDamage` → the damage type's resistance attribute → an effect on health → `CombatEvents`. `attack` records, `Melee` + `MeleeCombatSystem`, hit detection by swept sphere (10), and sprite melee landing on the clip's "hit" event (12) |
 | **Inventory** | yes (pick up, equip one weapon) | `item` records; an `Inventory` component (item `RecordId`s + counts); equipment slots |
 | **Interaction** | yes | The `Use` action → raycast → `Interactable` → fires the I/O output `OnUsed` (04) and an `Interacted` event |
 | **AI** | yes (one melee creature) | See 3.4 |
@@ -72,6 +72,17 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Both controllers write intent in `Phase.Commands`**, `AIThinkSystem` after `PlayerControlSystem`, so movement (`PrePhysics`) acts on a creature's decision in the same tick it was made. `AIThinkSystem` originally sat in `Phase.AI`, four phases *after* the movement that reads `PawnIntent`, which cost every creature a tick of lag and made `FaceTarget` test a yaw the body had not adopted (review #48).
 - **A creature keeps the direction the scene placed it facing**: `world.AddCharacter` seeds `PawnIntent.Yaw` from the entity's rotation (10 "The character controller", review #43).
 - **The creature walks with the player's controller.** Its tasks write `PawnIntent`, exactly like `PlayerControlSystem`, so chasing uses the same capsule, slopes and step-ups. That is the payoff of the controller/pawn split.
+
+### As built (combat, 2026-09-22)
+- **Code:** `src/Sage.Engine/Gameplay/Combat.cs` — the `damage_type` and `attack` records, `DamageInfo`, `CombatEvents`, `Combat.ApplyDamage`, the `Melee` component and `MeleeCombatSystem`.
+- **One pipeline, one place.** Every hit goes `Combat.ApplyDamage` → the damage type's resistance attribute → **an effect on health** → `CombatEvents`. Nothing anywhere subtracts health directly, so the `god` tag, stacking, damage over time and saves keep working through the single path F18 built. Damage is an effect *with a magnitude*: the record says `health -1`, the hit says how many (GAS's set-by-caller). A weapon or spell that also poisons passes its own effects to ride along, and they are blocked with the damage rather than separately.
+- **Resistances are attributes**, read as a percentage of the damage stopped (`armor`, `fire_resist`), clamped so arithmetic never produces immunity — the attribute record's own `max` is the ceiling. A `damage_type` with no `resist` ignores armour entirely.
+- **Both fighters press the same button.** `PlayerControlSystem` copies the Attack action into `PawnIntent`; the AI's `MeleeAttack` task sets the same bit. `MeleeCombatSystem` is the only thing that swings, so a creature and a player with the same `attack` record fight identically — and an AI can miss.
+- **A swing is a physics query** (10 §4): a sphere swept along the attacker's aim from eye height, first solid thing it touches, then an arc check so a target at the edge of your vision doesn't count. Triggers are invisible to it (review #53). It hits whatever is solid, including the attacker's own kind: who a hit is *allowed* to hurt is a rules question (factions, F24), not a physics one.
+- **Timing comes from the art when there is art.** A swing is windup → hit → recovery → cooldown, all from the `attack` record; if the attacker's clip has a `hit` frame event (12 §3) that lands the blow instead, so a creature's claws connect on the frame that shows them connecting.
+- **Death names its killer.** `EffectSystem` reads the tick's `CombatEvents` to find who last hurt the victim, so `GameRules.OnEntityDied` gets a killer without every damage path carrying one; poison and drowning simply have none.
+- **`hurt <amount> [type]`** (cheat) runs the whole pipeline against the local player, which is how resistances and the death seam get tested by hand.
+- **Not yet:** blocking and parries, directional melee and reversals (Lugaru/Warband, later), knockback and hit reactions, cleaving several targets with one swing, ranged and projectile attacks (F21), friendly-fire rules (F24), and damage over time routed through resistances (a periodic effect still changes health directly).
 - **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side). Real pathfinding is F23.
 - **Deviations and gaps:**
   - schedule *selection* is code (`ChooseSchedule`), as in HL1's `GetSchedule`; utility scoring or a behaviour tree can replace it without touching the tasks;
@@ -130,5 +141,5 @@ public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStat
 1. ~~Controller/Pawn/`PawnIntent` + Character + `GameRules`~~ **Done 2026-09-22** (TODO F7, with 10).
 2. ~~Attributes/effects/tags + `EffectSystem`~~ **Done 2026-09-22** (TODO F18).
 3. Abilities + cues + fireball (TODO F21).
-4. Combat + inventory + interaction (TODO F19, F20).
-5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22); its hits already deal damage through the F18 `EffectSystem` (`AttackEffect`). Combat proper (hit detection via physics queries, resistances, F20) is still to build.
+4. ~~Combat~~ **Done 2026-09-22** (TODO F20); inventory and interaction (TODO F19) still to build.
+5. ~~AI schedules + perception + one creature~~ **Done 2026-09-22** (TODO F22). Its swings go through the same `MeleeCombatSystem` a player's do (F20), so a creature can miss, and what its claws do is an `attack` record.

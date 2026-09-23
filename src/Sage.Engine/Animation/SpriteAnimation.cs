@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
 namespace sage_engine;
@@ -16,28 +18,86 @@ public struct SpriteAnimator : IComponent
     public static SpriteAnimator Play(int clip, float speed = 1f) => new() { Clip = clip, Speed = speed, Playing = true };
 }
 
-// Animation phase (Fixed). Frame events (12 §3) come with the event bus (04); until then a
-// non-looping clip simply holds its last frame.
+// A named moment in a clip (12 §3): "the blow lands here", "a foot hits the ground here". Gameplay
+// reacts to the name, so the timing of a swing lives with the art instead of being guessed at in code.
+public readonly record struct AnimationEvent(Entity Entity, string Name);
+
+// The tick's animation events. Cleared and refilled by SpriteAnimationSystem, read by gameplay —
+// which runs *earlier* in the tick, so a reader sees the previous tick's events (one tick, 16 ms).
+// They become proper game events with the bus (04).
+public sealed class AnimationEvents
+{
+    public readonly List<AnimationEvent> Events = new();
+
+    public void Clear() => Events.Clear();
+
+    public bool Fired(Entity entity, string name)
+    {
+        for (int i = 0; i < Events.Count; i++)
+            if (Events[i].Entity == entity && string.Equals(Events[i].Name, name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
+}
+
+// Animation phase (Fixed): advances every playing clip and raises the events its frames carry.
 public sealed class SpriteAnimationSystem : ISystem
 {
-    private readonly ArchetypeQuery<SpriteAnimator> _animators;
+    private const int MaxStepsPerTick = 64;   // a clip that somehow jumps a long way doesn't spin here
 
-    public SpriteAnimationSystem(World world)
+    private readonly ArchetypeQuery<SpriteAnimator, SpriteRenderer> _animators;
+    private readonly RecordStore _records;
+    private readonly AnimationEvents _events;
+
+    public SpriteAnimationSystem(World world, RecordStore records)
     {
-        _animators = world.Query<SpriteAnimator>();
+        _animators = world.Query<SpriteAnimator, SpriteRenderer>();
+        _records = records;
+        _events = world.Resources.Get<AnimationEvents>();
     }
 
     public void Run(in SystemContext ctx)
     {
         float dt = ctx.Tick.Dt;
-        foreach (var (animators, _) in _animators.Chunks)
+        _events.Clear();
+
+        foreach (var (animators, renderers, entities) in _animators.Chunks)
         {
             var a = animators.Span;
+            var r = renderers.Span;
             for (int n = 0; n < a.Length; n++)
             {
                 if (!a[n].Playing) continue;
-                a[n].Time += dt * (a[n].Speed == 0f ? 1f : a[n].Speed);
+                float before = a[n].Time;
+                a[n].Time = before + dt * (a[n].Speed == 0f ? 1f : a[n].Speed);
+
+                if (!_records.TryGet(r[n].Sheet, out SpriteSheetRecord sheet)) continue;
+                var clip = sheet.Clip(a[n].Clip);
+                if (clip == null || clip.Events.Count == 0) continue;
+                Raise(entities.EntityAt(n), clip, before, a[n].Time);
             }
+        }
+    }
+
+    // Fires the events of every step the clip crossed this tick. A step is an index into the clip's
+    // own frame list (not the sheet's), so art can be re-cut without moving the events.
+    private void Raise(Entity entity, SpriteAnimation clip, float before, float now)
+    {
+        int frames = clip.Dirs.Count > 0 ? clip.Dirs[0].Count : 0;
+        if (frames == 0) return;
+
+        float fps = MathF.Max(clip.Fps, 0.0001f);
+        int first = before <= 0f ? -1 : (int)MathF.Floor(before * fps);   // a clip that just started is at step 0
+        int last = (int)MathF.Floor(now * fps);
+        if (last - first > MaxStepsPerTick) first = last - MaxStepsPerTick;
+
+        for (int step = first + 1; step <= last; step++)
+        {
+            int index = clip.Loop ? step % frames : step;
+            if (index >= frames) return;      // a non-looping clip has finished: it holds its last frame
+            foreach (var e in clip.Events)
+                if (e.Frame == index && !string.IsNullOrEmpty(e.Name))
+                    _events.Events.Add(new AnimationEvent(entity, e.Name));
         }
     }
 }

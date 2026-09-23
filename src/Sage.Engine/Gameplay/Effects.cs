@@ -43,6 +43,7 @@ public struct ActiveEffect
     public float Remaining;     // seconds; ignored for Infinite
     public float PeriodTimer;
     public int Stacks;
+    public float Magnitude;     // scales the record's modifiers; 1 = the record as written
 }
 
 public struct ActiveEffects : IComponent
@@ -57,7 +58,11 @@ public static class Effects
 {
     // Applies an effect record to an entity. Instant effects change the base value immediately;
     // timed and infinite ones start running. Returns false when tags blocked it.
-    public static bool Apply(World world, Entity target, RecordId effect, Entity source = default)
+    //
+    // `magnitude` scales every modifier the record carries, which is how one `damage` effect serves
+    // every weapon and spell in the game (16 §3.2): the record says "health -1", the hit says how
+    // much. GAS calls this a set-by-caller magnitude.
+    public static bool Apply(World world, Entity target, RecordId effect, Entity source = default, float magnitude = 1f)
     {
         if (!world.IsAlive(target)) return false;
         var records = world.Records();
@@ -82,7 +87,7 @@ public static class Effects
 
         if (record.Duration == EffectDuration.Instant)
         {
-            ApplyInstant(world, target, record, registries);
+            ApplyInstant(world, target, record, registries, 1, magnitude);
             return true;
         }
 
@@ -96,6 +101,7 @@ public static class Effects
                 if (list[i].Record != effect) continue;
                 var existing = list[i];
                 existing.Remaining = record.Duration == EffectDuration.Timed ? record.Time : existing.Remaining;
+                existing.Magnitude = magnitude;   // the newest application sets the strength
                 if (record.Stacking == EffectStacking.Stack)
                     existing.Stacks = Math.Min(existing.Stacks + 1, Math.Max(record.MaxStacks, 1));
                 list[i] = existing;
@@ -110,6 +116,7 @@ public static class Effects
             Remaining = record.Duration == EffectDuration.Timed ? record.Time : float.PositiveInfinity,
             PeriodTimer = 0f,
             Stacks = 1,
+            Magnitude = magnitude,
         });
         return true;
     }
@@ -145,7 +152,7 @@ public static class Effects
 
     // An instant effect changes the base value: damage and healing are permanent until something
     // else changes them.
-    internal static void ApplyInstant(World world, Entity target, EffectRecord record, GameplayRegistries registries, int stacks = 1)
+    internal static void ApplyInstant(World world, Entity target, EffectRecord record, GameplayRegistries registries, int stacks = 1, float magnitude = 1f)
     {
         ref var attributes = ref world.Get<Attributes>(target);
         var records = world.Records();
@@ -160,7 +167,7 @@ public static class Effects
             float value = attributes.Values.BaseOf(index);
             value = modifier.Op switch
             {
-                ModifierOp.Add => value + modifier.Value * stacks,
+                ModifierOp.Add => value + modifier.Value * stacks * magnitude,
                 ModifierOp.Multiply => value * MathF.Pow(modifier.Value, stacks),
                 _ => modifier.Value,
             };
@@ -235,7 +242,7 @@ public sealed class EffectSystem : ISystem
                 while (running.PeriodTimer >= record.Period)
                 {
                     running.PeriodTimer -= record.Period;
-                    Effects.ApplyInstant(world, entity, record, _registries, running.Stacks);
+                    Effects.ApplyInstant(world, entity, record, _registries, running.Stacks, Magnitude(running));
                 }
             }
 
@@ -298,7 +305,7 @@ public sealed class EffectSystem : ISystem
                 if (modifier.Op != op || _registries.Attribute(modifier.Attribute) != attribute) continue;
                 value = op switch
                 {
-                    ModifierOp.Add => value + modifier.Value * running.Stacks,
+                    ModifierOp.Add => value + modifier.Value * running.Stacks * Magnitude(running),
                     ModifierOp.Multiply => value * MathF.Pow(modifier.Value, running.Stacks),
                     _ => modifier.Value,
                 };
@@ -307,15 +314,24 @@ public sealed class EffectSystem : ISystem
         return value;
     }
 
+    // Effects that were running before magnitudes existed (and every save written then) have 0 here,
+    // which means "as the record is written".
+    private static float Magnitude(in ActiveEffect running) => running.Magnitude == 0f ? 1f : running.Magnitude;
+
     private static bool IsDead(World world, Entity entity, int deadTag) =>
         world.TryGet<GameplayTags>(entity, out var tags) && tags.Has(deadTag);
 
     // Health has run out: tag it dead once and tell the rules (16 §3.1). What death *means* — ragdoll,
     // loot, respawn — is the game's business, so this runs outside the query loop.
+    //
+    // The killer comes from the tick's combat events (16 §3.2), so nothing on the damage path has to
+    // carry "who to blame" around; a death from drowning or poison simply has no killer.
     private static void Die(World world, Entity entity, int deadTag)
     {
         if (!world.IsAlive(entity) || IsDead(world, entity, deadTag)) return;
         if (world.Has<GameplayTags>(entity)) world.Get<GameplayTags>(entity).Add(deadTag);
-        world.Resources.Get<GameRules>().OnEntityDied(world, entity, default);
+        var killer = world.Resources.TryGet<CombatEvents>(out var combat) && combat != null
+            ? combat.LastAttackerOf(entity) : default;
+        world.Resources.Get<GameRules>().OnEntityDied(world, entity, killer);
     }
 }

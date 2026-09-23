@@ -17,22 +17,21 @@ public sealed class AIThinkSystem : ISystem
     private readonly RecordStore _records;
     private readonly AITaskRegistry _tasks;
     private readonly PhysicsSpace _space;
-    private readonly AIEvents _events;
+    private readonly ActionId _attack;
     private static readonly AIProfileRecord FallbackProfile = new();
 
-    public AIThinkSystem(World world, RecordStore records, AITaskRegistry tasks)
+    public AIThinkSystem(World world, RecordStore records, AITaskRegistry tasks, ActionRegistry actions)
     {
         _agents = world.Query<Transform, AIState, PawnIntent>();
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
         _records = records;
         _tasks = tasks;
         _space = world.Resources.Get<PhysicsSpace>();
-        _events = world.Resources.Get<AIEvents>();
+        _attack = actions.Get("Attack");
     }
 
     public void Run(in SystemContext ctx)
     {
-        _events.Clear();
         float dt = ctx.Tick.Dt;
         float time = (float)ctx.Tick.SimTime;
         var world = ctx.World;
@@ -47,8 +46,6 @@ public sealed class AIThinkSystem : ISystem
                 var entity = entities.EntityAt(n);
                 var profile = _records.TryGet(s[n].Profile.IsEmpty ? AIProfileRecord.Default : s[n].Profile, out AIProfileRecord found)
                     ? found : FallbackProfile;
-
-                if (s[n].Cooldown > 0) s[n].Cooldown -= dt;
 
                 // Think: perception and, if something changed, a new schedule.
                 if (time >= s[n].NextThink)
@@ -198,6 +195,7 @@ public sealed class AIThinkSystem : ISystem
             Transform = ref transform,
             Profile = profile,
             Space = _space,
+            Attack = _attack,
             Dt = dt,
             Param = param,
         };

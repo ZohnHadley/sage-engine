@@ -110,10 +110,14 @@ internal sealed class PhysicsCallbackData
     public Entity EntityOf(CollidableReference collidable) => EntryOf(collidable).Entity;
 
     // Query filter: is this collidable on a layer the query asked for?
-    public bool Allows(CollidableReference collidable, LayerMask mask)
+    // Queries ask about *solid* things by default: a trigger has no surface to stop a ray, a sweep or
+    // a sword, and something that wants overlaps reads the trigger lists (10 §3). Before this, a
+    // trigger volume blocked line of sight and a swing could "hit" thin air (review #53).
+    public bool Allows(CollidableReference collidable, LayerMask mask, bool includeTriggers)
     {
         ref var entry = ref EntryOf(collidable);
-        return !entry.Used || mask.Has(entry.Layer);
+        if (!entry.Used) return true;
+        return mask.Has(entry.Layer) && (includeTriggers || !entry.Trigger);
     }
 
     // ---- Step boundaries (main thread) ----

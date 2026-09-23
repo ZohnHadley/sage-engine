@@ -41,6 +41,7 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
 - **Deviations:**
   - **Triggers are lists, not events.** `PhysicsSpace.TriggerEnter/TriggerExit` are spans a system reads in `PostPhysics`; they become `TriggerEntered`/`TriggerExited` game events when the event bus exists (04).
   - `OverlapBox` is **broad phase only**: it can report entities whose shapes don't quite touch.
+  - **Queries see solid things.** A trigger has no surface, so it stops neither a ray, a sweep nor a sword; `includeTriggers: true` asks for them anyway. Before F20 a trigger volume blocked line of sight and swallowed a swing (review #53).
   - Physics entities are assumed to be **roots**: the sync uses the local transform, so a parented collider would be placed wrong.
   - `Collided` events, `phys_debug` (it needs `DebugDraw`, 06) and dynamic-vs-kinematic teleport smoothing are not built.
   - Stepping allocates ~40 bytes per tick inside Bepu's own profiler; everything else in the frame allocates nothing (TODO #41).

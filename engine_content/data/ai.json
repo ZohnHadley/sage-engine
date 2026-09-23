@@ -8,7 +8,6 @@
     "sightAngleDegrees": 200,
     "meleeRange": 1.8,
     "thinkRate": 6,
-    "attackCooldown": 1.2,
     "turnSpeedDegrees": 360
   },
   {
@@ -26,7 +25,10 @@
   {
     "type": "ai_schedule",
     "id": "melee_attack",
-    "tasks": ["FaceTarget", "MeleeAttack:0.45", "Wait:0.5"],
+    // MeleeAttack presses the Attack action and waits: what the swing does, how long it takes and
+    // how often it may happen are the attack record's business (16 §3.2). The number is how long to
+    // keep trying before giving up and thinking again.
+    "tasks": ["FaceTarget", "MeleeAttack:1.5", "Wait:0.5"],
     "interrupts": ["LostEnemy", "NoEnemy"]
   }
 ]

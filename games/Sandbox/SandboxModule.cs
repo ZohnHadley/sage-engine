@@ -12,6 +12,7 @@ public sealed class SandboxModule : IGameModule
     private CVarRegistry? _cvars;
     private ActionId _jump = ActionId.None;
     private readonly List<World> _worlds = new();
+    private ActionRegistry? _actions;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule) };
 
@@ -26,6 +27,7 @@ public sealed class SandboxModule : IGameModule
         _cvars = ctx.Engine.CVars;
         _renderer = ctx.Get<Renderer>();
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
+        _actions = ctx.Engine.Actions;
         _jump = ctx.Engine.Actions.Get("Jump");   // registered by GameplayModule (08 §3.2)
     }
 
@@ -40,7 +42,8 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
         world.AddSystem(new AutoWalkSystem(world, _cvars!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
-        world.AddSystem(new AttackLogSystem(world), Phase.Late);
+        world.AddSystem(new AutoAttackSystem(world, _cvars!, _actions!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
+        world.AddSystem(new CombatLogSystem(world), Phase.Late);
         world.Resources.Set<GameRules>(new SandboxRules(this));
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
@@ -136,7 +139,12 @@ public sealed class SandboxModule : IGameModule
             world.AddCharacter(e, spawn.Player ? layers.Player : layers.Enemy);
             if (spawn.Player) e.AddTag<PlayerControlled>();
             if (spawn.Ai) world.Add(e, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+            if (!spawn.Attack.IsEmpty) world.Add(e, Melee.With(spawn.Attack));   // what it swings (16 §3.2)
             world.AddAttributes(e);   // health, mana and the rest, from the attribute records (16)
+
+            // Starting effects: the creature's tough hide is armour, so the player's fists do less to
+            // it than to a person. An effect rather than a starting value, so a spell could strip it.
+            foreach (var effect in spawn.Effects) Effects.Apply(world, e, effect);
         }
         else
         {
@@ -191,6 +199,10 @@ public sealed class SpawnRecord
     public bool Character;
     public bool Player;
     public bool Ai;                    // a creature that chases the player (16 3.4)
+
+    // Combat (16 §3.2): what it swings, and the effects it starts with (armour from a hide, a buff).
+    public RecordId Attack;
+    public List<RecordId> Effects = new();
 }
 
 // Tags.
@@ -324,22 +336,55 @@ public sealed class AutoWalkSystem : ISystem
     }
 }
 
-// Late phase: reports the creature's melee hits. Real damage arrives with combat (F20); until then
-// this shows the AI reaching the player.
-public sealed class AttackLogSystem : ISystem
+// The other half of the keyboardless smoke test (`sandbox_autowalk`): swing every so often, so a
+// scripted run exercises the player's side of combat. A real game would never ship this.
+public sealed class AutoAttackSystem : ISystem
 {
-    private readonly AIEvents _events;
+    private readonly ArchetypeQuery<PawnIntent> _pawns;
+    private readonly CVar<float> _autoAttack;
+    private readonly ActionId _attack;
+    private float _next;
 
-    public AttackLogSystem(World world)
+    public AutoAttackSystem(World world, CVarRegistry cvars, ActionRegistry actions)
     {
-        _events = world.Resources.Get<AIEvents>();
+        _pawns = world.Query<PawnIntent>().AllTags(Tags.Get<PlayerControlled>());
+        _attack = actions.Get("Attack");
+        _autoAttack = cvars.Register("sandbox_autoattack", 0f, CVarFlags.DevOnly,
+            "Swing the player's weapon this many seconds apart by itself (0 = off).", 0f, 30f);
     }
 
     public void Run(in SystemContext ctx)
     {
-        foreach (var attack in _events.Attacks)
-            Log.Info(LogCat.Gameplay, $"{World.Describe(attack.Attacker)} attacks {World.Describe(attack.Target)}: " +
-                                      $"health {ctx.World.Attribute(attack.Target, AttributeRecord.Health):F0}");
+        if (_autoAttack.Value <= 0f) return;
+        _next -= ctx.Tick.Dt;
+        if (_next > 0f) return;
+        _next = _autoAttack.Value;
+
+        foreach (var (intents, _) in _pawns.Chunks)
+        {
+            var intent = intents.Span;
+            for (int n = 0; n < intent.Length; n++) intent[n].Pressed = intent[n].Pressed.With(_attack);
+        }
+    }
+}
+
+// Late phase: reports every hit the tick landed, whoever threw it (16 §3.2). A real game would
+// play a sound and flash the screen here (cues, F21); the slice prints a line.
+public sealed class CombatLogSystem : ISystem
+{
+    private readonly CombatEvents _events;
+
+    public CombatLogSystem(World world)
+    {
+        _events = world.Resources.Get<CombatEvents>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        foreach (var hit in _events.Damage)
+            Log.Info(LogCat.Gameplay, $"{World.Describe(hit.Attacker)} hits {World.Describe(hit.Target)} " +
+                                      $"for {hit.Applied:F0} ({hit.Amount:F0} before armour): " +
+                                      $"health {ctx.World.Attribute(hit.Target, AttributeRecord.Health):F0}");
     }
 }
 
@@ -363,7 +408,9 @@ public sealed class SandboxRules : GameRules
     // game would show a screen and ask; this is the slice's stand-in.
     public override void OnEntityDied(World world, Entity victim, Entity killer)
     {
-        Log.Info(LogCat.Gameplay, $"{World.Describe(victim)} died");
+        Log.Info(LogCat.Gameplay, killer.IsNull
+            ? $"{World.Describe(victim)} died"
+            : $"{World.Describe(victim)} was killed by {World.Describe(killer)}");
         if (!world.HasTag(victim, new RecordId("sage", "state.dead"))) return;
 
         if (world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList().Contains(victim))

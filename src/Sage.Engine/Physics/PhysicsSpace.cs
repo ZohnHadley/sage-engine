@@ -195,18 +195,18 @@ public sealed class PhysicsSpace : IDisposable
 
     // ---- Queries ------------------------------------------------------------------------------
 
-    // The nearest hit along a ray, or Hit = false.
-    public RayHit Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default)
+    // The nearest hit along a ray, or Hit = false. Triggers are invisible to queries unless asked for.
+    public RayHit Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default, bool includeTriggers = false)
     {
-        var handler = new NearestRayHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask, Origin = from, Direction = Vector3.Normalize(direction) };
+        var handler = new NearestRayHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask, IncludeTriggers = includeTriggers, Origin = from, Direction = Vector3.Normalize(direction) };
         Simulation.RayCast(from, handler.Direction, maxDistance, ref handler, 0);
         return handler.Hit;
     }
 
     // Sweeps a shape and returns the first thing it touches. Used by the character controller (F7).
-    public SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default)
+    public SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default, bool includeTriggers = false)
     {
-        var handler = new SweepHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask };
+        var handler = new SweepHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask, IncludeTriggers = includeTriggers };
         var pose = new RigidPose(shape.CenterAt(from), from.Rotation);   // `from` is the entity, not the shape
         var velocity = new BodyVelocity(Vector3.Normalize(direction) * maxDistance);
         switch (shape.Shape)
@@ -228,13 +228,14 @@ public sealed class PhysicsSpace : IDisposable
 
     // Entities whose bounding boxes overlap a box (10 §4). Broad phase only in v1: it may report
     // entities whose shapes don't actually touch, which is fine for "what is around here" queries.
-    public int OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default)
+    public int OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default, bool includeTriggers = false)
     {
         _overlapResults.Clear();
         var enumerator = new OverlapEnumerator
         {
             Data = _data,
             Mask = mask.Bits == 0 ? LayerMask.All : mask,
+            IncludeTriggers = includeTriggers,
             Results = _overlapResults,
             Limit = results.Length,
         };
@@ -347,6 +348,7 @@ public sealed class PhysicsSpace : IDisposable
 
     private struct NearestRayHandler : IRayHitHandler
     {
+        public bool IncludeTriggers;
         public PhysicsCallbackData Data;
         public LayerMask Mask;
         public Vector3 Origin;
@@ -354,7 +356,7 @@ public sealed class PhysicsSpace : IDisposable
         public RayHit Hit;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask);
+        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask, IncludeTriggers);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AllowTest(CollidableReference collidable, int childIndex) => true;
@@ -376,11 +378,12 @@ public sealed class PhysicsSpace : IDisposable
 
     private struct SweepHandler : ISweepHitHandler
     {
+        public bool IncludeTriggers;
         public PhysicsCallbackData Data;
         public LayerMask Mask;
         public SweepHit Hit;
 
-        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask);
+        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask, IncludeTriggers);
         public bool AllowTest(CollidableReference collidable, int child) => true;
 
         public void OnHit(ref float maximumT, float t, in Vector3 hitLocation, in Vector3 hitNormal, CollidableReference collidable)
@@ -406,6 +409,7 @@ public sealed class PhysicsSpace : IDisposable
 
     private struct OverlapEnumerator : IBreakableForEach<CollidableReference>
     {
+        public bool IncludeTriggers;
         public PhysicsCallbackData Data;
         public LayerMask Mask;
         public List<Entity> Results;   // a list the space reuses: a Span can't live in a non-ref struct
@@ -413,7 +417,7 @@ public sealed class PhysicsSpace : IDisposable
 
         public bool LoopBody(CollidableReference collidable)
         {
-            if (!Data.Allows(collidable, Mask)) return true;
+            if (!Data.Allows(collidable, Mask, IncludeTriggers)) return true;
             var entity = Data.EntityOf(collidable);
             if (entity.IsNull) return true;
             Results.Add(entity);

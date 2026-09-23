@@ -78,6 +78,8 @@ public sealed class GameplayModule : IModule
         _records.Register<AttributeRecord>();
         _records.Register<TagRecord>();
         _records.Register<EffectRecord>();
+        _records.Register<DamageTypeRecord>();
+        _records.Register<AttackRecord>();
         _records.Reloaded += () => Registries.Rebuild(_records);
 
         // `god`: the player stops taking damage. It is a tag, so effects block themselves with it
@@ -90,6 +92,22 @@ public sealed class GameplayModule : IModule
                     bool on = !world.HasTag(entity, TagRecord.Invulnerable);
                     if (on) world.AddTag(entity, TagRecord.Invulnerable); else world.RemoveTag(entity, TagRecord.Invulnerable);
                     Log.Info(LogCat.Console, $"god {(on ? "ON" : "off")} for {World.Describe(entity)}");
+                }
+        });
+
+        // `hurt <amount> [type]`: run damage through the whole pipeline (16 §3.2) without needing
+        // something to hit you, which is how resistances and the death seam get tested by hand.
+        ctx.Engine.CVars.RegisterCommand("hurt", CVarFlags.Cheat, "hurt <amount> [damage type]: damage the local player.", a =>
+        {
+            float amount = a.Count > 0 && float.TryParse(a[0], out float parsed) ? parsed : 10f;
+            var type = a.Count > 1 ? RecordId.Parse(a[1], "sage") : DamageTypeRecord.Physical;
+            foreach (var world in ctx.Engine.Worlds)
+                foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities)
+                {
+                    float applied = Combat.ApplyDamage(world, new DamageInfo(default, entity, type, amount,
+                        world.Get<Transform>(entity).LocalPosition, Vector3.UnitY));
+                    Log.Info(LogCat.Console, $"{World.Describe(entity)} takes {applied:F0} {type.Name} damage: " +
+                                             $"health {world.Attribute(entity, AttributeRecord.Health):F0}");
                 }
         });
 
@@ -111,7 +129,8 @@ public sealed class GameplayModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        world.Resources.Set(new AIEvents());
+        world.Resources.Set(new CombatEvents());
+        world.Resources.Set(new AnimationEvents());
         world.Resources.Set(Registries);
         world.Resources.Set(_records!);      // effects look up their records through the world
         Registries.Rebuild(_records!);
@@ -120,11 +139,19 @@ public sealed class GameplayModule : IModule
         // in the same tick it was decided. AI used to sit in Phase.AI, four phases *after* the movement
         // that reads it, which cost every creature a tick of lag (review #48).
         world.AddSystem(new PlayerControlSystem(world), Phase.Commands);
-        world.AddSystem(new AIThinkSystem(world, _records!, AITasks), Phase.Commands,
+        world.AddSystem(new AIThinkSystem(world, _records!, AITasks, _actions!), Phase.Commands,
             after: new[] { typeof(PlayerControlSystem) });
+
+        // Combat resolves before effects tick, so a blow struck this tick is felt this tick: the
+        // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
+        world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!), Phase.Gameplay,
+            before: new[] { typeof(EffectSystem) });
         world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,
             before: new[] { typeof(PhysicsSyncSystem) });
+        // Animation is simulation too (12 §3): it runs at the tick rate, and its frame events are
+        // what lands a sprite's blow. It moves to an animation module when skeletal animation lands.
+        world.AddSystem(new SpriteAnimationSystem(world, _records!), Phase.Animation);
         world.AddSystem(new FirstPersonCameraSystem(world, _records!), Phase.FrameUpdate);
     }
 }

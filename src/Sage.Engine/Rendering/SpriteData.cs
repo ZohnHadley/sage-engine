@@ -41,6 +41,15 @@ public sealed class SpriteAnimation
     public float Fps = 8f;
     public bool Loop = true;
     public List<List<int>> Dirs = new();       // [direction][frame] → index into SpriteSheetRecord.Frames
+    public List<SpriteAnimationEvent> Events = new();   // named moments: "hit" on the frame that connects
+}
+
+// A moment in a clip that gameplay reacts to (12 §3): `frame` is a step of *this clip* (not an index
+// into the sheet), so re-cutting the art doesn't move the events.
+public sealed class SpriteAnimationEvent
+{
+    public int Frame;
+    public string Name = "";                   // "hit", "footstep", "cast"
 }
 
 // A sprite sheet (12 §3). Deviation from 05 §3.4/12: it is a *record* (data/**/*.json), not a

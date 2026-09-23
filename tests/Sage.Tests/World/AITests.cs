@@ -81,8 +81,20 @@ public class AITests
     public AITests() { _ = TestEnv.UserRoot; }
 
     // The engine's own AI records, as the Sandbox would load them from engine_content.
+    // The AI records, plus the combat ones its swings go through (16 §3.2): a creature's claws are
+    // an attack record like the player's, so both fight through MeleeCombatSystem.
     private const string AiRecords = """
-        [{ "type": "ai_profile", "id": "default_ai", "sightRange": 25, "meleeRange": 1.8, "thinkRate": 20, "attackCooldown": 1.0 },
+        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+         { "type": "attribute", "id": "armor", "start": 0, "min": 0, "max": 95 },
+         { "type": "tag", "id": "state.dead" },
+         { "type": "tag", "id": "state.invulnerable" },
+         { "type": "effect", "id": "damage", "duration": "Instant", "blockTags": ["state.invulnerable"],
+           "modifiers": [ { "attribute": "health", "op": "Add", "value": -1 } ] },
+         { "type": "damage_type", "id": "physical", "resist": "armor", "effect": "damage" },
+         { "type": "attack", "id": "claws", "damage": 12, "damageType": "physical", "reach": 2.2,
+           "radius": 0.45, "windupTime": 0.4, "recoverTime": 0.2, "cooldown": 1.0 },
+
+         { "type": "ai_profile", "id": "default_ai", "sightRange": 25, "meleeRange": 1.8, "thinkRate": 20 },
          { "type": "ai_schedule", "id": "idle", "tasks": ["Wait:1.5"], "interrupts": ["SeeEnemy"] },
          { "type": "ai_schedule", "id": "chase", "tasks": ["MoveToTarget:1.6"], "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"] },
          { "type": "ai_schedule", "id": "melee_attack", "tasks": ["FaceTarget", "MeleeAttack:0.2", "Wait:0.4"], "interrupts": ["LostEnemy", "NoEnemy"] }]
@@ -121,6 +133,8 @@ public class AITests
         var entity = world.Create(Transform.At(position), "creature");
         world.AddCharacter(entity, EnemyLayer);
         world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+        world.Add(entity, Melee.With(new RecordId("sage", "claws")));
+        world.AddAttributes(entity);
         return entity;
     }
 
@@ -131,6 +145,7 @@ public class AITests
         var entity = world.Create(Transform.At(position), "player");
         world.Add(entity, Collider.Standing(0.35f, 1.8f, PlayerLayer));
         world.Add(entity, RigidBody.Kinematic());
+        world.AddAttributes(entity);        // something to lose: the creature's claws are real now (F20)
         entity.AddTag<PlayerControlled>();
         return entity;
     }
@@ -228,18 +243,20 @@ public class AITests
         var world = NewWorld(engine);
         var creature = Creature(world, new Vector3(0, 0.1f, 0));
         var player = Player(world, new Vector3(0, 0.1f, -1.2f));
-        var events = world.Resources.Get<AIEvents>();
+        var events = world.Resources.Get<CombatEvents>();
 
         int attacks = 0;
         for (int i = 0; i < 180; i++)   // three seconds
         {
             world.RunFixed(1f / 60f);
-            foreach (var attack in events.Attacks)
-                if (attack.Attacker == creature && attack.Target == player) attacks++;
+            foreach (var hit in events.Damage)
+                if (hit.Attacker == creature && hit.Target == player) attacks++;
         }
 
         Assert.Equal(AIThinkSystem.Schedules.Attack, world.Get<AIState>(creature).Schedule);
         Assert.InRange(attacks, 2, 4);   // once per ~1 s cooldown, not every tick
+        Assert.True(world.Attribute(player, AttributeRecord.Health) <= 100f - attacks * 12f + 0.01f,
+            "every swing that landed took health off the player");
     }
 
     [Fact]

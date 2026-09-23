@@ -36,6 +36,15 @@
         "fps": 3,
         "loop": true,
         "dirs": [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]
+      },
+      "attack": {
+        // Placeholder art (the same two frames), but a real swing: the blow lands on the "hit" event
+        // at step 1, a quarter of a second in, and the attack record's windupTime is only the
+        // fallback for a fighter with no animation (12 §3, 16 §3.2).
+        "fps": 4,
+        "loop": false,
+        "dirs": [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]],
+        "events": [ { "frame": 1, "name": "hit" } ]
       }
     }
   },
@@ -56,11 +65,14 @@
     "id": "creature_base",
     "abstract": true,
     "sheet": "creature",
-    "animate": true
+    "animate": true,
+    "attack": "claws",
+    "effects": ["tough_hide"]
   },
   // Yaw is the engine's one convention (SageMath): degrees about +Y, 0 faces -Z, growing
   // counter-clockwise seen from above. The player starts away at +Z, so "yaw": 180 looks back at them.
   { "type": "spawn", "id": "watcher",  "base": "creature_base", "name": "watcher",  "position": [0, 0, -3],    "yaw": 180, "ai": true },
+
   { "type": "spawn", "id": "eastward", "base": "creature_base", "name": "eastward", "position": [2.5, 0, 0],   "yaw": -90 },
   { "type": "spawn", "id": "away",     "base": "creature_base", "name": "away",     "position": [-2.5, 0, 0],  "yaw": 0 },
 
@@ -71,19 +83,27 @@
 
   // ---- gameplay (docs/design/16) -----------------------------------------------------------------
   {
-    // What the creature's claws do. Damage is an instant effect, blocked by the god tag.
-    "type": "effect",
-    "id": "claw",
-    "duration": "Instant",
-    "blockTags": ["sage:state.invulnerable"],
-    "modifiers": [ { "attribute": "sage:health", "op": "Add", "value": -12 } ]
+    // What the creature swings (16 §3.2). Longer reach and harder than bare hands, but slow: the
+    // player can back out of it. The hit lands on the attack clip's "hit" event.
+    "type": "attack",
+    "id": "claws",
+    "damage": 12,
+    "damageType": "sage:physical",
+    "reach": 2.2,
+    "radius": 0.45,
+    "arcDegrees": 140,
+    "windupTime": 0.45,
+    "recoverTime": 0.3,
+    "cooldown": 1.2,
+    "animation": "attack"
   },
   {
-    // The Sandbox's creatures hit harder than the engine's default profile.
-    "type": "ai_profile",
-    "id": "sage:default_ai",
-    "patch": true,
-    "attackEffect": "sandbox:claw"
+    // Creature hide: an infinite effect granting armour, so the player's fists do 60% damage to it.
+    // Resistance as an effect rather than a starting value means a spell could strip it (16 §3.3).
+    "type": "effect",
+    "id": "tough_hide",
+    "duration": "Infinite",
+    "modifiers": [ { "attribute": "sage:armor", "op": "Add", "value": 40 } ]
   },
 
   // ---- the player (docs/design/10 §3, 16 §3.1) ---------------------------------------------------
@@ -94,7 +114,8 @@
     "position": [0, 1, 6],
     "yaw": 0,
     "character": true,
-    "player": true
+    "player": true,
+    "attack": "sage:default_attack"
   },
 
   // ---- physics (docs/design/10) -----------------------------------------------------------------

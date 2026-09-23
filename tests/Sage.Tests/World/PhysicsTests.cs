@@ -95,6 +95,29 @@ public class PhysicsTests
         Assert.Equal(0.9f, centre - feet, 2);   // the offset is put back on the way out, not baked in
     }
 
+    // A trigger has no surface: it must not stop a ray, a sweep or a sword (review #53). Something
+    // that wants to know about overlaps reads the trigger lists, or asks for them explicitly.
+    [Fact]
+    public void QueriesSeeThroughTriggersUnlessTheyAskForThem()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("physics");
+        var space = world.Resources.Get<PhysicsSpace>();
+
+        var curtain = world.Create(Transform.At(new Vector3(0, 1, -2)), "trigger curtain");
+        world.Add(curtain, new Collider { Shape = ColliderShape.Box, Size = new Vector3(6, 4, 0.5f), IsTrigger = true });
+        var wall = world.Create(Transform.At(new Vector3(0, 1, -5)), "wall");
+        world.Add(wall, Collider.Box(new Vector3(6, 4, 0.5f)));
+        Tick(world, 1);
+
+        var hit = space.Raycast(new Vector3(0, 1, 2), -Vector3.UnitZ, 20f);
+        Assert.True(hit.Hit);
+        Assert.Equal(wall, hit.Entity);                       // straight through the trigger
+
+        var seen = space.Raycast(new Vector3(0, 1, 2), -Vector3.UnitZ, 20f, includeTriggers: true);
+        Assert.Equal(curtain, seen.Entity);
+    }
+
     [Fact]
     public void DestroyingAnEntityRemovesItsBody()
     {

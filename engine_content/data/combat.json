@@ -1,0 +1,43 @@
+[
+  // Combat (docs/design/16 §3.2). Every hit in the game — a sword, a claw, a fireball, a long fall —
+  // goes through Combat.ApplyDamage: the damage type's resistance attribute, then this one effect,
+  // scaled by how hard the hit was. The record says "health -1"; the hit says how many.
+  {
+    "type": "effect",
+    "id": "damage",
+    "duration": "Instant",
+    "blockTags": ["state.invulnerable"],
+    "modifiers": [ { "attribute": "health", "op": "Add", "value": -1 } ]
+  },
+
+  {
+    // Swords, claws, falling over. `armor` is read as a percentage of the damage stopped.
+    "type": "damage_type",
+    "id": "physical",
+    "resist": "armor",
+    "effect": "damage"
+  },
+  {
+    "type": "damage_type",
+    "id": "fire",
+    "resist": "fire_resist",
+    "effect": "damage"
+  },
+
+  {
+    // Bare hands: short reach, quick, and it shows. A weapon hands its wielder a better record (F19).
+    // `windupTime` is when the blow lands, unless the attacker's animation has a "hit" event (12 §3),
+    // which wins: that way the timing of a swing lives with the art.
+    "type": "attack",
+    "id": "default_attack",
+    "damage": 8,
+    "damageType": "physical",
+    "reach": 1.8,
+    "radius": 0.3,
+    "arcDegrees": 120,
+    "windupTime": 0.18,
+    "recoverTime": 0.15,
+    "cooldown": 0.35,
+    "animation": "attack"
+  }
+]

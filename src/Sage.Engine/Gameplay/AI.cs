@@ -31,11 +31,9 @@ public sealed class AIProfileRecord
 {
     public float SightRange = 22f;
     public float SightAngleDegrees = 200f;   // generous: creatures notice you from the side
-    public float MeleeRange = 1.8f;
-    public float ThinkRate = 6f;             // times per second
-    public float AttackCooldown = 1.2f;
+    public float MeleeRange = 1.8f;      // how close it wants to be before swinging
+    public float ThinkRate = 6f;         // times per second
     public float TurnSpeedDegrees = 360f;
-    public RecordId AttackEffect;            // applied to the target on a melee hit (16 §3.3)
 
     public static readonly RecordId Default = new("sage", "default_ai");
 }
@@ -89,7 +87,6 @@ public struct AIState : IComponent
     public Entity Target;
     public float NextThink;
     public float TaskTime;      // seconds the current task has been running
-    public float Cooldown;      // melee cooldown
     public bool TaskStarted;
 }
 
@@ -105,6 +102,7 @@ public ref struct AITaskContext
     public ref Transform Transform;
     public AIProfileRecord Profile;
     public PhysicsSpace Space;
+    public ActionId Attack;     // the Attack action, so a task can swing the way a player does
     public float Dt;
     public float Param;
 }
@@ -207,40 +205,42 @@ internal sealed class MoveToTargetTask : IAITask
     }
 }
 
-// Swing at the target: a wind-up of `param` seconds (default 0.5), then the hit, then a cooldown.
-// The hit itself becomes damage with combat (F20); for now it reports through the world's GameRules.
+// Swing at the target: the agent presses the same Attack action a player does, and
+// MeleeCombatSystem does the rest (16 §3.2). Reach, timing, hit detection and damage belong to the
+// attack record, so a creature and a player with the same weapon fight identically — and an AI can
+// miss. `param` is how long to keep trying before giving up (default 1.5 s), which is what makes it
+// wait out its own cooldown instead of failing the moment it is not ready.
 internal sealed class MeleeAttackTask : IAITask
 {
+    public AITaskStatus Start(ref AITaskContext c)
+    {
+        if (c.World.Has<Melee>(c.Entity)) c.World.Get<Melee>(c.Entity).Swung = false;
+        return AITaskStatus.Running;
+    }
+
     public AITaskStatus Run(ref AITaskContext c)
     {
         c.Intent.Move = Vector2.Zero;
         if (!c.World.IsAlive(c.State.Target)) return AITaskStatus.Failed;
-        if (c.State.Cooldown > 0) return AITaskStatus.Failed;
+        if (!c.World.Has<Melee>(c.Entity))
+        {
+            Log.Once(LogCat.AI, LogLevel.Warn, $"ai-melee:{World.Describe(c.Entity)}",
+                $"{World.Describe(c.Entity)} runs a MeleeAttack task but has no Melee component, so it cannot swing (16 §3.2)");
+            return AITaskStatus.Failed;
+        }
 
         Vector3 self = c.Transform.LocalPosition;
         Vector3 target = c.World.Get<Transform>(c.State.Target).LocalPosition;
-        if (AIMath.DistanceXZ(self, target) > c.Profile.MeleeRange * 1.2f) return AITaskStatus.Failed;
+        if (SageMath.DistanceXZ(self, target) > c.Profile.MeleeRange * 1.2f) return AITaskStatus.Failed;
 
-        if (c.State.TaskTime < (c.Param > 0 ? c.Param : 0.5f)) return AITaskStatus.Running;
+        ref var melee = ref c.World.Get<Melee>(c.Entity);
+        if (melee.Phase != MeleePhase.Ready) return AITaskStatus.Running;   // mid-swing: let it finish
+        if (melee.Swung) return AITaskStatus.Succeeded;                     // it landed, or it missed
 
-        c.State.Cooldown = c.Profile.AttackCooldown;
-        if (!c.Profile.AttackEffect.IsEmpty)
-            Effects.Apply(c.World, c.State.Target, c.Profile.AttackEffect, c.Entity);
-        Log.Debug(LogCat.AI, $"{World.Describe(c.Entity)} hits {World.Describe(c.State.Target)}");
-        c.World.Resources.Get<AIEvents>().Attacks.Add(new AIAttack(c.Entity, c.State.Target));
-        return AITaskStatus.Succeeded;
+        c.Intent.Pressed = c.Intent.Pressed.With(c.Attack);
+        return c.State.TaskTime > (c.Param > 0 ? c.Param : 1.5f) ? AITaskStatus.Failed : AITaskStatus.Running;
     }
 }
-
-// What the AI did this tick, for gameplay to react to. It becomes proper game events with the event
-// bus (04) and real damage with combat (F20).
-public sealed class AIEvents
-{
-    public readonly List<AIAttack> Attacks = new();
-    public void Clear() => Attacks.Clear();
-}
-
-public readonly record struct AIAttack(Entity Attacker, Entity Target);
 
 // Was the AI's private copy of the angle helpers, which is how the conventions drifted (review #43).
 // Everything here now lives in SageMath, which games can use too: IAITask is public, so a game's own

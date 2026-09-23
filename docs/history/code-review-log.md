@@ -1,6 +1,6 @@
 # Code Review Log (archived from TODO.md, 2026-09-22)
 
-History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#52) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
+History of the code review of `engine/` (2026-05-25 → 2026-09-21): every finding with its problem, fix and resolution notes. **Open items are tracked in `TODO.md`**; this file is kept for context (why the code looks the way it does). Item numbers (#1–#53) are stable and still referenced from `TODO.md` and `docs/design/*`. **File paths below predate the 2026-09-22 solution split** (`engine/…` is now `src/Sage.*/…`; see `ARCHITECTURE.md` §7).
 
 ---
 
@@ -315,6 +315,11 @@ pass; the first two were real, silent bugs.
 ### [X] 52. The same code, written twice — **Severity: Cosmetic** (found 2026-09-22)
 - **Where**: four angle-wrap helpers (`AIMath`, `CommandLatch`, `SpriteMath`, `DevCamera`), two forward-from-yaw expressions, two capsule height conversions with different clamps, and the box mesh built once in `Renderer.CreateBox` and once in `CreateErrorMesh`.
 - **Resolution**: angles live in `SageMath` (`AIMath` is a public thin wrapper, since `IAITask` is public and games write their own tasks); capsule dimensions in `Collider.Standing`; the box corners in `Renderer.BuildBox`.
+
+### [X] 53. Physics queries were stopped by trigger volumes — **Severity: Wiring** (found 2026-09-22, F20)
+- **Files**: `src/Sage.Engine/Physics/PhysicsCallbackData.cs` (`Allows`), `PhysicsSpace.cs` (the three query handlers)
+- **Problem**: raycasts, sweeps and overlaps filtered by collision layer only, so a trigger — a thing with no surface, whose whole job is to report overlaps — blocked line of sight, stopped a character sweep and would have swallowed a sword swing. The Sandbox only escaped it because its one trigger hangs in the air.
+- **Resolution (2026-09-22, F20)**: queries skip triggers by default; `includeTriggers: true` asks for them. Test: `QueriesSeeThroughTriggersUnlessTheyAskForThem`.
 
 ### Noted, not fixed (carried into TODO)
 - `PhysicsSpace.OverlapBox` is broad-phase only: it can report entities whose shapes don't touch. The name should say so once a narrow-phase version exists (10 §4).

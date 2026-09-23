@@ -201,6 +201,10 @@ public sealed class World : IDisposable
     public ArchetypeQuery<T1, T2, T3> Query<T1, T2, T3>()
         where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent => _store.Query<T1, T2, T3>();
 
+    public ArchetypeQuery<T1, T2, T3, T4> Query<T1, T2, T3, T4>()
+        where T1 : struct, IComponent where T2 : struct, IComponent
+        where T3 : struct, IComponent where T4 : struct, IComponent => _store.Query<T1, T2, T3, T4>();
+
     // Every entity (editor, tools, debug commands).
     public ArchetypeQuery QueryAll() => _store.Query();
 
