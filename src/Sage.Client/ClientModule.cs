@@ -39,16 +39,20 @@ public sealed class ClientModule : IModule
         actions.Register("Look", ActionKind.Axis2D);
         actions.Register("Menu", ActionKind.Button);
         actions.Register("ToggleConsole", ActionKind.Button);
+
+        // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
+        // registered in Start does not exist yet when the saved value is read — the line is dropped
+        // with an "unknown cvar" warning and the setting silently never applies (review #58).
+        _debugDraw = ctx.Engine.CVars.Register("r_debugdraw", false, CVarFlags.DevOnly,
+            "Draw debug geometry from the simulation: sweeps, sight cones, colliders (06 §3.2).");
+        _crosshair = ctx.Engine.CVars.Register("ui_crosshair", true, CVarFlags.Archive,
+            "Draw the crosshair while a camera rig has the view (13 §3).");
     }
 
     public void Start(ModuleContext ctx)
     {
         var host = _host = ctx.Get<ClientHost>();
         _records = ctx.Engine.Records;
-        _debugDraw = ctx.Engine.CVars.Register("r_debugdraw", false, CVarFlags.DevOnly,
-            "Draw debug geometry from the simulation: sweeps, sight cones, colliders (06 §3.2).");
-        _crosshair = ctx.Engine.CVars.Register("ui_crosshair", true, CVarFlags.Archive,
-            "Draw the crosshair while a camera rig has the view (13 §3).");
         _content = new ContentService(host, ctx.Engine.Vfs);
         _renderer = new Renderer(host, _content, ctx.Engine);
         _ui = new UiResources(host.GraphicsDevice);
