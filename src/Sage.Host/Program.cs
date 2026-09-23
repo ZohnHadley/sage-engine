@@ -53,9 +53,6 @@ foreach (var option in launch.Options.Keys.Where(o => !o.Equals("game", StringCo
 engine.Vfs.Mount(new FolderMount("engine", Path.Combine(AppContext.BaseDirectory, "Content"), "sage"));
 foreach (string mount in manifest.Mounts)
     engine.Vfs.Mount(new FolderMount($"{manifest.Id}/{mount}", Path.Combine(manifest.Directory, mount), manifest.Id));
-if (manifest.Modules.Add.Count > 0)
-    Log.Warn(LogCat.Modules, $"game.json modules.add isn't supported yet (ignored: {string.Join(", ", manifest.Modules.Add)})");
-
 // Modules (01 §3.1, §5.1). The game assembly must be loaded before the first World exists (03 §3.1).
 try
 {
@@ -70,6 +67,10 @@ try
     AddDefaultModule(new AIModule());
     AddDefaultModule(new ClientModule());
     engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));
+    // `modules.add`: the game's other assemblies, such as its client half (01 §3.3, R15).
+    foreach (string extra in manifest.ModuleAssemblies)
+        foreach (var module in ModuleManager.LoadModules(extra))
+            AddDefaultModule(module);
     engine.Modules.InitAll();
 }
 catch (Exception ex)

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Sandbox's client half (docs/design/01 §3.1, TODO R15). Everything that needs a screen: the
+    HUD, and the one prefab part that builds a mesh at run time. The simulation half is `Sandbox`,
+    which references only `Sage.Engine` — so the game's own rules, spawning and combat log can be
+    tested headlessly, the way the engine's can.
+
+    The host loads this through `game.json`'s `modules.add`. Engine references are compile-time only
+    (Private=false): at run time the host's own copies are used.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Sandbox</RootNamespace>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />
+    <ProjectReference Include="..\Sandbox\Sandbox.csproj" Private="false" />
+  </ItemGroup>
+</Project>

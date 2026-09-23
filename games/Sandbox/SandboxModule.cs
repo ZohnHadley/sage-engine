@@ -8,38 +8,30 @@ namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Direct
 public sealed class SandboxModule : IGameModule
 {
     private RecordStore? _records;
-    private Renderer? _renderer;
-    private ContentService? _content;
     private ActionId _jump = ActionId.None;
     private readonly List<World> _worlds = new();
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule) };
+    // The simulation depends on gameplay, not on the client: that is the whole point of the split
+    // (R15). Sandbox.Client declares the ClientModule dependency for the half that needs a screen.
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(ItemsModule), typeof(AIModule) };
 
     public void Init(ModuleContext ctx)
     {
         ctx.Engine.Records.Register<SceneRecord>();
 
-        // What a game adding to prefabs looks like (05 "As built (prefabs)"): two setups the engine
-        // has no business knowing about. `box_mesh` needs the renderer, which is client-side; `hop`
-        // is a toy that has to read where the thing was placed.
-        ctx.Engine.Prefabs.Register("box_mesh", (world, entity, options, where) =>
-        {
-            var o = PrefabParts.Read<BoxMeshOptions>(world, options, "box_mesh", where);
-            if (o.Size == Vector3.Zero) { Log.Error(LogCat.Records, $"{where}: box_mesh needs a \"size\""); return; }
-            world.Add(entity, new MeshRenderer { Handle = _renderer!.CreateBox(o.Size, World.Describe(entity)), Material = o.Material });
-        });
-
+        // What a game adding to prefabs looks like (05 "As built (prefabs)"). `hop` is a toy that has
+        // to read where the thing was placed, so it belongs to the simulation. `box_mesh` builds a
+        // mesh at run time, which needs the renderer, so it lives in Sandbox.Client — here the
+        // simulation only says that going without it is fine, which is what a dedicated server does.
+        ctx.Engine.Prefabs.Optional("box_mesh");
         ctx.Engine.Prefabs.Register("hop", (world, entity, _, _) =>
             world.Add(entity, new Hop { BaseY = world.Get<Transform>(entity).LocalPosition.Y }));
     }
 
-    private sealed class BoxMeshOptions { public Vector3 Size; public RecordId Material; }
 
     public void Start(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
-        _renderer = ctx.Get<Renderer>();
-        _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
         _jump = ctx.Engine.Actions.Get("Jump");   // registered by CharacterModule (08 §3.2)
     }
@@ -55,7 +47,6 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
         world.AddSystem(new CombatLogSystem(world), Phase.Late);
-        world.AddSystem(new SandboxHud(world, _records!, _content!), Phase.FrameUpdate);   // 13 §3
         world.Resources.Set<GameRules>(new SandboxRules(this));
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
@@ -74,6 +65,11 @@ public sealed class SandboxModule : IGameModule
             foreach (var e in world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList())
                 world.Destroy(e);
             Spawn(world);
+
+            // And the player, which the rules placed at world start rather than the scene loop. It
+            // carries the same tag, so the sweep above took it: without this, saving a record file
+            // left the world with nothing to control (review #59).
+            SpawnPlayer(world);
         }
     }
 

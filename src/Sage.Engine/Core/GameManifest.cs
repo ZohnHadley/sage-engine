@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace sage_engine;
@@ -32,7 +33,13 @@ public sealed class GameManifest
     // Folder the manifest was loaded from; mounts and the assembly path are relative to it.
     public string Directory { get; private set; } = "";
 
-    public string AssemblyPath => Path.GetFullPath(Path.Combine(Directory, Assembly.Replace("{config}", BuildInfo.Config.ToString())));
+    public string AssemblyPath => Resolve(Assembly);
+
+    // `modules.add`: further assemblies whose IModules are added after the game's own (01 §3.3).
+    public IEnumerable<string> ModuleAssemblies => Modules.Add.Select(Resolve);
+
+    private string Resolve(string path) =>
+        Path.GetFullPath(Path.Combine(Directory, path.Replace("{config}", BuildInfo.Config.ToString())));
 
     public static GameManifest Load(string gameDirectory)
     {

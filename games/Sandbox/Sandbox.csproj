@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    The Sandbox game: the repo's dogfooding game module (docs/design/01 §3.3, ARCHITECTURE §7).
+    The Sandbox game's *simulation* (docs/design/01 §3.3, ARCHITECTURE §7, TODO R15): the scene, the
+    rules, spawning, the combat log. It references `Sage.Engine` and nothing else, so the compiler
+    enforces what used to be a habit — no MonoGame in here — and the game's own rules can be ticked
+    in a headless test. Anything needing a screen is in `Sandbox.Client`.
+
     A plain library; the host loads bin/<config>/net8.0/Sandbox.dll through game.json. The engine
-    references are compile-time only (Private=false): at run time the host's own copies are used.
+    reference is compile-time only (Private=false): at run time the host's own copy is used.
   -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -13,7 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" Private="false" />
-    <ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>

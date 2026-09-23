@@ -6,5 +6,7 @@
   "assembly": "bin/{config}/net8.0/Sandbox.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
-  "modules": { "disable": [] }
+  // The client half (R15): the simulation is Sandbox.dll, anything needing a screen is here. A
+  // dedicated server would leave this out.
+  "modules": { "disable": [], "add": ["../Sandbox.Client/bin/{config}/net8.0/Sandbox.Client.dll"] }
 }

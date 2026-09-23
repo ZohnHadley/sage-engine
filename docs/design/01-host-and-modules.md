@@ -27,7 +27,19 @@ Not in scope: what the services do (02), how worlds run systems (03).
   | `Sage.Host` (exe) | everything runtime; `Sage.Editor` only in the editor host (*today:* the one exe is still game + editor, so it references `Sage.Editor` until the editor host exists, 15/F28) | — |
   | Game assemblies | `Sage.Framework`, `Sage.Framework.Client`, `Sage.Engine`, `Sage.Client` (a game can split its own sim/client parts the same way) | `Sage.Editor` (game editor extensions go in a separate `MyGame.Editor` assembly) |
 
-  *Today* this is the intended layering; only some of it exists. The assemblies that are actually in the solution are `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox` and `tests/Sage.Tests` — no `Sage.Framework` or `Sage.Framework.Client` yet (the gameplay feature modules live in `Sage.Engine`, 16 §3.1, until there's enough in them to split out). `Sage.Engine`'s package references are **`Friflo.Engine.ECS` and `BepuPhysics`**, not SharpGLTF (glTF mesh loading is still to build, 05 §14 step 2). The rest of the reference graph matches the table: `Sage.Client`, `Sage.Editor` and `Sage.Host` add MonoGame; `Sage.Host` references `Sage.Editor` for the reason given above; `games/Sandbox` references `Sage.Engine` and `Sage.Client`; `tests/Sage.Tests` references `Sage.Engine`.
+  *Today* this is the intended layering; only some of it exists. The assemblies that are actually in the solution are `Sage.Engine`, `Sage.Client`, `Sage.Editor`, `Sage.Host`, `games/Sandbox`, `games/Sandbox.Client` and `tests/Sage.Tests` — no `Sage.Framework` or `Sage.Framework.Client` yet (the gameplay feature modules live in `Sage.Engine`, 16 §3.1, until there's enough in them to split out). `Sage.Engine`'s package references are **`Friflo.Engine.ECS` and `BepuPhysics`**, not SharpGLTF (glTF mesh loading is still to build, 05 §14 step 2). The rest of the reference graph matches the table: `Sage.Client`, `Sage.Editor` and `Sage.Host` add MonoGame; `Sage.Host` references `Sage.Editor` for the reason given above; `games/Sandbox` references **only `Sage.Engine`** and `games/Sandbox.Client` adds `Sage.Client` (R15, below); `tests/Sage.Tests` references `Sage.Engine` and the Sandbox's simulation half.
+
+> **A game splits the same way the engine does (2026-09-23, R15).** `games/Sandbox` is the
+> simulation — scene, rules, spawning, combat log — and references `Sage.Engine` and nothing else, so
+> the compiler enforces what used to be a habit. `games/Sandbox.Client` holds the HUD and the one
+> prefab part that builds a mesh at run time. The point is not tidiness: the game's own rules can now
+> be ticked in a headless test, and `tests/Sage.Tests/World/SandboxSimulationTests.cs` found a real
+> bug the first time it ran (review #59). A dedicated server would run the first and not the second.
+>
+> Exactly one `IGameModule` per game, in the simulation half. The client half is a plain `IModule`,
+> loaded through `game.json`'s **`modules.add`** — which the manifest had declared since step 5 and
+> the host had been warning was unimplemented. A part that only the client registers is declared
+> `Prefabs.Optional(name)` by the simulation, so headless it is skipped rather than reported missing.
 
 > **Done for the engine (2026-09-23, R15).** `GameplayModule` — nine record types, three cvars, seven
 > console commands, six input actions, nine systems — is now `AttributesModule`, `CharacterModule`,

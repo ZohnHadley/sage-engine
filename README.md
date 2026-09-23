@@ -135,7 +135,8 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `src/Sage.Client` | Rendering, input devices, assets, sprite batching — the MonoGame half |
 | `src/Sage.Editor` | Dev camera, console window, entity outliner, stat overlay (ImGui) |
 | `src/Sage.Host` | The executable: boot sequence and the main loop |
-| `games/Sandbox` | The test game: its module, scene records, placeholder art and tools |
+| `games/Sandbox` | The test game's **simulation**: its module, scene records, placeholder art and tools. References only `Sage.Engine`, so it is testable headlessly |
+| `games/Sandbox.Client` | The same game's **client half**: the HUD, and the prefab part that needs a renderer |
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
 | `tests/Sage.Tests` | xUnit, headless |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |

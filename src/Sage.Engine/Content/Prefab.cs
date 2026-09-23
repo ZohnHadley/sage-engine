@@ -50,6 +50,7 @@ public sealed class PrefabRegistry
 {
     private readonly List<IPrefabPart> _parts = new();
     private readonly Dictionary<string, int> _byName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _optional = new(StringComparer.OrdinalIgnoreCase);
 
     public void Register(IPrefabPart part)
     {
@@ -68,6 +69,13 @@ public sealed class PrefabRegistry
         Register(new Lambda(name, apply));
 
     public IReadOnlyList<IPrefabPart> Parts => _parts;
+
+    // A part that may legitimately be absent: one whose module is not loaded in this configuration.
+    // A dedicated server has no renderer, so a prefab asking for a mesh should get no mesh, not an
+    // error — but a *typo* still should. Declared by the half that is always present (R15).
+    public void Optional(string name) => _optional.Add(name);
+
+    public bool IsOptional(string name) => _optional.Contains(name);
 
     public IEnumerable<string> Names
     {
@@ -191,8 +199,15 @@ public static class PrefabExtensions
             }
         }
 
-        // Whatever is left was never registered: a typo, or a module that isn't loaded.
+        // Whatever is left was never registered: a typo, or a module that isn't loaded. A part
+        // declared optional is the second case on purpose — a headless run has no renderer, and a
+        // prefab asking for a mesh there should quietly get no mesh.
         foreach (var name in written.Keys)
-            Log.Error(LogCat.Records, $"{where}: no prefab part '{name}' (have: {string.Join(", ", engine.Prefabs.Names)})");
+        {
+            if (engine.Prefabs.IsOptional(name))
+                Log.Debug(LogCat.Records, $"{where}: prefab part '{name}' is not installed here; skipped");
+            else
+                Log.Error(LogCat.Records, $"{where}: no prefab part '{name}' (have: {string.Join(", ", engine.Prefabs.Names)})");
+        }
     }
 }

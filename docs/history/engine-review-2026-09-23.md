@@ -115,7 +115,14 @@ which is easier to keep true when the module is the size of one feature.
 ### 6. A game assembly cannot be tested headlessly (01 §3.1 → **R15**)
 `games/Sandbox` mixes simulation (rules, combat log, AI toys, spawning) with client code (the HUD
 needs `Color`, `Rectangle`, `Texture2D`), so none of the game's own simulation can be tested without
-MonoGame. The `Sage.Framework` / `Sage.Framework.Client` split in 01 should be the pattern for games
+MonoGame.
+
+**Resolved 2026-09-23 (R15).** `games/Sandbox` (simulation, `Sage.Engine` only) and
+`games/Sandbox.Client` (the HUD and the one prefab part that needs a renderer), loaded through
+`game.json`'s `modules.add`. The value showed up immediately: the first headless test of the game's
+own rules found that reloading a record file destroyed the player and never replaced it, a bug that
+had been there since the scene loop was written and that no engine test could have caught
+(review #59). The `Sage.Framework` / `Sage.Framework.Client` split in 01 should be the pattern for games
 too: `Sandbox` + `Sandbox.Client`. The engine can make that the documented shape before games get
 big enough for it to hurt.
 

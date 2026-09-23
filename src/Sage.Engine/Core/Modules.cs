@@ -174,6 +174,27 @@ public sealed class ModuleManager
 
     // Loads a game assembly and creates its one IGameModule. Must happen before the first World is
     // created (Friflo builds its component schema from the assemblies loaded at that moment, 03 §3.1).
+    // Extra module assemblies a game asks for in `game.json`'s `modules.add` (01 §3.3). Every public
+    // IModule in them is added — that is how a game ships its client half separately from its
+    // simulation (R15), and how a mod will ship a C# module later (17).
+    public static IEnumerable<IModule> LoadModules(string assemblyPath)
+    {
+        string full = Path.GetFullPath(assemblyPath);
+        if (!File.Exists(full))
+            throw new FileNotFoundException($"Module assembly not found: {full}. Build the solution, or fix \"modules.add\" in game.json.");
+        var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(full);
+        var found = assembly.GetExportedTypes()
+            .Where(t => typeof(IModule).IsAssignableFrom(t) && !typeof(IGameModule).IsAssignableFrom(t)
+                        && t is { IsAbstract: false, IsInterface: false })
+            .Select(t => (IModule)Activator.CreateInstance(t)!)
+            .ToList();
+        if (found.Count == 0)
+            Log.Warn(LogCat.Modules, $"{assembly.GetName().Name} has no public IModule class; nothing was added");
+        else
+            Log.Info(LogCat.Modules, $"Module assembly {assembly.GetName().Name} {assembly.GetName().Version} → {string.Join(", ", found.Select(m => m.Name))}");
+        return found;
+    }
+
     public static IGameModule LoadGame(string assemblyPath)
     {
         string full = Path.GetFullPath(assemblyPath);
