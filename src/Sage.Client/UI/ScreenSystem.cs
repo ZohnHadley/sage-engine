@@ -19,12 +19,14 @@ public sealed class ScreenSystem : ISystem
     private readonly ScreenStack _stack;
     private readonly UiDraw _ui;
     private readonly InputActions _actions;
+    private readonly InputDevices _devices;
     private readonly ArchetypeQuery<Transform> _players;
 
     private readonly ActionId _up, _down, _confirm, _alternate, _back;
 
-    public ScreenSystem(World world, InputActions actions, ActionRegistry registry)
+    public ScreenSystem(World world, InputActions actions, InputDevices devices, ActionRegistry registry)
     {
+        _devices = devices;
         _stack = world.Resources.Get<ScreenStack>();
         _ui = world.Resources.Get<UiDraw>();
         _actions = actions;
@@ -45,8 +47,13 @@ public sealed class ScreenSystem : ISystem
 
         // Opening and closing. Checked with nothing open too, which is how a screen gets opened at
         // all; while one is open the same press closes it.
-        foreach (var opener in _stack.OpenActions)
-            if (_actions.Pressed(opener) && _stack.Toggle(opener, world, player)) break;
+        //
+        // **Not while a field has the keyboard**: `I`, `B` and `M` open screens, and they are also
+        // letters. Naming a spell "mist" would otherwise open the inventory twice and the spellmaker
+        // once on the way. A screen with a field is left by Escape, which is not a letter.
+        if (_stack.Top?.Field == null)
+            foreach (var opener in _stack.OpenActions)
+                if (_actions.Pressed(opener) && _stack.Toggle(opener, world, player)) break;
 
         // The UI context is active exactly while something is open, so the gameplay bindings are
         // consumed and nobody walks about behind an open inventory (08 §3.3).
@@ -56,6 +63,17 @@ public sealed class ScreenSystem : ISystem
         if (screen == null) return;
 
         if (_actions.Pressed(_back)) { _stack.Close(); return; }
+
+        // Typing goes to the screen's field, if it has one, before the buttons are read: a name with
+        // an "i" in it would otherwise open the inventory, because a character and a key are not the
+        // same thing and the UI map binds both (08 §3.1). The field takes printable characters and
+        // backspace, and leaves Return and Escape to the screen.
+        // `UiWantsKeyboard` is ImGui's: the dev console subscribes to the same window event, so
+        // without this a character typed into the console would also land in an open screen's field.
+        var field = screen.Field;
+        if (field != null && !_actions.UiWantsKeyboard && _devices.Typed.Length > 0 && field.Type(_devices.Typed))
+            screen.Typed(world, player);
+
         if (_actions.Pressed(_down)) _stack.Move(1);
         if (_actions.Pressed(_up)) _stack.Move(-1);
         if (_actions.Pressed(_confirm)) _stack.Activate(world, player);
@@ -89,7 +107,8 @@ public static class PanelView
         float line = ui.LineHeight;
         int shown = (int)Math.Min(Rows, Math.Max(panel.Count, 1));
         float width = screen.Width;
-        float height = Pad * 2f + line * (shown + 3f);           // title, rows, reason, hint
+        float height = Pad * 2f + line * (shown + 3f)            // title, rows, reason, hint
+                     + (screen.Field != null ? line * 1.4f : 0f);
         float x = MathF.Round((ui.Size.X - width) * 0.5f);
         float y = MathF.Round((ui.Size.Y - height) * 0.5f);
 
@@ -100,6 +119,15 @@ public static class PanelView
         float textX = x + Pad, textY = y + Pad;
         ui.Text(textX, textY, panel.Title, TitleColour);
         textY += line * 1.5f;
+
+        // The field, with a caret, so it is obvious that typing goes here rather than into the list.
+        if (screen.Field is { } field)
+        {
+            string typed = field.IsEmpty ? field.Placeholder : field.Text;
+            ui.Text(textX, textY, typed, field.IsEmpty ? DisabledColour : RowColour);
+            ui.Rect(textX + ui.Measure(field.Text).X + 2f, textY + 2f, 2f, line - 4f, Tick);   // caret
+            textY += line * 1.4f;
+        }
 
         if (panel.Problem.Length > 0)
         {

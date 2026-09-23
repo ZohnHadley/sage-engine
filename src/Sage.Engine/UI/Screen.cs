@@ -40,6 +40,14 @@ public abstract class Screen
 
     // How wide to draw it, in pixels. A list of spells does not need the whole window.
     public virtual float Width => 460f;
+
+    // A screen that is typed into says so by returning a field. The client hands it every character
+    // the window reported while this screen is on top, and draws it under the title with a caret.
+    // Null — the usual case — means the screen is a list and nothing else.
+    public virtual TextField? Field => null;
+
+    // Called when the field changed, so a screen can re-price what is being named as it is typed.
+    public virtual void Typed(World world, Entity subject) { }
 }
 
 // The open screens, innermost last. A world resource, because a screen acts on entities in a world.

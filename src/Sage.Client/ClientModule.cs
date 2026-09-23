@@ -28,6 +28,7 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
     private InputActions? _actions;
+    private InputDevices? _devices;
     private ActionRegistry? _actionIds;
 
     public void Init(ModuleContext ctx)
@@ -54,6 +55,7 @@ public sealed class ClientModule : IModule
         actions.Register("MenuBack", ActionKind.Button);
         actions.Register("Inventory", ActionKind.Button);
         actions.Register("Spellbook", ActionKind.Button);
+        actions.Register("Spellmaker", ActionKind.Button);
 
         // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
         // registered in Start does not exist yet when the saved value is read — the line is dropped
@@ -110,6 +112,7 @@ public sealed class ClientModule : IModule
         if (BuildInfo.IsDevBuild) _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
         _actions = ctx.Get<InputActions>();   // the host provides it; screens navigate with it (13 §3)
         _actionIds = ctx.Engine.Actions;
+        _devices = ctx.Get<InputDevices>();   // typed characters for a screen's field (13 §3)
     }
 
     public void OnWorldCreated(World world)
@@ -132,7 +135,7 @@ public sealed class ClientModule : IModule
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
-        world.AddSystem(new ScreenSystem(world, _actions!, _actionIds!), Phase.Overlay,
+        world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!), Phase.Overlay,
                         before: new[] { typeof(UiRenderSystem) });
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!), Phase.FrameUpdate, RunCondition.DevOnly);
     }

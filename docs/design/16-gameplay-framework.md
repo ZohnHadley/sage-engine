@@ -212,8 +212,12 @@ and the cast system cannot tell a composed spell from one in a content file.
 - **v1 assumes mana:** a composed spell draws on `sage:mana`, the engine's own pool. A game whose magic
   runs on something else needs that to become a choice (a field on the draft, or a rule on `GameRules`).
 - **Console:** `spell_effects` (what can be built with, and what each costs), `spell_make <name>
-  <effect|key=value>...`, `spell_list`, `spell_forget <name>`. The spellmaker *screen* waits for UI
-  (13); the rules are what needed building, and a screen will call exactly these.
+  <effect|key=value>...`, `spell_list`, `spell_forget <name>`.
+- **And a screen** (`SpellmakerScreen`, 2026-09-23 with F38): name it, cycle its delivery and power,
+  choose effects, and press Enter on a **"make it" row** that is greyed with the reason when the draft
+  is not yet a spell — the reason coming from `Spellmaker.CanCompose`, which `Compose` itself applies
+  (R17), so the button and the attempt cannot disagree. It lives in the engine rather than in a game,
+  because what a spellmaker *is* belongs to this feature; binding it to a key is the game's call.
 - **Forgetting** removes the draft and the record, and an entity that still knows the id is refused
   with `NotKnown` — the same thing that happens to any ability whose record went away with a mod.
 

@@ -28,6 +28,7 @@
       "MenuBack":      [ { "key": "Escape" }, { "gamepad": "B" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
       "Spellbook":     [ { "key": "B" } ],
+      "Spellmaker":    [ { "key": "M" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   },
@@ -46,6 +47,7 @@
       "Menu":          [ { "key": "Escape" }, { "gamepad": "Start" }, { "gamepad": "Back" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
       "Spellbook":     [ { "key": "B" } ],
+      "Spellmaker":    [ { "key": "M" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   }

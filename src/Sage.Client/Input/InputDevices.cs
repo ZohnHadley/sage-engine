@@ -14,6 +14,29 @@ public sealed class InputDevices
     internal MouseListener Mouse { get; } = new();
     public GamepadListener Gamepad { get; } = new();
 
+    // What was *typed* this frame, in order, as the operating system decided it: the host feeds this
+    // from the window's text-input event (08 §3.1). Keys are not characters — a keyboard layout, a
+    // dead key and a modifier all sit between them, and reading `Keys.A` to mean "a" is how a name
+    // typed on an AZERTY keyboard comes out wrong.
+    //
+    // Cleared every Poll, so a reader takes it in the same frame or misses it. Backspace arrives as
+    // the backspace character and Return as the carriage return, which is why a field handles both.
+    public ReadOnlySpan<char> Typed => _typed.AsSpan(0, _typedCount);
+
+    private char[] _typed = new char[32];
+    private int _typedCount;
+
+    public void PushTyped(char c)
+    {
+        if (_typedCount == _typed.Length) Array.Resize(ref _typed, _typed.Length * 2);
+        _typed[_typedCount++] = c;
+    }
+
+    // Called by the host once the frame has had its chance to read `Typed` (after the Frame schedule),
+    // not at Poll: the window delivers characters *before* Update and a console script pushes them
+    // *during* it, so clearing at the start of input would drop one or the other.
+    public void EndFrame() => _typedCount = 0;
+
     public void Poll()
     {
         Mouse.update();

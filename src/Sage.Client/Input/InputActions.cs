@@ -81,6 +81,17 @@ public sealed class InputActions
         cvars.RegisterCommand("bindlist", CVarFlags.None, "List input bindings per context.", _ => ListBindings());
         cvars.RegisterCommand("in_contexts", CVarFlags.None, "Show which input contexts are active.", _ =>
             Log.Info(LogCat.Console, $"  {string.Join(", ", ContextOrder.Select(c => $"{c}={(IsActive(c) ? "on" : "off")}"))}; UI captures keyboard={UiWantsKeyboard} mouse={UiWantsMouse}"));
+        // Typing, for the same reason the other in_* commands exist: a screen with a field in it is
+        // only checkable end to end if a script can put characters into it (08 §3.5). It pushes them
+        // through the same buffer the window fills, so what a test drives is what a player types.
+        cvars.RegisterCommand("in_type", CVarFlags.DevOnly,
+            "in_type <text>: type this into whatever has the keyboard (automated tests). `\b` is backspace.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "in_type <text>"); return; }
+            string text = string.Join(' ', a.Args).Replace("\b", "");
+            foreach (char c in text) devices.PushTyped(c);
+        });
+
         cvars.RegisterCommand("in_tap", CVarFlags.DevOnly, "in_tap <action>: press a button action for one frame (automated tests).", a =>
         {
             if (a.Count == 0 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)

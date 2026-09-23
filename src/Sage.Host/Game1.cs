@@ -75,6 +75,10 @@ public class Game1 : Game
         // Input (08): devices, then actions (their bindings are built when the records load).
         var cvars = engine.CVars;
         devices = new InputDevices();
+        // Typed characters come from the window, not from key states: the operating system owns the
+        // keyboard layout, dead keys and modifiers (08 §3.1, 13 §3). ImGui subscribes to the same
+        // event for its own fields; both get every character, and whoever has focus uses it.
+        Window.TextInput += (_, e) => devices.PushTyped(e.Character);
         actions = new InputActions(engine.Actions, engine.Records, devices, cvars);
         moveAction = engine.Actions.Get("Move");
         lookAction = engine.Actions.Get("Look");
@@ -255,6 +259,8 @@ public class Game1 : Game
             screenshotAt = -1;
             SaveScreenshot();
         }
+
+        devices.EndFrame();   // typed characters have had their frame (08 §3.1)
 
         // Real frame time for the stat overlay.
         float frameSeconds = frameClock.IsRunning ? (float)frameClock.Elapsed.TotalSeconds : 0f;

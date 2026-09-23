@@ -56,5 +56,8 @@ public sealed class SandboxClientModule : IModule
         var screens = world.Resources.Get<ScreenStack>();
         screens.Bind(_actions!.Get("Inventory"), new InventoryScreen());
         screens.Bind(_actions!.Get("Spellbook"), new SpellbookScreen());
+        // The spellmaker is the engine's own screen (16 §3.3): what a spellmaker is belongs to the
+        // feature, not to this game. Binding it to a key is still the game's call.
+        screens.Bind(_actions!.Get("Spellmaker"), new SpellmakerScreen());
     }
 }

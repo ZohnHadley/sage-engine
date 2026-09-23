@@ -91,38 +91,54 @@ public static class Spellmaker
         return MathF.Max(MathF.Round((effects + damage) * MathF.Max(draft.Magnitude, 0.1f) * delivery * reach), 1f);
     }
 
+    // Whether this draft could be composed, and why not (R17). Asked by `Compose` itself and by a
+    // spellmaker screen to grey out its "make it" row — one set of rules, so the button and the
+    // attempt cannot disagree, and the words are the ones a player reads either way.
+    public static bool CanCompose(World world, SpellDraft draft, out string problem)
+    {
+        problem = "";
+        var engine = world.Engine;
+        if (engine is null) { problem = "this world has no engine"; return false; }
+
+        string name = draft.Name.Trim();
+        if (name.Length == 0) { problem = "a spell needs a name"; return false; }
+        if (draft.Effects.Count == 0 && draft.Damage <= 0f)
+        {
+            problem = "a spell needs at least one effect, or some damage";
+            return false;
+        }
+
+        foreach (var id in draft.Effects)
+        {
+            if (!engine.Records.TryGet(id, out EffectRecord effect)) { problem = $"there is no effect called {id}"; return false; }
+            // Priced at zero means the game applies it itself — a cooldown, a mana spend — and is not
+            // a thing to build with. Saying so is the difference between a spellmaker and a cheat.
+            if (effect.Cost <= 0f) { problem = $"{id} is not an effect you can put in a spell"; return false; }
+        }
+
+        var recordId = new RecordId(Namespace, Slug(name));
+        if (Book(world).Drafts.Any(d => Slug(d.Name) == recordId.Name))
+        {
+            problem = $"you already know a spell called \"{name}\"";
+            return false;
+        }
+        // And nothing else may be standing on the id: another world's composed spell, or a mount that
+        // happens to be called `custom`. Overwriting a record that exists is the one thing the record
+        // pipeline refuses to do quietly (05 §3.5), and composing is not an exception to that.
+        if (engine.Records.Exists(recordId)) { problem = $"the name \"{name}\" is taken"; return false; }
+        return true;
+    }
+
     // Composes a draft into a real `ability` and puts it in the world's book. Refusals say why, in
     // words a spellmaker screen can show: this is the one place a player's composition meets the rules.
     public static SpellResult Compose(World world, SpellDraft draft)
     {
-        var engine = world.Engine;
-        if (engine is null) return SpellResult.Failed("this world has no engine");
+        if (!CanCompose(world, draft, out string problem)) return SpellResult.Failed(problem);
 
+        var engine = world.Engine!;
         string name = draft.Name.Trim();
-        if (name.Length == 0) return SpellResult.Failed("a spell needs a name");
-        if (draft.Effects.Count == 0 && draft.Damage <= 0f)
-            return SpellResult.Failed("a spell needs at least one effect, or some damage");
-
-        foreach (var id in draft.Effects)
-        {
-            if (!engine.Records.TryGet(id, out EffectRecord effect))
-                return SpellResult.Failed($"there is no effect called {id}");
-            // Priced at zero means the game applies it itself — a cooldown, a mana spend — and is not
-            // a thing to build with. Saying so is the difference between a spellmaker and a cheat.
-            if (effect.Cost <= 0f)
-                return SpellResult.Failed($"{id} is not an effect you can put in a spell");
-        }
-
         var book = Book(world);
         var recordId = new RecordId(Namespace, Slug(name));
-        if (book.Drafts.Any(d => Slug(d.Name) == recordId.Name))
-            return SpellResult.Failed($"you already know a spell called \"{name}\"");
-        // And nothing else may be standing on the id: another world's composed spell, or a mount that
-        // happens to be called `custom`. Overwriting a record that exists is the one thing the record
-        // pipeline refuses to do quietly (05 §3.5), and composing is not an exception to that.
-        if (engine.Records.Exists(recordId))
-            return SpellResult.Failed($"the name \"{name}\" is taken");
-
         float cost = Price(engine.Records, draft);
         Register(engine, recordId, draft, cost);
         book.Drafts.Add(draft);
