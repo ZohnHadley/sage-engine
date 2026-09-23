@@ -106,6 +106,35 @@
     "modifiers": [ { "attribute": "sage:armor", "op": "Add", "value": 40 } ]
   },
 
+  // ---- first-person hands (docs/design/13 §3) ----------------------------------------------------
+  {
+    // Three frames: at rest, drawn back, and the strike. The HUD picks one from the swing's phase.
+    "type": "sprite_sheet",
+    "id": "hands_fp",
+    "texture": "textures/hands.png",
+    "directions": 1,
+    "frames": [
+      { "rect": [0, 0, 128, 128] }, { "rect": [128, 0, 128, 128] }, { "rect": [256, 0, 128, 128] }
+    ]
+  },
+  {
+    "type": "sprite_sheet",
+    "id": "sword_fp",
+    "texture": "textures/sword_fp.png",
+    "directions": 1,
+    "frames": [
+      { "rect": [0, 0, 128, 128] }, { "rect": [128, 0, 128, 128] }, { "rect": [256, 0, 128, 128] }
+    ]
+  },
+  {
+    // Bare hands are the engine's attack, so the game patches a look onto it rather than redefining
+    // it (05 §3.5): the engine ships no character art.
+    "type": "attack",
+    "id": "sage:default_attack",
+    "patch": true,
+    "viewmodel": "sandbox:hands_fp"
+  },
+
   // ---- items (docs/design/16 §3.2, F19) ----------------------------------------------------------
   {
     // One frame, one direction: an item on the ground is just a billboard with a Pickup on it.
@@ -128,7 +157,8 @@
     "radius": 0.4,
     "windupTime": 0.25,
     "recoverTime": 0.2,
-    "cooldown": 0.55
+    "cooldown": 0.55,
+    "viewmodel": "sword_fp"
   },
   {
     // The item itself. Equipping it hands `attack` to the wielder's Melee; nothing in combat knows

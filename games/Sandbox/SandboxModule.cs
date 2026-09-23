@@ -9,6 +9,7 @@ public sealed class SandboxModule : IGameModule
 {
     private RecordStore? _records;
     private Renderer? _renderer;
+    private ContentService? _content;
     private CVarRegistry? _cvars;
     private ActionId _jump = ActionId.None;
     private readonly List<World> _worlds = new();
@@ -26,6 +27,7 @@ public sealed class SandboxModule : IGameModule
         _records = ctx.Engine.Records;
         _cvars = ctx.Engine.CVars;
         _renderer = ctx.Get<Renderer>();
+        _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
         _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
         _actions = ctx.Engine.Actions;
         _jump = ctx.Engine.Actions.Get("Jump");   // registered by GameplayModule (08 §3.2)
@@ -44,7 +46,7 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new AutoWalkSystem(world, _cvars!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
         world.AddSystem(new AutoAttackSystem(world, _cvars!, _actions!), Phase.Commands, after: new[] { typeof(PlayerControlSystem) });
         world.AddSystem(new CombatLogSystem(world), Phase.Late);
-        world.AddSystem(new SandboxHud(world, _records!), Phase.FrameUpdate);   // 13 §3
+        world.AddSystem(new SandboxHud(world, _records!, _content!), Phase.FrameUpdate);   // 13 §3
         world.Resources.Set<GameRules>(new SandboxRules(this));
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);

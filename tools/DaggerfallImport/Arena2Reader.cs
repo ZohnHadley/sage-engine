@@ -12,6 +12,7 @@ namespace DaggerfallImport;
 internal sealed class Arena2Reader
 {
     private readonly Type _textureFile;
+    private readonly Type _cifFile;
     private readonly Type _dfBitmap;
     private readonly Type _dfPalette;
     private readonly object _useDisk;
@@ -21,6 +22,7 @@ internal sealed class Arena2Reader
     {
         var assembly = Assembly.LoadFrom(connectDll);
         _textureFile = Required(assembly, "DaggerfallConnect.Arena2.TextureFile");
+        _cifFile = Required(assembly, "DaggerfallConnect.Arena2.CifRciFile");
         _dfBitmap = Required(assembly, "DaggerfallConnect.DFBitmap");
         _dfPalette = Required(assembly, "DaggerfallConnect.DFPalette");
         _useDisk = Enum.Parse(Required(assembly, "DaggerfallConnect.FileUsage"), "UseDisk");
@@ -35,14 +37,21 @@ internal sealed class Arena2Reader
 
     // Every frame of records `first`..`last` of TEXTURE.<archive>, as RGBA. Palette index 0 is
     // Daggerfall's transparent colour, so those pixels come back with zero alpha.
-    public List<Frame> Read(int archive, int first, int last)
+    public List<Frame> Read(int archive, int first, int last) =>
+        Read(_textureFile, Path.Combine(_arena2, $"TEXTURE.{archive:000}"), first, last);
+
+    // The same, for a CIF: the first-person weapons (WEAPON01.CIF and friends) live in these, with
+    // record 0 the idle pose and the rest five-frame swings (13 §3).
+    public List<Frame> ReadCif(string fileName, int first, int last) =>
+        Read(_cifFile, Path.Combine(_arena2, fileName), first, last);
+
+    private List<Frame> Read(Type reader, string path, int first, int last)
     {
         var frames = new List<Frame>();
-        string path = Path.Combine(_arena2, $"TEXTURE.{archive:000}");
         if (!File.Exists(path)) { Console.Error.WriteLine($"No {path}"); return frames; }
 
-        object file = Activator.CreateInstance(_textureFile)!;
-        var load = _textureFile.GetMethod("Load", new[] { typeof(string), _useDisk.GetType(), typeof(bool) })!;
+        object file = Activator.CreateInstance(reader)!;
+        var load = reader.GetMethod("Load", new[] { typeof(string), _useDisk.GetType(), typeof(bool) })!;
         if (!(bool)load.Invoke(file, new[] { path, _useDisk, (object)true })!)
         {
             Console.Error.WriteLine($"Could not read {path}");
@@ -52,7 +61,7 @@ internal sealed class Arena2Reader
         // Load the palette the archive asks for (ART_PAL.COL for textures). Without this the reader
         // hands back its unloaded default, which is every entry bright red — the first run of this
         // tool produced a scene that looked like it was on fire.
-        string paletteName = (string)_textureFile.GetProperty("PaletteName")!.GetValue(file)!;
+        string paletteName = (string)reader.GetProperty("PaletteName")!.GetValue(file)!;
         string palettePath = Path.Combine(_arena2, paletteName);
         if (!File.Exists(palettePath))
         {
@@ -60,7 +69,7 @@ internal sealed class Arena2Reader
             return frames;
         }
         var palette = Activator.CreateInstance(_dfPalette, palettePath)!;
-        _textureFile.GetProperty("Palette")!.SetValue(file, palette);
+        reader.GetProperty("Palette")!.SetValue(file, palette);
         var red = _dfPalette.GetMethod("GetRed")!;
         var green = _dfPalette.GetMethod("GetGreen")!;
         var blue = _dfPalette.GetMethod("GetBlue")!;
@@ -72,9 +81,9 @@ internal sealed class Arena2Reader
             lookup[i * 3 + 2] = (byte)blue.Invoke(palette, new object[] { i })!;
         }
 
-        int records = (int)_textureFile.GetProperty("RecordCount")!.GetValue(file)!;
-        var frameCount = _textureFile.GetMethod("GetFrameCount")!;
-        var getBitmap = _textureFile.GetMethod("GetDFBitmap", new[] { typeof(int), typeof(int) })!;
+        int records = (int)reader.GetProperty("RecordCount")!.GetValue(file)!;
+        var frameCount = reader.GetMethod("GetFrameCount")!;
+        var getBitmap = reader.GetMethod("GetDFBitmap", new[] { typeof(int), typeof(int) })!;
         var widthField = _dfBitmap.GetField("Width")!;
         var heightField = _dfBitmap.GetField("Height")!;
         var strideField = _dfBitmap.GetField("Stride")!;

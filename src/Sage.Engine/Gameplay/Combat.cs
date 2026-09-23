@@ -49,6 +49,8 @@ public sealed class AttackRecord
     public float RecoverTime = 0.2f;        // hit -> able to do anything else
     public float Cooldown = 0.5f;           // and how long before the next swing
     public string Animation = "attack";     // clip to play; its "hit" event lands the blow
+    public RecordId Viewmodel;              // the sprite sheet a first-person wielder sees (13 §3):
+                                            // rest, wind-up and strike, in that order
     public List<RecordId> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
 
     public static readonly RecordId Default = new("sage", "default_attack");

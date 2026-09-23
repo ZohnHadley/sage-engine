@@ -53,20 +53,23 @@ if (!File.Exists(connect)) return Missing("DaggerfallConnect.dll", connect);
 
 // `--contact 504` dumps every record of an archive into one PNG, which is how you pick what to
 // import without opening a GUI: the records are numbered left to right, top to bottom.
-if (options.TryGetValue("contact", out var contactArg) && int.TryParse(contactArg, out int contactArchive))
+if (options.TryGetValue("contact", out var contactArg) && contactArg.Length > 0)
 {
     var contactReader = new Arena2Reader(connect, arena2);
-    var all = contactReader.Read(contactArchive, 0, 999);
+    bool isArchive = int.TryParse(contactArg, out int contactArchive);
+    var all = isArchive ? contactReader.Read(contactArchive, 0, 999) : contactReader.ReadCif(contactArg, 0, 999);
     var firsts = all.Where(f => f.Index == 0).ToList();
-    if (firsts.Count == 0) { Console.Error.WriteLine($"TEXTURE.{contactArchive:000}: nothing to show"); return 1; }
+    string what = isArchive ? $"TEXTURE.{contactArchive:000}" : contactArg;
+    if (firsts.Count == 0) { Console.Error.WriteLine($"{what}: nothing to show"); return 1; }
 
     int cw = firsts.Max(f => f.Width), ch = firsts.Max(f => f.Height);
     int cols = Math.Min(8, firsts.Count), rows = (firsts.Count + cols - 1) / cols;
     var contact = new Sheet(cw * cols, ch * rows);
     for (int i = 0; i < firsts.Count; i++) contact.Blit(firsts[i], cw, ch, i % cols, i / cols);
-    string contactPath = Path.Combine(options.GetValueOrDefault("out", Directory.GetCurrentDirectory()), $"contact_{contactArchive:000}.png");
+    string contactPath = Path.Combine(options.GetValueOrDefault("out", Directory.GetCurrentDirectory()),
+                                      $"contact_{(isArchive ? contactArchive.ToString("000") : Path.GetFileNameWithoutExtension(contactArg))}.png");
     contact.Save(contactPath);
-    Console.WriteLine($"TEXTURE.{contactArchive:000}: {firsts.Count} records, {cols}x{rows} grid of {cw}x{ch} cells -> {contactPath}");
+    Console.WriteLine($"{what}: {firsts.Count} records, {cols}x{rows} grid of {cw}x{ch} cells -> {contactPath}");
     for (int i = 0; i < firsts.Count; i++)
         Console.WriteLine($"  record {firsts[i].Record,2}: cell ({i % cols},{i / cols})  {firsts[i].Width}x{firsts[i].Height}");
     return 0;
@@ -134,16 +137,20 @@ foreach (var flat in nature)
 
 // Equipment lying on the ground (16 §3.2, F19). Each one becomes a billboard, an `item` record and
 // — for the weapons — the `attack` record equipping it hands to the wielder's Melee.
-var equipment = new (int Record, string Id, string Label, EquipKind Kind, float Damage, float Reach, float Cooldown, float Weight)[]
+// `Cif` is the first-person view of the weapon — Daggerfall draws the weapon alone, with no hand,
+// which is why holding one looks the way it does. Record 0 is the idle pose and the rest are
+// five-frame swings (13 §3).
+var equipment = new (int Record, string Id, string Label, EquipKind Kind, float Damage, float Reach, float Cooldown, float Weight, string Cif)[]
 {
-    (3,  "df_sword",  "iron longsword", EquipKind.Weapon, 26f, 2.5f, 0.6f, 5f),
-    (6,  "df_mace",   "spiked mace",    EquipKind.Weapon, 34f, 2.2f, 0.95f, 9f),
-    (10, "df_shield", "kite shield",    EquipKind.Shield, 0f,  0f,   0f,    7f),
+    (3,  "df_sword",  "iron longsword", EquipKind.Weapon, 26f, 2.5f, 0.6f,  5f, "WEAPON04.CIF"),
+    (6,  "df_mace",   "war hammer",     EquipKind.Weapon, 34f, 2.2f, 0.95f, 9f, "WEAPON07.CIF"),
+    (10, "df_shield", "kite shield",    EquipKind.Shield, 0f,  0f,   0f,    7f, ""),
 };
 foreach (var e in equipment)
 {
     records.Add(Flat(reader, textureDir, archive: 207, record: e.Record, id: e.Id + "_flat", metresPerPixel * 1.3f));
-    records.Add(Equipment(e.Id, e.Label, e.Kind, e.Damage, e.Reach, e.Cooldown, e.Weight));
+    if (e.Cif.Length > 0) records.Add(Viewmodel(reader, textureDir, e.Cif, e.Id + "_fp", swingRecord: 2));
+    records.Add(Equipment(e.Id, e.Label, e.Kind, e.Damage, e.Reach, e.Cooldown, e.Weight, e.Cif.Length > 0));
 }
 
 // Flat textures, for the ground and for meshes: temperate grass, a boulder face, dungeon stone.
@@ -289,7 +296,7 @@ static string FlatTexture(Arena2Reader reader, string outDir, int archive, int r
 }
 
 // An item record, plus whatever equipping it gives you: a weapon's swing, or a shield's armour.
-static string Equipment(string id, string label, EquipKind kind, float damage, float reach, float cooldown, float weight)
+static string Equipment(string id, string label, EquipKind kind, float damage, float reach, float cooldown, float weight, bool hasViewmodel)
 {
     if (kind == EquipKind.Shield)
         return $$"""
@@ -313,6 +320,13 @@ static string Equipment(string id, string label, EquipKind kind, float damage, f
       }
     """;
 
+    // A weapon with a first-person sheet says so on its attack record, which is where the HUD looks.
+    // JSON is happy with a leading comma on its own line, which saves escaping quotes in here.
+    string viewmodelLine = hasViewmodel ? $$"""
+
+        , "viewmodel": "{{id}}_fp"
+        """ : "";
+
     return $$"""
       {
         "type": "attack",
@@ -323,7 +337,7 @@ static string Equipment(string id, string label, EquipKind kind, float damage, f
         "radius": 0.4,
         "windupTime": 0.25,
         "recoverTime": 0.2,
-        "cooldown": {{F(cooldown)}}
+        "cooldown": {{F(cooldown)}}{{viewmodelLine}}
       },
 
       {
@@ -336,6 +350,42 @@ static string Equipment(string id, string label, EquipKind kind, float damage, f
         "attack": "{{id}}_swing",
         "weight": {{F(weight)}},
         "value": 120
+      }
+    """;
+}
+
+// The first-person view of a weapon, as one row of frames: the idle pose, then one swing. The HUD
+// plays frame 0 at rest and the rest across the wind-up and recovery (13 §3).
+static string Viewmodel(Arena2Reader reader, string outDir, string cif, string id, int swingRecord)
+{
+    var idle = reader.ReadCif(cif, 0, 0);
+    var swing = reader.ReadCif(cif, swingRecord, swingRecord);
+    if (idle.Count == 0) { Console.Error.WriteLine($"{cif}: no idle frame"); return ""; }
+
+    var all = new List<Arena2Reader.Frame>(idle);
+    all.AddRange(swing);
+    int cellW = all.Max(f => f.Width), cellH = all.Max(f => f.Height);
+
+    var sheet = new Sheet(cellW * all.Count, cellH);
+    for (int i = 0; i < all.Count; i++) sheet.Blit(all[i], cellW, cellH, i, 0);
+    sheet.Save(Path.Combine(outDir, id + ".png"));
+
+    var frames = new StringBuilder();
+    for (int i = 0; i < all.Count; i++)
+        frames.AppendLine($"      {{ \"rect\": [{i * cellW}, 0, {cellW}, {cellH}] }},");
+
+    Console.WriteLine($"{cif} -> {id}.png  {sheet.Width}x{sheet.Height}px  1 idle + {swing.Count} swing frames");
+
+    return $$"""
+      {
+        // Daggerfall {{cif}}: the weapon as its wielder sees it.
+        "type": "sprite_sheet",
+        "id": "{{id}}",
+        "texture": "textures/daggerfall/{{id}}.png",
+        "directions": 1,
+        "frames": [
+    {{frames.ToString().TrimEnd()}}
+        ]
       }
     """;
 }

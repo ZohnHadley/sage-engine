@@ -11,6 +11,7 @@ creature.png: 8 view directions x 2 animation frames, 64x96 each (512x192).
   when seen from behind, and d small bars at the feet, so a screenshot says which group was picked.
 tree.png: one 96x128 frame, trunk + canopy.
 sword.png: one 48x64 frame, the item F19 leaves lying in the grass.
+hands.png / sword_fp.png: 3 frames of 128x128, the first-person view of your own hands (13 3).
 """
 import math, zlib, struct, os
 
@@ -56,6 +57,9 @@ HEAD = (196, 170, 140, 255)
 NOSE = (230, 90, 70, 255)
 PACK = (120, 82, 48, 255)
 MARK = (250, 230, 60, 255)
+SKIN = (214, 176, 140, 255)
+SKIN_DARK = (176, 138, 104, 255)
+SLEEVE = (96, 104, 140, 255)
 STEEL = (168, 172, 180, 255)
 STEEL_LIGHT = (214, 218, 226, 255)
 GUARD = (122, 96, 48, 255)
@@ -111,6 +115,41 @@ def sword(path, w=48, h=64):
     c.write(path)
 
 
+def viewmodel(path, w=128, h=128, frames=3, weapon=None):
+    """A first-person view of your own hands (docs/design/13 3): three frames of a swing.
+
+    Frame 0 is at rest, 1 is drawn back, 2 is the strike. The art fills its frame: a viewmodel is
+    scaled against the window height, so empty space around it is wasted screen.
+    """
+    c = Canvas(w * frames, h)
+    # Fist centre and how far the blade leans, per frame.
+    poses = ((70, 74, 0.0), (86, 52, -0.35), (44, 44, 0.55))
+    for f in range(frames):
+        ox = f * w
+        fx, fy, lean = poses[f]
+
+        if weapon:
+            # A blade from the guard up and away, leaning with the swing.
+            tip = (fx + lean * 70 - 18, fy - 92)
+            for i in range(90):
+                t = i / 89.0
+                bx = int(fx + (tip[0] - fx) * t)
+                by = int(fy - 14 - (fy - 14 - tip[1]) * t)
+                c.rect(ox + bx - 5, by, 9, 2, STEEL)
+                c.rect(ox + bx - 5, by, 3, 2, STEEL_LIGHT)
+            c.rect(ox + fx - 20, fy - 20, 40, 7, GUARD)
+            c.rect(ox + fx - 5, fy - 14, 10, 16, GRIP)
+
+        # Forearm to the bottom edge, then the fist over it.
+        c.rect(ox + fx - 19, fy + 14, 38, h - (fy + 14), SLEEVE)
+        c.rect(ox + fx - 19, fy + 14, 6, h - (fy + 14), BODY_DARK)
+        c.ellipse(ox + fx, fy + 6, 26, 24, SKIN)
+        c.ellipse(ox + fx - 8, fy - 2, 9, 8, SKIN_DARK)
+        for k in range(3):
+            c.rect(ox + fx - 16 + k * 12, fy + 2, 9, 5, SKIN_DARK)
+    c.write(path)
+
+
 def tree(path, w=96, h=128):
     c = Canvas(w, h)
     c.rect(w // 2 - 6, h - 42, 12, 42, TRUNK)
@@ -123,4 +162,6 @@ os.makedirs(OUT, exist_ok=True)
 creature(os.path.join(OUT, 'creature.png'))
 tree(os.path.join(OUT, 'tree.png'))
 sword(os.path.join(OUT, 'sword.png'))
-print('wrote creature.png (512x192), tree.png (96x128) and sword.png (48x64)')
+viewmodel(os.path.join(OUT, 'hands.png'))
+viewmodel(os.path.join(OUT, 'sword_fp.png'), weapon=True)
+print('wrote creature.png, tree.png, sword.png, hands.png and sword_fp.png')

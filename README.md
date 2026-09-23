@@ -142,16 +142,16 @@ It defaults to the Steam install and Daggerfall Imaging 2's DLL; pass `--arena2 
 
 - `games/Sandbox/content/textures/daggerfall/*.png` — seven creatures with walk and attack
   animations (rat, spriggan, orc, skeleton, zombie, gargoyle and a human fighter), four townspeople,
-  ten woodland flats (trees, rocks, stumps, undergrowth), a sword, a mace, a shield and three
-  tiling textures;
+  ten woodland flats (trees, rocks, stumps, undergrowth), a sword, a mace, a shield, the
+  first-person weapons those two swing (`WEAPON*.CIF`) and three tiling textures;
 - `games/Sandbox/content/data/daggerfall.json` — the `sprite_sheet`, `material` and `spawn` records
   that use them: a line-up of creatures to walk around and hit, two that hunt you, a stone ruin to
   break their line of sight, scattered woodland, and a patch putting Daggerfall's grass on the
   terrain.
 
 Everything in the scene is generated from tables at the top of `tools/DaggerfallImport/Program.cs`,
-so adding a monster is one row. `--contact <archive>` dumps a whole TEXTURE archive as one labelled
-grid, which is how to find out what is in it — that is how the ones above were chosen.
+so adding a monster is one row. `--contact <archive>` dumps a whole TEXTURE archive (or a CIF, by file name) as one labelled grid,
+which is how to find out what is in it — that is how the ones above were chosen.
 
 The creatures fight with the same records the placeholder creature uses: the art is all that
 changed, which is the point of keeping gameplay in data. Delete `daggerfall.json` to go back.

@@ -1,5 +1,6 @@
 using System.Numerics;
 using Microsoft.Xna.Framework;
+using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace Sandbox;
 
@@ -17,6 +18,8 @@ public sealed class SandboxHud : ISystem
     private readonly MessageLog _messages;
     private readonly RecordStore _records;
     private readonly InteractionEvents _interactions;
+    private readonly ContentService _content;
+    private readonly ActiveCamera _camera;
 
     // Cached text: a HUD that rebuilds its strings every frame allocates in the steady state, which
     // the frame budget does not allow (02 §4.6). These change when what they say changes.
@@ -25,8 +28,10 @@ public sealed class SandboxHud : ISystem
     private RecordId _lastMain, _lastOff;
     private Entity _lastHovered;
 
-    public SandboxHud(World world, RecordStore records)
+    public SandboxHud(World world, RecordStore records, ContentService content)
     {
+        _content = content;
+        _camera = world.Resources.Get<ActiveCamera>();
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
         _ui = world.Resources.Get<UiDraw>();
         _messages = world.Messages();
@@ -46,6 +51,7 @@ public sealed class SandboxHud : ISystem
 
         foreach (var player in _players.Entities)
         {
+            DrawViewmodel(world, player);             // behind the bars: it is the biggest thing here
             DrawHealth(world, player, x, bottom - 44f);
             DrawHands(world, player, x, bottom - 20f);
             return;                                   // one local player
@@ -74,6 +80,45 @@ public sealed class SandboxHud : ISystem
         _ui.Frame(x, y, Width, Height, new Color(0, 0, 0, 200));
 
         _ui.Text(x + Width + 10f, y - 2f, _healthText, Color.White);
+    }
+
+    // Your own hands, bottom right, drawn from the frames the attack record points at: at rest, drawn
+    // back during the wind-up, and extended on the strike. Daggerfall drew the same three moments.
+    private void DrawViewmodel(World world, Entity player)
+    {
+        // Not while the editor camera is flying: hands belong to the body the rig is sitting in.
+        if (!_camera.DrivenByRig) return;
+        if (!world.TryGet<Melee>(player, out var melee)) return;
+        var attackId = melee.Attack.IsEmpty ? AttackRecord.Default : melee.Attack;
+        if (!_records.TryGet(attackId, out AttackRecord attack) || attack.Viewmodel.IsEmpty) return;
+        if (!_records.TryGet(attack.Viewmodel, out SpriteSheetRecord sheet) || sheet.Frames.Count == 0) return;
+
+        var texture = _content.LoadTexture(sheet.Texture);
+        if (texture == null) return;
+
+        var frame = sheet.Frames[FrameFor(melee, attack, sheet.Frames.Count)];
+        if (frame.Rect.Length < 4) return;
+
+        // Sized against the window height, so it sits the same on any resolution, and anchored to
+        // the bottom right corner the way Daggerfall held its weapons.
+        float scale = _ui.Size.Y * 0.62f / frame.Rect[3];
+        float w = frame.Rect[2] * scale, h = frame.Rect[3] * scale;
+        var destination = new Rectangle((int)(_ui.Size.X - w * 0.92f), (int)(_ui.Size.Y - h * 0.94f), (int)w, (int)h);
+        _ui.Image(texture, destination, Color.White, new Rectangle(frame.Rect[0], frame.Rect[1], frame.Rect[2], frame.Rect[3]));
+    }
+
+    // Frame 0 is at rest and everything after it is the swing, played across the wind-up and the
+    // recovery. That way a three-frame placeholder and Daggerfall's six-frame weapon both work, and
+    // what you see is the simulation's own phases (16 §3.2) rather than an animation beside them.
+    private static int FrameFor(in Melee melee, AttackRecord attack, int frameCount)
+    {
+        int swing = frameCount - 1;
+        if (swing < 1 || melee.Phase == MeleePhase.Ready) return 0;
+
+        float total = MathF.Max(attack.WindupTime + attack.RecoverTime, 0.01f);
+        float elapsed = melee.Phase == MeleePhase.Windup ? melee.Timer : attack.WindupTime + melee.Timer;
+        int index = (int)(elapsed / total * swing);
+        return 1 + System.Math.Clamp(index, 0, swing - 1);
     }
 
     // What is in your hands, because equipping something is invisible otherwise (16 §3.2, F19).
