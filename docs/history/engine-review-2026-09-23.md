@@ -104,6 +104,16 @@ isn't one. Either build F27 sooner than the roadmap says, or write the contract 
 are saved, how an `Entity` is persisted, how a list versions) so that new components are born
 compliant.
 
+**Resolved 2026-09-23 (F27 v1).** Saves built, and the item was right about what it would find. Three
+things only a real serializer could have shown: an `Entity` nested inside a `List<ActiveEffect>` inside
+a component was written as `null` with no error by the first design (which walked a component's own
+fields); an everlasting effect's `Remaining = +∞` made its whole component unwritable; and
+`Attributes`/`GameplayTags` store record-order *indices*, so a save that kept the numbers would have
+silently re-pointed every value the next time a content update added a record — there is now a test
+that shifts the indexes between save and load. The contract itself came out inverted from the plan
+(opt-out via `[Transient]`, because without the generator there is nothing to warn about a field that
+decided neither way) and that is written down where the plan is.
+
 ### 5. `GameplayModule` is becoming a god-object (01 §3.1 → **R15**)
 It registers nine record types, three cvars, seven console commands and six input actions, and
 installs nine systems across six phases. The two-level module system was designed for exactly this

@@ -116,6 +116,48 @@ user://saves/<slot>/
 - Saves are written to a temp folder, then renamed into place, so a crash mid-save never corrupts the previous save.
 - Autosaves rotate (`save_autosave_count`, default 3).
 
+### As built (saves v1, 2026-09-23 — F27)
+
+- **Code:** `src/Sage.Engine/Content/SaveSystem.cs` (slots, header, temp+rename), `SaveSerializer.cs`
+  (components in and out), `SaveJson.cs` (the dialect and its three world-aware converters),
+  `SaveAttributes.cs` (`[Transient]`, `FromPrefab`). Tests in `tests/Sage.Tests/World/SaveTests.cs`.
+  Console: `save [slot]`, `load [slot]`, `saves`.
+
+**Four deviations from the plan above, each deliberate.**
+
+| Planned | Built | Why |
+|---|---|---|
+| `[Saved(tag)]` opt-in | **opt-out**: everything public except `[Transient]` | There is no generator to warn about a field that decided neither way, so opt-in would silently drop a field added next month. Losing the player's inventory is worse than writing a number that could have been recomputed |
+| tagged binary | **JSON** | Field names are the stable identity for now. Binary is a format change, which is what §3.6's upgraders are for — and a save you can read in a text editor is worth a lot while the save system is the thing being debugged |
+| visited-sector rule + tombstones | **every persistent entity, in full** | A baseline here is the game's own records, not map files. Load recreates from the file, so a destroyed entity's tombstone is simply its absence. Both come back with maps (§3.4), because that is when a baseline starts being re-instantiated underneath the save |
+| the source generator | **reflection** | As with records (05 §3.5), and it goes the same way |
+
+- **An entity is rebuilt by spawning its prefab, then laying the saved components over the top.** That
+  is what `FromPrefab` records and why `Populate` was split out in F31: a character's capsule,
+  controller and intent come back because the prefab puts them there, not because they were saved.
+- **Loading is two passes** — every entity with its identity first, then all the state. With every
+  entity already present, a reference resolves as it is *read*, so there is no fix-up list and a
+  reference nested three deep (`ActiveEffect.Source`, inside a `List<>`, inside a component) works
+  like any other field. The first version of this walked a component's own fields looking for
+  `Entity`, which looked reasonable and silently wrote that one as null.
+- **Three things are saved by name, not by the number they are stored as**, because each number is
+  assigned in record load order and means something else after a content change:
+  - an entity → its `PersistentId`;
+  - `Attributes` → `{ "sage:health": 65 }` (base values only — current ones are recomputed);
+  - `GameplayTags` → a list of tag ids (owned only — granted ones return with their effects).
+
+  There is a test that adds an attribute record *between* save and load, shifting every index, because
+  a round trip inside one process proves nothing about this.
+- **Not written at all:** anything `[Transient]` (a ground normal, an input mask, a mid-swing timer),
+  `GlobalTransform` (derived, and its `Previous` is a one-tick render snapshot), `PhysicsBody` (a Bepu
+  handle, rebuilt from `Collider`/`RigidBody`), and `EntityName` (a name is a string on the entity, not
+  a component that also carries its own UTF-8 bytes).
+- **`Remaining = +∞`** is how an everlasting effect says so, so the dialect allows named floating-point
+  literals. Without that, one such effect failed the *whole* component silently.
+- **Not done here:** maps, sectors, tombstones, binary, upgraders, saved resources
+  (`[SavedResource]` — `GameRules` state is not yet saved), thumbnails, autosave rotation, and the mod
+  list in the header.
+
 ## 4. Public API sketch
 
 ```csharp

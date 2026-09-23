@@ -105,6 +105,33 @@ internal sealed class Vector2JsonConverter : JsonConverter<Vector2>
 }
 
 // [x, y, z] in record files.
+// [x, y, z, w]. Without this a rotation writes X/Y/Z/W *and* a derived `IsIdentity`, which is noise
+// in a save and a trap in a record: five members where the maths has four.
+internal sealed class QuaternionJsonConverter : JsonConverter<Quaternion>
+{
+    public override Quaternion Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("expected [x, y, z, w]");
+        Span<float> v = stackalloc float[4];
+        int n = 0;
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+            if (n < 4 && reader.TokenType == JsonTokenType.Number) v[n++] = reader.GetSingle();
+        // A rotation of all zeroes is not a rotation; an absent or short one means "unrotated".
+        var q = new Quaternion(v[0], v[1], v[2], v[3]);
+        return q.LengthSquared() > 1e-6f ? q : Quaternion.Identity;
+    }
+
+    public override void Write(Utf8JsonWriter writer, Quaternion value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        writer.WriteNumberValue(value.X);
+        writer.WriteNumberValue(value.Y);
+        writer.WriteNumberValue(value.Z);
+        writer.WriteNumberValue(value.W);
+        writer.WriteEndArray();
+    }
+}
+
 internal sealed class Vector3JsonConverter : JsonConverter<Vector3>
 {
     public override Vector3 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

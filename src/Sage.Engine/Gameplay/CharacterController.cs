@@ -45,10 +45,10 @@ public struct CharacterController : IComponent
     public RecordId Profile;
     public byte Layer;              // its own layer, excluded from its sweeps ("player" or "enemy")
     public Vector3 Velocity;
-    public float Height;            // current capsule height; 0 = take the profile's StandHeight
-    public Vector3 GroundNormal;
-    public bool Grounded;
-    public bool OnSteep;        // touching a surface steeper than the slope limit: it slides down it
+    [Transient] public float Height;          // derived from Crouching and the profile            // current capsule height; 0 = take the profile's StandHeight
+    [Transient] public Vector3 GroundNormal;  // GroundCheck overwrites all three every tick
+    [Transient] public bool Grounded;
+    [Transient] public bool OnSteep;        // touching a surface steeper than the slope limit: it slides down it
     public bool Crouching;
 
     // The layer is required: it is both what the character collides as and what its sweeps ignore, so

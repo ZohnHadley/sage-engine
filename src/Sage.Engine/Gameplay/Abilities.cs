@@ -88,9 +88,9 @@ public struct Abilities : IComponent
 {
     public List<RecordId>? Known;
     public RecordId Selected;     // the readied spell: what the Cast button fires (Daggerfall's)
-    public RecordId Casting;      // mid-wind-up; empty when idle
-    public float Timer;           // seconds into the wind-up
-    public RecordId Queued;       // asked for this tick, taken by the system
+    [Transient] public RecordId Casting;   // mid-wind-up; a load leaves you not casting
+    [Transient] public float Timer;        // seconds into the wind-up
+    [Transient] public RecordId Queued;    // asked for this tick, taken by the system
 
     public static Abilities With(params RecordId[] known) =>
         new() { Known = new List<RecordId>(known), Selected = known.Length > 0 ? known[0] : default };

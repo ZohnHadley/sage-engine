@@ -82,9 +82,9 @@ public struct AIState : IComponent
 {
     public RecordId Profile;
     public RecordId Schedule;
-    public int TaskIndex;
-    public ulong Conditions;
-    public Entity Target;
+    public int TaskIndex;                  // where in the schedule; bounds-checked on use
+    [Transient] public ulong Conditions;   // Perceive rebuilds it wholesale every think
+    public Entity Target;                  // by PersistentId in a save; null if it is gone
     public float NextThink;
     public float TaskTime;      // seconds the current task has been running
     public bool TaskStarted;

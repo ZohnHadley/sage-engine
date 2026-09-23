@@ -124,10 +124,10 @@ public struct Melee : IComponent
 {
     public RecordId Attack;     // what it swings now; empty = sage:default_attack
     public RecordId Natural;    // and what it goes back to when a weapon comes off (16 §3.2, F19)
-    public MeleePhase Phase;
-    public float Timer;         // seconds in the current phase
-    public float Cooldown;      // seconds until the next swing may start
-    public bool Swung;          // this swing has landed (or missed): don't resolve it twice
+    [Transient] public MeleePhase Phase;   // mid-swing; a load starts you Ready rather than half-way
+    [Transient] public float Timer;        // seconds in the current phase
+    public float Cooldown;                 // seconds until the next swing may start (relative)
+    [Transient] public bool Swung;         // this swing has landed (or missed): don't resolve it twice
 
     public static Melee With(RecordId attack) => new() { Attack = attack, Natural = attack };
 }

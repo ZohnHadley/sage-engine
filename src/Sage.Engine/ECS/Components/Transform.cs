@@ -27,6 +27,7 @@ public struct Transform : IComponent
         LocalScale = Vector3.One,
     };
 
+    [Transient]   // derived from the three above; sixteen floats of noise in a save (09 §3.3)
     public readonly Matrix4x4 LocalMatrix =>
         Matrix4x4.CreateScale(LocalScale) * Matrix4x4.CreateFromQuaternion(LocalRotation) * Matrix4x4.CreateTranslation(LocalPosition);
 }

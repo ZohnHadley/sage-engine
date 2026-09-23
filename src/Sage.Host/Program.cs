@@ -84,6 +84,7 @@ catch (Exception ex)
 engine.Modules.RegisterCommands(cvars);
 VirtualFileSystem.RegisterCommands(cvars, engine.Vfs);
 engine.Records.RegisterCommands(cvars);
+engine.Saves.RegisterCommands(cvars);
 
 // config.cfg runs once every cvar and command is registered (the host's `quit`, `stat`... are
 // registered in Game1.Initialize), before records load and modules start. +args run last, once the main

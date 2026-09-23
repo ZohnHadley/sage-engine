@@ -83,7 +83,7 @@ public sealed class SandboxModule : IGameModule
         var scene = Scene;
         if (scene == null) { Log.Warn(LogCat.Gameplay, "No `scene` record 'sandbox:main': the world is empty"); return; }
 
-        foreach (var placement in scene.Place) Place(world, placement);
+        for (int i = 0; i < scene.Place.Count; i++) Place(world, scene.Place[i], i);
         Log.Info(LogCat.Gameplay, $"Sandbox: placed {world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Count} entities in '{world.Name}'");
     }
 
@@ -94,7 +94,7 @@ public sealed class SandboxModule : IGameModule
     // Called by SandboxRules once every module has set the world up.
     public Entity SpawnPlayer(World world)
     {
-        if (Scene?.Player is { } start) return Place(world, start);
+        if (Scene?.Player is { } start) return Place(world, start, -1);   // -1: the player's own identity
         Log.Warn(LogCat.Gameplay, "The scene has no \"player\" placement: there is nothing to control");
         return default;
     }
@@ -111,12 +111,18 @@ public sealed class SandboxModule : IGameModule
     // One line, and the engine builds the whole thing from the prefab (F31). What used to live here
     // was a hundred lines of "if it has a sheet... else if it has a box mesh... else if it is a
     // character", which is the engine's job and is now done once, in one order, for every game.
-    private Entity Place(World world, ScenePlacement placement)
+    private Entity Place(World world, ScenePlacement placement, int index)
     {
         var entity = world.Spawn(placement.Prefab, Ground(world, placement), placement.Yaw);
         if (entity.IsNull) return entity;
         if (!string.IsNullOrEmpty(placement.Name)) entity.Name = new EntityName(placement.Name);
         entity.AddTag<FromScene>();
+
+        // A stable identity, so a save can find this *same* thing next run (09 §3.5, F27). Derived
+        // from the placement rather than authored, because a scene record is a list and its entries
+        // do not want GUIDs in them — but it does mean that reordering `place` moves identities, which
+        // a real map file (with ids in it) will not.
+        world.Add(entity, new Persistent { Id = PersistentId.FromName($"sandbox:scene:{index}:{placement.Prefab}") });
         return entity;
     }
 

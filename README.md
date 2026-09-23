@@ -73,6 +73,7 @@ searches both. Some worth knowing:
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
 | `asset_list`, `asset_reload [path]` | what art is loaded; reload one file or all of it |
+| `save [slot]`, `load [slot]`, `saves` | write and read a save; JSON under `user/sandbox/saves/`, so you can read it |
 | `ent_dump watcher`, `ent_types`, `ent_spawn goblin` | every component on a thing with its values; the names a prefab can use; place one in front of you |
 
 Anything can also be passed on the command line: `+sv_cheats 1 "+hurt 30"` runs them once the world

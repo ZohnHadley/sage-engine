@@ -134,7 +134,7 @@ public struct Attributes : IComponent
 public struct GameplayTags : IComponent
 {
     public ulong Bits;
-    public ulong Granted;   // the part currently granted by active effects
+    [Transient] public ulong Granted;   // rebuilt from ActiveEffects; saving it would strip real tags   // the part currently granted by active effects
 
     public readonly bool Has(int tag) => tag >= 0 && (Bits & (1UL << tag)) != 0;
     public readonly bool HasAll(ulong mask) => (Bits & mask) == mask;

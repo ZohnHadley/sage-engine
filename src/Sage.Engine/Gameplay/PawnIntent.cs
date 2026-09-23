@@ -18,10 +18,10 @@ public struct PlayerControlled : ITag { }
 // read by movement, combat and interaction later in the same tick. Written by controllers only.
 public struct PawnIntent : IComponent
 {
-    public Vector2 Move;        // x = right, y = forward; length <= 1
-    public float Yaw, Pitch;    // radians, absolute view angles
-    public ActionMask Held;
-    public ActionMask Pressed;
+    [Transient] public Vector2 Move;       // rewritten by a controller every tick
+    public float Yaw, Pitch;               // radians: the authoritative facing, so it *is* saved
+    [Transient] public ActionMask Held;    // bits over runtime action ids: meaningless next run
+    [Transient] public ActionMask Pressed; // and a single-tick edge besides
 }
 
 // Commands phase: the local player's command becomes intent (16 §3.1, 08 §3.4). AI controllers write

@@ -120,6 +120,7 @@ public static class PrefabExtensions
         // pawn's yaw from it, and seeding that from an identity rotation would spin every creature to
         // face -Z on its first tick, throwing away the direction it was placed facing (review #43).
         var entity = world.Create(placed, string.IsNullOrEmpty(record.Name) ? prefab.Name : record.Name);
+        world.Add(entity, new FromPrefab { Prefab = prefab });   // so a save can rebuild it (F27)
         Populate(world, entity, record, prefab);
 
         // And again after, because placement beats the template: a prefab may write a Transform for a

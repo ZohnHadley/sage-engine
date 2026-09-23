@@ -35,10 +35,14 @@ public static class GameplayModules
     }
 
     // Every cheat that acts on "the player" means the same thing by it (16 §3.1).
+    //
+    // The list is materialised first because these are console commands and console commands do
+    // structural things: `drop` destroys an entity and creates a pickup, which inside a live query
+    // throws (03 §3.2). It did, the moment saves gave a reason to drop something.
     internal static void ForEachPlayer(Engine engine, Action<World, Entity> act)
     {
         foreach (var world in engine.Worlds)
-            foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities)
+            foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList())
                 act(world, entity);
     }
 }
