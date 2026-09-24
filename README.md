@@ -34,7 +34,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 337 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 347 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -65,7 +65,7 @@ pressing `E` would pick up, and what just hit you.
 | `Left Shift`, `Left Ctrl` | run, crouch |
 | **Left mouse** | attack |
 | `E` | use |
-| `I`, `B` | open your bag, open your spellbook (↑↓ choose, Enter use, Del drop, Esc close) |
+| `I`, `B`, `M` | your bag, your spellbook, the spellmaker (↑↓ or the mouse to choose, Enter or click to use, Del or right-click, Esc or click away to close) |
 | `Escape` | quit (closes the console, or an open screen, first) |
 | `` ` `` | open the console |
 
@@ -117,7 +117,9 @@ dotnet run --project src/Sage.Host -c Development --   "+in_axis Move 0 1 3" "+i
 |---|---|
 | `in_axis <action> <x> [y] [seconds]` | drive an axis (`Move 0 1` is forward); no seconds means until `in_clear` |
 | `in_hold <action> <seconds>` | hold a button down |
-| `in_tap <action>` | press it for one frame |
+| `in_tap <action>` | press it for one frame (one per frame: put a `wait` between two) |
+| `in_type <text>` | type into whatever has the keyboard, for a screen with a field |
+| `in_cursor <x> <y>` | put the pointer somewhere, in window pixels |
 | `in_look <yaw°/s> [pitch°/s] [seconds]` | turn the view at a steady rate, in degrees per second |
 | `in_release <action>`, `in_clear` | hand control back |
 | `in_scripted` | what a script is holding right now |

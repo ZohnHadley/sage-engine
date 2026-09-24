@@ -1,14 +1,17 @@
 #nullable enable
 using System;
+using System.Numerics;
 using Friflo.Engine.ECS;
-using Microsoft.Xna.Framework;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace sage_engine;
 
 // Drawing screens and reading their input (docs/design/13 §3, TODO F38; decision D8 = our own).
 //
 // What a screen *is* lives in the engine (`Screen`, `ScreenStack`), because a panel of rows and what
-// Enter does to the world are simulation. This is the other half: the buttons, and the box.
+// Enter does to the world are simulation. Where its parts are is `PanelLayout`, also in the engine,
+// because the mouse and the drawing must agree about it. This is what is left: the buttons, the
+// cursor, and the box.
 //
 // It runs in **Overlay, before the UI is rendered**, not in FrameUpdate: a game's HUD queues its own
 // drawing in FrameUpdate and the last thing queued is the thing on top, so a screen has to queue after
@@ -49,8 +52,8 @@ public sealed class ScreenSystem : ISystem
         // all; while one is open the same press closes it.
         //
         // **Not while a field has the keyboard**: `I`, `B` and `M` open screens, and they are also
-        // letters. Naming a spell "mist" would otherwise open the inventory twice and the spellmaker
-        // once on the way. A screen with a field is left by Escape, which is not a letter.
+        // letters. Naming a spell "Misty Bind" would otherwise open the inventory on the way. A screen
+        // with a field is left by Escape, which is not a letter.
         if (_stack.Top?.Field == null)
             foreach (var opener in _stack.OpenActions)
                 if (_actions.Pressed(opener) && _stack.Toggle(opener, world, player)) break;
@@ -64,10 +67,6 @@ public sealed class ScreenSystem : ISystem
 
         if (_actions.Pressed(_back)) { _stack.Close(); return; }
 
-        // Typing goes to the screen's field, if it has one, before the buttons are read: a name with
-        // an "i" in it would otherwise open the inventory, because a character and a key are not the
-        // same thing and the UI map binds both (08 §3.1). The field takes printable characters and
-        // backspace, and leaves Return and Escape to the screen.
         // `UiWantsKeyboard` is ImGui's: the dev console subscribes to the same window event, so
         // without this a character typed into the console would also land in an open screen's field.
         var field = screen.Field;
@@ -76,15 +75,59 @@ public sealed class ScreenSystem : ISystem
 
         if (_actions.Pressed(_down)) _stack.Move(1);
         if (_actions.Pressed(_up)) _stack.Move(-1);
+
+        Mouse(world, player, screen, Layout(screen));
+
         if (_actions.Pressed(_confirm)) _stack.Activate(world, player);
         else if (_actions.Pressed(_alternate)) _stack.Alternate(world, player);
 
-        PanelView.Draw(_ui, screen);
+        // Laid out again after acting: dropping a row changes how many there are, and drawing the list
+        // as it was a moment ago would show the thing that is gone.
+        var top = _stack.Top;
+        if (top != null) PanelView.Draw(_ui, top, Layout(top));
+    }
+
+    private PanelLayout Layout(Screen screen) =>
+        new(new Vector2(_ui.Size.X, _ui.Size.Y), _ui.LineHeight, screen.Width, screen.Panel.Count, screen.Index, screen.Field != null);
+
+    // Pointing at a screen (13 §3). The keyboard stays the primary way through a list — a gamepad has
+    // no cursor — so the mouse only ever *moves the same selection* the keys move. One notion of "the
+    // current row" means a click activates exactly what the reason line is talking about.
+    private void Mouse(World world, Entity player, Screen screen, in PanelLayout layout)
+    {
+        if (_actions.UiWantsMouse) return;     // ImGui has the cursor: a dev window is under it
+
+        var mouse = _devices.Mouse;
+        var point = new Vector2(mouse.Position.X, mouse.Position.Y);
+
+        // Only when it *moved*: a cursor resting over row three must not drag the selection back every
+        // time the keyboard moves it to row four.
+        if (mouse.IsMoving)
+        {
+            int over = layout.RowAt(point);
+            if (over >= 0) screen.Index = over;
+        }
+
+        // The wheel moves the selection, and the window follows the selection, so one thing moves and
+        // the list scrolls with it.
+        int wheel = mouse.ScrollWheelDelta;
+        if (wheel != 0) _stack.Move(wheel > 0 ? -1 : 1);
+
+        if (mouse.IsButtonPressed(MouseButton.LEFT))
+        {
+            // Outside the box is "I am done here", the way most inventories close.
+            if (!layout.Contains(point)) { _stack.Close(); return; }
+            if (layout.RowAt(point) >= 0) _stack.Activate(world, player);
+        }
+        else if (mouse.IsButtonPressed(MouseButton.RIGHT) && layout.RowAt(point) >= 0)
+        {
+            _stack.Alternate(world, player);   // the second button, as Delete is on the keyboard
+        }
     }
 }
 
-// Draws a screen: a framed box, a title, the rows, and a hint line. Pixels, not layout — the same
-// level the HUD works at (13 "As built (the v1 HUD)").
+// Draws a screen from its layout: a framed box, a title, the rows, and a hint line. Pixels, not
+// layout — the same level the HUD works at (13 "As built (the v1 HUD)").
 public static class PanelView
 {
     private static readonly Color Backdrop = new(0, 0, 0, 170);
@@ -99,76 +142,64 @@ public static class PanelView
     private static readonly Color HintColour = new(140, 140, 155, 255);
     private static readonly Color Tick = new(235, 215, 120, 255);
 
-    private const float Pad = 14f, Rows = 12f;   // rows visible at once before it scrolls
-
-    public static void Draw(UiDraw ui, Screen screen)
+    public static void Draw(UiDraw ui, Screen screen, in PanelLayout layout)
     {
         var panel = screen.Panel;
-        float line = ui.LineHeight;
-        int shown = (int)Math.Min(Rows, Math.Max(panel.Count, 1));
-        float width = screen.Width;
-        float height = Pad * 2f + line * (shown + 3f)            // title, rows, reason, hint
-                     + (screen.Field != null ? line * 1.4f : 0f);
-        float x = MathF.Round((ui.Size.X - width) * 0.5f);
-        float y = MathF.Round((ui.Size.Y - height) * 0.5f);
+        var box = layout.Box;
 
         ui.Rect(0, 0, ui.Size.X, ui.Size.Y, Backdrop);           // dim the world behind it
-        ui.Rect(x, y, width, height, Box);
-        ui.Frame(x, y, width, height, Edge);
+        ui.Rect(box.X, box.Y, box.Width, box.Height, Box);
+        ui.Frame(box.X, box.Y, box.Width, box.Height, Edge);
 
-        float textX = x + Pad, textY = y + Pad;
-        ui.Text(textX, textY, panel.Title, TitleColour);
-        textY += line * 1.5f;
+        ui.Text(layout.TextX, layout.TitleY, panel.Title, TitleColour);
 
         // The field, with a caret, so it is obvious that typing goes here rather than into the list.
         if (screen.Field is { } field)
         {
             string typed = field.IsEmpty ? field.Placeholder : field.Text;
-            ui.Text(textX, textY, typed, field.IsEmpty ? DisabledColour : RowColour);
-            ui.Rect(textX + ui.Measure(field.Text).X + 2f, textY + 2f, 2f, line - 4f, Tick);   // caret
-            textY += line * 1.4f;
+            ui.Text(layout.TextX, layout.FieldY, typed, field.IsEmpty ? DisabledColour : RowColour);
+            ui.Rect(layout.TextX + ui.Measure(field.Text).X + 2f, layout.FieldY + 2f, 2f, layout.LineHeight - 4f, Tick);
         }
 
         if (panel.Problem.Length > 0)
         {
-            ui.Text(textX, textY, panel.Problem, DisabledColour);
+            ui.Text(layout.TextX, layout.RowsY, panel.Problem, DisabledColour);
         }
         else if (panel.Count == 0)
         {
-            ui.Text(textX, textY, "(nothing)", DisabledColour);
+            ui.Text(layout.TextX, layout.RowsY, "(nothing)", DisabledColour);
         }
         else
         {
-            // A window that follows the selection, so a long spellbook scrolls instead of overflowing.
-            int first = Math.Clamp(screen.Index - shown / 2, 0, Math.Max(panel.Count - shown, 0));
-            for (int i = first; i < Math.Min(first + shown, panel.Count); i++)
+            for (int i = layout.First; i < Math.Min(layout.First + layout.Visible, panel.Count); i++)
             {
                 var row = panel[i];
-                if (i == screen.Index) ui.Rect(x + 4f, textY - 2f, width - 8f, line + 2f, SelectedBar);
-                if (row.Selected) ui.Text(textX, textY, "•", Tick);
+                float y = layout.RowY(i);
+                if (i == screen.Index)
+                {
+                    var bar = layout.RowRect(i);
+                    ui.Rect(bar.X, bar.Y, bar.Width, bar.Height, SelectedBar);
+                }
+                if (row.Selected) ui.Text(layout.TextX, y, "•", Tick);
 
                 var colour = row.Enabled ? RowColour : DisabledColour;
                 string name = row.Count > 1 ? $"{row.Name} ×{row.Count}" : row.Name;
-                ui.Text(textX + 14f, textY, name, colour);
+                ui.Text(layout.TextX + 14f, y, name, colour);
 
                 if (row.Detail.Length > 0)
-                {
-                    float right = x + width - Pad - ui.Measure(row.Detail).X;
-                    ui.Text(right, textY, row.Detail, row.Enabled ? DetailColour : DisabledColour);
-                }
-                textY += line;
+                    ui.Text(layout.Right - ui.Measure(row.Detail).X, y, row.Detail, row.Enabled ? DetailColour : DisabledColour);
             }
 
-            if (panel.Count > shown)
-                ui.Text(x + width - Pad - ui.Measure("more").X, y + Pad, "more", HintColour);
+            if (panel.Count > layout.Visible)
+                ui.Text(layout.Right - ui.Measure("more").X, layout.TitleY, "more", HintColour);
 
             // Why the highlighted row cannot be used, under the list: the reason the *rules* gave, not
             // a guess this screen made (R17).
             var current = panel[Math.Clamp(screen.Index, 0, panel.Count - 1)];
             if (!current.Enabled && current.Reason.Length > 0)
-                ui.Text(textX, y + height - Pad - line * 2f, current.Reason, ReasonColour);
+                ui.Text(layout.TextX, layout.ReasonY, current.Reason, ReasonColour);
         }
 
-        ui.Text(textX, y + height - Pad - line, screen.Hint, HintColour);
+        ui.Text(layout.TextX, layout.HintY, screen.Hint, HintColour);
     }
 }

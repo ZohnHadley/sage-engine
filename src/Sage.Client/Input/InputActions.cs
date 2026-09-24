@@ -92,6 +92,20 @@ public sealed class InputActions
             foreach (char c in text) devices.PushTyped(c);
         });
 
+        // The cursor, for the same reason: a screen that answers the mouse can only be checked end to
+        // end if a script can put the pointer somewhere (08 §3.5, 13 §3). Hovering is enough to prove
+        // the mapping from window pixels to the UI's — a click then lands where the hover highlighted.
+        cvars.RegisterCommand("in_cursor", CVarFlags.DevOnly,
+            "in_cursor <x> <y>: move the pointer, in window pixels (automated tests).", a =>
+        {
+            if (a.Count < 2 || !int.TryParse(a[0], out int x) || !int.TryParse(a[1], out int y))
+            {
+                Log.Warn(LogCat.Console, "in_cursor <x> <y>");
+                return;
+            }
+            Microsoft.Xna.Framework.Input.Mouse.SetPosition(x, y);
+        });
+
         cvars.RegisterCommand("in_tap", CVarFlags.DevOnly, "in_tap <action>: press a button action for one frame (automated tests).", a =>
         {
             if (a.Count == 0 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)
