@@ -41,7 +41,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 491 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 496 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -223,6 +223,13 @@ building the atlas — `g` and `y` both had to be redrawn after a screenshot rea
 [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) is the practical guide: the shape of a game, the records
 you write, how to get a character walking about, levels, your HUD, and the list of things that silently
 do nothing if you forget them. It describes the engine as it is rather than as it is planned.
+
+[`games/Hello`](games/Hello) is that guide as a runnable game — the smallest one this engine can run, in
+five files. It is in the solution and covered by tests, so it cannot rot.
+
+```bash
+dotnet run --project src/Sage.Host -c Development -- -game games/Hello
+```
 
 ## Levels
 

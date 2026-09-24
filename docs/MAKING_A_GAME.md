@@ -8,6 +8,15 @@ section at the end before building around it.
 The design docs in [`docs/design/`](design/00-index.md) explain *why* each system is shaped the way it
 is. This explains how to use them.
 
+**There is a runnable example of everything in §2–§4**: [`games/Hello`](../games/Hello) is the smallest
+game this engine can run — five files, about sixty lines of C# — and it is built by the solution and
+exercised by the test suite, so it cannot quietly stop working. Read it alongside this, or start by
+copying it:
+
+```bash
+dotnet run --project src/Sage.Host -c Development -- -game games/Hello
+```
+
 ---
 
 ## 1. What you supply, and what the engine already does
@@ -266,9 +275,18 @@ public sealed class YourRules : GameRules
   "type": "prefab",
   "id": "player",
   "tags": ["PlayerControlled"],
-  "parts": { "character": {}, "attributes": {}, "inventory": { "capacity": 60 } }
+  "parts": {
+    "character": { "layer": "player" },
+    "attributes": {},
+    "inventory": { "capacity": 60 }
+  }
 }
 ```
+
+**Give the character a layer.** A character sweeps against everything *except its own* layer — which is
+what lets creatures pass through one another — and terrain collision lives on `default`. Leave a
+character there and it walks through the world and falls for ever. The engine warns about it now; that
+warning exists because this example fell through its own terrain for an hour.
 
 That tag is what makes the rest of the engine treat it as *the* player: **the first-person camera rig
 puts the camera in its head automatically** (any entity with a character controller, view angles and
@@ -463,17 +481,20 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
    world never starts.
 5. **`Terrain.Load` without a `Generator`** trips an assert and loads nothing, after which `HeightAt`
    returns 0 everywhere — so everything you place stands at sea level.
-6. **A cvar registered in `Start` instead of `Init`** is dropped from `config.cfg` with an "unknown cvar"
+6. **A character left on the `default` physics layer falls through the world**, because a character
+   ignores its own layer and the terrain is on that one. It warns now, but the symptom is memorable:
+   the camera follows the player down and every direction looks like empty sky.
+7. **A cvar registered in `Start` instead of `Init`** is dropped from `config.cfg` with an "unknown cvar"
    warning, so the saved setting silently never applies.
-7. **Prefab parts run in registration order, not JSON order**, and registering a name twice replaces it
+8. **Prefab parts run in registration order, not JSON order**, and registering a name twice replaces it
    without complaint. A part your *client* half registers must be declared `Prefabs.Optional(name)` by
    your simulation half, or a headless run errors on every spawn of that prefab.
-8. **Hot reload sweeps what the scene spawned — including the player.** If you respawn your scene on
+9. **Hot reload sweeps what the scene spawned — including the player.** If you respawn your scene on
    `RecordStore.Reloaded`, respawn the player too, or saving a JSON file leaves you with nothing to
    control.
-9. **`PawnIntent` is final after the `Commands` phase.** Write it later and your input acts a tick late;
-   the phase contract will tell you.
-10. **`in_tap` presses for one frame**, so two in a row need a `wait` between them, and a HUD string
+10. **`PawnIntent` is final after the `Commands` phase.** Write it later and your input acts a tick late;
+    the phase contract will tell you.
+11. **`in_tap` presses for one frame**, so two in a row need a `wait` between them, and a HUD string
     rebuilt every frame allocates in the steady state — cache it and rebuild when it changes.
 
 ---

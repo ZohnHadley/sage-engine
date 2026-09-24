@@ -79,6 +79,16 @@ public static class CharacterExtensions
         var id = profileId.IsEmpty ? MovementProfileRecord.Default : profileId;
         var profile = records.TryGet(id, out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
 
+        // A character sweeps against everything *except its own layer* (see `CharacterMovementSystem`),
+        // which is what lets creatures on one layer pass through each other. That makes the **default**
+        // layer a trap: terrain collision and every other unlabelled static live there too, so a
+        // character left on it ignores the ground and falls for ever, silently. Cost: one afternoon,
+        // twice — once in the Sandbox's early days and once writing the guide's example game.
+        if (layer == world.Resources.Get<PhysicsSpace>().Layers.Default)
+            Log.Warn(LogCat.Physics, $"{World.Describe(entity)}: character on the 'default' physics layer "
+                                   + "ignores everything else on it, including the terrain it should stand on. "
+                                   + "Give it a layer of its own (\"character\": { \"layer\": \"player\" }).");
+
         world.Add(entity, CharacterController.Create(layer, profileId));
         world.Add(entity, new Pawn());
         // Seeded from the transform, or the first tick would spin every character to yaw 0 and throw

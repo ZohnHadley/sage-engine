@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The smallest game this engine can run (docs/MAKING_A_GAME.md §4). It exists to be read and copied,
+    and it is in the solution so that it cannot quietly stop working: an example nobody builds rots, and
+    a rotted example is worse than none.
+
+    A plain library, like any game. Everything else a game project needs — net8.0, the three build
+    configurations, and the global usings including the `Transform` alias — comes from
+    games/Directory.Build.props, which is why this file is four lines long.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Hello</RootNamespace>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Compile-time only: at run time the host's own copy of the engine is used. -->
+    <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="game.json" />
+    <None Include="content\**\*" />
+  </ItemGroup>
+</Project>

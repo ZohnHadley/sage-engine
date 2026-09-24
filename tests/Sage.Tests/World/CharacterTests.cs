@@ -34,6 +34,42 @@ public class CharacterTests
         return entity;
     }
 
+    // A character sweeps against everything *except its own layer*, which is what lets creatures pass
+    // through each other — and which makes the **default** layer a trap, because terrain collision and
+    // every unlabelled static live there. A character left on it walks through the world and falls for
+    // ever, with nothing in the log to say why.
+    //
+    // This cost an hour while writing the guide's example game: the player fell, the camera followed it
+    // down, and the screen showed nothing but sky in every direction. So it says so now.
+    [Fact]
+    public void ACharacterOnTheDefaultLayerIsToldThatItWillIgnoreTheGround()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("layers");
+        var layers = world.Resources.Get<PhysicsSpace>().Layers;
+
+        using var log = new CaptureSink();
+        var entity = world.Create(Transform.At(Vector3.Zero), "forgetful");
+        world.AddCharacter(entity, layers.Default);
+
+        Assert.Contains(log.Entries, e => e.Message.Contains("default") && e.Message.Contains("terrain"));
+    }
+
+    [Fact]
+    public void ACharacterOnItsOwnLayerIsNotNagged()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("layers");
+
+        using var log = new CaptureSink();
+        var entity = world.Create(Transform.At(Vector3.Zero), "sensible");
+        world.AddCharacter(entity, PlayerLayer);
+
+        // The other half of a warning that is worth having: it must not fire when nothing is wrong, or
+        // it teaches you to ignore it.
+        Assert.DoesNotContain(log.Entries, e => e.Message.Contains("physics layer"));
+    }
+
     private static Entity Character(World world, Vector3 feet)
     {
         var entity = world.Create(Transform.At(feet), "character");

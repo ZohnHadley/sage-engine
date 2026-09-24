@@ -1,0 +1,12 @@
+{
+  // The manifest the host reads (docs/design/01 §3.3). `id` is this game's record namespace, so
+  // everything below is `hello:something`.
+  "name": "Hello",
+  "id": "hello",
+  "assembly": "bin/{config}/net8.0/Hello.dll",
+  "mounts": ["content"],
+  "modsDirectory": "mods",
+  // No client half: the engine's own client draws the world, the crosshair and the dev UI. A game adds
+  // one when it wants a HUD or screens of its own — see games/Sandbox.Client.
+  "modules": { "disable": [], "add": [] }
+}
