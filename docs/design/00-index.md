@@ -64,7 +64,11 @@ row ended with one of them being wrong while the code was right. Two rules keep 
   yet" list, an open question — naming what does not exist yet is the job, and those are left alone.
 
 Numbers about the engine (how many commands, records, tests) go on a line marked `<!-- counts -->`, and
-the script computes them: `--fix` writes them, so they are never typed. Run it beside the build:
+the script computes them: `--fix` writes them, so they are never typed. A marker with arguments does the
+same for facts about the repository — `<!-- counts: files games/Hello, code games/Hello -->` maintains
+"four files" and "about fifty lines of code" on that line, in whichever form the sentence uses. An
+approximate number ("about fifty") passes within a tenth; when the true value has no word for it, the
+script reports rather than writing a numeral into the middle of a sentence. Run it beside the build:
 
 ```bash
 python tools/check_docs.py --tests N      # N as `dotnet test` reported

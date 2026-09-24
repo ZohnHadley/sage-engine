@@ -41,7 +41,7 @@ ABSENCE = ('not yet', 'not built', 'not done', 'left:', 'left is', 'later', 'ope
 
 def read_code():
     """Every name the engine registers, by kind."""
-    found = {'command': set(), 'cvar': set(), 'record': set(), 'input': set(), 'part': set(), 'action': set()}
+    found = {'command': set(), 'cvar': set(), 'record': set(), 'input': set()}
     patterns = [
         ('command', re.compile(r'RegisterCommand\(\s*"([a-z_0-9]+)"')),
         # A cvar is any `<something>.Register("name", ..., CVarFlags…)`: the receiver is whatever the
@@ -50,8 +50,6 @@ def read_code():
         ('cvar', re.compile(r'\.Register(?:<[^>]+>)?\(\s*"([a-z_0-9]+)"[^;]{0,400}?CVarFlags', re.S)),
         ('record', re.compile(r'\[Record\("([a-z_0-9]+)"\)\]')),
         ('input', re.compile(r'(?:I|i)nputs\.Register\(\s*"([A-Za-z_0-9]+)"')),
-        ('part', re.compile(r'Prefabs\.Register\(\s*"([a-z_0-9]+)"')),
-        ('action', re.compile(r'actions\.Register\(\s*"([A-Za-z_0-9]+)"')),
     ]
 
     for directory in CODE_DIRS:
@@ -356,10 +354,11 @@ def check_counts(problems, code, test_count, fix):
                     problems.append('%s:%d: counts marker says "%s", which is not `files <path>` or `code <path>`'
                                     % (rel(path), index + 1, argument))
 
+            edits = []
             for kind, pattern in COUNTS:
                 if facts.get(kind) is None:
                     continue
-                for match in pattern.finditer(lines[index]):
+                for match in pattern.finditer(line):
                     written = match.group(1)
                     value = read_number(written)
                     if value is None:
@@ -367,21 +366,24 @@ def check_counts(problems, code, test_count, fix):
                     checked += 1
 
                     actual = facts[kind]
-                    before = lines[index][:match.start()].lower()
+                    before = line[:match.start()].lower()
                     loose = any(word in before[-24:] for word in APPROXIMATELY)
                     close_enough = abs(value - actual) <= max(1, actual // 10)
                     if value == actual or (loose and close_enough):
                         continue
 
                     rewritten = write_number(written, actual) if fix else None
-                    if rewritten is not None:
-                        replacement = match.group(0).replace(written, rewritten, 1)
-                        lines[index] = lines[index][:match.start()] + replacement + lines[index][match.end():]
-                        changed = True
-                    else:
+                    if rewritten is None:
                         problems.append('%s:%d: says %s %s, and there %s %d'
                                         % (rel(path), index + 1, written, NOUNS[kind],
                                            'are' if actual != 1 else 'is', actual))
+                    else:
+                        edits.append((match.start(), match.end(), match.group(0).replace(written, rewritten, 1)))
+
+            # Right to left, so that an edit cannot move the offsets of the ones still to come.
+            for start, end, replacement in sorted(edits, reverse=True):
+                lines[index] = lines[index][:start] + replacement + lines[index][end:]
+                changed = True
         if changed:
             open(path, 'w', encoding='utf-8', newline='').write('\n'.join(lines))
             print('fixed counts in %s' % rel(path))
