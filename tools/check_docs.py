@@ -31,18 +31,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CODE_DIRS = ['src', 'games']
 DOC_SKIP_DIRS = {'.git', 'obj', 'bin', 'node_modules', 'user', 'packages'}
 
-# Snake-case words that look like engine vocabulary but are not: record ids, map keys, file names and
-# the rest of the nouns a document legitimately uses. Anything here is exempt from the vocabulary check.
 # A line that says a thing is absent is not claiming it exists, even inside an "As built" section —
 # those sections end with what is left to do, and naming it is the point.
 ABSENCE = ('not yet', 'not built', 'not done', 'left:', 'left is', 'later', 'open question',
            'still to', 'would be', 'wants', 'waiting', 'deferred', 'instead of')
-
-NOT_VOCABULARY = {
-    'info_player_start', 'hut_door', 'hut_greeting', 'make_font', 'make_hut', 'check_docs',
-    'stanford_bunny', 'make_placeholder_art', 'make_placeholder_model', 'make_engine_textures',
-    'game_json', 'config_cfg', 'trigger_multiple', 'func_door', 'sage_dev',
-}
 
 
 # ---------------------------------------------------------------- reading the code
@@ -101,17 +93,27 @@ def read_code_literals():
     return literals
 
 
-def read_record_ids():
-    """Ids out of the data files, so a document may name `lit_default` without being told off."""
-    ids = set()
-    pattern = re.compile(r'"id"\s*:\s*"([a-z_0-9]+)"')
+def read_content_names():
+    """The names content defines: record ids, and the classnames and targetnames in a map.
+
+    A document may write `lit_default` or `hut_door` without being told off, because those are real
+    names — they are simply defined in data rather than in code. An allowlist of guesses stood here for
+    one commit and exempted nothing, which is the usual fate of a list that enumerates what a rule could
+    derive.
+    """
+    names = set()
+    record_id = re.compile(r'"id"\s*:\s*"([a-z_0-9]+)"')
+    map_name = re.compile(r'"(?:targetname|classname)"\s+"([a-z_0-9]+)"')
+
     for base, dirs, files in os.walk(ROOT):
         dirs[:] = [d for d in dirs if d not in DOC_SKIP_DIRS]
         for name in files:
+            path = os.path.join(base, name)
             if name.endswith('.json'):
-                text = open(os.path.join(base, name), encoding='utf-8', errors='replace').read()
-                ids.update(pattern.findall(text))
-    return ids
+                names.update(record_id.findall(open(path, encoding='utf-8', errors='replace').read()))
+            elif name.endswith('.map'):
+                names.update(map_name.findall(open(path, encoding='utf-8', errors='replace').read()))
+    return names
 
 
 def read_test_names():
@@ -182,9 +184,9 @@ def check_citations(problems, tests):
     return checked
 
 
-def check_vocabulary(problems, code, literals, record_ids):
-    """A snake_case name that looks like a command or cvar has to exist in the code."""
-    vocabulary = literals | record_ids | NOT_VOCABULARY
+def check_vocabulary(problems, code, literals, content_names):
+    """A snake_case name that looks like a command or cvar has to exist in the code or in content."""
+    vocabulary = literals | content_names
     prefixes = {name.split('_')[0] for name in (code['command'] | code['cvar']) if '_' in name}
 
     checked = 0
@@ -296,7 +298,7 @@ SELF_TEST = """# Self test
 """
 
 
-def self_test():
+def self_test(test_count=0):
     """Write a document with one of each fault, and check that each is found.
 
     A checker nobody checks is a checker that quietly stops working — which is the failure it exists to
@@ -311,8 +313,8 @@ def self_test():
         code = read_code()
         check_links(problems)
         check_citations(problems, tests)
-        check_vocabulary(problems, code, read_code_literals(), read_record_ids())
-        check_counts(problems, code, 490, fix=False)
+        check_vocabulary(problems, code, read_code_literals(), read_content_names())
+        check_counts(problems, code, test_count, fix=False)
     finally:
         os.remove(path)
 
@@ -345,17 +347,19 @@ def main():
     args = parser.parse_args()
 
     if args.self_test:
-        return self_test()
+        # The real count when it was given, so the tool's own output does not quote a number that has
+        # gone stale — which would be a small joke at its own expense.
+        return self_test(args.tests or 0)
 
     code = read_code()
     literals = read_code_literals()
-    record_ids = read_record_ids()
+    content_names = read_content_names()
     tests = read_test_names()
     problems = []
 
     links = check_links(problems)
     citations = check_citations(problems, tests)
-    vocabulary = check_vocabulary(problems, code, literals, record_ids)
+    vocabulary = check_vocabulary(problems, code, literals, content_names)
     counts = check_counts(problems, code, args.tests, args.fix)
 
     print('%d links, %d test citations, %d vocabulary uses, %d counts checked '

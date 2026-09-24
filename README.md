@@ -161,7 +161,7 @@ is reloaded, and a half-written one leaves what was already on screen. `asset_re
 dotnet build Sage.sln -c Debug          # Debug | Development | Shipping
 dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug     # or -c Development; not Shipping,
                                                             # which compiles out what six tests assert
-python tools/check_docs.py --tests 490  # the docs against the code (R19); --fix rewrites the counts
+python tools/check_docs.py --tests N    # the docs against the code (R19), N as dotnet test reported
 ```
 
 `check_docs.py` is there because three features in a row ended with the code being right and something
