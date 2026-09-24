@@ -352,6 +352,52 @@ pass; the first two were real, silent bugs.
 - **Problem**: found by the *first* headless test of the game's own simulation, minutes after the sim/client split made such a test possible. Hot reload sweeps every entity tagged `FromScene` and re-places the scene's list — but the player is placed by `GameRules.SpawnPlayer` at world start, not by that list, while still carrying the tag. So saving any record file deleted the player and left the world with nothing to control: no camera rig, no input, and a scene full of creatures chasing nobody. It had been there since the scene loop was written (it behaved identically with the old `spawn` records), and no engine test could have caught it because it is entirely the game's own bookkeeping.
 - **Resolution (2026-09-23)**: `RespawnAll` spawns the player again after re-placing the scene. Test: `ReloadingRecordsReplacesTheScene`, which also checks the old entities are gone by asking the handles whether they are alive rather than comparing ids (Friflo reuses ids by design, 03 §3.3 E1). Verified in the running game: `rec_reload` leaves a live player that creatures go on hitting.
 
+### [X] 60. The player swung with nobody pressing anything — **Severity: Wiring** (found 2026-09-24, F4)
+- **Files**: `src/Sage.Engine/Input/InputGating.cs` (new), `src/Sage.Client/Input/InputActions.cs`,
+  `InputDevices.cs`, `KeyboardListener.cs`, `MouseListener.cs`, `src/Sage.Host/Game1.cs`
+- **Problem**: found by F4's audio trace, which is the only thing in the game that announces a swing
+  that *misses*. Three consecutive Sandbox runs with a sword equipped raised `weapon_swing` cues nobody
+  had asked for — 2, 4 and 4 of them, where at most one Attack was pressed — spaced 63–84 ticks apart
+  (the sword's own 60-tick swing cycle, not the creatures' 117) and panned at the listener, so it was
+  the player's own sword. Six identical later runs raised none, two of them with `PlayerControlSystem`
+  instrumented: `command.Pressed` was empty throughout, so nothing was arriving through the latch when
+  it was watched. Attack is bound to **mouse Left and gamepad RightTrigger**, and reading the input
+  layer for "a press nobody made" found three ways one can appear:
+  1. **The devices were polled regardless of window focus.** `InputDevices.Poll` read the keyboard,
+     mouse and pad every frame whatever had focus, so a click in another application reached the
+     player's sword, and a key held while alt-tabbing away stayed held. The vendored ImGui backend had
+     guarded `if (!_game.IsActive) return;` since the day it was added — the gameplay path was the only
+     one that did not, which is how it went unnoticed.
+  2. **Edges were computed from the consumed state.** `_wasHeld` was the *filtered* previous frame, so
+     a button swallowed by a screen for one frame looked un-held, and the frame the screen closed the
+     finger that never moved looked newly pressed.
+  3. **A trigger bound to a button action used `IsButtonDown`'s single threshold.** A trigger resting on
+     it chatters, and a chattering button is a press every frame — which for a weapon is a swing every
+     time its cooldown ends, exactly the observed spacing.
+- **Resolution (2026-09-24)**: all three closed, with the *decisions* moved into `Sage.Engine`
+  (`FocusPolicy`, `InputEdges`) because `tests/Sage.Tests` cannot reference `Sage.Client` by design — a
+  decision that cannot be tested is a decision in the wrong assembly (08 §3.7). Focus gating has a
+  defined seam: the frame focus is lost reports the releases, the frames away report nothing, the frame
+  it returns reads both states so a button already down is not a new press and a moved cursor is not a
+  flick of the view, and the process's first frame counts as a return. Edges come from the raw device
+  state, read for **every** binding in every context so that a console or a screen closing does not look
+  like a finger arriving either. Triggers get hysteresis (down 0.6, up 0.4). `in_contexts` prints the
+  window's focus and a change is logged under `Input`. Five tests in
+  `tests/Sage.Tests/Core/InputGatingTests.cs`, each checked against the old behaviour: dropping the
+  focus resync fails two, restoring the single trigger threshold fails another.
+- **Which one it was**, narrowed by elimination rather than reproduced: **the focus read**. No gamepad is
+  attached to this machine — the connect/disconnect line never appears in any log — so the trigger
+  threshold cannot have caused those runs; it is a real defect found while reading, not the observed one.
+  The consumed edge needs a button held *across* a consumption change, and those runs opened no screen
+  and pressed nothing. What is left is a physical mouse button going down while the game did not have
+  focus, which is exactly what a desktop somebody is using looks like, minutes apart. It was never
+  reproduced on demand, so this is inference; a recurrence would now say so out loud, because a focus
+  change is logged.
+- **What rests on inspection**: the consumed-edge rule is pinned by a test at the policy level, but the
+  wiring that produced it lives in the client, which `tests/Sage.Tests` cannot reference. That part rests
+  on reading it plus the game behaving: one tap is one swing, screens open and close, `in_axis Move`
+  still walks 3.5 m.
+
 ### Noted, not fixed (carried into TODO)
 - `PhysicsSpace.OverlapBox` is broad-phase only: it can report entities whose shapes don't touch. The name should say so once a narrow-phase version exists (10 §4).
 - An empty `LayerMask` means "every layer", so a fully-`Except`-ed mask inverts its own intent. Wants `LayerMask?` for "unspecified" and `Bits == 0` meaning "nothing".

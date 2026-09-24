@@ -289,7 +289,7 @@ public sealed class InputActions
         // not look like a finger arriving on a button that never moved (#60).
         foreach (var list in _bindings)
             foreach (var b in list)
-                if (b.Action.Kind == ActionKind.Button && b.Action.Id.Index < _rawHeld.Length)
+                if (b.Action.Kind == ActionKind.Button)
                     _rawHeld[b.Action.Id.Index] |= ReadRaw(b);
 
         foreach (var context in ContextOrder)

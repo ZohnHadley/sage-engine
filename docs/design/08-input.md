@@ -26,7 +26,7 @@ Today's `KeyboardListener` and `MouseListener` are good device code and are kept
 - the cached enum arrays;
 - seeded mouse state.
 
-A `GamepadListener` is added (sticks with dead zones, triggers, buttons, connect/disconnect). The devices are polled once per frame by the host (01 §5.2), before anything reads them. The C# device events (`OnKeyPressed`, `OnDrag`…) stay, but **only UI, editor and camera code may use them**. Gameplay never reads devices.
+A `GamepadListener` is added (sticks with dead zones, triggers, buttons, connect/disconnect). The devices are polled once per frame by the host (01 §5.2), before anything reads them, **with the window's focus** — while it is not ours they report neutral (§3.7). A pad's *connection* is still tracked either way, because being plugged in is hardware rather than input. The C# device events (`OnKeyPressed`, `OnDrag`…) stay, but **only UI, editor and camera code may use them**. Gameplay never reads devices.
 
 ### 3.2 Actions
 An **action** is a named input with a kind:
@@ -109,7 +109,8 @@ Three things that are not a press, each of which produced one anyway:
 - **Input the window is not the target of.** The device layer is polled with the window's own
   `IsActive`, and while that is false every device reports neutral: no keys, no buttons, no cursor
   delta, no wheel. A click in somebody's browser is not an attack. Before this, the game read the
-  devices whatever had focus.
+  devices whatever had focus — while the vendored ImGui backend had guarded `if (!_game.IsActive) return;`
+  since the day it arrived, which is why the dev tools never showed the symptom and gameplay did.
 - **Input something above has swallowed.** Edges are computed from the **raw** device state, not from
   the state left after consumption (3.3). Holding the attack button, opening a screen and closing it
   again used to look like a new press on the closing frame, because the filtered state had gone false

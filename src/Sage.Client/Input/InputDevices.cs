@@ -64,37 +64,45 @@ public sealed class GamepadListener
     private GamePadState _current;
     private GamePadState _previous;
 
-    public bool IsConnected => _current.IsConnected;
+    public bool IsConnected => _connected;
 
     public event Action<bool>? ConnectionChanged;   // true = connected
 
     public void Update(bool focused)
     {
-        switch (_focus.Step(focused))
+        var step = _focus.Step(focused);
+
+        // Read every frame whatever the focus, because **being plugged in is hardware, not input**: a
+        // pad connected while the player is reading a wiki in another window is known about by the time
+        // they come back, and `IsConnected` does not flicker every time they alt-tab. What the game must
+        // not see while the window is not ours is the *buttons* (#60).
+        var real = GamePad.GetState(PlayerIndex.One, GamePadDeadZone.None);
+        if (real.IsConnected != _connected)
         {
-            case FocusStep.Neutral:
-                // Everything up, but the connection is still whatever it was: a pad does not unplug
-                // itself because the player looked at another window, and saying so would log a
-                // disconnection every time they alt-tabbed.
-                _previous = _current;
-                _current = default;
-                return;
-            case FocusStep.ReadAndResync:
-                _current = GamePad.GetState(PlayerIndex.One, GamePadDeadZone.None);
-                _previous = _current;   // a trigger already held is not a press on the way back in
-                return;
+            _connected = real.IsConnected;
+            Log.Info(LogCat.Input, _connected ? "Gamepad connected" : "Gamepad disconnected");
+            ConnectionChanged?.Invoke(_connected);
         }
 
-        _previous = _current;
-        _current = GamePad.GetState(PlayerIndex.One, GamePadDeadZone.None);
-        if (_current.IsConnected != _previous.IsConnected)
+        switch (step)
         {
-            Log.Info(LogCat.Input, _current.IsConnected ? "Gamepad connected" : "Gamepad disconnected");
-            ConnectionChanged?.Invoke(_current.IsConnected);
+            case FocusStep.Neutral:
+                _previous = _current;
+                _current = default;       // sticks centred, triggers released, nothing held
+                break;
+            case FocusStep.ReadAndResync:
+                _current = real;
+                _previous = real;         // a trigger already held is not a press on the way back in
+                break;
+            default:
+                _previous = _current;
+                _current = real;
+                break;
         }
     }
 
     private FocusPolicy _focus;
+    private bool _connected;
 
     public bool IsDown(Buttons button) => _current.IsButtonDown(button);
     public bool IsPressed(Buttons button) => _current.IsButtonDown(button) && !_previous.IsButtonDown(button);
