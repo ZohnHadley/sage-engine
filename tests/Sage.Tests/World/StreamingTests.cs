@@ -308,9 +308,47 @@ public class StreamingTests
         Assert.Equal(destination, origin.Sector);
     }
 
+    // The contract of `Origin.Rebased`: a subscriber is called **after** the world has moved, so what
+    // it reads is consistent. Raised from inside the shift (as the first version was), it handed out an
+    // origin naming the new sector while every position still meant the old one — and the first
+    // subscriber, the editor's free camera, would have corrected itself into the wrong place.
+    [Xunit.Fact]
+    public void SubscribersSeeTheWorldAlreadyMoved()
+    {
+        using var fx = new Fixture();
+        var player = fx.Player(new Vector3(10, 0, 10));
+        var prop = fx.World.Create(Transform.At(new Vector3(40, 0, 0)), "prop");
+        fx.Tick();
+
+        Vector3 seenOffset = Vector3.Zero;
+        Vector3 propWhenCalled = Vector3.Zero;
+        SectorCoord sectorWhenCalled = default;
+        int calls = 0;
+
+        fx.World.Origin().Rebased += offset =>
+        {
+            calls++;
+            seenOffset = offset;
+            sectorWhenCalled = fx.World.Origin().Sector;
+            propWhenCalled = fx.World.Get<Transform>(prop).LocalPosition;
+        };
+
+        fx.World.Get<Transform>(player).LocalPosition = new Vector3(2 * 1024f + 10f, 0, 10);
+        fx.Tick();
+
+        Assert.Equal(1, calls);
+        Assert.Equal(new Vector3(-2 * 1024f, 0, 0), seenOffset);
+        Assert.Equal(new SectorCoord(2, 0), sectorWhenCalled);
+        Assert.Equal(-2 * 1024f + 40f, propWhenCalled.X, 3);       // already shifted when called
+    }
+
     // Streaming runs every tick in the fixed schedule, where the engine's rule is that a steady state
     // allocates nothing (02 §4.6). Loading a sector allocates — it makes a heightfield — so the claim
     // is about the ticks in between, which is all of them once the ring is up.
+    //
+    // Measured as a **difference**, with streaming off and then on, because the tick is not otherwise
+    // silent: Bepu's own profiler allocates about 40 bytes inside `Timestep` (TODO #41), and a test
+    // asserting a flat zero here would be failing somebody else's allocation.
     [Xunit.Fact]
     public void StandingStillCostsNothingPerTick()
     {
@@ -318,11 +356,21 @@ public class StreamingTests
         fx.Player(new Vector3(10, 0, 10));
         fx.Tick(5);                                  // the ring, its meshes and its collision are up
 
+        var enabled = fx.Engine.CVars.Find("stream_enabled")!;
+
+        Assert.True(enabled.TrySet("0", out _));
+        fx.Tick(10);                                 // settle, and let anything one-off happen
         long before = GC.GetAllocatedBytesForCurrentThread();
         fx.Tick(60);
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long without = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        Assert.True(allocated < 4096, $"a second of standing still allocated {allocated} bytes");
+        Assert.True(enabled.TrySet("1", out _));
+        fx.Tick(10);
+        before = GC.GetAllocatedBytesForCurrentThread();
+        fx.Tick(60);
+        long with = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(with - without <= 0, $"streaming added {with - without} bytes over 60 ticks");
     }
 
     // Walking back and forth across a sector edge must not load and unload the world each time: that

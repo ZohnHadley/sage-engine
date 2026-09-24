@@ -34,6 +34,10 @@ public sealed class Origin
 
     public event Action<Vector3>? Rebased;   // the offset applied to everything, in metres
 
+    // **Horizontal only.** A sector offset has no Y (`SectorCoord.Origin`), so heights never change
+    // when the origin moves — which is what makes a cached ground height (the Sandbox's hoppers keep
+    // one) safe across a rebase, and is worth stating because it is load-bearing.
+    //
     // Absolute position of a point given in origin space.
     public Vector3 ToAbsolute(Vector3 originSpace) => originSpace + Sector.Origin(Terrain.SectorSize);
 
@@ -101,6 +105,11 @@ public static class OriginExtensions
         }
 
         if (world.Resources.TryGet<PhysicsSpace>(out var space)) space!.Rebase(offset);
+
+        // Debug shapes drawn with a duration (a cast's arc, a swing's sweep) outlive the tick that
+        // queued them, and they hold positions in the old frame. Dropping them costs a second of
+        // visualisation once per kilometre travelled; keeping them draws a sector-wide lie.
+        if (world.Resources.TryGet<DebugDraw>(out var debug)) debug!.Clear();
         // The camera too: a rig rewrites it from the pawn next frame, but the *editor* camera holds its
         // own position and would otherwise be left a sector behind whatever it was looking at.
         if (world.Resources.TryGet<ActiveCamera>(out var camera) && camera != null) camera.Position += offset;

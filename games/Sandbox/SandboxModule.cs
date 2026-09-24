@@ -89,7 +89,8 @@ public sealed class SandboxModule : IGameModule
 
     // Where the player starts, without placing anything: the camera needs it before the rules run.
     public Vector3 PlayerStart(World world) =>
-        Scene?.Player is { } start ? Ground(world, start) : HillsGenerator.SceneCenter;
+        Scene?.Player is { } start ? Ground(world, start)
+                                   : world.Origin().ToOrigin(HillsGenerator.SceneCenter);   // absolute, like a placement
 
     // Called by SandboxRules once every module has set the world up.
     public Entity SpawnPlayer(World world)
