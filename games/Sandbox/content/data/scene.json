@@ -429,6 +429,16 @@
     "parts": { "body": { "size": [4, 0.4, 3], "trigger": true } }
   },
   {
+    // Waist high and eight metres long: something a creature can see you over but not walk through, so
+    // it has to find its own way round (16 \u00a73.4, F23). No mass, so it is static and stays where it is
+    // put; `nav_enabled 0` turns the pathfinding off and it goes back to leaning on it.
+    "type": "prefab", "id": "fence", "name": "fence",
+    "parts": {
+      "box_mesh": { "size": [8, 1.2, 0.4], "material": "crate" },
+      "body": { "size": [8, 1.2, 0.4] }
+    }
+  },
+  {
     "type": "material",
     "id": "crate",
     "base": "sage:lit_default",
@@ -474,7 +484,11 @@
       { "prefab": "crate",        "at": [-0.7, 6, 1.5] },
       { "prefab": "crate",        "at": [0, 8, 1.8] },
       { "prefab": "crate",        "at": [0.7, 10, 1.4] },
-      { "prefab": "gate",         "at": [0, 3, 1.6] }
+      { "prefab": "gate",         "at": [0, 3, 1.6] },
+      // The fence, and a watcher behind the middle of it: it sees the player over the top, and the only
+      // way to reach them is round one end (F23). Walk up and watch it commit to a side.
+      { "prefab": "fence",        "at": [0, 0.6, -9] },
+      { "prefab": "watcher",      "at": [0, 0, -12],   "yaw": 180, "name": "penned watcher" }
     ]
   }
 ]

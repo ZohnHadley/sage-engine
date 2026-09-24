@@ -52,7 +52,7 @@ public sealed class AIThinkSystem : ISystem
                 {
                     float period = 1f / MathF.Max(profile.ThinkRate, 0.1f);
                     s[n].NextThink = time + period * (0.85f + 0.3f * ((entity.Id % 7) / 7f));   // staggered
-                    Perceive(world, entity, ref t[n], ref s[n], profile);
+                    Perceive(world, entity, ref t[n], ref s[n], profile, time);
                     ChooseSchedule(ref s[n]);
                 }
 
@@ -62,7 +62,8 @@ public sealed class AIThinkSystem : ISystem
     }
 
     // What the agent knows: is there an enemy, can it see one, is it in reach (16 §3.4).
-    private void Perceive(World world, Entity self, ref Transform transform, ref AIState state, AIProfileRecord profile)
+    private void Perceive(World world, Entity self, ref Transform transform, ref AIState state,
+                          AIProfileRecord profile, float time)
     {
         ulong conditions = 0;
         float yaw = SageMath.YawOf(transform.LocalRotation);
@@ -70,17 +71,28 @@ public sealed class AIThinkSystem : ISystem
 
         if (world.Has<Melee>(self)) conditions |= (ulong)AICondition.CanMelee;
 
-        if (target.IsNull)
+        // Nothing in the cone. That is not the same as nothing to chase: a target seen a moment ago is
+        // remembered for `memorySeconds`, which is what lets a creature look where it is *going* while it
+        // walks round something (F23). When the memory runs out it is `LostEnemy`, and only then.
+        if (target.IsNull || (!visible && target != state.Target))
         {
+            if (Remembers(world, ref state, time))
+            {
+                state.Conditions = conditions | (ulong)AICondition.RememberEnemy;
+                return;
+            }
+            bool had = !state.Target.IsNull;
             state.Target = default;
             state.Spell = default;
-            state.Conditions = conditions | (ulong)AICondition.NoEnemy;
+            state.Conditions = conditions | (ulong)(had ? AICondition.LostEnemy : AICondition.NoEnemy);
             return;
         }
 
         if (visible)
         {
             state.Target = target;
+            state.LastSeen = world.Get<Transform>(target).LocalPosition;
+            state.ForgetAt = time + MathF.Max(profile.MemorySeconds, 0f);
             conditions |= (ulong)AICondition.SeeEnemy;
             if (distance <= profile.MeleeRange) conditions |= (ulong)AICondition.EnemyInMeleeRange;
             state.Spell = ChooseSpell(world, self, distance, out bool comingBack, out bool busy);
@@ -88,8 +100,13 @@ public sealed class AIThinkSystem : ISystem
             else if (!state.Spell.IsEmpty) conditions |= (ulong)AICondition.CanCastAtEnemy;
             if (comingBack) conditions |= (ulong)AICondition.SpellComingBack;
         }
+        else if (Remembers(world, ref state, time))
+        {
+            conditions |= (ulong)AICondition.RememberEnemy;
+        }
         else if (!state.Target.IsNull)
         {
+            state.Target = default;
             conditions |= (ulong)AICondition.LostEnemy;
         }
         else
@@ -181,6 +198,11 @@ public sealed class AIThinkSystem : ISystem
         return best;
     }
 
+    // Is there still a target worth walking to, even out of sight? Only for as long as the profile says,
+    // and only while it exists: a remembered target that has been destroyed is no target at all.
+    private static bool Remembers(World world, ref AIState state, float time) =>
+        !state.Target.IsNull && world.IsAlive(state.Target) && time < state.ForgetAt;
+
     // Which schedule fits what it knows. Code, like HL1's GetSchedule; utility scoring or a behaviour
     // tree can replace this without touching the tasks (16 §3.4).
     // `Has`, not `Enum.HasFlag`: the framework method takes its argument as a boxed `Enum`, and the
@@ -202,7 +224,7 @@ public sealed class AIThinkSystem : ISystem
             // is already in range, and its spell is seconds away. Charging is what it did before this
             // line existed, and it walked a pure caster into melee reach to stand there empty-handed.
             Has(conditions, AICondition.SpellComingBack) && !Has(conditions, AICondition.CanMelee) ? Schedules.Hold :
-            Has(conditions, AICondition.SeeEnemy) ? Schedules.Chase :
+            Has(conditions, AICondition.SeeEnemy) || Has(conditions, AICondition.RememberEnemy) ? Schedules.Chase :
             Schedules.Idle;
 
         if (state.Schedule == wanted) return;
@@ -256,6 +278,12 @@ public sealed class AIThinkSystem : ISystem
             return;
         }
 
+        // The body's own movement numbers, for anything that has to produce a walkable result (F23).
+        var movement = MovementProfileRecord.Fallback;
+        if (world.TryGet<CharacterController>(entity, out var character))
+            movement = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile,
+                                       out MovementProfileRecord walks) ? walks : MovementProfileRecord.Fallback;
+
         var context = new AITaskContext
         {
             World = world,
@@ -264,6 +292,7 @@ public sealed class AIThinkSystem : ISystem
             Intent = ref intent,
             Transform = ref transform,
             Profile = profile,
+            Movement = movement,
             Space = _space,
             Attack = _attack,
             Dt = dt,

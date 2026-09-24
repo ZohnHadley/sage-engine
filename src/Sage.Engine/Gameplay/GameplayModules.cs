@@ -356,6 +356,11 @@ public sealed class AIModule : IModule
     private RecordStore? _records;
     private ActionRegistry? _actions;
     private CVar<bool>? _aiDebug;
+    private CVar<bool>? _navEnabled;
+    private CVar<bool>? _navDebug;
+    private CVar<float>? _navCell;
+    private CVar<int>? _navNodes;
+    private CVar<int>? _navPlans;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(CharacterModule), typeof(CombatModule) };
 
@@ -371,6 +376,34 @@ public sealed class AIModule : IModule
 
         _aiDebug = ctx.Engine.CVars.Register("ai_debug", false, CVarFlags.DevOnly,
             "Draw what each creature can see and what it is chasing (needs r_debugdraw 1).");
+
+        // Navigation (16 §3.4, F23). `nav_enabled 0` is the A/B: creatures fall back to walking straight
+        // at what they are chasing, which is what they did before there was any pathfinding.
+        _navEnabled = ctx.Engine.CVars.Register("nav_enabled", true, CVarFlags.Cheat,
+            "Let creatures plan a way round obstacles. Off, they walk straight at the target (16 §3.4).");
+        _navDebug = ctx.Engine.CVars.Register("nav_debug", false, CVarFlags.DevOnly,
+            "Draw the last grid searched and the corners each creature is walking (needs r_debugdraw 1).");
+        _navCell = ctx.Engine.CVars.Register("nav_cellsize", 1f, CVarFlags.Cheat,
+            "Metres per navigation cell: finer finds narrower gaps and searches more of them.", 0.25f, 4f);
+        _navNodes = ctx.Engine.CVars.Register("nav_maxnodes", 4096, CVarFlags.Cheat,
+            "Cells one search may look at before giving up, so a sealed room costs a known amount.", 64, 9216);
+        _navPlans = ctx.Engine.CVars.Register("nav_plans", 4, CVarFlags.Cheat,
+            "Plans allowed per tick across every creature; the rest wait a tick.", 1, 64);
+
+        ctx.Engine.CVars.RegisterCommand("nav_stats", CVarFlags.None,
+            "What navigation has been asked for and what it cost.", _ =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Navigation>(out var nav) || nav == null) continue;
+                Log.Info(LogCat.Console,
+                    $"'{world.Name}': {nav.Plans} plans, {nav.Refused} over budget, {nav.NoRoute} with no way " +
+                    $"through; last grid {nav.Grid.Width}x{nav.Grid.Height} cells of {nav.Grid.CellSize:F2} m, " +
+                    $"{nav.Grid.BlockedCells()} blocked, {nav.Grid.LastNodes} nodes searched");
+                nav.ResetStats();
+                nav.Grid.ResetStats();
+            }
+        });
     }
 
     public void Start(ModuleContext ctx) => ctx.Provide(AITasks);
@@ -383,6 +416,85 @@ public sealed class AIModule : IModule
         // a contract the engine checks rather than a comment (03 §3.5).
         world.AddSystem(new AIThinkSystem(world, _records!, AITasks, _actions!), Phase.Commands,
             after: new[] { typeof(PlayerControlSystem) });
+        // One navigation per world, like the physics space: the grid holds origin-space positions, and
+        // two worlds do not share an origin (R6, and the lesson of the audio mixer in 11 §3).
+        world.Resources.Set(new Navigation
+        {
+            Enabled = _navEnabled!.Value,
+            CellSize = _navCell!.Value,
+            MaxNodes = _navNodes!.Value,
+            PlansPerTick = _navPlans!.Value,
+        });
         world.AddSystem(new AIDebugSystem(world, _records!, _aiDebug!), Phase.Late);   // 16 §11
+        world.AddSystem(new NavDebugSystem(world, _navEnabled!, _navDebug!, _navCell!, _navNodes!, _navPlans!),
+                        Phase.Late);
+    }
+}
+
+// Keeps navigation's settings in step with the cvars, and draws what the last search saw (16 §3.4, F23).
+//
+// A system rather than `Changed` handlers because there is one `Navigation` per world and several cvars:
+// copying four numbers once a tick is cheaper than four subscriptions per world that have to be undone
+// when the world goes.
+public sealed class NavDebugSystem : ISystem
+{
+    private readonly Navigation _nav;
+    private readonly DebugDraw _draw;
+    private readonly ArchetypeQuery<Transform, AIState> _agents;
+    private readonly CVar<bool> _enabled, _debug;
+    private readonly CVar<float> _cell;
+    private readonly CVar<int> _nodes, _plans;
+    private bool _wasEnabled;
+    private float _wasCell;
+    private int _wasNodes, _wasPlans;
+
+    public NavDebugSystem(World world, CVar<bool> enabled, CVar<bool> debug,
+                          CVar<float> cell, CVar<int> nodes, CVar<int> plans)
+    {
+        _nav = world.Resources.Get<Navigation>();
+        _draw = world.Resources.Get<DebugDraw>();
+        _agents = world.Query<Transform, AIState>();
+        _enabled = enabled;
+        _debug = debug;
+        _cell = cell;
+        _nodes = nodes;
+        _plans = plans;
+        _wasEnabled = enabled.Value;
+        _wasCell = cell.Value;
+        _wasNodes = nodes.Value;
+        _wasPlans = plans.Value;
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        // **Only what changed.** Copying all four every tick would silently undo anything that set them
+        // in code — a game tuning its own creatures, or a test asking for a budget of two — and the loser
+        // of that argument is always the one who cannot see the assignment. A cvar wins when somebody
+        // moves it, which is when it is expressing an intent.
+        if (_enabled.Value != _wasEnabled) _nav.Enabled = _wasEnabled = _enabled.Value;
+        if (_cell.Value != _wasCell) _nav.CellSize = _wasCell = _cell.Value;
+        if (_nodes.Value != _wasNodes) _nav.MaxNodes = _wasNodes = _nodes.Value;
+        if (_plans.Value != _wasPlans) _nav.PlansPerTick = _wasPlans = _plans.Value;
+        if (!_debug.Value) return;
+
+        _nav.DrawLastGrid(_draw);
+        foreach (var (transforms, states, _) in _agents.Chunks)
+        {
+            var t = transforms.Span;
+            var s = states.Span;
+            for (int n = 0; n < t.Length; n++)
+            {
+                ref readonly var path = ref s[n].Path;
+                if (path.Count == 0) continue;
+                Vector3 from = t[n].LocalPosition + Vector3.UnitY * 0.5f;
+                for (int i = path.Step; i < path.Count; i++)
+                {
+                    Vector3 to = path[i] + Vector3.UnitY * 0.5f;
+                    _draw.Line(from, to, DebugColour.Green);
+                    _draw.Cross(to, 0.2f, DebugColour.Green);
+                    from = to;
+                }
+            }
+        }
     }
 }

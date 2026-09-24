@@ -19,6 +19,11 @@ public enum AICondition : ulong
     None = 0,
     SeeEnemy = 1 << 0,
     LostEnemy = 1 << 1,
+    // It cannot see the enemy but has not given up on it: the seconds after sight is broken, when a
+    // creature walks to where it last saw somebody. **Pathfinding needs this to be worth anything**
+    // (F23): walking round a wall means facing the wall's end rather than the target, and sight is a
+    // cone, so without memory a creature forgets what it is chasing the moment it sets off round.
+    RememberEnemy = 1 << 12,
     EnemyInMeleeRange = 1 << 2,
     NoEnemy = 1 << 3,
     TaskFailed = 1 << 4,
@@ -46,6 +51,9 @@ public enum AICondition : ulong
 public sealed class AIProfileRecord
 {
     public float SightRange = 22f;
+    // How long a creature keeps chasing something it can no longer see. Without it, pathfinding is
+    // decoration: a creature that turns to walk round a wall loses its target on the first step (F23).
+    public float MemorySeconds = 6f;
     public float SightAngleDegrees = 200f;   // generous: creatures notice you from the side
     public float MeleeRange = 1.8f;      // how close it wants to be before swinging
     public float ThinkRate = 6f;         // times per second
@@ -105,6 +113,11 @@ public struct AIState : IComponent
     public float NextThink;
     public float TaskTime;      // seconds the current task has been running
     public bool TaskStarted;
+    // The corners it is walking, if anything is in the way (16 §3.4, F23). Transient like the rest of
+    // the thinking: a load starts a creature standing still, working it out again.
+    [Transient] public NavPath Path;
+    [Transient] public Vector3 LastSeen;    // where the target was when it was last in sight
+    [Transient] public float ForgetAt;      // sim time after which it gives up on a target it cannot see
 }
 
 public enum AITaskStatus { Running, Succeeded, Failed }
@@ -118,6 +131,9 @@ public ref struct AITaskContext
     public ref PawnIntent Intent;
     public ref Transform Transform;
     public AIProfileRecord Profile;
+    // How this body moves (radius, step height, slope limit): what a path has to be walkable *by*, so
+    // navigation reuses the numbers the character controller already obeys rather than inventing its own.
+    public MovementProfileRecord Movement;
     public PhysicsSpace Space;
     public ActionId Attack;     // the Attack action, so a task can swing the way a player does
     public float Dt;
@@ -176,14 +192,28 @@ internal sealed class FaceTargetTask : IAITask
 }
 
 // Walk toward the target until it is `param` metres away (default: melee range).
+//
+// **Straight at it while that works, a path when it does not** (16 §3.4, F23). Most of the time the way
+// is clear and a plan would be waste; the moment something solid is between them, the creature asks
+// `Navigation` for the corners to walk and follows those instead. Before F23 it leaned on the wall.
 internal sealed class MoveToTargetTask : IAITask
 {
+    // How close to a corner counts as reaching it, and how often a path is worth re-planning.
+    private const float CornerReached = 0.8f;
+    private const float ReplanSeconds = 0.6f;
+    private const float TargetMoved = 3f;          // metres before the old plan is stale
+    private const float StraightProbe = 0.6f;      // the body's width to check a clear line with
+
     public AITaskStatus Run(ref AITaskContext c)
     {
         if (!c.World.IsAlive(c.State.Target)) { c.Intent.Move = Vector2.Zero; return AITaskStatus.Failed; }
 
         Vector3 self = c.Transform.LocalPosition;
-        Vector3 target = c.World.Get<Transform>(c.State.Target).LocalPosition;
+        // What it can see, or where it last saw it: a creature on its way round a wall is not looking at
+        // its target, and a creature that walked to the target's *live* position while blind to it would
+        // be cheating (16 §3.4).
+        bool visible = (c.State.Conditions & (ulong)AICondition.SeeEnemy) != 0;
+        Vector3 target = visible ? c.World.Get<Transform>(c.State.Target).LocalPosition : c.State.LastSeen;
         float stop = c.Param > 0 ? c.Param : c.Profile.MeleeRange;
         if (AIMath.DistanceXZ(self, target) <= stop)
         {
@@ -191,11 +221,68 @@ internal sealed class MoveToTargetTask : IAITask
             return AITaskStatus.Succeeded;
         }
 
-        float wanted = AIMath.YawTo(self, target);
+        Vector3 steerTo = Navigate(ref c, ref c.State.Path, self, target);
+
+        float wanted = AIMath.YawTo(self, steerTo);
         wanted += Avoid(ref c, self, wanted);
         c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, wanted, c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
         c.Intent.Move = new Vector2(0, 1);   // forward, in the direction it is facing
         return AITaskStatus.Running;
+    }
+
+    // Where to walk next: the target itself when nothing is in the way, otherwise the next corner of a
+    // path. Returns the point to steer at, and keeps the path in step as the creature walks it.
+    private static Vector3 Navigate(ref AITaskContext c, ref NavPath path, Vector3 self, Vector3 target)
+    {
+        path.ReplanIn -= c.Dt;
+
+        // The cheap question first, and the one that is usually enough: can it just walk at the thing?
+        // A clear line means the path is dropped, so a creature stops following corners the moment it
+        // does not need them.
+        bool clear = LineIsWalkable(ref c, self, target);
+        if (clear)
+        {
+            path.Clear();
+            path.NoWayThrough = false;
+            return target;
+        }
+
+        bool stale = path.Count == 0 || path.ReplanIn <= 0f ||
+                     AIMath.DistanceXZ(path.PlannedFor, target) > TargetMoved;
+
+        if (stale && c.World.Resources.TryGet<Navigation>(out var nav) && nav != null)
+        {
+            path.ReplanIn = ReplanSeconds;
+            nav.Plan(c.World, c.Space, self, target, c.Movement.Radius, c.Movement.StepHeight,
+                     c.Movement.MaxSlopeDegrees, c.Entity, c.State.Target, ref path);
+        }
+
+        if (!path.Walking) return target;   // no way through: lean on it as before, and keep trying
+
+        // Corners are reached, not aimed at for ever: once inside `CornerReached` (or once the *next* one
+        // is visible) it moves on, which is what stops a creature stopping dead on every corner.
+        while (path.Walking && AIMath.DistanceXZ(self, path.Next) <= CornerReached) path.Step++;
+        if (!path.Walking) { path.Clear(); return target; }
+        return path.Next;
+    }
+
+    // Is there room to walk straight there? A ray down the middle and one along each shoulder, so a
+    // doorway narrower than the body is not mistaken for a clear line.
+    private static bool LineIsWalkable(ref AITaskContext c, Vector3 self, Vector3 target)
+    {
+        Vector3 eye = self + Vector3.UnitY * (c.Movement.StepHeight + 0.1f);
+        Vector3 to = target - self;
+        to.Y = 0;
+        float distance = to.Length();
+        if (distance < 0.01f) return true;
+
+        Vector3 direction = to / distance;
+        Vector3 side = new Vector3(-direction.Z, 0, direction.X) * StraightProbe * 0.5f;
+        var mask = LayerMask.All.Except(c.Space.Layers.Enemy).Except(c.Space.Layers.Player);
+
+        return !c.Space.Raycast(eye, direction, distance, mask).Hit
+            && !c.Space.Raycast(eye + side, direction, distance, mask).Hit
+            && !c.Space.Raycast(eye - side, direction, distance, mask).Hit;
     }
 
     // Steering around what is in the way, with raycasts (16 §3.2: navmesh pathfinding is F23). If

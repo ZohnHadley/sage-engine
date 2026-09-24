@@ -40,7 +40,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 | **Inventory** | yes (pick up, equip one weapon) | `item` records; an `Inventory` component (item `RecordId`s + counts); equipment slots |
 | **Interaction** | yes | The `Use` action → raycast → `Interactable` → fires the I/O output `OnUsed` (04) and an `Interacted` event |
 | **AI** | yes (one melee creature) | See 3.4 |
-| **Navigation** | later | Navmesh for interiors/battlefields, a coarse graph for the overworld (F23). v1 creatures steer directly + avoid with raycasts |
+| **Navigation** | yes (local grid) | A grid built round the agent when the straight line is blocked, A* and string-pulling, plus target memory (F23, "As built (navigation)"). A navmesh for brush-built interiors and a coarse graph for crossing sectors are still later |
 | **Narrative** (dialogue, quests, journal) | later | Records + entity I/O + events (F24) |
 | **Factions** | later | Reputation/relations records (F24) |
 | **Economy / life paths** | later | Production chains, markets, professions as data; coarse offline simulation (F25) |
@@ -223,12 +223,49 @@ and the cast system cannot tell a composed spell from one in a content file.
   with `NotKnown` — the same thing that happens to any ability whose record went away with a mod.
 
 - **Not yet:** blocking and parries, directional melee and reversals (Lugaru/Warband, later), knockback and hit reactions, cleaving several targets with one swing, ranged and projectile attacks (F21), friendly-fire rules (F24), and damage over time routed through resistances (a periodic effect still changes health directly).
-- **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side). Real pathfinding is F23.
+- **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side); it still runs, and is what keeps bodies apart. Pathfinding arrived with F23 — see "As built (navigation)".
 - **Deviations and gaps:**
   - schedule *selection* is code (`ChooseSchedule`), as in HL1's `GetSchedule`; utility scoring or a behaviour tree can replace it without touching the tasks;
   - attacks already deal damage: `MeleeAttackTask` applies the profile's `AttackEffect` with `Effects.Apply` (F18), so `EffectSystem` runs it like any other effect. The hit is also published to an `AIEvents` list the game reads in a later phase, which is still how cues and reactions work until the event bus (04) exists;
   - perception is sight only (no hearing), one enemy type (the local player), and no squads;
   - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
+
+### As built (navigation, 2026-09-24 — F23)
+Creatures walk round things instead of into them.
+
+- **Code:** `src/Sage.Engine/Gameplay/Navigation.cs` (`NavGrid`, `NavPath`, `Navigation`), the changed
+  `MoveToTargetTask` and target memory in `AI.cs`/`AIThinkSystem.cs`. Tests:
+  `tests/Sage.Tests/World/NavigationTests.cs`.
+- **A local grid, built when it is needed and thrown away.** Not a navmesh and nothing precomputed: when
+  the straight line is blocked, the creature opens a window round itself and its target (96 cells a side
+  at most, 1 m by default), stamps the colliders that are *there now* plus ground too steep to climb,
+  runs A* over eight neighbours, straightens the staircase into corners, and walks them. A crate pushed
+  into a doorway is in the path within a tick, and nothing has to be rebuilt when the world changes.
+- **The straight line is tried first**, with three rays a body's width apart, because most of the time it
+  is clear and a plan would be waste — and because falling back to it is what happens when there is no
+  route at all. A creature never stops moving because navigation failed; it does what it did before F23.
+- **Budgets, not hopes.** A search stops after `nav_maxnodes` cells (4096) and planning stops after
+  `nav_plans` plans a tick (4), so a crowd sealed in a room costs a known amount and the creatures that
+  miss out keep last tick's path and ask again. `AIThinkSystem` runs in a Fixed phase, and the whole of
+  this allocates nothing: the grid, the open set and the corner buffer are all reused or on the stack.
+- **A creature remembers what it cannot see, and this is what makes the rest work.** Sight is a cone, so
+  walking round a wall means looking away from what you are chasing: without memory a creature forgot its
+  target on the first step of the detour and went back to idle. A target stays remembered for
+  `memorySeconds` (6 by default, an `ai_profile` field) and the creature walks to **where it last saw**
+  it, not to where it actually is — remembering is not clairvoyance. `RememberEnemy` keeps the chase
+  schedule running; `LostEnemy` now means the memory ran out.
+- **Console:** `nav_enabled` (the A/B — off, creatures go back to leaning on walls), `nav_debug` (the
+  cells the last search thought were blocked, and every creature's corners), `nav_stats`, `nav_cellsize`,
+  `nav_maxnodes`, `nav_plans`.
+- **Measured in the Sandbox**, where a waist-high fence now stands between the player and a watcher: with
+  navigation on it rounds the end and reaches the player in about 11 seconds; with `nav_enabled 0` the
+  same creature slides 18 m along the fence the wrong way and never arrives. Headlessly, the same A/B is
+  a three-walled pen — concave on purpose, because a fence can be escaped by sliding along it and so
+  cannot tell steering and planning apart.
+- **Not built:** a navmesh for brush-built interiors (F16 has no geometry to build one from yet), a
+  coarse graph for travelling across sectors, doors and other links a path has to *act* on, crowds
+  avoiding each other (creatures are left out of the stamp on purpose), and paths that cost ground
+  differently (mud, water, roads).
 
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Engine/Gameplay/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).

@@ -246,17 +246,60 @@ public class AITests
     {
         using var engine = NewEngine();
         var world = NewWorld(engine);
-        var creature = Creature(world, new Vector3(0, 0.1f, 0));
-        Player(world, new Vector3(0, 0.1f, -12));
 
+        // The wall first, and a tick for it to get its body: colliders join the physics space in
+        // PrePhysics, and the AI thinks in Commands *before* that (16 §3.4). A creature created in the
+        // same breath as the wall gets one tick of seeing straight through it — which, now that a
+        // creature remembers what it has seen (F23), is six seconds of chasing a wall.
         var wall = world.Create(Transform.At(new Vector3(0, 2, -6)), "wall");
         world.Add(wall, Collider.Box(new Vector3(30, 4, 1)));
+        Tick(world, 1);
+
+        var creature = Creature(world, new Vector3(0, 0.1f, 0));
+        Player(world, new Vector3(0, 0.1f, -12));
 
         Tick(world, 30);
 
         var state = world.Get<AIState>(creature);
         Assert.False(((AICondition)state.Conditions).HasFlag(AICondition.SeeEnemy));
         Assert.Equal(AIThinkSystem.Schedules.Idle, state.Schedule);
+    }
+
+    // What a creature does with what it saw a moment ago (16 §3.4, F23): it keeps chasing for
+    // `memorySeconds` and walks to where the target *was*, then gives up. Without this, pathfinding is
+    // decoration — walking round something means facing away from it, and sight is a cone.
+    [Fact]
+    public void ACreatureRemembersWhatItCanNoLongerSeeAndThenForgets()
+    {
+        using var engine = NewEngine();
+        var world = NewWorld(engine);
+        var creature = Creature(world, new Vector3(0, 0.1f, 0));
+        var player = Player(world, new Vector3(0, 0.1f, -8));
+        Tick(world, 30);
+
+        var seen = world.Get<AIState>(creature);
+        Assert.True(((AICondition)seen.Conditions).HasFlag(AICondition.SeeEnemy));
+        Assert.Equal(AIThinkSystem.Schedules.Chase, seen.Schedule);
+
+        // Out of sight: far beyond the profile's sight range. (Straight up does *not* work — sight is
+        // range and cone plus a ray, and a player 400 m overhead is still in the cone with nothing in
+        // the way, which is its own oddity and not this test's business.)
+        world.Get<Transform>(player).LocalPosition = new Vector3(0, 0.1f, -300f);
+        Tick(world, 30);
+
+        var remembering = world.Get<AIState>(creature);
+        Assert.True(((AICondition)remembering.Conditions).HasFlag(AICondition.RememberEnemy),
+            "the creature forgot its target the instant it lost sight of it");
+        Assert.Equal(AIThinkSystem.Schedules.Chase, remembering.Schedule);
+        Assert.False(remembering.Target.IsNull);
+
+        // Long enough for the default six seconds of memory to run out.
+        Tick(world, 60 * 7);
+
+        var forgotten = world.Get<AIState>(creature);
+        Assert.False(((AICondition)forgotten.Conditions).HasFlag(AICondition.RememberEnemy));
+        Assert.True(forgotten.Target.IsNull, "a forgotten target is not still being chased");
+        Assert.Equal(AIThinkSystem.Schedules.Idle, forgotten.Schedule);
     }
 
     // The regression guard for review #48, now that the promise is checked rather than commented

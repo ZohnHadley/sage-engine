@@ -312,10 +312,14 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **75 console commands, 18 record types, 390 headless tests.**
+and audible: **76 console commands, 18 record types, 403 headless tests.**
 
-What step 8 has left is F23 (pathfinding — the AI still walks into walls), F24 (factions, dialogue,
-quests) and R12 (MonoGame 3.8.5 with runtime loaders, which retires MGCB). The handoff at
+F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
+to **remember what it is chasing**, because walking round something means looking away from it, and sight
+is a cone. Pathfinding without memory is decoration.
+
+What step 8 has left is F24 (factions, dialogue, quests) and R12 (MonoGame 3.8.5 with runtime loaders,
+which retires MGCB). The handoff at
 [`docs/history/handoff-2026-09-24.md`](docs/history/handoff-2026-09-24.md) says where to start.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
