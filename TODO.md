@@ -146,6 +146,30 @@ F17 (entity I/O) and F28–F30 (the editor), which the console and hot reload st
 
 This needed R1–R6 and R8–R16, plus the **(v1)** parts of F1–F3, F5–F7, F13, F17–F22, F27–F30 and F32. The 2026-09-23 engine review added R13–R16 and changed the order of what was already there: **R13 (the event bus) before F21**, because abilities are queue-shaped; **F31 (prefabs) before the rest of Phase 6**, because every game and tool is inventing its own spawning meanwhile; and F27's serialization *contract* written now even though saves themselves stay where they are. R14–R16 are cheap and can land alongside whatever is being built. It leaves out skeletal animation and networking, the two biggest items, while keeping the architecture ready for both. Build it by **alternating** infrastructure and features (ARCHITECTURE §7).
 
+### Second milestone — a world you can travel across
+
+> The player walks out of the starting sector and keeps going. Terrain loads ahead and unloads behind
+> in rings, the simulation rebases around them so nothing loses precision, and the fight, the spells
+> and the save still work a hundred sectors out.
+
+Set by the [readiness review](docs/history/readiness-2026-09-24.md) (2026-09-24), which found this the
+most expensive thing left undone and the one that gets dearer weekly: **every feature built so far
+assumes world-space floats**, so the longer R6 waits the more code has to change with it. In order:
+
+1. **R6 + F14** — sector coordinates, origin rebasing, streaming rings. Structural; everything else
+   below is a feature that costs the same whenever it is built.
+2. **R18** — a scale test with the numbers written down, because streaming is the first design that
+   has to answer for performance and there is nothing to aim at yet.
+3. **F4 audio** — the largest single step from "it runs" to "it is a game", and pure wiring: cues are
+   already raised at every interesting moment.
+4. **F23 pathfinding**, then **F24 factions/dialogue/quests** — creatures that can reach you, and a
+   reason to go anywhere.
+5. **R12** (MonoGame 3.8.5, runtime loaders, drop MGCB) — a day or two, and it closes the gap between
+   decision D10 and the code.
+
+The generator (09 §3.2) waits until the component set stops moving; the editor waits for level geometry
+(F16). Multiplayer stays Phase 7.
+
 ### Already present
 - **Input devices:** `KeyboardListener` + `MouseListener` (edge events, polling, exact-match chords, threshold-gated drag). They become the device layer of R3 (`08 §3.1`).
 - **World / ECS (step 3):** `Engine` + `World` over Friflo.Engine.ECS, typed queries, command buffer, structural notifications with the old ordering guarantees, `PersistentId`, resources, hierarchy.

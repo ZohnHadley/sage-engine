@@ -291,6 +291,13 @@ per-reader cursors, and the four queues retired into it — though building it s
 were state rather than events, which the review now records; and prefabs, so placing a thing is one
 call against a record instead of eight calls in a particular order.
 
+**Step 8: the world grows (2026-09-24 onwards).** The [readiness review](docs/history/readiness-2026-09-24.md)
+put large-world coordinates and streaming (R6, F14) first, ahead of audio and everything else, on one
+argument: they are the only remaining items that get *more expensive with every feature added*, because
+each new feature assumes world-space floats. The second milestone in TODO.md is the target — walk out
+of the starting sector and keep going — and the order after it is R18 (a scale test with numbers), F4
+audio, F23 pathfinding, F24 factions, R12.
+
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
 
 **Game order:** Daggerfall-like (billboards defer skeletal animation, the single biggest system) → HL1-like (brush maps, entity I/O, movement feel) → skeletal animation → Lugaru-like → Warband-like.
