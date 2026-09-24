@@ -9,7 +9,7 @@ The design docs in [`docs/design/`](design/00-index.md) explain *why* each syste
 is. This explains how to use them.
 
 **There is a runnable example of everything in §2–§4**: [`games/Hello`](../games/Hello) is the smallest
-game this engine can run — five files, about sixty lines of C# — and it is built by the solution and
+game this engine can run — four files and about fifty lines of code — and it is built by the solution and
 exercised by the test suite, so it cannot quietly stop working. Read it alongside this, or start by
 copying it:
 

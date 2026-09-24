@@ -41,6 +41,10 @@ public class CharacterTests
     //
     // This cost an hour while writing the guide's example game: the player fell, the camera followed it
     // down, and the screen showed nothing but sky in every direction. So it says so now.
+    //
+    // The warning is rate-limited (once per five seconds), so this test relies on being the only place
+    // in the suite that puts a character on the default layer. If a second one appears, one of the two
+    // will find the message suppressed — put them in the same test rather than debugging the flake.
     [Fact]
     public void ACharacterOnTheDefaultLayerIsToldThatItWillIgnoreTheGround()
     {

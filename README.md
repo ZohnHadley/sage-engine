@@ -224,8 +224,8 @@ building the atlas — `g` and `y` both had to be redrawn after a screenshot rea
 you write, how to get a character walking about, levels, your HUD, and the list of things that silently
 do nothing if you forget them. It describes the engine as it is rather than as it is planned.
 
-[`games/Hello`](games/Hello) is that guide as a runnable game — the smallest one this engine can run, in
-five files. It is in the solution and covered by tests, so it cannot rot.
+[`games/Hello`](games/Hello) is that guide as a runnable game — the smallest one this engine can run:
+four files, about fifty lines of code. It is in the solution and covered by tests, so it cannot rot.
 
 ```bash
 dotnet run --project src/Sage.Host -c Development -- -game games/Hello

@@ -28,7 +28,7 @@ public sealed class HelloModule : IGameModule
         // Ground first, because everything else is placed on top of it. Without a generator `Load`
         // asserts and loads nothing, after which every height reads as zero.
         var terrain = world.Resources.Get<Terrain>();
-        terrain.Generator = new GentleHills();
+        terrain.Generator = new RollingHills();
         terrain.Seed = 1;
         terrain.Load(SectorCoord.Zero);
 
@@ -49,7 +49,13 @@ public sealed class HelloRules : GameRules
     public override void OnWorldStarted(World world)
     {
         SpawnPlayer(world);
+
+        // `Say` puts a line in the world's message log, which every world has — and **nothing draws it
+        // here**, because drawing is a client's job and this game has no client half. That is the split
+        // working as intended rather than a bug: a headless server would say the same words to nobody.
+        // Write a HUD (13 §3, and games/Sandbox.Client/Hud.cs) and these appear on screen.
         world.Say("Hello. Look around with the mouse, walk with WASD.", MessageKind.Good, 8f);
+        Log.Info(LogCat.Gameplay, "Hello: a player is standing on the hills at 512, 512.");
     }
 
     public override Entity SpawnPlayer(World world)
@@ -69,7 +75,7 @@ public sealed class HelloRules : GameRules
 // used gentle two-metre hills, and standing in them the world looked like a flat green wall, because
 // nothing within a hundred metres changed height enough to cast a shadow or turn away from the sun.
 // A first landscape should look like one.
-public sealed class GentleHills : ITerrainGenerator
+public sealed class RollingHills : ITerrainGenerator
 {
     public void Generate(SectorCoord sector, Heightfield heights, int seed)
     {

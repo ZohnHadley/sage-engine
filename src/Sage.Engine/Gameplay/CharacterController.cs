@@ -84,10 +84,15 @@ public static class CharacterExtensions
         // layer a trap: terrain collision and every other unlabelled static live there too, so a
         // character left on it ignores the ground and falls for ever, silently. Cost: one afternoon,
         // twice — once in the Sandbox's early days and once writing the guide's example game.
+        //
+        // Rate-limited rather than once per character: a game that spawns a hundred creatures the wrong
+        // way would otherwise print a hundred lines, each with a different entity name so that none of
+        // them collapse — which is how a useful warning turns into noise nobody reads.
         if (layer == world.Resources.Get<PhysicsSpace>().Layers.Default)
-            Log.Warn(LogCat.Physics, $"{World.Describe(entity)}: character on the 'default' physics layer "
-                                   + "ignores everything else on it, including the terrain it should stand on. "
-                                   + "Give it a layer of its own (\"character\": { \"layer\": \"player\" }).");
+            Log.Every(LogCat.Physics, LogLevel.Warn, "character-on-default-layer", TimeSpan.FromSeconds(5),
+                      $"{World.Describe(entity)}: character on the 'default' physics layer ignores everything "
+                      + "else on it, including the terrain it should stand on. Give it a layer of its own "
+                      + "(\"character\": { \"layer\": \"player\" }).");
 
         world.Add(entity, CharacterController.Create(layer, profileId));
         world.Add(entity, new Pawn());
