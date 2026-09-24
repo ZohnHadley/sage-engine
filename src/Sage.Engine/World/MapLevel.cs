@@ -103,6 +103,11 @@ public sealed class SolidEntity
     // Every corner of every brush it owns, relative to that origin: one convex hull for the entity.
     public required Vector3[] Hull { get; init; }
 
+    // `"trigger" "1"`: something you walk into rather than against. Read once here so both halves agree
+    // — physics makes it a trigger volume, and the client **does not draw it**, which is the whole point
+    // of a trigger. (It drew one, the first time: standing in the hut's doorway put you inside a grey box.)
+    public required bool IsTrigger { get; init; }
+
     public Entity Spawned;
 }
 
@@ -236,6 +241,8 @@ public static class MapLoader
                 Brushes = built,
                 Origin = origin,
                 Hull = hull.ToArray(),
+                IsTrigger = entity.Keys.TryGetValue("trigger", out var flag)
+                         && (flag == "1" || flag.Equals("true", StringComparison.OrdinalIgnoreCase)),
             });
         }
 
@@ -414,13 +421,8 @@ public static class MapLoader
         // box is exact; an L-shaped one drawn as a single entity collides as the convex hull of both
         // arms, which is solid across the inside of the L. Draw that as two entities — and it is worth
         // knowing rather than guessing at, which is why it is written here and in 15 §10a.
-        // `"trigger" "1"` makes the volume something you walk *into* rather than against: the oldest
-        // level mechanism there is, and one of the three keys this engine reads off a map entity.
-        bool isTrigger = solid.Source.Keys.TryGetValue("trigger", out var flag)
-                      && (flag == "1" || flag.Equals("true", StringComparison.OrdinalIgnoreCase));
-
         var body = world.Resources.Get<PhysicsSpace>()
-                        .AddHull(entity, solid.Hull, at, level.Layer, isTrigger);
+                        .AddHull(entity, solid.Hull, at, level.Layer, solid.IsTrigger);
         if (!body.IsStatic && body.Handle == 0) Log.Warn(LogCat.Level, $"{where}: '{className}' has no collision");
         else world.Add(entity, body);
 

@@ -102,6 +102,10 @@ internal sealed class MapMeshSystem : ISystem
     {
         if (solid.Spawned.IsNull || !_world.IsAlive(solid.Spawned)) return;
 
+        // A trigger volume is a shape you walk into, not a thing you look at. Drawing one puts the
+        // player inside a grey box the moment they step through the door.
+        if (solid.IsTrigger) return;
+
         _byTexture.Clear();
         foreach (var brush in solid.Brushes)
             foreach (var face in brush.Faces)

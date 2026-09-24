@@ -350,7 +350,13 @@ public sealed class EntityIOModule : IModule
             {
                 if (!world.Resources.TryGet<EntityIO>(out var io) || io == null) continue;
 
-                var target = world.FindByName(a[0]);
+                // `!player` because half of what you want to fire at from a console is the player, and
+                // the help said so before this did (found by the second pass: an untrue help string is
+                // the same bug as an untrue doc, and cheaper to write).
+                var target = a[0].Equals("!player", StringComparison.OrdinalIgnoreCase)
+                    ? FirstPlayer(world)
+                    : world.FindByName(a[0]);
+
                 if (target.IsNull) { Log.Warn(LogCat.Console, $"ent_fire: no entity named '{a[0]}'"); return; }
                 if (!ctx.Engine.Inputs.Has(a[1])) { Log.Warn(LogCat.Console, $"ent_fire: no input '{a[1]}' (see io_list)"); return; }
 
@@ -368,6 +374,13 @@ public sealed class EntityIOModule : IModule
             foreach (var name in names) Log.Info(LogCat.Console, $"  {name}");
             Log.Info(LogCat.Console, $"{names.Count} input(s)");
         });
+    }
+
+    private static Entity FirstPlayer(World world)
+    {
+        foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities)
+            return entity;
+        return default;
     }
 
     public void OnWorldCreated(World world)

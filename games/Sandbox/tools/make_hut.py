@@ -96,6 +96,14 @@ def write_map(path):
     lines += box((-32, -144, 0), (32, -128, 96), 'door', 1)
     lines.append('}')
 
+    # A trigger volume just inside the doorway: brushes with `"trigger" "1"` are something you walk into
+    # rather than against, and the engine turns the physics overlap into `OnStartTouch` (F17). Once only,
+    # so it greets you rather than nagging.
+    lines += ['{', '"classname" "trigger"', '"targetname" "hut_greeting"', '"trigger" "1"',
+              '"OnStartTouch" "!self,Say,Somebody has been living here.,0,1"']
+    lines += box((-48, -120, 0), (48, -72, 96), 'door', 1)
+    lines.append('}')
+
     text = '\n'.join(lines) + '\n'
     open(path, 'w', newline='\n').write(text)
     brushes = text.count('\n{\n(') + text.count('{\n(')

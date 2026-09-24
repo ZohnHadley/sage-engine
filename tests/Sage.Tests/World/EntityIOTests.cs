@@ -266,6 +266,72 @@ public class EntityIOTests
     }
 
     [Fact]
+    public void WalkingIntoATriggerVolumeFiresOnStartTouch()
+    {
+        using var engine = NewEngineWithCounter();
+        var world = engine.CreateWorld("io");
+        var space = world.Resources.Get<PhysicsSpace>();
+
+        // A two-metre cube of trigger at the origin, built the way a `"trigger" "1"` brush entity is.
+        var trigger = world.Create(Transform.At(Vector3.Zero), "trigger");
+        var corners = new[]
+        {
+            new Vector3(-1, -1, -1), new Vector3(1, -1, -1), new Vector3(1, 1, -1), new Vector3(-1, 1, -1),
+            new Vector3(-1, -1, 1), new Vector3(1, -1, 1), new Vector3(1, 1, 1), new Vector3(-1, 1, 1),
+        };
+        world.Add(trigger, space.AddHull(trigger, corners, Vector3.Zero, 0, isTrigger: true));
+        world.Add(trigger, new IOConnections
+        {
+            Wires = new[] { new Connection { Output = "OnStartTouch", Target = "!self", Input = "TestCount" } },
+        });
+
+        // Something that falls into it. A dynamic body, because that is what generates contacts.
+        var faller = world.Create(Transform.At(new Vector3(0, 3, 0)), "faller");
+        world.Add(faller, Collider.Box(new Vector3(0.5f, 0.5f, 0.5f)));
+        world.Add(faller, new RigidBody { Kind = BodyKind.Dynamic, Mass = 10f });
+
+        Tick(world, 60);
+
+        Assert.True(_counter > 0, "nothing came of walking into a trigger volume");
+    }
+
+    [Fact]
+    public void ATriggerVolumeSeesTheKinematicThingsToo()
+    {
+        using var engine = NewEngineWithCounter();
+        var world = engine.CreateWorld("io");
+        var space = world.Resources.Get<PhysicsSpace>();
+
+        var trigger = world.Create(Transform.At(Vector3.Zero), "trigger");
+        var corners = new[]
+        {
+            new Vector3(-1, -1, -1), new Vector3(1, -1, -1), new Vector3(1, 1, -1), new Vector3(-1, 1, -1),
+            new Vector3(-1, -1, 1), new Vector3(1, -1, 1), new Vector3(1, 1, 1), new Vector3(-1, 1, 1),
+        };
+        world.Add(trigger, space.AddHull(trigger, corners, Vector3.Zero, 0, isTrigger: true));
+        world.Add(trigger, new IOConnections
+        {
+            Wires = new[] { new Connection { Output = "OnStartTouch", Target = "!self", Input = "TestCount" } },
+        });
+
+        // A kinematic capsule walked in by moving its transform, which is exactly what the character
+        // controller does: it sweeps, sets the transform, and physics follows. The player is this.
+        var walker = world.Create(Transform.At(new Vector3(0, 0, 4)), "walker");
+        world.Add(walker, Collider.Capsule(0.35f, 1.8f));
+        world.Add(walker, RigidBody.Kinematic());
+        Tick(world);
+
+        for (int i = 0; i < 40; i++)
+        {
+            ref var transform = ref walker.GetComponent<Transform>();
+            transform.LocalPosition = new Vector3(0, 0, 4f - i * 0.2f);
+            Tick(world);
+        }
+
+        Assert.True(_counter > 0, "a trigger volume never noticed the player walking through it");
+    }
+
+    [Fact]
     public void AMoverOpensSaysSoAndShutsItselfAgain()
     {
         using var engine = NewEngine();

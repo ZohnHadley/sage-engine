@@ -106,7 +106,8 @@ drawn as a box, and an over-approximation for an L-shaped one drawn as a single 
 across the inside of the L. Draw that as two entities. The entity is **not rotated** by its `angle` key,
 unlike a point entity: its geometry is already where the mapper drew it, and turning the entity turned
 the mesh away from the hull that stayed put (which is what a door two feet wide and facing sideways
-looked like the first time). A `"trigger" "1"` key makes the hull a trigger volume instead of a solid.
+looked like the first time). A `"trigger" "1"` key makes the hull a trigger volume instead of a solid — and the client does not draw
+one, which is the point of a trigger: it is a shape you walk into, not a thing you look at.
 
 The four keys the importer reads on a map entity are now `origin`, `angle`, `targetname` and `trigger`,
 plus any key named after an output (04 §3.4).

@@ -121,8 +121,12 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   this one. That is why a chain of wires takes a tick per link — and it is what makes a wire that fires
   itself a bug a mapper can see (two deliveries a tick, for ever) rather than a hang. The `io_maxdispatch`
   budget is for the other runaway: one output wired to more things than a tick should deliver.
-- **Console:** `ent_fire <name> <input> [parameter] [delay]`, `io_list` (every input), `io_trace` (log
-  every dispatch), `io_maxdispatch`.
+- **Console:** `ent_fire <name|!player> <input> [parameter] [delay]`, `io_list` (every input),
+  `io_trace` (log every dispatch), `io_maxdispatch`.
+- **Triggers reach the player, and that was worth checking.** The player is a *kinematic* capsule moved
+  by sweeps, and a trigger volume is a *static* hull; in a physics engine those two are often not
+  simulated against each other at all, which would have made "walk into a trigger" true only of falling
+  crates. It works, and there is now a test for each of the two body kinds so that it keeps working.
 - **Not built:** `@group` targets, an editor link view, and the per-entity I/O history.
 
 ### 3.5 Engine signals in detail
