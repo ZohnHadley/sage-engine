@@ -1,5 +1,11 @@
 # 14 — World Streaming and Large Worlds (short)
 
+> **From the readiness review (2026-09-24), risk 1.** R6 (large-world coordinates) is **the single
+> most expensive item left, and it grows**: every feature built since the decision assumes world-space
+> floats — transforms, physics bodies, the renderer's camera-relative path, the save format, the AI's
+> distance checks. The engine runs in one 1024 m sector, so the premise of the target game is the part
+> that is not built. See [`../history/readiness-2026-09-24.md`](../history/readiness-2026-09-24.md).
+
 ## 1. Purpose and scope
 Daggerfall-scale exteriors and separate interiors:
 - **spaces**;

@@ -274,6 +274,11 @@ and being allowed to cast cannot drift apart, and a creature throws a spell thro
 `world.Cast` a button does. **The first milestone is met** — what it cost and what it taught is in
 [`docs/history/vertical-slice-2026-09-23.md`](docs/history/vertical-slice-2026-09-23.md).
 
+**Is it production ready?** No — [`docs/history/readiness-2026-09-24.md`](docs/history/readiness-2026-09-24.md) says what is strong, what is
+missing before a game ships, what has never been measured (scale, frame time, any second machine), and
+the three risks that get more expensive with waiting: R6 large-world coordinates, the source generator
+two subsystems already assume, and multiplayer readiness rules no network layer has ever tested.
+
 **What the slice taught us about the engine** is written up in
 [`docs/history/engine-review-2026-09-23.md`](docs/history/engine-review-2026-09-23.md): records, the
 controller → pawn-intent split, effects as the only way attributes change and a simulation with no
@@ -305,7 +310,7 @@ call against a record instead of eight calls in a particular order.
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |
 | D8 | Game UI | **Decided 2026-09-23: our own, on `UiDraw`.** ImGui stays dev/editor only. The engine already produced a screen’s *contents* as data (`Panel`), so what a library would have added was a list, a selection and a box — about 300 lines, against a dependency with its own fonts, stylesheets or external layout editor. Gum and Myra stay reasonable answers if screens outgrow lists ([13](docs/design/13-ui.md)) |
 | D9 | Engine licence | Currently **CC0** (`LICENSE`). Recommend **MIT** or **Apache-2.0** (adds a patent grant) if other developers will build commercial games on it. Keep vendored licences (`packages/MonoGame.ImGuiNet-main/LICENSE`). **Needs your decision** |
-| D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; **MGCB no longer used** |
+| D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; MGCB to be dropped. **As built (2026-09-24): not yet true** — `.fx` goes through mgfxc as decided and textures load at runtime, but **models and the HUD font are still MGCB `.xnb`** (`src/Sage.Host/Content/Content.mgcb`). The runtime loaders are R12; until then this row is a decision, not a description |
 | D11 | Model format for animation | **glTF 2.0** over FBX |
 | D12 | Which game drives development | **Daggerfall-like** (confirmed) |
 | D13 | MonoGame version/backend | **Upgrade 3.8.2 → 3.8.5.x, stay on DesktopGL** (TODO R12). Re-evaluate DesktopVK (new in 3.8.5, intended to replace DesktopGL over the next few years) once it has matured |

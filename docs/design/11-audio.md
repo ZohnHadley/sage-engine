@@ -3,8 +3,9 @@
 > **From the slice retrospective (2026-09-23), finding 4.** `CueTriggered` is raised by every cast and
 > every impact and **nothing listens**, because audio is a later phase. That is the design working — the
 > simulation says *what happened*, never what it sounds like — but it means the finished slice is
-> silent, which is the largest single gap between "it runs" and "it is a game". The events are already
-> on the bus, so nothing that raises them changes when this doc is built. See [`../history/vertical-slice-2026-09-23.md`](../history/vertical-slice-2026-09-23.md).
+> silent — which the readiness review (2026-09-24 §5) puts second only to streaming in what to build
+> next, because the events already exist at every interesting moment and this is wiring rather than
+> design. Nothing that raises them changes when this doc is built. See [`../history/vertical-slice-2026-09-23.md`](../history/vertical-slice-2026-09-23.md).
 
 ## 1. Purpose and scope
 Positional sound effects, ambient loops, music and volume buses. A client module (`Sage.Client`). Expanded when roadmap Phase 1's audio item (F4) starts.
