@@ -65,6 +65,13 @@ copies are used at run time:
 </ItemGroup>
 ```
 
+That is *all* a project under `games/` needs, because `games/Directory.Build.props` gives every one of
+them the rest: `net8.0`, nullable, the Debug/Development/Shipping configurations, and three global
+usings — `sage_engine`, `Friflo.Engine.ECS`, and an alias making `Transform` mean **Sage's** rather than
+Friflo's, which ships a `Transform` of its own. Put your game somewhere else and you inherit none of
+that: add the target framework yourself, `using sage_engine;` in every file, and the alias, or the first
+time you name `Transform` the compiler cannot tell which one you mean.
+
 ### `game.json`
 
 ```json
@@ -178,7 +185,7 @@ beside each group; `rec_print sage:<id>` on one of the engine's own is usually q
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
 
-### Every prefab part
+### Every prefab part the engine provides
 
 A prefab's `components` block sets components directly; its `parts` block calls these, which is the
 usual way, because a part does the assembling for you:
@@ -188,7 +195,6 @@ usual way, because a part does the assembling for you:
 | `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass` |
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` |
-| `box_mesh` | a plain box mesh (the Sandbox's; a game's own part, and a good template) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
@@ -202,8 +208,9 @@ usual way, because a part does the assembling for you:
 | `faction` | who it belongs to |
 | `dialogue` | something to say |
 
-A game registers its own parts in `Init` the same way — `ctx.Engine.Prefabs.Register("hop", …)` is the
-Sandbox's, and it is eleven lines. A part whose module is missing (a mesh part in a headless run) is
+Fifteen, and that is all of them — a game adds its own in `Init` the same way. The Sandbox has two:
+`hop` (a creature that bounces, eleven lines, in its simulation half) and `box_mesh` (a plain box mesh,
+in its *client* half, because building a mesh needs a renderer). A part whose module is missing (a mesh part in a headless run) is
 declared `Optional` so the same prefab loads with no renderer at all.
 
 ---
@@ -236,7 +243,17 @@ does nothing at all:
 public sealed class YourRules : GameRules
 {
     public override void OnWorldStarted(World world) => SpawnPlayer(world);
-    public override Entity SpawnPlayer(World world) => world.Spawn(new RecordId("yourgame", "player"), Start(world));
+
+    public override Entity SpawnPlayer(World world)
+    {
+        // Two conversions, and both matter. `ToOrigin` turns absolute metres into the frame the
+        // simulation is using right now (R6: after travelling far enough, the world shifts under you),
+        // and the terrain height is what stops the player spawning inside the ground or above it.
+        var at = world.Origin().ToOrigin(new Vector3(512, 0, 512));
+        at.Y = world.Resources.Get<Terrain>().HeightAt(at.X, at.Z) + 1f;
+        return world.Spawn(new RecordId("yourgame", "player"), at);
+    }
+
     public override void OnEntityDied(World world, Entity victim, Entity killer) { }
     public override void OnLoaded(World world) { }          // after a save is loaded
 }
@@ -262,7 +279,12 @@ placement and a list of `place` entries, each a prefab id, a position and a yaw;
 record and calls `world.Spawn` for each. A scene is a *game's* record rather than an engine one, which
 means you can define placement however suits your game; copying the Sandbox's is the quick way.
 
-Run it, and `ent_list` in the console will show what actually spawned.
+Run it, and `ent_list` — or the entity outliner in the dev UI — shows what actually spawned.
+
+**That is the whole minimum**: a `.csproj`, a `game.json`, one module, one `GameRules`, one prefab
+record, and a terrain generator of about six lines. No client half is needed to *see* anything — the
+engine's own client module draws the world, the crosshair and the dev UI; your client half is for your
+HUD and your screens. This guide was checked by building exactly that and walking about in it.
 
 ## 5. Levels: rooms, doors and triggers
 
