@@ -77,6 +77,16 @@ public sealed class ComponentSchema
         return true;
     }
 
+    // Writes a boxed component back onto an entity — the other half of `Read`, and what an editor's
+    // inspector needs: a component is a struct, so editing one means boxing it, changing a field by
+    // reflection and putting the box back (15 §3). The generated metadata (09 §3.2) replaces the
+    // reflection, not this call.
+    public void Write(Entity entity, in ComponentType type, object value)
+    {
+        if (entity.IsNull || value is null) return;
+        EntityUtils.AddEntityComponentValue(entity, type, value);
+    }
+
     // The component as a boxed value, for printing (`ent_dump`). Null when the entity hasn't got one
     // — asking Friflo for a component that isn't there throws, so the archetype is checked first.
     public object? Read(Entity entity, in ComponentType type) =>

@@ -27,6 +27,7 @@ public sealed class Engine : IDisposable
         // "saved" and none of them were (F24/F40, found by the second pass).
         Saves.RegisterResource<Weather>();
         Records.Register<PrefabRecord>();     // every game places things, so the engine owns the type
+        Records.Register<PlacementsRecord>();  // and where it places them, so an editor can write it (15 §3)
         Modules = new ModuleManager(this);
     }
 

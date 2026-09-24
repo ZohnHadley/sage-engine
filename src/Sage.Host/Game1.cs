@@ -44,6 +44,9 @@ public class Game1 : Game
     private ActiveCamera activeCamera;
     private EditorUI editorUI;
     private EntityOutlinerWindow entityOutliner;
+    private EntityInspectorWindow entityInspector;
+    private EditorDocument document;
+    private readonly EditorSelection selection = new();
     private DevConsoleWindow console;
     private StatOverlay stats;
 
@@ -92,7 +95,7 @@ public class Game1 : Game
         cam.Position = new Vector3(0, 0, 1);
 
         guiRenderer = new ImGuiRenderer(this);
-        editorUI = new EditorUI();
+
 
         // Developer console (`~`), `stat` overlays and loop cvars; see docs/design/02 and 01 §3.2, §5.2.
         hostCVars = new HostCVars(cvars);
@@ -157,10 +160,56 @@ public class Game1 : Game
         world.Origin().Rebased += offset => cam.Position += new Vector3(offset.X, offset.Y, offset.Z);
         activeCamera = world.Resources.Get<ActiveCamera>();
         playerInput = world.Resources.Get<PlayerInput>();
-        entityOutliner = new EntityOutlinerWindow(world);
+        // The editor's document, outliner and inspector (15 §3, F28). They are per world because a
+        // document is opened *into* one; the editor host will own several one day (play-in-editor).
+        document = new EditorDocument(engine);
+        // Every one of these is a menu item as well, and that is the rule rather than a convenience: a
+        // menu a script cannot press is a feature that cannot be checked the way the rest of this engine
+        // is checked (02 §9, and every scripted run in the repository).
+        cvars.RegisterCommand("doc_new", CVarFlags.DevOnly, "doc_new: start an empty placements document.",
+            _ => document.New(world, NamespaceOfGame()));
+
+        cvars.RegisterCommand("doc_open", CVarFlags.DevOnly, "doc_open <id>: open a placements document.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "doc_open <id>   (see rec_list placements)"); return; }
+            var id = engine.Records.Resolve("placements", a[0]);
+            if (!id.IsEmpty) document.Open(world, id);
+        });
+
+        cvars.RegisterCommand("doc_save", CVarFlags.DevOnly, "doc_save: write the open document back to its file.",
+            _ => document.Save(world));
+
+        cvars.RegisterCommand("doc_close", CVarFlags.DevOnly, "doc_close: close the document, removing what it placed.",
+            _ => document.Close(world));
+
+        cvars.RegisterCommand("doc_status", CVarFlags.None, "doc_status: what is open, and whether it is saved.",
+            _ => Log.Info(LogCat.Console, document.IsOpen
+                ? $"{document.Title} — {(document.Path.Length > 0 ? document.Path : "never saved")}"
+                : "no document open"));
+
+        cvars.RegisterCommand("ent_select", CVarFlags.DevOnly, "ent_select <name>: select an entity for the inspector.", a =>
+        {
+            if (a.Count == 0) { selection.Clear(); Log.Info(LogCat.Console, "selection cleared"); return; }
+            var entity = world.FindByName(a[0]);
+            if (entity.IsNull) { Log.Warn(LogCat.Console, $"ent_select: no entity named '{a[0]}'"); return; }
+            selection.Select(entity);
+            Log.Info(LogCat.Console, $"selected {World.Describe(entity)}");
+        });
+
+        entityOutliner = new EntityOutlinerWindow(world, selection);
+        entityInspector = new EntityInspectorWindow(world, engine.Components, selection, document);
+        editorUI = new EditorUI(world, document);
         runLaunchCommands();   // +args last, with the world up (Program.cs)
 
         base.Initialize();
+    }
+
+    // A new document belongs to the game that is loaded: that is whose content folder it is saved into.
+    private string NamespaceOfGame()
+    {
+        foreach (var mount in engine.Vfs.Mounts)
+            if (mount.RecordNamespace != "sage") return mount.RecordNamespace;
+        return "sage";
     }
 
     private void ApplyVSync()
@@ -255,7 +304,11 @@ public class Game1 : Game
         {
             guiRenderer.BeginLayout(gameTime);
             editorUI.Draw(this);
-            if (showEntities.Value) entityOutliner.Draw();
+            if (showEntities.Value)
+            {
+                entityOutliner.Draw();
+                entityInspector.Draw();
+            }
             console.Draw();
             stats.Draw();
             guiRenderer.EndLayout();

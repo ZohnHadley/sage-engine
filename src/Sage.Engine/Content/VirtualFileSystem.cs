@@ -40,7 +40,13 @@ public interface IMount
     bool Exists(VirtualPath path);
     Stream Open(VirtualPath path);
     IEnumerable<VirtualPath> Enumerate(VirtualPath? directory, string searchPattern, bool recursive);
-    string? PhysicalPath(VirtualPath path);   // for tools, logs and hot reload; null for archives
+    string? PhysicalPath(VirtualPath path);
+
+    // Where a file *would* live if something wrote it here, whether or not it exists yet — which is what
+    // an editor needs to save a new document (15 §3, F28). Null for a mount that cannot be written to,
+    // which is the honest answer for a zip and the reason this is not just `PhysicalPath`: that one
+    // resolves files that exist, and a new document is precisely a file that does not.
+    string? WritablePath(VirtualPath path);   // for tools, logs and hot reload; null for archives
 }
 
 public sealed class FolderMount : IMount
@@ -64,6 +70,9 @@ public sealed class FolderMount : IMount
             : throw new FileNotFoundException($"'{path}' not found in mount {Name}");
 
     public string? PhysicalPath(VirtualPath path) => Resolve(path);
+
+    public string? WritablePath(VirtualPath path) =>
+        Path.Combine(Root, path.Value.Replace('/', Path.DirectorySeparatorChar));
 
     public IEnumerable<VirtualPath> Enumerate(VirtualPath? directory, string searchPattern, bool recursive)
     {

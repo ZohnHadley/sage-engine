@@ -18,15 +18,23 @@ internal sealed class EntityOutlinerWindow
     private readonly ArchetypeQuery _all;
     private readonly List<Entity> _entities = new();
     private readonly ImGuiWindowFlags _flags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
+    private readonly EditorSelection? _selection;
 
-    public EntityOutlinerWindow(World world)
+    public EntityOutlinerWindow(World world, EditorSelection? selection = null)
     {
         _world = world;
         _all = world.QueryAll();
+        _selection = selection;
     }
 
     public void Draw()
     {
+        // A place to be on the first run; ImGui remembers wherever you drag it afterwards. Without this
+        // the outliner and the inspector open on top of each other, which is what an editor looks like
+        // when nobody has run it.
+        ImGui.SetNextWindowPos(new Vector2(8, 28), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(280, 230), ImGuiCond.FirstUseEver);
+
         if (!ImGui.Begin($"Entities ({_world.Name})", _flags))
         {
             ImGui.End();   // collapsed: skip the listing entirely (it allocates per entity)
@@ -42,7 +50,13 @@ internal sealed class EntityOutlinerWindow
         {
             if (!_world.IsAlive(entity)) continue;
             ImGui.Separator();
-            bool nodeOpen = ImGui.TreeNodeEx($"{World.Describe(entity)}##{entity.Id}", ImGuiTreeNodeFlags.SpanFullWidth);
+
+            // Selected rows are drawn as such, and clicking one selects it for the inspector (F28).
+            var flags = ImGuiTreeNodeFlags.SpanFullWidth;
+            if (_selection != null && _selection.Is(entity)) flags |= ImGuiTreeNodeFlags.Selected;
+
+            bool nodeOpen = ImGui.TreeNodeEx($"{World.Describe(entity)}##{entity.Id}", flags);
+            if (_selection != null && ImGui.IsItemClicked()) _selection.Select(entity);
 
             if (ImGui.BeginPopupContextItem($"ctx_{entity.Id}"))
             {

@@ -545,6 +545,24 @@ public sealed class RecordStore
     // ---- Tools ------------------------------------------------------------------------------------
 
     // The merged record as JSON plus the file each top-level field came from (rec_get).
+    // The file a record's fields came from, or null when nothing of that id was loaded. An editor saves
+    // a record back where it found it (15 §3, F28) — writing it to a file named after the record instead
+    // would leave two definitions of the same id, which is the one thing the record loader cannot sort
+    // out for itself.
+    public string? FileOf(string type, RecordId id)
+    {
+        if (!_raw.TryGetValue((type, id), out var record)) return null;
+        foreach (var origin in record.FieldOrigins.Values)
+        {
+            // "mount:path" or "mount:path (via base …)": the file is the part before the space.
+            int space = origin.IndexOf(' ');
+            string file = space < 0 ? origin : origin[..space];
+            int colon = file.IndexOf(':');
+            if (colon >= 0 && colon + 1 < file.Length) return file[(colon + 1)..];
+        }
+        return null;
+    }
+
     public string Describe(string type, RecordId id)
     {
         if (!_raw.TryGetValue((type, id), out var raw)) return $"{type} {id}: not found";
