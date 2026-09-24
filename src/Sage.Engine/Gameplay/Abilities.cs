@@ -93,6 +93,12 @@ public sealed class CueRecord
     // exists; the client's audio system reads it, so a mod can give a spell a new noise without
     // touching the spell.
     public RecordId Sound;
+
+    // And what it throws off (06 §3.12, F39): the same arrangement one field down. A cue is the
+    // simulation saying "something happened here"; what that looks like and what it sounds like are
+    // both content, and neither is the spell's business.
+    public RecordId Particles;
+    public int ParticleCount;              // 0 = whatever the effect's own `burst` says
 }
 
 // What an entity can cast, and what it is casting. `Known` is a list because a spellbook is a list;

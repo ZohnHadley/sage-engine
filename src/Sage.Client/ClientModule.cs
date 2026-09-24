@@ -29,6 +29,8 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
     private InputActions? _actions;
+    private CVar<bool>? _particlesOn;
+    private CVar<bool>? _damageNumbers;
     private AudioSettings? _audioSettings;
     private bool _audioDevice;
     private CVar<bool>? _soundEnabled;
@@ -41,9 +43,20 @@ public sealed class ClientModule : IModule
         ctx.Engine.Records.Register<InputMapRecord>();
         ctx.Engine.Records.Register<SpriteSheetRecord>();
         ctx.Engine.Records.Register<SoundRecord>();
+        ctx.Engine.Records.Register<ParticleRecord>();
 
         // A thing that hums: `"audio": { "sound": "fire_loop", "loop": true }` on any prefab. The
         // component is the engine's, so a headless run carries it and simply never plays it.
+        // Something that smokes on its own: `"particles": { "effect": "sandbox:embers" }`. The twin of
+        // the `audio` part, and for the same reason — the component is the engine's, so a headless run
+        // carries it and never draws a thing.
+        ctx.Engine.Prefabs.Register("particles", (world, entity, options, where) =>
+        {
+            var o = PrefabParts.Read<ParticleOptions>(world, options, "particles", where);
+            if (o.Effect.IsEmpty) { Log.Error(LogCat.Records, $"{where}: particles needs an \"effect\""); return; }
+            world.Add(entity, new ParticleEmitter { Effect = o.Effect, Enabled = o.Enabled });
+        });
+
         ctx.Engine.Prefabs.Register("audio", (world, entity, options, where) =>
         {
             var o = PrefabParts.Read<AudioOptions>(world, options, "audio", where);
@@ -84,6 +97,50 @@ public sealed class ClientModule : IModule
 
         // Audio (11 §3, F4). The buses are cvars because that is what a volume slider writes to, and
         // they are archived because nobody wants to set them twice.
+        // Particles (06 §3.12, F39). Both are Archive because both are the kind of thing a player turns
+        // off and expects to stay off.
+        _particlesOn = ctx.Engine.CVars.Register("r_particles", true, CVarFlags.Archive,
+            "Draw particles: sparks, embers, smoke, blood (06 §3.12).");
+        _damageNumbers = ctx.Engine.CVars.Register("ui_damagenumbers", true, CVarFlags.Archive,
+            "Show what each hit took, over the thing that took it (13 §3).");
+
+        ctx.Engine.CVars.RegisterCommand("fx_stats", CVarFlags.None,
+            "How many particles are alive, and what has been refused.", _ =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Particles>(out var particles) || particles == null) continue;
+                world.Resources.TryGet<FloatingTexts>(out var texts);
+                Log.Info(LogCat.Console, $"'{world.Name}': {particles.Live} particle(s) of {particles.Budget}, " +
+                                         $"{particles.Refused} refused; {texts?.Count ?? 0} number(s)");
+                foreach (var group in particles.Groups)
+                    if (group.Count > 0)
+                        Log.Info(LogCat.Console, $"  {group.Effect,-28} {group.Count,5} live");
+                particles.ResetStats();
+            }
+        });
+
+        ctx.Engine.CVars.RegisterCommand("fx_play", CVarFlags.Cheat,
+            "fx_play <effect> [count]: throw a burst where you are standing, to see what it looks like.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "fx_play <effect> [count]"); return; }
+            var id = ctx.Engine.Records.Resolve("particle", a[0]);
+            if (id.IsEmpty) return;
+            ctx.Engine.Records.TryGet(id, out ParticleRecord effect);
+            int count = a.Count > 1 && int.TryParse(a[1], out int asked) ? asked : effect?.Burst ?? 16;
+
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Particles>(out var particles) || particles == null) continue;
+                // Two metres in front of the eye, not *at* it: an audition you are standing inside
+                // tells you nothing about what it looks like.
+                var camera = world.Resources.Get<ActiveCamera>();
+                var ahead = System.Numerics.Vector3.Transform(TransformMath.Forward, camera.Rotation);
+                int thrown = particles.Emit(id, effect, camera.Position + ahead * 2f, ahead, count);
+                Log.Info(LogCat.Console, $"{thrown} particle(s) of {id}");
+            }
+        });
+
         _soundEnabled = ctx.Engine.CVars.Register("snd_enabled", true, CVarFlags.Archive,
             "Play sounds at all. The mixer still runs when this is off, so nothing downstream changes.");
         // The settings, not a mixer: the mixers are per world (11 §3) and they all read this one.
@@ -211,9 +268,19 @@ public sealed class ClientModule : IModule
         world.Resources.Set(new AudioMixer(_audioSettings!));
         world.Resources.Set<IAudioBackend>(_audioDevice && _content != null
             ? new MonoGameAudioBackend(_content) : new NullAudioBackend());
+        // Particles and the numbers over a fight are per world, like everything else that holds a
+        // position in this world's origin space (06 §3.12, R6).
+        world.Resources.Set(new Particles());
+        world.Resources.Set(new FloatingTexts());
+        world.AddSystem(new ParticleSystem(world, _records!, _particlesOn!, _damageNumbers!), Phase.FrameUpdate);
+        world.AddSystem(new ParticleExtract(world, _renderer!), Phase.Extract,
+                        after: new[] { typeof(CameraExtract) });
         world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!), Phase.FrameUpdate);
         // Talking to somebody opens a window, which is the client's business (16 §3.5, F24).
         world.AddSystem(new DialogueSystem(world), Phase.FrameUpdate);
+        // Before the HUD is drawn, so a number never sits on top of the health bar.
+        world.AddSystem(new FloatingTextSystem(world), Phase.Overlay,
+                        before: new[] { typeof(UiRenderSystem) });
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
@@ -223,6 +290,8 @@ public sealed class ClientModule : IModule
     }
 
     private sealed class AudioOptions { public RecordId Sound; public bool Loop = true; public float Volume; }
+
+    private sealed class ParticleOptions { public RecordId Effect; public bool Enabled = true; }
 
     // `snd_play` is an audition, so it belongs to whichever world is listening — the first one with
     // a mixer, which in a single-world game is the only one there is.

@@ -43,6 +43,28 @@
     "technique": "Lit"
   },
   {
+    // What a particle draws with (06 §3.9, F39): the sprite shader's blended technique, *added* to what
+    // is behind it so a spark glows, and no depth write so a cloud of them does not fight itself. The
+    // technique and the blend mode were both written for this and unused until today.
+    "type": "material",
+    "id": "particle_additive",
+    "base": "sprite_default",
+    "technique": "UnlitBlend",
+    "pass": "Transparent",
+    "blend": "Additive",
+    "depthWrite": false
+  },
+  {
+    // The same, blended rather than added: smoke, dust and blood darken what is behind them.
+    "type": "material",
+    "id": "particle_blend",
+    "base": "sprite_default",
+    "technique": "UnlitBlend",
+    "pass": "Transparent",
+    "blend": "AlphaBlend",
+    "depthWrite": false
+  },
+  {
     // The fallback for broken materials and the placeholder for missing meshes (07 §8).
     "type": "material",
     "id": "error",
