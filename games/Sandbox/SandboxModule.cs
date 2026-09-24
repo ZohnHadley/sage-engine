@@ -101,9 +101,14 @@ public sealed class SandboxModule : IGameModule
 
     // A placement's `at` is relative to the scene's spot in the sector, and its y is height above the
     // ground, so everything stands on the terrain however the hills came out.
+    // A scene places things in the **world**, not in whatever frame the simulation happens to be using
+    // right now (R6): its coordinates are absolute, so they are converted. Without this, dying after
+    // travelling a hundred kilometres would respawn the player at the scene's numbers *in the current
+    // origin* — a place the scene has never been.
     private static Vector3 Ground(World world, ScenePlacement placement)
     {
-        Vector3 position = HillsGenerator.SceneCenter + placement.At;
+        Vector3 absolute = HillsGenerator.SceneCenter + placement.At;
+        Vector3 position = world.Origin().ToOrigin(absolute);
         position.Y = world.Resources.Get<Terrain>().HeightAt(position.X, position.Z) + placement.At.Y;
         return position;
     }

@@ -54,9 +54,13 @@ public sealed class Origin
         var offset = Sector.Origin(Terrain.SectorSize) - sector.Origin(Terrain.SectorSize);
         Sector = sector;
         Rebases++;
-        Rebased?.Invoke(offset);
         return offset;
     }
+
+    // Raised by `world.Rebase` **after** everything has moved, not by `MoveTo` while it is happening:
+    // a subscriber that read the world from inside the shift would see an origin saying the new sector
+    // and every position still meaning the old one.
+    internal void Announce(Vector3 offset) => Rebased?.Invoke(offset);
 
     public override string ToString() => $"origin {Sector}";
 }
@@ -100,6 +104,10 @@ public static class OriginExtensions
         // The camera too: a rig rewrites it from the pawn next frame, but the *editor* camera holds its
         // own position and would otherwise be left a sector behind whatever it was looking at.
         if (world.Resources.TryGet<ActiveCamera>(out var camera) && camera != null) camera.Position += offset;
+
+        // Last, with the world consistent: anything holding a position of its own (the editor's free
+        // camera, a game's cached waypoint) moves here.
+        origin.Announce(offset);
 
         Log.Info(LogCat.Streaming, $"Rebased {from} -> {sector} by {offset.X:F0},{offset.Z:F0} m ({moved} roots)");
         return offset;

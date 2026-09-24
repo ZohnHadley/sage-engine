@@ -91,6 +91,13 @@ and the simulation carries on with small numbers, because the frame of reference
 - **`warp <x> <z>`** is fast travel in miniature, and its *order* is the design: **rebase, generate,
   then place**. The first version placed first, read a ground height of zero from a sector that did not
   exist yet, and dropped the player 1.6 km. There is a regression test.
+- **`Origin.Rebased`** is raised **after** everything has moved, for anything holding a position of
+  its own: the editor's free camera subscribes to it, and without that `cam_free` left the camera a
+  sector behind whatever it was looking at. A game's cached waypoints would use the same hook.
+- **A scene's coordinates are absolute**, converted on placement (`SandboxModule.Ground`). Treating
+  them as origin-space meant dying a hundred kilometres out respawned the player at the scene's
+  *numbers* in the current origin — a place the scene has never been. Now respawning travels home, and
+  the origin rebases back on the next tick, which is visible in the log as a second rebase.
 - **Console:** `stream_status` (origin, loaded sectors, rebases so far), `stream_radius`,
   `stream_enabled`, `warp`.
 - **Not yet:** LOD past the ring, per-sector asset scopes, **dormancy** (sectors currently keep only

@@ -121,7 +121,7 @@ Inside each assembly, features are **logical `IModule`s** (Renderer, Physics, Au
   - **Frame:** `FrameUpdate → Extract → Render → Overlay`.
 - **`EntityRef`** (stale-detecting) and **`PersistentId`** (maps/saves).
 - **Command buffers** flushed at phase ends.
-- **Transform hierarchy:** `Transform` + `SectorCoord` → `GlobalTransform` (previous/current poses, for interpolation).
+- **Transform hierarchy:** `Transform` → `GlobalTransform` (previous/current poses, for interpolation), all relative to the world's **origin sector** (`Origin`, R6 as built 2026-09-24). A rebase shifts every transform, both poses, the physics world and the camera at once, rather than each entity carrying a `SectorCoord`.
 - **Storage:** **Friflo.Engine.ECS** behind a thin `World`, adopted after it passed requirements E1–E9 in a spike (D4, 03 §3.1). Handles are Friflo's `Entity`; queries are Friflo's; hot paths iterate chunks.
 
 ### 4.4 Events and messaging — [04](docs/design/04-events-and-messaging.md)
@@ -234,7 +234,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 |---|---|
 | `Game1`, `Program` | `Sage.Host` boot + fixed-tick loop ([01](docs/design/01-host-and-modules.md)); test scene → `games/Sandbox` (**done, step 5**) |
 | ~~`EntityContext`, `Entity`, `EntityContextListener`, `ArchetypeView`~~ (step 3) | `World`, `EntityRef` (Friflo `Entity`), typed queries, structural notifications ([03](docs/design/03-world-and-ecs.md), [04](docs/design/04-events-and-messaging.md)) |
-| `Transform` struct + `TransformMath` (step 3; was `ComponentTransform`) | + `GlobalTransform` + transform propagation (step 4), `SectorCoord` later (R6); math in `TransformMath`; billboarding moves to the renderer |
+| `Transform` struct + `TransformMath` (step 3; was `ComponentTransform`) | + `GlobalTransform` + transform propagation (step 4), **origin-relative with `Origin` + `world.Rebase` (R6, done 2026-09-24)**; math in `TransformMath`; billboarding moves to the renderer |
 | `ModelRenderer` (struct, step 3), `ModelRendererSystem` | `MeshRenderer` (with `AssetPath`) + `MeshExtract` + material-based passes ([06](docs/design/06-rendering.md), [07](docs/design/07-materials-and-shaders.md)). **Done, step 6** |
 | `InputSystem`, listeners | `InputDevices` + actions/contexts + `PlayerCommand` ([08](docs/design/08-input.md)). **Done, step 6** |
 | `DevCamera` | Editor camera rig on actions ([15](docs/design/15-editor.md)) |

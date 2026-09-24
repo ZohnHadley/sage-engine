@@ -308,6 +308,46 @@ public class StreamingTests
         Assert.Equal(destination, origin.Sector);
     }
 
+    // Streaming runs every tick in the fixed schedule, where the engine's rule is that a steady state
+    // allocates nothing (02 §4.6). Loading a sector allocates — it makes a heightfield — so the claim
+    // is about the ticks in between, which is all of them once the ring is up.
+    [Xunit.Fact]
+    public void StandingStillCostsNothingPerTick()
+    {
+        using var fx = new Fixture();
+        fx.Player(new Vector3(10, 0, 10));
+        fx.Tick(5);                                  // the ring, its meshes and its collision are up
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        fx.Tick(60);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(allocated < 4096, $"a second of standing still allocated {allocated} bytes");
+    }
+
+    // Walking back and forth across a sector edge must not load and unload the world each time: that
+    // is what the margin is for, and it is the failure that would show up as a stutter every few steps.
+    [Xunit.Fact]
+    public void PacingOverAnEdgeDoesNotThrash()
+    {
+        using var fx = new Fixture();
+        var player = fx.Player(new Vector3(1000, 0, 10));   // just inside sector (0, 0)
+        fx.Tick();
+        int generated = fx.Ground.Generated;
+
+        for (int i = 0; i < 10; i++)
+        {
+            fx.World.Get<Transform>(player).LocalPosition = new Vector3(1030, 0, 10);   // into (1, 0)
+            fx.Tick();
+            fx.World.Get<Transform>(player).LocalPosition = new Vector3(1000, 0, 10);   // and back
+            fx.Tick();
+        }
+
+        // The three new sectors of the column ahead are generated once, not once per crossing.
+        Assert.True(fx.Ground.Generated - generated <= 3,
+            $"{fx.Ground.Generated - generated} sectors generated while pacing: the margin is not holding");
+    }
+
     private static int Owned(Fixture fx, SectorCoord sector)
     {
         int n = 0;

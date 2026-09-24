@@ -146,6 +146,11 @@ public class Game1 : Game
         engine.Modules.ProvideHostService(actions);
         engine.Modules.StartAll();
         world = engine.CreateWorld("main");
+
+        // The editor's free camera keeps its own position, so it has to be told when the world moves
+        // under it (R6): without this, `cam_free` after a rebase leaves the camera a sector behind
+        // whatever it was looking at. This is what `Origin.Rebased` is for.
+        world.Origin().Rebased += offset => cam.Position += new Vector3(offset.X, offset.Y, offset.Z);
         activeCamera = world.Resources.Get<ActiveCamera>();
         playerInput = world.Resources.Get<PlayerInput>();
         entityOutliner = new EntityOutlinerWindow(world);

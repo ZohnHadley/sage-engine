@@ -76,6 +76,12 @@ These are the ones where waiting makes the bill larger, rather than merely later
    world-space floats: transforms, physics bodies, the renderer's camera-relative path, the save
    format, the AI's distance checks. It was always meant to land early and has not. **This is the
    single most expensive item on the board, and it grows.**
+
+   **Resolved 2026-09-24 (R6 + F14 v1).** Built the day this was written, and the estimate held: the
+   change was wide rather than deep. What it touched is exactly the list above — and the save format
+   was the one that would have been missed, because origin-space positions with no origin recorded
+   look perfectly valid until a save made far from home loads in the wrong sector. See 14
+   "As built (rings and rebasing)".
 2. **The source generator is assumed by two subsystems that shipped without it.** Records and saves
    both say "reflection for now, generated later", and the generator changes how every component and
    record is *declared*. The longer both run on reflection, the more declarations there are to change.
