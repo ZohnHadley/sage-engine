@@ -60,6 +60,9 @@ The tests prove correctness, not fitness. Specifically:
 
 - **Scale is untested.** The largest test creates **200 entities**; the Sandbox scene places 25. A
   Daggerfall-like needs thousands, most of them dormant, and nothing here has met that.
+  **Answered 2026-09-24 (R18):** 2,201 entities cost 0.76 ms of a 16.67 ms tick and 1.08 ms a frame,
+  and the measurement found two allocations no correctness test could see — 323 KB per tick became 40
+  bytes. See [`scale-2026-09-24.md`](scale-2026-09-24.md).
 - **Frame time has never been profiled** against a real scene. The profiler and `stat frame` exist and
   have never been pointed at anything demanding.
 - **One platform.** Windows 10, one GPU. DesktopGL should run elsewhere; nobody has tried.

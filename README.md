@@ -35,7 +35,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 360 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 365 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -88,6 +88,7 @@ searches both. Some worth knowing:
 | `vfs_mounts`, `vfs_which textures/creature.png` | the mount stack, and which mount a path resolves to |
 | `pause`, `host_timescale 0.3`, `sim_tickrate 30` | stop time, slow it, change the tick rate |
 | `warp 120000 -80000`, `stream_status`, `stream_radius 2` | go a hundred kilometres away and watch the world stream in around you; the simulation stays near its own origin |
+| `scale_spawn 2000 tree`, `scale_report` | fill the world and print what a frame costs, phase by phase ([the numbers](docs/history/scale-2026-09-24.md)) |
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
 | `in_axis Move 0 1 3`, `in_look 40 0 3`, `in_tap Attack` | drive the game without a keyboard (see below) |
 | `wait 2` | pause a script here; the rest runs later |

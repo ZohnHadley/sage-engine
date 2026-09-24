@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
@@ -16,12 +17,24 @@ public struct PlayerControlled : ITag { }
 
 // What a controller wants the pawn to do this tick: written by controllers in the Commands phase,
 // read by movement, combat and interaction later in the same tick. Written by controllers only.
-public struct PawnIntent : IComponent
+// `IEquatable` is not decoration: this component is under a phase contract (03 §3.5), and the check
+// compares it after every phase. Without a typed `Equals`, `EqualityComparer<T>.Default` falls back to
+// `ValueType.Equals(object)` and **boxes both values on every comparison** — which measured at about
+// 3 KB per character per tick, and is what R18's scale test found first.
+public struct PawnIntent : IComponent, IEquatable<PawnIntent>
 {
     [Transient] public Vector2 Move;       // rewritten by a controller every tick
     public float Yaw, Pitch;               // radians: the authoritative facing, so it *is* saved
     [Transient] public ActionMask Held;    // bits over runtime action ids: meaningless next run
     [Transient] public ActionMask Pressed; // and a single-tick edge besides
+
+    public readonly bool Equals(PawnIntent other) =>
+        Move.Equals(other.Move) && Yaw.Equals(other.Yaw) && Pitch.Equals(other.Pitch)
+        && Held.Equals(other.Held) && Pressed.Equals(other.Pressed);
+
+    public readonly override bool Equals(object? obj) => obj is PawnIntent other && Equals(other);
+
+    public readonly override int GetHashCode() => HashCode.Combine(Move, Yaw, Pitch, Held, Pressed);
 }
 
 // Commands phase: the local player's command becomes intent (16 §3.1, 08 §3.4). AI controllers write

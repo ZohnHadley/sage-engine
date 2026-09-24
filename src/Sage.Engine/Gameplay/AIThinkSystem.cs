@@ -183,21 +183,26 @@ public sealed class AIThinkSystem : ISystem
 
     // Which schedule fits what it knows. Code, like HL1's GetSchedule; utility scoring or a behaviour
     // tree can replace this without touching the tasks (16 §3.4).
+    // `Has`, not `Enum.HasFlag`: the framework method takes its argument as a boxed `Enum`, and the
+    // JIT only sometimes sees through it. Measured with R18's scale test, the ten `HasFlag` calls a
+    // think used to cost about 23 bytes per creature per tick — the whole of what the AI allocated.
+    private static bool Has(ulong conditions, AICondition flag) => (conditions & (ulong)flag) != 0;
+
     private static void ChooseSchedule(ref AIState state)
     {
-        var conditions = (AICondition)state.Conditions;
+        ulong conditions = state.Conditions;
         // Reach first, then magic, then closing the distance. A creature that can swing and is close
         // enough swings — cheaper, and no mana — and one that cannot swing at all casts instead of
         // walking into reach to do nothing, which is what a caster with no `Melee` used to do.
         RecordId wanted =
-            conditions.HasFlag(AICondition.Casting) ? Schedules.Cast :
-            conditions.HasFlag(AICondition.EnemyInMeleeRange) && conditions.HasFlag(AICondition.CanMelee) ? Schedules.Attack :
-            conditions.HasFlag(AICondition.CanCastAtEnemy) ? Schedules.Cast :
+            Has(conditions, AICondition.Casting) ? Schedules.Cast :
+            Has(conditions, AICondition.EnemyInMeleeRange) && Has(conditions, AICondition.CanMelee) ? Schedules.Attack :
+            Has(conditions, AICondition.CanCastAtEnemy) ? Schedules.Cast :
             // Between casts, a creature that cannot swing holds where it is rather than charging: it
             // is already in range, and its spell is seconds away. Charging is what it did before this
             // line existed, and it walked a pure caster into melee reach to stand there empty-handed.
-            conditions.HasFlag(AICondition.SpellComingBack) && !conditions.HasFlag(AICondition.CanMelee) ? Schedules.Hold :
-            conditions.HasFlag(AICondition.SeeEnemy) ? Schedules.Chase :
+            Has(conditions, AICondition.SpellComingBack) && !Has(conditions, AICondition.CanMelee) ? Schedules.Hold :
+            Has(conditions, AICondition.SeeEnemy) ? Schedules.Chase :
             Schedules.Idle;
 
         if (state.Schedule == wanted) return;

@@ -100,6 +100,8 @@ public sealed class AIDebugSystem : ISystem
     private readonly CVar<bool> _enabled;
     private static readonly AIProfileRecord Fallback = new();
 
+    private static bool Has(ulong conditions, AICondition flag) => (conditions & (ulong)flag) != 0;
+
     private const float DrawRange = 35f;
 
     public AIDebugSystem(World world, RecordStore records, CVar<bool> enabled)
@@ -127,7 +129,7 @@ public sealed class AIDebugSystem : ISystem
                                               out AIProfileRecord found) ? found : Fallback;
                 Vector3 eye = t[n].LocalPosition + Vector3.UnitY * 1.4f;
                 float yaw = SageMath.YawOf(t[n].LocalRotation);
-                var conditions = (AICondition)s[n].Conditions;
+                ulong conditions = s[n].Conditions;   // bits, not Enum.HasFlag: it boxes (R18)
 
                 // The cone it can see through, on the ground, and how far it can see.
                 _debug.Cone(t[n].LocalPosition + Vector3.UnitY * 0.05f, yaw, profile.SightAngleDegrees,
@@ -137,15 +139,15 @@ public sealed class AIDebugSystem : ISystem
                 if (!s[n].Target.IsNull && world.IsAlive(s[n].Target))
                 {
                     Vector3 target = world.Get<Transform>(s[n].Target).LocalPosition + Vector3.UnitY * 1.2f;
-                    uint colour = conditions.HasFlag(AICondition.EnemyInMeleeRange) ? DebugColour.Red
-                        : conditions.HasFlag(AICondition.SeeEnemy) ? DebugColour.Yellow
+                    uint colour = Has(conditions, AICondition.EnemyInMeleeRange) ? DebugColour.Red
+                        : Has(conditions, AICondition.SeeEnemy) ? DebugColour.Yellow
                         : DebugColour.Grey;
                     _debug.Line(eye, target, colour);
                     _debug.Cross(target, 0.2f, colour);
                 }
 
                 // Melee range as a ring, so "why is it standing there?" answers itself.
-                if (conditions.HasFlag(AICondition.SeeEnemy))
+                if (Has(conditions, AICondition.SeeEnemy))
                     _debug.Circle(t[n].LocalPosition + Vector3.UnitY * 0.05f, Vector3.UnitX, Vector3.UnitZ,
                                   profile.MeleeRange, DebugColour.Orange);
 

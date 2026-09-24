@@ -67,11 +67,26 @@ public sealed class PhaseContracts
 
     private sealed class Contract<T> : IPhaseContract where T : struct, IComponent
     {
+        // A component under contract is compared after every phase, every tick, for every entity that
+        // has one. `EqualityComparer<T>.Default` on a struct **without** `IEquatable<T>` falls back to
+        // `ValueType.Equals(object)` and boxes both sides each time — about 3 KB per character per tick
+        // when R18's scale test measured it. Cached here, and reported once, so the next component put
+        // under a contract finds out from a warning rather than from a profiler.
+        private static readonly EqualityComparer<T> Comparer = EqualityComparer<T>.Default;
+        private static readonly bool Typed = typeof(IEquatable<T>).IsAssignableFrom(typeof(T));
+
         private readonly Phase _finalAfter;
         private readonly Dictionary<int, T> _snapshot = new();   // entity id → value as it was left
         private ArchetypeQuery<T>? _query;
 
-        public Contract(Phase finalAfter) => _finalAfter = finalAfter;
+        public Contract(Phase finalAfter)
+        {
+            _finalAfter = finalAfter;
+            if (!Typed)
+                Log.Once(LogCat.World, LogLevel.Warn, $"contract-boxing:{typeof(T).Name}",
+                    $"{typeof(T).Name} is under a phase contract but does not implement IEquatable<{typeof(T).Name}>, " +
+                    "so each check boxes it twice. Implement it: the check runs every phase, every tick (03 §3.5).");
+        }
 
         public Type Component => typeof(T);
 
@@ -99,7 +114,7 @@ public sealed class PhaseContracts
             {
                 if (!_snapshot.TryGetValue(entity.Id, out var was)) continue;   // it only just appeared
                 var now = entity.GetComponent<T>();
-                if (EqualityComparer<T>.Default.Equals(was, now)) continue;
+                if (Comparer.Equals(was, now)) continue;
 
                 // Ensure, not Dev: a violated contract is a real bug but not a reason to stop the
                 // game, and it is reported once per site so a broken tick does not drown the log.

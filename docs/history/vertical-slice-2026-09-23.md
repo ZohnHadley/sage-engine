@@ -26,7 +26,7 @@ This is the retrospective on the slice as a whole. Its two companions:
 | Built over | 2026-09-22 and 2026-09-23 (the engine's solution split was 2026-09-21) |
 | Roadmap items closed or started | R1–R5, R7–R11, R13–R16; F1–F3, F5–F7, F13, F18–F22, F27, F31, F32 |
 | Still open from the milestone's own list | **F17** (entity I/O) and **F28–F30** (the editor) — neither was needed to close it; the console and hot reload stood in |
-| Tests | 360, all headless, no window and no graphics device |
+| Tests | 365, all headless, no window and no graphics device |
 
 The slice did not need the editor, and that is the single most useful thing it proved about the plan.
 Records with hot reload plus a console that can spawn, dump, cast, give, save and script input covered
@@ -54,7 +54,7 @@ is an effect that grants a tag. A creature's mana regeneration is an infinite ef
 authored in the Sandbox's own content with no engine change. Nothing anywhere subtracts a pool
 directly, so saves store which effects are running and get all of it back for free.
 
-**A simulation with no MonoGame dependency.** 360 headless tests, including three that build *two
+**A simulation with no MonoGame dependency.** 365 headless tests, including three that build *two
 engines in turn* — a save written by the first and loaded by the second, with the content changed in
 between — which is the only way to prove that what a save stores survives a content update. The
 two-*process* version of the same check is a pair of launch-argument runs against the real game. Both
@@ -163,7 +163,7 @@ test fixtures define two more record types, and several more modules and systems
 | | Count | Notes |
 |---|---|---|
 | Record types (`[Record]`) | **17** | 16 in `Sage.Engine`, 1 in the Sandbox (`scene`). Every definition in the game is one of these |
-| Console commands | **70** | across 16 files; the biggest groups are core (12), gameplay (10), input scripting (9) and entities/systems (8) |
+| Console commands | **72** | across 16 files; the biggest groups are core (12), gameplay (10), input scripting (9) and entities/systems (8) |
 | Cvars | **35** | 10 core, 5 host, 5 renderer, 4 gameplay, 2 streaming, the rest one or two per subsystem |
 | Input actions | **18** | 10 for play (`Move`, `Look`, `Jump`, `Crouch`, `Run`, `Attack`, `Use`, `Cast`, `Menu`, `ToggleConsole`) and 8 for screens (`MenuUp`/`MenuDown`/`MenuConfirm`/`MenuAlternate`/`MenuBack`, `Inventory`, `Spellbook`, `Spellmaker`) |
 | Logical modules (`IModule`) | **11** | 8 in the engine, 1 client, 2 game (simulation + client halves) |
@@ -172,9 +172,9 @@ test fixtures define two more record types, and several more modules and systems
 | Game events (`[GameEvent]`) | **7** | `Damaged`, `Used`, `Said`, `AnimationEvent`, `AbilityCast`, `CastRefused`, `CueTriggered` |
 | Prefab parts | **11** | 9 from engine modules, 1 from the game, 1 client-only — that last one the simulation also declares `Optional`, so a headless run skips it instead of warning |
 | AI tasks | **5** | `Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`, `CastSpell` |
-| Tests | **360** | in 32 test files, every one headless |
+| Tests | **365** | in 33 test files, every one headless |
 
-Two of these are worth watching rather than celebrating. **70 console commands** is the interface the
+Two of these are worth watching rather than celebrating. **72 console commands** is the interface the
 slice was authored through, and it is why F38 (a screen) kept not being urgent. **29 systems across 13
 phases** (nine fixed, four frame) is where a parallel scheduler starts to be worth something, and it is
 the reason R16's remaining half — per-system write declarations — is the prerequisite for it.
