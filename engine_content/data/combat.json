@@ -16,6 +16,9 @@
     "id": "physical",
     "resist": "armor",
     "effect": "damage"
+    // What landing sounds like is `sound` (11 §3, F4), and the engine leaves it empty on purpose: it
+    // ships no audio, so naming an id here would point at a record that does not exist. A game fills
+    // it in by patching this record — see the Sandbox's scene.json.
   },
   {
     "type": "damage_type",

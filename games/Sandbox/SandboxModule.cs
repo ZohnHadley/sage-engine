@@ -27,6 +27,7 @@ public sealed class SandboxModule : IGameModule
         // mesh at run time, which needs the renderer, so it lives in Sandbox.Client — here the
         // simulation only says that going without it is fine, which is what a dedicated server does.
         ctx.Engine.Prefabs.Optional("box_mesh");
+        ctx.Engine.Prefabs.Optional("audio");     // the client registers it (11 §3); headless has no ears
         ctx.Engine.Prefabs.Register("hop", (world, entity, _, _) =>
             world.Add(entity, new Hop { BaseY = world.Get<Transform>(entity).LocalPosition.Y }));
     }

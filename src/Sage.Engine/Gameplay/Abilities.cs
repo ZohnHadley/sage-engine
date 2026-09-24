@@ -80,6 +80,11 @@ public sealed class AbilityRecord
 public sealed class CueRecord
 {
     public string Description = "";
+
+    // What it sounds like (11 §3, F4). The simulation raises the cue and never learns this field
+    // exists; the client's audio system reads it, so a mod can give a spell a new noise without
+    // touching the spell.
+    public RecordId Sound;
 }
 
 // What an entity can cast, and what it is casting. `Known` is a list because a spellbook is a list;

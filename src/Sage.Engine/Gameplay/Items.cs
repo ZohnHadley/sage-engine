@@ -30,6 +30,7 @@ public sealed class ItemRecord
     public float Weight = 1f;               // kg, against the carrier's capacity
     public int Value;                       // gold; shops are later
     public int MaxStack = 1;                // > 1 for arrows, potions and the like
+    public RecordId Sound;                  // picking it up (11 §3, F4)
 
     public string Describe(RecordId id) => string.IsNullOrEmpty(Label) ? id.Name : Label;
 }

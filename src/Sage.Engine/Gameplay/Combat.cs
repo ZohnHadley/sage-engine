@@ -27,6 +27,8 @@ public readonly record struct DamageInfo(
 [Record("damage_type")]
 public sealed class DamageTypeRecord
 {
+    public RecordId Sound;                  // what landing this sounds like (11 §3, F4)
+
     public RecordId Resist;   // attribute read as a percentage, 0..95, that reduces this
     public RecordId Effect;   // the effect applied to the victim, scaled by the damage
                               // (element tags and cue ids arrive with cues, F21: a field nothing

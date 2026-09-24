@@ -33,9 +33,10 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | World | An unbounded grid of 1024 m sectors: terrain streams in and out in rings around the player, and the simulation rebases so nothing is ever far from its own origin — verified 120 km out |
 | Physics | BepuPhysics per world behind handles, layers, raycast/sweep/overlap, triggers, and our own kinematic character controller |
 | Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts |
+| Audio | Positional one-shots from the events the simulation already raised, looping sources, volume buses and voice limiting — the mixer is engine-side and tested headlessly, the noise is the client's |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 365 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 380 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -101,6 +102,7 @@ searches both. Some worth knowing:
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
 | `asset_list`, `asset_reload [path]` | what art is loaded; reload one file or all of it |
 | `save [slot]`, `load [slot]`, `saves` | write and read a save; JSON under `user/sandbox/saves/`, so you can read it |
+| `snd_stats`, `snd_play boom_fire`, `snd_volume 0.5` | what is playing with its gain and pan, an audition of one sound, and the buses |
 | `ent_dump watcher`, `ent_types`, `ent_spawn goblin` | every component on a thing with its values; the names a prefab can use; place one in front of you |
 
 Anything can also be passed on the command line: `+sv_cheats 1 "+hurt 30"` runs them once the world

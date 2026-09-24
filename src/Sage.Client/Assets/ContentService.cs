@@ -30,6 +30,7 @@ public sealed class ContentService : IDisposable
     private readonly Dictionary<AssetPath, Texture2D?> _textures = new();
     private readonly Dictionary<AssetPath, Model?> _models = new();
     private readonly Dictionary<AssetPath, SpriteFont?> _fonts = new();
+    private readonly Dictionary<AssetPath, Microsoft.Xna.Framework.Audio.SoundEffect?> _sounds = new();
 
     internal ContentService(ClientHost host, VirtualFileSystem vfs)
     {
@@ -171,6 +172,35 @@ public sealed class ContentService : IDisposable
             }
         }
         return _effects[path] = effect;
+    }
+
+    // A WAV through the VFS (11 §3, 05 §3.2). `SoundEffect.FromStream` takes PCM wave data, which is
+    // why v1 is WAV: OGG needs a decoder library, and that decision is still open (05).
+    public Microsoft.Xna.Framework.Audio.SoundEffect? LoadSound(AssetPath path)
+    {
+        if (_sounds.TryGetValue(path, out var sound)) return sound;
+        sound = null;
+
+        if (_vfs.Which(path.Path) is not { } mount)
+        {
+            Log.Once(LogCat.Audio, LogLevel.Warn, $"sound:{path}", $"Sound '{path}' not found in any mount");
+        }
+        else
+        {
+            try
+            {
+                using var stream = mount.Open(path.Path);
+                sound = Microsoft.Xna.Framework.Audio.SoundEffect.FromStream(stream);
+                sound.Name = path.ToString();
+                Log.Debug(LogCat.Audio, $"Loaded sound {path} ({sound.Duration.TotalSeconds:F2}s) from {mount.Name}");
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException)
+            {
+                // A missing or unreadable sound costs the sound, not the frame (11 §8).
+                Log.Once(LogCat.Audio, LogLevel.Error, $"sound-load:{path}", $"Sound '{path}': {ex.Message}");
+            }
+        }
+        return _sounds[path] = sound;
     }
 
     public Texture2D? LoadTexture(AssetPath path)

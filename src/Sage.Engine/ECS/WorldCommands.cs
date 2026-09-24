@@ -64,6 +64,22 @@ public static class WorldCommands
 
         // What is actually on an entity: the answer to "why is this thing not moving" without a
         // debugger (engine review 2026-09-23, item 8).
+        cvars.RegisterCommand("ent_destroy", CVarFlags.Cheat,
+            "ent_destroy <name>: remove every entity with this name, to see what depends on it.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "ent_destroy <name>"); return; }
+            int destroyed = 0;
+            foreach (var world in engine.Worlds)
+                foreach (var entity in world.Query<Transform>().Entities.ToEntityList())
+                {
+                    if (!World.Describe(entity).Contains(a[0], StringComparison.OrdinalIgnoreCase)) continue;
+                    world.Destroy(entity);
+                    destroyed++;
+                }
+            foreach (var world in engine.Worlds) world.FlushCommands();
+            Log.Info(LogCat.Console, destroyed == 0 ? $"nothing named '{a[0]}'" : $"destroyed {destroyed}");
+        });
+
         cvars.RegisterCommand("ent_dump", CVarFlags.None,
             "ent_dump <id|name>: every component on an entity, with its field values.", a =>
         {

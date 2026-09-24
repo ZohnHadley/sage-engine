@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -28,6 +29,9 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
     private InputActions? _actions;
+    private AudioMixer? _mixer;
+    private IAudioBackend? _audio;
+    private CVar<bool>? _soundEnabled;
     private InputDevices? _devices;
     private ActionRegistry? _actionIds;
 
@@ -36,6 +40,16 @@ public sealed class ClientModule : IModule
         ctx.Engine.Records.Register<MaterialRecord>();
         ctx.Engine.Records.Register<InputMapRecord>();
         ctx.Engine.Records.Register<SpriteSheetRecord>();
+        ctx.Engine.Records.Register<SoundRecord>();
+
+        // A thing that hums: `"audio": { "sound": "fire_loop", "loop": true }` on any prefab. The
+        // component is the engine's, so a headless run carries it and simply never plays it.
+        ctx.Engine.Prefabs.Register("audio", (world, entity, options, where) =>
+        {
+            var o = PrefabParts.Read<AudioOptions>(world, options, "audio", where);
+            if (o.Sound.IsEmpty) { Log.Error(LogCat.Records, $"{where}: audio needs a \"sound\""); return; }
+            world.Add(entity, new AudioSource { Sound = o.Sound, Loop = o.Loop, Volume = o.Volume <= 0f ? 1f : o.Volume });
+        });
 
         // The client's own actions (08 §3.2); the gameplay ones (Move, Jump, Crouch...) belong to the
         // gameplay module, so a headless server registers the same ids. Bindings for all of them are
@@ -66,6 +80,45 @@ public sealed class ClientModule : IModule
             "Draw the crosshair while a camera rig has the view (13 §3).");
         _assetHotReload = ctx.Engine.CVars.Register("asset_hotreload", BuildInfo.IsDevBuild && ctx.Engine.Core.Developer.Value >= 1,
             CVarFlags.DevOnly, "Reload textures and compiled effects when they change on disk (05 §3.6).");
+
+        // Audio (11 §3, F4). The buses are cvars because that is what a volume slider writes to, and
+        // they are archived because nobody wants to set them twice.
+        _soundEnabled = ctx.Engine.CVars.Register("snd_enabled", true, CVarFlags.Archive,
+            "Play sounds at all. The mixer still runs when this is off, so nothing downstream changes.");
+        _mixer = new AudioMixer();
+        RegisterBus(ctx, "snd_volume", AudioBus.Master, "Everything.");
+        RegisterBus(ctx, "snd_sfx", AudioBus.Sfx, "Impacts, spells, footsteps.");
+        RegisterBus(ctx, "snd_music", AudioBus.Music, "Music.");
+        RegisterBus(ctx, "snd_ui", AudioBus.Ui, "Screens and menus.");
+        RegisterBus(ctx, "snd_ambient", AudioBus.Ambient, "Waterfalls, wind, rooms.");
+        RegisterBus(ctx, "snd_voice", AudioBus.Voice, "Speech.");
+
+        var voices = ctx.Engine.CVars.Register("snd_maxvoices", 32, CVarFlags.Archive,
+            "How many sounds may play at once; past it the quietest is stolen (11 §3).");
+        voices.Changed += _ => _mixer!.MaxVoices = Math.Max(voices.Value, 1);
+        _mixer.MaxVoices = Math.Max(voices.Value, 1);
+
+        ctx.Engine.CVars.RegisterCommand("snd_stats", CVarFlags.None,
+            "What is playing, and what the mixer has refused or stolen.", _ =>
+        {
+            Log.Info(LogCat.Console, $"{_mixer!.Playing} voice(s) playing, backend {_audio?.Playing ?? 0}; " +
+                                     $"{_mixer.Refused} refused, {_mixer.Stolen} stolen since the last reset");
+            foreach (var voice in _mixer.Voices)
+                Log.Info(LogCat.Console, $"  {voice.Sound,-28} gain {voice.Gain:F2} pan {voice.Pan,5:F2} " +
+                                         $"{(voice.Loop ? "loop" : "one-shot")}{(voice.Stopping ? " (stopping)" : "")}");
+            _mixer.ResetStats();
+        });
+
+        ctx.Engine.CVars.RegisterCommand("snd_play", CVarFlags.Cheat,
+            "snd_play <sound>: play a sound record at the listener, to hear what it is.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "snd_play <sound>"); return; }
+            var id = ctx.Engine.Records.Resolve("sound", a[0]);
+            if (id.IsEmpty) return;
+            ctx.Engine.Records.TryGet(id, out SoundRecord? record);
+            var voice = _mixer!.Play(id, record, _mixer.ListenerPosition, positional: false);
+            Log.Info(LogCat.Console, voice.IsValid ? $"playing {id}" : $"{id} was refused (see snd_stats)");
+        });
 
         ctx.Engine.CVars.RegisterCommand("asset_reload", CVarFlags.DevOnly,
             "asset_reload [path]: reload one loaded asset, or every loaded asset.", a =>
@@ -111,6 +164,9 @@ public sealed class ClientModule : IModule
         // way records keep theirs.
         if (BuildInfo.IsDevBuild) _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
         _actions = ctx.Get<InputActions>();   // the host provides it; screens navigate with it (13 §3)
+        // A real backend where there is a device, and a silent one otherwise: "no audio" is a
+        // configuration rather than a branch through the game's code (11 §3).
+        _audio = CreateBackend();
         _actionIds = ctx.Engine.Actions;
         _devices = ctx.Get<InputDevices>();   // typed characters for a screen's field (13 §3)
     }
@@ -132,6 +188,7 @@ public sealed class ClientModule : IModule
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
         world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
+        world.AddSystem(new AudioSystem(world, _mixer!, _audio!, _records!, _soundEnabled!), Phase.FrameUpdate);
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
@@ -140,8 +197,34 @@ public sealed class ClientModule : IModule
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!), Phase.FrameUpdate, RunCondition.DevOnly);
     }
 
+    private sealed class AudioOptions { public RecordId Sound; public bool Loop = true; public float Volume; }
+
+    private IAudioBackend CreateBackend()
+    {
+        try
+        {
+            // Touching the device is what finds out whether there is one: a machine with no sound card,
+            // a headless CI runner and a locked-down audio session all throw here rather than earlier.
+            _ = Microsoft.Xna.Framework.Audio.SoundEffect.MasterVolume;
+            return new MonoGameAudioBackend(_content!);
+        }
+        catch (Exception ex) when (ex is Microsoft.Xna.Framework.Audio.NoAudioHardwareException or InvalidOperationException)
+        {
+            Log.Warn(LogCat.Audio, $"No audio device ({ex.GetType().Name}): the game runs silent.");
+            return new NullAudioBackend();
+        }
+    }
+
+    private void RegisterBus(ModuleContext ctx, string name, AudioBus bus, string what)
+    {
+        var cvar = ctx.Engine.CVars.Register(name, 1f, CVarFlags.Archive, $"Volume, 0..1. {what}", 0f, 1f);
+        cvar.Changed += _ => _mixer!.SetBusVolume(bus, cvar.Value);
+        _mixer!.SetBusVolume(bus, cvar.Value);
+    }
+
     public void Shutdown()
     {
+        _audio?.Dispose();
         _watcher?.Dispose();
         _ui?.Dispose();
         _renderer?.Dispose();
