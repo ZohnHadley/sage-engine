@@ -1,11 +1,9 @@
 using System;
 using System.Diagnostics;
 using Friflo.Engine.ECS;
-using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using MonoGame.ImGuiNet;
 
 namespace sage_engine;
 
@@ -27,28 +25,24 @@ public class Game1 : Game
     private World world;
     private RecordHotReload recordHotReload;
     private CVar<bool> recHotReload;
-    private CVar<bool> showEntities;
-    private CVar<bool> camFree;
+
 
     private readonly GraphicsDeviceManager graphics;
     private GraphicsDevice graphicsDevice;
-    private ImGuiRenderer guiRenderer;
-    private EditorManager editorManager;
     private HostCVars hostCVars;
     private InputDevices devices;
     private InputActions actions;
     private readonly CommandLatch latch = new CommandLatch();
     private ActionId moveAction, lookAction, menuAction, toggleConsoleAction;
     private PlayerInput playerInput;
-    private DevCamera cam;
     private ActiveCamera activeCamera;
-    private EditorUI editorUI;
-    private EntityOutlinerWindow entityOutliner;
-    private EntityInspectorWindow entityInspector;
-    private EditorDocument document;
-    private readonly EditorSelection selection = new();
-    private DevConsoleWindow console;
-    private StatOverlay stats;
+
+#if SAGE_DEV
+    // The console, the overlays, the free camera and the editor — everything a developer sees and a
+    // player does not (15 §3, F28). A Shipping build has no such field, and references neither
+    // `Sage.Editor` nor ImGui.
+    private DevTools dev;
+#endif
 
     private readonly FixedStepClock clock = new FixedStepClock();
     private readonly Stopwatch frameClock = new Stopwatch();
@@ -74,8 +68,9 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        editorManager = new EditorManager();
-        editorManager.SetGraphicsDeviceManager(graphics, 800, 410);
+        graphics.PreferredBackBufferWidth = 800;
+        graphics.PreferredBackBufferHeight = 410;
+        graphics.ApplyChanges();
         graphicsDevice = graphics.GraphicsDevice;
 
         // Input (08): devices, then actions (their bindings are built when the records load).
@@ -91,23 +86,15 @@ public class Game1 : Game
         menuAction = engine.Actions.Get("Menu");
         toggleConsoleAction = engine.Actions.Get("ToggleConsole");
 
-        cam = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0));
-        cam.Position = new Vector3(0, 0, 1);
-
-        guiRenderer = new ImGuiRenderer(this);
-
-
-        // Developer console (`~`), `stat` overlays and loop cvars; see docs/design/02 and 01 §3.2, §5.2.
+        // Loop cvars; see docs/design/01 §3.2, §5.2.
         hostCVars = new HostCVars(cvars);
         hostCVars.VSync.Changed += _ => ApplyVSync();
-        camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
-            "Fly the editor camera even while a player pawn owns the view (16 §3.2).");
-        showEntities = cvars.Register("ui_entities", true, CVarFlags.DevOnly | CVarFlags.Archive,
-            "Show the entity list window. It allocates per listed entity per frame (TODO #41).");
         recHotReload = cvars.Register("rec_hotreload", engine.Core.Developer.Value >= 1, CVarFlags.DevOnly,
             "Reload record files (data/**/*.json) when they change on disk.");
-        console = new DevConsoleWindow(cvars, engine.Core);
-        stats = new StatOverlay(cvars, engine.Core);
+
+#if SAGE_DEV
+        dev = new DevTools(this, engine, devices, actions);
+#endif
         cvars.RegisterCommand("quit", CVarFlags.None, "quit [seconds]: exit now, or after this long.", a =>
         {
             // A delay, because a launch line that says `+quit 30` means "run for thirty seconds" to
@@ -121,18 +108,6 @@ public class Game1 : Game
                 return;
             }
             Exit();
-        });
-        cvars.RegisterCommand("cam_set", CVarFlags.DevOnly, "cam_set <x> <y> <z> [yaw] [pitch]: place the editor camera (degrees).", a =>
-        {
-            if (a.Count < 3 || !float.TryParse(a[0], out float x) || !float.TryParse(a[1], out float y) || !float.TryParse(a[2], out float z))
-            {
-                Log.Warn(LogCat.Console, "cam_set <x> <y> <z> [yaw] [pitch]");
-                return;
-            }
-            cam.Position = new Vector3(x, y, z);
-            if (a.Count >= 4 && float.TryParse(a[3], out float yaw))
-                cam.SetLook(yaw, a.Count >= 5 && float.TryParse(a[4], out float pitch) ? pitch : 0f);
-            Log.Info(LogCat.Console, $"camera at {cam.Position}");
         });
         cvars.RegisterCommand("screenshot", CVarFlags.None, "screenshot [delay]: save a frame as a PNG in the user folder's screenshots/, now or after `delay` seconds.", a =>
             screenshotAt = a.Count > 0 && float.TryParse(a[0], out float delay) ? clock.RealTime + delay : 0);
@@ -154,51 +129,12 @@ public class Game1 : Game
         engine.Modules.StartAll();
         world = engine.CreateWorld("main");
 
-        // The editor's free camera keeps its own position, so it has to be told when the world moves
-        // under it (R6): without this, `cam_free` after a rebase leaves the camera a sector behind
-        // whatever it was looking at. This is what `Origin.Rebased` is for.
-        world.Origin().Rebased += offset => cam.Position += new Vector3(offset.X, offset.Y, offset.Z);
         activeCamera = world.Resources.Get<ActiveCamera>();
         playerInput = world.Resources.Get<PlayerInput>();
-        // The editor's document, outliner and inspector (15 §3, F28). They are per world because a
-        // document is opened *into* one; the editor host will own several one day (play-in-editor).
-        document = new EditorDocument(engine);
-        // Every one of these is a menu item as well, and that is the rule rather than a convenience: a
-        // menu a script cannot press is a feature that cannot be checked the way the rest of this engine
-        // is checked (02 §9, and every scripted run in the repository).
-        cvars.RegisterCommand("doc_new", CVarFlags.DevOnly, "doc_new: start an empty placements document.",
-            _ => document.New(world, NamespaceOfGame()));
 
-        cvars.RegisterCommand("doc_open", CVarFlags.DevOnly, "doc_open <id>: open a placements document.", a =>
-        {
-            if (a.Count == 0) { Log.Warn(LogCat.Console, "doc_open <id>   (see rec_list placements)"); return; }
-            var id = engine.Records.Resolve("placements", a[0]);
-            if (!id.IsEmpty) document.Open(world, id);
-        });
-
-        cvars.RegisterCommand("doc_save", CVarFlags.DevOnly, "doc_save: write the open document back to its file.",
-            _ => document.Save(world));
-
-        cvars.RegisterCommand("doc_close", CVarFlags.DevOnly, "doc_close: close the document, removing what it placed.",
-            _ => document.Close(world));
-
-        cvars.RegisterCommand("doc_status", CVarFlags.None, "doc_status: what is open, and whether it is saved.",
-            _ => Log.Info(LogCat.Console, document.IsOpen
-                ? $"{document.Title} — {(document.Path.Length > 0 ? document.Path : "never saved")}"
-                : "no document open"));
-
-        cvars.RegisterCommand("ent_select", CVarFlags.DevOnly, "ent_select <name>: select an entity for the inspector.", a =>
-        {
-            if (a.Count == 0) { selection.Clear(); Log.Info(LogCat.Console, "selection cleared"); return; }
-            var entity = world.FindByName(a[0]);
-            if (entity.IsNull) { Log.Warn(LogCat.Console, $"ent_select: no entity named '{a[0]}'"); return; }
-            selection.Select(entity);
-            Log.Info(LogCat.Console, $"selected {World.Describe(entity)}");
-        });
-
-        entityOutliner = new EntityOutlinerWindow(world, selection);
-        entityInspector = new EntityInspectorWindow(world, engine.Components, selection, document);
-        editorUI = new EditorUI(world, document);
+#if SAGE_DEV
+        dev.OnWorldCreated(world);
+#endif
         runLaunchCommands();   // +args last, with the world up (Program.cs)
 
         base.Initialize();
@@ -220,7 +156,9 @@ public class Game1 : Game
 
     protected override void LoadContent()
     {
-        guiRenderer.RebuildFontAtlas();
+#if SAGE_DEV
+        dev.LoadContent();
+#endif
         base.LoadContent();
     }
 
@@ -237,35 +175,47 @@ public class Game1 : Game
 
         // Input (08 §5): devices → contexts (the console's; ImGui's capture from its last frame) → actions.
         devices.Poll(IsActive);   // input the window is not the target of is not input (#60)
-        var io = ImGui.GetIO();
+#if SAGE_DEV
+        bool uiWantsMouse = dev.WantsMouse, uiWantsKeyboard = dev.WantsKeyboard;
+#else
+        const bool uiWantsMouse = false, uiWantsKeyboard = false;
+#endif
         actions.SetActive(InputContext.Editor, true);   // the editor host (no Editor map yet: nothing consumed)
-        actions.SetActive(InputContext.Console, console.IsOpen);
-        actions.UiWantsKeyboard = io.WantCaptureKeyboard;
-        actions.UiWantsMouse = io.WantCaptureMouse;
+#if SAGE_DEV
+        actions.SetActive(InputContext.Console, dev.ConsoleIsOpen);
+#else
+        actions.SetActive(InputContext.Console, false);
+#endif
+        actions.UiWantsKeyboard = uiWantsKeyboard;
+        actions.UiWantsMouse = uiWantsMouse;
         actions.Update(realDt);
 
         // Menu closes the console first; otherwise it quits (until there is a menu).
-        if (actions.Pressed(toggleConsoleAction)) console.Toggle();
+#if SAGE_DEV
+        if (actions.Pressed(toggleConsoleAction)) dev.ToggleConsole();
+#endif
         if (actions.Pressed(menuAction))
         {
-            if (console.IsOpen) console.Close();
+#if SAGE_DEV
+            if (dev.ConsoleIsOpen) dev.CloseConsole();
             else Exit();
+#else
+            Exit();
+#endif
         }
 
         // Everything since the last tick goes into the next PlayerCommand; look applies at frame rate (08 §3.4).
         latch.AddFrame(actions.HeldMask, actions.PressedMask, actions.ReleasedMask, actions.Axis2(moveAction));
         latch.AddLook(actions.Axis2(lookAction));
 
-        // The editor camera runs at the display rate, not the tick rate (smooth at any refresh rate).
-        // `cam_free` switches camera rigs off (ActiveCamera.RigEnabled); otherwise a rig that drove the
-        // camera this frame (DrivenByRig) keeps it.
-        cam.Update(gameTime);
-        activeCamera.RigEnabled = !camFree.Value;
-        if (!activeCamera.DrivenByRig)
-        {
-            activeCamera.Position = cam.Position.ToNumerics();
-            activeCamera.Rotation = cam.Rotation.ToNumerics();
-        }
+        // The free camera runs at the display rate, not the tick rate (smooth at any refresh rate), and
+        // hands the camera back to a rig that claimed it. Without the dev tools a rig is the only thing
+        // that drives the camera, which is what a played game wants.
+#if SAGE_DEV
+        dev.Update(gameTime, activeCamera);
+#else
+        activeCamera.RigEnabled = true;
+#endif
         if (recHotReload.Value) recordHotReload?.Poll();
 
         step = clock.Advance(realDt, hostCVars.TickRate.Value, hostCVars.MaxFrameTime.Value, hostCVars.TimeScale.Value);
@@ -300,19 +250,10 @@ public class Game1 : Game
         world.RunFrame(step.FrameDt, step.Alpha, clock.RealTime);
         base.Draw(gameTime);
 
+#if SAGE_DEV
         using (Profiler.Begin("Frame.ImGui"))
-        {
-            guiRenderer.BeginLayout(gameTime);
-            editorUI.Draw(this);
-            if (showEntities.Value)
-            {
-                entityOutliner.Draw();
-                entityInspector.Draw();
-            }
-            console.Draw();
-            stats.Draw();
-            guiRenderer.EndLayout();
-        }
+            dev.Draw(gameTime);
+#endif
 
         if (quitAt >= 0 && clock.RealTime >= quitAt) { quitAt = -1; Exit(); }
 
@@ -327,7 +268,9 @@ public class Game1 : Game
         // Real frame time for the stat overlay.
         float frameSeconds = frameClock.IsRunning ? (float)frameClock.Elapsed.TotalSeconds : 0f;
         frameClock.Restart();
-        stats.EndFrame(frameSeconds);
+#if SAGE_DEV
+        dev.EndFrame(frameSeconds);
+#endif
         Profiler.EndFrame();
     }
 

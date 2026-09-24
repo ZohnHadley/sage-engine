@@ -110,7 +110,9 @@ void RunLaunchCommands()
 int exitCode = 0;
 try
 {
-    _ = typeof(DevConsoleWindow).Assembly;   // Sage.Editor: loaded before the first World (03 §3.1)
+#if SAGE_DEV
+    _ = typeof(DevTools).Assembly;   // Sage.Editor: loaded before the first World (03 §3.1)
+#endif
     using var game = new Game1(engine, ApplyConfig, RunLaunchCommands);
     game.Run();
 }

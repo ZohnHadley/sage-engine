@@ -31,8 +31,13 @@
   <ItemGroup>
     <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
-    <ProjectReference Include="..\Sage.Editor\Sage.Editor.csproj" />
-    <ProjectReference Include="..\..\packages\MonoGame.ImGuiNet-main\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
+    <!--
+      The editor and ImGui are referenced only where `SAGE_DEV` is defined (F28). A Shipping build of the
+      game host therefore contains no editor, no developer console and no ImGui at all — which is what
+      "a game host without the editor" has meant in this file's comments since the beginning.
+    -->
+    <ProjectReference Include="..\Sage.Editor\Sage.Editor.csproj" Condition="'$(Configuration)' != 'Shipping'" />
+    <ProjectReference Include="..\..\packages\MonoGame.ImGuiNet-main\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" Condition="'$(Configuration)' != 'Shipping'" />
   </ItemGroup>
 
   <!-- engine_content/ → Content/ (shaders compiled with dotnet-mgfxc, data and textures copied). -->

@@ -121,11 +121,49 @@ plus any key named after an output (04 §3.4).
 offer keys the importer actually reads; and **kinematic** movers — a door is a moving *static*, which
 does not push what is leaning on it.
 
+## 10b. As built: documents, the outliner and the inspector (F28, 2026-09-24)
+
+**What a document is** was the decision. Brushes are TrenchBroom's (§10a); what a thing *is* belongs to
+its prefab; what is left — and what nothing else could edit — is **where things stand**. So a document is
+a `placements` record: prefab, position, yaw, name. The engine owns the type rather than the editor, so
+the editor is not the only thing that can read what it wrote: `world.SpawnPlacements(id)` is one line in
+a game.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `Placement` / `PlacementsRecord` | `src/Sage.Engine/Content/Placements.cs` | The document's content, and spawning it into a world, reading it back, clearing it |
+| `EditorDocument` | `src/Sage.Engine/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable |
+| `EntityOutlinerWindow` / `EntityInspectorWindow` | `src/Sage.Editor/Screens/` | List and select; edit a component by boxing it, changing a field and writing it back |
+| `DevTools` | `src/Sage.Editor/DevTools.cs` | Everything a developer sees, in one class the host holds behind `SAGE_DEV` |
+
+- **A save goes back to the file the record came from** (`RecordStore.FileOf`), not to a file named after
+  the record. Writing `sandbox:yard` to `yard.json` when it lives in `placements.json` leaves two
+  definitions of one id, which is the single thing the record loader cannot sort out for itself.
+  (tests: SavingWritesWhereTheRecordCameFromRatherThanSomewhereNew, WhatIsSavedIsWhatAGameWillLoad)
+- **It writes the record store's own JSON dialect.** With default options the first save produced
+  `"Prefab"` and `{"X":518,…}` — a file the loader would read only by luck and a person would not
+  recognise as a record at all.
+- **A mount answers `WritablePath`** for a file that does not exist yet, because `PhysicalPath` resolves
+  files that do, and a new document is precisely a file that does not. A zip mount says no.
+- **Every menu item is a console command too** — `doc_open`, `doc_save`, `ent_select` and the rest. A
+  menu a script cannot press is a feature that cannot be checked the way everything else here is, and
+  this feature was verified by pressing those commands and reading the file afterwards.
+- **The host split is a compile-time fact.** A Shipping build references neither `Sage.Editor` nor ImGui:
+  three DLLs beside the exe where a dev build has six. It is not a separate *executable*, which this doc
+  sketched — that is worth doing when the editor wants its own worlds for play-in-editor, its own input
+  maps and a window laid out for editing, and none of those exist yet. What a second exe would buy today
+  is exactly what this buys.
+
+**Not built:** gizmos and picking (F29), undo/redo and the command log (F30), placing a prefab from the
+editor, per-entity overrides, play-in-editor, and an inspector generated from declared metadata rather
+than reflection (09 §3.2). Editing runs against the live world, so `pause 1` before moving things — the
+simulation will otherwise drop a crate while you inspect it.
+
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
-  - open/save a map document;
-  - the outliner;
-  - an editable inspector;
+  - ~~open/save a map document~~ **done (F28)**, as a placements document;
+  - ~~the outliner~~ **done**;
+  - ~~an editable inspector~~ **done**, from reflection until 09's generator;
   - place a prefab;
   - the translate gizmo;
   - undo/redo;

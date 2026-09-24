@@ -422,6 +422,31 @@ how three separate resources in this engine were "saved" and none of them were. 
 
 ---
 
+## 8a. Placing things with the editor
+
+A `placements` record is a list of prefab, position, yaw and name — what stands where — and the editor
+opens, edits and saves one. In a dev build:
+
+```bash
++doc_open yard          # or File → Open; `rec_list placements` shows what there is
++ent_select "a crate"   # or click it in the outliner
++doc_save               # or File → Save: writes back to the file the record came from
+```
+
+The inspector edits the selected entity's components — floats, vectors, flags, names — and anything it
+cannot edit it shows read-only rather than pretending. **Pause first** (`pause 1`): editing runs against
+the live world, so an unpaused crate will fall while you are looking at it.
+
+Your game loads the result with one line:
+
+```csharp
+world.SpawnPlacements(new RecordId("yourgame", "yard"));
+```
+
+None of this exists in a Shipping build, which contains no editor at all.
+
+---
+
 ## 9. Checking your game without playing it
 
 Three tools, in the order you should reach for them:
