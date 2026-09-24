@@ -134,7 +134,7 @@ Four mechanisms, each with a distinct job:
 ### 4.5 Assets, VFS and data records — [05](docs/design/05-assets-and-vfs.md)
 - **VFS with mounts** and a separate writable `user://`. **Asset identity = virtual path**, so mods override by shadowing.
 - **Assets:** `AssetPath` (unloaded, in components) vs `AssetRef<T>` (loaded). **Scopes own lifetimes**; LRU cache; async decode + budgeted GPU upload; placeholders instead of nulls; hot reload.
-- **Formats:** runtime loaders for PNG / glTF / WAV, with **no MGCB** (this also fixes TODO #9).
+- **Formats:** runtime loaders for PNG / glTF / WAV, with **no MGCB** (this also fixes TODO #9). **As built 2026-09-24 (R12):** all three, plus a generated bitmap font; `dotnet-mgfxc` for `.fx` is the only build-time content step left.
 - **One data-record pipeline** for every definition (items, spells, materials, input maps, prefabs…): JSON, namespaced ids, `base` inheritance, **per-field patch merge in load order**, generated validation.
 
 ### 4.6 Rendering — [06](docs/design/06-rendering.md)
@@ -228,7 +228,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
   - step 5: modules, `game.json`, the VFS and records;
   - step 6: Extract → `RenderSnapshot` → material-driven rendering with our own shaders, and input actions → `PlayerCommand`;
   - **the vertical slice starts:** F1 billboard sprites (8 direction groups, sheet records, sprite animation at the tick rate), F13 heightmap terrain (one 1024 m sector, game-provided generator, chunk meshes) F6 physics (BepuPhysics per world, colliders behind handles, queries, triggers, terrain collision) F7 the kinematic character controller with a first-person camera, the first `GameRules` and AI (schedules, perception, a creature that chases and attacks) and F18 attributes/tags/effects — dogfooded by a Sandbox where a player walks the hills, a creature hunts them down, and losing all your health respawns you.
-- **Still to replace:** models are MGCB `.xnb` files until the runtime loaders (R12). Each design doc has a "Mapping from today's code" table. The main moves:
+- **Still to replace:** each design doc has a "Mapping from today's code" table. (Models were MGCB `.xnb` files until R12; they are `.glb` read at runtime now.) The main moves:
 
 | Today | Becomes |
 |---|---|
@@ -239,7 +239,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 | `InputSystem`, listeners | `InputDevices` + actions/contexts + `PlayerCommand` ([08](docs/design/08-input.md)). **Done, step 6** |
 | `DevCamera` | Editor camera rig on actions ([15](docs/design/15-editor.md)) |
 | `EditorUI`, `EntityContextMenuUI` | Editor menu, outliner, generated inspector ([15](docs/design/15-editor.md)) |
-| `UtilAssets`, `Content.mgcb` | `AssetServer` + VFS + runtime loaders ([05](docs/design/05-assets-and-vfs.md)). **Step 5:** `UtilAssets` removed; VFS done; `.xnb` files load through the VFS (`ContentService`) until the runtime loaders (R12) |
+| `UtilAssets`, `Content.mgcb` | `AssetServer` + VFS + runtime loaders ([05](docs/design/05-assets-and-vfs.md)). **Step 5:** `UtilAssets` removed; VFS done. **R12 (2026-09-24):** `Content.mgcb` deleted — models (`.glb`), textures, sounds and the font all load at runtime through `ContentService`. Scopes, ref-counting and async loading are what the `AssetServer` still adds |
 | `Console.WriteLine` | `Log` with categories ([02](docs/design/02-core-services-and-logging.md)) |
 
 **Suggested order** (each step keeps the engine running):
@@ -318,8 +318,8 @@ F23 then taught the same lesson one layer up: a creature that can *plan* a way r
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
 is a cone. Pathfinding without memory is decoration.
 
-What step 8 has left is F24 (factions, dialogue, quests) and R12 (MonoGame 3.8.5 with runtime loaders,
-which retires MGCB). The handoff at
+Step 8 finished with F24 (factions, reputation, dialogue, quests), F39/F40 (particles and weather) and
+R12 — MonoGame 3.8.5.1, runtime loaders, and the end of MGCB. The handoff at
 [`docs/history/handoff-2026-09-24.md`](docs/history/handoff-2026-09-24.md) says where to start.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
@@ -341,10 +341,10 @@ which retires MGCB). The handoff at
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |
 | D8 | Game UI | **Decided 2026-09-23: our own, on `UiDraw`.** ImGui stays dev/editor only. The engine already produced a screen’s *contents* as data (`Panel`), so what a library would have added was a list, a selection and a box — about 300 lines, against a dependency with its own fonts, stylesheets or external layout editor. Gum and Myra stay reasonable answers if screens outgrow lists ([13](docs/design/13-ui.md)) |
 | D9 | Engine licence | Currently **CC0** (`LICENSE`). Recommend **MIT** or **Apache-2.0** (adds a patent grant) if other developers will build commercial games on it. Keep vendored licences (`packages/MonoGame.ImGuiNet-main/LICENSE`). **Needs your decision** |
-| D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; MGCB to be dropped. **As built (2026-09-24): not yet true** — `.fx` goes through mgfxc as decided and textures load at runtime, but **models and the HUD font are still MGCB `.xnb`** (`src/Sage.Host/Content/Content.mgcb`). The runtime loaders are R12; until then this row is a decision, not a description |
+| D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; MGCB dropped. **As built (2026-09-24, R12): true.** Models read from `.glb` by `GltfLoader`, textures and sounds from streams, the HUD font from a generated glyph atlas (13 §3); `Content.mgcb`, the builder task, the `dotnet-mgcb*` tools and every `.xnb` path are gone. `dotnet-mgfxc` remains, for `.fx` only |
 | D11 | Model format for animation | **glTF 2.0** over FBX |
 | D12 | Which game drives development | **Daggerfall-like** (confirmed) |
-| D13 | MonoGame version/backend | **Upgrade 3.8.2 → 3.8.5.x, stay on DesktopGL** (TODO R12). Re-evaluate DesktopVK (new in 3.8.5, intended to replace DesktopGL over the next few years) once it has matured |
+| D13 | MonoGame version/backend | **Done 2026-09-24 (R12): 3.8.5.1 on DesktopGL**, `GraphicsProfile.HiDef`. Re-evaluate DesktopVK (new in 3.8.5, intended to replace DesktopGL over the next few years) once it has matured |
 
 ---
 
@@ -380,6 +380,7 @@ Based on three research passes (classic engines, modern engines, cross-cutting p
 | Events | "Event bus" | **Four mechanisms** with rules; per-reader cursors; typed, load-resolved I/O | Bevy pitfalls; Source I/O's untyped strings; O3DE EBus debugging |
 | Data | JSON definitions | **One record pipeline for everything**, per-field patch merge, `base` inheritance | Bethesda "rule of one" and Warband whole-module lessons; Dungeon Siege templates |
 | Shaders | MGCB for shaders; instancing in v1 | **`dotnet-mgfxc`**, techniques as variants; **CPU-batched sprites in v1**, instancing later | MonoGame docs: GL instancing needs GL 3.2+ and has bug reports; no default params on GL |
+| MonoGame version | 3.8.2, MGCB in the build | **3.8.5.1, `GraphicsProfile.HiDef`, no MGCB** (done 2026-09-24, R12); DesktopVK re-evaluated later (D13) | Survey §3.7; MGCB could not load a file a player or a mod added |
 | Gameplay framework | Module list | `GameRules`, Controller/Pawn/`PawnIntent`, **GAS-like** abilities, **HL1-style AI schedules** | UE Gameplay Framework + GAS; GoldSrc AI |
 | Saves | Versioned fields | Visited-sector rule, tombstones, tagged binary, upgraders, **no behaviour state** | Skyrim Papyrus lesson; protobuf-style versioning |
 | Library status | — | MonoGame 3.8.5.1 (DesktopVK/DX12), Friflo over Arch, Bepu local determinism only | Checked 2026-09 (survey §3.7) |
@@ -388,7 +389,7 @@ Based on three research passes (classic engines, modern engines, cross-cutting p
 **Refinements made while writing the design docs** have been folded back into the plan (`docs/ENGINE_DESIGN_PLAN.md`, "Revisions after approval", A–G), so plan and design agree:
 - **A:** CPU-batched sprites in v1; instancing later (GL bug reports).
 - **B:** sprite techniques `Unlit`/`Lit`/`UnlitBlend`, not a `Billboard` technique.
-- **C:** no MGCB at all; shaders use `dotnet-mgfxc`.
+- **C:** no MGCB at all; shaders use `dotnet-mgfxc`. **Done 2026-09-24 (R12).**
 - **D:** boot order modules `Init` (register) → records → `Start`.
 - **E:** `GlobalTransform` stores poses, not matrices.
 - **F:** sprite sheet data is a simulation-side asset (animation events drive melee hits).

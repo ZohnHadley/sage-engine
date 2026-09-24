@@ -112,40 +112,58 @@ public sealed class Renderer : IDisposable
     // ---- Meshes ----
 
     // The mesh id for an asset path, loading it on first use. Missing → 0, the error mesh (06 §8).
+    //
+    // **Read at runtime** (R12): the file comes off a VFS mount as bytes and becomes buffers here, so a
+    // model can come from a mod, a downloaded asset or a folder somebody dropped a file into — none of
+    // which a build-time content pipeline can see.
     internal int ResolveMesh(AssetPath path)
     {
         if (_meshIds.TryGetValue(path, out int id)) return id;
         id = 0;
-        var model = _content.LoadModel(path);
-        if (model == null)
+
+        var stream = _content.Open(path);
+        if (stream == null)
             Log.Warn(LogCat.Render, $"Mesh '{path}' unavailable; drawing the error mesh");
         else
         {
-            var bones = new Matrix[model.Bones.Count];
-            model.CopyAbsoluteBoneTransformsTo(bones);
-            var parts = new List<MeshPart>();
-            foreach (var mesh in model.Meshes)
+            using (stream)
             {
-                var bone = bones[mesh.ParentBone.Index];
-                foreach (var part in mesh.MeshParts)
+                if (GltfLoader.TryLoad(stream, path.ToString(), out var loaded, out var bounds))
                 {
-                    parts.Add(new MeshPart
+                    var parts = new List<MeshPart>(loaded.Count);
+                    foreach (var (vertices, indices) in loaded)
                     {
-                        VertexBuffer = part.VertexBuffer,
-                        IndexBuffer = part.IndexBuffer,
-                        VertexOffset = part.VertexOffset,
-                        StartIndex = part.StartIndex,
-                        PrimitiveCount = part.PrimitiveCount,
-                        Bone = bone,
-                        Bounds = mesh.BoundingSphere.Transform(bone),
-                    });
-                    Log.Debug(LogCat.Render, $"Mesh {path}: part with {part.NumVertices} vertices, {part.PrimitiveCount} triangles, " +
-                                             $"layout {string.Join(" ", part.VertexBuffer.VertexDeclaration.GetVertexElements().Select(e => $"{e.VertexElementUsage}{e.UsageIndex}"))}");
+                        var vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration,
+                                                  vertices.Length, BufferUsage.WriteOnly);
+                        vb.SetData(vertices);
+                        var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, indices.Length,
+                                                 BufferUsage.WriteOnly);
+                        ib.SetData(indices);
+
+                        parts.Add(new MeshPart
+                        {
+                            VertexBuffer = vb,
+                            IndexBuffer = ib,
+                            VertexOffset = 0,
+                            StartIndex = 0,
+                            PrimitiveCount = indices.Length / 3,
+                            Bone = Matrix.Identity,      // the file's hierarchy is already baked in
+                            Bounds = bounds,
+                        });
+                    }
+
+                    id = _meshes.Count;
+                    // Owned: these buffers are the renderer's, so they are disposed with it. An `.xnb`
+                    // model belonged to the ContentManager, which is the thing that has gone away.
+                    _meshes.Add(new MeshData { Name = path.ToString(), Parts = parts.ToArray(), Owned = true });
+                }
+                else
+                {
+                    Log.Warn(LogCat.Render, $"Mesh '{path}' could not be read; drawing the error mesh");
                 }
             }
-            id = _meshes.Count;
-            _meshes.Add(new MeshData { Name = path.ToString(), Parts = parts.ToArray() });
         }
+
         _meshIds[path] = id;
         return id;
     }

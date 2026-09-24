@@ -171,12 +171,12 @@ public class VfsTests
     public void Lookup_IsCaseInsensitive()
     {
         var fx = new MountFixture();
-        fx.Write("game", "Models/Bunny.XNB", "x");
+        fx.Write("game", "Models/Bunny.GLB", "x");
         fx.Mount("game", "sandbox");
 
-        var path = VirtualPath.Parse("models/bunny.xnb");
+        var path = VirtualPath.Parse("models/bunny.glb");
         Assert.True(fx.Vfs.Exists(path));
-        Assert.True(File.Exists(fx.Vfs.Which(path)!.PhysicalPath(path)));   // Linux: the case-insensitive walk finds Models/Bunny.XNB
+        Assert.True(File.Exists(fx.Vfs.Which(path)!.PhysicalPath(path)));   // Linux: the case-insensitive walk finds Models/Bunny.GLB
         Assert.Single(fx.Vfs.Enumerate(VirtualPath.Parse("MODELS"), "*"));
     }
 

@@ -16,10 +16,25 @@
   <ItemGroup>
     <SageShader Include="$(SageEngineContentDir)shaders\*.fx" />
     <SageShaderInclude Include="$(SageEngineContentDir)shaders\*.fxh" />
-    <None Include="$(SageEngineContentDir)**\*" Exclude="$(SageEngineContentDir)shaders\**"
+    <!--
+      `tools/` is excluded because it makes the content rather than being content: the scripts that
+      draw the font and the engine textures are run by hand and belong in the repository, not beside
+      the executable a player gets (R12; before it, `make_engine_textures.py` shipped too).
+    -->
+    <None Include="$(SageEngineContentDir)**\*"
+          Exclude="$(SageEngineContentDir)shaders\**;$(SageEngineContentDir)tools\**"
           Link="Content\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="@(SageShader);@(SageShaderInclude)" Link="engine_content\shaders\%(Filename)%(Extension)" />
   </ItemGroup>
+
+  <!--
+    mgfxc is a local dotnet tool, so it has to be restored before it can be run. Until R12 this
+    happened only as a side effect of the vendored ImGuiNet project restoring tools for MGCB; now that
+    MGCB is gone, the one target that needs a tool restores it itself.
+  -->
+  <Target Name="SageRestoreTools" BeforeTargets="SageCompileShaders">
+    <Exec Command="dotnet tool restore" StandardOutputImportance="low" />
+  </Target>
 
   <Target Name="SageCompileShaders" BeforeTargets="AssignTargetPaths"
           Inputs="@(SageShader);@(SageShaderInclude)"

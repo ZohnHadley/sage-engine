@@ -46,12 +46,13 @@
 
     <ItemGroup>
         <PackageReference Include="ImGui.NET" Version="1.90.1.1" />
-        <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" />
-        <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
+        <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
     </ItemGroup>
 
-    <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
-        <Message Text="Restoring dotnet tools" Importance="High" />
-        <Exec Command="dotnet tool restore" />
-    </Target>
+    <!--
+      Local change (TODO R12): upstream referenced MonoGame.Content.Builder.Task and restored dotnet
+      tools for it. This project has no content to build, so the reference only warned on every build
+      ("No Content References Found"); the tool restore moved to build/Sage.EngineContent.targets,
+      which is the one place that still runs a tool (mgfxc).
+    -->
 </Project>

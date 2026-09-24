@@ -28,7 +28,7 @@ public sealed class UiDraw
     }
 
     private readonly PooledList<Command> _commands = new(64);
-    private SpriteFont? _font;
+    private BitmapFont? _font;
 
     // The viewport this frame, so a caller can place things against an edge without asking the device.
     public Vector2 Size { get; internal set; }
@@ -36,9 +36,9 @@ public sealed class UiDraw
     public bool HasFont => _font != null;
 
     // The height of a line of text at scale 1, or a sensible guess before the font has loaded.
-    public float LineHeight => _font?.LineSpacing ?? 16f;
+    public float LineHeight => _font?.LineHeight ?? 16f;
 
-    internal void SetFont(SpriteFont? font) => _font = font;
+    internal void SetFont(BitmapFont? font) => _font = font;
 
     public void Rect(float x, float y, float width, float height, Color colour)
     {
@@ -90,7 +90,7 @@ public sealed class UiDraw
     // Pixels a string will take, for centring and for right-aligned numbers. Zero before the font
     // has loaded, which callers can treat as "don't know yet".
     public Vector2 Measure(string text, float scale = 1f) =>
-        _font == null || string.IsNullOrEmpty(text) ? Vector2.Zero : _font.MeasureString(text) * scale;
+        _font == null || string.IsNullOrEmpty(text) ? Vector2.Zero : _font.Measure(text, scale);
 
     internal void Draw(SpriteBatch batch, Texture2D white)
     {
@@ -103,8 +103,8 @@ public sealed class UiDraw
                     batch.Draw(white, command.Destination, command.Colour);
                     break;
                 case Kind.Text when _font != null && command.Text != null:
-                    batch.DrawString(_font, command.Text, new Vector2(command.Destination.X, command.Destination.Y),
-                                     command.Colour, 0f, Vector2.Zero, command.Scale, SpriteEffects.None, 0f);
+                    _font.Draw(batch, command.Text, new Vector2(command.Destination.X, command.Destination.Y),
+                               command.Colour, command.Scale);
                     break;
                 case Kind.Image when command.Texture != null:
                     batch.Draw(command.Texture, command.Destination, command.Source, command.Colour);

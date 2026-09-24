@@ -64,7 +64,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 | `Texture` (MonoGame `Texture2D`) | `.png`, `.jpg` | `Texture2D.FromStream` + `PremultiplyAlpha` processor | tga isn't supported by `FromStream`; convert to png |
 | `SpriteSheetData` | **built as the `sprite_sheet` record** (§3.5), not a `.sheet.json` asset (12 "As built") | **sim** | Timings and events are needed by the simulation (melee "hit" frames, 12). The texture is loaded separately |
 | `SpriteSheet` | `.png` + its `SpriteSheetData` | client | the Daggerfall-style creature/NPC sprites (06, 12) |
-| `Mesh` | `.glb`/`.gltf` | SharpGLTF → our vertex/index buffers, submeshes with material slots | replaces `.fbx` + MGCB (today's `stanford_bunny.fbx`) |
+| `Mesh` | `.glb`/`.gltf` | SharpGLTF → our vertex/index buffers, one part per primitive | **built (R12)**: `GltfLoader`; node transforms baked in, winding flipped once on load. Material slots still to come |
 | `Effect` | `.mgfxo` (compiled from `.fx`, 07) | `new Effect(device, bytes)` | |
 | `Sound` | `.wav` | `SoundEffect.FromStream` | `.ogg` needs a decoder library; see Open questions |
 | `Heightmap` | 16-bit `.png` or `.r16` | sim | terrain (14) |
@@ -165,17 +165,24 @@ Not every record comes from a file. A spell the player composed in the spellmake
   so a half-written PNG or a typo leaves what was on screen rather than a black square.
 - **Debounced 200 ms**, like records: an art tool writing eight files produces one reload, and a file
   still being written is not read.
-- **Compiled effects reload too** (`.mgfxo`), because the engine mount *is* the MGCB output folder —
-  rebuild the content and the shader swaps. Recompiling a `.fx` on change is still the build's job
-  (07 §3.1); that is the rest of F32.
+- **Compiled effects reload too** (`.mgfxo`), because the engine mount *is* where `dotnet-mgfxc`
+  writes — recompile and the shader swaps. Running `mgfxc` when a `.fx` changes is still the build's
+  job (07 §3.1); that is the rest of F32.
 - **Console:** `asset_reload [path]` forces one (or all), `asset_list` shows what is loaded.
   `asset_hotreload` turns the watcher off; it defaults to on in a dev build with `developer 1`.
-- **What is not reloadable, and says so.** `.xnb` models, fonts and textures belong to MonoGame's
-  `ContentManager`, which keeps its own cache and hands back *the same instance* — reloading one
-  would return the object we were about to dispose and destroy the live asset. Those are refused
-  with "rebuild the content to change it", and `asset_list` marks them, because a list that quietly
-  omits the models is worse than no list.
-- **Not done here:** the asset *server* with scopes, async loading and ref-counting (§3.3, R12).
+- **Everything cached can be reloaded (R12).** This bullet used to list what could not: `.xnb`
+  models, fonts and textures belonged to MonoGame's `ContentManager`, which kept its own cache and
+  handed back *the same instance*, so reloading one would have destroyed the live asset. There is no
+  `ContentManager` any more — every asset is a file the engine reads itself — so `asset_list`'s
+  "can reload" column says yes for all four kinds, and the refusal message went with the thing it
+  described.
+- **A font is a texture, and reloads as one.** `LoadFont` goes through `LoadTexture`, so a font's path
+  is always a texture entry too and always takes the texture branch of `Reload`; that branch drops the
+  `BitmapFont` wrapper with it, and `UiRenderSystem` asks for the font every frame instead of holding
+  one. Both halves are needed, and the bug that taught us so is worth keeping: a holder that keeps the
+  old wrapper draws from a **disposed** texture, which GL renders as black boxes where the text was,
+  with nothing logged anywhere.
+- **Not done here:** the asset *server* with scopes, async loading and ref-counting (§3.3).
 
 ### What can be hot reloaded, and what formats load
 
@@ -185,9 +192,11 @@ loading one of each through the sprite pipeline.
 | Kind | Loose file | Hot reload | Notes |
 |---|---|---|---|
 | Texture | `.png` `.jpg` `.bmp` `.tga` `.gif` `.psd` `.hdr` | yes | `Texture2D.FromStream`. GIF gives frame 0; HDR is tone-mapped to 8-bit; 16-bit PNG is truncated to 8 |
-| Compiled effect | `.mgfxo` | yes | the engine mount *is* the MGCB output folder, so a content rebuild swaps the shader |
-| Texture, model, font | `.xnb` | **no** | the `ContentManager` owns the instance and its own cache; rebuild the content |
-| `.tif` `.dds` `.webp` | — | — | **no runtime decoder**; they have to go through MGCB into `.xnb` |
+| Compiled effect | `.mgfxo` | yes | the engine mount *is* where `dotnet-mgfxc` writes, so recompiling swaps the shader |
+| Model | `.glb` `.gltf` | not yet | `GltfLoader` (SharpGLTF) reads it off the mount; the renderer caches meshes by path and does not re-resolve one yet |
+| Sound | `.wav` | not yet | `SoundEffect.FromStream` (11 §3); a playing instance holds the buffer |
+| Font | `.png` atlas | yes | a texture with a glyph grid over it (13 §3), so reloading the image reloads the font |
+| `.tif` `.dds` `.webp` | — | — | **no runtime decoder** in StbImageSharp; convert to PNG (there is no MGCB left to take them through) |
 
 Two MonoGame details worth knowing, because its own documentation states both backwards: **TGA does
 load** at runtime, and **TIFF and DDS do not**. The stale comment dates from XNA, before MonoGame
@@ -252,12 +261,14 @@ than as art.
   - no `RecordRef<T>` yet;
   - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place.
 - **Hot reload** (`RecordHotReload`, dev builds): a `FileSystemWatcher` on each folder mount's `data/`, polled from the main thread and reloaded after 200 ms of quiet, while `rec_hotreload` is on. `games/Sandbox` respawns its scene on reload, so editing `content/data/scene.json` updates the running game.
-- **Assets (interim until R12):** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads through the VFS, so anything can come from any mount and be shadowed like any other file:
-  - MGCB-built `.xnb` models and textures (a path with no extension loads through the `ContentManager`, same as models);
+- **Assets — as built (R12, 2026-09-24):** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads everything through the VFS, so any asset can come from any mount and be shadowed like any other file:
+  - models: `.glb`/`.gltf`, read by `GltfLoader` (SharpGLTF) into vertex and index buffers the renderer owns and disposes;
   - compiled effects (`.mgfxo`, step 6);
-  - `.png`/`.jpg` textures via `Texture2D.FromStream`, premultiplied (step 6).
+  - `.png`/`.jpg` textures via `Texture2D.FromStream`, premultiplied (step 6);
+  - `.wav` sounds via `SoundEffect.FromStream` (11 §3);
+  - the UI font, which is a texture with a glyph grid over it (13 §3).
 
-  Everything is cached for the process. `AssetPath` (the interned path, §3.2) exists since step 6 and is what `MeshRenderer` and material records store. `AssetServer`, `AssetRef`, scopes and async loading are still to be built (§14 step 2).
+  **Nothing is built by a content pipeline any more.** `ContentService.Open(path)` hands a mount's bytes to whoever knows the format, which is what lets a mod drop in a model or a game ship art made this morning; `Content.mgcb`, `MonoGame.Content.Builder.Task`, the `dotnet-mgcb*` tools, `VfsContentManager` and every `.xnb` branch are gone, and `dotnet-mgfxc` (07 §3.1) is the only build-time content step left. Everything is cached for the process. `AssetPath` (the interned path, §3.2) exists since step 6 and is what `MeshRenderer` and material records store. `AssetServer`, `AssetRef`, scopes and async loading are still to be built (§14 step 2).
 - **Engine content** is `engine_content/` in the repo. The build copies it into the exe's `Content/`, the `engine` mount (07 §3.6).
 
 ## 4. Public API sketch
@@ -389,7 +400,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 | Today | Becomes |
 |---|---|
 | `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | **Removed (step 5):** the Sandbox loads models through `ContentService` (VFS-backed, §3.6). Later: `AssetRef`s loaded into scopes |
-| `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | `stanford_bunny.glb` loaded at runtime via SharpGLTF. MGCB is no longer used: shaders compile with `dotnet-mgfxc` (07) |
+| `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | **Both deleted (R12, done).** Models load at runtime from `.glb` via SharpGLTF (`GltfLoader`). The Sandbox's placeholder is `games/Sandbox/content/models/bunny.glb`, generated by `games/Sandbox/tools/make_placeholder_model.py` — like the sprites and the sounds, the repository ships no art it did not make. Shaders compile with `dotnet-mgfxc` (07) |
 | The FreeImage failure that removed `light.png` (review #9, 2026-09-22) | Textures load with `Texture2D.FromStream` (StbImageSharp, no FreeImage) |
 | `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json`. **Done (step 5)** for game content; `Game1.Content` is only used by the ImGui renderer now |
 

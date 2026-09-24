@@ -184,6 +184,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
 | `tests/Sage.Tests` | xUnit, headless |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |
+| `packages/` | One vendored dependency: MonoGame.ImGuiNet, dev-only |
 | `user/` | Written at runtime: logs, config, screenshots, crash reports (not in git) |
 
 ## Placeholder art
@@ -196,6 +197,18 @@ so a screenshot says which of the eight groups was picked. Regenerate with:
 ```bash
 python games/Sandbox/tools/make_placeholder_art.py
 ```
+
+Two more generators make the rest of the art the repository owns, because **nothing here is built by a
+content pipeline** — since R12 every asset is a file the engine reads at runtime, so anything the repo
+ships it has to be able to make:
+
+```bash
+python games/Sandbox/tools/make_placeholder_model.py   # bunny.glb: five boxes, written as glTF by hand
+python engine_content/tools/make_font.py               # font.png: the 5×7 HUD font, 100 glyphs
+```
+
+`make_font.py --preview "hello"` prints glyphs as ASCII, which is how you check a letter before
+building the atlas — `g` and `y` both had to be redrawn after a screenshot read them as `9` and `v`.
 
 ## Daggerfall art (your own copy)
 

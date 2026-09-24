@@ -122,7 +122,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
   - **Tint:** always 1 (no per-entity tint component yet).
   - **Allocations:** steady-state frames allocate nothing in these systems. Measured with `mem_warn_bytes 1`, the host allocates 176 B/frame, the same as before step 6 (TODO #41).
-- **Meshes:** `MeshRenderer.Mesh` is an `AssetPath` to an MGCB model, loaded through the VFS (`ContentService`) until R12. Model bone transforms are now applied; the old `ModelRendererSystem` ignored them. The bunny's FBX root bone scales ×100 and turns 180°, so `Content.mgcb` builds it with `Scale=0.01`, and it now faces the way the file says.
+- **Meshes (as built, R12):** `MeshRenderer.Mesh` is an `AssetPath` to a `.glb`, opened off a VFS mount and read at runtime by `GltfLoader` (SharpGLTF) into vertex and index buffers the renderer owns and disposes. Each glTF primitive becomes one `MeshPart`; node transforms are **baked into the vertices** on load, so a part needs no bone matrix, and the winding is flipped **once, there** (glTF's front faces are counter-clockwise, this renderer culls the other way) rather than by a render state per draw. The `Scale=0.01` and 180° correction `Content.mgcb` applied to the old FBX went with the FBX: a file made for this engine needs no fixing up at build time.
 - **Fallbacks:**
   - a missing mesh draws a 1 m magenta cube with `sage:error`;
   - a broken material draws as `sage:error` (07 §8).

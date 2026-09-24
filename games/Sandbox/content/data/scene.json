@@ -701,7 +701,7 @@
     "type": "prefab",
     "id": "bunny",
     "name": "bunny",
-    "components": { "MeshRenderer": { "mesh": "stanford_bunny", "material": "bunny" } },
+    "components": { "MeshRenderer": { "mesh": "models/bunny.glb", "material": "bunny" } },
     "tags": ["FacesCamera"],
     "parts": { "hop": {} }
   },

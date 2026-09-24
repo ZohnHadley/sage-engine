@@ -15,7 +15,10 @@ internal sealed class UiRenderSystem : ISystem
     private readonly ActiveCamera _camera;
     private readonly UiResources _shared;
     private readonly CVar<bool> _crosshair;
-    private bool _fontTried;
+    private bool _fontWarned;
+
+    // Interned once; the font itself is looked up every frame (see `Run`).
+    private static readonly AssetPath FontPath = AssetPath.Intern("textures/font.png");
 
     // The batch and the white pixel are the module's: a system is built per world, and two worlds
     // would mean two of each with nothing to dispose them (review #57's lesson, applied early).
@@ -33,12 +36,17 @@ internal sealed class UiRenderSystem : ISystem
     {
         // The font is content like anything else, so it is loaded on the first frame that wants it
         // rather than at boot, and a missing one costs the text, not the HUD (13 §3).
-        if (!_fontTried)
+        //
+        // Asked for **every frame**, not held: a hot reload drops the wrapper and disposes the texture
+        // under it, and a system that kept the old one would draw from a disposed texture — which GL
+        // renders as black boxes where the text was, without an error anywhere (F32, R12). The ask is a
+        // dictionary lookup on an interned path; the warning is the part that happens once.
+        var font = _content.LoadFont(FontPath);
+        _ui.SetFont(font);
+        if (font == null && !_fontWarned)
         {
-            _fontTried = true;
-            var font = _content.LoadFont(AssetPath.Intern("fonts/ui"));
-            _ui.SetFont(font);
-            if (font == null) Log.Warn(LogCat.Render, "fonts/ui is missing: the HUD draws its bars but no text");
+            _fontWarned = true;
+            Log.Warn(LogCat.Render, $"{FontPath} is missing: the HUD draws its bars but no text");
         }
 
         var viewport = _device.Viewport;

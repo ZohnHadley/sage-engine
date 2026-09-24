@@ -30,7 +30,7 @@ engine_content/shaders/
   debug.fx            DebugDraw lines/shapes (vertex colour)
   error.fx            flat magenta; the fallback for anything broken
 ```
-- An MSBuild target in `Sage.Client` runs `dotnet-mgfxc <file>.fx <file>.mgfxo /Profile:OpenGL` for every changed `.fx` before build (incremental, by timestamp). `dotnet-mgfxc` is pinned in the repo's `dotnet-tools.json`, like the MGCB tools in today's `.config/dotnet-tools.json`.
+- An MSBuild target in `Sage.Client` runs `dotnet-mgfxc <file>.fx <file>.mgfxo /Profile:OpenGL` for every changed `.fx` before build (incremental, by timestamp). `dotnet-mgfxc` is pinned in the repo's `.config/dotnet-tools.json`, where since R12 it is the **only** tool: the four `dotnet-mgcb*` entries went with MGCB.
 - The `.mgfxo` output goes into the engine content mount, where it's loaded as an `Effect` asset (05). MGCB is no longer needed for shaders (the old plan kept it "for shaders only"; the dotnet tool is simpler and scriptable for hot reload).
 - Game and mod shaders follow the same layout in their own mounts; they `#include "common.fxh"` through a shared include path.
 
@@ -101,7 +101,7 @@ Game shaders that include it get lighting and fog consistent with engine materia
 
 ### 3.6 As built (migration step 6)
 - **Shaders:** `engine_content/shaders/`: `common.fxh` (the §3.5 contract), `lit.fx` (`Default`, `AlphaTest`, `Unlit`), `sprite.fx` (`Unlit`, `Lit`, `UnlitBlend`; F1) and `error.fx`. `debug.fx` comes with `DebugDraw`.
-- **Build:** `build/Sage.EngineContent.targets` runs `dotnet mgfxc … /Profile:OpenGL` (pinned 3.8.2.1105 in `.config/dotnet-tools.json`) and copies `engine_content/` into the exe's `Content/`. Any `.fx`/`.fxh` change recompiles all; unchanged builds skip it. **Deviation:** the target is imported by `Sage.Host` (the exe owns the Content folder), not `Sage.Client`.
+- **Build:** `build/Sage.EngineContent.targets` runs `dotnet mgfxc … /Profile:OpenGL` (pinned 3.8.5.1 in `.config/dotnet-tools.json`, where since R12 it is the only tool; the target restores it itself, which until R12 happened only as a side effect of the vendored ImGuiNet project restoring tools for MGCB) and copies `engine_content/` into the exe's `Content/` (minus `tools/`, which *makes* content — the font and texture generators — rather than being it). Any `.fx`/`.fxh` change recompiles all; unchanged builds skip it. **Deviation:** the target is imported by `Sage.Host` (the exe owns the Content folder), not `Sage.Client`.
 - **Material records:** `MaterialRecord` in `src/Sage.Engine/Rendering/RenderData.cs`; engine materials `sage:lit_default`, `sage:unlit_default`, `sage:terrain_default` (one tiling ground texture over `lit_default`, 14 §3), `sage:sprite_default`, `sage:sprite_lit` and `sage:error` in `engine_content/data/materials.json`; the Sandbox inherits `sage:lit_default` for its bunny and `sage:sprite_lit` for its trees.
 - **Sprite materials (F1):** the sprite sheet's texture replaces the material's `Albedo` per draw, so one material draws every sheet. Sprite quads carry their own per-vertex colour, multiplied with `AlbedoColor` and the object `Tint`.
 - **`MaterialCache`** (client) builds a runtime per material on first use: effect, technique, material params and cached state objects. It binds the three tiers of §3.4, and rebuilds everything lazily when records reload (material hot reload works; **shader** hot reload is §14 step 4, not done).
@@ -136,7 +136,7 @@ public sealed class MaterialCache                           // Sage.Client
 ```
 
 > **Built in part (2026-09-23):** a compiled effect (`.mgfxo`) that changes on disk is reloaded and
-> every material rebuilt (05 "As built (asset hot reload)"), because the engine mount is the MGCB
+> every material rebuilt (05 "As built (asset hot reload)"), because the engine mount is the mgfxc
 > output folder. What is still missing is running `mgfxc` when the `.fx` *source* changes, and the
 > magenta error shader on a compile failure — the rest of F32.
 
@@ -186,7 +186,7 @@ dev:     .fx saved ─► watcher runs dotnet-mgfxc ─► success: Effect repla
 | Today | Becomes |
 |---|---|
 | `BasicEffect` in `ModelRendererSystem.render` with `EnableDefaultLighting()` every draw and an unused `lightDirection` (TODO #25) | **Done (step 6):** `lit.fx` `Default` technique via the `lit_default` material; lighting params bound per view |
-| `src/Sage.Host/Content/Content.mgcb` (models today) | Not used for shaders: `dotnet-mgfxc` via `build/Sage.EngineContent.targets` (**done, step 6**) |
+| `src/Sage.Host/Content/Content.mgcb` (models until R12) | **Deleted (R12).** `dotnet-mgfxc` via `build/Sage.EngineContent.targets` is now the only build-time content step of any kind |
 | `.config/dotnet-tools.json` | Also pins `dotnet-mgfxc` (**done, step 6**) |
 
 ## 11. v1 scope vs later
