@@ -35,7 +35,11 @@ internal sealed class AbilityPayload
         // stops a self-targeted spell quietly skipping the damage pipeline.
         if (record.Targeting == AbilityTargeting.Self) _targets.Add(caster);
         else if (record.Radius > 0f) Gather(world, point, record.Radius, caster, includeCaster: record.Targeting == AbilityTargeting.Area);
-        else if (CanBeAffected(world, direct) && direct != caster) _targets.Add(direct);
+        // The same rule as the blast below: a bolt that strikes an ally fizzles rather than burning it.
+        // Without this a firebug's ember bolt hurt whatever wandered into its flight path, which was
+        // visible in the Sandbox the day factions arrived.
+        else if (CanBeAffected(world, direct) && direct != caster && Factions.MayHurt(world, caster, direct))
+            _targets.Add(direct);
 
         foreach (var target in _targets)
         {
@@ -71,6 +75,9 @@ internal sealed class AbilityPayload
         {
             var entity = _nearby[i];
             if (!CanBeAffected(world, entity) || (!includeCaster && entity == caster)) continue;
+            // A firebug's burst does not burn other firebugs (16 §3.5, F24). The player's does burn
+            // whoever is standing there: aiming is their business, and their name pays for it.
+            if (!Factions.MayHurt(world, caster, entity)) continue;
             if (!world.TryGet<Transform>(entity, out var transform)) continue;
             if (Vector3.Distance(transform.LocalPosition, point) > radius + 0.5f) continue;   // +half a body
             if (!_targets.Contains(entity)) _targets.Add(entity);

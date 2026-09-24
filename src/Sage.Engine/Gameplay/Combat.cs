@@ -237,7 +237,14 @@ public sealed class MeleeCombatSystem : ISystem
         }
 
         foreach (var (hit, attack) in _pending.Drain())
-            if (!hit.Target.IsNull) Combat.ApplyDamage(world, hit, attack.Effects);
+        {
+            if (hit.Target.IsNull) continue;
+            // A swing is a physics query and physics has no opinions, so this is where the swing finds
+            // out whose side it is on (16 §3.5, F24): a creature's blade passes through its own kind,
+            // and the player's lands on whoever was standing there.
+            if (!Factions.MayHurt(world, hit.Attacker, hit.Target)) continue;
+            Combat.ApplyDamage(world, hit, attack.Effects);
+        }
     }
 
     private AttackRecord? AttackFor(ref Melee melee)

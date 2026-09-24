@@ -25,6 +25,7 @@ public static class GameplayModules
     // Games add the lot with one call, because "gameplay" is the unit a game wants, not six lines.
     public static void AddGameplay(this ModuleManager modules)
     {
+        modules.Add(new FactionsModule());
         modules.Add(new AttributesModule());
         modules.Add(new CharacterModule());
         modules.Add(new AnimationModule());
@@ -497,4 +498,56 @@ public sealed class NavDebugSystem : ISystem
             }
         }
     }
+}
+
+// Who fights whom, and what the world thinks of the player (16 §3.5, F24).
+//
+// First in the gameplay set, because combat, abilities and AI all ask it questions and a module may
+// only depend on one that is already there.
+public sealed class FactionsModule : IModule
+{
+    public void Init(ModuleContext ctx)
+    {
+        ctx.Engine.Records.Register<FactionRecord>();
+
+        ctx.Engine.Prefabs.Register("faction", PrefabParts.Faction);
+
+        ctx.Engine.CVars.RegisterCommand("rep", CVarFlags.None,
+            "What every faction thinks of you, and what that makes them.", _ =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Reputation>(out var reputation) || reputation == null) continue;
+                foreach (var id in ctx.Engine.Records.Ids("faction"))
+                {
+                    if (!ctx.Engine.Records.TryGet(id, out FactionRecord record)) continue;
+                    float standing = Factions.StandingWith(world, id);
+                    string stance = standing <= record.HostileBelow ? "hostile"
+                                  : standing >= record.FriendlyAbove ? "friendly" : "neutral";
+                    Log.Info(LogCat.Console, $"  {id,-28} {standing,6:F1}  {stance}");
+                }
+            }
+        });
+
+        ctx.Engine.CVars.RegisterCommand("rep_set", CVarFlags.Cheat,
+            "rep_set <faction> <value>: set what a faction thinks of you (-100..100).", a =>
+        {
+            if (a.Count < 2) { Log.Warn(LogCat.Console, "rep_set <faction> <value>"); return; }
+            var id = ctx.Engine.Records.Resolve("faction", a[0]);
+            if (id.IsEmpty) return;
+            if (!float.TryParse(a[1], System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out float value))
+            {
+                Log.Warn(LogCat.Console, "rep_set <faction> <value>");
+                return;
+            }
+            foreach (var world in ctx.Engine.Worlds)
+                if (world.Resources.TryGet<Reputation>(out var reputation) && reputation != null)
+                    Factions.Change(world, id, value - Factions.StandingWith(world, id));
+            Log.Info(LogCat.Console, $"{id} now at {value:F1}");
+        });
+    }
+
+    // A world remembers what it thinks of the player, and a save carries it (09 §3.1).
+    public void OnWorldCreated(World world) => world.Resources.Set(new Reputation());
 }

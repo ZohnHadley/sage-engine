@@ -84,6 +84,7 @@
     "parts": {
       "character": { "layer": "enemy" },
       "attributes": {},
+      "faction": "beasts",
       "melee": { "attack": "claws" },
       "effects": ["tough_hide"]
     }
@@ -99,6 +100,20 @@
     // art above it, where a box or a sphere is centred on it (review #44).
     "type": "prefab", "id": "tree", "name": "tree",
     "parts": { "sprite": { "sheet": "tree" }, "body": { "shape": "Capsule", "radius": 0.35, "height": 2.2 } }
+  },
+
+  // ---- factions (docs/design/16 §3.5, F24) ---------------------------------------------------------
+  //
+  // Two kinds of creature that hate each other and both hate you: the watchers of the wood and the
+  // firebugs. `standing: -50` is below `hostileBelow`, so they come for the player from the start — a
+  // faction that merely *knows* you is neutral, and neutral means it leaves you alone.
+  {
+    "type": "faction", "id": "beasts", "label": "beasts of the wood", "standing": -50, "killCost": 10,
+    "relations": [ { "faction": "sandbox:firebugs", "stance": "Hostile" } ]
+  },
+  {
+    "type": "faction", "id": "firebugs", "label": "firebugs", "standing": -50, "killCost": 10,
+    "relations": [ { "faction": "sandbox:beasts", "stance": "Hostile" } ]
   },
 
   // ---- gameplay (docs/design/16) -----------------------------------------------------------------
@@ -390,6 +405,7 @@
     "parts": {
       "character": { "layer": "enemy" },
       "attributes": {},
+      "faction": "firebugs",
       "abilities": ["ember_bolt"],
       "effects": ["ember_font"]
     }

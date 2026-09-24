@@ -14,6 +14,8 @@ public sealed class AIThinkSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, AIState, PawnIntent> _agents;
     private readonly ArchetypeQuery<Transform> _players;
+    private readonly Entity[] _candidates;   // broad-phase scratch, reused every think (F24)
+    private readonly EventReader<Damaged> _damage;
     private readonly RecordStore _records;
     private readonly AITaskRegistry _tasks;
     private readonly PhysicsSpace _space;
@@ -24,6 +26,8 @@ public sealed class AIThinkSystem : ISystem
     {
         _agents = world.Query<Transform, AIState, PawnIntent>();
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
+        _candidates = new Entity[64];
+        _damage = world.Events.Reader<Damaged>(this, Schedule.Fixed);
         _records = records;
         _tasks = tasks;
         _space = world.Resources.Get<PhysicsSpace>();
@@ -40,6 +44,8 @@ public sealed class AIThinkSystem : ISystem
         float dt = ctx.Tick.Dt;
         float time = (float)ctx.Tick.SimTime;
         var world = ctx.World;
+
+        Provoked(world, time);
 
         foreach (var (transforms, states, intents, entities) in _agents.Chunks)
         {
@@ -72,7 +78,7 @@ public sealed class AIThinkSystem : ISystem
     {
         ulong conditions = 0;
         float yaw = SageMath.YawOf(transform.LocalRotation);
-        Entity target = FindNearestPlayer(world, transform.LocalPosition, yaw, profile, self, out float distance, out bool visible);
+        Entity target = FindNearestEnemy(world, self, transform.LocalPosition, yaw, profile, out float distance, out bool visible);
 
         if (world.Has<Melee>(self)) conditions |= (ulong)AICondition.CanMelee;
 
@@ -172,23 +178,39 @@ public sealed class AIThinkSystem : ISystem
     // so walls and terrain block it). The cone is the agent's own facing (`yaw`) widened by the
     // profile's SightAngleDegrees: before this was checked, creatures noticed you through the back of
     // their heads, which the field was authored to prevent (review #50).
-    private Entity FindNearestPlayer(World world, Vector3 position, float yaw, AIProfileRecord profile, Entity self, out float distance, out bool visible)
+    // The nearest thing this creature considers an enemy (16 §3.5, F24).
+    //
+    // **Asked of the world, not of the player.** Before factions this looked only at player-controlled
+    // entities, because "enemy" had no other meaning; now it is whoever `Factions` says is hostile, which
+    // is what lets two creatures fight each other while the player watches. The candidates come from the
+    // broad phase, so the cost follows what is *near* a creature rather than how many creatures the world
+    // holds — a query over everything would turn a crowd into a quadratic (R18's scale test guards it).
+    private Entity FindNearestEnemy(World world, Entity self, Vector3 position, float yaw,
+                                    AIProfileRecord profile, out float distance, out bool visible)
     {
         distance = float.MaxValue;
         visible = false;
         Entity best = default;
 
+        float reach = profile.SightRange;
+
+        // The player first, from a query over the handful of player-controlled entities. The broad-phase
+        // sweep below can only return as many as the buffer holds, and in a world of two thousand the
+        // thing a creature must never fail to notice is the player standing in front of it.
         foreach (var (transforms, entities) in _players.Chunks)
         {
-            var t = transforms.Span;
-            for (int n = 0; n < t.Length; n++)
-            {
-                float d = SageMath.DistanceXZ(position, t[n].LocalPosition);
-                if (d > profile.SightRange || d >= distance) continue;
-                if (d > 0.01f && !SageMath.InCone(yaw, position, t[n].LocalPosition, profile.SightAngleDegrees)) continue;
-                best = entities.EntityAt(n);
-                distance = d;
-            }
+            var pt = transforms.Span;
+            for (int n = 0; n < pt.Length; n++)
+                Consider(world, self, position, yaw, profile, entities.EntityAt(n), pt[n].LocalPosition,
+                         ref best, ref distance);
+        }
+
+        int found = _space.OverlapBox(position, new Vector3(reach), _candidates);
+        for (int i = 0; i < found; i++)
+        {
+            var candidate = _candidates[i];
+            if (!world.TryGet<Transform>(candidate, out var at)) continue;
+            Consider(world, self, position, yaw, profile, candidate, at.LocalPosition, ref best, ref distance);
         }
         if (best.IsNull) return default;
 
@@ -222,6 +244,51 @@ public sealed class AIThinkSystem : ISystem
     // and only while it exists: a remembered target that has been destroyed is no target at all.
     private static bool Remembers(World world, ref AIState state, float time) =>
         !state.Target.IsNull && world.IsAlive(state.Target) && time < state.ForgetAt;
+
+    // Being hit is how you find out somebody is behind you (16 §3.4).
+    //
+    // Sight is a cone, so without this a creature stabbed in the back never turns round — which mattered
+    // little while the only attacker was the player standing in front of it, and matters a great deal now
+    // that creatures fight each other (F24). It is also what makes a neutral townsman defend himself: hit
+    // him and he has a target, whatever his faction thinks of you.
+    private void Provoked(World world, float time)
+    {
+        foreach (ref readonly var hit in _damage.Read())
+        {
+            var victim = hit.Hit.Target;
+            var attacker = hit.Hit.Attacker;
+            if (hit.Applied <= 0f || attacker.IsNull || attacker == victim) continue;
+            if (!world.IsAlive(victim) || !world.IsAlive(attacker)) continue;
+            if (!world.Has<AIState>(victim) || !world.TryGet<Transform>(attacker, out var at)) continue;
+
+            ref var state = ref world.Get<AIState>(victim);
+            // What it is already fighting wins: a creature should not be pulled off a target by every
+            // scratch from somewhere else, and the memory it has is the thing keeping it on this one.
+            if (!state.Target.IsNull && world.IsAlive(state.Target) && time < state.ForgetAt) continue;
+
+            state.Target = attacker;
+            state.LastSeen = at.LocalPosition;
+            state.ForgetAt = time + 6f;
+        }
+    }
+
+    // One candidate: something to fight, hostile, in range, in front. Shared by the player query and the
+    // broad-phase sweep so both mean exactly the same thing by "enemy" (16 §3.5).
+    private static void Consider(World world, Entity self, Vector3 position, float yaw, AIProfileRecord profile,
+                                 Entity candidate, Vector3 at, ref Entity best, ref float distance)
+    {
+        if (candidate == self || candidate.IsNull || !world.IsAlive(candidate)) return;
+        // Scenery and pickups are solid and near and none of a creature's business: a target is a body
+        // with attributes that is still alive.
+        if (!world.Has<Attributes>(candidate) || world.HasTag(candidate, TagRecord.Dead)) return;
+        if (!Factions.AreEnemies(world, self, candidate)) return;
+
+        float d = SageMath.DistanceXZ(position, at);
+        if (d > profile.SightRange || d >= distance) return;
+        if (d > 0.01f && !SageMath.InCone(yaw, position, at, profile.SightAngleDegrees)) return;
+        best = candidate;
+        distance = d;
+    }
 
     // Which schedule fits what it knows. Code, like HL1's GetSchedule; utility scoring or a behaviour
     // tree can replace this without touching the tasks (16 §3.4).

@@ -60,6 +60,7 @@ try
     AddDefaultModule(new StreamingModule());   // terrain rings and origin rebasing (R6, F14)
     // One per feature since R15, and each still goes through AddDefaultModule, so `game.json` can
     // disable them individually: a game with no items or no AI drops that module and nothing else.
+    AddDefaultModule(new FactionsModule());    // who counts as an enemy (16 §3.5, F24)
     AddDefaultModule(new AttributesModule());
     AddDefaultModule(new CharacterModule());
     AddDefaultModule(new AnimationModule());

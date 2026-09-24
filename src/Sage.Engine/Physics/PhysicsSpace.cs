@@ -262,8 +262,15 @@ public sealed class PhysicsSpace : IDisposable
             Limit = results.Length,
         };
         Simulation.BroadPhase.GetOverlaps(new BepuUtilities.BoundingBox(center - halfExtents, center + halfExtents), ref enumerator);
-        for (int i = 0; i < _overlapResults.Count; i++) results[i] = _overlapResults[i];
-        return _overlapResults.Count;
+
+        // **Truncated, not thrown.** The enumerator stops asking once it has enough, but the broad phase
+        // finishes the leaf it is in, so it can hand back a few more than the caller's buffer holds. A
+        // query that finds more than you asked for is an ordinary answer — "here are the first N" — and
+        // a caller that crashed on a crowded world would be the worst possible way to say so (F24 found
+        // this with a 64-entity buffer in a world of two thousand).
+        int n = Math.Min(_overlapResults.Count, results.Length);
+        for (int i = 0; i < n; i++) results[i] = _overlapResults[i];
+        return n;
     }
 
     public Entity EntityOf(CollidableReference collidable) => _data.EntityOf(collidable);

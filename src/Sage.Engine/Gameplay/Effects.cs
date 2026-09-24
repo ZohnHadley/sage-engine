@@ -348,7 +348,11 @@ public sealed class EffectSystem : ISystem
     {
         if (!world.IsAlive(entity) || IsDead(world, entity, deadTag)) return;
         if (world.Has<GameplayTags>(entity)) world.Get<GameplayTags>(entity).Add(deadTag);
-        world.Resources.Get<GameRules>().OnEntityDied(world, entity, LastAttackerOf(entity));
+        var killer = LastAttackerOf(entity);
+        // What it costs your name, before the game's own rules get their say: killing somebody is the
+        // commonest way to change what a faction thinks of you (16 §3.5, F24).
+        Factions.OnKilled(world, entity, killer);
+        world.Resources.Get<GameRules>().OnEntityDied(world, entity, killer);
     }
 
     private Entity LastAttackerOf(Entity victim)

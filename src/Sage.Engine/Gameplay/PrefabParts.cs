@@ -178,6 +178,20 @@ public static class PrefabParts
         }
     }
 
+    // "faction": "sandbox:townsfolk" — who it belongs to (16 §3.5, F24). A bare id, because a faction is
+    // one thing and a part that takes an object for a single value is a form to fill in.
+    public static void Faction(World world, Entity entity, JsonNode? options, string where)
+    {
+        var id = Read<List<RecordId>>(world, options is JsonArray ? options : new JsonArray(options?.DeepClone()),
+                                      "faction", where);
+        if (id.Count == 0 || id[0].IsEmpty)
+        {
+            Log.Error(LogCat.Records, $"{where}: \"faction\" needs a record id");
+            return;
+        }
+        world.Add(entity, new sage_engine.Faction { Id = id[0] });
+    }
+
     // "abilities": ["fireball", "heal"] — what it can cast (16 §3.3, F21).
     public static void Abilities(World world, Entity entity, JsonNode? options, string where)
     {

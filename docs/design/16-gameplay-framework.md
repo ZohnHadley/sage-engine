@@ -42,7 +42,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 | **AI** | yes (one melee creature) | See 3.4 |
 | **Navigation** | yes (local grid) | A grid built round the agent when the straight line is blocked, A* and string-pulling, plus target memory (F23, "As built (navigation)"). A navmesh for brush-built interiors and a coarse graph for crossing sectors are still later |
 | **Narrative** (dialogue, quests, journal) | later | Records + entity I/O + events (F24) |
-| **Factions** | later | Reputation/relations records (F24) |
+| **Factions** | yes | `faction` records with relations and a per-player standing; one rule answering "is this my enemy" for the AI, for blasts and for the death seam (F24, "As built (factions and reputation)") |
 | **Economy / life paths** | later | Production chains, markets, professions as data; coarse offline simulation (F25) |
 | **Overworld / parties** | later | A second world type (F26) |
 
@@ -229,6 +229,39 @@ and the cast system cannot tell a composed spell from one in a content file.
   - attacks already deal damage: `MeleeAttackTask` applies the profile's `AttackEffect` with `Effects.Apply` (F18), so `EffectSystem` runs it like any other effect. The hit is also published to an `AIEvents` list the game reads in a later phase, which is still how cues and reactions work until the event bus (04) exists;
   - perception is sight only (no hearing), one enemy type (the local player), and no squads;
   - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
+
+### As built (factions and reputation, 2026-09-24 — F24)
+The question three systems were guessing at.
+
+- **Code:** `src/Sage.Engine/Gameplay/Factions.cs` (`faction` records, the `Faction` component, the saved
+  `Reputation` resource, the `Factions` rules and `ReputationChanged`), plus the three places that now
+  ask it: `AIThinkSystem.FindNearestEnemy`, `AbilityPayload`, `MeleeCombatSystem`. Tests:
+  `tests/Sage.Tests/World/FactionTests.cs`.
+- **A faction has an opinion of other factions, and a separate one of *you*.** The first is a table in
+  the record (`Hostile`/`Neutral`/`Ally`, with a default for anyone unlisted); the second is a number
+  that moves as you act, with two thresholds where it becomes a stance. That is Daggerfall's model, and
+  it is smaller than it looks — guilds, ranks and the rest are content stacked on it.
+- **An AI hunts enemies, not players.** `FindNearestEnemy` asks `Factions`, so two creatures who have
+  never heard of the player fight each other; in the Sandbox a watcher and a firebug now trade blows
+  while you watch. Candidates come from the broad phase (cost follows what is *near*, not how many
+  creatures exist), plus the cheap player query kept on its own — a buffer that holds sixty-four
+  entities must never be the reason a creature fails to notice the player in a crowded world.
+- **Being hit is how you find out somebody is behind you.** Sight is a cone, so a creature stabbed in
+  the back never turned round — which hardly showed while the only attacker stood in front of it, and
+  showed immediately once creatures fought each other. `AIThinkSystem` reads `Damaged` and takes the
+  attacker as its target, unless it already has one it still remembers (F23).
+- **Who a hit may land on is a rules question, not a physics one** (§3.2). A creature's swing passes
+  through its own kind and a blast spares them, including a bolt that strikes one mid-flight. **The
+  player may hit anybody**: aiming is their business and their reputation is what pays.
+- **Killing somebody costs you with their faction, and a fifth of that with its allies** — while its
+  enemies think a little better of you. Only what the *player* does moves a number: a wolf eating a
+  sheep is between them.
+- **Content that says nothing about factions behaves as it did before there were any:** a creature with
+  no faction still comes for the player, which is what "a monster" means in the absence of a social
+  model and is what every test written before F24 assumes.
+- **Console:** `rep` (what everybody thinks of you, and what that makes them), `rep_set`.
+- **Not yet:** dialogue and quests (the rest of F24), crime and guards noticing what you do, factions
+  that own places, and ranks within a faction.
 
 ### As built (navigation, 2026-09-24 — F23)
 Creatures walk round things instead of into them.
