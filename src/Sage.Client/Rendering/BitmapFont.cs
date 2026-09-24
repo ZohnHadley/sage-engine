@@ -31,8 +31,11 @@ public sealed class BitmapFont
 
     public BitmapFont(Texture2D texture) => _texture = texture;
 
-    // How many screen pixels one font pixel is. Two, so a line comes out at the 16 pixels the
-    // `SpriteFont` this replaced used, and every panel laid out against that font still fits.
+    // How many screen pixels one font pixel is. Two, which makes a glyph 14 px tall on an 18 px line —
+    // about the line the Consolas-15 `SpriteFont` this replaced gave, so a panel keeps its shape. A
+    // character is *wider* than that font's, 12 px against roughly 8, which anything that measures its
+    // text absorbs (panels size themselves from `Measure`) and anything with a hard-coded width does
+    // not. One is at 1:1 for a debug overlay; three is legible at 4K.
     public float PixelSize { get; set; } = 2f;
 
     // A line of this font is the glyph plus a pixel of air, so stacked lines do not touch.

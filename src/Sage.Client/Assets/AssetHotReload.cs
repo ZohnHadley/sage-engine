@@ -23,8 +23,13 @@ public sealed class AssetHotReload : IDisposable
     // Everything the runtime loader can actually decode, checked against the decoders compiled into
     // MonoGame 3.8.x DesktopGL (StbImageSharp: jpeg, png, bmp, gif, psd, hdr, tga) and confirmed by
     // loading one of each. Notably TGA *is* supported despite MonoGame's own doc comment saying it
-    // is not, and TIFF, DDS and WebP are *not* despite the same comment saying they are — those need
-    // the content pipeline. A GIF gives its first frame; an HDR is tone-mapped to 8-bit.
+    // is not, and TIFF, DDS and WebP are *not* despite the same comment saying they are — convert those
+    // to PNG, since R12 left no content pipeline to take them through. A GIF gives its first frame; an
+    // HDR is tone-mapped to 8-bit.
+    //
+    // Models and sounds are deliberately absent: a `.glb` has no reload path yet (the renderer caches
+    // meshes by id) and a `.wav` cannot have one while the mixer holds instances of it (F32). Watching
+    // them would only queue reloads that refuse themselves.
     private static readonly string[] Extensions =
     {
         ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".psd", ".hdr",   // Texture2D.FromStream

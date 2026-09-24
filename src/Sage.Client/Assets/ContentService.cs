@@ -95,9 +95,12 @@ public sealed class ContentService : IDisposable
         return false;
     }
 
-    // Everything currently loaded, for `asset_list`. Since R12 every one of them is a file, so every
-    // one of them can be reloaded — the column that used to say "rebuild the content to change it" has
-    // nothing left to say it about.
+    // Everything currently loaded, for `asset_list`. Since R12 every one of them is a *file*, which is
+    // most of what reloading needed — but a sound is still refused, and the reason is MonoGame's
+    // ownership rather than ours: `AudioBackend` keeps a `SoundEffectInstance` per voice, and disposing
+    // a `SoundEffect` disposes the instances made from it, so a reload mid-playback would leave the
+    // mixer holding disposed objects. Swapping a sound means teaching the backend to drop its voices
+    // first (F32). A list that claims otherwise is worse than one that says no.
     public IEnumerable<(AssetPath Path, string Kind, bool CanReload)> Cached
     {
         get
@@ -105,7 +108,7 @@ public sealed class ContentService : IDisposable
             foreach (var path in _textures.Keys) yield return (path, "texture", true);
             foreach (var path in _effects.Keys) yield return (path, "effect", true);
             foreach (var path in _fonts.Keys) yield return (path, "font", true);
-            foreach (var path in _sounds.Keys) yield return (path, "sound", true);
+            foreach (var path in _sounds.Keys) yield return (path, "sound", false);
         }
     }
 

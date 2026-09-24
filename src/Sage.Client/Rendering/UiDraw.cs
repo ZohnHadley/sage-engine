@@ -36,7 +36,9 @@ public sealed class UiDraw
     public bool HasFont => _font != null;
 
     // The height of a line of text at scale 1, or a sensible guess before the font has loaded.
-    public float LineHeight => _font?.LineHeight ?? 16f;
+    // The fallback matches `BitmapFont` at its default pixel size, so a layout measured before the
+    // font arrives (or with none at all) is laid out the same as one measured after it.
+    public float LineHeight => _font?.LineHeight ?? 18f;
 
     internal void SetFont(BitmapFont? font) => _font = font;
 

@@ -60,7 +60,10 @@ public class Game1 : Game
         this.applyConfig = applyConfig;
         this.runLaunchCommands = runLaunchCommands;
         graphics = new GraphicsDeviceManager(this);
-        Content.RootDirectory = "Content";
+        // No `Content.RootDirectory`: nothing uses MonoGame's `ContentManager` since R12 — not this
+        // host, not the client, not the vendored ImGui renderer. The engine's own `Content/` folder is
+        // a VFS mount (05 §3.1), read by `ContentService`, and pointing a `ContentManager` at it would
+        // only suggest there was still a pipeline behind it.
         IsMouseVisible = true;
         IsFixedTimeStep = false;   // our own accumulator (FixedStepClock) instead of MonoGame's catch-up loop
         graphics.GraphicsProfile = GraphicsProfile.HiDef;   // 32-bit indices, large textures; instancing later (06 §3.7)

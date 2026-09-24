@@ -64,7 +64,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 | `Texture` (MonoGame `Texture2D`) | `.png`, `.jpg` | `Texture2D.FromStream` + `PremultiplyAlpha` processor | tga isn't supported by `FromStream`; convert to png |
 | `SpriteSheetData` | **built as the `sprite_sheet` record** (§3.5), not a `.sheet.json` asset (12 "As built") | **sim** | Timings and events are needed by the simulation (melee "hit" frames, 12). The texture is loaded separately |
 | `SpriteSheet` | `.png` + its `SpriteSheetData` | client | the Daggerfall-style creature/NPC sprites (06, 12) |
-| `Mesh` | `.glb`/`.gltf` | SharpGLTF → our vertex/index buffers, one part per primitive | **built (R12)**: `GltfLoader`; node transforms baked in, winding flipped once on load. Material slots still to come |
+| `Mesh` | `.glb` | SharpGLTF → our vertex/index buffers, one part per primitive | **built (R12)**: `GltfLoader`; node transforms baked in, winding flipped once on load. **Binary only** — a text `.gltf` keeps its buffers in files beside it, which a mount cannot always hand over, so it is refused rather than half-loaded (§8). Material slots still to come |
 | `Effect` | `.mgfxo` (compiled from `.fx`, 07) | `new Effect(device, bytes)` | |
 | `Sound` | `.wav` | `SoundEffect.FromStream` | `.ogg` needs a decoder library; see Open questions |
 | `Heightmap` | 16-bit `.png` or `.r16` | sim | terrain (14) |
@@ -170,12 +170,14 @@ Not every record comes from a file. A spell the player composed in the spellmake
   job (07 §3.1); that is the rest of F32.
 - **Console:** `asset_reload [path]` forces one (or all), `asset_list` shows what is loaded.
   `asset_hotreload` turns the watcher off; it defaults to on in a dev build with `developer 1`.
-- **Everything cached can be reloaded (R12).** This bullet used to list what could not: `.xnb`
+- **Almost everything cached can be reloaded (R12).** This bullet used to list what could not: `.xnb`
   models, fonts and textures belonged to MonoGame's `ContentManager`, which kept its own cache and
   handed back *the same instance*, so reloading one would have destroyed the live asset. There is no
-  `ContentManager` any more — every asset is a file the engine reads itself — so `asset_list`'s
-  "can reload" column says yes for all four kinds, and the refusal message went with the thing it
-  described.
+  `ContentManager` any more — every asset is a file the engine reads itself — so textures, effects and
+  the font all reload, and "rebuild the content to change it" went with the thing it described. **One
+  refusal is left, and it is honest about itself:** a sound, because the mixer holds instances of it
+  (see the table). `asset_reload` on one says it is loaded but cannot be swapped, rather than claiming
+  it was never loaded.
 - **A font is a texture, and reloads as one.** `LoadFont` goes through `LoadTexture`, so a font's path
   is always a texture entry too and always takes the texture branch of `Reload`; that branch drops the
   `BitmapFont` wrapper with it, and `UiRenderSystem` asks for the font every frame instead of holding
@@ -193,8 +195,8 @@ loading one of each through the sprite pipeline.
 |---|---|---|---|
 | Texture | `.png` `.jpg` `.bmp` `.tga` `.gif` `.psd` `.hdr` | yes | `Texture2D.FromStream`. GIF gives frame 0; HDR is tone-mapped to 8-bit; 16-bit PNG is truncated to 8 |
 | Compiled effect | `.mgfxo` | yes | the engine mount *is* where `dotnet-mgfxc` writes, so recompiling swaps the shader |
-| Model | `.glb` `.gltf` | not yet | `GltfLoader` (SharpGLTF) reads it off the mount; the renderer caches meshes by path and does not re-resolve one yet |
-| Sound | `.wav` | not yet | `SoundEffect.FromStream` (11 §3); a playing instance holds the buffer |
+| Model | `.glb` | not yet | `GltfLoader` (SharpGLTF) reads it off the mount; the renderer caches meshes by path and does not re-resolve one yet. Text `.gltf` is not read at all |
+| Sound | `.wav` | **no** | `SoundEffect.FromStream` (11 §3). `AudioBackend` keeps a `SoundEffectInstance` per voice and MonoGame disposes those with their `SoundEffect`, so swapping one means teaching the mixer to drop its voices first (F32). `asset_list` says so rather than offering it |
 | Font | `.png` atlas | yes | a texture with a glyph grid over it (13 §3), so reloading the image reloads the font |
 | `.tif` `.dds` `.webp` | — | — | **no runtime decoder** in StbImageSharp; convert to PNG (there is no MGCB left to take them through) |
 
@@ -402,7 +404,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 | `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | **Removed (step 5):** the Sandbox loads models through `ContentService` (VFS-backed, §3.6). Later: `AssetRef`s loaded into scopes |
 | `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | **Both deleted (R12, done).** Models load at runtime from `.glb` via SharpGLTF (`GltfLoader`). The Sandbox's placeholder is `games/Sandbox/content/models/bunny.glb`, generated by `games/Sandbox/tools/make_placeholder_model.py` — like the sprites and the sounds, the repository ships no art it did not make. Shaders compile with `dotnet-mgfxc` (07) |
 | The FreeImage failure that removed `light.png` (review #9, 2026-09-22) | Textures load with `Texture2D.FromStream` (StbImageSharp, no FreeImage) |
-| `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json`. **Done (step 5)** for game content; `Game1.Content` is only used by the ImGui renderer now |
+| `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json`. **Done (step 5)** for game content; **the line itself is gone (R12)** — nothing uses MonoGame's `ContentManager` any more, not the host, the client, or the vendored ImGui renderer |
 
 ## 11. v1 scope vs later
 - **v1:**
@@ -433,7 +435,7 @@ labels and clip names are left exactly as the base wrote them (review #56).
 
 ## 14. Build steps
 1. ~~VFS (folder mounts) + `game.json` mounts (with 01)~~ **Done 2026-09-22** (ARCHITECTURE §7 step 5). `user://` as a VFS root is still to do.
-2. `AssetPath`, `AssetServer`, scopes, placeholders, texture + glTF + effect loaders; convert the bunny to `.glb`; fix TODO #9.
+2. `AssetPath`, `AssetServer`, scopes, placeholders, texture + glTF + effect loaders; convert the bunny to `.glb`; fix TODO #9. **Half done:** `AssetPath` (step 6), the texture, effect, sound, font and glTF loaders, the bunny and #9 all came with **R12 (2026-09-24)**. What is left is the `AssetServer` proper — scopes, ref-counting, placeholders and eviction — which is why `ContentService` still caches everything for the life of the process.
 3. Async decode + budgeted upload queue (with the 02 job system).
 4. `RecordStore`: parsing, namespaces, `base`, patch merge, validation (TODO R11). **v1 done in step 5** with `System.Text.Json` reflection (§3.6); 09's generator replaces it later.
 5. Hot reload for assets and records. **Records done in step 5**; assets come with the `AssetServer`.

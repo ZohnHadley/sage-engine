@@ -227,8 +227,17 @@ public sealed class ClientModule : IModule
             if (_content == null) { Log.Warn(LogCat.Assets, "asset_reload: no content service yet"); return; }
             if (a.Count > 0)
             {
-                Log.Info(LogCat.Console, _content.Reload(AssetPath.Intern(a[0]))
-                    ? $"reloaded {a[0]}" : $"asset_reload: {a[0]} is not loaded (see asset_list)");
+                var path = AssetPath.Intern(a[0]);
+                if (_content.Reload(path)) { Log.Info(LogCat.Console, $"reloaded {a[0]}"); return; }
+
+                // "Not loaded" and "loaded but cannot be swapped" are different answers, and telling a
+                // sound it was never loaded sends you looking in the wrong place (a sound's voices hold
+                // instances of it, see `Cached`).
+                bool loaded = false;
+                foreach (var asset in _content.Cached) if (asset.Path == path) { loaded = true; break; }
+                Log.Info(LogCat.Console, loaded
+                    ? $"asset_reload: {a[0]} is loaded but cannot be hot reloaded"
+                    : $"asset_reload: {a[0]} is not loaded (see asset_list)");
                 return;
             }
             int n = 0;
@@ -243,7 +252,7 @@ public sealed class ClientModule : IModule
             int n = 0;
             foreach (var (path, kind, canReload) in _content.Cached)
             {
-                Log.Info(LogCat.Console, $"  {path,-48} {kind}{(canReload ? "" : "  (rebuild to change)")}");
+                Log.Info(LogCat.Console, $"  {path,-48} {kind}{(canReload ? "" : "  (no hot reload)")}");
                 n++;
             }
             Log.Info(LogCat.Console, $"{n} asset(s) loaded");

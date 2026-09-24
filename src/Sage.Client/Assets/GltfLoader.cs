@@ -46,8 +46,23 @@ internal static class GltfLoader
         var min = new Vector3(float.MaxValue);
         var max = new Vector3(float.MinValue);
 
-        foreach (var node in root.DefaultScene?.VisualChildren ?? root.LogicalNodes)
-            Collect(node, name, parts, ref min, ref max);
+        try
+        {
+            // `Collect` recurses, so this wants *roots* only. `LogicalNodes` is every node in the file,
+            // children included, so the fallback for a file with no default scene has to filter them —
+            // feeding it the flat list draws a hierarchy once per level of itself.
+            var roots = root.DefaultScene?.VisualChildren
+                        ?? System.Linq.Enumerable.Where(root.LogicalNodes, n => n.VisualParent == null);
+            foreach (var node in roots) Collect(node, name, parts, ref min, ref max);
+        }
+        catch (Exception ex)
+        {
+            // Reading geometry can throw on a file this loader does not handle — a primitive drawn as
+            // points or lines has no triangles to ask for. Same contract as a bad header: a content
+            // problem, logged, drawn as the error mesh.
+            Log.Warn(LogCat.Assets, $"Model '{name}': could not read geometry ({ex.GetType().Name}: {ex.Message})");
+            return false;
+        }
 
         if (parts.Count == 0)
         {
@@ -92,7 +107,11 @@ internal static class GltfLoader
                     : Vector3.Up;
                 var uv = uvs != null && i < uvs.Count ? new Vector2(uvs[i].X, uvs[i].Y) : Vector2.Zero;
 
-                vertices[i] = new VertexPositionNormalTexture(p, Vector3.Normalize(n), uv);
+                // A zero-length normal normalises to NaN, and a NaN in a vertex buffer is invisible
+                // geometry with nothing in the log to explain it. Exporters do write them.
+                n = n.LengthSquared() > 1e-12f ? Vector3.Normalize(n) : Vector3.Up;
+
+                vertices[i] = new VertexPositionNormalTexture(p, n, uv);
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);
             }
