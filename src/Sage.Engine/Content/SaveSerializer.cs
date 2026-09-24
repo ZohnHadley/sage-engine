@@ -32,6 +32,11 @@ internal sealed class SaveSerializer
         "PhysicsBody",            // a Bepu handle (10 §3): rebuilt from Collider and RigidBody
         "EntityName",             // a name is a string, written on the entity itself (09 §3.4): the
                                   // component also carries the UTF-8 bytes of it, base64-encoded
+        "IOConnections",          // a level's wiring (04 §3.4): it comes from the map, the same as the
+                                  // walls do, and it holds resolved entity handles that mean nothing in
+                                  // another session. Nothing map-spawned is persistent today, so this is
+                                  // a guard rather than a fix — but it is the kind that is cheap now and
+                                  // an afternoon later.
     };
 
     private readonly ComponentSchema _schema;

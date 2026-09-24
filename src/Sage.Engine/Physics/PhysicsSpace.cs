@@ -36,6 +36,11 @@ public sealed class PhysicsSpace : IDisposable
     // found the same shape of bug in asset reloading; this is its physics twin).
     private readonly Dictionary<int, TypedIndex> _ownedShapes = new();
 
+    // Where a hull's own centre of mass sits relative to the position it was added at. Bepu recentres a
+    // hull and hands back that offset, so anything that moves one afterwards has to add it back or the
+    // door jumps by its own half-width the first time it opens.
+    private readonly Dictionary<int, Vector3> _hullOffsets = new();
+
     internal Simulation Simulation { get; }
 
     public PhysicsSpace(Vector3? gravity = null)
@@ -103,6 +108,7 @@ public sealed class PhysicsSpace : IDisposable
             // shared between bodies and cached by size, so those stay.
             if (_ownedShapes.Remove(body.Handle, out var owned))
                 Simulation.Shapes.RemoveAndDispose(owned, _pool);
+            _hullOffsets.Remove(body.Handle);
         }
         else
         {
@@ -121,7 +127,7 @@ public sealed class PhysicsSpace : IDisposable
     //
     // Bepu recentres a hull on its own centre of mass and hands back the offset, so the static's pose
     // has to carry it or every brush sits at the level's origin.
-    public PhysicsBody AddHull(Entity entity, ReadOnlySpan<Vector3> points, Vector3 position, byte layer = 0)
+    public PhysicsBody AddHull(Entity entity, ReadOnlySpan<Vector3> points, Vector3 position, byte layer = 0, bool isTrigger = false)
     {
         var buffer = new Vector3[points.Length];
         points.CopyTo(buffer);
@@ -143,7 +149,8 @@ public sealed class PhysicsSpace : IDisposable
 
         var handle = Simulation.Statics.Add(new StaticDescription(new RigidPose(position + centre), shape));
         _ownedShapes[handle.Value] = shape;
-        _data.RegisterStatic(handle.Value, entity, layer, false, 0.8f, 0f);
+        _hullOffsets[handle.Value] = centre;
+        _data.RegisterStatic(handle.Value, entity, layer, isTrigger, 0.8f, 0f);
         return new PhysicsBody { Handle = handle.Value, IsStatic = true };
     }
 
@@ -160,6 +167,24 @@ public sealed class PhysicsSpace : IDisposable
         _ownedShapes[handle.Value] = shape;
         _data.RegisterStatic(handle.Value, entity, layer, false, 0.8f, 0f);
         return new PhysicsBody { Handle = handle.Value, IsStatic = true };
+    }
+
+    // Moves a static the engine built (a door, a lift). Statics are meant to stay put, so Bepu needs its
+    // bounds refreshed by hand — the same call the origin rebase makes, and for the same reason: a stale
+    // broadphase bound is collision that happens where the thing used to be, with nothing to show for it.
+    //
+    // A *static* rather than a kinematic body is a deliberate v1 limit (15 §10a): a moving static does
+    // not push what is leaning on it, so a door shuts through a player rather than shoving them out.
+    // Kinematic hulls are the fix when something needs to carry you.
+    public void MoveStatic(in PhysicsBody body, Vector3 position)
+    {
+        if (!body.IsStatic) return;
+        var handle = new StaticHandle(body.Handle);
+        if (!Simulation.Statics.StaticExists(handle)) return;
+
+        var offset = _hullOffsets.TryGetValue(body.Handle, out var centre) ? centre : Vector3.Zero;
+        Simulation.Statics[handle].Pose.Position = position + offset;
+        Simulation.Statics.UpdateBounds(handle);
     }
 
     public Pose PoseOf(in PhysicsBody body)

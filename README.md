@@ -41,7 +41,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 475 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 488 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -225,6 +225,20 @@ dotnet run --project src/Sage.Host -c Development -- +fgd_export     # entity de
 A level is named by a `map` record (`games/Sandbox/content/data/level.json`), which a `scene` loads; in
 the editor, `classname` is a prefab id, so `watcher` places the Sandbox's watcher. `map_load`, `map_list`
 and `map_unload` do it from the console. See [`docs/design/15-editor.md`](docs/design/15-editor.md) §10a.
+
+**What a level does** is wired in the same file. Brushes with a `classname` become an entity that owns
+its geometry — a door, a lift, a trigger volume — and an entity fires named **outputs** that are wired to
+named **inputs** on other entities:
+
+```
+"classname" "door"           a prefab, so what a door *does* lives in the prefab
+"targetname" "hut_door"
+"OnUse" "!self,Open"         using it opens it: target,input[,parameter,delay,times]
+```
+
+Connections are checked when the level loads, so a typo is an error naming the line rather than a door
+that quietly never opens. `ent_fire`, `io_list` and `io_trace` drive and watch it from the console; see
+[`docs/design/04-events-and-messaging.md`](docs/design/04-events-and-messaging.md) §3.4.
 
 ## Daggerfall art (your own copy)
 

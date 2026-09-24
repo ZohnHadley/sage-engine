@@ -83,6 +83,19 @@ def write_map(path):
         lines += ['{', '"classname" "%s"' % classname,
                   '"origin" "%d %d %d"' % origin, '"angle" "%d"' % angle, '}']
 
+    # The door: a *solid entity*, which is brushes with a classname on them (F17). `door` is a prefab,
+    # so what the door does - slide up three metres and shut itself again - lives in the prefab, and the
+    # map only says where it is and what using it does.
+    #
+    # `OnUse` is written the way Hammer writes an output: target, input, parameter, delay, times.
+    # `!self` is the entity that fired it, so the door opens itself; a lever across the room would say
+    # `hut_door,Open` instead.
+    lines += ['{', '"classname" "door"', '"targetname" "hut_door"',
+              '"OnUse" "!self,Open"',
+              '"OnFullyOpen" "!self,Say,The door swings open.,0,1"']
+    lines += box((-32, -144, 0), (32, -128, 96), 'door', 1)
+    lines.append('}')
+
     text = '\n'.join(lines) + '\n'
     open(path, 'w', newline='\n').write(text)
     brushes = text.count('\n{\n(') + text.count('{\n(')
@@ -150,6 +163,25 @@ def plank_floor():
     return pixels
 
 
+def oak_door():
+    """Vertical boards with two iron bands across them, so its travel is easy to see."""
+    pixels = []
+    for y in range(SIZE):
+        for x in range(SIZE):
+            plank = x // 8
+            gap = (x % 8) == 0
+            band = 12 <= y <= 15 or 48 <= y <= 51
+            shade = 0.6 + 0.3 * noise(plank, y // 3, 23)
+            if gap:
+                shade *= 0.5
+            if band:
+                grey = int(90 * (0.8 + 0.2 * noise(x, y, 5)))
+                pixels.append((grey, grey, grey + 6, 255))
+            else:
+                pixels.append((int(120 * shade) + 35, int(80 * shade) + 22, int(40 * shade) + 12, 255))
+    return pixels
+
+
 def thatch_roof():
     """Straw laid in rows: no structure to it beyond the direction it lies in."""
     pixels = []
@@ -174,6 +206,7 @@ def main():
     write_png(os.path.join(textures, 'hut_wall.png'), SIZE, SIZE, stone_wall())
     write_png(os.path.join(textures, 'hut_floor.png'), SIZE, SIZE, plank_floor())
     write_png(os.path.join(textures, 'hut_roof.png'), SIZE, SIZE, thatch_roof())
+    write_png(os.path.join(textures, 'hut_door.png'), SIZE, SIZE, oak_door())
 
 
 if __name__ == '__main__':

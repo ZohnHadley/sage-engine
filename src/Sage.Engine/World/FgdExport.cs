@@ -64,6 +64,24 @@ public static class FgdExport
         text.AppendLine("@SolidClass = worldspawn : \"The level itself: every brush in it becomes geometry and collision.\" []");
         text.AppendLine();
 
+        // Entity I/O, as a comment rather than as FGD `output` lines: TrenchBroom is a Quake-family
+        // editor and does not parse Source's output syntax, but it does let a mapper type any key on any
+        // entity — which is exactly what a wire is. So the file says what to type.
+        text.AppendLine("// ---- Wiring (entity I/O, docs/design/04 §3.4) --------------------------------");
+        text.AppendLine("//");
+        text.AppendLine("// Add a key named after an output, with a value of: target,input[,parameter,delay,times]");
+        text.AppendLine("//   \"OnUse\"  \"hut_door,Open\"           using this opens the door named hut_door");
+        text.AppendLine("//   \"OnStartTouch\" \"!self,Say,Hello,0,1\"  once, when something walks in");
+        text.AppendLine("//");
+        text.AppendLine("// Targets may be a targetname, or !self / !activator / !caller.");
+        text.AppendLine("// Outputs the engine fires: OnUse (something used it), OnStartTouch / OnEndTouch (a");
+        text.AppendLine("// trigger volume: put \"trigger\" \"1\" on a brush entity), OnFullyOpen / OnFullyClosed (a mover).");
+
+        var inputs = new List<string>(engine.Inputs.Names);
+        inputs.Sort(StringComparer.OrdinalIgnoreCase);
+        text.AppendLine($"// Inputs this game has: {string.Join(", ", inputs)}.");
+        text.AppendLine();
+
         var prefabs = new List<RecordId>(engine.Records.Ids("prefab"));
         prefabs.Sort((a, b) => string.CompareOrdinal(a.ToString(), b.ToString()));
 

@@ -79,16 +79,7 @@ internal sealed class MapMeshSystem : ISystem
             var handle = BuildGroup(faces, $"{level.Record} {texture}", out var bounds);
             if (handle.IsEmpty) continue;
 
-            // Texture name to material id: "wall" in a map whose record is `sandbox:hut` looks for
-            // `sandbox:wall`. A texture with no material draws as the default lit material rather than
-            // the error checkerboard — a mapper blocking out a room with untextured brushes is working,
-            // not making a mistake, and a room of magenta says the opposite.
-            var material = new RecordId(level.MaterialNamespace, Sanitise(texture));
-            if (!_world.Records().Exists(material))
-            {
-                Log.Debug(LogCat.Level, $"{level.Source}: texture '{texture}' has no material '{material}'; drawing it plain");
-                material = MaterialRecord.Default;
-            }
+            var material = MaterialFor(level, texture);
 
             var entity = _world.Create(Transform.At(level.Position), $"{level.Record} {texture}");
             _world.Add(entity, new MapGeometry { Level = level.Record });
@@ -96,10 +87,61 @@ internal sealed class MapMeshSystem : ISystem
             _built.Add(entity);
         }
 
-        Log.Info(LogCat.Level, $"{level.Source}: {_built.Count} mesh(es) for {_byTexture.Count} texture(s)");
+        // Counted before the solids are built, because they reuse the same grouping table.
+        int levelMeshes = _built.Count, levelTextures = _byTexture.Count;
+        foreach (var solid in level.Solids) BuildSolid(level, solid);
+
+        Log.Info(LogCat.Level, $"{level.Source}: {levelMeshes} mesh(es) for {levelTextures} texture(s)"
+                             + (level.Solids.Count > 0 ? $", plus {level.Solids.Count} solid entit(ies)" : ""));
     }
 
-    private MeshHandle BuildGroup(List<LevelFace> faces, string name, out BoundingSphere bounds)
+    // A door's geometry belongs to the door. Its meshes are **children** of the spawned entity with
+    // positions relative to it, so opening the door moves them: transform propagation does the work, and
+    // nothing rebuilds a buffer to animate a piece of level (03 §3.6, 15 §10a).
+    private void BuildSolid(MapLevel level, SolidEntity solid)
+    {
+        if (solid.Spawned.IsNull || !_world.IsAlive(solid.Spawned)) return;
+
+        _byTexture.Clear();
+        foreach (var brush in solid.Brushes)
+            foreach (var face in brush.Faces)
+            {
+                if (!_byTexture.TryGetValue(face.Texture, out var faces))
+                    _byTexture[face.Texture] = faces = new List<LevelFace>();
+                faces.Add(face);
+            }
+
+        foreach (var (texture, faces) in _byTexture)
+        {
+            // Relative to the entity's own origin, which is where its hull is too.
+            var handle = BuildGroup(faces, $"{level.Record} {texture}", solid.Origin, out var bounds);
+            if (handle.IsEmpty) continue;
+
+            var material = MaterialFor(level, texture);
+            var child = _world.Create(Transform.At(System.Numerics.Vector3.Zero), $"{solid.Source.ClassName} {texture}");
+            _world.Add(child, new MapGeometry { Level = level.Record });
+            _world.Add(child, new MeshRenderer { Handle = handle, Material = material });
+            _world.SetParent(child, solid.Spawned);
+        }
+    }
+
+    // Texture name to material id: "wall" in a map whose record is `sandbox:hut` looks for
+    // `sandbox:wall`. A texture with no material draws as the default lit material rather than the error
+    // checkerboard — a mapper blocking out a room with untextured brushes is working, not making a
+    // mistake, and a room of magenta says the opposite.
+    private RecordId MaterialFor(MapLevel level, string texture)
+    {
+        var material = new RecordId(level.MaterialNamespace, Sanitise(texture));
+        if (_world.Records().Exists(material)) return material;
+
+        Log.Debug(LogCat.Level, $"{level.Source}: texture '{texture}' has no material '{material}'; drawing it plain");
+        return MaterialRecord.Default;
+    }
+
+    private MeshHandle BuildGroup(List<LevelFace> faces, string name, out BoundingSphere bounds) =>
+        BuildGroup(faces, name, System.Numerics.Vector3.Zero, out bounds);
+
+    private MeshHandle BuildGroup(List<LevelFace> faces, string name, System.Numerics.Vector3 relativeTo, out BoundingSphere bounds)
     {
         _vertices.Clear();
         _indices.Clear();
@@ -114,7 +156,9 @@ internal sealed class MapMeshSystem : ISystem
 
             for (int i = 0; i < face.Positions.Length; i++)
             {
-                var p = new Vector3(face.Positions[i].X, face.Positions[i].Y, face.Positions[i].Z);
+                var p = new Vector3(face.Positions[i].X - relativeTo.X,
+                                    face.Positions[i].Y - relativeTo.Y,
+                                    face.Positions[i].Z - relativeTo.Z);
                 _vertices.Add(new VertexPositionNormalTexture(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y)));
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);

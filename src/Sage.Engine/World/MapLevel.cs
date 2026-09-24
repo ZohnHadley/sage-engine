@@ -58,6 +58,10 @@ public sealed class MapLevel
     public required string Source { get; init; }            // "mount:path", for anything that goes wrong
     public required List<LevelBrush> Brushes { get; init; }
     public required List<MapEntity> PointEntities { get; init; }
+
+    // Brushes that belong to an *entity* rather than to the level: a door, a lift, a trigger volume.
+    // They are the same geometry, built around their own origin so the thing can move (15 §3, F17).
+    public required List<SolidEntity> Solids { get; init; }
     public required string MaterialNamespace { get; init; }
     public required byte Layer { get; init; }
 
@@ -83,6 +87,23 @@ public sealed class MapLevel
     {
         get { int n = 0; foreach (var brush in Brushes) n += brush.Faces.Length; return n; }
     }
+}
+
+// One brush entity: its brushes, where its own origin is, and what it became once spawned.
+public sealed class SolidEntity
+{
+    public required MapEntity Source { get; init; }
+    public required List<LevelBrush> Brushes { get; init; }
+
+    // Where the entity's own origin sits inside the level, in metres. Brush positions are relative to
+    // it, which is the whole trick that lets a door move: moving the entity moves its geometry, and
+    // nothing has to rebuild anything.
+    public required Vector3 Origin { get; init; }
+
+    // Every corner of every brush it owns, relative to that origin: one convex hull for the entity.
+    public required Vector3[] Hull { get; init; }
+
+    public Entity Spawned;
 }
 
 // Every level a world has loaded. A world can hold several — a village is a level per building long
@@ -165,10 +186,57 @@ public static class MapLoader
         }
 
         var points = new List<MapEntity>();
+        var solids = new List<SolidEntity>();
         foreach (var entity in file.Entities)
         {
             if (ReferenceEquals(entity, file.Worldspawn)) continue;
-            points.Add(entity);
+
+            if (entity.Brushes.Count == 0) { points.Add(entity); continue; }
+
+            // A solid entity's brushes are built around the entity's own origin: its `origin` key if the
+            // mapper set one (TrenchBroom writes one for a rotating door's hinge), otherwise the middle
+            // of the brushes themselves, which is what a mapper means by "the door" when they have not
+            // said otherwise.
+            var built = BrushGeometry.Build(entity.Brushes, space, out int entitySkipped);
+            skipped += entitySkipped;
+            if (built.Count == 0)
+            {
+                Log.Warn(LogCat.Level, $"{source}: '{entity.ClassName}' (line {entity.Line}) has no geometry left");
+                continue;
+            }
+
+            Vector3 origin;
+            if (entity.TryGetVector("origin", out var written)) origin = space.ToEngine(written);
+            else
+            {
+                var min = built[0].Min;
+                var max = built[0].Max;
+                foreach (var brush in built)
+                {
+                    min = Vector3.Min(min, brush.Min);
+                    max = Vector3.Max(max, brush.Max);
+                }
+                origin = (min + max) * 0.5f;
+            }
+
+            var hull = new List<Vector3>();
+            foreach (var brush in built)
+                foreach (var point in brush.Hull)
+                {
+                    var local = point - origin;
+                    bool seen = false;
+                    foreach (var existing in hull)
+                        if (Vector3.DistanceSquared(existing, local) < 1e-6f) { seen = true; break; }
+                    if (!seen) hull.Add(local);
+                }
+
+            solids.Add(new SolidEntity
+            {
+                Source = entity,
+                Brushes = built,
+                Origin = origin,
+                Hull = hull.ToArray(),
+            });
         }
 
         var level = new MapLevel
@@ -177,6 +245,7 @@ public static class MapLoader
             Source = source,
             Brushes = brushes,
             PointEntities = points,
+            Solids = solids,
             MaterialNamespace = string.IsNullOrEmpty(record.MaterialNamespace) ? id.Namespace : record.MaterialNamespace,
             Layer = record.Layer,
             At = record.At,
@@ -280,6 +349,9 @@ public static class MapLoader
             var spawnedEntity = world.Spawn(prefab, at, yaw);
             if (spawnedEntity.IsNull) continue;
 
+            MapEntityIO.Attach(world, spawnedEntity,
+                               MapEntityIO.Read(entity, engine, $"{level.Source}:{entity.Line}"));
+
             // Marked with the level that placed it. Without this a level's furniture outlived the level:
             // unloading took the walls and left the watcher standing in the open, and the Sandbox
             // reloads its maps whenever a record file is saved, so every save left another one behind.
@@ -290,13 +362,152 @@ public static class MapLoader
             spawned++;
         }
 
+        for (int i = 0; i < level.Solids.Count; i++) SpawnSolid(world, level, level.Solids[i], i, ref spawned);
+
+        // Names are resolved after everything is in the world, so a wire may point either way along the
+        // file: a trigger at the top of the map can open a door written at the bottom of it.
+        foreach (var entity in world.Query<FromMap>().Entities.ToEntityList())
+            if (entity.GetComponent<FromMap>().Level == level.Record)
+                MapEntityIO.Resolve(world, entity, level.Source);
+
         if (spawned > 0 || unknown > 0)
             Log.Info(LogCat.Level, $"{level.Source}: spawned {spawned} entit(ies)"
                                  + (unknown > 0 ? $", {unknown} classname(s) with no prefab" : ""));
     }
+
+    // A brush entity: a door, a lift, a trigger volume. It is an ordinary entity that happens to own
+    // geometry — which is why it can be a prefab like any other, and why "how far does this door open"
+    // lives in the prefab rather than in the level.
+    private static void SpawnSolid(World world, MapLevel level, SolidEntity solid, int index, ref int spawned)
+    {
+        var engine = world.Engine!;
+        string where = $"{level.Source}:{solid.Source.Line}";
+        var at = level.Position + solid.Origin;
+        string className = solid.Source.ClassName;
+
+        // With a prefab of that name the entity is built from it (a `door` prefab brings its `mover`);
+        // without one it is still a solid you can walk into, which is what an untyped brush entity in a
+        // map means.
+        // **Not rotated**, unlike a point entity. A brush entity's geometry is already where the mapper
+        // drew it, so turning the entity would turn the mesh away from the hull that stayed put — which
+        // is what a door two feet wide and facing sideways looked like the first time. Quake's `angle` on
+        // a solid means which way it *moves* rather than which way it faces, and nothing reads it yet.
+        var prefab = new RecordId(level.Record.Namespace, className);
+        var entity = engine.Records.Exists(prefab)
+            ? world.Spawn(prefab, at)
+            : world.Create(Transform.At(at), className.Length > 0 ? className : "brush entity");
+
+        if (entity.IsNull) return;
+
+        if (solid.Source.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
+            entity.Name = new EntityName(name);
+
+        world.Add(entity, new FromMap { Level = level.Record });
+        world.Add(entity, new MapSolid { Level = level.Record, Index = index });
+        MapEntityIO.Attach(world, entity, MapEntityIO.Read(solid.Source, engine, where));
+
+        // A mover has to know where "shut" is, and only now does anybody: the prefab part that added it
+        // ran before the map had put the entity where the mapper drew it.
+        if (entity.HasComponent<Mover>()) entity.GetComponent<Mover>().Closed = at;
+
+        // One hull for the whole entity, from every corner of every brush it owns. A door drawn as one
+        // box is exact; an L-shaped one drawn as a single entity collides as the convex hull of both
+        // arms, which is solid across the inside of the L. Draw that as two entities — and it is worth
+        // knowing rather than guessing at, which is why it is written here and in 15 §10a.
+        // `"trigger" "1"` makes the volume something you walk *into* rather than against: the oldest
+        // level mechanism there is, and one of the three keys this engine reads off a map entity.
+        bool isTrigger = solid.Source.Keys.TryGetValue("trigger", out var flag)
+                      && (flag == "1" || flag.Equals("true", StringComparison.OrdinalIgnoreCase));
+
+        var body = world.Resources.Get<PhysicsSpace>()
+                        .AddHull(entity, solid.Hull, at, level.Layer, isTrigger);
+        if (!body.IsStatic && body.Handle == 0) Log.Warn(LogCat.Level, $"{where}: '{className}' has no collision");
+        else world.Add(entity, body);
+
+        solid.Spawned = entity;
+        spawned++;
+    }
 }
 
 // The module: the record, the resource, the collision half, and the commands.
+internal static class MapEntityIO
+{
+    // A key whose name starts with `On` is an output wired to somewhere, written the way Hammer writes
+    // it: `target,input,parameter,delay,times`. Only the first two are required.
+    //
+    // Nothing else is read as a connection, and that is the same promise the FGD makes: every key this
+    // engine offers is a key it acts on. Quake's bare `target`/`targetname` pair is deliberately *not*
+    // one of them — it says which entity but never which input, so half of what it means would have to
+    // be guessed per classname, which is exactly the untyped string resolution this replaces (04 §3.4).
+    public static Connection[]? Read(MapEntity entity, Engine engine, string where)
+    {
+        List<Connection>? wires = null;
+
+        foreach (var (key, value) in entity.Keys)
+        {
+            if (key.Length < 3 || !key.StartsWith("On", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrWhiteSpace(value)) continue;
+
+            var parts = value.Split(',');
+            if (parts.Length < 2)
+            {
+                Log.Error(LogCat.Events, $"{where}: '{key}' should be \"target,input[,parameter,delay,times]\", found '{value}'");
+                continue;
+            }
+
+            var wire = new Connection
+            {
+                Output = key,
+                Target = parts[0].Trim(),
+                Input = parts[1].Trim(),
+                Parameter = parts.Length > 2 ? parts[2].Trim() : "",
+            };
+
+            if (parts.Length > 3 && float.TryParse(parts[3].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float delay))
+                wire.Delay = delay;
+            if (parts.Length > 4 && int.TryParse(parts[4].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int times))
+                wire.Times = times;
+
+            // Checked here rather than when it fires, which is the point of the whole exercise: a
+            // mapper finds out about a typo when the level loads, with the line to fix, instead of
+            // wondering at run time why the door does nothing.
+            if (!engine.Inputs.Has(wire.Input))
+            {
+                Log.Error(LogCat.Events, $"{where}: '{key}' sends '{wire.Input}', which is not an input (see io_list)");
+                continue;
+            }
+
+            (wires ??= new List<Connection>()).Add(wire);
+        }
+
+        return wires?.ToArray();
+    }
+
+    // Attaches the wires and resolves their targets by name. Called after everything in the level is
+    // spawned, so a wire can point at anything else in the same map.
+    public static void Attach(World world, Entity entity, Connection[]? wires)
+    {
+        if (wires == null || entity.IsNull) return;
+        world.Add(entity, new IOConnections { Wires = wires });
+    }
+
+    public static void Resolve(World world, Entity entity, string where)
+    {
+        if (entity.IsNull || !entity.HasComponent<IOConnections>()) return;
+        var wires = entity.GetComponent<IOConnections>().Wires;
+        if (wires == null) return;
+
+        foreach (var wire in wires)
+        {
+            if (wire.Target.StartsWith("!", StringComparison.Ordinal)) continue;   // resolved per firing
+            wire.Resolved = world.FindByName(wire.Target);
+            if (wire.Resolved.IsNull)
+                Log.Warn(LogCat.Events, $"{where}: '{wire.Output}' points at '{wire.Target}', which is not in the level "
+                                      + "(it will be looked for again each time it fires)");
+        }
+    }
+}
+
 public sealed class MapModule : IModule
 {
     public void Init(ModuleContext ctx)
@@ -429,6 +640,14 @@ internal sealed class MapCollisionSystem : ISystem
 public struct MapGeometry : IComponent
 {
     public RecordId Level;
+}
+
+// Marks an entity that owns one of a level's solid brush groups, and which one: the client builds its
+// meshes as children of it, so they move when it does.
+public struct MapSolid : IComponent
+{
+    public RecordId Level;
+    public int Index;
 }
 
 // Marks an entity a level *spawned* from a `classname`. Separate from `MapGeometry` on purpose: what a

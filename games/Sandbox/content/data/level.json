@@ -30,6 +30,30 @@
     "params": { "Albedo": "textures/hut_floor.png" }
   },
   {
+    // The door's own look. Its texture name is `door`, so this is the material it finds.
+    "type": "material",
+    "id": "door",
+    "base": "sage:lit_default",
+    "params": { "Albedo": "textures/hut_door.png" }
+  },
+
+  // The door itself (04 §3.4, F17). The map says where it is and what using it does; this says what a
+  // door *is* — geometry that slides two metres aside over a second and a half and shuts again five
+  // seconds later. Change it here and every door in every level changes.
+  //
+  // Two metres east, which is its own width, so it clears the opening and ends up behind the wall
+  // beside it. (Up works too, and is what it did first — but a three-metre door in a four-metre wall
+  // comes out through the roof.)
+  {
+    "type": "prefab",
+    "id": "door",
+    "name": "door",
+    "parts": {
+      "mover": { "open": [2, 0, 0], "seconds": 1.5, "closeAfter": 5 }
+    }
+  },
+
+  {
     "type": "material",
     "id": "roof",
     "base": "sage:lit_default",

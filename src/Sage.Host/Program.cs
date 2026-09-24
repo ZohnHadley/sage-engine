@@ -69,6 +69,8 @@ try
     AddDefaultModule(new ItemsModule());
     AddDefaultModule(new AbilitiesModule());
     AddDefaultModule(new AIModule());
+    AddDefaultModule(new EntityIOModule());     // level logic wired in data (04 §3.4, F17)
+    AddDefaultModule(new MoverModule());        // doors, lifts and the rest of what a wire moves (F17)
     AddDefaultModule(new ClientModule());
     engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));
     // `modules.add`: the game's other assemblies, such as its client half (01 §3.3, R15).

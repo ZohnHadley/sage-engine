@@ -384,6 +384,11 @@ public sealed class InteractionSystem : ISystem
                 world.Destroy(interaction.Target);
             }
 
+            // Using a thing is the oldest output there is: a lever, a button, a door you open by hand
+            // (04 §3.4, F17). Fired before the event is sent for the same reason the event is sent last
+            // — the target may be about to be destroyed by whatever reads it.
+            world.FireOutput(interaction.Target, "OnUse", interaction.User);
+
             // Sent last, and complete: every reader is later than this line — a Fixed one in a later
             // phase, a frame-side one up to a frame later — so by the time anybody reads it the sword it
             // describes has been destroyed. What the event does not carry, nobody can recover.
@@ -429,6 +434,10 @@ public sealed class InteractionSystem : ISystem
 
     private const float FacingCone = 140f;   // how generous "in front of them" is, in degrees
 
+    // Something you can pick up, something a game has marked, or **something wired to `OnUse`** (04
+    // §3.4, F17). The last one is what makes a door in a map usable without a component or a tag: a
+    // mapper draws it, wires `OnUse` to `Open`, and the thing is usable because using it does something.
     private static bool Usable(World world, Entity entity) =>
-        !entity.IsNull && world.IsAlive(entity) && (world.Has<Pickup>(entity) || entity.Tags.Has<Interactable>());
+        !entity.IsNull && world.IsAlive(entity)
+        && (world.Has<Pickup>(entity) || entity.Tags.Has<Interactable>() || entity.HasOutput("OnUse"));
 }

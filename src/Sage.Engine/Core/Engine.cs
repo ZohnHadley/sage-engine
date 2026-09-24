@@ -37,6 +37,10 @@ public sealed class Engine : IDisposable
     public ComponentSchema Components { get; }
     public PrefabRegistry Prefabs { get; } = new();
 
+    // Every entity input a level can wire to (04 §3.4, F17). Here rather than on a module because a
+    // level's wiring may name an input from any of them, and because `ent_fire` has to check one list.
+    public EntityInputs Inputs { get; } = new();
+
     // Save and load (09 §3.5, F27).
     public SaveSystem Saves { get; }
 

@@ -33,6 +33,11 @@ public static class GameplayModules
         modules.Add(new ItemsModule());
         modules.Add(new AbilitiesModule());
         modules.Add(new AIModule());
+
+        // Level logic written in data, and the geometry it moves (04 §3.4, F17). Both are gameplay in
+        // the sense that matters here: a headless server runs them, and they decide things.
+        modules.Add(new EntityIOModule());
+        modules.Add(new MoverModule());
     }
 
     // Every cheat that acts on "the player" means the same thing by it (16 §3.1).
