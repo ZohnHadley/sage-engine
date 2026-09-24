@@ -12,6 +12,7 @@ internal class KeyboardListener
 
     private KeyboardState _currentKeySet;
     private KeyboardState _previousKeySet;
+    private FocusPolicy _focus;
 
     public KeyboardState CurrentKeySet {get{return _currentKeySet;}}
     public KeyboardState PreviousKeySet {get{return _previousKeySet;}}
@@ -22,12 +23,30 @@ internal class KeyboardListener
     public event Action<Keys> OnKeyReleased;
 
 
-    public void Update()
+    public void Update(bool focused)
     {
         // Roll the state first, so the polling edges (IsKeyPressed/Released) stay valid until the next
         // Update. (They used to roll at the end, which made every polled edge false; TODO #40.)
-        _previousKeySet = _currentKeySet;
-        _currentKeySet = Keyboard.GetState();
+        //
+        // With the window unfocused the state is *empty* rather than whatever the device says (#60):
+        // the frame focus is lost still reports the releases, so a held key stops moving the player,
+        // and the frame it comes back reads both states from the device, so a key still held is not a
+        // fresh press.
+        switch (_focus.Step(focused))
+        {
+            case FocusStep.Neutral:
+                _previousKeySet = _currentKeySet;
+                _currentKeySet = default;
+                break;
+            case FocusStep.ReadAndResync:
+                _currentKeySet = Keyboard.GetState();
+                _previousKeySet = _currentKeySet;
+                break;
+            default:
+                _previousKeySet = _currentKeySet;
+                _currentKeySet = Keyboard.GetState();
+                break;
+        }
 
         // Check all possible Enum keys for a state change
         foreach (Keys key in AllKeys)

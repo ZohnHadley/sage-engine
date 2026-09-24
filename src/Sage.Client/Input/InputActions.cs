@@ -34,6 +34,17 @@ public sealed class InputActions
         public bool RightSide;             // right stick / right trigger
         public Keys[] Composite = Array.Empty<Keys>();   // up, down, left, right
         public int[] Slots = Array.Empty<int>();         // consumption slots this binding reads
+
+        // Whether this binding's analogue trigger counted as down last frame, for the hysteresis in
+        // `InputEdges.TriggerDown` (#60). Per binding, because two actions may read the same trigger.
+        public bool TriggerWasDown;
+
+        // What the device said this frame, read once in the raw pass and used again when the contexts
+        // decide who hears it. Reading it twice would tick the trigger hysteresis twice.
+        public bool RawDown;
+
+        public bool IsTrigger => Source == Source.PadButton &&
+                                 PadButton is Buttons.LeftTrigger or Buttons.RightTrigger;
     }
 
     // Consumption slots: keys 0..255, mouse buttons 256.., delta 270, wheel 271, pad buttons 300..331, sticks 340/341.
@@ -52,8 +63,12 @@ public sealed class InputActions
     private readonly bool[] _active = new bool[4];
     private readonly bool[] _consumed = new bool[SlotCount];
 
+    // What the devices say, before anything swallows it. **Edges come from this**, not from the
+    // filtered `_held`: an action consumed for one frame used to look un-held, so the frame the screen
+    // closed it looked newly *pressed* and the character swung at nothing (#60, `InputEdges`).
+    private bool[] _rawHeld = Array.Empty<bool>();
+    private bool[] _wasRawHeld = Array.Empty<bool>();
     private bool[] _held = Array.Empty<bool>();
-    private bool[] _wasHeld = Array.Empty<bool>();
     private Vector2[] _axis = Array.Empty<Vector2>();
     private ulong _heldBits, _pressedBits, _releasedBits;
     // Scripted input (08 §9): actions driven from the console instead of a device, for automated
@@ -80,7 +95,9 @@ public sealed class InputActions
         _invertY = cvars.Register("m_invert_y", false, CVarFlags.Archive, "Invert mouse look up/down.");
         cvars.RegisterCommand("bindlist", CVarFlags.None, "List input bindings per context.", _ => ListBindings());
         cvars.RegisterCommand("in_contexts", CVarFlags.None, "Show which input contexts are active.", _ =>
-            Log.Info(LogCat.Console, $"  {string.Join(", ", ContextOrder.Select(c => $"{c}={(IsActive(c) ? "on" : "off")}"))}; UI captures keyboard={UiWantsKeyboard} mouse={UiWantsMouse}"));
+            Log.Info(LogCat.Console, $"  {string.Join(", ", ContextOrder.Select(c => $"{c}={(IsActive(c) ? "on" : "off")}"))}; " +
+                                     $"UI captures keyboard={UiWantsKeyboard} mouse={UiWantsMouse}; " +
+                                     $"window {(_devices.Focused ? "focused" : "unfocused — devices are ignored (#60)")}"));
         // Typing, for the same reason the other in_* commands exist: a screen with a field in it is
         // only checkable end to end if a script can put characters into it (08 §3.5). It pushes them
         // through the same buffer the window fills, so what a test drives is what a player types.
@@ -202,8 +219,11 @@ public sealed class InputActions
 
     // ---- Queries (this frame) ----
     public bool Held(ActionId a) => a.IsValid && a.Index < _held.Length && _held[a.Index];
-    public bool Pressed(ActionId a) => Held(a) && !_wasHeld[a.Index];
-    public bool Released(ActionId a) => a.IsValid && a.Index < _held.Length && !_held[a.Index] && _wasHeld[a.Index];
+    public bool Pressed(ActionId a) =>
+        a.IsValid && a.Index < _held.Length &&
+        InputEdges.Pressed(_rawHeld[a.Index], _wasRawHeld[a.Index], _rawHeld[a.Index] && !_held[a.Index]);
+    public bool Released(ActionId a) =>
+        a.IsValid && a.Index < _held.Length && InputEdges.Released(_rawHeld[a.Index], _wasRawHeld[a.Index]);
     public float Axis(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index].X : 0f;
     public Vector2 Axis2(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index] : Vector2.Zero;
 
@@ -236,7 +256,9 @@ public sealed class InputActions
             int index = s.Action.Index;
             if (index >= _held.Length) { _scripted.RemoveAt(i); continue; }
 
-            if (_registry.All[index].Kind == ActionKind.Button) _held[index] = true;
+            // Both: a script *is* the device as far as edges are concerned, and consumption does not
+            // apply to it — a script drives the game rather than playing it.
+            if (_registry.All[index].Kind == ActionKind.Button) _held[index] = _rawHeld[index] = true;
             else _axis[index] = s.Rate ? s.Value * dt : s.Value;
 
             if (s.OneFrame) { _scripted.RemoveAt(i); continue; }
@@ -256,10 +278,19 @@ public sealed class InputActions
     public void Update(float dt)
     {
         EnsureCapacity();
-        Array.Copy(_held, _wasHeld, _held.Length);
+        Array.Copy(_rawHeld, _wasRawHeld, _rawHeld.Length);
         Array.Clear(_held);
+        Array.Clear(_rawHeld);
         Array.Clear(_axis);
         Array.Clear(_consumed);
+
+        // **First, what the devices say** — every binding in every context, active or not. Edges are
+        // computed from this, so a context switching back on (a console closing, a screen closing) does
+        // not look like a finger arriving on a button that never moved (#60).
+        foreach (var list in _bindings)
+            foreach (var b in list)
+                if (b.Action.Kind == ActionKind.Button && b.Action.Id.Index < _rawHeld.Length)
+                    _rawHeld[b.Action.Id.Index] |= ReadRaw(b);
 
         foreach (var context in ContextOrder)
         {
@@ -271,7 +302,7 @@ public sealed class InputActions
             }
             var list = _bindings[(int)context];
             foreach (var b in list)
-                if (!IsConsumed(b)) Evaluate(b, dt);
+                Evaluate(b, dt, IsConsumed(b));
             foreach (var b in list)
                 foreach (int slot in b.Slots) _consumed[slot] = true;
             if (context == InputContext.Console) ConsumeRange(0, 256);
@@ -294,10 +325,35 @@ public sealed class InputActions
             if (info.Kind != ActionKind.Button) continue;
             int i = info.Id.Index;
             ulong bit = 1UL << info.Id.Bit;
-            if (_held[i]) _heldBits |= bit;
-            if (_held[i] && !_wasHeld[i]) _pressedBits |= bit;
-            if (!_held[i] && _wasHeld[i]) _releasedBits |= bit;
+            // Swallowed: the devices say it is down but something above this took it, so it is not
+            // held *and* the press it began must not surface later (`InputEdges`).
+            bool swallowed = _rawHeld[i] && !_held[i];
+            if (InputEdges.Held(_rawHeld[i], swallowed)) _heldBits |= bit;
+            if (InputEdges.Pressed(_rawHeld[i], _wasRawHeld[i], swallowed)) _pressedBits |= bit;
+            if (InputEdges.Released(_rawHeld[i], _wasRawHeld[i])) _releasedBits |= bit;
         }
+    }
+
+    // What one button binding's device says, regardless of who is listening. Called once per binding
+    // per frame, which matters: the trigger hysteresis has state, and reading it twice would step it
+    // twice (`InputEdges.TriggerDown`).
+    private bool ReadRaw(Binding b)
+    {
+        var pad = _devices.Gamepad;
+        bool down = b.Source switch
+        {
+            Source.Key => _devices.Keyboard.IsKeyDown(b.Key),
+            Source.MouseButton => _devices.Mouse.IsButtonDown(b.MouseButton),
+            // A trigger is analogue, so "down" needs two thresholds or it chatters where it rests
+            // (#60). `IsButtonDown(LeftTrigger)` is one fixed threshold, which is the chatter.
+            Source.PadButton when b.IsTrigger =>
+                InputEdges.TriggerDown(b.RightSide ? pad.RightTrigger : pad.LeftTrigger, b.TriggerWasDown),
+            Source.PadButton => pad.IsDown(b.PadButton),
+            _ => false,
+        };
+        if (b.IsTrigger) b.TriggerWasDown = down;
+        b.RawDown = down;
+        return down;
     }
 
     private void ConsumeRange(int start, int count) => Array.Fill(_consumed, true, start, count);
@@ -309,7 +365,7 @@ public sealed class InputActions
         return false;
     }
 
-    private void Evaluate(Binding b, float dt)
+    private void Evaluate(Binding b, float dt, bool consumed)
     {
         int i = b.Action.Id.Index;
         var kb = _devices.Keyboard;
@@ -319,16 +375,12 @@ public sealed class InputActions
 
         if (b.Action.Kind == ActionKind.Button)
         {
-            bool down = b.Source switch
-            {
-                Source.Key => kb.IsKeyDown(b.Key),
-                Source.MouseButton => mouse.IsButtonDown(b.MouseButton),
-                Source.PadButton => pad.IsDown(b.PadButton),
-                _ => false,
-            };
-            _held[i] |= down;
+            // Already read in the raw pass; this only decides whether the action *hears* it.
+            if (!consumed) _held[i] |= b.RawDown;
             return;
         }
+
+        if (consumed) return;
 
         Vector2 v = b.Source switch
         {
@@ -366,7 +418,8 @@ public sealed class InputActions
         int n = _registry.All.Count;
         if (_held.Length == n) return;
         Array.Resize(ref _held, n);
-        Array.Resize(ref _wasHeld, n);
+        Array.Resize(ref _rawHeld, n);
+        Array.Resize(ref _wasRawHeld, n);
         Array.Resize(ref _axis, n);
     }
 

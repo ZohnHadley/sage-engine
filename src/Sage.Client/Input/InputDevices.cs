@@ -37,12 +37,25 @@ public sealed class InputDevices
     // *during* it, so clearing at the start of input would drop one or the other.
     public void EndFrame() => _typedCount = 0;
 
-    public void Poll()
+    // `focused` is the window's own `IsActive`. **A game must not act on input it is not the target
+    // of** (08 §3.1, review #60): a click in somebody's browser was reaching the player's sword, and a
+    // key held as they alt-tabbed stayed held. `FocusPolicy` (engine-side, tested) owns what happens at
+    // the seam; the listeners just do what it says.
+    public void Poll(bool focused)
     {
-        Mouse.update();
-        Keyboard.Update();
-        Gamepad.Update();
+        // Worth a line each way: "the game ignores my keyboard" is otherwise a mystery, and this says
+        // whose window it thinks it is. Debug, so it is compiled out of Shipping (02 §3.2).
+        if (focused != Focused)
+            Log.Debug(LogCat.Input, focused ? "Window focused: reading devices again"
+                                            : "Window unfocused: devices ignored until it comes back");
+        Focused = focused;
+        Mouse.update(focused);
+        Keyboard.Update(focused);
+        Gamepad.Update(focused);
     }
+
+    // For `in_contexts`, so "why is nothing responding?" has a visible answer.
+    public bool Focused { get; private set; } = true;
 }
 
 // Player one's gamepad (08 §3.1). Raw values: dead zones are per binding (InputActions).
@@ -55,8 +68,23 @@ public sealed class GamepadListener
 
     public event Action<bool>? ConnectionChanged;   // true = connected
 
-    public void Update()
+    public void Update(bool focused)
     {
+        switch (_focus.Step(focused))
+        {
+            case FocusStep.Neutral:
+                // Everything up, but the connection is still whatever it was: a pad does not unplug
+                // itself because the player looked at another window, and saying so would log a
+                // disconnection every time they alt-tabbed.
+                _previous = _current;
+                _current = default;
+                return;
+            case FocusStep.ReadAndResync:
+                _current = GamePad.GetState(PlayerIndex.One, GamePadDeadZone.None);
+                _previous = _current;   // a trigger already held is not a press on the way back in
+                return;
+        }
+
         _previous = _current;
         _current = GamePad.GetState(PlayerIndex.One, GamePadDeadZone.None);
         if (_current.IsConnected != _previous.IsConnected)
@@ -65,6 +93,8 @@ public sealed class GamepadListener
             ConnectionChanged?.Invoke(_current.IsConnected);
         }
     }
+
+    private FocusPolicy _focus;
 
     public bool IsDown(Buttons button) => _current.IsButtonDown(button);
     public bool IsPressed(Buttons button) => _current.IsButtonDown(button) && !_previous.IsButtonDown(button);

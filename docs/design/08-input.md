@@ -103,6 +103,37 @@ Text typed into UI fields (the console, name entry, editor fields) comes from Mo
   - `in_showactions`, `joy_deadzone` (dead zones are per binding);
   - text input stays with ImGui.
 
+### 3.7 What counts as a press (review #60)
+Three things that are not a press, each of which produced one anyway:
+
+- **Input the window is not the target of.** The device layer is polled with the window's own
+  `IsActive`, and while that is false every device reports neutral: no keys, no buttons, no cursor
+  delta, no wheel. A click in somebody's browser is not an attack. Before this, the game read the
+  devices whatever had focus.
+- **Input something above has swallowed.** Edges are computed from the **raw** device state, not from
+  the state left after consumption (3.3). Holding the attack button, opening a screen and closing it
+  again used to look like a new press on the closing frame, because the filtered state had gone false
+  in between and come back.
+- **An analogue trigger resting on its threshold.** A trigger bound to a *button* action is read with
+  hysteresis (down at 0.6, up at 0.4). `GamePadState.IsButtonDown(LeftTrigger)` is a single fixed
+  threshold, and a trigger sitting on it chatters — a press every frame, which for a weapon is a swing
+  every time its cooldown ends.
+
+**The seam either side of focus is where the awkward cases are**, so it is a decision and lives in the
+engine (`Sage.Engine/Input/InputGating.cs`, `FocusPolicy` and `InputEdges`) where the headless tests can
+reach it — the devices themselves are in `Sage.Client` and the test project cannot see them by design:
+
+| Frame | What happens |
+|---|---|
+| Focus lost | The previous state stays real, the new one is neutral, so a held key **releases once**: a player who alt-tabs mid-stride stops walking. |
+| While away | Both neutral: nothing held, no edges, no deltas. |
+| Focus returned | Both read from the device, so a button already down is **not** a new press and a cursor that moved across the desk is not a flick of the view. |
+| First frame ever | Treated as a return, so a key already down as the game starts is not pressed on frame one. |
+
+`in_contexts` prints whether the window is focused, and a focus change is logged under `Input` at debug
+level, because "the game is ignoring my keyboard" is otherwise a mystery. Tests:
+`tests/Sage.Tests/Core/InputGatingTests.cs`.
+
 ## 4. Public API sketch
 
 ```csharp
@@ -242,3 +273,4 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 3. ~~`PlayerCommand` + `CommandSampler` + latching; the `Menu` action replaces the Escape check~~ **Done 2026-09-22** (TODO R3, #37). The sampler is `CommandLatch` + the host's tick loop.
 4. Editor camera rig on actions; drop display-size scaling (TODO #39).
 5. `bind`/`unbind` + `user://input.json`.
+6. ~~Focus gating, raw-state edges and trigger hysteresis~~ **Done 2026-09-24** (review #60, §3.7).

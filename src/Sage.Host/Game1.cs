@@ -184,7 +184,7 @@ public class Game1 : Game
         engine.CVars.Pump(realDt);
 
         // Input (08 §5): devices → contexts (the console's; ImGui's capture from its last frame) → actions.
-        devices.Poll();
+        devices.Poll(IsActive);   // input the window is not the target of is not input (#60)
         var io = ImGui.GetIO();
         actions.SetActive(InputContext.Editor, true);   // the editor host (no Editor map yet: nothing consumed)
         actions.SetActive(InputContext.Console, console.IsOpen);

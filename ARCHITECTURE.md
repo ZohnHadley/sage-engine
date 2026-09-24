@@ -312,7 +312,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **75 console commands, 18 record types, 385 headless tests.**
+and audible: **75 console commands, 18 record types, 390 headless tests.**
 
 What step 8 has left is F23 (pathfinding — the AI still walks into walls), F24 (factions, dialogue,
 quests) and R12 (MonoGame 3.8.5 with runtime loaders, which retires MGCB). The handoff at

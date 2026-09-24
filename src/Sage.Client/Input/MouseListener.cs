@@ -15,6 +15,7 @@ internal class MouseListener
 
     private MouseState _currentMouseState;
     private MouseState _previousMouseState;
+    private FocusPolicy _focus;
 
     // Per-button drag state: where the button was pressed (anchor), and whether the
     // threshold has been crossed (i.e. an active drag gesture is in progress).
@@ -88,12 +89,32 @@ internal class MouseListener
         }
     }
 
-    public void update()
+    public void update(bool focused)
     {
         // Roll first: PositionDelta, ScrollWheelDelta and the button edges stay valid until the next
         // update (TODO #40).
-        _previousMouseState = _currentMouseState;
-        _currentMouseState = Mouse.GetState();
+        //
+        // Unfocused, the mouse reports **buttons up where the cursor already was** (#60): a click in
+        // another window is not an attack, and the cursor crossing the desk while the game is in the
+        // background is not a flick of the view. Coming back reads both states, so nothing jumps.
+        switch (_focus.Step(focused))
+        {
+            case FocusStep.Neutral:
+                _previousMouseState = _currentMouseState;
+                _currentMouseState = new MouseState(
+                    _previousMouseState.X, _previousMouseState.Y, _previousMouseState.ScrollWheelValue,
+                    ButtonState.Released, ButtonState.Released, ButtonState.Released,
+                    ButtonState.Released, ButtonState.Released);
+                break;
+            case FocusStep.ReadAndResync:
+                _currentMouseState = Mouse.GetState();
+                _previousMouseState = _currentMouseState;
+                break;
+            default:
+                _previousMouseState = _currentMouseState;
+                _currentMouseState = Mouse.GetState();
+                break;
+        }
 
         Point delta = PositionDelta;
 
