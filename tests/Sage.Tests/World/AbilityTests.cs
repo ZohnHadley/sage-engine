@@ -50,7 +50,7 @@ public class AbilityTests
 
       { "type": "ability", "id": "bolt", "name": "bolt",
         "targeting": "Projectile", "range": 20, "projectileSpeed": 10, "width": 0.3,
-        "damage": 15, "damageType": "fire" },
+        "damage": 15, "damageType": "fire", "castCues": ["whoosh"], "cues": ["boom"] },
 
       { "type": "ability", "id": "fast_bolt", "name": "fast bolt",
         "targeting": "Projectile", "range": 60, "projectileSpeed": 400, "width": 0.3,
@@ -285,6 +285,34 @@ public class AbilityTests
             Tick(world, 2);
 
             Assert.Equal(Id("boom"), cues.All.Single().Cue);
+        }
+    }
+
+    // A cue has a moment, and a thrown spell has two of them: it leaves the hand and it arrives
+    // somewhere else, later. One list raised at both ends — which is what the first version did — means
+    // the burst is heard in the caster's hand a second before it happens (11 §3, F4).
+    [Xunit.Fact]
+    public void AThrownSpellIsHeardLeavingAndThenArriving()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var caster = Caster(world, new Vector3(0, 0.1f, 0), "caster", "bolt");
+            Caster(world, new Vector3(0, 0.1f, -9), "target");
+            var cues = new EventProbe<CueTriggered>(world);
+
+            world.Cast(caster, Id("bolt"));
+            Tick(world, 2);
+
+            // The throw, at the hand, while the bolt is still in the air.
+            Assert.Equal(Id("whoosh"), cues.All.Single().Cue);
+            Assert.True(cues.All[0].Point.Z > -2f, $"the cast was heard at {cues.All[0].Point}, not at the caster");
+
+            Tick(world, 90);          // 9 m at 10 m/s, with room to spare
+
+            Assert.Equal(2, cues.All.Count);
+            Assert.Equal(Id("boom"), cues.All[1].Cue);
+            Assert.True(cues.All[1].Point.Z < -5f, $"the burst was heard at {cues.All[1].Point}, not where it landed");
         }
     }
 

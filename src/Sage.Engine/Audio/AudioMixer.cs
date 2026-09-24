@@ -41,17 +41,17 @@ public sealed class Voice
     public bool Stopping;                // the backend should stop it and drop it
 }
 
-public sealed class AudioMixer
+// What the player set, as opposed to what a world is doing: bus volumes and the voice cap.
+//
+// **A mixer is per world** — a voice's position is in that world's origin space (R6), and two worlds do
+// not share a frame, any more than they share a `RenderSnapshot`. Volumes are not per world: somebody
+// who moves the music slider means all of it, and a world created after they moved it must not start at
+// full volume. So the mixers share one of these, and the cvars write it once.
+public sealed class AudioSettings
 {
-    private readonly List<Voice> _voices = new();
-    private readonly Dictionary<RecordId, double> _lastPlayed = new();
     private readonly float[] _busVolume = new float[Enum.GetValues<AudioBus>().Length];
-    private readonly Random _random = new();
 
-    private int _nextId = 1;
-    private double _now;
-
-    public AudioMixer()
+    public AudioSettings()
     {
         for (int i = 0; i < _busVolume.Length; i++) _busVolume[i] = 1f;
     }
@@ -59,6 +59,31 @@ public sealed class AudioMixer
     // The cap across everything. Beyond it the quietest voice is stolen, which is the one a player is
     // least likely to notice going.
     public int MaxVoices { get; set; } = 32;
+
+    public float Volume(AudioBus bus) => _busVolume[(int)bus];
+
+    public void SetVolume(AudioBus bus, float volume) => _busVolume[(int)bus] = Math.Clamp(volume, 0f, 1f);
+}
+
+public sealed class AudioMixer
+{
+    private readonly List<Voice> _voices = new();
+    private readonly Dictionary<RecordId, double> _lastPlayed = new();
+    private readonly AudioSettings _settings;
+    private readonly Random _random = new();
+
+    private int _nextId = 1;
+    private double _now;
+
+    // Given no settings it keeps its own, which is what a test wants: one object to set up, and no
+    // volume left over from the last test that touched a shared one.
+    public AudioMixer(AudioSettings? settings = null) => _settings = settings ?? new AudioSettings();
+
+    public int MaxVoices
+    {
+        get => _settings.MaxVoices;
+        set => _settings.MaxVoices = value;
+    }
 
     public IReadOnlyList<Voice> Voices => _voices;
 
@@ -76,9 +101,7 @@ public sealed class AudioMixer
 
     public Vector3 ListenerRight { get; private set; } = Vector3.UnitX;
 
-    public float BusVolume(AudioBus bus) => _busVolume[(int)bus];
-
-    public void SetBusVolume(AudioBus bus, float volume) => _busVolume[(int)bus] = Math.Clamp(volume, 0f, 1f);
+    public void SetBusVolume(AudioBus bus, float volume) => _settings.SetVolume(bus, volume);
 
     public void SetListener(Vector3 position, Quaternion rotation)
     {
@@ -93,17 +116,16 @@ public sealed class AudioMixer
     public VoiceHandle Play(RecordId sound, SoundRecord? record, Vector3 position, bool positional,
                             float volume = 1f, bool loop = false)
     {
-        if (record == null || record.Variations.Count == 0) { Refused++; return VoiceHandle.None; }
+        if (record == null || record.Variations.Count == 0) return Refuse(sound, "nothing to play");
 
         // Cooldown: the same sound twice in the same instant is one sound with a phasing artefact.
         if (record.Cooldown > 0f && _lastPlayed.TryGetValue(sound, out double last) && _now - last < record.Cooldown)
-        {
-            Refused++;
-            return VoiceHandle.None;
-        }
+            return Refuse(sound, "still cooling down");
 
-        if (CountOf(sound) >= Math.Max(record.MaxInstances, 1) && !StealOldest(sound)) { Refused++; return VoiceHandle.None; }
-        if (_voices.Count >= MaxVoices && !StealQuietest(record)) { Refused++; return VoiceHandle.None; }
+        if (CountOf(sound) >= Math.Max(record.MaxInstances, 1) && !StealOldest(sound))
+            return Refuse(sound, "too many of it already");
+        if (_voices.Count >= MaxVoices && !StealQuietest(record))
+            return Refuse(sound, "every voice is busy with something louder");
 
         var voice = new Voice
         {
@@ -121,7 +143,19 @@ public sealed class AudioMixer
         Compute(voice);
         _voices.Add(voice);
         _lastPlayed[sound] = _now;
+
+        // "Why can I not hear it" is the whole of audio debugging, and the answer is either a line here
+        // or a line in `Refuse`. Trace is compiled out of Shipping builds entirely (02 §3.2).
+        Log.Trace(LogCat.Audio, $"play {sound} gain {voice.Gain:F2} pan {voice.Pan:F2}" +
+                                $"{(voice.Loop ? " loop" : "")} ({_voices.Count}/{MaxVoices} voices)");
         return voice.Handle;
+    }
+
+    private VoiceHandle Refuse(RecordId sound, string why)
+    {
+        Refused++;
+        Log.Trace(LogCat.Audio, $"refused {sound}: {why}");
+        return VoiceHandle.None;
     }
 
     public void Stop(VoiceHandle handle)
@@ -180,7 +214,7 @@ public sealed class AudioMixer
     private void Compute(Voice voice)
     {
         var record = voice.Record!;
-        float bus = _busVolume[(int)record.Bus] * _busVolume[(int)AudioBus.Master];
+        float bus = _settings.Volume(record.Bus) * _settings.Volume(AudioBus.Master);
 
         if (!voice.Positional)
         {
@@ -202,8 +236,10 @@ public sealed class AudioMixer
         voice.Pan = distance < 0.001f ? 0f : Math.Clamp(Vector3.Dot(to / distance, ListenerRight), -1f, 1f);
     }
 
-    private static float Jitter(float value, float jitter) =>
-        jitter <= 0f ? value : Math.Clamp(value + (Random.Shared.NextSingle() * 2f - 1f) * jitter, 0f, 1f);
+    // One source of randomness, the mixer's own: `Random.Shared` would have made a seeded mixer
+    // unseedable, which is the first thing wanted the day a test cares which variation played.
+    private float Jitter(float value, float jitter) =>
+        jitter <= 0f ? value : Math.Clamp(value + ((float)_random.NextDouble() * 2f - 1f) * jitter, 0f, 1f);
 
     private int CountOf(RecordId sound)
     {

@@ -51,6 +51,10 @@ public sealed class AttackRecord
     public float RecoverTime = 0.2f;        // hit -> able to do anything else
     public float Cooldown = 0.5f;           // and how long before the next swing
     public string Animation = "attack";     // clip to play; its "hit" event lands the blow
+    // Raised where the swing starts (16 §3.3), so a weapon can be heard leaving its scabbard and seen
+    // trailing without combat knowing what either looks like. The *hit* is the damage type's business:
+    // one entry for fire covers a fireball and a torch, and a blade's own noise is this.
+    public RecordId SwingCue;
     public RecordId Viewmodel;              // the sprite sheet a first-person wielder sees (13 §3):
                                             // rest, wind-up and strike, in that order
     public List<RecordId> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
@@ -195,6 +199,10 @@ public sealed class MeleeCombatSystem : ISystem
                             m[n].Timer = 0f;
                             m[n].Swung = false;
                             PlayAnimation(world, entity, attack.Animation);
+                            // The swing, not the hit: a blow that misses still made a noise, and a
+                            // creature winding up behind you is the warning you get.
+                            if (!attack.SwingCue.IsEmpty)
+                                world.Events.Send(new CueTriggered(attack.SwingCue, entity, t[n].LocalPosition));
                         }
                         break;
 

@@ -194,6 +194,57 @@ public class ItemTests
         }
     }
 
+    // The event has to stand on its own, because the thing it describes is destroyed in the same tick:
+    // a reader a frame later (the audio system, 11 §3) can only read the event, and asking the world for
+    // the sword's `Pickup` finds a dead entity. So `Used` carries what was taken and where.
+    [Fact]
+    public void WhatWasPickedUpOutlivesTheThingItWasPickedUpFrom()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var player = Carrier(world, Vector3.Zero, "player", new Vector3(0, 0, -2));
+            var sword = world.SpawnPickup(Sword, 1, new Vector3(0, 0, -1.4f));
+            var use = engine.Actions.Get("Use");
+            var used = new EventProbe<Used>(world);
+            Tick(world, 2);
+
+            world.Get<PawnIntent>(player).Pressed = new ActionMask().With(use);
+            Tick(world, 1);
+
+            Assert.Single(used.All);
+            Assert.Equal(Sword, used.All[0].Item);
+            Assert.Equal(new Vector3(0, 0, -1.4f), used.All[0].Point);
+            Assert.False(world.IsAlive(used.All[0].Target), "and the event still says what it said");
+        }
+    }
+
+    // Using something that is not a pickup is still an interaction, and it says so — but it says nothing
+    // was taken, which is how a presentation system knows not to play "picked up".
+    [Fact]
+    public void UsingSomethingThatIsNotAPickupTakesNothing()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var player = Carrier(world, Vector3.Zero, "player", new Vector3(0, 0, -2));
+            var lever = world.Create(Transform.At(new Vector3(0, 0, -1.4f)), "lever");
+            world.Add(lever, Collider.Box(new Vector3(0.4f, 1f, 0.4f)));
+            lever.AddTag<Interactable>();
+            var use = engine.Actions.Get("Use");
+            var used = new EventProbe<Used>(world);
+            Tick(world, 2);
+
+            world.Get<PawnIntent>(player).Pressed = new ActionMask().With(use);
+            Tick(world, 1);
+
+            Assert.Single(used.All);
+            Assert.Equal(lever, used.All[0].Target);
+            Assert.True(used.All[0].Item.IsEmpty);
+            Assert.True(world.IsAlive(lever), "and the lever is still there to be used again");
+        }
+    }
+
     // A HUD can only offer "press E" if something says what is in reach, so the system publishes that
     // every tick for the player, pressed or not (13 §3).
     [Fact]

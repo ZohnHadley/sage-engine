@@ -63,7 +63,15 @@ public sealed class AbilityRecord
     public List<RecordId> RequireTags = new();   // the caster must have all of these
     public List<RecordId> BlockTags = new();     // and none of these
 
-    public List<RecordId> Cues = new();       // presentation only (§3.3): sounds, particles, a flash
+    // Presentation only (§3.3): sounds, particles, a flash. **A cue has a moment**, which is the whole
+    // reason there are two lists: `CastCues` are raised where the spell leaves the caster and `Cues`
+    // where it does its work. One list raised at both ends means a burst heard in the caster's hand,
+    // which is what the first version did.
+    //
+    // For an instant spell the two moments are the same instant, and that is correct: a self-buff is
+    // cast and takes effect on you at once.
+    public List<RecordId> CastCues = new();
+    public List<RecordId> Cues = new();
     public string Animation = "";
 
     // Projectile targeting only: the prefab that flies (F31 — so what a fireball looks like is data)

@@ -61,7 +61,7 @@ API sketches are C# signatures to pin down names and responsibilities, not final
 | `ModuleContext` | What a module gets in `Init`/`Start`: `Engine`, `Get<T>` (services from the host or declared dependencies only), `Provide<T>` | 01 |
 | `IGameModule` | The single entry point a game assembly implements (exactly one public class per game assembly) | 01 |
 | `game.json` | Game manifest: name, id (= record namespace), game assembly, mounts, modules to disable; later default map and mods folder | 01, 05 |
-| `ClientModule` / `ContentService` / `Renderer` | The default client module (record types, engine input actions, per-world snapshot + Extract/Render systems), its interim VFS-backed loader for models, effects and textures (until the `AssetServer`), and the renderer service | 01, 05, 06 |
+| `ClientModule` / `ContentService` / `Renderer` | The default client module (record types, engine input actions, per-world snapshot, audio mixer and Extract/Render systems), its interim VFS-backed loader for models, effects and textures (until the `AssetServer`), and the renderer service | 01, 05, 06 |
 | Build configurations | `Debug`, `Development`, `Shipping` (compile-time). "Dev builds" = `Debug` + `Development` (`SAGE_DEV`). There is no runtime dev mode | 01, 02 |
 | `developer` | `DevOnly` cvar that sets defaults (log verbosity, hot reload, `dev_override/`); each feature still has its own cvar | 01, 02 |
 | `DevOnly` | Cvar/command flag: compiled only into dev builds | 02 |

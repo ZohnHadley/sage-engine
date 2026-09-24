@@ -32,7 +32,9 @@ public sealed class EffectRecord
     public List<RecordId> GrantTags = new();    // held while the effect is active
     public List<RecordId> RequireTags = new();  // the target must have all of these
     public List<RecordId> BlockTags = new();    // the target must have none of these
-    public List<RecordId> Cues = new();         // presentation only (16 §3.3); played once cues exist
+    public List<RecordId> Cues = new();         // presentation only (16 §3.3). Not raised yet: an effect
+                                                // has three moments (applied, ticked, removed) and which
+                                                // of them a cue means is an open question, 11 §13.
 
     // What this effect costs to *build a spell out of* (16 §3.3, F21's spellmaker). Zero means it is
     // not for sale: an effect the game applies itself — a cooldown, a mana spend, a trap's poison —

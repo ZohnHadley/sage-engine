@@ -29,8 +29,8 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
     private InputActions? _actions;
-    private AudioMixer? _mixer;
-    private IAudioBackend? _audio;
+    private AudioSettings? _audioSettings;
+    private bool _audioDevice;
     private CVar<bool>? _soundEnabled;
     private InputDevices? _devices;
     private ActionRegistry? _actionIds;
@@ -85,7 +85,8 @@ public sealed class ClientModule : IModule
         // they are archived because nobody wants to set them twice.
         _soundEnabled = ctx.Engine.CVars.Register("snd_enabled", true, CVarFlags.Archive,
             "Play sounds at all. The mixer still runs when this is off, so nothing downstream changes.");
-        _mixer = new AudioMixer();
+        // The settings, not a mixer: the mixers are per world (11 §3) and they all read this one.
+        _audioSettings = new AudioSettings();
         RegisterBus(ctx, "snd_volume", AudioBus.Master, "Everything.");
         RegisterBus(ctx, "snd_sfx", AudioBus.Sfx, "Impacts, spells, footsteps.");
         RegisterBus(ctx, "snd_music", AudioBus.Music, "Music.");
@@ -95,18 +96,29 @@ public sealed class ClientModule : IModule
 
         var voices = ctx.Engine.CVars.Register("snd_maxvoices", 32, CVarFlags.Archive,
             "How many sounds may play at once; past it the quietest is stolen (11 §3).");
-        voices.Changed += _ => _mixer!.MaxVoices = Math.Max(voices.Value, 1);
-        _mixer.MaxVoices = Math.Max(voices.Value, 1);
+        voices.Changed += _ => _audioSettings!.MaxVoices = Math.Max(voices.Value, 1);
+        _audioSettings.MaxVoices = Math.Max(voices.Value, 1);
 
         ctx.Engine.CVars.RegisterCommand("snd_stats", CVarFlags.None,
             "What is playing, and what the mixer has refused or stolen.", _ =>
         {
-            Log.Info(LogCat.Console, $"{_mixer!.Playing} voice(s) playing, backend {_audio?.Playing ?? 0}; " +
-                                     $"{_mixer.Refused} refused, {_mixer.Stolen} stolen since the last reset");
-            foreach (var voice in _mixer.Voices)
-                Log.Info(LogCat.Console, $"  {voice.Sound,-28} gain {voice.Gain:F2} pan {voice.Pan,5:F2} " +
-                                         $"{(voice.Loop ? "loop" : "one-shot")}{(voice.Stopping ? " (stopping)" : "")}");
-            _mixer.ResetStats();
+            // Per world, because the mixers are: two worlds running means two sets of voices, and a
+            // total that hides which world is making the noise is the number nobody wants.
+            int listening = 0;
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<AudioMixer>(out var mixer) || mixer == null) continue;
+                listening++;
+                world.Resources.TryGet<IAudioBackend>(out var backend);
+                Log.Info(LogCat.Console, $"'{world.Name}': {mixer.Playing} voice(s) playing, " +
+                                         $"backend {backend?.Playing ?? 0}; {mixer.Refused} refused, " +
+                                         $"{mixer.Stolen} stolen since the last reset");
+                foreach (var voice in mixer.Voices)
+                    Log.Info(LogCat.Console, $"  {voice.Sound,-28} gain {voice.Gain:F2} pan {voice.Pan,5:F2} " +
+                                             $"{(voice.Loop ? "loop" : "one-shot")}{(voice.Stopping ? " (stopping)" : "")}");
+                mixer.ResetStats();
+            }
+            if (listening == 0) Log.Info(LogCat.Console, "no world is listening yet");
         });
 
         ctx.Engine.CVars.RegisterCommand("snd_play", CVarFlags.Cheat,
@@ -115,8 +127,10 @@ public sealed class ClientModule : IModule
             if (a.Count == 0) { Log.Warn(LogCat.Console, "snd_play <sound>"); return; }
             var id = ctx.Engine.Records.Resolve("sound", a[0]);
             if (id.IsEmpty) return;
-            ctx.Engine.Records.TryGet(id, out SoundRecord? record);
-            var voice = _mixer!.Play(id, record, _mixer.ListenerPosition, positional: false);
+            var mixer = FirstMixer(ctx.Engine);
+            if (mixer == null) { Log.Warn(LogCat.Console, "snd_play: no world is listening yet"); return; }
+            ctx.Engine.Records.TryGet(id, out SoundRecord record);
+            var voice = mixer.Play(id, record, mixer.ListenerPosition, positional: false);
             Log.Info(LogCat.Console, voice.IsValid ? $"playing {id}" : $"{id} was refused (see snd_stats)");
         });
 
@@ -164,9 +178,10 @@ public sealed class ClientModule : IModule
         // way records keep theirs.
         if (BuildInfo.IsDevBuild) _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
         _actions = ctx.Get<InputActions>();   // the host provides it; screens navigate with it (13 §3)
-        // A real backend where there is a device, and a silent one otherwise: "no audio" is a
-        // configuration rather than a branch through the game's code (11 §3).
-        _audio = CreateBackend();
+        // Asked once, here, rather than per world: whether this machine has a device does not change
+        // between worlds, and the answer is worth exactly one log line. A real backend where there is
+        // one and a silent one otherwise, so "no audio" is a configuration and not a branch (11 §3).
+        _audioDevice = HasAudioDevice();
         _actionIds = ctx.Engine.Actions;
         _devices = ctx.Get<InputDevices>();   // typed characters for a screen's field (13 §3)
     }
@@ -188,7 +203,14 @@ public sealed class ClientModule : IModule
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
         world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
-        world.AddSystem(new AudioSystem(world, _mixer!, _audio!, _records!, _soundEnabled!), Phase.FrameUpdate);
+        // Audio is per world for the same reason the snapshot is: a voice's position is in *this*
+        // world's origin space (R6), and two worlds do not share a frame. The backend is a world
+        // resource so that the world's own teardown disposes it, and because voice handles are only
+        // unique within one mixer — one shared backend would confuse two worlds' voices.
+        world.Resources.Set(new AudioMixer(_audioSettings!));
+        world.Resources.Set<IAudioBackend>(_audioDevice && _content != null
+            ? new MonoGameAudioBackend(_content) : new NullAudioBackend());
+        world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!), Phase.FrameUpdate);
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
@@ -199,32 +221,41 @@ public sealed class ClientModule : IModule
 
     private sealed class AudioOptions { public RecordId Sound; public bool Loop = true; public float Volume; }
 
-    private IAudioBackend CreateBackend()
+    // `snd_play` is an audition, so it belongs to whichever world is listening — the first one with
+    // a mixer, which in a single-world game is the only one there is.
+    private static AudioMixer? FirstMixer(Engine engine)
+    {
+        foreach (var world in engine.Worlds)
+            if (world.Resources.TryGet<AudioMixer>(out var mixer) && mixer != null) return mixer;
+        return null;
+    }
+
+    private static bool HasAudioDevice()
     {
         try
         {
             // Touching the device is what finds out whether there is one: a machine with no sound card,
             // a headless CI runner and a locked-down audio session all throw here rather than earlier.
             _ = Microsoft.Xna.Framework.Audio.SoundEffect.MasterVolume;
-            return new MonoGameAudioBackend(_content!);
+            return true;
         }
         catch (Exception ex) when (ex is Microsoft.Xna.Framework.Audio.NoAudioHardwareException or InvalidOperationException)
         {
             Log.Warn(LogCat.Audio, $"No audio device ({ex.GetType().Name}): the game runs silent.");
-            return new NullAudioBackend();
+            return false;
         }
     }
 
     private void RegisterBus(ModuleContext ctx, string name, AudioBus bus, string what)
     {
         var cvar = ctx.Engine.CVars.Register(name, 1f, CVarFlags.Archive, $"Volume, 0..1. {what}", 0f, 1f);
-        cvar.Changed += _ => _mixer!.SetBusVolume(bus, cvar.Value);
-        _mixer!.SetBusVolume(bus, cvar.Value);
+        cvar.Changed += _ => _audioSettings!.SetVolume(bus, cvar.Value);
+        _audioSettings!.SetVolume(bus, cvar.Value);
     }
 
     public void Shutdown()
     {
-        _audio?.Dispose();
+        // No backend to dispose here: each world owns one, and the world's teardown disposes it.
         _watcher?.Dispose();
         _ui?.Dispose();
         _renderer?.Dispose();

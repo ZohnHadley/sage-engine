@@ -143,6 +143,10 @@ public sealed class AbilitySystem : ISystem
         Vector3 point = cast.Point;
         Entity struck = default;
 
+        // The spell leaving the caster, wherever it is going: a projectile launched here, or a burst
+        // that happens in the same breath. Where it *lands* is the payload's own cues.
+        foreach (var cue in record.CastCues) world.Events.Send(new CueTriggered(cue, cast.Caster, cast.Point));
+
         switch (record.Targeting)
         {
             case AbilityTargeting.Self:
@@ -151,8 +155,7 @@ public sealed class AbilitySystem : ISystem
             case AbilityTargeting.Projectile:
                 // Nothing lands now: the payload is delivered by ProjectileSystem when it arrives.
                 world.Launch(cast.Caster, cast.Ability, record, cast.Point + cast.Aim * 0.4f, cast.Aim);
-                foreach (var cue in record.Cues) world.Events.Send(new CueTriggered(cue, cast.Caster, cast.Point));
-                return;
+                return;   // its `Cues` are raised where it arrives, by the payload
 
             case AbilityTargeting.Area:
                 break;   // the burst is on the caster; the payload gathers around `point`

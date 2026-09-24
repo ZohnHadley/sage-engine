@@ -44,7 +44,10 @@ public class CombatTests
          { "type": "effect", "id": "venom", "duration": "Timed", "time": 5, "grantTags": ["state.poisoned"],
            "blockTags": ["state.invulnerable"],
            "modifiers": [ { "attribute": "health", "op": "Add", "value": -1 } ] },
-         { "type": "attack", "id": "poisoned_blade", "base": "sword", "effects": ["venom"] }]
+         { "type": "attack", "id": "poisoned_blade", "base": "sword", "effects": ["venom"] },
+
+         { "type": "cue", "id": "swoosh" },
+         { "type": "attack", "id": "loud_sword", "base": "sword", "swingCue": "swoosh" }]
         """;
 
     private sealed class RecordingRules : GameRules
@@ -152,6 +155,34 @@ public class CombatTests
             Assert.Equal(0f, Combat.ApplyDamage(world, Hit(victim, 35f)));
             Assert.Equal(before, world.Attribute(victim, Health));
             Assert.Empty(damage.All);   // nothing happened, so nothing to react to
+        }
+    }
+
+    // A swing says so where it starts, not where it lands: the weapon's own noise plays on the windup
+    // and a miss is still information (11 §3, F4). The *hit* is the damage type's business.
+    [Fact]
+    public void ASwingAnnouncesItselfWhetherOrNotItLands()
+    {
+        var (engine, world, _) = NewWorld();
+        using (engine)
+        {
+            var attacker = Fighter(world, Vector3.Zero, "attacker", new Vector3(0, 0, -2));
+            world.Get<Melee>(attacker).Attack = new RecordId("sage", "loud_sword");
+            var attack = engine.Actions.Get("Attack");
+            var cues = new EventProbe<CueTriggered>(world);
+            var damage = new EventProbe<Damaged>(world);
+
+            Press(world, attacker, attack);      // at nothing at all: the room is empty
+            Tick(world, 1);
+            Release(world, attacker);
+
+            Assert.Single(cues.All);
+            Assert.Equal(new RecordId("sage", "swoosh"), cues.All[0].Cue);
+            Assert.Equal(attacker, cues.All[0].Source);
+
+            Tick(world, 20);                     // past the windup, where a hit would have been
+            Assert.Empty(damage.All);
+            Assert.Single(cues.All);             // and one swing is one cue, not one per tick
         }
     }
 

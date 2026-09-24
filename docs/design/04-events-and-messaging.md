@@ -65,6 +65,13 @@ How parts of the engine and game tell each other that something happened, withou
   - a reader running 0 times in a frame (no fixed tick this frame) doesn't miss events. It catches up next time;
   - a Frame-schedule reader of a Fixed queue sees every tick's events even when several ticks ran in one frame.
 - **Retention:** events stay until *every registered reader* has passed them. A hard cap (`ev_maxage`, default 8 ticks) drops older events with a `Log.Every` warning naming the lagging reader. This catches a disabled system that's holding memory.
+- **An event carries what its reader needs, because it is a statement about the past.** Every reader is
+  later than the sender — a Fixed reader by a phase, a frame-side reader by up to a frame — and by then
+  the entity the event names may be gone. `Used` carries the item that was taken and where it happened
+  for exactly this reason: the pickup is destroyed in the tick it is taken, so `world.TryGet<Pickup>` on
+  its target found nothing and the sound it should have made was never played (11 §11). An event whose
+  meaning depends on asking the world is an event that means something different depending on when it
+  is read.
 - **Ordering:** the order events were sent, which is deterministic because systems run in a deterministic order (03 §3.5).
 - **Allocation:** each queue is a growable ring buffer of structs. Steady state allocates nothing.
 

@@ -73,8 +73,18 @@ public struct Interactable : ITag { }
 // Somebody used something: the fact, for whatever a game wants to do with it (a door, a lever, a
 // quest trigger). The engine itself only knows how to pick things up. Entity I/O (04 §3.4) will give
 // designers the wiring; this is the code path.
+//
+// **It carries what was taken and where, rather than leaving the reader to ask.** A frame-side reader
+// sees this up to a frame later (04 §3.1), and a sword that was picked up has been destroyed by then:
+// asking the world for its `Pickup` finds nothing, which is why the pickup sound played silence until
+// this carried the item itself. An event is a statement about the past; anything a reader needs has to
+// be in it.
 [GameEvent]
-public readonly record struct Used(Entity User, Entity Target);
+public readonly record struct Used(Entity User, Entity Target)
+{
+    public RecordId Item { get; init; }      // what was taken; empty if it was not a pickup or did not fit
+    public Vector3 Point { get; init; }      // where it happened, for whatever presents it
+}
 
 // What the local player is within reach of right now, whether or not they pressed anything. This is
 // *state*, not an event, which is why it is a resource and not on the bus: a HUD drawn a frame later
@@ -356,17 +366,28 @@ public sealed class InteractionSystem : ISystem
         foreach (var interaction in _pending.Drain())
         {
             if (!world.IsAlive(interaction.User) || !world.IsAlive(interaction.Target)) continue;
-            world.Events.Send(interaction);
+
+            // Where it happened, read before anything is destroyed.
+            Vector3 point = world.TryGet<Transform>(interaction.Target, out var where)
+                ? where.LocalPosition : world.Get<Transform>(interaction.User).LocalPosition;
+            RecordId got = default;
 
             // The one interaction the engine knows about: picking something up.
-            if (!world.TryGet<Pickup>(interaction.Target, out var pickup)) continue;
-            if (!world.Give(interaction.User, pickup.Item, pickup.Count)) continue;
+            if (world.TryGet<Pickup>(interaction.Target, out var pickup) &&
+                world.Give(interaction.User, pickup.Item, pickup.Count))
+            {
+                got = pickup.Item;
+                _records.TryGet(pickup.Item, out ItemRecord record);
+                string what = $"{(pickup.Count > 1 ? pickup.Count + "x " : "")}{record?.Describe(pickup.Item) ?? pickup.Item.Name}";
+                Log.Info(LogCat.Gameplay, $"{World.Describe(interaction.User)} picks up {what}");
+                world.Say($"Picked up {what}", MessageKind.Good, 3f);
+                world.Destroy(interaction.Target);
+            }
 
-            _records.TryGet(pickup.Item, out ItemRecord record);
-            string what = $"{(pickup.Count > 1 ? pickup.Count + "x " : "")}{record?.Describe(pickup.Item) ?? pickup.Item.Name}";
-            Log.Info(LogCat.Gameplay, $"{World.Describe(interaction.User)} picks up {what}");
-            world.Say($"Picked up {what}", MessageKind.Good, 3f);
-            world.Destroy(interaction.Target);
+            // Sent last, and complete: every reader is later than this line — a Fixed one in a later
+            // phase, a frame-side one up to a frame later — so by the time anybody reads it the sword it
+            // describes has been destroyed. What the event does not carry, nobody can recover.
+            world.Events.Send(interaction with { Item = got, Point = point });
         }
     }
 

@@ -59,6 +59,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **`ActiveEffects`** component: running effect instances (record, source `EntityRef`, remaining time, stacks). An `EffectSystem` (Gameplay phase) ticks them and recomputes current attribute values.
 - **`ability` records:** cost (attribute), cooldown (an effect granting a cooldown tag), targeting (self / projectile / area / touch), effects to apply, cue ids, and the animation to play.
 - **Cues:** presentation-only reactions (sound, particles, screen flash), played by Frame-schedule systems from `CueTriggered` events (04, 11).
+  **A cue names a moment as well as a reaction**, so the ids come in more than one list: an ability has `castCues` (where the spell leaves the caster) and `cues` (where it does its work), and an `attack` has `swingCue` (raised on the windup, hit or miss) while the *hit* takes the damage type's sound. One list raised at every moment puts a burst in the caster's hand — see 11 §11.
 - **Spellmaker:** composing effect records into a *new* `ability` record at runtime. It's saved as data in the save game (09 saved resource), exactly as Daggerfall's custom spells were. **Built 2026-09-23** — see "As built (the spellmaker)".
 
 ### 3.4 AI (HL1-style first)

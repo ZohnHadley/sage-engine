@@ -178,7 +178,8 @@
     "windupTime": 0.25,
     "recoverTime": 0.2,
     "cooldown": 0.55,
-    "viewmodel": "sword_fp"
+    "viewmodel": "sword_fp",
+    "swingCue": "weapon_swing"
   },
   {
     // The item itself. Equipping it hands `attack` to the wielder's Melee; nothing in combat knows
@@ -228,6 +229,12 @@
   {
     // The casting itself, so a spell leaving the hand is heard as well as its arrival.
     "type": "cue", "id": "fireball_cast", "description": "A fireball thrown", "sound": "cast_fire"
+  },
+  {
+    // A blade going through the air. The *hit* is the damage type's noise (one entry for "physical"
+    // covers every club in the game); this is the weapon's own, and it plays whether the blow lands
+    // or not — a miss is information too.
+    "type": "cue", "id": "weapon_swing", "description": "A weapon swung", "sound": "swing"
   },
 
   // The engine's damage types carry no sound, because the engine ships no audio (11 §3). Patching is
@@ -327,7 +334,9 @@
     "damage": 28,
     "damageType": "sage:fire",
     "effects": ["sage:burning"],
-    "cues": ["fireball_cast", "fireball_boom"]
+    // Two moments, two lists: the throw is heard at the hand and the burst where it lands (11 §3).
+    "castCues": ["fireball_cast"],
+    "cues": ["fireball_boom"]
   },
 
   // ---- the player (docs/design/10 §3, 16 §3.1) ---------------------------------------------------
@@ -348,6 +357,8 @@
     "castTime": 0.5,
     "damage": 9,
     "damageType": "sage:fire",
+    // A creature throwing fire at your back is a sound you want, and from where it is standing.
+    "castCues": ["fireball_cast"],
     "cues": ["fireball_boom"]
   },
   { "type": "tag", "id": "cooldown.ember", "description": "Just threw an ember bolt" },
