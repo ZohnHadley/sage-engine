@@ -206,6 +206,35 @@ public class MapImportTests
         Assert.Equal(0.25f, spread, 3);      // 32 units / (2 scale x 64 texels)
     }
 
+    [Theory]
+    [InlineData(0, 4f, 2f)]
+    [InlineData(90, 2f, 4f)]
+    public void RotatingAFacesTextureTurnsItsAxes(int degrees, float expectedU, float expectedV)
+    {
+        // A brush 256 units across and 128 deep, so the two texture axes can be told apart by how far
+        // they run: four tiles one way and two the other, and a quarter turn swaps them. Rotation is the
+        // one part of the standard format's texture maths with a choice in it — Quake turns the *base*
+        // axes about their own third axis rather than about the face normal, and the two are different
+        // rotations on any face that is not axis-aligned.
+        string r = degrees.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string face = " stone 0 0 " + r + " 1 1\n";
+        string text = "{\n\"classname\" \"worldspawn\"\n{\n"
+                    + "( -128 -64 -16 ) ( -128 -63 -16 ) ( -128 -64 -15 )" + face
+                    + "( -128 -64 -16 ) ( -128 -64 -15 ) ( -127 -64 -16 )" + face
+                    + "( -128 -64 -16 ) ( -127 -64 -16 ) ( -128 -63 -16 )" + face
+                    + "( 128 64 16 ) ( 128 65 16 ) ( 129 64 16 )" + face
+                    + "( 128 64 16 ) ( 129 64 16 ) ( 128 64 17 )" + face
+                    + "( 128 64 16 ) ( 128 64 17 ) ( 128 65 16 )" + face
+                    + "}\n}\n";
+
+        var brush = ParseOneBrush(text);
+        Assert.True(BrushGeometry.TryBuild(brush, new MapSpace(), out var built, out string error), error);
+
+        var underside = built.Faces.First(f => f.Normal.Y < -0.9f);
+        Assert.Equal(expectedU, underside.Uvs.Max(uv => uv.X) - underside.Uvs.Min(uv => uv.X), 3);
+        Assert.Equal(expectedV, underside.Uvs.Max(uv => uv.Y) - underside.Uvs.Min(uv => uv.Y), 3);
+    }
+
     [Fact]
     public void EntitiesKeepTheirKeysAndTheirPlaceInTheWorld()
     {

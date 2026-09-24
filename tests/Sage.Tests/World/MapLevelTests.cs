@@ -201,6 +201,62 @@ public class MapLevelTests
     }
 
     [Fact]
+    public void ReloadingALevelDoesNotLeaveTheOldOneStandingInIt()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+        var id = new RecordId("sandbox", "room");
+
+        MapLoader.Load(world, id);
+        world.RunFixed(1f / 60f);
+        int after = world.Query<FromMap>().Count;
+        Assert.Equal(1, after);                       // the `marker`; the other classname has no prefab
+
+        world.Resources.Get<MapLevels>().Clear();
+        world.RunFixed(1f / 60f);
+        Assert.Equal(0, world.Query<FromMap>().Count);
+
+        MapLoader.Load(world, id);
+        world.RunFixed(1f / 60f);
+
+        // Loading a level twice over must leave one of everything. The Sandbox reloads its maps whenever
+        // a record file is saved, so "one more watcher per save" is what this costs when it is wrong.
+        Assert.Equal(after, world.Query<FromMap>().Count);
+    }
+
+    [Fact]
+    public void LoadingTheSameLevelTwiceIsRefusedRatherThanStacked()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+        var id = new RecordId("sandbox", "room");
+
+        Assert.NotNull(MapLoader.Load(world, id));
+
+        // A level's position comes from its record, so a second copy lands exactly on the first: every
+        // surface fighting with itself and two hulls in the same doorway.
+        Assert.Null(MapLoader.Load(world, id));
+        Assert.Single(world.Resources.Get<MapLevels>().Loaded);
+    }
+
+    [Fact]
+    public void ALevelFollowsTheWorldWhenTheOriginMoves()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+
+        var level = MapLoader.Load(world, new RecordId("sandbox", "room"))!;
+        world.RunFixed(1f / 60f);
+        var before = level.Position;
+
+        var offset = world.Rebase(new SectorCoord(1, 0));
+
+        // R6: a world position held outside the ECS follows the rebase, or everything built from it
+        // afterwards lands a sector away from the walls it belongs to.
+        Assert.Equal(before + offset, level.Position);
+    }
+
+    [Fact]
     public void ALevelThatCannotBeReadCostsItselfAndNotTheWorld()
     {
         using var engine = NewEngine(map: "{ this is not a map");

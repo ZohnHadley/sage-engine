@@ -271,11 +271,16 @@ public static class BrushGeometry
         }
         else
         {
-            (u, v) = StandardAxes(face.Normal);
+            var axis = StandardAxes(face.Normal, out u, out v);
             if (face.Rotation != 0f)
             {
-                // The standard format rotates the derived axes about the face normal.
-                var rotation = Matrix4x4.CreateFromAxisAngle(face.Normal, -face.Rotation * MathF.PI / 180f);
+                // Rotated about the **base** axis, not the face normal. Quake rotates the two derived
+                // axes within their own coordinate pair, which is the same as turning them about the
+                // third axis — and on a wall that is not axis-aligned the two are different rotations,
+                // so a sloped, rotated face textured one way in the editor would arrive textured
+                // another. Axis-aligned faces, which is most of a level, cannot tell the difference,
+                // which is exactly why it is worth writing down.
+                var rotation = Matrix4x4.CreateFromAxisAngle(axis, face.Rotation * MathF.PI / 180f);
                 u = Vector3.TransformNormal(u, rotation);
                 v = Vector3.TransformNormal(v, rotation);
             }
@@ -289,7 +294,7 @@ public static class BrushGeometry
     // The six base axis pairs of the standard format, chosen by whichever the face most faces. This is
     // Quake's own table, and the reason a standard-format wall's texture slides when the wall is
     // rotated: the axes come from the normal, not from the face.
-    private static (Vector3 U, Vector3 V) StandardAxes(Vector3 normal)
+    private static Vector3 StandardAxes(Vector3 normal, out Vector3 u, out Vector3 v)
     {
         Span<Vector3> normals = stackalloc Vector3[]
         {
@@ -311,6 +316,8 @@ public static class BrushGeometry
             float dot = Vector3.Dot(normal, normals[i]);
             if (dot > bestDot) { bestDot = dot; best = i; }
         }
-        return (us[best], vs[best]);
+        u = us[best];
+        v = vs[best];
+        return normals[best];
     }
 }

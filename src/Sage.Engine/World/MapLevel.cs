@@ -278,6 +278,13 @@ public static class MapLoader
             float yaw = entity.GetFloat("angle") - 90f;
 
             var spawnedEntity = world.Spawn(prefab, at, yaw);
+            if (spawnedEntity.IsNull) continue;
+
+            // Marked with the level that placed it. Without this a level's furniture outlived the level:
+            // unloading took the walls and left the watcher standing in the open, and the Sandbox
+            // reloads its maps whenever a record file is saved, so every save left another one behind.
+            world.Add(spawnedEntity, new FromMap { Level = level.Record });
+
             if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
                 spawnedEntity.Name = new EntityName(name);
             spawned++;
@@ -297,7 +304,7 @@ public sealed class MapModule : IModule
         ctx.Engine.Records.Register<MapRecord>();
 
         ctx.Engine.CVars.RegisterCommand("map_load", CVarFlags.Cheat,
-            "map_load <record>: load a .map level into the current world.", a =>
+            "map_load <record>: load a .map level into the first world that can hold one.", a =>
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "map_load <record>   (see rec_list map)"); return; }
             foreach (var world in ctx.Engine.Worlds)
@@ -322,7 +329,7 @@ public sealed class MapModule : IModule
         });
 
         ctx.Engine.CVars.RegisterCommand("map_unload", CVarFlags.Cheat,
-            "map_unload: drop every level loaded in the current world.", _ =>
+            "map_unload: drop every level loaded in every world.", _ =>
         {
             foreach (var world in ctx.Engine.Worlds)
             {
@@ -338,8 +345,18 @@ public sealed class MapModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        world.Resources.Set(new MapLevels());
+        var levels = new MapLevels();
+        world.Resources.Set(levels);
         world.AddSystem(new MapCollisionSystem(world), Phase.PrePhysics);
+
+        // A level's `Position` is a world position held outside the ECS, and the rule for those is the
+        // same as for particles, audio and AI: follow the rebase (R6, 14 §3). The entities built from it
+        // move themselves — they have transforms — but the level would go on handing out the position it
+        // had before the world shifted, and anything built after that would be a sector out.
+        world.Origin().Rebased += offset =>
+        {
+            foreach (var level in levels.Loaded) level.Position += offset;
+        };
     }
 }
 
@@ -363,7 +380,14 @@ internal sealed class MapCollisionSystem : ISystem
         {
             foreach (var entity in world.Query<MapGeometry, PhysicsBody>().Entities.ToEntityList())
                 if (entity.GetComponent<MapGeometry>().Level == level.Record) world.Destroy(entity);
+
+            // And whatever the level put in the world. A spawned entity is anything at all — it may well
+            // have a mesh of its own — so it carries its own marker rather than sharing the geometry one.
+            foreach (var entity in world.Query<FromMap>().Entities.ToEntityList())
+                if (entity.GetComponent<FromMap>().Level == level.Record) world.Destroy(entity);
+
             level.CollisionBuilt = false;
+            level.EntitiesSpawned = false;
         };
     }
 
@@ -401,8 +425,16 @@ internal sealed class MapCollisionSystem : ISystem
     }
 }
 
-// Marks an entity as belonging to a level, so unloading one can find what it made.
+// Marks geometry built from a level's brushes — a hull or a mesh — so unloading can find it.
 public struct MapGeometry : IComponent
+{
+    public RecordId Level;
+}
+
+// Marks an entity a level *spawned* from a `classname`. Separate from `MapGeometry` on purpose: what a
+// level spawns is an ordinary entity of any shape, mesh and all, and the two are cleaned up by different
+// halves of the engine.
+public struct FromMap : IComponent
 {
     public RecordId Level;
 }
