@@ -1,5 +1,5 @@
-// Meshes (docs/design/07 §3.2): techniques Default (sun + hemispheric ambient + fog), AlphaTest
-// (Default + clip at AlphaCutoff) and Unlit (albedo + fog). Point lights come later (06 §3.9).
+// Meshes (docs/design/07 §3.2): techniques Default (sun + hemispheric ambient + up to four point lights
+// + fog), AlphaTest (Default + clip at AlphaCutoff) and Unlit (albedo + fog).
 #include "common.fxh"
 
 texture Albedo;
@@ -37,7 +37,7 @@ float4 Shade(VSOutput input, float lit)
 {
     float4 albedo = tex2D(AlbedoSampler, input.UV) * AlbedoColor * Tint;
     float3 n = normalize(input.Normal);
-    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) + SunLight(n), lit);
+    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) + SunLight(n) + PointLights(n, input.Relative), lit);
     float3 color = ApplyFog(albedo.rgb * light, length(input.Relative));
     return float4(color, albedo.a);
 }

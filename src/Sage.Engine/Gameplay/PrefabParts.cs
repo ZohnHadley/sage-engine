@@ -57,6 +57,31 @@ public static class PrefabParts
         world.AddCharacter(entity, layer, o.Profile);
     }
 
+    // "light": { "colour": [1, 0.85, 0.6], "range": 8, "intensity": 1.4 }
+    //
+    // A lamp. The engine carries it because a light is a fact about the world rather than about the
+    // screen — a headless server has lamps and never draws one — and because a map places them by
+    // classname like anything else (15 §10a, 06 §3.9).
+    public static void Light(World world, Entity entity, JsonNode? options, string where)
+    {
+        var o = Read<LightOptions>(world, options, "light", where);
+        var colour = o.Colour == Vector3.Zero ? Vector3.One : o.Colour;
+
+        world.Add(entity, new PointLight
+        {
+            Colour = colour,
+            Range = o.Range <= 0f ? 8f : o.Range,
+            Intensity = o.Intensity <= 0f ? 1f : o.Intensity,
+        });
+    }
+
+    private sealed class LightOptions
+    {
+        public Vector3 Colour;
+        public float Range = 8f;
+        public float Intensity = 1f;
+    }
+
     private sealed class BodyOptions
     {
         public ColliderShape Shape = ColliderShape.Box;

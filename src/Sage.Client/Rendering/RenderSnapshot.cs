@@ -1,13 +1,17 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace sage_engine;
 
+// What the snapshot needs of a pooled list to empty it without knowing what is in it (see `Pool<T>`).
+public interface IPooledList { void Clear(); }
+
 // A list that keeps its array between frames: Clear() keeps the capacity, so steady-state frames
 // allocate nothing (docs/design/06 §3.2, 02 §4.6). Elements are accessed by ref.
-public sealed class PooledList<T>
+public sealed class PooledList<T> : IPooledList
 {
     private T[] _items;
 
@@ -70,9 +74,37 @@ public sealed class RenderSnapshot
 {
     public RenderView View;              // v1: one view (split screen, mirrors and shadow views later)
     public EnvironmentParams Environment;
-    public readonly PooledList<RenderItem> Items = new(256);
-    public readonly PooledList<SpriteInstance> Sprites = new(256);
-    public readonly PooledList<VertexPositionColor> DebugLines = new(512);   // pairs of vertices (06 §3.2)
+    // Every list here is made by `Pool<T>`, which is also what puts it in `_pools` for `Clear()`.
+    // Point lights were added as a plain `new(32)` and left out of `Clear()`, and the picture stayed
+    // right: the extras were duplicates of the same lamps, so the room looked lit while the list grew
+    // by two entries a frame and every draw walked all of them. A list that is not cleared is not a
+    // bug you can see, so it is one the type stops you writing.
+    private readonly List<IPooledList> _pools = new();
+
+    private PooledList<T> Pool<T>(int capacity)
+    {
+        var list = new PooledList<T>(capacity);
+        _pools.Add(list);
+        return list;
+    }
+
+    public readonly PooledList<RenderItem> Items;
+    public readonly PooledList<SpriteInstance> Sprites;
+    public readonly PooledList<VertexPositionColor> DebugLines;   // pairs of vertices (06 §3.2)
+
+    // Every point light in range this frame, camera-relative (06 §3.9). Four of these light any one
+    // draw; which four is `LightRules.Nearest`, asked per item because a wall and a lamp across the
+    // room want different answers.
+    public readonly PooledList<LightSample> Lights;
+
+    public RenderSnapshot()
+    {
+        Items = Pool<RenderItem>(256);
+        Sprites = Pool<SpriteInstance>(256);
+        DebugLines = Pool<VertexPositionColor>(512);
+        Lights = Pool<LightSample>(32);
+    }
+
     public int Culled;                   // items rejected by frustum culling this frame
     public bool HasView;
 
@@ -88,9 +120,7 @@ public sealed class RenderSnapshot
 
     public void Clear()
     {
-        Items.Clear();
-        Sprites.Clear();
-        DebugLines.Clear();
+        foreach (var pool in _pools) pool.Clear();
         Culled = 0;
         HasView = false;
     }

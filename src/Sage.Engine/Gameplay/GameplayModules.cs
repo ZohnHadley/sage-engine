@@ -29,6 +29,7 @@ public static class GameplayModules
         modules.Add(new AttributesModule());
         modules.Add(new CharacterModule());
         modules.Add(new AnimationModule());
+        modules.Add(new LightsModule());
         modules.Add(new CombatModule());
         modules.Add(new ItemsModule());
         modules.Add(new AbilitiesModule());
@@ -147,6 +148,18 @@ public sealed class AnimationModule : IModule
 
     public void OnWorldCreated(World world) =>
         world.AddSystem(new SpriteAnimationSystem(world, _records!), Phase.Animation);
+}
+
+// Lamps (06 §3.9, F2). One part and nothing else, which is what a module the size of a feature looks
+// like when the feature is small — it lived in `AnimationModule` for an afternoon because that is where
+// `sprite` was, and a light is not an animation.
+//
+// It is here and not in the client because a light is a fact about the world rather than about the
+// screen: a headless server has lamps, a map places them by classname like anything else, and only
+// `LightExtract` cares that one is ever drawn.
+public sealed class LightsModule : IModule
+{
+    public void Init(ModuleContext ctx) => ctx.Engine.Prefabs.Register("light", PrefabParts.Light);
 }
 
 // Hitting things (16 §3.2): one damage pipeline, `attack` records, and the melee both the player and

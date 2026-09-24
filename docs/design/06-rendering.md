@@ -96,7 +96,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 
 ### 3.9 Lighting and atmosphere (forward, SM3-friendly)
 - Per frame: one **sun** (direction, colour), **hemispheric ambient** (sky colour, ground colour), **fog** (linear or exp², colour, start/end/density).
-- Per object: up to **4 point lights**, the nearest by influence, chosen during extract (`r_maxlights`, max 4 on SM3 constant budgets).
+- Per object: up to **4 point lights**, the strongest by influence, chosen per draw by `LightRules.Nearest` (`r_lights`; 4 is what SM3's constant budget affords). Built — see "As built (point lights)" below.
 - Sprites use the same inputs. The normal faces the camera for cylindrical sprites, or the material can be marked unlit (+ fog), which is the Daggerfall look.
 - **Render scale:** the scene can render into a lower-resolution target and be upscaled with point filtering (`r_scale 0.5`) for a retro look and cheap performance. UI always renders at full resolution.
 
@@ -132,7 +132,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - One draw per run of sprites sharing a material **and** a texture, so a sheet's creatures batch together. The sheet's texture overrides the material's `Albedo`, so `sage:sprite_default` serves every sheet.
   - Frame UVs are inset by half a texel, or the quad's edge samples the next frame in the atlas.
   - Meshes and sprites are interleaved by pass: each pass draws its meshes, then its sprites. Mixing *transparent* meshes and sprites by depth is not handled yet (nothing is transparent yet).
-- **Not yet (v1 items left):** point lights, render scale, `stat render`, `r_snapshot_dump`. Instancing stays "later".
+- **Not yet (v1 items left):** render scale, `stat render`, `r_snapshot_dump`. (Point lights landed later the same week — see "As built (point lights)".) Instancing stays "later".
 - `GraphicsProfile.HiDef` is set by the host.
 
 ### 3.12 Particles (F39)
@@ -188,7 +188,11 @@ public struct SpriteInstance { public Vector3 Center; public Vector2 Size; publi
 public struct MeshRenderer   { public AssetPath Mesh; public MeshHandle Handle; public RecordId Material; public byte Layer; }
 public struct SpriteRenderer { public RecordId Sheet; public RecordId Material; public Vector2 Size; public BillboardMode Mode; public byte Layer; }
 public struct Camera         { public float FovY; public float Near; public float Far; public bool Active; }   // not built: ActiveCamera is a resource, not a component (§3.11)
-public struct PointLight     { public Vector3 Color; public float Radius; public float Intensity; }             // not built (§3.9)
+public struct PointLight     { public Vector3 Colour; public float Range; public float Intensity; }            // built (§3.9)
+
+// One light as the renderer wants it, camera-relative. `LightRules.Nearest` fills the four a draw carries.
+public readonly record struct LightSample(Vector3 Position, Vector3 Colour, float Range) { public float InfluenceAt(Vector3 at); }
+public static class LightRules { public const int PerObject = 4; public static int Nearest(ReadOnlySpan<LightSample> lights, Vector3 at, Span<LightSample> result); }
 
 // In Sage.Engine (simulation code calls it too), so System.Numerics and Sage types only. A world
 // resource, reached with world.Debug() — see §3.10 for why it is not static.
@@ -208,7 +212,7 @@ public sealed class DebugDraw
 
 Positions passed to `DebugDraw` are in origin space (the same space as `GlobalTransform`). `Material`/`Mesh`/`Texture` above are plain `int` ids — `MaterialCache`'s and the `Renderer`'s own compact indices — not wrapper structs. `RenderItem`, `SpriteInstance` and `Renderer` are client types and may use MonoGame types. The components (`MeshRenderer`, `SpriteRenderer`, `Camera`, `PointLight`) and `DebugDraw` live in `Sage.Engine`, so they use `System.Numerics` and the Sage types, not MonoGame types.
 
-**Still design-only** (everything above this line is shipped): `RenderView` as a list (`Views`, for split screen, mirrors, shadow views — v1 has one `RenderSnapshot.View`); `LightSet`/`Lights` and `PointLight` (§3.9); the `Camera` component (the camera is the `ActiveCamera` resource today, §3.11); `Renderer.UpdateMesh` (only `CreateMesh`/`CreateBox`/`DestroyMesh` exist); `SpriteInstance.FlipU` as a field (the flip is folded into `Uv` at extract instead); per-object tint beyond the always-1 `RenderItem.Tint`/`SpriteInstance.Tint`.
+**Still design-only** (everything above this line is shipped): `RenderView` as a list (`Views`, for split screen, mirrors, shadow views — v1 has one `RenderSnapshot.View`); `LightSet` as a per-view struct (the sun and ambient live in the snapshot's `EnvironmentParams`, and `RenderSnapshot.Lights` is a flat `PooledList<LightSample>`, §3.9); the `Camera` component (the camera is the `ActiveCamera` resource today, §3.11); `Renderer.UpdateMesh` (only `CreateMesh`/`CreateBox`/`DestroyMesh` exist); `SpriteInstance.FlipU` as a field (the flip is folded into `Uv` at extract instead); per-object tint beyond the always-1 `RenderItem.Tint`/`SpriteInstance.Tint`.
 
 ## 5. Data flow (one frame)
 
@@ -219,7 +223,7 @@ Extract:     snapshot.Clear()
              MeshExtract      → Items   (interpolate GlobalTransform with alpha, frustum cull, sort key)
              TerrainExtract   → Items   (visible chunks from streaming, 14)
              SpriteExtract    → Sprites (interpolate, cull, pick direction/frame from sheet)
-             LightExtract     → Lights  (sun, ambient, nearest point lights per item)
+             LightExtract     → Lights  (every point light in range, camera-relative; the strongest four are picked per item at draw time)
              DebugDraw drain  → Debug
 Render:      radix sort Items → for each view: set frame params (07) → passes 1–5
 Overlay:     ImGui dev tools, console, game UI
@@ -243,7 +247,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 - **Built in step 6 / F1:** `r_fog`, `r_wireframe` and `r_freezecull` (both DevOnly + Cheat), `r_stats` (items, sprites, culled, draws, triangles, material switches), `mat_list`, `mat_info`, and the host's `screenshot [delay]` and `cam_set <x> <y> <z> [yaw] [pitch]` (DevOnly) commands, which is how the renderer is checked from fixed viewpoints.
 - **Cvars:**
   - `r_instancing`, `r_instancing_min`;
-  - `r_maxlights`;
+  - `r_lights` (Archive; off is sun + ambient only);
   - `r_scale`;
   - `r_vsync` (01);
   - `r_fog`;
@@ -363,17 +367,66 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   lightning, seasons or a clock that picks the weather, and weather that differs by region rather than
   by world.
 
+### As built (point lights, 2026-09-24 — F2)
+Interiors that look like interiors: F16 gave the engine rooms with roofs on them, and a roof is what a
+sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box until this.
+
+- **Code:** `src/Sage.Engine/Rendering/Lights.cs` (the `PointLight` component, `LightSample`,
+  `LightRules`), `LightExtract` in `src/Sage.Client/Rendering/RenderSystems.cs`,
+  `EffectBinding.SetLights` in `MaterialCache.cs`, and `PointLights()` in
+  `engine_content/shaders/common.fxh`. Tests: `tests/Sage.Tests/World/LightTests.cs`.
+- **Four lights per draw, chosen per object.** The ceiling is the shader model DesktopGL gives us (07
+  §2), and four is enough for a room, which is what this is for. `LightRules.Nearest` picks them from
+  the frame's whole list for each item, because a wall and a lamp across the room want different
+  answers.
+- **Which four is a decision, so it is engine-side and headless.** The measure is influence, not
+  distance: a bright lamp four metres away beats a candle at two, and picking by distance alone would
+  light the room with the wrong thing. (test: TheBrightestNearbyLightWinsRatherThanTheClosestOne)
+- **Out of range is absent, not dim.** The falloff is `(1 - d/range)²`, which reaches zero *at* the
+  range rather than approaching it, so a light never contributes a hairline of colour across the map.
+  (test: ALightOutOfRangeIsAbsentRatherThanDim)
+- **The chosen four do not depend on what order entities arrive in.** Extract walks archetypes, and
+  that order changes as things spawn and die; if the selection followed it, a wall would change its
+  lighting when something unrelated was destroyed across the map.
+  (test: TheOrderIsTheSameWhateverOrderTheLightsArrivedIn)
+- **No lights means the shader adds nothing**, rather than multiplying by nothing: outdoors, the sun
+  and the ambient are what light the world, and lamps are an addition to it.
+  (test: NoLightsMeansNoneRatherThanBlack)
+- **Camera-relative like everything else** (§3.3). Extract subtracts the camera position once, so the
+  distance the shader needs is the length of the vertex's `Relative` with no further maths, and a lamp
+  a sector away is not a float precision problem.
+- **Lambert against the surface normal**, the same as the sun, so a wall facing away from a lamp stays
+  dark and a room reads as a room rather than as a glowing fog.
+- **`r_lights 0` is the old look** — extraction stops, the shader sees a count of zero, and the hut is
+  a dark grey box again. Archive, because it is the kind of thing a player turns off once.
+- **Content:** a `light` prefab part (`"light": { "colour": [...], "range": 8, "intensity": 1 }`,
+  16 §3), registered as the `light` classname so a mapper places one in TrenchBroom like any other
+  entity and `fgd_export` tells the editor about it. The Sandbox's hut has two lamps.
+- **Second pass (same day), and it did not show in a screenshot.** `RenderSnapshot.Lights` was added
+  as a field and left out of `Clear()`, so the list grew by every lamp every frame and every draw
+  walked all of them — and the picture stayed *right*, because the extras were duplicates of the same
+  two lamps. A list that is not cleared is not a bug you can see. `RenderSnapshot` now makes its pooled
+  lists through a private `Pool<T>` that also records them, and `Clear()` empties what it recorded, so
+  the next list cannot be forgotten. The `light` part also spent an afternoon registered in
+  `AnimationModule` (where `sprite` lives); it has its own `LightsModule` now, which is what one module
+  per feature means (16 §"As built (F7)").
+- **Not yet:** lightmaps (the right answer for a large level, HL1's), shadows, sprites lit by point
+  lights (`sprite.fx`'s `Lit` technique still takes sun + ambient only), light entities that switch or
+  flicker through entity I/O, and any culling of the light list beyond what `LightRules` does per
+  object — a hundred lamps is a hundred structs, and the work that matters is per *draw*. When that
+  stops being true the answer is a grid, not a longer loop.
+
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
 
 ## 13. Open questions
 - Should sprites be lit per-vertex with the nearest point lights, or unlit + fog only in v1? Default: **material decides**; Daggerfall-style content uses unlit + fog + ambient tint.
-- Is SM3's constant budget enough for 4 point lights + fog + sun in one pass on DesktopGL/MojoShader? Verify with the first material. Fall back to 2 lights if not.
+- ~~Is SM3's constant budget enough for 4 point lights + fog + sun in one pass on DesktopGL/MojoShader?~~ **Yes** (2026-09-24): `lit.fx`'s `Default` technique compiles and runs with all of it, and no fallback to 2 was needed.
 
 ## 14. Build steps
 1. ~~`RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO R9, #25).
 2. ~~Sort keys + material-based drawing (with 07)~~ **Done 2026-09-22** (radix sort later).
 3. ~~Sprite batcher + `SpriteRenderer` + 8-direction selection~~ **Done 2026-09-22** (TODO F1; with 12).
-4. Lighting/fog/ambient + render scale (TODO F2).
+4. ~~Lighting/fog/ambient~~ **Done 2026-09-22** (sun, hemispheric ambient, fog) and ~~point lights~~ **Done 2026-09-24** ("As built (point lights)"). Render scale left (TODO F2).
 5. `DebugDraw` + `r_stats` + the overlay (TODO F5). *`r_stats` done in step 6.*
 6. Instancing experiment behind `r_instancing` (later).

@@ -40,6 +40,9 @@ public sealed class Renderer : IDisposable
     private readonly ContentService _content;
     private readonly List<MeshData> _meshes = new();
     private readonly Dictionary<AssetPath, int> _meshIds = new();
+
+    // Scratch for the per-draw light selection, so a frame of a thousand items allocates nothing.
+    private readonly LightSample[] _lights = new LightSample[LightRules.PerObject];
     private readonly List<Texture2D> _textures = new();
     private readonly Dictionary<AssetPath, int> _textureIds = new();
     private readonly SpriteBatcher _sprites;
@@ -371,6 +374,12 @@ public sealed class Renderer : IDisposable
 
             m.Effect.World?.SetValue(item.World);
             m.Effect.Tint?.SetValue(item.Tint);
+
+            // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
+            // translation is where it is relative to the camera — the same frame the lights are in.
+            var at = new System.Numerics.Vector3(item.World.M41, item.World.M42, item.World.M43);
+            int lit = LightRules.Nearest(s.Lights.AsSpan(), at, _lights);
+            m.Effect.SetLights(_lights.AsSpan(0, lit));
             var part = _meshes[item.Mesh].Parts[item.Part];
             _device.SetVertexBuffer(part.VertexBuffer);
             _device.Indices = part.IndexBuffer;

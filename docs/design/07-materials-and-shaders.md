@@ -80,7 +80,7 @@ Three tiers, all resolved **once** into cached `EffectParameter` references (nev
 |---|---|---|
 | Frame / view | `ViewProj`, `Time`, `FogColor`, `FogParams`, `SunDir`, `SunColor`, `AmbientSky`, `AmbientGround`, `CameraRight`, `CameraUp` | once per effect per view (when the effect first appears in the sorted list) |
 | Material | the material's `params` (textures, scalars) | when the material changes between draws (sorting keeps this rare) |
-| Object | `World`, `Tint`, `LightPos[4]`, `LightColor[4]` | per draw (or per instance, later) |
+| Object | `World`, `Tint`, `LightPositions[4]`, `LightColors[4]`, `LightCount` | per draw (or per instance, later) |
 
 `MaterialRuntime` (client) is built from a material record plus its loaded effect:
 - the resolved `EffectTechnique`;
@@ -93,7 +93,7 @@ It's rebuilt when `RecordsReloaded(material)` or `AssetReloaded(effect/texture)`
 ### 3.5 `common.fxh` contract
 The shared include defines:
 - the frame/object parameter names above, so all engine and game effects bind the same way;
-- `ApplyFog(color, viewDepth)`, `HemiAmbient(normal)`, `SunLight(normal)`, `PointLights(pos, normal)`;
+- `ApplyFog(color, viewDepth)`, `HemiAmbient(normal)`, `SunLight(normal)`, `PointLights(normal, relative)` — `relative` being the camera-relative position the lights are given in, so the distance costs one subtraction;
 - `AlphaTest(alpha)` (calls `clip`);
 - later: `SkinPosition` and billboard corner expansion (for instancing).
 
@@ -109,7 +109,7 @@ Game shaders that include it get lighting and fog consistent with engine materia
   - **Validation time:** missing effect parameters, unknown techniques and wrong param shapes are checked when the material is built (effect loaded), not at record load. The error names the material and the missing params, and the material draws as `sage:error`.
   - **Fog switch:** a per-material `FogEnabled` parameter (from the record's `fog`) instead of zeroing the density. Frame-level `r_fog` and the environment's fog go into `FogParams.z`.
   - **`AlbedoColor`:** `lit.fx` has a material-tier `AlbedoColor` that multiplies the texture (so materials can tint without a texture).
-  - **Point lights:** not yet (06 §3.9).
+  - **Point lights (2026-09-24):** `LightPositions`/`LightColors`/`LightCount` are object-tier, set per draw by `EffectBinding.SetLights` from the four `LightRules.Nearest` picked (06 §3.9). `LightColors.a` carries the range, so one `float4` array does the work of two. An effect without the parameters (`debug.fx`) simply has nothing set — `SetLights` returns when `LightCount` is absent, which is how the same draw loop serves lit and unlit effects. `lit.fx`'s `Default` and `AlphaTest` techniques use them; `sprite.fx`'s `Lit` does not yet.
 - **Textures:** `.png`/`.jpg` load through the VFS with `Texture2D.FromStream` and are premultiplied on load (§13). A missing one becomes a magenta/black checker, with a warning.
 
 ## 4. Public API sketch
@@ -198,7 +198,7 @@ dev:     .fx saved ─► watcher runs dotnet-mgfxc ─► success: Effect repla
   - `MaterialCache` with three-tier binding;
   - hot reload;
   - validation of missing params.
-- **Later:** `Lightmapped`, `Skinned`, `Instanced` techniques; terrain splat shader (with 14); per-entity parameter blocks; DirectX/Vulkan profiles when switching MonoGame backends.
+- **Later:** `Lightmapped`, `Skinned`, `Instanced` techniques; point-lit sprites; terrain splat shader (with 14); per-entity parameter blocks; DirectX/Vulkan profiles when switching MonoGame backends.
 
 ## 12. Multiplayer-later notes
 None. Materials are client-only.

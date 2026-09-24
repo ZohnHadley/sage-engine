@@ -14,6 +14,17 @@
     "onTerrain": true
   },
 
+  // A lamp (06 §3.9, F2). The hut places two of these by classname, which is all a `.map` needs to say:
+  // what a lamp *is* — how warm, how far it reaches — lives here, so changing it changes every one.
+  {
+    "type": "prefab",
+    "id": "light",
+    "name": "lamp",
+    "parts": {
+      "light": { "colour": [1.0, 0.82, 0.55], "range": 7, "intensity": 2.2 }
+    }
+  },
+
   // A face's texture name becomes a material in the map's namespace: `wall` in `sandbox:hut` looks for
   // `sandbox:wall`. They are ordinary materials, so a mod overrides the look of a level without touching
   // the level (07 §3.3, 17 §3).

@@ -84,6 +84,16 @@
 "angle" "0"
 }
 {
+"classname" "light"
+"origin" "-64 32 96"
+"angle" "0"
+}
+{
+"classname" "light"
+"origin" "64 32 96"
+"angle" "0"
+}
+{
 "classname" "door"
 "targetname" "hut_door"
 "OnUse" "!self,Open"

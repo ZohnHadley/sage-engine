@@ -4,8 +4,11 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
 
+
+using Friflo.Engine.ECS;
+
+namespace sage_engine;
 // Extract (docs/design/06 §3.1, §5): the only code that reads simulation components for rendering.
 // It writes the world's RenderSnapshot; Render then draws only from the snapshot.
 
@@ -156,6 +159,47 @@ internal sealed class RenderSystem : ISystem
 // Extract: copies the simulation's debug shapes into the snapshot, camera-relative like everything
 // else, and ages the queue (06 §3.2). It also carries `r_debugdraw` the other way, so nothing in the
 // simulation records shapes nobody is going to look at.
+// Extract: the frame's point lights, camera-relative like everything else (06 §3.9).
+//
+// No culling beyond what `LightRules` does per object: a hundred lamps in a level is a list of a hundred
+// structs, and the work that matters is per *draw*, not per light. When that stops being true the answer
+// is a grid, not a longer loop here.
+internal sealed class LightExtract : ISystem
+{
+    private readonly ArchetypeQuery<GlobalTransform, PointLight> _lights;
+    private readonly RenderSnapshot _snapshot;
+    private readonly CVar<bool> _enabled;
+
+    public LightExtract(World world, Renderer renderer, CVar<bool> enabled)
+    {
+        _lights = world.Query<GlobalTransform, PointLight>();
+        _snapshot = world.Resources.Get<RenderSnapshot>();
+        _enabled = enabled;
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        var snapshot = _snapshot;
+        // `r_lights 0` leaves the list empty, which the shader reads as "no lamps" — the old look, and
+        // the quickest way to see what the lights are actually contributing.
+        if (!snapshot.HasView || !_enabled.Value) return;
+
+        Vector3 camera = snapshot.View.CameraPosition;
+        float alpha = ctx.Frame.Alpha;
+
+        foreach (var (globals, lights, _) in _lights.Chunks)
+            for (int n = 0; n < globals.Length; n++)
+            {
+                ref readonly var light = ref lights[n];
+                if (light.Range <= 0f || light.Intensity <= 0f) continue;
+
+                var world = globals[n].Interpolated(alpha).Position;
+                var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
+                snapshot.Lights.Add() = new LightSample(at, light.Colour * light.Intensity, light.Range);
+            }
+    }
+}
+
 internal sealed class DebugExtract : ISystem
 {
     private readonly RenderSnapshot _snapshot;

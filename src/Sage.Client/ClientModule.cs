@@ -31,6 +31,7 @@ public sealed class ClientModule : IModule
     private InputActions? _actions;
     private CVar<bool>? _particlesOn;
     private CVar<bool>? _weatherOn;
+    private CVar<bool>? _lightsOn;
     private CVar<bool>? _damageNumbers;
     private AudioSettings? _audioSettings;
     private bool _audioDevice;
@@ -105,6 +106,9 @@ public sealed class ClientModule : IModule
             "Draw particles: sparks, embers, smoke, blood (06 §3.12).");
         _damageNumbers = ctx.Engine.CVars.Register("ui_damagenumbers", true, CVarFlags.Archive,
             "Show what each hit took, over the thing that took it (13 §3).");
+
+        _lightsOn = ctx.Engine.CVars.Register("r_lights", true, CVarFlags.Archive,
+            "Light the world with point lights as well as the sun (06 §3.9). Off is the old look: a room with a roof is a dark box.");
 
         _weatherOn = ctx.Engine.CVars.Register("r_weather", true, CVarFlags.Archive,
             "Let the sky do things: rain, snow, the light going out of it (06 §3.13).");
@@ -298,6 +302,7 @@ public sealed class ClientModule : IModule
         world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new SpriteExtract(world, _renderer!, _records!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
+        world.AddSystem(new LightExtract(world, _renderer!, _lightsOn!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
         // Audio is per world for the same reason the snapshot is: a voice's position is in *this*

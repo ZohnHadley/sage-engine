@@ -77,10 +77,14 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   | `AttributesModule` | `attribute`/`tag`/`effect` records, `GameplayRegistries`, `god`, the `attributes` and `effects` prefab parts, `EffectSystem` | — |
   | `CharacterModule` | `movement_profile`, Move/Jump/Run/Crouch, the `character` part, `PlayerControlSystem`, `CharacterMovementSystem`, `FirstPersonCameraSystem`, the `PawnIntent` phase contract | `PhysicsModule` |
   | `AnimationModule` | the `sprite` part, `SpriteAnimationSystem` | — |
+  | `LightsModule` | the `light` part (06 §3.9) | — |
   | `CombatModule` | `damage_type`/`attack`, `combat_debug`, `hurt`, Attack, the `melee` part, `MeleeCombatSystem` | Attributes, Character |
   | `ItemsModule` | `item`, `g_interact_range`, `give`/`inv`/`equip`/`unequip`/`drop`, Use, the `inventory` and `pickup` parts, `InteractionState`, `InteractionSystem` | Attributes, Combat |
   | `AbilitiesModule` | `ability`/`cue` records, the `Spellbook` saved resource, `cast_debug`, the `Cast` action, the `abilities` prefab part, `AbilitySystem`, `ProjectileSystem` | Attributes, Character |
   | `AIModule` | `ai_profile`/`ai_schedule`, `ai_debug`, `AITasks`, `AIThinkSystem`, `AIDebugSystem` | Character, Combat |
+  | `FactionsModule` | `faction`/`dialogue`/`quest` records, the `Reputation` and `Journal` saved resources, `rep`/`rep_set`/`quests`/`quest_start`/`quest_stage`, the `faction` and `dialogue` parts | — |
+  | `EntityIOModule` | entity inputs, `io_trace`/`io_maxdispatch`, `ent_fire`/`io_list`, `TriggerOutputSystem`, `EntityIOSystem` (04 §3.4, F17) | — |
+  | `MoverModule` | the `mover` part, `MoverSystem` (F17) | Physics, EntityIO |
 
   These are **logical** modules inside `Sage.Engine`, not assemblies (01 §3.1). `engine.Modules.AddGameplay()` adds them all, because "gameplay" is the unit a game wants; the host adds them one at a time so `game.json` can disable a single feature. Dependencies set `OnWorldCreated` order — combat needs attributes to exist before it can damage one — but **not** system order within a phase, which stays `before:`/`after:` and works across module boundaries. The `body` part moved to `PhysicsModule`, which owns where a shape sits.
 - **Controller → intent → movement** works as designed: `PlayerControlSystem` (Commands) copies the tick's `PlayerCommand` into `PawnIntent` on `PlayerControlled` pawns, and `CharacterMovementSystem` reads only the intent (10 "The character controller"). An AI controller writing the same component gets the same movement for free.

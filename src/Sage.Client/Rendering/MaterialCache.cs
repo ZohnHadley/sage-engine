@@ -15,7 +15,7 @@ internal sealed class EffectBinding
     public static readonly HashSet<string> EngineParams = new(StringComparer.Ordinal)
     {
         "ViewProj", "SunDir", "SunColor", "AmbientSky", "AmbientGround", "FogColor", "FogParams", "Time",
-        "World", "Tint", "FogEnabled",
+        "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount",
     };
 
     public EffectBinding(Effect effect)
@@ -26,11 +26,35 @@ internal sealed class EffectBinding
         AmbientSky = P("AmbientSky"); AmbientGround = P("AmbientGround");
         FogColor = P("FogColor"); FogParams = P("FogParams"); Time = P("Time");
         World = P("World"); Tint = P("Tint"); FogEnabled = P("FogEnabled");
+        LightPositions = P("LightPositions"); LightColors = P("LightColors"); LightCount = P("LightCount");
     }
 
     public Effect Effect { get; }
     public long FrameStamp = -1;
     public readonly EffectParameter? ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time, World, Tint, FogEnabled;
+    public readonly EffectParameter? LightPositions, LightColors, LightCount;
+
+    // The four lights this draw is lit by (06 §3.9). Reused arrays: this is set per item, and a frame
+    // with a thousand items would otherwise allocate two arrays a thousand times (02 §4.6).
+    private readonly Vector3[] _positions = new Vector3[LightRules.PerObject];
+    private readonly Vector4[] _colours = new Vector4[LightRules.PerObject];
+
+    public void SetLights(ReadOnlySpan<LightSample> chosen)
+    {
+        if (LightCount == null) return;                 // an effect that does not light, such as debug lines
+
+        for (int i = 0; i < chosen.Length; i++)
+        {
+            _positions[i] = new Vector3(chosen[i].Position.X, chosen[i].Position.Y, chosen[i].Position.Z);
+            _colours[i] = new Vector4(chosen[i].Colour.X, chosen[i].Colour.Y, chosen[i].Colour.Z, chosen[i].Range);
+        }
+
+        LightCount.SetValue((float)chosen.Length);
+        if (chosen.Length == 0) return;                 // nothing may be read past the count
+
+        LightPositions?.SetValue(_positions);
+        LightColors?.SetValue(_colours);
+    }
 
     public void SetFrame(in RenderView view, in EnvironmentParams env)
     {

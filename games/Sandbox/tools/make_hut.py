@@ -77,9 +77,14 @@ def write_map(path):
 
     # Things standing in it. `classname` is a prefab id, so `watcher` is the Sandbox's watcher; the
     # engine spawns whatever it has a prefab for and says so about the rest.
+    # Two lamps under the roof, which is what makes the inside of a hut look like the inside of a hut
+    # rather than a dark grey box: 96 units up is just under the lintel, and 64 either side of the middle
+    # puts one over each half of the room (F2's point lights).
     for classname, origin, angle in [('info_player_start', (0, -64, 8), 90),
                                      ('watcher', (64, 64, 8), 225),
-                                     ('tree', (-220, 200, 8), 0)]:
+                                     ('tree', (-220, 200, 8), 0),
+                                     ('light', (-64, 32, 96), 0),
+                                     ('light', (64, 32, 96), 0)]:
         lines += ['{', '"classname" "%s"' % classname,
                   '"origin" "%d %d %d"' % origin, '"angle" "%d"' % angle, '}']
 

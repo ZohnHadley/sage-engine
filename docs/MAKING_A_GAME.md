@@ -204,6 +204,7 @@ usual way, because a part does the assembling for you:
 | `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass` |
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` |
+| `light` | a lamp — `colour`, `range` in metres, `intensity` (06 §3.9) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
@@ -217,7 +218,7 @@ usual way, because a part does the assembling for you:
 | `faction` | who it belongs to |
 | `dialogue` | something to say |
 
-Fifteen, and that is all of them — a game adds its own in `Init` the same way. The Sandbox has two:
+Sixteen, and that is all of them — a game adds its own in `Init` the same way. The Sandbox has two:
 `hop` (a creature that bounces, eleven lines, in its simulation half) and `box_mesh` (a plain box mesh,
 in its *client* half, because building a mesh needs a renderer). A part whose module is missing (a mesh part in a headless run) is
 declared `Optional` so the same prefab loads with no renderer at all.
@@ -528,12 +529,15 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 
 Worth knowing before you plan around it:
 
-- **No editor.** Levels are drawn in TrenchBroom; everything else is JSON and the console. The editor is
-  TODO F28–F30.
+- **The editor places things; it does not drag them.** §8a is what it does: open a placements
+  document, see an outliner, edit a field, save. There are no gizmos, no picking in the viewport and no
+  undo — TODO F29/F30. Levels themselves are drawn in TrenchBroom, and everything else is JSON and the
+  console.
 - **No skeletal animation.** Characters are billboard sprites with direction groups (the Daggerfall
   model). Skeletal animation is a later phase.
-- **No lighting indoors.** A room with a roof is lit by the sun it cannot see plus the ambient term, so
-  interiors are dark. Point lights and lightmaps are still to come.
+- **Lighting indoors is lamps, not lightmaps.** A `light` entity lights a room, and four of them light
+  any one surface (the strongest four, chosen per draw). That is enough for a hut; a level the size of a
+  town wants light baked into the geometry, and lightmaps are still to come. Nothing casts a shadow.
 - **No multiplayer.** The engine follows rules that keep it possible (fixed tick, data-only components,
   no gameplay in rendering), but there is no networking. That is Phase 7.
 - **No per-entity keys in maps** beyond `origin`, `angle`, `targetname` and `trigger`: setting a
