@@ -246,8 +246,18 @@ Creatures walk round things instead of into them.
   route at all. A creature never stops moving because navigation failed; it does what it did before F23.
 - **Budgets, not hopes.** A search stops after `nav_maxnodes` cells (4096) and planning stops after
   `nav_plans` plans a tick (4), so a crowd sealed in a room costs a known amount and the creatures that
-  miss out keep last tick's path and ask again. `AIThinkSystem` runs in a Fixed phase, and the whole of
-  this allocates nothing: the grid, the open set and the corner buffer are all reused or on the stack.
+  miss out keep last tick's path and ask again. A search that found *nothing* backs off to one attempt
+  every 2.5 s rather than two a second. `AIThinkSystem` runs in a Fixed phase, and the whole of this
+  allocates nothing: the grid, the open set and the corner buffer are all reused or on the stack.
+- **Asked at the rate it matters.** "Is the way clear?" is three raycasts, and it is the one cost every
+  chasing creature pays whether or not anything is in its way, so the answer is kept for 0.2 s rather
+  than asked sixty times a second. Ground too steep to climb is sampled at the *terrain's* resolution
+  (8 m) and not the grid's (1 m): one `NormalAt` is a sector lookup and four interpolations, and sixty-
+  four of them per terrain step would say nothing extra.
+- **A path is a list of world positions, so it moves with the world.** The corners, the place a creature
+  last saw its target and the position it planned for are all origin space, and `AIThinkSystem`
+  subscribes to `Origin.Rebased` to shift them (R6) — without it a creature a kilometre and a half from
+  where it started walks at a corner that is now 1024 m away.
 - **A creature remembers what it cannot see, and this is what makes the rest work.** Sight is a cone, so
   walking round a wall means looking away from what you are chasing: without memory a creature forgot its
   target on the first step of the detour and went back to idle. A target stays remembered for

@@ -213,6 +213,48 @@ public class NavigationTests
             "the body's radius did not widen the obstacle, so paths will clip its corners");
     }
 
+    // Ground too steep to climb is not a path, whatever is standing on it. Sampled at the terrain's own
+    // resolution rather than the grid's — a heightfield sample is 8 m apart, so asking per 1 m cell is
+    // sixty-four questions with one answer between them.
+    private sealed class Cliff : ITerrainGenerator
+    {
+        // Flat, then a wall of hillside across the middle: 40 m up over one 8 m step.
+        public void Generate(SectorCoord coord, Heightfield heights, int seed)
+        {
+            for (int z = 0; z < heights.Resolution; z++)
+                for (int x = 0; x < heights.Resolution; x++)
+                    heights.Heights[z * heights.Resolution + x] = z >= heights.Resolution / 2 ? 40f : 0f;
+        }
+    }
+
+    [Fact]
+    public void GroundTooSteepToClimbIsNotAPath()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            var terrain = world.Resources.Get<Terrain>();
+            terrain.Generator = new Cliff();
+            terrain.Load(SectorCoord.Zero);
+
+            var nav = world.Resources.Get<Navigation>();
+            var grid = nav.Grid;
+
+            // A window on flat ground either side of the step, at the sector's middle.
+            var flat = new Vector3(100, 0, Terrain.SectorSize / 2 - 40);
+            var beyond = new Vector3(100, 0, Terrain.SectorSize / 2 + 40);
+
+            var path = new NavPath();
+            bool planned = nav.Plan(world, world.Resources.Get<PhysicsSpace>(), flat, beyond,
+                                    radius: 0.35f, stepHeight: 0.45f, maxSlopeDegrees: 50f,
+                                    self: default, target: default, path: ref path);
+
+            Assert.False(planned, "a creature planned a way up a forty-metre cliff");
+            Assert.True(grid.BlockedCells() > 0, "the cliff blocked no cells at all");
+            Assert.Equal(1, nav.NoRoute);
+        }
+    }
+
     // ---- through the real thing -----------------------------------------------------------------
 
     private const string Records = """
@@ -359,8 +401,48 @@ public class NavigationTests
         }
     }
 
+    // A path is a list of positions in origin space, and the origin moves (R6). Nothing else shifts a
+    // creature's corners or the place it last saw somebody, so the AI has to — and before it did, a
+    // creature a kilometre and a half from where it started walked at a corner 1024 m away.
+    [Fact]
+    public void APathMovesWithTheWorld()
+    {
+        var (engine, world) = NewWorld();
+        using (engine)
+        {
+            Pen(world, Vector3.Zero);
+            var creature = Creature(world, new Vector3(0, 0, 0));
+            var player = Player(world, new Vector3(0, 0, -12));
+
+            // Long enough to have seen the player, planned a way out and started walking it.
+            for (int i = 0; i < 60; i++) world.RunFixed(1f / 60f);
+
+            var before = world.Get<AIState>(creature);
+            Assert.True(before.Path.Count > 0, "no path to rebase, so this proves nothing");
+            var corner = before.Path[before.Path.Step];
+            var lastSeen = before.LastSeen;
+
+            var offset = world.Rebase(new SectorCoord(1, 0));
+            Assert.NotEqual(Vector3.Zero, offset);
+
+            var after = world.Get<AIState>(creature);
+            Assert.Equal(corner + offset, after.Path[after.Path.Step]);
+            Assert.Equal(lastSeen + offset, after.LastSeen);
+
+            // And it is still the same distance from the creature, which is the point: a rebase must be
+            // invisible to anything that only ever asks "how far".
+            Assert.Equal(SageMath.DistanceXZ(world.Get<Transform>(creature).LocalPosition, corner + offset),
+                         SageMath.DistanceXZ(world.Get<Transform>(creature).LocalPosition, after.Path[after.Path.Step]), 3);
+        }
+    }
+
     // Planning is budgeted, so a crowd cannot cost a hundred searches in one tick. The rest keep last
     // tick's path and ask again next tick, which nobody can see.
+    //
+    // Measured over a couple of seconds rather than the first two ticks: a creature's first look at the
+    // world is taken in the Commands phase, before the statics of that same tick exist (PrePhysics), so
+    // the opening answer to "is the way clear?" is always yes. The crowd settles into asking together,
+    // because they all plan at the same moment and all wait the same half second.
     [Fact]
     public void PlanningIsBudgetedPerTick()
     {
@@ -370,18 +452,21 @@ public class NavigationTests
             var nav = world.Resources.Get<Navigation>();
             nav.PlansPerTick = 2;
 
-            Wall(world, new Vector3(0, 0.6f, 0), width: 12f);
-            var player = Player(world, new Vector3(0, 0, -6));
+            Pen(world, Vector3.Zero);
+            Player(world, new Vector3(0, 0, -12));
             for (int i = 0; i < 6; i++) Creature(world, new Vector3(-5 + i * 2, 0, 6));
 
-            world.RunFixed(1f / 60f);
-            int plansInATick = nav.Plans;
-            world.RunFixed(1f / 60f);
+            int busiestTick = 0;
+            for (int t = 0; t < 120; t++)
+            {
+                int before = nav.Plans;
+                world.RunFixed(1f / 60f);
+                busiestTick = Math.Max(busiestTick, nav.Plans - before);
+            }
 
-            Assert.True(plansInATick <= 2, $"{plansInATick} creatures planned in one tick with a budget of 2");
-            Assert.True(nav.Refused > 0, "nothing was held over, so the budget was never reached");
+            Assert.True(busiestTick <= 2, $"{busiestTick} creatures planned in one tick with a budget of 2");
+            Assert.True(nav.Refused > 0, "nothing was ever held over, so the budget was never reached");
+            Assert.True(nav.Plans > 2, "nobody planned at all, so the budget proves nothing");
         }
     }
-
-
 }

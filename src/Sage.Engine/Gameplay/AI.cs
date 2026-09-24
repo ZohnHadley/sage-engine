@@ -19,11 +19,6 @@ public enum AICondition : ulong
     None = 0,
     SeeEnemy = 1 << 0,
     LostEnemy = 1 << 1,
-    // It cannot see the enemy but has not given up on it: the seconds after sight is broken, when a
-    // creature walks to where it last saw somebody. **Pathfinding needs this to be worth anything**
-    // (F23): walking round a wall means facing the wall's end rather than the target, and sight is a
-    // cone, so without memory a creature forgets what it is chasing the moment it sets off round.
-    RememberEnemy = 1 << 12,
     EnemyInMeleeRange = 1 << 2,
     NoEnemy = 1 << 3,
     TaskFailed = 1 << 4,
@@ -41,6 +36,12 @@ public enum AICondition : ulong
     // Mid wind-up. A think during a cast sees every spell refused as `AlreadyCasting`, and without
     // this the agent decided it had no magic and walked off in the middle of its own spell.
     Casting = 1 << 9,
+
+    // It cannot see the enemy but has not given up on it: the seconds after sight is broken, when a
+    // creature walks to where it last saw somebody. **Pathfinding needs this to be worth anything**
+    // (F23): walking round a wall means facing the wall's end rather than the target, and sight is a
+    // cone, so without memory a creature forgets what it is chasing the moment it sets off round.
+    RememberEnemy = 1 << 10,
     // Whether swinging is even an option. Without it a creature with no `Melee` walks into reach and
     // runs a melee schedule that can only fail, once a tick, for ever.
     CanMelee = 1 << 7,
@@ -201,6 +202,11 @@ internal sealed class MoveToTargetTask : IAITask
     // How close to a corner counts as reaching it, and how often a path is worth re-planning.
     private const float CornerReached = 0.8f;
     private const float ReplanSeconds = 0.6f;
+    // After a search that found nothing, ask again far less often. A creature sealed in a room is the
+    // case this exists for: it should cost one search every few seconds, not one every half second for
+    // as long as it can see you.
+    private const float NoRouteSeconds = 2.5f;
+    private const float CheckSeconds = 0.2f;       // how long an answer about the way ahead is kept
     private const float TargetMoved = 3f;          // metres before the old plan is stale
     private const float StraightProbe = 0.6f;      // the body's width to check a clear line with
 
@@ -235,12 +241,21 @@ internal sealed class MoveToTargetTask : IAITask
     private static Vector3 Navigate(ref AITaskContext c, ref NavPath path, Vector3 self, Vector3 target)
     {
         path.ReplanIn -= c.Dt;
+        path.CheckIn -= c.Dt;
 
         // The cheap question first, and the one that is usually enough: can it just walk at the thing?
         // A clear line means the path is dropped, so a creature stops following corners the moment it
         // does not need them.
-        bool clear = LineIsWalkable(ref c, self, target);
-        if (clear)
+        //
+        // Three raycasts, so it is asked about five times a second rather than sixty: a wall does not
+        // appear and vanish between ticks, and this is the one cost F23 adds to *every* chasing creature
+        // whether or not anything is in its way.
+        if (path.CheckIn <= 0f)
+        {
+            path.CheckIn = CheckSeconds;
+            path.LineBlocked = !LineIsWalkable(ref c, self, target);
+        }
+        if (!path.LineBlocked)
         {
             path.Clear();
             path.NoWayThrough = false;
@@ -252,9 +267,9 @@ internal sealed class MoveToTargetTask : IAITask
 
         if (stale && c.World.Resources.TryGet<Navigation>(out var nav) && nav != null)
         {
-            path.ReplanIn = ReplanSeconds;
             nav.Plan(c.World, c.Space, self, target, c.Movement.Radius, c.Movement.StepHeight,
                      c.Movement.MaxSlopeDegrees, c.Entity, c.State.Target, ref path);
+            path.ReplanIn = path.NoWayThrough ? NoRouteSeconds : ReplanSeconds;
         }
 
         if (!path.Walking) return target;   // no way through: lean on it as before, and keep trying

@@ -342,7 +342,11 @@ public struct NavPath
     public byte Step;           // which one it is walking to
     public float ReplanIn;      // seconds until it is worth asking again
     public Vector3 PlannedFor;  // where the target was when this was planned
-    public bool NoWayThrough;   // the last search failed: walk straight and stop asking
+    public bool NoWayThrough;   // the last search failed: back off and try again later
+    // "Is the way clear?" costs three raycasts, and the answer does not change sixty times a second.
+    // Asked at roughly the rate a creature thinks and remembered in between (16 §3.4).
+    public float CheckIn;
+    public bool LineBlocked;
 
     public Vector3 this[int i] => i switch
     {
@@ -371,6 +375,16 @@ public struct NavPath
     public bool Walking => Step < Count;
 
     public Vector3 Next => this[Step];
+
+    // Everything here is a position in origin space, so it all moves when the origin does (R6). Without
+    // this a creature a kilometre and a half from where it started walks at a corner that is now 1024 m
+    // away — the same mistake the renderer, the physics space and the audio mixer each had to be told
+    // about, and the reason `Origin.Rebased` exists.
+    public void Rebase(Vector3 offset)
+    {
+        for (int i = 0; i < Count; i++) Set(i, this[i] + offset);
+        PlannedFor += offset;
+    }
 }
 
 // The world's navigation: one scratch grid, the budget that stops a hundred creatures all planning in
@@ -400,7 +414,7 @@ public sealed class Navigation
 
     public void ResetStats() { Plans = 0; Refused = 0; NoRoute = 0; }
 
-    public bool CanPlan(long tick)
+    private bool CanPlan(long tick)
     {
         if (tick != _budgetTick) { _budgetTick = tick; _plansThisTick = 0; }
         return _plansThisTick < PlansPerTick;
@@ -470,16 +484,25 @@ public sealed class Navigation
                           new Vector3(at.X + half.X, 0, at.Z + half.Z), radius);
         }
 
-        // Ground nobody can climb. The terrain is 8 m between samples (14 §3), so this is smooth at nav
-        // resolution: it marks hillsides, not kerbs.
+        // Ground nobody can climb.
+        //
+        // **Sampled at the terrain's own resolution, not the grid's.** A heightfield sample is 8 m apart
+        // (14 §3) and every `NormalAt` costs a sector lookup and four interpolations, so asking per 1 m
+        // cell would be sixty-four questions with one answer between them — nine thousand of them for a
+        // full-size window. One sample per terrain step, blocking the cells it covers, says exactly as
+        // much for a sixty-fourth of the work.
         if (!world.Resources.TryGet<Terrain>(out var terrain) || terrain == null) return;
         float limit = MathF.Cos(maxSlopeDegrees * MathF.PI / 180f);
-        for (int y = 0; y < grid.Height; y++)
-            for (int x = 0; x < grid.Width; x++)
+        int stride = Math.Clamp((int)(Terrain.SectorSize / (Terrain.SectorResolution - 1) / grid.CellSize), 1, 16);
+
+        for (int y = 0; y < grid.Height; y += stride)
+            for (int x = 0; x < grid.Width; x += stride)
             {
-                if (grid.IsBlocked(x, y)) continue;
                 var cell = grid.CellCentre(x, y);
-                if (terrain.NormalAt(cell.X, cell.Z).Y < limit) grid.Block(x, y);
+                if (terrain.NormalAt(cell.X, cell.Z).Y >= limit) continue;
+                for (int by = y; by < Math.Min(y + stride, grid.Height); by++)
+                    for (int bx = x; bx < Math.Min(x + stride, grid.Width); bx++)
+                        grid.Block(bx, by);
             }
     }
 

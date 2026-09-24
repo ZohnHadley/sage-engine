@@ -28,6 +28,11 @@ public sealed class AIThinkSystem : ISystem
         _tasks = tasks;
         _space = world.Resources.Get<PhysicsSpace>();
         _attack = actions.Get("Attack");
+
+        // A creature's path and the place it last saw somebody are positions in origin space, and the
+        // origin moves (R6). Nothing else shifts them, so this does — the rule is that *everything*
+        // holding a world position subscribes, and F23 added three of them.
+        world.Origin().Rebased += offset => RebaseThinking(world, offset);
     }
 
     public void Run(in SystemContext ctx)
@@ -196,6 +201,21 @@ public sealed class AIThinkSystem : ISystem
         var hit = _space.Raycast(eye, toTarget / length, length, LayerMask.All.Except(_space.Layers.Enemy));
         visible = !hit.Hit || hit.Entity == best;
         return best;
+    }
+
+    // Moves every creature's cached positions with the world (R6). The query is the system's own, so
+    // this costs one pass over the creatures on the tick a rebase happens and nothing on any other.
+    private void RebaseThinking(World world, Vector3 offset)
+    {
+        foreach (var (_, states, _, _) in _agents.Chunks)
+        {
+            var s = states.Span;
+            for (int n = 0; n < s.Length; n++)
+            {
+                s[n].LastSeen += offset;
+                s[n].Path.Rebase(offset);
+            }
+        }
     }
 
     // Is there still a target worth walking to, even out of sight? Only for as long as the profile says,
