@@ -328,8 +328,8 @@ def check_counts(problems, code, test_count, fix):
     checked = 0
 
     for path in docs():
-        if os.sep + 'history' + os.sep in path:
-            continue
+        # History is skipped for *vocabulary* — it records what was true when it was written — but a
+        # count is opt-in by its marker, and the handoff is the page whose numbers go stale fastest.
         lines = open(path, encoding='utf-8', errors='replace').read().split('\n')
         changed = False
 

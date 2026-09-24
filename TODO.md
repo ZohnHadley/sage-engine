@@ -182,10 +182,21 @@ assumes world-space floats**, so the longer R6 waits the more code has to change
    between decision D10 and the code: nothing is built ahead of time now except shaders, so an asset a
    player or a mod adds is an asset the engine can load.
 
-The generator (09 §3.2) waits until the component set stops moving; the editor waits for level geometry
-(F16). Multiplayer stays Phase 7.
+6. ~~**F16** (levels), **F17** (entity I/O) and **F28** (the editor)~~ **Done 2026-09-24**, in that
+   order and for that reason: TrenchBroom gave the engine rooms, wiring made the rooms do something, and
+   only then did an editor have something to edit that nothing else could — where things stand. **R19**
+   came out of the same three, because each ended with the code right and its own words wrong.
+
+**Next**, and nothing forces the order: **lighting indoors** (the new interiors are lit by a sun they
+cannot see, 06 §3.5); **F29/F30** (gizmos, then undo/redo — the editor selects and edits but cannot
+drag, and nothing can be taken back); the **generator** (09 §3.2), which several things now queue behind
+and which waits only for the component set to stop moving, as it has; and Phase 7 multiplayer, still
+behind the readiness rules.
 
 ### Already present
+- **Levels (F16/F17):** `.map` import (standard, Valve 220, Quake 2/3), brushes as convex hulls and one mesh per texture, `classname` → prefab, solid entities with movers and trigger volumes, outputs wired to inputs in map data and checked at load; `map_load`, `ent_fire`, `io_list`, `fgd_export`.
+- **The editor (F28):** placement documents that a game loads with `world.SpawnPlacements`, an outliner that selects, an inspector that edits, and a Shipping build with no editor or ImGui in it; `doc_open`, `doc_save`, `ent_select`.
+- **Runtime assets (R12):** `.glb` models, PNG textures, WAV sounds and a generated bitmap font, all read off the VFS with no content pipeline; `dotnet-mgfxc` for shaders is the only build-time step.
 - **Input devices:** `KeyboardListener` + `MouseListener` (edge events, polling, exact-match chords, threshold-gated drag). They become the device layer of R3 (`08 §3.1`).
 - **World / ECS (step 3):** `Engine` + `World` over Friflo.Engine.ECS, typed queries, command buffer, structural notifications with the old ordering guarantees, `PersistentId`, resources, hierarchy.
 - **Look-at / billboard math:** `TransformMath.LookAt`/`Billboard` (#30/#31). Sprite facing moves to the renderer (F1).

@@ -319,8 +319,24 @@ to **remember what it is chasing**, because walking round something means lookin
 is a cone. Pathfinding without memory is decoration.
 
 Step 8 finished with F24 (factions, reputation, dialogue, quests), F39/F40 (particles and weather) and
-R12 — MonoGame 3.8.5.1, runtime loaders, and the end of MGCB. The handoff at
-[`docs/history/handoff-2026-09-24.md`](docs/history/handoff-2026-09-24.md) says where to start.
+R12 — MonoGame 3.8.5.1, runtime loaders, and the end of MGCB.
+
+**Step 9 gave the engine the three things a Daggerfall-like still lacked**, and each one arrived from a
+direction the plan had not expected. **Levels** (F16) came *before* the editor rather than after it,
+because TrenchBroom already edits brushes and reading what it writes took a day; a brush is planes, so
+every solid is convex by construction and every one becomes a hull rather than a triangle soup.
+**Entity I/O** (F17) made those levels do something — an output wired in map data to an input on another
+entity, checked when the level loads — and with it doors, lifts and trigger volumes. **The editor**
+(F28) then had something to edit that nothing else could: not brushes, not what a thing *is*, but where
+things stand, so its document is a `placements` record the engine owns.
+
+Two smaller things changed how the engine is worked on. **R19** put a checker between the documentation
+and the code, because three features in a row ended with the code right and its own words wrong. And
+[`games/Hello`](games/Hello) is the smallest game this engine runs — four files, in the solution so it
+cannot rot — which found an engine trap on its first run that the Sandbox had hidden for months.
+
+The handoff at [`docs/history/handoff-2026-09-24.md`](docs/history/handoff-2026-09-24.md) says where to
+start; [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) is for using the engine rather than building it.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
 
