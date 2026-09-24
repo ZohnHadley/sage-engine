@@ -176,21 +176,43 @@ public sealed class PhysicsSpace : IDisposable
         LastStepMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
 
-    // The origin sector moved (14 §3): shift everything by the same offset, once, between ticks.
+    // The origin sector moved (14 §3, R6): shift everything by the same offset, once, between ticks.
+    // Bepu keeps the authoritative pose of everything it simulates, so a rebase that moved only the
+    // components would have physics drag the world back a kilometre on the next step.
+    //
+    // Two things beyond moving the poses, both of which are silent corruption if forgotten:
+    // a **static's bounds** live in the broad phase and do not follow its pose, so an unrefreshed
+    // static still blocks rays where it used to be; and a **sleeping body** is not re-bounded until it
+    // wakes, so it would wake a sector away from its own collision box.
     public void Rebase(Vector3 offset)
     {
+        if (offset == Vector3.Zero) return;
+
         for (int i = 0; i < Simulation.Bodies.Sets.Length; i++)
         {
             ref var set = ref Simulation.Bodies.Sets[i];
             if (!set.Allocated) continue;
             for (int j = 0; j < set.Count; j++) set.SolverStates[j].Motion.Pose.Position += offset;
         }
+
+        // Every sleeping island, woken so Bepu re-bounds it where it now is. Waking a world's worth of
+        // bodies is affordable because a rebase happens once every kilometre of travel.
+        //
+        // Backwards, because waking a set deallocates it and shuffles the list: walking forwards over
+        // a collection that the loop body is removing from is the oldest bug there is.
+        for (int i = Simulation.Bodies.Sets.Length - 1; i >= 1; i--)
+            if (Simulation.Bodies.Sets[i].Allocated) Simulation.Awakener.AwakenSet(i);
+
         for (int i = 0; i < Simulation.Statics.Count; i++)
         {
-            ref var s = ref Simulation.Statics[i];
-            s.Pose.Position += offset;
+            var handle = Simulation.Statics.IndexToHandle[i];
+            ref var description = ref Simulation.Statics[i];
+            description.Pose.Position += offset;
+            Simulation.Statics.UpdateBounds(handle);
         }
-        Log.Info(LogCat.Physics, $"Physics rebased by {offset}");
+
+        Log.Info(LogCat.Physics, $"Physics rebased by {offset.X:F0}, {offset.Z:F0} m " +
+                                 $"({Simulation.Bodies.ActiveSet.Count} active bodies, {Simulation.Statics.Count} statics)");
     }
 
     // ---- Queries ------------------------------------------------------------------------------

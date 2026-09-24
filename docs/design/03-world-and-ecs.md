@@ -146,7 +146,7 @@ came to read +Z as "front" while everything else read -Z (review #43): don't.
 | Component | Fields | Written by |
 |---|---|---|
 | `Transform` | `Vector3 LocalPosition`, `Quaternion LocalRotation`, `Vector3 LocalScale` (relative to the parent, or to the entity's sector if it's a root) | gameplay, physics sync |
-| `SectorCoord` (root entities only) | `int X, Z`: which 1024 m sector the root's `LocalPosition` is relative to (14). **Not built yet** (arrives with large-world coordinates, TODO R6); until then roots are relative to the world origin | streaming, movement when crossing a sector edge |
+| `SectorCoord` | `int X, Z`: a 1024 m sector of the world, keyed absolutely (14). **As built (2026-09-24, R6):** roots are relative to the world's **origin sector** rather than carrying a sector each — `Origin` holds it for the whole world and `world.Rebase` moves everything at once, which is cheaper than a per-entity sector and gives the same precision. A per-entity `SectorCoord` returns if entities ever need to exist outside the loaded rings | `Origin`, streaming |
 | `Parent` / `Children` | Friflo's built-in hierarchy (`Entity.Parent`, `Entity.ChildEntities`) | `World.SetParent` / `ClearParent` only |
 | `GlobalTransform` | `Pose Current`, `Pose Previous` (a `Pose` is position + rotation + scale), relative to the world's **origin sector** (today: the origin) | transform propagation only |
 

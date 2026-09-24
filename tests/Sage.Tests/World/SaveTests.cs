@@ -149,6 +149,45 @@ public class SaveTests
         Assert.True(fx.World.Has<Collider>(loaded));
     }
 
+    // A save holds **origin-space** positions (R6), so it holds the origin as well. Without that, a
+    // save taken a hundred kilometres out would load its entities into the starting sector: the player
+    // would come back standing on somebody else's ground, and only the numbers would look right.
+    [Xunit.Fact]
+    public void ASaveFarFromHomeComesBackInTheRightPlace()
+    {
+        string shared = TestEnv.NewTempDir();
+        var far = new SectorCoord(117, -79);
+        Vector3 absolute;
+
+        using (var fx = new Fixture(userRoot: shared))
+        {
+            fx.World.Rebase(far);
+            var hero = Place(fx.World, "hero", "hero", new Vector3(40, 0.1f, -25));
+            Tick(fx.World, 2);
+
+            absolute = fx.World.Origin().ToAbsolute(fx.World.Get<Transform>(hero).LocalPosition);
+            Assert.True(MathF.Abs(absolute.X) > 100_000f, "the hero really is a long way out");
+            Assert.True(fx.Engine.Saves.Save("far"));
+        }
+
+        // A second run of the game, which starts at the origin like every run does.
+        using (var fx = new Fixture(userRoot: shared))
+        {
+            Assert.Equal(SectorCoord.Zero, fx.World.Origin().Sector);
+            Assert.True(fx.Engine.Saves.Load("far"));
+
+            Assert.Equal(far, fx.World.Origin().Sector);
+            var loaded = fx.World.Resolve(PersistentId.FromName("hero"));
+            Assert.False(loaded.IsNull);
+
+            var back = fx.World.Origin().ToAbsolute(fx.World.Get<Transform>(loaded).LocalPosition);
+            Assert.Equal(absolute.X, back.X, 2);
+            Assert.Equal(absolute.Z, back.Z, 2);
+        }
+
+        try { System.IO.Directory.Delete(shared, recursive: true); } catch { /* best effort */ }
+    }
+
     // Attribute values are saved by name, because the integer index is assigned in record load order.
     // This test *adds an attribute record* between save and load, which shifts every index — the exact
     // thing a content update or a mod does, and the reason the converter exists.

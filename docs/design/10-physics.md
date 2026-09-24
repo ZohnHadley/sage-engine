@@ -31,6 +31,15 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
   Movement tuning is in `movement_profile` records (walk/run/air control). A GoldSrc-style air-acceleration profile comes later for HL1-like games.
 - **Queries** go through `PhysicsSpace`: raycast, shape sweep, overlap. Results go into caller-provided spans (no allocation).
 
+### As built (rebasing, 2026-09-24 — R6)
+`PhysicsSpace.Rebase(offset)` shifts every body and static when the origin sector moves (14 §3). Two
+parts of it are not obvious and are silent corruption if missed: a **static's bounds** live in the
+broad phase and do not follow its pose, so an unrefreshed static keeps blocking rays where it used to
+be; and a **sleeping body** is not re-bounded until it wakes, so it would wake a sector away from its
+own collision box. The method updates static bounds and wakes every sleeping island — affordable,
+because a rebase happens once per kilometre of travel — and walks the sleeping sets backwards, since
+waking one deallocates it.
+
 ### As built (F6, 2026-09-22)
 - **Code:** `src/Sage.Engine/Physics/` — `PhysicsData.cs` (components, layers, query results), `PhysicsSpace.cs` (the Bepu simulation, callbacks and queries), `PhysicsCallbackData.cs` (what the worker threads may touch), `PhysicsSystems.cs` (the tick systems, terrain collision and `PhysicsModule`). BepuPhysics 2.4.0 is a package reference of `Sage.Engine`, so physics runs headless.
 - **`PhysicsModule`** is an engine module the host loads like `ClientModule`; it creates a `PhysicsSpace` per world, applies the `physics_layers` record and installs the systems. Tests drive it the same way a dedicated server would.

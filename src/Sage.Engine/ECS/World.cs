@@ -61,7 +61,9 @@ public sealed class World : IDisposable
         // Resources every world has (headless ones too, so simulation code can rely on them).
         Resources.Set(new ActiveCamera());
         Resources.Set(new RenderEnvironment());
-        Resources.Set(new Terrain());
+        var origin = new Origin();       // which sector the simulation is running in (R6, 14 §3)
+        Resources.Set(origin);
+        Resources.Set(new Terrain { Origin = origin });
         Resources.Set(new PlayerInput());
         _contracts = new PhaseContracts(this);   // what each phase promises, checked in dev (03 §3.5)
         _events = new GameEvents();          // the one place gameplay facts cross systems (04 §3.2)

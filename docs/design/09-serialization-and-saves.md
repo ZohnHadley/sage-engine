@@ -155,6 +155,11 @@ user://saves/<slot>/
   a component that also carries its own UTF-8 bytes).
 - **`Remaining = +∞`** is how an everlasting effect says so, so the dialect allows named floating-point
   literals. Without that, one such effect failed the *whole* component silently.
+- **The origin sector is in the file** (R6, 2026-09-24). Every position written is in **origin space**,
+  so a world file starts with the sector it was relative to, and loading rebases the world to it before
+  placing anything. Without that, a save taken a hundred kilometres out would load its entities into
+  the starting sector — the numbers would look right and the player would be standing on somebody
+  else's ground.
 - **Not done here:** maps, sectors, tombstones, binary, upgraders, thumbnails, autosave rotation, and
   the mod list in the header. `GameRules` state is still not saved — the mechanism exists now, and
   nothing in the Sandbox's rules has state worth keeping yet.

@@ -57,6 +57,7 @@ foreach (string mount in manifest.Mounts)
 try
 {
     AddDefaultModule(new PhysicsModule());
+    AddDefaultModule(new StreamingModule());   // terrain rings and origin rebasing (R6, F14)
     // One per feature since R15, and each still goes through AddDefaultModule, so `game.json` can
     // disable them individually: a game with no items or no AI drops that module and nothing else.
     AddDefaultModule(new AttributesModule());

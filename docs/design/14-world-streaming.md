@@ -57,7 +57,46 @@ In `Sage.Engine` (data, terrain generation), with client parts for terrain meshe
 - **Collision (F6, done):** `TerrainCollisionSystem` gives every loaded sector one static Bepu mesh (10 "As built"), so things actually rest on the ground. `HeightAt` stays as the cheap query for placement and AI.
 - **`SectorCoord` exists but nothing rebases yet:** everything lives in sector (0, 0) and chunk vertices are absolute world positions. Sector-local transforms, `Origin` and rebasing are R6; until then the terrain must stay near the origin for float precision.
 - **Edges:** normals at a sector's border are computed from its own clamped heights, so neighbouring sectors will show a faint seam until streaming samples across them (F14).
-- **Not yet (F14):** streaming rings, LOD, per-sector asset scopes, dormancy, `stream_debug`, generation on jobs.
+- **Superseded 2026-09-24** by "As built (rings and rebasing)" below — sector-local transforms, `Origin`
+  and rebasing all exist now.
+
+### As built (rings and rebasing, 2026-09-24 — R6 + F14 v1)
+The world is now unbounded. A player can walk, or `warp`, a hundred kilometres from where they started
+and the simulation carries on with small numbers, because the frame of reference follows them.
+
+- **Code:** `src/Sage.Engine/World/Origin.cs` (the `Origin` resource and `world.Rebase`),
+  `src/Sage.Engine/World/Streaming.cs` (`StreamingSource`, `SectorOwned`, `StreamingSystem`,
+  `StreamingModule`, `warp`), plus `Terrain` gaining `Unload`, `CornerOf` and origin-aware queries.
+  Tests in `tests/Sage.Tests/World/StreamingTests.cs`.
+- **Origin space is the only space the simulation knows.** Transforms, physics bodies, the camera and
+  every distance check are relative to the **origin sector**; sectors themselves are keyed absolutely,
+  because sector (117, −79) is the same ground whatever the origin is. `Terrain` is where the two meet
+  (`Origin.ToAbsolute` / `ToOrigin`), which is why `HeightAt` did not change for a single caller when
+  rebasing arrived — it takes origin space, as it always did, and converts inside.
+- **Rebasing moves everything at once**, between ticks: every root transform, **both poses** of every
+  `GlobalTransform`, every Bepu body and static, and the camera. The poses matter as much as the
+  bodies: `Previous` is what rendering interpolates *from*, so shifting only `Current` would streak
+  the whole world across the screen for one frame. There is a test for exactly that.
+- **Physics needed more than a pose shift.** A static's bounds live in the broad phase and do not
+  follow its pose, so an unrefreshed static still blocks rays where it used to be; and a *sleeping*
+  body is not re-bounded until it wakes. `PhysicsSpace.Rebase` now updates static bounds and wakes
+  every sleeping island — affordable at once per kilometre of travel.
+- **Rings with hysteresis:** load within `stream_radius` (default 1 → 3×3 sectors), unload past
+  `stream_radius + 1`, rebase past 1.5 sectors from the origin. Every threshold has a margin, because
+  the failure mode of a bare one is a player standing on an edge and loading the world at 60 Hz.
+- **`SectorOwned`** marks what a sector brought with it — its chunk meshes and its collision body — so
+  unloading takes them. Terrain chunk vertices became **sector-local** with the corner in the entity's
+  transform: baked-in absolute positions would have nailed the ground to the GPU buffer while the world
+  moved around it.
+- **`warp <x> <z>`** is fast travel in miniature, and its *order* is the design: **rebase, generate,
+  then place**. The first version placed first, read a ground height of zero from a sector that did not
+  exist yet, and dropped the player 1.6 km. There is a regression test.
+- **Console:** `stream_status` (origin, loaded sectors, rebases so far), `stream_radius`,
+  `stream_enabled`, `warp`.
+- **Not yet:** LOD past the ring, per-sector asset scopes, **dormancy** (sectors currently keep only
+  their terrain; entities placed in them are not yet saved and restored per sector — that needs maps,
+  09 §3.4), generation on jobs, interiors as separate spaces, and seam-free normals across sector
+  edges.
 
 ## 4. API sketch
 ```csharp

@@ -45,16 +45,17 @@ internal sealed class TerrainMeshSystem : ISystem
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var heights = sector.Heights;
         int chunks = (heights.Resolution - 1) / ChunkCells;
-        Vector3 origin = sector.Coord.Origin(Terrain.SectorSize);
+        var corner = _terrain.CornerOf(sector.Coord);   // origin space (R6), not absolute
         int built = 0;
 
         for (int cz = 0; cz < chunks; cz++)
         {
             for (int cx = 0; cx < chunks; cx++)
             {
-                var handle = BuildChunk(heights, cx, cz, origin, out BoundingSphere bounds);
-                var entity = _world.Create(Transform.Identity, $"terrain {sector.Coord} {cx},{cz}");
+                var handle = BuildChunk(heights, cx, cz, out BoundingSphere bounds);
+                var entity = _world.Create(Transform.At(corner), $"terrain {sector.Coord} {cx},{cz}");
                 _world.Add(entity, new MeshRenderer { Handle = handle, Material = TerrainMaterial });
+                _world.Add(entity, new SectorOwned { Sector = sector.Coord });   // unloaded with it
                 built++;
             }
         }
@@ -66,7 +67,8 @@ internal sealed class TerrainMeshSystem : ISystem
 
     // One chunk: positions in world space (the entity transform stays identity, like other static
     // geometry), normals from the heightfield, and UVs that tile the material every metre.
-    private MeshHandle BuildChunk(Heightfield heights, int chunkX, int chunkZ, Vector3 origin, out BoundingSphere bounds)
+    // Sector-local: the chunk is placed by its entity's transform, so an origin rebase moves it (R6).
+    private MeshHandle BuildChunk(Heightfield heights, int chunkX, int chunkZ, out BoundingSphere bounds)
     {
         _vertices.Clear();
         _indices.Clear();
@@ -84,8 +86,11 @@ internal sealed class TerrainMeshSystem : ISystem
                 min = MathF.Min(min, height);
                 max = MathF.Max(max, height);
                 var normal = heights.NormalAt(localX, localZ);
+                // **Sector-local**, with the entity's transform placing the chunk (R6). Baking the
+                // sector's position into the vertices would nail the mesh to the GPU buffer, so an
+                // origin rebase would move the world and leave the ground where it was.
                 _vertices.Add(new VertexPositionNormalTexture(
-                    new Vector3(origin.X + localX, height, origin.Z + localZ),
+                    new Vector3(localX, height, localZ),
                     new Vector3(normal.X, normal.Y, normal.Z),
                     new Vector2(localX, localZ) / 8f));   // one texture tile per cell
             }
@@ -103,7 +108,7 @@ internal sealed class TerrainMeshSystem : ISystem
         }
 
         float half = ChunkCells * spacing * 0.5f;
-        var center = new Vector3(origin.X + (x0 * spacing) + half, (min + max) * 0.5f, origin.Z + (z0 * spacing) + half);
+        var center = new Vector3((x0 * spacing) + half, (min + max) * 0.5f, (z0 * spacing) + half);
         bounds = new BoundingSphere(center, MathF.Sqrt(2 * half * half + MathF.Pow((max - min) * 0.5f, 2)));
         return _renderer.CreateMesh(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_vertices),
                                     System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_indices),

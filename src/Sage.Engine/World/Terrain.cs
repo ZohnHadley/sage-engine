@@ -96,6 +96,16 @@ public sealed class Terrain
     public int Seed { get; set; }
     public IReadOnlyList<TerrainSector> Sectors => _loaded;
 
+    // Where the simulation is running (R6). Sectors are keyed **absolutely** — sector (12, -3) is the
+    // same ground whatever the origin is — while every position handed to this class is in **origin
+    // space**, because that is what transforms, physics and the camera hold. This is the one place the
+    // two meet, and it is why `HeightAt` did not have to change for every caller when rebasing arrived.
+    public Origin Origin { get; set; } = new();
+
+    // Raised when a sector is unloaded, so the client can drop its meshes and physics its collision
+    // (14 §3). The sector is gone from `Sectors` by the time this runs.
+    public event Action<SectorCoord>? Unloaded;
+
     // Generates a sector if it isn't loaded yet. Returns it either way; null without a generator.
     public TerrainSector? Load(SectorCoord coord)
     {
@@ -116,6 +126,17 @@ public sealed class Terrain
         return sector;
     }
 
+    // Drops a sector: its heights, and — through `Unloaded` — whatever the client and physics built
+    // from them. Returns false if it was not loaded.
+    public bool Unload(SectorCoord coord)
+    {
+        if (!_sectors.Remove(coord, out var sector)) return false;
+        _loaded.Remove(sector);
+        Unloaded?.Invoke(coord);
+        Log.Info(LogCat.Streaming, $"Terrain sector {coord} unloaded");
+        return true;
+    }
+
     public bool IsLoaded(SectorCoord coord) => _sectors.ContainsKey(coord);
 
     public TerrainSector? Sector(SectorCoord coord) => _sectors.TryGetValue(coord, out var s) ? s : null;
@@ -123,23 +144,29 @@ public sealed class Terrain
     public static SectorCoord SectorOf(float worldX, float worldZ) =>
         new((int)MathF.Floor(worldX / SectorSize), (int)MathF.Floor(worldZ / SectorSize));
 
-    // The ground height under a world position, or 0 where no sector is loaded (v1: the character
-    // controller and spawn placement use this until physics has a heightfield collider, F6).
-    public float HeightAt(float worldX, float worldZ)
+    // The ground height under a position **in origin space**, or 0 where no sector is loaded (v1: the
+    // character controller and spawn placement use this until physics has a heightfield collider, F6).
+    public float HeightAt(float x, float z)
     {
-        var sector = Sector(SectorOf(worldX, worldZ));
+        var absolute = Origin.ToAbsolute(new Vector3(x, 0, z));
+        var sector = Sector(SectorOf(absolute.X, absolute.Z));
         if (sector == null) return 0f;
-        var origin = sector.Coord.Origin(SectorSize);
-        return sector.Heights.HeightAt(worldX - origin.X, worldZ - origin.Z);
+        var corner = sector.Coord.Origin(SectorSize);
+        return sector.Heights.HeightAt(absolute.X - corner.X, absolute.Z - corner.Z);
     }
 
-    public Vector3 NormalAt(float worldX, float worldZ)
+    public Vector3 NormalAt(float x, float z)
     {
-        var sector = Sector(SectorOf(worldX, worldZ));
+        var absolute = Origin.ToAbsolute(new Vector3(x, 0, z));
+        var sector = Sector(SectorOf(absolute.X, absolute.Z));
         if (sector == null) return Vector3.UnitY;
-        var origin = sector.Coord.Origin(SectorSize);
-        return sector.Heights.NormalAt(worldX - origin.X, worldZ - origin.Z);
+        var corner = sector.Coord.Origin(SectorSize);
+        return sector.Heights.NormalAt(absolute.X - corner.X, absolute.Z - corner.Z);
     }
+
+    // Where a loaded sector's corner sits **in origin space** — what a mesh or a collision body is
+    // built around, and what moves when the origin does.
+    public Vector3 CornerOf(SectorCoord coord) => Origin.ToOrigin(coord.Origin(SectorSize));
 
     // Drops a position onto the ground.
     public Vector3 OnGround(Vector3 position) => position with { Y = HeightAt(position.X, position.Z) };

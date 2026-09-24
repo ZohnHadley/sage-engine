@@ -30,11 +30,12 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | World | Friflo ECS behind a thin `World`, several worlds per engine, hierarchy and transform propagation, one typed event bus with per-reader cursors, world resources |
 | Content | One JSON record pipeline for every definition (items, spells, materials, AI, input maps, prefabs…) with namespaces, inheritance, per-field patch merge, validation and hot reload; a layered VFS; records that can also be made at run time |
 | Rendering | Extract → pooled snapshot → fixed passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, heightmap terrain, debug draw |
+| World | An unbounded grid of 1024 m sectors: terrain streams in and out in rings around the player, and the simulation rebases so nothing is ever far from its own origin — verified 120 km out |
 | Physics | BepuPhysics per world behind handles, layers, raycast/sweep/overlap, triggers, and our own kinematic character controller |
 | Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 347 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 358 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -86,6 +87,7 @@ searches both. Some worth knowing:
 | `rec_list`, `rec_get prefab watcher`, `rec_reload` | what records loaded, one record's values and where each field came from, reload them |
 | `vfs_mounts`, `vfs_which textures/creature.png` | the mount stack, and which mount a path resolves to |
 | `pause`, `host_timescale 0.3`, `sim_tickrate 30` | stop time, slow it, change the tick rate |
+| `warp 120000 -80000`, `stream_status`, `stream_radius 2` | go a hundred kilometres away and watch the world stream in around you; the simulation stays near its own origin |
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
 | `in_axis Move 0 1 3`, `in_look 40 0 3`, `in_tap Attack` | drive the game without a keyboard (see below) |
 | `wait 2` | pause a script here; the rest runs later |

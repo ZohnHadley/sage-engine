@@ -152,7 +152,9 @@ internal sealed class TerrainCollisionSystem : ISystem
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var heights = sector.Heights;
         int side = heights.Resolution, cells = side - 1;
-        Vector3 origin = sector.Coord.Origin(Terrain.SectorSize);
+        // Origin space, not absolute: this mesh has to sit where the simulation currently is, and
+        // move with it when the origin does (R6).
+        Vector3 origin = _terrain.CornerOf(sector.Coord);
         float spacing = heights.Spacing;
 
         if (_vertices.Length < side * side) _vertices = new Vector3[side * side];
@@ -174,6 +176,7 @@ internal sealed class TerrainCollisionSystem : ISystem
         var entity = _world.Create(Transform.At(origin), $"terrain collision {sector.Coord}");
         var body = _space.AddMesh(entity, _vertices.AsSpan(0, side * side), _indices.AsSpan(0, index), origin);
         _world.Add(entity, body);
+        _world.Add(entity, new SectorOwned { Sector = sector.Coord });   // unloading the sector takes it
         Log.Info(LogCat.Physics, $"Terrain sector {sector.Coord}: collision mesh with {index / 3} triangles in {watch.Elapsed.TotalMilliseconds:F1} ms");
     }
 }

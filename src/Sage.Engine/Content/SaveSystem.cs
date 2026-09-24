@@ -155,7 +155,15 @@ public sealed class SaveSystem
             entities.Add(saved);
         }
 
-        var root = new JsonObject { ["entities"] = entities };
+        // **Which sector these positions are relative to** (R6, 14 §3). Every position in this file is
+        // in origin space; without the origin, a save taken a hundred kilometres out would load its
+        // entities into the starting sector and put the player under ground that is not theirs.
+        var sector = world.Origin().Sector;
+        var root = new JsonObject
+        {
+            ["origin"] = new JsonObject { ["x"] = sector.X, ["z"] = sector.Z },
+            ["entities"] = entities,
+        };
 
         var resources = new JsonObject();
         foreach (var kind in _resources.Values.OrderBy(r => r.Name, StringComparer.Ordinal))
@@ -228,6 +236,12 @@ public sealed class SaveSystem
             Log.Error(LogCat.Save, $"{where}: no \"entities\"");
             return 0;
         }
+
+        // Back to the frame these positions were written in, *before* anything is placed in it. This
+        // also brings the terrain rings and the physics world along, because that is what a rebase
+        // does — the same path streaming uses when the player walks there (R6).
+        if (root["origin"] is JsonObject savedOrigin)
+            world.Rebase(new SectorCoord((int?)savedOrigin["x"] ?? 0, (int?)savedOrigin["z"] ?? 0));
 
         // Out with the old. Everything persistent is in the file, so anything here that is not was
         // destroyed before the save was taken — which is what a tombstone would have said.
