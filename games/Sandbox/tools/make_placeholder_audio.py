@@ -101,6 +101,22 @@ def main():
     # (13 §3), and a WAV nothing plays is dead weight, not a head start.
     write('pickup', tone(660, 0.18, release=0.09, harmonics=(1.0, 0.5, 0.25)))
 
+    # Rain: filtered noise with a little variation, so a loop does not sound like a fan. Cross-faded at
+    # the seam like the campfire, because a click every 2.4 seconds is worse than no rain at all.
+    n = int(2.4 * RATE)
+    rain = []
+    last = 0.0
+    for i in range(n):
+        white = random.random() * 2 - 1
+        last = last * 0.55 + white * 0.45          # brighter than the fire: rain hisses, fire rumbles
+        swell = 0.85 + 0.15 * math.sin(2 * math.pi * i / RATE * 0.23)
+        rain.append(last * 0.42 * swell)
+    fade = int(0.15 * RATE)
+    for i in range(fade):
+        a = i / float(fade)
+        rain[i] = rain[i] * a + rain[n - fade + i] * (1 - a)
+    write('rain_loop', rain[:n - fade])
+
     # Something for a looping source to hum: a campfire.
     n = int(1.5 * RATE)
     fire = []

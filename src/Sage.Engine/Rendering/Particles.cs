@@ -50,6 +50,9 @@ public sealed class ParticleRecord
 
     // What happens to one while it lives.
     public float Gravity = -9.81f;            // metres per second squared, on Y
+    // A constant push, like gravity but in any direction: what makes rain fall slanted and smoke lean
+    // away from a fire. Weather sets it per frame (06 §3.13); a record may bake one in.
+    public Vector3 Wind;
     public float Drag;                        // fraction of speed lost per second
     public float SizeStart = 0.15f, SizeEnd = 0.05f;
     public uint ColourStart = 0xFFFFFFFF;     // RGBA, and the alpha is what fades
@@ -87,6 +90,10 @@ public sealed class Particles
     public int Refused { get; private set; }     // asked for beyond the budget, for `fx_stats`
 
     public bool Enabled { get; set; } = true;
+
+    // What the weather is doing to everything at once (06 §3.13). On top of each record's own wind, so
+    // a fire's embers lean in the same gale that drives the rain.
+    public Vector3 Wind { get; set; }
 
     public IReadOnlyList<Group> Groups => _order;
 
@@ -195,6 +202,7 @@ public sealed class Particles
             var group = _order[g];
             var record = group.Record;
             float drag = MathF.Max(0f, 1f - record.Drag * dt);
+            var push = (new Vector3(0, record.Gravity, 0) + record.Wind + Wind) * dt;
 
             for (int i = group.Count - 1; i >= 0; i--)
             {
@@ -212,11 +220,11 @@ public sealed class Particles
                     { group.RemoveAt(i); Live--; continue; }
                     group.Position[i] = at.LocalPosition + group.Offset[i];
                     group.Offset[i] += group.Velocity[i] * dt;
-                    group.Velocity[i] = group.Velocity[i] * drag + new Vector3(0, record.Gravity * dt, 0);
+                    group.Velocity[i] = group.Velocity[i] * drag + push;
                 }
                 else
                 {
-                    group.Velocity[i] = group.Velocity[i] * drag + new Vector3(0, record.Gravity * dt, 0);
+                    group.Velocity[i] = group.Velocity[i] * drag + push;
                     group.Position[i] += group.Velocity[i] * dt;
                 }
                 group.Rotation[i] += group.Spin[i] * dt;

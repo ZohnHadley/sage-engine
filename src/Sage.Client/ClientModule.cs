@@ -30,6 +30,7 @@ public sealed class ClientModule : IModule
     private AssetHotReload? _watcher;
     private InputActions? _actions;
     private CVar<bool>? _particlesOn;
+    private CVar<bool>? _weatherOn;
     private CVar<bool>? _damageNumbers;
     private AudioSettings? _audioSettings;
     private bool _audioDevice;
@@ -44,6 +45,7 @@ public sealed class ClientModule : IModule
         ctx.Engine.Records.Register<SpriteSheetRecord>();
         ctx.Engine.Records.Register<SoundRecord>();
         ctx.Engine.Records.Register<ParticleRecord>();
+        ctx.Engine.Records.Register<WeatherRecord>();
 
         // A thing that hums: `"audio": { "sound": "fire_loop", "loop": true }` on any prefab. The
         // component is the engine's, so a headless run carries it and simply never plays it.
@@ -103,6 +105,33 @@ public sealed class ClientModule : IModule
             "Draw particles: sparks, embers, smoke, blood (06 §3.12).");
         _damageNumbers = ctx.Engine.CVars.Register("ui_damagenumbers", true, CVarFlags.Archive,
             "Show what each hit took, over the thing that took it (13 §3).");
+
+        _weatherOn = ctx.Engine.CVars.Register("r_weather", true, CVarFlags.Archive,
+            "Let the sky do things: rain, snow, the light going out of it (06 §3.13).");
+
+        ctx.Engine.CVars.RegisterCommand("weather", CVarFlags.Cheat,
+            "weather [id] [seconds]: what the sky is doing, or change it over that many seconds.", a =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Weather>(out var weather) || weather == null) continue;
+                if (a.Count == 0)
+                {
+                    Log.Info(LogCat.Console, weather.Settled
+                        ? $"'{world.Name}': {weather.Target}"
+                        : $"'{world.Name}': {weather.Current} → {weather.Target} ({weather.Blend * 100f:F0}%)");
+                    continue;
+                }
+
+                var id = ctx.Engine.Records.Resolve("weather", a[0]);
+                if (id.IsEmpty) continue;
+                float seconds = a.Count > 1 && float.TryParse(a[1], System.Globalization.NumberStyles.Float,
+                                                              System.Globalization.CultureInfo.InvariantCulture,
+                                                              out float asked) ? asked : 6f;
+                weather.Set(id, seconds);
+                Log.Info(LogCat.Console, $"'{world.Name}': {id} over {seconds:F1}s");
+            }
+        });
 
         ctx.Engine.CVars.RegisterCommand("fx_stats", CVarFlags.None,
             "How many particles are alive, and what has been refused.", _ =>
@@ -276,6 +305,11 @@ public sealed class ClientModule : IModule
         world.AddSystem(new ParticleExtract(world, _renderer!), Phase.Extract,
                         after: new[] { typeof(CameraExtract) });
         world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!), Phase.FrameUpdate);
+        // The sky is per world like everything else in it. Weather starts clear: a world nobody has
+        // rained on looks like the environment the game set up (06 §3.13).
+        world.Resources.Set(new Weather { Current = WeatherRecord.Clear, Target = WeatherRecord.Clear });
+        world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!), Phase.FrameUpdate,
+                        after: new[] { typeof(AudioSystem) });
         // Talking to somebody opens a window, which is the client's business (16 §3.5, F24).
         world.AddSystem(new DialogueSystem(world), Phase.FrameUpdate);
         // Before the HUD is drawn, so a number never sits on top of the health bar.

@@ -143,6 +143,20 @@ is flat arrays in `Sage.Engine` (testable without a device); the client turns li
 Emission comes from the events that already exist (a cue, a hit) or a `ParticleEmitter` component. See
 "As built (particles and damage numbers)".
 
+### 3.13 Weather (F40)
+Weather is **one record and a blend between two of them**. A `weather` record says what falls and how
+fast, how hard the wind drives it, what the fog and sky go, and how much of the sun is left; the world
+holds what it was, what it is becoming, and how far between. Everything downstream reads that: the
+particles, the environment, the sound of rain.
+
+**It falls around the camera, not in the world.** Rain is not placed and belongs nowhere: a slab of sky
+follows the player and is refilled every frame at the blended rate, which is the only affordable kind.
+The `Box` shape and the volume come from the weather; how a drop behaves is the particle record's.
+
+**The sun is scaled, not replaced.** A game sets the light it wants; weather says how much gets through,
+so dusk and a storm compose instead of fighting, and three storms in a row do not darken the world three
+times. See "As built (weather)".
+
 ## 4. Public API sketch
 
 ```csharp
@@ -312,6 +326,29 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
 - **Not yet:** particles that collide, animated sprite sheets over a life, per-particle rotation (the
   batcher has no roll), soft particles, decals that stay (blood on the floor), GPU simulation, and
   weather as a world-level emitter rather than a prefab.
+
+### As built (weather, 2026-09-24 — F40)
+- **Code:** `src/Sage.Engine/Rendering/Weather.cs` (`weather` records, the `Weather` state, `WeatherRules`)
+  and `src/Sage.Client/Rendering/WeatherSystem.cs`. Tests: `tests/Sage.Tests/World/WeatherTests.cs`.
+- **The numbers are engine-side and tested**: the blend, the fog and sun it implies, the rate and wind at
+  any point through a change, and which of two kinds of precipitation is falling. What the client does
+  with the answer is emit particles round the camera, write `RenderEnvironment`, and start a sound.
+- **Changing your mind mid-storm starts from what the sky looks like now**, not from where the last
+  change began — asking for sun a second into rain must not snap back to rain first.
+- **One thing falls at a time.** Rain turning to snow changes over at the half-way point rather than
+  overlapping, because two kinds of precipitation at once is a blend nobody asked for.
+- **Wind is a world-level push on every particle** (`Particles.Wind`), not just the rain: the same gale
+  leans a campfire's embers. A record may bake its own wind in on top.
+- **Rain you cannot hear is a screen saver**, so a weather record names a 2D looping sound and the system
+  starts and stops it as the weather takes and lets go (11 §3).
+- **A missing weather id is a clear sky**, not a crash.
+- **Console:** `weather` (what the sky is doing), `weather rain 8` (roll it in over eight seconds),
+  `r_weather`.
+- **Measured in the Sandbox:** a storm at 900 drops a second holds about 950 particles alive; the
+  simulation costs 0.013 ms a frame and the extract 0.060 ms, inside a 0.26 ms render.
+- **Not yet:** rain that stops under a roof (there are no interiors yet, F16), puddles and wet surfaces,
+  lightning, seasons or a clock that picks the weather, and weather that differs by region rather than
+  by world.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
