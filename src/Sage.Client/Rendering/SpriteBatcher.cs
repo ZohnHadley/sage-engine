@@ -19,6 +19,7 @@ public struct SpriteInstance
     public int Material;
     public int Texture;           // Renderer texture id (the sheet's)
     public BillboardMode Mode;
+    public float Roll;            // radians about the view axis; 0 for anything that stands upright
     public ulong SortKey;
 }
 
@@ -150,6 +151,14 @@ internal sealed class SpriteBatcher : IDisposable
                 right = right.LengthSquared() > 1e-8f ? Vector3.Normalize(right) : _right;   // straight up or down
                 up = Vector3.Normalize(Vector3.Cross(normal, right));
             }
+        }
+
+        // A turn about the axis you are looking down. Smoke and leaves want it; a character never does,
+        // which is why it is zero for sprites and comes from the particle's own rotation (06 §3.12).
+        if (s.Roll != 0f)
+        {
+            float cos = MathF.Cos(s.Roll), sin = MathF.Sin(s.Roll);
+            (right, up) = (right * cos + up * sin, up * cos - right * sin);
         }
 
         // The pivot sits at the entity position: the quad spans left/right and up/down around it.

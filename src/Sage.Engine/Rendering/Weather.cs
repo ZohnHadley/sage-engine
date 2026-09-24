@@ -49,12 +49,19 @@ public sealed class WeatherRecord
 }
 
 // What the world is doing, and what it is turning into. One per world: a world has one sky.
+//
+// Saved, because a storm you walked into is part of the world you left (09 §3.1). The rate is a finite
+// number even for an instant change: `Infinity` is not JSON, and a save that cannot be written is worse
+// than a storm that takes a hundredth of a second to arrive.
+[SavedResource("weather")]
 public sealed class Weather
 {
-    public RecordId Current;          // what it was
-    public RecordId Target;           // what it is becoming
-    public float Blend = 1f;          // 0 = entirely Current, 1 = entirely Target
-    public float BlendRate = 1f;      // per second; a storm takes as long as it was asked to take
+    private const float Instant = 1000f;
+
+    public RecordId Current { get; set; }          // what it was
+    public RecordId Target { get; set; }           // what it is becoming
+    public float Blend { get; set; } = 1f;         // 0 = entirely Current, 1 = entirely Target
+    public float BlendRate { get; set; } = 1f;     // per second; a storm takes as long as it was asked to
 
     public bool Settled => Blend >= 1f;
 
@@ -70,13 +77,13 @@ public sealed class Weather
         Current = Blend >= 1f ? Target : Showing;
         Target = weather;
         Blend = 0f;
-        BlendRate = seconds <= 0.001f ? float.PositiveInfinity : 1f / seconds;
+        BlendRate = seconds <= 0.001f ? Instant : 1f / seconds;
     }
 
     public void Advance(float dt)
     {
         if (Blend >= 1f) return;
-        Blend = float.IsPositiveInfinity(BlendRate) ? 1f : MathF.Min(1f, Blend + BlendRate * dt);
+        Blend = MathF.Min(1f, Blend + BlendRate * dt);
     }
 }
 

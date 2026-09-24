@@ -290,6 +290,17 @@ The same generated metadata gains a `[Replicated]` flag and a quantization hint,
 - If Friflo is adopted (03 §3.1), does its component storage let our generated serializers read and write components directly (by ref)? The spike must confirm (requirement E7). Friflo's own JSON serializer would then go unused.
 - Binary compression: none, Deflate (built in), or a faster codec? Start with `System.IO.Compression` Brotli/Deflate at the fastest level; measure.
 
+### Sharp edge: `[SavedResource]` saves nothing on its own
+The attribute names a resource in the save file; it does **not** put it there. A type is only written and
+restored once something calls `Engine.Saves.RegisterResource<T>()`, which is how the spellbook has always
+worked — and how reputation, the journal and the weather were all marked saved and none of them were
+(found by F40's second pass, 2026-09-24). The engine registers its own (`Weather`) where the save system
+is built; a module registers its own beside the records it owns.
+
+There is no warning for this, because nothing can tell the difference between "a resource the game does
+not want saved" and "a resource somebody forgot to register". The test is the check: a save round trip
+per saved resource, asserting the value comes back.
+
 ## 14. Build steps
 1. Attributes + `Sage.Generators` with JSON read/write and registration; the `ser_check` round-trip test (TODO R11, R4).
 2. Inspector metadata output (with 15).

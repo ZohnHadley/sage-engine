@@ -61,6 +61,9 @@ public sealed class World : IDisposable
         // Resources every world has (headless ones too, so simulation code can rely on them).
         Resources.Set(new ActiveCamera());
         Resources.Set(new RenderEnvironment());
+        // What the sky is doing belongs to the world, not to whoever draws it (06 §3.13): a headless
+        // server can be rained on, and a save carries the storm you walked into.
+        Resources.Set(new Weather { Current = WeatherRecord.Clear, Target = WeatherRecord.Clear });
         var origin = new Origin();       // which sector the simulation is running in (R6, 14 §3)
         Resources.Set(origin);
         Resources.Set(new Terrain { Origin = origin });

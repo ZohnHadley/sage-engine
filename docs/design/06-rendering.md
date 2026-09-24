@@ -323,9 +323,12 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   what was turned away, per effect.
 - **Console:** `fx_stats`, `fx_play <effect> [count]` (two metres in front of the eye, not inside your
   head), `r_particles`, `ui_damagenumbers`.
-- **Not yet:** particles that collide, animated sprite sheets over a life, per-particle rotation (the
-  batcher has no roll), soft particles, decals that stay (blood on the floor), GPU simulation, and
-  weather as a world-level emitter rather than a prefab.
+- **Particles turn.** `spinDegrees` was simulated from the first version and drawn by nothing, because
+  the sprite batcher had no roll — a knob that costs cycles and does nothing is the "field nobody reads"
+  mistake in a new coat. `SpriteInstance.Roll` now turns the quad about the view axis; sprites write zero
+  and mean it.
+- **Not yet:** particles that collide, animated sprite sheets over a life, soft particles, decals that
+  stay (blood on the floor), and GPU simulation.
 
 ### As built (weather, 2026-09-24 — F40)
 - **Code:** `src/Sage.Engine/Rendering/Weather.cs` (`weather` records, the `Weather` state, `WeatherRules`)
@@ -346,6 +349,16 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   `r_weather`.
 - **Measured in the Sandbox:** a storm at 900 drops a second holds about 950 particles alive; the
   simulation costs 0.013 ms a frame and the extract 0.060 ms, inside a 0.26 ms render.
+- **The state is the world's, the look is the client's.** `Weather` is installed with every `World`
+  beside `RenderEnvironment`, so a headless server can be rained on and a quest can ask; only the system
+  that makes it *look* like rain is client-side. It is saved, so the storm you walked into is part of the
+  world you left.
+- **Second pass (same day):** the weather system was assigning the particle record's `extents` every
+  frame — one storm quietly editing an effect every other storm shares. A record is content and content
+  is read-only at runtime, so the volume is passed to `Emit` instead. The baseline sky is now re-read
+  whenever the weather is clear and settled, so a game that changes its own light (a day/night cycle
+  will) is picked up rather than overwritten for ever. And with `snd_enabled 0` the rain loop was being
+  made and killed sixty times a second, because the mixer stops everything each frame while muted.
 - **Not yet:** rain that stops under a roof (there are no interiors yet, F16), puddles and wet surfaces,
   lightning, seasons or a clock that picks the weather, and weather that differs by region rather than
   by world.

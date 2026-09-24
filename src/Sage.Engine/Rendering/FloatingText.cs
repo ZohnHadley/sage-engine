@@ -114,7 +114,6 @@ public sealed class FloatingTexts
 public static class DamageNumbers
 {
     public const uint Default = 0xFFEEEEEE;      // white-ish: a hit
-    public const uint Healing = 0xFF88EE88;      // green: a gain
     public const uint Mine = 0xFFFF7766;         // what *you* took, so it reads differently from what you dealt
 
     // Where the number starts: above the hit, not on it, so it is not swallowed by the body it belongs

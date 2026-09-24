@@ -512,6 +512,11 @@ public sealed class FactionsModule : IModule
         ctx.Engine.Records.Register<DialogueRecord>();
         ctx.Engine.Records.Register<QuestRecord>();
 
+        // What a world thinks of you and what you are half way through: both are saved, and both need
+        // saying so here — the attribute alone does nothing (09 §3.1).
+        ctx.Engine.Saves.RegisterResource<Reputation>();
+        ctx.Engine.Saves.RegisterResource<Journal>();
+
         ctx.Engine.Prefabs.Register("faction", PrefabParts.Faction);
         ctx.Engine.Prefabs.Register("dialogue", PrefabParts.DialoguePart);
 

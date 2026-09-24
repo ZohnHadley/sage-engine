@@ -22,6 +22,10 @@ public sealed class Engine : IDisposable
         Records = records ?? new RecordStore();
         Components = new ComponentSchema(Records.Json);
         Saves = new SaveSystem(this);
+        // The engine's own saved state. A `[SavedResource]` attribute is decoration until something
+        // registers the type — which is exactly how reputation, the journal and the weather were all
+        // "saved" and none of them were (F24/F40, found by the second pass).
+        Saves.RegisterResource<Weather>();
         Records.Register<PrefabRecord>();     // every game places things, so the engine owns the type
         Modules = new ModuleManager(this);
     }

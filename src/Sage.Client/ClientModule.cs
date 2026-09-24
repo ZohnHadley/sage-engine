@@ -305,10 +305,8 @@ public sealed class ClientModule : IModule
         world.AddSystem(new ParticleExtract(world, _renderer!), Phase.Extract,
                         after: new[] { typeof(CameraExtract) });
         world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!), Phase.FrameUpdate);
-        // The sky is per world like everything else in it. Weather starts clear: a world nobody has
-        // rained on looks like the environment the game set up (06 §3.13).
-        world.Resources.Set(new Weather { Current = WeatherRecord.Clear, Target = WeatherRecord.Clear });
-        world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!), Phase.FrameUpdate,
+        // The `Weather` state is the world's (installed with it); this only makes it *look* like it.
+        world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!, _soundEnabled!), Phase.FrameUpdate,
                         after: new[] { typeof(AudioSystem) });
         // Talking to somebody opens a window, which is the client's business (16 §3.5, F24).
         world.AddSystem(new DialogueSystem(world), Phase.FrameUpdate);

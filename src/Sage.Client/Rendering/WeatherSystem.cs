@@ -23,12 +23,13 @@ public sealed class WeatherSystem : ISystem
     private readonly AudioMixer _audio;
     private readonly RecordStore _records;
     private readonly CVar<bool> _enabled;
+    private readonly CVar<bool> _sound;
 
     private float _pending;                 // fractional particles carried between frames
     private RecordId _playing;              // the weather whose sound is running
     private VoiceHandle _voice;
 
-    public WeatherSystem(World world, RecordStore records, CVar<bool> enabled)
+    public WeatherSystem(World world, RecordStore records, CVar<bool> enabled, CVar<bool> sound)
     {
         _weather = world.Resources.Get<Weather>();
         _particles = world.Resources.Get<Particles>();
@@ -37,6 +38,7 @@ public sealed class WeatherSystem : ISystem
         _audio = world.Resources.Get<AudioMixer>();
         _records = records;
         _enabled = enabled;
+        _sound = sound;
 
         // A copy of the sky as the game set it up. Weather *scales* the sun and the ambient rather than
         // replacing them, so this is what it scales: without it, two storms in a row would darken the
@@ -61,6 +63,16 @@ public sealed class WeatherSystem : ISystem
             return;
         }
 
+        // The baseline is what the *game* set the light to, and a game may change it (a day/night cycle
+        // will). Re-read it whenever the sky is clear and settled: at that moment the environment is the
+        // baseline, so anything the game has changed is picked up, and nothing weather did is baked in.
+        if (_weather.Settled && WeatherRules.Falling(_records, _weather).SunScale >= 1f)
+        {
+            _clearSky.SunColor = _environment.SunColor;
+            _clearSky.AmbientSky = _environment.AmbientSky;
+            _clearSky.AmbientGround = _environment.AmbientGround;
+        }
+
         WeatherRules.Apply(_records, _weather, _environment, _clearSky);
         _particles.Wind = WeatherRules.WindNow(_records, _weather);
         Sound();
@@ -83,12 +95,10 @@ public sealed class WeatherSystem : ISystem
 
         if (!_records.TryGet(record.Particles, out ParticleRecord effect)) return;
 
-        // Above the camera and around it. The effect's own `extents` are overridden by the weather's
-        // volume, because how wide the rain is belongs to the weather and how a drop behaves belongs to
-        // the effect.
-        effect.Extents = record.Volume;
+        // Above the camera and around it, in the weather's volume rather than the effect's: how wide the
+        // rain is belongs to the weather, how a drop behaves belongs to the effect.
         var at = _camera.Position + new Vector3(0, record.Ceiling, 0);
-        _particles.Emit(record.Particles, effect, at, -Vector3.UnitY, count);
+        _particles.Emit(record.Particles, effect, at, -Vector3.UnitY, count, volume: record.Volume);
     }
 
     // Rain you cannot hear is a screen saver. One 2D loop, started when the weather that owns it takes
@@ -96,7 +106,9 @@ public sealed class WeatherSystem : ISystem
     private void Sound()
     {
         var record = WeatherRules.Falling(_records, _weather);
-        var wanted = record.Sound;
+        // With the sound off the mixer stops everything every frame (11 §3), so asking it to start a rain
+        // loop again each frame would be a voice made and killed sixty times a second.
+        var wanted = _sound.Value ? record.Sound : default;
 
         if (wanted == _playing && (_voice.IsValid ? _audio.Find(_voice) != null : wanted.IsEmpty)) return;
 

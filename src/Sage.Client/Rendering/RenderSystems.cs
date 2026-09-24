@@ -288,6 +288,7 @@ internal sealed class SpriteExtract : ISystem
                 instance.Material = materialId;
                 instance.Texture = texture;
                 instance.Mode = sr.Mode;
+                instance.Roll = 0f;                 // sprites stand upright; only particles turn (06 §3.12)
                 instance.SortKey = RenderSortKey.Make(material.Pass, sr.Layer, materialId, texture,
                     Vector3.Dot(center, s.View.Forward), s.View.Far);
             }

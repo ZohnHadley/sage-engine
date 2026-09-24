@@ -324,4 +324,62 @@ public class SaveTests
         Assert.Contains("two", slots);
         Assert.All(fx.Engine.Saves.List(), s => Assert.True(s.Entities > 0));
     }
+
+    // A storm you walked into is part of the world you left (06 §3.13, F40). The blend is saved too, so
+    // loading half way through a change carries on rather than snapping.
+    [Fact]
+    public void TheWeatherSurvivesASave()
+    {
+        using var fx = new Fixture();
+        var weather = fx.World.Resources.Get<Weather>();
+        weather.Set(new RecordId("sandbox", "storm"), seconds: 4f);
+        weather.Advance(1f);
+
+        Assert.True(fx.Engine.Saves.Save("weather"));
+
+        // Let it clear up, the way playing on would.
+        weather.Set(new RecordId("sage", "clear"), seconds: 0f);
+        weather.Advance(1f);
+        Assert.True(weather.Settled);
+
+        Assert.True(fx.Engine.Saves.Load("weather"));
+
+        var loaded = fx.World.Resources.Get<Weather>();
+        Assert.Equal(new RecordId("sandbox", "storm"), loaded.Target);
+        Assert.Equal(0.25f, loaded.Blend, 2);
+        Assert.False(loaded.Settled);
+    }
+
+    // What a world thinks of you, and what you are half way through, are the two things a save is most
+    // obviously *for* (F24). Both were attributed `[SavedResource]` and neither was registered, so
+    // neither was written — which no test noticed until one asked.
+    [Fact]
+    public void ReputationAndTheJournalSurviveASave()
+    {
+        using var fx = new Fixture();
+        var faction = new RecordId("sandbox", "townsfolk");
+        var quest = new RecordId("sandbox", "errand");
+
+        fx.World.Resources.Get<Reputation>().Set(faction, -40f);
+        fx.World.Resources.Get<Journal>().Entries.Add(new Journal.Entry
+        {
+            Quest = quest,
+            Stage = "hunt",
+            Progress = { 1 },
+        });
+
+        Assert.True(fx.Engine.Saves.Save("story"));
+
+        // Play on, badly.
+        fx.World.Resources.Get<Reputation>().Set(faction, 80f);
+        fx.World.Resources.Get<Journal>().Entries.Clear();
+
+        Assert.True(fx.Engine.Saves.Load("story"));
+
+        Assert.Equal(-40f, fx.World.Resources.Get<Reputation>().Of(faction), 1);
+        var entry = fx.World.Resources.Get<Journal>().Of(quest);
+        Assert.NotNull(entry);
+        Assert.Equal("hunt", entry!.Stage);
+        Assert.Equal(1, entry.Progress[0]);
+    }
 }

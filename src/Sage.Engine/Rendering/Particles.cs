@@ -155,8 +155,13 @@ public sealed class Particles
 
     // Throws `count` particles from a point. `direction` is which way the cone or point faces; for a
     // sphere it is ignored. `follows` makes them ride an entity (an aura, a burning coat).
+    // `volume` overrides the record's own `extents` for this call: how wide the rain is belongs to the
+    // weather, while how a drop behaves belongs to the effect (06 §3.13). Passed rather than written into
+    // the record, because **a record is content and content is read-only at runtime** — the first version
+    // assigned `effect.Extents` every frame, which is one storm quietly editing the effect every other
+    // storm shares.
     public int Emit(RecordId effect, ParticleRecord? record, Vector3 at, Vector3 direction, int count,
-                    Entity follows = default)
+                    Entity follows = default, Vector3? volume = null)
     {
         if (!Enabled || record == null || count <= 0) return 0;
 
@@ -177,7 +182,7 @@ public sealed class Particles
         for (int n = 0; n < room; n++)
         {
             int i = group.Count++;
-            Vector3 offset = record.Shape == EmitShape.Box ? RandomInBox(record.Extents) : Vector3.Zero;
+            Vector3 offset = record.Shape == EmitShape.Box ? RandomInBox(volume ?? record.Extents) : Vector3.Zero;
             group.Position[i] = at + offset;
             group.Velocity[i] = Direction(record, direction) * Range(record.SpeedMin, record.SpeedMax);
             group.Age[i] = 0f;
