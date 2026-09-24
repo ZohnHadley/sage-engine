@@ -70,6 +70,10 @@ public class MapLevelTests
         var engine = new Engine(cvars, CoreCVars.Register(cvars), fixture.Vfs);
         engine.Modules.Add(new PhysicsModule());
         engine.Modules.Add(new MapModule());
+        // The I/O modules too, because a level's wiring is checked against their inputs when it loads,
+        // and because the FGD this generates advertises them.
+        engine.Modules.Add(new EntityIOModule());
+        engine.Modules.Add(new MoverModule());
         engine.Modules.InitAll();
         engine.Records.Load(engine.Vfs);
 
@@ -267,6 +271,31 @@ public class MapLevelTests
         Assert.Null(level);
         Assert.Empty(world.Resources.Get<MapLevels>().Loaded);
         world.RunFixed(1f / 60f);       // and the world still runs
+    }
+
+    [Fact]
+    public void EverythingTheFgdAdvertisesActuallyExists()
+    {
+        using var engine = NewEngine();
+
+        string fgd = FgdExport.Build(engine);
+
+        // The rule R19 is about, applied to the one file this engine generates *for somebody else to
+        // read*: a mapper opens it in TrenchBroom and believes every word. An input listed here that
+        // nothing registers is a door that never opens, found weeks later by the person who drew it.
+        var advertised = System.Text.RegularExpressions.Regex.Match(fgd, @"Inputs this game has: ([^.]+)\.");
+        Assert.True(advertised.Success, "the FGD stopped saying what its inputs are");
+
+        foreach (string name in advertised.Groups[1].Value.Split(','))
+            Assert.True(engine.Inputs.Has(name.Trim()), $"the FGD offers input '{name.Trim()}', which is not registered");
+
+        // And every classname it offers is a prefab that can actually be spawned.
+        foreach (System.Text.RegularExpressions.Match entity in
+                 System.Text.RegularExpressions.Regex.Matches(fgd, @"@PointClass[^=]*= ([a-z_0-9]+) :"))
+        {
+            var id = new RecordId("sandbox", entity.Groups[1].Value);
+            Assert.True(engine.Records.Exists(id), $"the FGD offers '{id}', which is not a prefab");
+        }
     }
 
     [Fact]

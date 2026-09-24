@@ -98,7 +98,8 @@ public struct Collider : IComponent
     // one-sided surface that a body ending up behind falls through. Bepu recentres a hull on its centre
     // of mass and returns the offset, which the static's pose has to carry. Both release their shape
     // when the static is removed (F16 — until then the list of engine-built shapes was write-only, and
-    // every terrain sector leaked one).
+    // every terrain sector leaked one). A mover pushes its static's pose with MoveStatic, because a
+    // static does not follow a transform (tests: EveryBrushBecomesOneStaticHull, OpeningADoorMovesWhatYouWalkInto).
     public static Collider Box(Vector3 size, byte layer = 0);
     public static Collider Standing(float radius, float totalHeight, byte layer = 0);   // stands on the origin
 }

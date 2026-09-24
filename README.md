@@ -41,7 +41,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 490 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 491 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -161,7 +161,14 @@ is reloaded, and a half-written one leaves what was already on screen. `asset_re
 dotnet build Sage.sln -c Debug          # Debug | Development | Shipping
 dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug     # or -c Development; not Shipping,
                                                             # which compiles out what six tests assert
+python tools/check_docs.py --tests 490  # the docs against the code (R19); --fix rewrites the counts
 ```
+
+`check_docs.py` is there because three features in a row ended with the code being right and something
+it *said about itself* being wrong. It checks that links resolve, that a command or cvar named in a
+claim about what exists is really in the code, and that the numbers quoted on a `<!-- counts -->` line
+are the numbers there are. Behaviour it cannot check — so an "As built" bullet cites the test that
+proves it, `(test: …)`, and the script checks the name resolves.
 
 Three configurations, as UE does it: **Debug** (asserts, verbose logs, `developer 1`), **Development**
 (optimised, still has the console, cheats and dev tools) and **Shipping** (no dev cvars, no console;

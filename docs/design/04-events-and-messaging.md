@@ -109,6 +109,10 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
 - **Outputs are names a system fires**, with no declaration: `world.FireOutput(entity, "OnUse", user)`.
   The engine fires `OnUse` (something used it), `OnStartTouch`/`OnEndTouch` (a trigger volume, from the
   physics overlaps that until now were only logged) and `OnFullyOpen`/`OnFullyClosed` (a mover arriving).
+  A thing wired to `OnUse` is *usable* for that reason alone, which is what makes a door in a map work
+  without a component or a tag.
+  (tests: AnOutputReachesTheInputItIsWiredTo, AMoverOpensSaysSoAndShutsItselfAgain,
+  AThingWiredToOnUseCountsAsSomethingYouCanUse)
 - **Connections come off map keys**, written the way Hammer writes them: a key named after an output
   holds `target,input[,parameter,delay,times]`. Nothing else is read as a wire — in particular Quake's
   bare `target`/`targetname` pair is *not*, because it says which entity but never which input, and
@@ -117,16 +121,20 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   the wire is dropped. Names are resolved into handles once everything in the level is spawned, so a
   wire may point either way along the file; a name that resolves to nothing is looked up again each time
   it fires (late binding), which is how a wire reaches something spawned later.
+  (tests: AnInputThatDoesNotExistIsRefusedWhenTheLevelLoadsNotWhenItFires, AConnectionIsReadTheWayHammerWritesOne,
+  AWireFindsATargetThatDidNotExistYet)
 - **A tick delivers a wire, not a chain.** Inputs fired *during* dispatch are due on the next tick, not
   this one. That is why a chain of wires takes a tick per link — and it is what makes a wire that fires
   itself a bug a mapper can see (two deliveries a tick, for ever) rather than a hang. The `io_maxdispatch`
   budget is for the other runaway: one output wired to more things than a tick should deliver.
+  (tests: AWireThatFiresItselfCannotRunAwayInsideOneTick, OneOutputWiredToTooMuchIsCutOffWithAWarning)
 - **Console:** `ent_fire <name|!player> <input> [parameter] [delay]`, `io_list` (every input),
   `io_trace` (log every dispatch), `io_maxdispatch`.
 - **Triggers reach the player, and that was worth checking.** The player is a *kinematic* capsule moved
   by sweeps, and a trigger volume is a *static* hull; in a physics engine those two are often not
   simulated against each other at all, which would have made "walk into a trigger" true only of falling
   crates. It works, and there is now a test for each of the two body kinds so that it keeps working.
+  (tests: WalkingIntoATriggerVolumeFiresOnStartTouch, ATriggerVolumeSeesTheKinematicThingsToo)
 - **Not built:** `@group` targets, an editor link view, and the per-entity I/O history.
 
 ### 3.5 Engine signals in detail
