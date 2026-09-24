@@ -15,6 +15,8 @@ the `games/Sandbox` test game in the same commit.
   what actually exists today. [`00-index.md`](docs/design/00-index.md) is the reading order and the
   glossary.
 - [`TODO.md`](TODO.md) — the roadmap, with every item's id (F7, R9…) as the docs reference them.
+- [`docs/history/handoff-2026-09-24.md`](docs/history/handoff-2026-09-24.md) — where the engine stands,
+  how to build, run and verify it, what is next, and the traps that have already cost a session.
 - [`docs/history/code-review-log.md`](docs/history/code-review-log.md) — every bug worth remembering,
   with what it was and why it happened.
 
@@ -149,7 +151,8 @@ is reloaded, and a half-written one leaves what was already on screen. `asset_re
 
 ```bash
 dotnet build Sage.sln -c Debug          # Debug | Development | Shipping
-dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug
+dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug     # or -c Development; not Shipping,
+                                                            # which compiles out what six tests assert
 ```
 
 Three configurations, as UE does it: **Debug** (asserts, verbose logs, `developer 1`), **Development**

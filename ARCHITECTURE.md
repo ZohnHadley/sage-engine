@@ -298,6 +298,26 @@ each new feature assumes world-space floats. The second milestone in TODO.md is 
 of the starting sector and keep going — and the order after it is R18 (a scale test with numbers), F4
 audio, F23 pathfinding, F24 factions, R12.
 
+**R6, F14, R18 and F4 are done** (2026-09-24). The world is unbounded: positions are stored relative to
+a world `Origin` that follows the player in whole sectors, sectors stream in rings with hysteresis, and
+a rebase is an event every subsystem that holds a position subscribes to — physics, the renderer, debug
+shapes, the audio mixer, the editor camera. Three of those five were found by the second pass rather
+than written first, which is the argument for having one. Then [a scale test with
+numbers](docs/history/scale-2026-09-24.md) measured a full world instead of asserting about one: 2,000
+entities and 100 thinking creatures cost **40 bytes a tick**, and the two allocations it found had been
+invisible to every correctness test — boxing in the phase-contract checks (3.2 KB per character per
+tick) and `Enum.HasFlag` in the AI's schedule chooser. Then F4 gave the slice a voice: every audio
+*decision* is an engine-side `AudioMixer` with no MonoGame in it, the noise is a client backend that
+decides nothing, and a mixer belongs to a world because a voice's position is in that world's origin
+space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
+sound record with no code path, and one cue list raised at two different moments, none of which any
+passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
+and audible: **75 console commands, 18 record types, 385 headless tests.**
+
+What step 8 has left is F23 (pathfinding — the AI still walks into walls), F24 (factions, dialogue,
+quests) and R12 (MonoGame 3.8.5 with runtime loaders, which retires MGCB). The handoff at
+[`docs/history/handoff-2026-09-24.md`](docs/history/handoff-2026-09-24.md) says where to start.
+
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
 
 **Game order:** Daggerfall-like (billboards defer skeletal animation, the single biggest system) → HL1-like (brush maps, entity I/O, movement feel) → skeletal animation → Lugaru-like → Warband-like.

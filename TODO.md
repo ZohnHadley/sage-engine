@@ -7,6 +7,7 @@ The working tracker: **open bugs in today's code** and the **roadmap**. Updated 
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Overview, layers, decisions (D1–D13), migration order (§7) |
 | [`docs/design/`](docs/design/00-index.md) | How each subsystem works; every roadmap item below links to its doc |
 | [`docs/history/code-review-log.md`](docs/history/code-review-log.md) | Full history of review items #1–#57 (problems, fixes, resolution notes). Closed items live only there |
+| [`docs/history/handoff-2026-09-24.md`](docs/history/handoff-2026-09-24.md) | **Start here after a break.** Where the engine stands, how to build/run/verify it, what to do next, and the sharp edges that have already cost a session |
 | [`docs/history/engine-review-2026-09-23.md`](docs/history/engine-review-2026-09-23.md) | The level above the bug log: what building the slice taught us about the architecture, and the R13–R16/F31/F27 items that came out of it |
 | [`docs/history/vertical-slice-2026-09-23.md`](docs/history/vertical-slice-2026-09-23.md) | The retrospective written when the first vertical slice closed: what it cost, what the design got right, the engine counted, and the F38/R17 items that came out of it |
 | [`docs/history/scale-2026-09-24.md`](docs/history/scale-2026-09-24.md) | **What a full world costs** (R18): a tick, a frame, draw calls and allocations at 2,201 entities, with the two allocation bugs the measurement found |
@@ -18,13 +19,16 @@ Legend: `[ ]` open · `[~]` partly done · `[X]` done. When an item is done, tic
 
 ## Open bugs in today's code (`engine/`)
 
-These are against the **current** single-project code. Many disappear when the migration (ARCHITECTURE §7) rewrites the code they're in; the **Plan** column says whether it's worth fixing now.
+Most of these were against the pre-migration single-project code and went away with the code they were
+in; what is left below is open against the engine as it stands, and new findings go here too. The
+**Plan** column says what to do about each one.
 
 - **Fix now:** cheap, and useful while the current code keeps running.
 - **Migration:** don't patch the current code; the named roadmap item replaces it.
 
 | # | Issue | Where | Plan |
 |---|---|---|---|
+| [ ] 60 | **The player sometimes swings with no input.** Three consecutive runs of the Sandbox with a sword equipped raised `weapon_swing` cues nobody asked for — 2, 4 and 4 of them, where at most one Attack was pressed — spaced 63–84 ticks apart (the sword's own 60-tick swing cycle, not the creatures' 117) and panned at the listener, so it was the player's sword and not a creature's claws. Six identical later runs produced none, two of them with `PlayerControlSystem` instrumented: `command.Pressed` was empty throughout, so nothing was seen arriving through the latch. **Attack is bound to mouse Left and gamepad RightTrigger**, which gives two suspects that would both be intermittent and both live below the latch: a press edge manufactured when the window takes or loses focus, and an analog trigger resting near the button threshold with no hysteresis (`Source.PadButton` → `pad.IsDown`). Found by F4's audio trace, which is the only thing in the game that announces a swing that misses | `Sage.Client/Input/InputActions.cs`, `Sage.Client/Input/InputDevices.cs`, `Sage.Engine/Gameplay/PawnIntent.cs` (`PlayerControlSystem`) | **Fix now.** Log every non-empty `command.Pressed` with its source binding and the window's focus state, run the Sandbox with a sword and no input until it reappears, and check whether a pad is connected at all — nothing logs that today. Same family as #40 (edges that were always false)
 | [~] 41 | Per-frame allocations: **found** — the ImGui entity inspector builds a label string per listed entity per frame (~130 B each, so ~4 KB once terrain chunks are entities). With `ui_entities 0` the frame allocates only the ~40 B/tick that Bepu's own profiler allocates inside `Timestep` | `Sage.Editor/Screens/EntityOutlinerWindow.cs`, BepuPhysics | Cache the inspector's labels or list only what's visible; Bepu's 40 B is out of our hands short of a custom build (02 §4.6) |
 
 Paths are relative to `src/`. The full detail for each item is in the history log.
@@ -158,13 +162,16 @@ Set by the [readiness review](docs/history/readiness-2026-09-24.md) (2026-09-24)
 most expensive thing left undone and the one that gets dearer weekly: **every feature built so far
 assumes world-space floats**, so the longer R6 waits the more code has to change with it. In order:
 
-1. **R6 + F14** — sector coordinates, origin rebasing, streaming rings. Structural; everything else
-   below is a feature that costs the same whenever it is built.
-2. **R18** — a scale test with the numbers written down, because streaming is the first design that
-   has to answer for performance and there is nothing to aim at yet.
-3. **F4 audio** — the largest single step from "it runs" to "it is a game", and pure wiring: cues are
-   already raised at every interesting moment.
-4. **F23 pathfinding**, then **F24 factions/dialogue/quests** — creatures that can reach you, and a
+1. ~~**R6 + F14** — sector coordinates, origin rebasing, streaming rings.~~ **Done 2026-09-24.**
+   Structural, and it proved the point: five subsystems held a world position and only two of them had
+   remembered to follow a rebase.
+2. ~~**R18** — a scale test with the numbers written down~~ **Done 2026-09-24**
+   ([the numbers](docs/history/scale-2026-09-24.md)): 40 bytes a tick at 2,000 entities and 100 thinking
+   creatures, and two allocations found that no correctness test could see.
+3. ~~**F4 audio** — the largest single step from "it runs" to "it is a game"~~ **Done 2026-09-24**, and
+   it *was* mostly wiring: the cues were already raised. What it was not was cheap to get right — see
+   the second pass on the F4 item above.
+4. **F23 pathfinding** — next — then **F24 factions/dialogue/quests**: creatures that can reach you, and a
    reason to go anywhere.
 5. **R12** (MonoGame 3.8.5, runtime loaders, drop MGCB) — a day or two, and it closes the gap between
    decision D10 and the code.
