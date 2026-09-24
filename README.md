@@ -225,7 +225,7 @@ you write, how to get a character walking about, levels, your HUD, and the list 
 do nothing if you forget them. It describes the engine as it is rather than as it is planned.
 
 [`games/Hello`](games/Hello) is that guide as a runnable game — the smallest one this engine can run:
-four files, about fifty lines of code. It is in the solution and covered by tests, so it cannot rot.
+four files, about fifty lines of code. It is in the solution and covered by tests, so it cannot rot. <!-- counts: files games/Hello, code games/Hello -->
 
 ```bash
 dotnet run --project src/Sage.Host -c Development -- -game games/Hello

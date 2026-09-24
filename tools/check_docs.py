@@ -244,19 +244,91 @@ def check_vocabulary(problems, code, literals, content_names):
 # The numbers this script maintains are the ones on a line marked `<!-- counts -->`, and only those.
 # Everything else that quotes a number — "F4's mixer has 16 headless tests", "step 1 finished with 15" —
 # is about a feature or a day rather than about the engine now, and is nobody's to rewrite.
-COUNT_MARKER = '<!-- counts -->'
+#
+# A bare marker maintains the engine's own totals. A marker with arguments maintains facts about the
+# repository itself, which is the other half of what a document quotes and the half that used to rot
+# unseen: `<!-- counts: files games/Hello, code games/Hello -->` checks "four files" and "fifty lines of
+# code" on that line. Both of those were wrong within a day of being written, in the paragraph
+# introducing an example whose whole point was that it could not rot.
+COUNT_MARKER = re.compile(r'<!--\s*counts(?::\s*([^>]*?))?\s*-->')
 
+# Letters and digits only: `\S+` swallowed the markdown around a number, so `**90 console commands`
+# captured `**90`, which reads as no number and went unchecked — in the one line the tool was written
+# to maintain.
 COUNTS = [
-    ('command', re.compile(r'(\d+)\s+console commands')),
-    ('record', re.compile(r'(\d+)\s+record types')),
-    ('test', re.compile(r'(\d+)\s+headless tests')),
+    ('command', re.compile(r'([A-Za-z0-9]+)\s+console commands')),
+    ('record', re.compile(r'([A-Za-z0-9]+)\s+record types')),
+    ('test', re.compile(r'([A-Za-z0-9]+)\s+headless tests')),
+    ('files', re.compile(r'([A-Za-z0-9]+)\s+files')),
+    ('code', re.compile(r'([A-Za-z0-9]+)\s+lines of code')),
 ]
+
+# Documents count in words as often as in digits, and a rule that forces digits would make the prose
+# worse to save the tool work. `--fix` writes back in whichever form it found.
+WORDS = {
+    'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
+    'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
+    'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20, 'thirty': 30,
+    'forty': 40, 'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90, 'hundred': 100,
+}
+NUMBERS = {value: word for word, value in WORDS.items()}
+
+# What each kind is called when the tool has to say it out loud.
+NOUNS = {'command': 'console commands', 'record': 'record types', 'test': 'headless tests',
+         'files': 'files', 'code': 'lines of code'}
+
+# "about fifty" is not a claim that it is exactly fifty. Within a tenth is what the word means.
+APPROXIMATELY = ('about', 'roughly', 'around', '~', 'nearly', 'some')
+
+
+def read_number(written):
+    """A number as a document writes it, or None when the word is not one."""
+    if written.isdigit():
+        return int(written)
+    return WORDS.get(written.lower().rstrip('.,;:'))
+
+
+def write_number(written, value):
+    """The same value in the same form, or None when prose cannot hold it.
+
+    A document that says "fifty" and means 49 cannot be repaired by writing "49" into the middle of the
+    sentence — "about 49 lines" reads like a machine wrote it, and "two 49 lines" (from "two hundred")
+    reads like nothing at all. Those are reported for a person to word, not rewritten.
+    """
+    if written.isdigit():
+        return str(value)
+    return NUMBERS.get(value)
+
+
+def count_files(where):
+    """Files a person would say are in a directory: not build output, not hidden."""
+    total = 0
+    for base, dirs, files in os.walk(os.path.join(ROOT, where)):
+        dirs[:] = [d for d in dirs if d not in ('obj', 'bin', '.git')]
+        total += len([f for f in files if not f.startswith('.')])
+    return total
+
+
+def count_code(where):
+    """Lines of code: neither blank nor a comment, in the languages this repository writes."""
+    total = 0
+    for base, dirs, files in os.walk(os.path.join(ROOT, where)):
+        dirs[:] = [d for d in dirs if d not in ('obj', 'bin', '.git')]
+        for name in files:
+            if not name.endswith(('.cs', '.py')):
+                continue
+            for line in open(os.path.join(base, name), encoding='utf-8', errors='replace'):
+                stripped = line.strip()
+                if stripped and not stripped.startswith(('//', '#')):
+                    total += 1
+    return total
 
 
 def check_counts(problems, code, test_count, fix):
-    """Numbers a document quotes about the engine are computed, not typed."""
-    actual = {'command': len(code['command']), 'record': len(code['record']), 'test': test_count}
+    """Numbers a document quotes about the engine, or about this repository, are computed not typed."""
+    engine_facts = {'command': len(code['command']), 'record': len(code['record']), 'test': test_count}
     checked = 0
+
     for path in docs():
         if os.sep + 'history' + os.sep in path:
             continue
@@ -264,22 +336,52 @@ def check_counts(problems, code, test_count, fix):
         changed = False
 
         for index, line in enumerate(lines):
-            if COUNT_MARKER not in line:
+            marker = COUNT_MARKER.search(line)
+            if marker is None:
                 continue
-            for kind, pattern in COUNTS:
-                if actual[kind] is None:
+
+            # What this line's numbers are about: the engine by default, plus whatever the marker names.
+            facts = dict(engine_facts)
+            for argument in (marker.group(1) or '').split(','):
+                argument = argument.strip()
+                if not argument:
                     continue
-                for written in pattern.findall(line):
+                kind, _, where = argument.partition(' ')
+                where = where.strip()
+                if kind == 'files' and where:
+                    facts['files'] = count_files(where)
+                elif kind == 'code' and where:
+                    facts['code'] = count_code(where)
+                else:
+                    problems.append('%s:%d: counts marker says "%s", which is not `files <path>` or `code <path>`'
+                                    % (rel(path), index + 1, argument))
+
+            for kind, pattern in COUNTS:
+                if facts.get(kind) is None:
+                    continue
+                for match in pattern.finditer(lines[index]):
+                    written = match.group(1)
+                    value = read_number(written)
+                    if value is None:
+                        continue                      # "several files", which is not a claim to check
                     checked += 1
-                    if int(written) == actual[kind]:
+
+                    actual = facts[kind]
+                    before = lines[index][:match.start()].lower()
+                    loose = any(word in before[-24:] for word in APPROXIMATELY)
+                    close_enough = abs(value - actual) <= max(1, actual // 10)
+                    if value == actual or (loose and close_enough):
                         continue
-                    if fix:
-                        lines[index] = pattern.sub(
-                            lambda m, k=kind: m.group(0).replace(m.group(1), str(actual[k])), lines[index])
+
+                    rewritten = write_number(written, actual) if fix else None
+                    if rewritten is not None:
+                        replacement = match.group(0).replace(written, rewritten, 1)
+                        lines[index] = lines[index][:match.start()] + replacement + lines[index][match.end():]
                         changed = True
                     else:
-                        problems.append('%s:%d: says %s %s, and there are %d'
-                                        % (rel(path), index + 1, written, kind + 's', actual[kind]))
+                        problems.append('%s:%d: says %s %s, and there %s %d'
+                                        % (rel(path), index + 1, written, NOUNS[kind],
+                                           'are' if actual != 1 else 'is', actual))
         if changed:
             open(path, 'w', encoding='utf-8', newline='').write('\n'.join(lines))
             print('fixed counts in %s' % rel(path))
@@ -292,6 +394,7 @@ SELF_TEST = """# Self test
 - It has a `map_reloadx` command. (test: ThisTestDoesNotExist)
 - See [the missing file](./nowhere-at-all.md).
 - **1 console commands, 2 record types, 3 headless tests.** <!-- counts -->
+- It has nine files and about two hundred lines of code. <!-- counts: files games/Hello, code games/Hello -->
 
 ## Not yet
 - `map_neverexisted`, which a document may name here without being wrong.
@@ -302,8 +405,12 @@ def self_test(test_count=0):
     """Write a document with one of each fault, and check that each is found.
 
     A checker nobody checks is a checker that quietly stops working — which is the failure it exists to
-    prevent, so it would be a poor joke to leave it open. The last bullet is the other half: a name in a
-    "Not yet" list must *not* be reported, or the tool trains you to ignore it.
+    prevent, so it would be a poor joke to leave it open. It has already earned itself once: a block
+    rewrite of `check_counts` deleted this function, and `--self-test` crashed on the next run rather
+    than pretending all was well.
+
+    The last bullet is the other half of the job: a name in a "Not yet" list must *not* be reported, or
+    the tool trains you to ignore it.
     """
     path = os.path.join(ROOT, 'docs', '_selftest.md')
     open(path, 'w', encoding='utf-8', newline='').write(SELF_TEST)
@@ -319,7 +426,9 @@ def self_test(test_count=0):
         os.remove(path)
 
     mine = [p for p in problems if '_selftest' in p]
-    wanted = ['nowhere-at-all.md', 'ThisTestDoesNotExist', 'map_reloadx', '1 commands', '2 records', '3 tests']
+    wanted = ['nowhere-at-all.md', 'ThisTestDoesNotExist', 'map_reloadx',
+              '1 console commands', '2 record types', '3 headless tests',
+              'nine files', 'hundred lines of code']
     missing = [w for w in wanted if not any(w in problem for problem in mine)]
     wrong = [p for p in mine if 'map_neverexisted' in p]
 
