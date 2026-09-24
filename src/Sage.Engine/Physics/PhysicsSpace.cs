@@ -29,7 +29,12 @@ public sealed class PhysicsSpace : IDisposable
     private readonly PhysicsCallbackData _data;
     private readonly Dictionary<ShapeKey, TypedIndex> _shapes = new();
     private readonly List<Entity> _overlapResults = new();   // reused by OverlapBox
-    private readonly List<TypedIndex> _meshShapes = new();
+    // Shapes this space built itself (brush hulls, terrain collision meshes), by static handle, so that
+    // removing the static can release the shape too. It used to be a write-only list: the shape and its
+    // pooled triangles outlived every static made from them, which nothing noticed while terrain only
+    // ever grew, and which a level that reloads would have leaked on every reload (R12 second pass
+    // found the same shape of bug in asset reloading; this is its physics twin).
+    private readonly Dictionary<int, TypedIndex> _ownedShapes = new();
 
     internal Simulation Simulation { get; }
 
@@ -93,6 +98,11 @@ public sealed class PhysicsSpace : IDisposable
             var handle = new StaticHandle(body.Handle);
             if (Simulation.Statics.StaticExists(handle)) Simulation.Statics.Remove(handle);
             _data.UnregisterStatic(body.Handle);
+
+            // A shape this space built for that static alone goes with it. Shapes from `_shapes` are
+            // shared between bodies and cached by size, so those stay.
+            if (_ownedShapes.Remove(body.Handle, out var owned))
+                Simulation.Shapes.RemoveAndDispose(owned, _pool);
         }
         else
         {
@@ -100,6 +110,41 @@ public sealed class PhysicsSpace : IDisposable
             if (Simulation.Bodies.BodyExists(handle)) Simulation.Bodies.Remove(handle);
             _data.UnregisterBody(body.Handle);
         }
+    }
+
+    // A static collider from a convex point cloud: what a brush is (15 §3, TODO F16).
+    //
+    // A brush is the intersection of half-spaces, so it is convex by construction and a hull is the
+    // collider it *wants* — solid rather than a surface, cheap to test against, and with none of a
+    // triangle mesh's one-sidedness. A player who ends up inside a mesh wall falls through it; one
+    // inside a hull is pushed out.
+    //
+    // Bepu recentres a hull on its own centre of mass and hands back the offset, so the static's pose
+    // has to carry it or every brush sits at the level's origin.
+    public PhysicsBody AddHull(Entity entity, ReadOnlySpan<Vector3> points, Vector3 position, byte layer = 0)
+    {
+        var buffer = new Vector3[points.Length];
+        points.CopyTo(buffer);
+
+        TypedIndex shape;
+        Vector3 centre;
+        try
+        {
+            var hull = new ConvexHull(buffer, _pool, out centre);
+            shape = Simulation.Shapes.Add(hull);
+        }
+        catch (Exception ex)
+        {
+            // A brush flat enough to have no volume reaches Bepu as a degenerate hull. That is a
+            // content problem: it costs this brush its collision, not the level.
+            Log.Warn(LogCat.Physics, $"Convex hull of {points.Length} points failed ({ex.GetType().Name}); no collision for it");
+            return default;
+        }
+
+        var handle = Simulation.Statics.Add(new StaticDescription(new RigidPose(position + centre), shape));
+        _ownedShapes[handle.Value] = shape;
+        _data.RegisterStatic(handle.Value, entity, layer, false, 0.8f, 0f);
+        return new PhysicsBody { Handle = handle.Value, IsStatic = true };
     }
 
     // A static collider the engine builds itself (terrain chunks): triangles in world space.
@@ -111,8 +156,8 @@ public sealed class PhysicsSpace : IDisposable
             triangles[i] = new Triangle(vertices[indices[i * 3]], vertices[indices[i * 3 + 1]], vertices[indices[i * 3 + 2]]);
         var mesh = new Mesh(triangles, Vector3.One, _pool);
         var shape = Simulation.Shapes.Add(mesh);
-        _meshShapes.Add(shape);
         var handle = Simulation.Statics.Add(new StaticDescription(new RigidPose(position), shape));
+        _ownedShapes[handle.Value] = shape;
         _data.RegisterStatic(handle.Value, entity, layer, false, 0.8f, 0f);
         return new PhysicsBody { Handle = handle.Value, IsStatic = true };
     }

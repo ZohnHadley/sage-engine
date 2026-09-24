@@ -718,6 +718,9 @@
     // the watcher's "yaw": 180 looks back at them.
     "type": "scene",
     "id": "main",
+
+    // Brush levels (15 §3, F16): the hut, from maps/hut.map.
+    "maps": ["hut"],
     "player": { "prefab": "player", "at": [0, 1, 6] },
     "place": [
       { "prefab": "watcher",      "at": [0, 0, -3],    "yaw": 180 },

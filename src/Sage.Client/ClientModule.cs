@@ -293,6 +293,7 @@ public sealed class ClientModule : IModule
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
         world.AddSystem(new TerrainMeshSystem(world, _renderer!), Phase.FrameUpdate);
+        world.AddSystem(new MapMeshSystem(world, _renderer!), Phase.FrameUpdate);   // brush levels (15 §3, F16)
         world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);
         world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new SpriteExtract(world, _renderer!, _records!), Phase.Extract, after: new[] { typeof(CameraExtract) });

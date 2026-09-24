@@ -41,7 +41,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 447 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 470 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
@@ -204,11 +204,27 @@ ships it has to be able to make:
 
 ```bash
 python games/Sandbox/tools/make_placeholder_model.py   # bunny.glb: five boxes, written as glTF by hand
+python games/Sandbox/tools/make_hut.py                 # hut.map + its textures: the brush level (F16)
 python engine_content/tools/make_font.py               # font.png: the 5×7 HUD font, 100 glyphs
 ```
 
 `make_font.py --preview "hello"` prints glyphs as ASCII, which is how you check a letter before
 building the atlas — `g` and `y` both had to be redrawn after a screenshot read them as `9` and `v`.
+
+## Levels
+
+Interiors are **brushes**, and the editor is [TrenchBroom](https://trenchbroom.github.io/): the engine
+reads the `.map` files it writes (standard, Valve 220 and Quake 2/3 dialects) and turns each brush into
+a convex hull to walk into and a mesh to look at. 32 map units to the metre, Z-up becomes Y-up, and a
+face's texture name is a material id.
+
+```bash
+dotnet run --project src/Sage.Host -c Development -- +fgd_export     # entity definitions for TrenchBroom
+```
+
+A level is named by a `map` record (`games/Sandbox/content/data/level.json`), which a `scene` loads; in
+the editor, `classname` is a prefab id, so `watcher` places the Sandbox's watcher. `map_load`, `map_list`
+and `map_unload` do it from the console. See [`docs/design/15-editor.md`](docs/design/15-editor.md) §10a.
 
 ## Daggerfall art (your own copy)
 

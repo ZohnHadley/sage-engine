@@ -68,6 +68,13 @@ public sealed class SandboxModule : IGameModule
         {
             foreach (var e in world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList())
                 world.Destroy(e);
+
+            // Levels too, or a reload builds the hut a second time inside the first one. Unloading
+            // drops the brushes' entities, their hulls and their meshes; `Spawn` loads them again.
+            // `TryGet`, because `MapModule` is a default module a game may have turned off in
+            // `game.json` — and a game without brush levels should not fail to reload its scene.
+            if (world.Resources.TryGet<MapLevels>(out var levels) && levels != null) levels.Clear();
+
             Spawn(world);
 
             // And the player, which the rules placed at world start rather than the scene loop. It
@@ -85,6 +92,11 @@ public sealed class SandboxModule : IGameModule
         if (scene == null) { Log.Warn(LogCat.Gameplay, "No `scene` record 'sandbox:main': the world is empty"); return; }
 
         for (int i = 0; i < scene.Place.Count; i++) Place(world, scene.Place[i], i);
+
+        // Levels after placements: a `.map` spawns its own entities, and they should land in a world
+        // that already has everything the scene put in it.
+        foreach (var map in scene.Maps) MapLoader.Load(world, map);
+
         Log.Info(LogCat.Gameplay, $"Sandbox: placed {world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Count} entities in '{world.Name}'");
     }
 
@@ -144,6 +156,10 @@ public sealed class SceneRecord
 {
     public ScenePlacement? Player;            // where the local player starts
     public List<ScenePlacement> Place = new();
+
+    // Brush levels to load with the scene (15 §3, F16). A `.map` places its own contents, so this is
+    // the whole of what the scene has to say about one.
+    public List<RecordId> Maps = new();
 }
 
 public sealed class ScenePlacement

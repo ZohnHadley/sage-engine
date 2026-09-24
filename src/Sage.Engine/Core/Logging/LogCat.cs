@@ -34,6 +34,7 @@ public sealed class LogCat
     public static readonly LogCat Animation = new("Animation");
     public static readonly LogCat UI = new("UI");
     public static readonly LogCat Streaming = new("Streaming");
+    public static readonly LogCat Level = new("Level");        // .map import and brush geometry (15 §3)
     public static readonly LogCat Save = new("Save");
     public static readonly LogCat AI = new("AI");
     public static readonly LogCat Gameplay = new("Gameplay");

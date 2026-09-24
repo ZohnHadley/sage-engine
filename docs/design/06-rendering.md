@@ -359,7 +359,7 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   whenever the weather is clear and settled, so a game that changes its own light (a day/night cycle
   will) is picked up rather than overwritten for ever. And with `snd_enabled 0` the rain loop was being
   made and killed sixty times a second, because the mixer stops everything each frame while muted.
-- **Not yet:** rain that stops under a roof (there are no interiors yet, F16), puddles and wet surfaces,
+- **Not yet:** rain that stops under a roof — F16 built the roofs, but the weather still falls in a slab that follows the camera and knows nothing about what is over it — puddles and wet surfaces,
   lightning, seasons or a clock that picks the weather, and weather that differs by region rather than
   by world.
 

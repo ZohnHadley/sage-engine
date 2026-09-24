@@ -365,7 +365,7 @@ Creatures walk round things instead of into them.
   same creature slides 18 m along the fence the wrong way and never arrives. Headlessly, the same A/B is
   a three-walled pen — concave on purpose, because a fence can be escaped by sliding along it and so
   cannot tell steering and planning apart.
-- **Not built:** a navmesh for brush-built interiors (F16 has no geometry to build one from yet), a
+- **Not built:** a navmesh for brush-built interiors (F16 has built the geometry; nothing walks on it yet), a
   coarse graph for travelling across sectors, doors and other links a path has to *act* on, crowds
   avoiding each other (creatures are left out of the stamp on purpose), and paths that cost ground
   differently (mud, water, roads).

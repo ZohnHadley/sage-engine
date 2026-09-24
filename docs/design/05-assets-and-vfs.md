@@ -69,6 +69,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 | `Sound` | `.wav` | `SoundEffect.FromStream` | `.ogg` needs a decoder library; see Open questions |
 | `Heightmap` | 16-bit `.png` or `.r16` | sim | terrain (14) |
 | `CollisionMesh` | `.glb` (a collision node) | sim | physics (10) |
+| `Level` | `.map` (TrenchBroom) | **sim** | **built (F16)**: `MapFile` + `BrushGeometry` read it engine-side, straight off a mount — brushes become hulls and meshes, `classname` becomes a prefab (15 §10a). A level is named by a `map` record, so a mod replaces one like any other file |
 
 ### 3.5 Data records
 One pipeline for **every** definition: items, spells, creatures, factions, loot tables, materials (07), input maps (08), sprite animation sets, and **prefabs** (a prefab record's body is component data, parsed by the serializer from 09).

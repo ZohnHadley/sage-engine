@@ -312,7 +312,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **84 console commands, 23 record types, 447 headless tests.**
+and audible: **88 console commands, 24 record types, 470 headless tests.**
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
@@ -337,7 +337,7 @@ R12 — MonoGame 3.8.5.1, runtime loaders, and the end of MGCB. The handoff at
 | D3 | Game code and modding | **C# game modules; data mods + trusted C# mods** (no sandboxed scripting). Code mods are never auto-downloaded ([17](docs/design/17-modding.md)) |
 | D4 | ECS storage | **Decided (step 3): Friflo.Engine.ECS 3.6.0** behind a thin `World`. It passed requirements E1–E9 in a spike ([03 §3.1](docs/design/03-world-and-ecs.md)); Arch was not needed. Queries are Friflo's own types; hot paths iterate chunks (0 allocations) |
 | D5 | Physics | **BepuPhysics v2** + **own kinematic character controller** |
-| D6 | Level editing | Own editor for terrain/props/entities + **TrenchBroom `.map` import** for brush interiors (later) |
+| D6 | Level editing | Own editor for terrain/props/entities + **TrenchBroom `.map` import** for brush interiors. **As built (2026-09-24, F16): the import came first** — brushes, hulls, meshes, prefab entities and FGD export, all without the editor, which is the point: a good editor already exists for brushes |
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |
 | D8 | Game UI | **Decided 2026-09-23: our own, on `UiDraw`.** ImGui stays dev/editor only. The engine already produced a screen’s *contents* as data (`Panel`), so what a library would have added was a list, a selection and a box — about 300 lines, against a dependency with its own fonts, stylesheets or external layout editor. Gum and Myra stay reasonable answers if screens outgrow lists ([13](docs/design/13-ui.md)) |
 | D9 | Engine licence | Currently **CC0** (`LICENSE`). Recommend **MIT** or **Apache-2.0** (adds a patent grant) if other developers will build commercial games on it. Keep vendored licences (`packages/MonoGame.ImGuiNet-main/LICENSE`). **Needs your decision** |

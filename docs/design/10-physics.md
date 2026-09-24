@@ -91,6 +91,14 @@ public sealed class PhysicsSpace                          // world resource, one
 public struct Collider : IComponent
 {
     public ColliderShape Shape; public Vector3 Size; public Vector3 Center; public byte Layer; public bool IsTrigger;
+    // Statics the engine builds itself, from geometry rather than from a component:
+    //   PhysicsSpace.AddMesh(entity, vertices, indices, position, layer)   // terrain sectors (14)
+    //   PhysicsSpace.AddHull(entity, points, position, layer)              // one brush of a level (15 §10a, F16)
+    // A hull, not a mesh, for a brush: a brush is convex by construction, and a mesh collider is a
+    // one-sided surface that a body ending up behind falls through. Bepu recentres a hull on its centre
+    // of mass and returns the offset, which the static's pose has to carry. Both release their shape
+    // when the static is removed (F16 — until then the list of engine-built shapes was write-only, and
+    // every terrain sector leaked one).
     public static Collider Box(Vector3 size, byte layer = 0);
     public static Collider Standing(float radius, float totalHeight, byte layer = 0);   // stands on the origin
 }

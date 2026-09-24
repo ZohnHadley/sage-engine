@@ -1,0 +1,233 @@
+#nullable enable
+using System.Numerics;
+using Friflo.Engine.ECS;
+using sage_engine;
+
+namespace sage_engine.Tests;
+
+using Assert = Xunit.Assert;
+
+// Loading a `.map` into a world (docs/design/15 §3, TODO F16): the half of the importer that is not
+// arithmetic — records, the VFS, physics and the entities a level brings with it.
+//
+// The geometry itself is pinned next door in `MapImportTests`; these are about a level *arriving*.
+public class MapLevelTests
+{
+    public MapLevelTests() { _ = TestEnv.UserRoot; }
+
+    // A room four metres square with a metre-thick floor, in the canonical Quake form. Two brushes, so
+    // "how many did it build" distinguishes one from both.
+    private const string RoomMap = """
+        {
+        "classname" "worldspawn"
+        {
+        ( -64 -64 -32 ) ( -64 -63 -32 ) ( -64 -64 -31 ) floor 0 0 0 1 1
+        ( -64 -64 -32 ) ( -64 -64 -31 ) ( -63 -64 -32 ) floor 0 0 0 1 1
+        ( -64 -64 -32 ) ( -63 -64 -32 ) ( -64 -63 -32 ) floor 0 0 0 1 1
+        ( 64 64 0 ) ( 64 65 0 ) ( 65 64 0 ) floor 0 0 0 1 1
+        ( 64 64 0 ) ( 65 64 0 ) ( 64 64 1 ) floor 0 0 0 1 1
+        ( 64 64 0 ) ( 64 64 1 ) ( 64 65 0 ) floor 0 0 0 1 1
+        }
+        {
+        ( -64 48 0 ) ( -64 49 0 ) ( -64 48 1 ) wall 0 0 0 1 1
+        ( -64 48 0 ) ( -64 48 1 ) ( -63 48 0 ) wall 0 0 0 1 1
+        ( -64 48 0 ) ( -63 48 0 ) ( -64 49 0 ) wall 0 0 0 1 1
+        ( 64 64 128 ) ( 64 65 128 ) ( 65 64 128 ) wall 0 0 0 1 1
+        ( 64 64 128 ) ( 65 64 128 ) ( 64 64 129 ) wall 0 0 0 1 1
+        ( 64 64 128 ) ( 64 64 129 ) ( 64 65 128 ) wall 0 0 0 1 1
+        }
+        }
+        {
+        "classname" "marker"
+        "origin" "32 0 64"
+        "angle" "90"
+        "targetname" "the marker"
+        }
+        {
+        "classname" "nothing_has_this"
+        "origin" "0 0 0"
+        }
+        """;
+
+    private const string Records = """
+        [
+          { "type": "map", "id": "room", "file": "maps/room.map", "at": [10, 0, -5] },
+          { "type": "prefab", "id": "marker", "components": { "Transform": {} } }
+        ]
+        """;
+
+    private static Engine NewEngine(string map = RoomMap, string records = Records)
+    {
+        // The fixture's VFS goes *into* the engine: a map is read through `engine.Vfs` at load time, not
+        // just at record-load time, so an engine with its own empty VFS finds the record and then cannot
+        // find the file it names.
+        var fixture = new MountFixture();
+        fixture.Write("game", "maps/room.map", map);
+        fixture.Write("game", "data/level.json", records);
+        fixture.Mount("game", "sandbox");
+
+        var cvars = new CVarRegistry();
+        var engine = new Engine(cvars, CoreCVars.Register(cvars), fixture.Vfs);
+        engine.Modules.Add(new PhysicsModule());
+        engine.Modules.Add(new MapModule());
+        engine.Modules.InitAll();
+        engine.Records.Load(engine.Vfs);
+
+        engine.Modules.StartAll();
+        return engine;
+    }
+
+    [Fact]
+    public void ALevelLoadsItsBrushesAndStandsThemWhereTheRecordSays()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+
+        var level = MapLoader.Load(world, new RecordId("sandbox", "room"));
+
+        Assert.NotNull(level);
+        Assert.Equal(2, level!.Brushes.Count);
+        Assert.Equal(12, level.FaceCount);
+
+        // `at` is absolute metres and the world has not moved, so origin space is the same numbers.
+        world.RunFixed(1f / 60f);
+        Assert.Equal(new Vector3(10, 0, -5), level.Position);
+    }
+
+    [Fact]
+    public void EveryBrushBecomesOneStaticHull()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+        var space = world.Resources.Get<PhysicsSpace>();
+        int before = space.StaticCount;
+
+        MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        // A hull rather than a triangle mesh, because a brush is convex and a mesh is a surface: a
+        // player who ends up inside one falls through the world (10 §3).
+        Assert.Equal(before + 2, space.StaticCount);
+    }
+
+    [Fact]
+    public void TheWallIsSolidWhereItIsAndEmptyWhereItIsNot()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+        var space = world.Resources.Get<PhysicsSpace>();
+
+        MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        // The wall brush runs from map y 48..64 at x -64..64, z 0..128 — in metres, a slab north of the
+        // level's middle. Map north is engine -Z, so it is at negative Z from the level's position.
+        var results = new Entity[8];
+        var inside = new Vector3(10, 2, -5) + new Vector3(0, 0, -1.75f);
+        var outside = new Vector3(10, 2, -5) + new Vector3(0, 0, 2f);
+
+        Assert.True(space.OverlapBox(inside, new Vector3(0.2f, 0.2f, 0.2f), results) > 0,
+            "nothing solid where the wall is");
+        Assert.Equal(0, space.OverlapBox(outside, new Vector3(0.2f, 0.2f, 0.2f), results));
+    }
+
+    [Fact]
+    public void AClassnameWithAPrefabIsSpawnedAndOneWithoutIsNot()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+
+        MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        // `marker` has a prefab, so it is in the world, named by its `targetname` and placed by its
+        // `origin`; `nothing_has_this` does not, and is left to whatever reads the level for itself.
+        var entity = default(Entity);
+        foreach (var candidate in world.Query<Transform>().Entities)
+            if (candidate.Name.value == "the marker") { entity = candidate; break; }
+        Assert.False(entity.IsNull);
+
+        // Map (32, 0, 64) units is (1, 2, 0) metres in engine axes, on top of the level's position.
+        var at = entity.GetComponent<Transform>().LocalPosition;
+        Assert.Equal(11f, at.X, 3);
+        Assert.Equal(2f, at.Y, 3);
+        Assert.Equal(-5f, at.Z, 3);
+    }
+
+    [Fact]
+    public void UnloadingALevelTakesItsGeometryWithIt()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+        var space = world.Resources.Get<PhysicsSpace>();
+        int before = space.StaticCount;
+
+        MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+        Assert.Equal(before + 2, space.StaticCount);
+
+        world.Resources.Get<MapLevels>().Clear();
+        world.RunFixed(1f / 60f);
+
+        // Reloading a level while the game runs is the whole point of importing one, so a level that
+        // goes away has to take its statics (and its hull shapes) with it.
+        Assert.Equal(before, space.StaticCount);
+        Assert.Empty(world.Resources.Get<MapLevels>().Loaded);
+    }
+
+    [Fact]
+    public void UnloadingLeavesTheClientsOwnEntitiesForTheClientToFree()
+    {
+        using var engine = NewEngine();
+        var world = engine.CreateWorld("level");
+
+        MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        // Stand in for the client half, which is not in this assembly: an entity carrying the level's
+        // geometry marker and something only the renderer knows about.
+        var mesh = world.Create(Transform.At(Vector3.Zero), "pretend mesh");
+        world.Add(mesh, new MapGeometry { Level = new RecordId("sandbox", "room") });
+        world.Add(mesh, new MeshRenderer { Handle = new MeshHandle(7) });
+
+        world.Resources.Get<MapLevels>().Clear();
+        world.RunFixed(1f / 60f);
+
+        // The simulation destroys the hulls and leaves that one alone. It must: both halves mark their
+        // entities the same way, the simulation's handler runs first, and an entity destroyed here is a
+        // GPU buffer the client never hears about again.
+        Assert.False(mesh.IsNull);
+        Assert.True(world.Query<MapGeometry, MeshRenderer>().Count > 0);
+    }
+
+    [Fact]
+    public void ALevelThatCannotBeReadCostsItselfAndNotTheWorld()
+    {
+        using var engine = NewEngine(map: "{ this is not a map");
+        var world = engine.CreateWorld("level");
+
+        var level = MapLoader.Load(world, new RecordId("sandbox", "room"));
+
+        Assert.Null(level);
+        Assert.Empty(world.Resources.Get<MapLevels>().Loaded);
+        world.RunFixed(1f / 60f);       // and the world still runs
+    }
+
+    [Fact]
+    public void TheGeneratedFgdNamesEveryPrefabAndOnlyKeysTheImporterReads()
+    {
+        using var engine = NewEngine();
+
+        string fgd = FgdExport.Build(engine);
+
+        Assert.Contains("@PointClass", fgd);
+        Assert.Contains("= marker :", fgd);
+        Assert.Contains("@SolidClass = worldspawn", fgd);
+
+        // The rule the exporter holds to: every key it offers is one `MapLoader` acts on. A key here
+        // that the importer ignores is a mapper filling in a field that does nothing.
+        Assert.Contains("angle(integer)", fgd);
+        Assert.Contains("targetname(target_source)", fgd);
+        Assert.DoesNotContain("health(", fgd);
+    }
+}
