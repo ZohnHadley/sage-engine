@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 using Color = Microsoft.Xna.Framework.Color;
@@ -88,7 +89,11 @@ public sealed class ScreenSystem : ISystem
     }
 
     private PanelLayout Layout(Screen screen) =>
-        new(new Vector2(_ui.Size.X, _ui.Size.Y), _ui.LineHeight, screen.Width, screen.Panel.Count, screen.Index, screen.Field != null);
+        new(new Vector2(_ui.Size.X, _ui.Size.Y), _ui.LineHeight, screen.Width, screen.Panel.Count, screen.Index,
+            screen.Field != null,
+            // A conversation's title is the sentence somebody just said, so it may need several lines
+            // (F24). Wrapped here because the layout has no font and the view does.
+            PanelView.WrapTitle(_ui, screen.Panel.Title, screen.Width - PanelLayout.Padding * 2f).Count);
 
     // Pointing at a screen (13 §3). The keyboard stays the primary way through a list — a gamepad has
     // no cursor — so the mouse only ever *moves the same selection* the keys move. One notion of "the
@@ -137,6 +142,57 @@ public static class PanelView
     private static readonly Color RowColour = new(205, 205, 215, 255);
     private static readonly Color DisabledColour = new(120, 120, 130, 255);
     private static readonly Color DetailColour = new(160, 175, 200, 255);
+
+    private static readonly List<string> _titleLines = new();
+    private static string _wrappedTitle = "";
+    private static float _wrappedWidth;
+
+    // Splits the title across lines that fit, and remembers the answer: a panel is rebuilt when
+    // something changes but drawn every frame, and cutting a sentence into substrings sixty times a
+    // second is the allocation the engine forbids itself (02 §4.6).
+    public static List<string> WrapTitle(UiDraw ui, string title, float room)
+    {
+        if (title == _wrappedTitle && MathF.Abs(room - _wrappedWidth) < 0.5f) return _titleLines;
+
+        _wrappedTitle = title;
+        _wrappedWidth = room;
+        _titleLines.Clear();
+        if (title.Length == 0) { _titleLines.Add(""); return _titleLines; }
+
+        int start = 0;
+        while (start < title.Length)
+        {
+            int fits = start;
+            int lastSpace = -1;
+            for (int i = start; i <= title.Length; i++)
+            {
+                if (i < title.Length && title[i] == ' ') lastSpace = i;
+                if (i == title.Length || ui.Measure(title[start..i]).X > room)
+                {
+                    // Break at the last space that still fits; a word longer than the panel breaks
+                    // wherever it has to, because the alternative is a line that runs off the edge.
+                    fits = i == title.Length ? i : (lastSpace > start ? lastSpace : Math.Max(i - 1, start + 1));
+                    break;
+                }
+            }
+            _titleLines.Add(title[start..fits].TrimEnd());
+            start = fits < title.Length && title[fits] == ' ' ? fits + 1 : fits;
+        }
+        return _titleLines;
+    }
+
+    // As much of a string as fits, with an ellipsis when it does not. Measured rather than counted:
+    // the font is not monospaced and a row of narrow letters fits more than a row of wide ones.
+    private static string Fit(UiDraw ui, string text, float room)
+    {
+        if (room <= 0f || ui.Measure(text).X <= room) return text;
+        for (int length = text.Length - 1; length > 0; length--)
+        {
+            string shorter = text[..length] + "…";
+            if (ui.Measure(shorter).X <= room) return shorter;
+        }
+        return "";
+    }
     private static readonly Color SelectedBar = new(58, 74, 110, 255);
     private static readonly Color ReasonColour = new(210, 150, 150, 255);
     private static readonly Color HintColour = new(140, 140, 155, 255);
@@ -151,7 +207,9 @@ public static class PanelView
         ui.Rect(box.X, box.Y, box.Width, box.Height, Box);
         ui.Frame(box.X, box.Y, box.Width, box.Height, Edge);
 
-        ui.Text(layout.TextX, layout.TitleY, panel.Title, TitleColour);
+        var lines = WrapTitle(ui, panel.Title, layout.Box.Width - PanelLayout.Padding * 2f);
+        for (int i = 0; i < lines.Count; i++)
+            ui.Text(layout.TextX, layout.TitleY + i * layout.LineHeight, lines[i], TitleColour);
 
         // The field, with a caret, so it is obvious that typing goes here rather than into the list.
         if (screen.Field is { } field)
@@ -184,7 +242,15 @@ public static class PanelView
 
                 var colour = row.Enabled ? RowColour : DisabledColour;
                 string name = row.Count > 1 ? $"{row.Name} ×{row.Count}" : row.Name;
-                ui.Text(layout.TextX + 14f, y, name, colour);
+
+                // The detail sits against the right edge, so the name has to stop before it starts.
+                // Rows used to be short names and nothing collided; a dialogue row is a whole sentence
+                // (F24) and the refusal was drawn straight through it. Clipped, with an ellipsis, rather
+                // than overlapping: half a sentence you can read beats a whole one you cannot.
+                float nameX = layout.TextX + 14f;
+                float detailWidth = row.Detail.Length > 0 ? ui.Measure(row.Detail).X + 12f : 0f;
+                float room = layout.Right - detailWidth - nameX;
+                ui.Text(nameX, y, Fit(ui, name, room), colour);
 
                 if (row.Detail.Length > 0)
                     ui.Text(layout.Right - ui.Measure(row.Detail).X, y, row.Detail, row.Enabled ? DetailColour : DisabledColour);

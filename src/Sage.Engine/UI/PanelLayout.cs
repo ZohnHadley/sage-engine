@@ -20,8 +20,13 @@ public readonly struct PanelLayout
     public const float Padding = 14f;
     public const int MaxRows = 12;          // rows visible at once before the list scrolls
 
-    public PanelLayout(Vector2 viewport, float lineHeight, float width, int rowCount, int selected, bool hasField)
+    // `titleLines` is how many lines the title takes once it has been wrapped to the panel's width. One
+    // for every screen that titles itself with a noun; more for a conversation, where the title *is* the
+    // sentence somebody just said (F24).
+    public PanelLayout(Vector2 viewport, float lineHeight, float width, int rowCount, int selected,
+                       bool hasField, int titleLines = 1)
     {
+        TitleLines = Math.Max(titleLines, 1);
         LineHeight = MathF.Max(lineHeight, 4f);
         RowCount = Math.Max(rowCount, 0);
         Visible = Math.Min(MaxRows, Math.Max(RowCount, 1));
@@ -29,14 +34,15 @@ public readonly struct PanelLayout
         // The window follows the selection, so a long spellbook scrolls instead of overflowing.
         First = Math.Clamp(selected - Visible / 2, 0, Math.Max(RowCount - Visible, 0));
 
-        float height = Padding * 2f + LineHeight * (Visible + 3f) + (hasField ? LineHeight * 1.4f : 0f);
+        float extraTitle = LineHeight * (TitleLines - 1);
+        float height = Padding * 2f + LineHeight * (Visible + 3f) + extraTitle + (hasField ? LineHeight * 1.4f : 0f);
         float x = MathF.Round((viewport.X - width) * 0.5f);
         float y = MathF.Round((viewport.Y - height) * 0.5f);
 
         Box = new Rect(x, y, width, height);
         TitleY = y + Padding;
         FieldY = hasField ? TitleY + LineHeight * 1.5f : 0f;
-        RowsY = TitleY + LineHeight * 1.5f + (hasField ? LineHeight * 1.4f : 0f);
+        RowsY = TitleY + LineHeight * 1.5f + extraTitle + (hasField ? LineHeight * 1.4f : 0f);
         HintY = y + height - Padding - LineHeight;
         ReasonY = HintY - LineHeight;
     }
@@ -51,6 +57,7 @@ public readonly struct PanelLayout
     public int First { get; }           // the first row drawn
     public int Visible { get; }         // how many are drawn
     public int RowCount { get; }
+    public int TitleLines { get; }
 
     public float TextX => Box.X + Padding;
 

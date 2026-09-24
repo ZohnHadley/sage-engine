@@ -509,8 +509,10 @@ public sealed class FactionsModule : IModule
     public void Init(ModuleContext ctx)
     {
         ctx.Engine.Records.Register<FactionRecord>();
+        ctx.Engine.Records.Register<DialogueRecord>();
 
         ctx.Engine.Prefabs.Register("faction", PrefabParts.Faction);
+        ctx.Engine.Prefabs.Register("dialogue", PrefabParts.DialoguePart);
 
         ctx.Engine.CVars.RegisterCommand("rep", CVarFlags.None,
             "What every faction thinks of you, and what that makes them.", _ =>
@@ -548,6 +550,12 @@ public sealed class FactionsModule : IModule
         });
     }
 
-    // A world remembers what it thinks of the player, and a save carries it (09 §3.1).
-    public void OnWorldCreated(World world) => world.Resources.Set(new Reputation());
+    // A world remembers what it thinks of the player, and a save carries it (09 §3.1). The conversation
+    // is not saved: a save taken mid-sentence resumes with the window closed, which is the honest
+    // behaviour — what the conversation *did* is already in the world.
+    public void OnWorldCreated(World world)
+    {
+        world.Resources.Set(new Reputation());
+        world.Resources.Set(new Conversation());
+    }
 }

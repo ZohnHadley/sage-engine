@@ -115,6 +115,66 @@
     "type": "faction", "id": "firebugs", "label": "firebugs", "standing": -50, "killCost": 10,
     "relations": [ { "faction": "sandbox:beasts", "stance": "Hostile" } ]
   },
+  {
+    // Neutral to everybody, which is what most of a world is: he does not come for you, and nothing
+    // comes for him. Killing him costs you dearly, because he is the only one of him.
+    "type": "faction", "id": "hermits", "label": "the hermit", "standing": 0, "killCost": 40
+  },
+
+  // ---- talking (docs/design/16 \u00a73.5, F24) -----------------------------------------------------------
+  {
+    // Four nodes and a trade. What the options *do* is machinery that already existed \u2014 taking an item,
+    // giving one, moving a reputation \u2014 which is the whole design: dialogue reaches the rest of the
+    // game rather than having rules of its own.
+    "type": "dialogue",
+    "id": "hermit_talk",
+    "label": "the hermit",
+    "start": "greet",
+    "nodes": [
+      {
+        "id": "greet",
+        "text": "You are the first to come up here in a long while.",
+        "options": [
+          { "text": "What is this place?", "goto": "place" },
+          { "text": "The beasts are getting bolder.", "goto": "beasts" },
+          {
+            "text": "Take this sword. I have no use for it.",
+            "goto": "thanks",
+            "requires": { "item": "sandbox:practice_sword" },
+            "refusal": "you are carrying no sword",
+            "then": { "takeItem": "sandbox:practice_sword", "faction": "sandbox:hermits", "standing": 40 }
+          },
+          { "text": "Nothing. Good day.", "end": true }
+        ]
+      },
+      {
+        "id": "place",
+        "text": "Mine, mostly. The wood below is the watchers', and they do not share it.",
+        "options": [ { "text": "I see.", "goto": "greet" } ]
+      },
+      {
+        "id": "beasts",
+        "text": "They always are. The firebugs keep them busy, which keeps them off me.",
+        "options": [ { "text": "Convenient.", "goto": "greet" } ]
+      },
+      {
+        "id": "thanks",
+        "text": "Then I am in your debt. Not a word I use lightly.",
+        "options": [ { "text": "Goodbye.", "end": true } ]
+      }
+    ]
+  },
+  {
+    // Somebody to talk to: a billboard with a body so `Use` can reach him, and a dialogue that says
+    // what he has to say. No `AIState`, so he stands there \u2014 an NPC is not a creature with a spear.
+    "type": "prefab", "id": "hermit", "base": "creature", "name": "hermit",
+    "parts": {
+      "body": { "size": [0.6, 1.8, 0.6] },
+      "attributes": {},
+      "faction": "hermits",
+      "dialogue": "hermit_talk"
+    }
+  },
 
   // ---- gameplay (docs/design/16) -----------------------------------------------------------------
   {
@@ -503,6 +563,7 @@
       { "prefab": "gate",         "at": [0, 3, 1.6] },
       // The fence, and a watcher behind the middle of it: it sees the player over the top, and the only
       // way to reach them is round one end (F23). Walk up and watch it commit to a side.
+      { "prefab": "hermit",       "at": [5, 0, 5],     "yaw": 200 },
       { "prefab": "fence",        "at": [0, 0.6, -9] },
       { "prefab": "watcher",      "at": [0, 0, -12],   "yaw": 180, "name": "penned watcher" }
     ]

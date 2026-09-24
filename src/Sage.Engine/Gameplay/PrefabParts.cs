@@ -192,6 +192,21 @@ public static class PrefabParts
         world.Add(entity, new sage_engine.Faction { Id = id[0] });
     }
 
+    // "dialogue": "sandbox:innkeeper" — somebody worth talking to (16 §3.5, F24). It also makes the
+    // entity `Interactable`, because "you can talk to it" and "Use does something" are the same claim.
+    public static void DialoguePart(World world, Entity entity, JsonNode? options, string where)
+    {
+        var id = Read<List<RecordId>>(world, options is JsonArray ? options : new JsonArray(options?.DeepClone()),
+                                      "dialogue", where);
+        if (id.Count == 0 || id[0].IsEmpty)
+        {
+            Log.Error(LogCat.Records, $"{where}: \"dialogue\" needs a record id");
+            return;
+        }
+        world.Add(entity, new sage_engine.Dialogue { Record = id[0] });
+        entity.AddTag<Interactable>();
+    }
+
     // "abilities": ["fireball", "heal"] — what it can cast (16 §3.3, F21).
     public static void Abilities(World world, Entity entity, JsonNode? options, string where)
     {

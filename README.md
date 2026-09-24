@@ -37,9 +37,10 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts — and now walks round what is in the way, remembering what it can no longer see |
 | Audio | Positional one-shots from the events the simulation already raised, looping sources, volume buses and voice limiting — the mixer is engine-side and tested headlessly, the noise is the client's |
 | Factions | Who counts as an enemy: stances between factions, a standing toward the player that killing moves, creatures that fight each other, and blasts that spare their own side |
+| Dialogue | Conversations as records — nodes, options gated on what you carry and what they think of you, and outcomes that give, take, bless or change your name |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 413 headless tests |
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 420 headless tests |
 
 What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
 factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each

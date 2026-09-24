@@ -41,7 +41,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 | **Interaction** | yes | The `Use` action → raycast → `Interactable` → fires the I/O output `OnUsed` (04) and an `Interacted` event |
 | **AI** | yes (one melee creature) | See 3.4 |
 | **Navigation** | yes (local grid) | A grid built round the agent when the straight line is blocked, A* and string-pulling, plus target memory (F23, "As built (navigation)"). A navmesh for brush-built interiors and a coarse graph for crossing sectors are still later |
-| **Narrative** (dialogue, quests, journal) | later | Records + entity I/O + events (F24) |
+| **Narrative** (dialogue, quests, journal) | dialogue yes, quests later | `dialogue` records with conditions and outcomes, and a screen (F24, "As built (dialogue)"). Quests and a journal are the rest of the item |
 | **Factions** | yes | `faction` records with relations and a per-player standing; one rule answering "is this my enemy" for the AI, for blasts and for the death seam (F24, "As built (factions and reputation)") |
 | **Economy / life paths** | later | Production chains, markets, professions as data; coarse offline simulation (F25) |
 | **Overworld / parties** | later | A second world type (F26) |
@@ -229,6 +229,37 @@ and the cast system cannot tell a composed spell from one in a content file.
   - attacks already deal damage: `MeleeAttackTask` applies the profile's `AttackEffect` with `Effects.Apply` (F18), so `EffectSystem` runs it like any other effect. The hit is also published to an `AIEvents` list the game reads in a later phase, which is still how cues and reactions work until the event bus (04) exists;
   - perception is sight only (no hearing), one enemy type (the local player), and no squads;
   - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
+
+### As built (dialogue, 2026-09-24 — F24)
+Talking to somebody, as data.
+
+- **Code:** `src/Sage.Engine/Gameplay/Dialogue.cs` (`dialogue` records, the `Dialogue` component, the
+  `Conversation` resource, `DialogueRules`) and `DialogueScreen.cs`; the client half is one system,
+  `src/Sage.Client/UI/DialogueSystem.cs`. Tests: `tests/Sage.Tests/World/DialogueTests.cs`.
+- **A conversation is a record, not a script.** Nodes hold a line and the things you may say back; an
+  option leads to another node and may *do* something on the way. Everything it can do — give an item,
+  take one, apply an effect, move a reputation — is machinery that already existed, which is the whole
+  design: **dialogue reaches the rest of the game rather than having rules of its own.**
+- **A line you cannot say is shown greyed with the reason**, and `Pick` refuses exactly what `CanPick`
+  greys (R17). The screen cannot offer something the rules would then turn down, because they are the
+  same question asked twice.
+- **What you may say depends on what they think of you**, which is why factions came first: an option
+  can require a standing, an item, a tag, or the absence of one.
+- **Node names are names, not record ids.** A node is a label inside one dialogue; typing it as a
+  `RecordId` sent the validator hunting for a record called `sandbox:greet` and made every `goto` carry
+  a namespace it does not have (R11's sharp edge, avoided rather than repeated).
+- **The screen is the engine's, the window is the client's**, like the spellmaker: the node's line is the
+  panel's title and the things you may say are its rows, so the client learnt nothing new to show a
+  conversation. The simulation still opens nothing — `DialogueSystem` reads `Used` and decides that a
+  thing with something to say means a window.
+- **Two layout bugs the first conversation found** (13 §3): a row's name ran straight through the detail
+  column, because until now every row was a short noun and a line of dialogue is a sentence — names are
+  clipped with an ellipsis now; and the title itself ran off the panel, so a title wraps and the panel
+  grows by exactly the lines it needs.
+- **In the Sandbox** a hermit stands up the hill with four things to say, one of them a trade that takes
+  the practice sword, pays in standing, and is greyed with "you are carrying no sword" until you have it.
+- **Not yet:** quests and a journal (the rest of F24), voice and portraits, a conversation that a second
+  person can interrupt, and barks (a line said without a window).
 
 ### As built (factions and reputation, 2026-09-24 — F24)
 The question three systems were guessing at.

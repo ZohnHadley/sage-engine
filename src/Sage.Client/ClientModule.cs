@@ -211,6 +211,8 @@ public sealed class ClientModule : IModule
         world.Resources.Set<IAudioBackend>(_audioDevice && _content != null
             ? new MonoGameAudioBackend(_content) : new NullAudioBackend());
         world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!), Phase.FrameUpdate);
+        // Talking to somebody opens a window, which is the client's business (16 §3.5, F24).
+        world.AddSystem(new DialogueSystem(world), Phase.FrameUpdate);
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.

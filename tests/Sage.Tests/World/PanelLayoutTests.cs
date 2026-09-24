@@ -138,4 +138,23 @@ public class PanelLayoutTests
             Assert.True(layout.ReasonY > layout.RowY(layout.First + layout.Visible - 1));
         }
     }
+
+    // A conversation's title is the sentence somebody just said, so it may take several lines (F24). The
+    // panel grows by exactly what the title needs and the rows move down with it — a title that wrapped
+    // into the list would be worse than one that ran off the edge.
+    [Fact]
+    public void ATitleThatWrapsMakesThePanelTaller()
+    {
+        var viewport = new Vector2(1280, 720);
+        var one = new PanelLayout(viewport, 20f, 400f, rowCount: 3, selected: 0, hasField: false);
+        var three = new PanelLayout(viewport, 20f, 400f, rowCount: 3, selected: 0, hasField: false, titleLines: 3);
+
+        Assert.Equal(1, one.TitleLines);
+        Assert.Equal(3, three.TitleLines);
+        Assert.Equal(one.Box.Height + 40f, three.Box.Height, 3);        // two more lines of 20
+        Assert.Equal(one.RowsY - one.Box.Y + 40f, three.RowsY - three.Box.Y, 3);
+
+        // And it stays centred, so a long line does not push the panel off the bottom of the window.
+        Assert.Equal(viewport.Y / 2f, three.Box.Y + three.Box.Height / 2f, 1);
+    }
 }
