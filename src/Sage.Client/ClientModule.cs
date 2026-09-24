@@ -70,6 +70,7 @@ public sealed class ClientModule : IModule
         actions.Register("Inventory", ActionKind.Button);
         actions.Register("Spellbook", ActionKind.Button);
         actions.Register("Spellmaker", ActionKind.Button);
+        actions.Register("Journal", ActionKind.Button);
 
         // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
         // registered in Start does not exist yet when the saved value is read — the line is dropped

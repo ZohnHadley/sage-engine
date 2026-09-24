@@ -41,7 +41,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 | **Interaction** | yes | The `Use` action → raycast → `Interactable` → fires the I/O output `OnUsed` (04) and an `Interacted` event |
 | **AI** | yes (one melee creature) | See 3.4 |
 | **Navigation** | yes (local grid) | A grid built round the agent when the straight line is blocked, A* and string-pulling, plus target memory (F23, "As built (navigation)"). A navmesh for brush-built interiors and a coarse graph for crossing sectors are still later |
-| **Narrative** (dialogue, quests, journal) | dialogue yes, quests later | `dialogue` records with conditions and outcomes, and a screen (F24, "As built (dialogue)"). Quests and a journal are the rest of the item |
+| **Narrative** (dialogue, quests, journal) | yes | `dialogue` records with conditions and outcomes, `quest` records with stages and objectives, a saved journal and two screens (F24) |
 | **Factions** | yes | `faction` records with relations and a per-player standing; one rule answering "is this my enemy" for the AI, for blasts and for the death seam (F24, "As built (factions and reputation)") |
 | **Economy / life paths** | later | Production chains, markets, professions as data; coarse offline simulation (F25) |
 | **Overworld / parties** | later | A second world type (F26) |
@@ -229,6 +229,35 @@ and the cast system cannot tell a composed spell from one in a content file.
   - attacks already deal damage: `MeleeAttackTask` applies the profile's `AttackEffect` with `Effects.Apply` (F18), so `EffectSystem` runs it like any other effect. The hit is also published to an `AIEvents` list the game reads in a later phase, which is still how cues and reactions work until the event bus (04) exists;
   - perception is sight only (no hearing), one enemy type (the local player), and no squads;
   - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
+
+### As built (quests and the journal, 2026-09-24 — F24)
+Something to do, and something that notices you did it.
+
+- **Code:** `src/Sage.Engine/Gameplay/Quests.cs` (`quest` records, the saved `Journal`, the `Quests`
+  rules and `QuestChanged`) and `JournalScreen.cs`. Tests: `tests/Sage.Tests/World/QuestTests.cs`.
+- **A quest watches; it never moves anybody.** A stage is a line of text and a list of things that must
+  be true. The things it watches for are things the game already does — somebody died, something is in
+  your bag — so a quest adds no machinery to the rest of the engine, only a place to write down what
+  counts. It runs no code and owns no entities.
+- **Two kinds of objective in v1:** `Kill` (a faction's members, or a particular prefab's) and `Have`
+  (an item, in the bag, now). The first is *counted* from the death seam, because a kill is a moment;
+  the second is *asked*, because carrying something is a state and handing it over un-does it.
+- **A stage advances by its objectives being met, and by nothing else** — which is what keeps "where am
+  I in this quest" answerable from the journal alone. Anything else that should move it says so:
+  dialogue with `stage`, `startQuest` or `finishQuest`, or the console.
+- **"Go and report" is not a finished quest.** A stage with no objectives waits to be *told* it is over,
+  which is what a conversation's `finishQuest` does. A stage marked `done` ends the quest the moment it
+  is reached, which is the other shape. The first version had only the second, and the errand was over
+  before the hermit heard about it.
+- **The journal is a list with the counting shown** — "kill 2 beasts of the wood  0/2" — because that is
+  the question a player actually has. Finished quests stay in it, greyed: a journal you cannot look back
+  through is a to-do list.
+- **Console:** `quests`, `quest_start`, `quest_stage`.
+- **In the Sandbox** the hermit asks you to thin the watchers, the journal counts them, and telling him
+  it is done pays in standing — the whole loop through a conversation.
+- **Not yet:** objectives for reaching a place or talking to somebody (a trigger volume and a `Spoke`
+  reader would do both), timed quests, failure, quest items that cannot be dropped, and a quest log that
+  remembers what you were *told* rather than what the stage says now.
 
 ### As built (dialogue, 2026-09-24 — F24)
 Talking to somebody, as data.

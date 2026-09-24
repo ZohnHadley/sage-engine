@@ -27,6 +27,14 @@ public sealed class DialogueRequirement
     public RecordId Faction;        // and stand at least this well with them
     public float MinStanding = float.NegativeInfinity;
     public float MaxStanding = float.PositiveInfinity;
+
+    // And where they are in a quest. `stage` alone means "on this quest, at this stage"; `finished`
+    // means the whole thing is behind them. This is how a conversation remembers what it asked for.
+    public RecordId Quest;
+    public string Stage = "";
+    public bool Active;
+    public bool Finished;
+    public bool NotStarted;
 }
 
 // And what saying it does. Nothing here is new machinery: it is the same giving, taking, tagging and
@@ -42,6 +50,12 @@ public sealed class DialogueOutcome
     public RecordId Effect;         // applied to the player (a blessing, a curse, a disease)
     public RecordId Faction;        // and what this does to their name
     public float Standing;
+
+    // Quests: asking for one, and saying it is done (16 §3.5).
+    public RecordId StartQuest;
+    public RecordId FinishQuest;    // reported, done, over
+    public RecordId Quest;          // the one whose stage to set
+    public string Stage = "";
 }
 
 public sealed class DialogueOption
@@ -184,6 +198,20 @@ public static class DialogueRules
                 return false;
             }
         }
+        if (!requires.Quest.IsEmpty)
+        {
+            bool ok = true;
+            if (requires.NotStarted) ok = world.Resources.Get<Journal>().Of(requires.Quest) == null;
+            else if (requires.Finished) ok = Quests.IsFinished(world, requires.Quest);
+            else if (requires.Active) ok = Quests.IsActive(world, requires.Quest);
+            if (ok && requires.Stage.Length > 0)
+                ok = Quests.StageOf(world, requires.Quest) == requires.Stage && Quests.IsActive(world, requires.Quest);
+            if (!ok)
+            {
+                why = option.Refusal.Length > 0 ? option.Refusal : "there is nothing to say about that";
+                return false;
+            }
+        }
         return true;
     }
 
@@ -229,5 +257,13 @@ public static class DialogueRules
         if (!outcome.Effect.IsEmpty) Effects.Apply(world, listener, outcome.Effect);
         if (!outcome.Faction.IsEmpty && outcome.Standing != 0f)
             Factions.Change(world, outcome.Faction, outcome.Standing);
+
+        if (!outcome.StartQuest.IsEmpty) Quests.Start(world, outcome.StartQuest);
+        if (!outcome.Quest.IsEmpty && outcome.Stage.Length > 0) Quests.SetStage(world, outcome.Quest, outcome.Stage);
+        if (!outcome.FinishQuest.IsEmpty) Quests.Finish(world, outcome.FinishQuest);
+
+        // Taking or giving may have finished an errand: "bring me five pelts" is met the moment the
+        // fifth is in the bag, and the conversation that took them should not leave it hanging.
+        Quests.Check(world);
     }
 }

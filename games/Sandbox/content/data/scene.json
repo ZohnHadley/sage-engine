@@ -123,6 +123,24 @@
 
   // ---- talking (docs/design/16 \u00a73.5, F24) -----------------------------------------------------------
   {
+    // An errand: kill two of the wood's beasts and come back. The stage after the killing has no
+    // objectives of its own — it waits to be *told*, which is what the conversation's "it is done" does
+    // (16 §3.5). A quest watches; it never moves anybody.
+    "type": "quest",
+    "id": "thin_the_wood",
+    "label": "Thin the Wood",
+    "start": "hunt",
+    "stages": [
+      {
+        "id": "hunt",
+        "text": "The hermit asked you to thin the watchers below.",
+        "objectives": [ { "kind": "Kill", "faction": "sandbox:beasts", "count": 2 } ],
+        "next": "report"
+      },
+      { "id": "report", "text": "Tell the hermit it is done." }
+    ]
+  },
+  {
     // Four nodes and a trade. What the options *do* is machinery that already existed \u2014 taking an item,
     // giving one, moving a reputation \u2014 which is the whole design: dialogue reaches the rest of the
     // game rather than having rules of its own.
@@ -144,8 +162,38 @@
             "refusal": "you are carrying no sword",
             "then": { "takeItem": "sandbox:practice_sword", "faction": "sandbox:hermits", "standing": 40 }
           },
+          {
+            "text": "Is there anything I can do for you?",
+            "goto": "errand",
+            "requires": { "quest": "sandbox:thin_the_wood", "notStarted": true },
+            "refusal": "you have already asked"
+          },
+          {
+            "text": "The watchers are thinned, as you asked.",
+            "goto": "paid",
+            "requires": { "quest": "sandbox:thin_the_wood", "stage": "report" },
+            "refusal": "there is nothing to report",
+            "then": { "finishQuest": "sandbox:thin_the_wood", "faction": "sandbox:hermits", "standing": 35 }
+          },
           { "text": "Nothing. Good day.", "end": true }
         ]
+      },
+      {
+        "id": "errand",
+        "text": "Two of the watchers, if you can manage it. They come up here at night.",
+        "options": [
+          {
+            "text": "I will see to it.",
+            "goto": "greet",
+            "then": { "startQuest": "sandbox:thin_the_wood" }
+          },
+          { "text": "Another time.", "goto": "greet" }
+        ]
+      },
+      {
+        "id": "paid",
+        "text": "Then the hill is quieter for it. You have my thanks, for whatever that is worth.",
+        "options": [ { "text": "Goodbye.", "end": true } ]
       },
       {
         "id": "place",

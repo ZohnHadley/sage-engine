@@ -510,6 +510,7 @@ public sealed class FactionsModule : IModule
     {
         ctx.Engine.Records.Register<FactionRecord>();
         ctx.Engine.Records.Register<DialogueRecord>();
+        ctx.Engine.Records.Register<QuestRecord>();
 
         ctx.Engine.Prefabs.Register("faction", PrefabParts.Faction);
         ctx.Engine.Prefabs.Register("dialogue", PrefabParts.DialoguePart);
@@ -529,6 +530,39 @@ public sealed class FactionsModule : IModule
                     Log.Info(LogCat.Console, $"  {id,-28} {standing,6:F1}  {stance}");
                 }
             }
+        });
+
+        ctx.Engine.CVars.RegisterCommand("quests", CVarFlags.None,
+            "What you are on, and how far.", _ =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Journal>(out var journal) || journal == null) continue;
+                if (journal.Entries.Count == 0) Log.Info(LogCat.Console, "  (nothing in the journal)");
+                foreach (var entry in journal.Entries)
+                    Log.Info(LogCat.Console, $"  {entry.Quest,-28} {(entry.Finished ? "done" : entry.Stage)}");
+            }
+        });
+
+        ctx.Engine.CVars.RegisterCommand("quest_start", CVarFlags.Cheat, "quest_start <quest>: put it in the journal.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "quest_start <quest>"); return; }
+            var id = ctx.Engine.Records.Resolve("quest", a[0]);
+            if (id.IsEmpty) return;
+            foreach (var world in ctx.Engine.Worlds)
+                if (world.Resources.TryGet<Journal>(out var journal) && journal != null)
+                    Log.Info(LogCat.Console, Quests.Start(world, id) ? $"started {id}" : $"already on {id}");
+        });
+
+        ctx.Engine.CVars.RegisterCommand("quest_stage", CVarFlags.Cheat,
+            "quest_stage <quest> <stage>: move a quest along by hand.", a =>
+        {
+            if (a.Count < 2) { Log.Warn(LogCat.Console, "quest_stage <quest> <stage>"); return; }
+            var id = ctx.Engine.Records.Resolve("quest", a[0]);
+            if (id.IsEmpty) return;
+            foreach (var world in ctx.Engine.Worlds)
+                if (world.Resources.TryGet<Journal>(out var journal) && journal != null)
+                    Log.Info(LogCat.Console, Quests.SetStage(world, id, a[1]) ? $"{id} -> {a[1]}" : $"{id} did not move");
         });
 
         ctx.Engine.CVars.RegisterCommand("rep_set", CVarFlags.Cheat,
@@ -557,5 +591,6 @@ public sealed class FactionsModule : IModule
     {
         world.Resources.Set(new Reputation());
         world.Resources.Set(new Conversation());
+        world.Resources.Set(new Journal());
     }
 }

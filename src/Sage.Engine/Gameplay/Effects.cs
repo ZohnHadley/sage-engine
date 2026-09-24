@@ -352,6 +352,7 @@ public sealed class EffectSystem : ISystem
         // What it costs your name, before the game's own rules get their say: killing somebody is the
         // commonest way to change what a faction thinks of you (16 §3.5, F24).
         Factions.OnKilled(world, entity, killer);
+        Quests.OnKilled(world, entity, killer);
         world.Resources.Get<GameRules>().OnEntityDied(world, entity, killer);
     }
 

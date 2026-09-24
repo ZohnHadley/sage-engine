@@ -59,5 +59,6 @@ public sealed class SandboxClientModule : IModule
         // The spellmaker is the engine's own screen (16 §3.3): what a spellmaker is belongs to the
         // feature, not to this game. Binding it to a key is still the game's call.
         screens.Bind(_actions!.Get("Spellmaker"), new SpellmakerScreen());
+        screens.Bind(_actions!.Get("Journal"), new JournalScreen());
     }
 }

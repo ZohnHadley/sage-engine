@@ -29,6 +29,7 @@
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
       "Spellbook":     [ { "key": "B" } ],
       "Spellmaker":    [ { "key": "M" } ],
+      "Journal":       [ { "key": "J" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   },
@@ -48,6 +49,7 @@
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
       "Spellbook":     [ { "key": "B" } ],
       "Spellmaker":    [ { "key": "M" } ],
+      "Journal":       [ { "key": "J" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   }
