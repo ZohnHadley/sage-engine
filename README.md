@@ -218,6 +218,12 @@ python engine_content/tools/make_font.py               # font.png: the 5×7 HUD 
 `make_font.py --preview "hello"` prints glyphs as ASCII, which is how you check a letter before
 building the atlas — `g` and `y` both had to be redrawn after a screenshot read them as `9` and `v`.
 
+## Making a game with it
+
+[`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) is the practical guide: the shape of a game, the records
+you write, how to get a character walking about, levels, your HUD, and the list of things that silently
+do nothing if you forget them. It describes the engine as it is rather than as it is planned.
+
 ## Levels
 
 Interiors are **brushes**, and the editor is [TrenchBroom](https://trenchbroom.github.io/): the engine

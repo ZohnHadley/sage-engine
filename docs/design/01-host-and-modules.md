@@ -99,7 +99,6 @@ Like Source's `gameinfo.txt`: tells the host what to mount and load.
   "assembly": "bin/{config}/net8.0/Sandbox.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
-  "defaultMap": "maps/test_valley",
   "modules": { "disable": [], "add": ["../Sandbox.Client/bin/{config}/net8.0/Sandbox.Client.dll"] }
 }
 ```
@@ -108,7 +107,7 @@ Like Source's `gameinfo.txt`: tells the host what to mount and load.
 
 The host finds the game with `-game <folder>`; without it, dev builds use `games/Sandbox` (found by walking up to `Sage.sln`) and other builds use `game/` next to the exe.
 
-*As built (step 5, `modules.add` 2026-09-23):* `src/Sage.Engine/Core/GameManifest.cs`, `games/Sandbox/game.json`. `name`, `id`, `assembly`, `mounts`, `modules.disable` and `modules.add` work — the Sandbox uses `add` for its client half, and each added module still goes through the `disable` check, so one can be turned off by name. `modsDirectory` and `defaultMap` are parsed but unused until mods (17) and maps. A missing assembly named in `add` stops the host with a message, the same as a missing game assembly. There is no framework content mount yet.
+*As built (step 5, `modules.add` 2026-09-23):* `src/Sage.Engine/Core/GameManifest.cs`, `games/Sandbox/game.json`. `name`, `id`, `assembly`, `mounts`, `modules.disable` and `modules.add` work — the Sandbox uses `add` for its client half, and each added module still goes through the `disable` check, so one can be turned off by name. `modsDirectory` is parsed but unused until mods (17). **`defaultMap` is gone (R19):** it was parsed and never read, so a game could set it and nothing would happen — and now that levels exist (15 §10a), a game loads one from its own module or scene record, which is where the Sandbox does it. A missing assembly named in `add` stops the host with a message, the same as a missing game assembly. There is no framework content mount yet.
 
 ## 4. Public API sketch
 

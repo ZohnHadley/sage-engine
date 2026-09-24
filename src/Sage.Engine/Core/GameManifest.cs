@@ -21,7 +21,6 @@ public sealed class GameManifest
     public string Assembly { get; set; } = "";
     public List<string> Mounts { get; set; } = new();
     public string ModsDirectory { get; set; } = "mods";
-    public string DefaultMap { get; set; } = "";
     public ModuleSettings Modules { get; set; } = new();
 
     public sealed class ModuleSettings

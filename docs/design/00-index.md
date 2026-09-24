@@ -51,6 +51,26 @@ Detailed docs use all sections; short docs use at least 1, 3, 4, 11 and 14.
 
 API sketches are C# signatures to pin down names and responsibilities, not final code. Following the existing codebase, engine types are `internal` unless they're part of the game-facing API, which is `public` (games live in other assemblies).
 
+## Writing an "As built" section (R19)
+
+Each doc's "As built" sections are the ones that claim something is *true now*, and three features in a
+row ended with one of them being wrong while the code was right. Two rules keep them honest, and
+`tools/check_docs.py` enforces both:
+
+- **A claim about behaviour cites the test that proves it**: `(test: WalkingIntoATriggerVolumeFiresOnStartTouch)`,
+  or a comma-separated list of them. The script checks each name resolves to a test in `tests/`. Writing the citation is
+  the point — it is where you notice you have no test to cite.
+- **A command, cvar or record named in such a section has to exist.** Elsewhere — an API sketch, a "Not
+  yet" list, an open question — naming what does not exist yet is the job, and those are left alone.
+
+Numbers about the engine (how many commands, records, tests) go on a line marked `<!-- counts -->`, and
+the script computes them: `--fix` writes them, so they are never typed. Run it beside the build:
+
+```bash
+python tools/check_docs.py --tests N      # N as `dotnet test` reported
+python tools/check_docs.py --self-test    # checks the checker still catches things
+```
+
 ## Glossary (shared names — use these exactly)
 
 ### Host and core
