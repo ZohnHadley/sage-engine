@@ -607,9 +607,25 @@ public sealed class MapModule : IModule
             {
                 if (!MapLoader.TryFindPoint(world, className, out var at, out float yaw)) return;
 
+                float radians = yaw * MathF.PI / 180f;
+
                 var where = Transform.At(at);
-                where.LocalRotation = SageMath.RotationFromYaw(yaw * MathF.PI / 180f);
+                where.LocalRotation = SageMath.RotationFromYaw(radians);
                 world.Teleport(player, where);
+
+                // And *face* that way, which is not the same thing as being turned that way: the body's
+                // rotation is rewritten from `PawnIntent.Yaw` every tick, and that comes from the view
+                // angles the host accumulates. Setting the transform alone put the player in the room
+                // looking whichever way they already were, for one tick, and then not even that.
+                if (world.Has<PawnIntent>(player))
+                {
+                    ref var intent = ref world.Get<PawnIntent>(player);
+                    intent.Yaw = radians;
+                }
+
+                if (world.Resources.TryGet<PlayerInput>(out var input) && input != null)
+                    input.RequestView(radians);
+
                 moved++;
                 Log.Info(LogCat.Console, $"  {world.Name}: player moved to '{className}' at {at}");
             });

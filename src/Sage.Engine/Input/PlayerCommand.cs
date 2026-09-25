@@ -86,6 +86,27 @@ public sealed class PlayerInput
 {
     public PlayerCommand Command;
     public bool HasCommand;
+
+    // A request to point the player somewhere: a teleport, a respawn, a map's `info_player_start`.
+    //
+    // The engine cannot just turn the view. The angles are accumulated in the host's `CommandLatch` at
+    // frame rate, and `PawnIntent.Yaw` is overwritten from the resulting command every tick — so
+    // anything the simulation writes to a transform is gone one tick later, silently, which is what
+    // `map_goto` did at first: it landed the player in the right room facing whatever way they had been.
+    // So the simulation asks here, and the host applies it before it samples the next command.
+    private float _yaw, _pitch;
+    private bool _wanted;
+
+    public void RequestView(float yaw, float pitch = 0f) { _yaw = yaw; _pitch = pitch; _wanted = true; }
+
+    public bool TryTakeView(out float yaw, out float pitch)
+    {
+        yaw = _yaw;
+        pitch = _pitch;
+        bool wanted = _wanted;
+        _wanted = false;         // a request is answered once: the player is free to look away again
+        return wanted;
+    }
 }
 
 // Accumulates per-frame input between ticks (08 §3.4): taps shorter than a tick aren't lost, and the

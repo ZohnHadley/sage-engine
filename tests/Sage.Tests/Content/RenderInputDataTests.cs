@@ -220,4 +220,26 @@ public class InputActionTests
         Assert.False(world.Resources.Get<PlayerInput>().HasCommand);   // headless: nothing samples input
         Assert.Equal(0.1f, world.Resources.Get<ActiveCamera>().Near);
     }
+
+    // Turning the player is not something the simulation can simply do (08 §3.4): the view angles are
+    // accumulated by the host between ticks, and `PawnIntent.Yaw` is rewritten from them every tick, so
+    // a rotation written onto the pawn is gone a tick later. `map_goto` did exactly that and landed the
+    // player in the right room facing the wrong way, with nothing to show anything had been ignored.
+    [Fact]
+    public void AskingThePlayerToFaceSomewhereIsAnsweredOnceAndThenLetGo()
+    {
+        var input = new PlayerInput();
+
+        Assert.False(input.TryTakeView(out _, out _));    // nobody asked
+
+        input.RequestView(1.5f, 0.25f);
+
+        Assert.True(input.TryTakeView(out float yaw, out float pitch));
+        Assert.Equal(1.5f, yaw);
+        Assert.Equal(0.25f, pitch);
+
+        // Once, and then the player is free to look away again: a request that kept being answered
+        // would pin the view and feel like a broken mouse.
+        Assert.False(input.TryTakeView(out _, out _));
+    }
 }

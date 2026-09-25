@@ -208,6 +208,12 @@ public class Game1 : Game
         latch.AddFrame(actions.HeldMask, actions.PressedMask, actions.ReleasedMask, actions.Axis2(moveAction));
         latch.AddLook(actions.Axis2(lookAction));
 
+        // Something in the simulation asked the player to face a particular way (a teleport, a map's
+        // player start). It goes in here rather than on the pawn, because this is where the view angles
+        // actually live — see `PlayerInput.RequestView`.
+        if (playerInput.TryTakeView(out float wantedYaw, out float wantedPitch))
+            latch.SetView(wantedYaw, wantedPitch);
+
         // The free camera runs at the display rate, not the tick rate (smooth at any refresh rate), and
         // hands the camera back to a rig that claimed it. Without the dev tools a rig is the only thing
         // that drives the camera, which is what a played game wants.

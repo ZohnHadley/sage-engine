@@ -262,6 +262,25 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 - **Not done here:** recording a session to a `.sagedemo` and playing it back (§3, "Later"), which is
   the same queue plus a per-tick `PlayerCommand` log.
 
+### As built (asking the player to face somewhere, 2026-09-25)
+A teleport that does not turn you is half a teleport, and turning the player is not something the
+simulation can simply do.
+
+- **Why it needs asking at all.** The view angles are accumulated in the host's `CommandLatch` between
+  ticks, and `PawnIntent.Yaw` is rewritten from the resulting `PlayerCommand` **every tick** (§3.4). A
+  rotation written onto the pawn by gameplay therefore survives until the next tick and no longer. It
+  looks like it works, which is worse than not working: `map_goto` shipped like that and put the player
+  in the right room facing whatever way they had been.
+- **`PlayerInput.RequestView(yaw, pitch = 0)`**, answered once by the host before it samples the next
+  command — which is what finally called `CommandLatch.SetView`, a method that had existed with no
+  callers at all. Once and then let go, because a request that kept being answered would pin the view
+  and feel like a broken mouse. (test: AskingThePlayerToFaceSomewhereIsAnsweredOnceAndThenLetGo)
+- **The simulation stays the one that decides**, and the host stays the only thing that owns the angles:
+  the request is a field on a world resource, so a headless world can have one asked of it and nothing
+  happens, which is exactly right.
+- **Used by** `map_goto` (15 §10a). A respawn that faces you the right way wants it next, and so does
+  anything cut-scene shaped.
+
 ## 12. Multiplayer-later notes
 `PlayerCommand` is exactly what a client will send to a server each tick (with the tick number). The local controller's view angles become predicted state. Nothing about sampling changes.
 

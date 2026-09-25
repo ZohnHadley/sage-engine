@@ -96,8 +96,12 @@ EveryFaceFacesOutOfTheBrush, EveryBrushBecomesOneStaticHull)
     classname in that file which is not a prefab, and the test that says every advertised classname
     exists now names the exemption rather than dropping the rule.
     (test: EverythingTheFgdAdvertisesActuallyExists)
-  - **`map_goto [classname]`** stands the player there, which is what a mapper testing a room wants and
-    what makes the marker do something. The engine still does not *spawn* you there: where a game starts
+  - **`map_goto [classname]`** stands the player there **facing the way the marker faces**, which is
+    what a mapper testing a room wants and what makes the marker do something. The facing goes through
+    `PlayerInput.RequestView` (08 "As built (asking the player to face somewhere)") rather than onto the
+    pawn: the first version set the pawn's rotation, which the character controller overwrites from the
+    view angles a tick later, so it landed you in the right room looking the wrong way and said nothing
+    about it. The engine still does not *spawn* you there: where a game starts
     its player is the game's decision (the Sandbox's is a scene placement), and a level is not placed
     yet when the player is spawned anyway.
 - **A texture name is a material id**: `wall` in `sandbox:hut` looks for `sandbox:wall`, and a texture
