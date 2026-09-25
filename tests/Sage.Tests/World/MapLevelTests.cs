@@ -289,13 +289,31 @@ public class MapLevelTests
         foreach (string name in advertised.Groups[1].Value.Split(','))
             Assert.True(engine.Inputs.Has(name.Trim()), $"the FGD offers input '{name.Trim()}', which is not registered");
 
-        // And every classname it offers is a prefab that can actually be spawned.
+        // And every classname it offers either spawns a prefab or is one the engine itself reads off the
+        // level. The second list is spelled out rather than waved at: it is what stops "not a prefab"
+        // from becoming an excuse, so a typo in a classname still fails here.
+        string[] theEngineReads = { "info_player_start" };
+
         foreach (System.Text.RegularExpressions.Match entity in
                  System.Text.RegularExpressions.Regex.Matches(fgd, @"@PointClass[^=]*= ([a-z_0-9]+) :"))
         {
-            var id = new RecordId("sandbox", entity.Groups[1].Value);
-            Assert.True(engine.Records.Exists(id), $"the FGD offers '{id}', which is not a prefab");
+            string className = entity.Groups[1].Value;
+            if (System.Array.IndexOf(theEngineReads, className) >= 0) continue;
+
+            var id = new RecordId("sandbox", className);
+            Assert.True(engine.Records.Exists(id), $"the FGD offers '{id}', which is neither a prefab nor read by the engine");
         }
+
+        // The exemption is not a hole: what the engine reads, it must be able to *find*. A classname on
+        // that list which `TryFindPoint` would never match is the same broken promise one step along.
+        using var engineWithAStart = NewEngine(RoomWithAStart);
+        var world = engineWithAStart.CreateWorld("fgd");
+        var level = MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        foreach (string className in theEngineReads)
+            Assert.True(level!.TryFindPoint(className, out _, out _),
+                        $"the FGD offers '{className}' as something the engine reads, and it cannot read it");
     }
 
     [Fact]
@@ -309,10 +327,92 @@ public class MapLevelTests
         Assert.Contains("= marker :", fgd);
         Assert.Contains("@SolidClass = worldspawn", fgd);
 
+        // The one point entity with no prefab behind it. A mapper who cannot place it from the editor
+        // will not place it at all, and it is what `map_goto` and a game's own spawning look for.
+        Assert.Contains("= info_player_start :", fgd);
+
         // The rule the exporter holds to: every key it offers is one `MapLoader` acts on. A key here
         // that the importer ignores is a mapper filling in a field that does nothing.
         Assert.Contains("angle(integer)", fgd);
         Assert.Contains("targetname(target_source)", fgd);
         Assert.DoesNotContain("health(", fgd);
+    }
+
+    // A level with the one piece of furniture every game wants: where the player starts.
+    private const string RoomWithAStart = RoomMap + """
+
+        {
+        "classname" "info_player_start"
+        "origin" "0 -64 8"
+        "angle" "90"
+        }
+        """;
+
+    // `info_player_start` has no prefab and never will: where a game puts the player is the game's
+    // decision, not the engine's. What the engine owes a mapper is the *answer* — the place they marked,
+    // in metres, in the world — because the two conversions between the two are not a game's to know.
+    [Fact]
+    public void AClassnameWithNoPrefabIsStillSomethingTheGameCanFind()
+    {
+        using var engine = NewEngine(RoomWithAStart);
+        var world = engine.CreateWorld("level");
+
+        var level = MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        Assert.True(level!.TryFindPoint("info_player_start", out var at, out float yaw));
+
+        // Map (0, -64, 8) at 32 units to the metre is (0, -2, 0.25); map space becomes engine space as
+        // (x, z, -y), so (0, 0.25, 2); and the level itself stands at (10, 0, -5).
+        Assert.Equal(new Vector3(10, 0.25f, -3), at);
+
+        // Quake's `angle` is counter-clockwise from east and the engine's yaw is not: 90 means north,
+        // which is 0. Getting this wrong points the player at a wall, which is the sort of thing that
+        // looks like a level bug for a day.
+        Assert.Equal(0f, yaw);
+    }
+
+    [Fact]
+    public void AskingForSomethingNobodyPlacedIsNoRatherThanTheOrigin()
+    {
+        using var engine = NewEngine(RoomWithAStart);
+        var world = engine.CreateWorld("level");
+
+        var level = MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        Assert.False(level!.TryFindPoint("info_player_end", out var at, out _));
+        Assert.Equal(Vector3.Zero, at);
+    }
+
+    [Fact]
+    public void ALevelThatDoesNotKnowWhereItIsYetSaysSoRatherThanGuessing()
+    {
+        using var engine = NewEngine(RoomWithAStart);
+        var world = engine.CreateWorld("level");
+
+        var level = MapLoader.Load(world, new RecordId("sandbox", "room"));
+
+        // Loaded, but not placed until the first tick — and a level that stands on terrain waits longer
+        // than that. Answering now would be the map's own coordinates dressed up as the world's.
+        Assert.False(level!.Placed);
+        Assert.False(level.TryFindPoint("info_player_start", out _, out _));
+    }
+
+    [Fact]
+    public void TheWholeWorldCanBeAskedRatherThanEachLevelInTurn()
+    {
+        using var engine = NewEngine(RoomWithAStart);
+        var world = engine.CreateWorld("level");
+
+        // What a game actually wants to ask: is there a player start anywhere in this world? It does not
+        // know which levels are loaded, and it should not have to.
+        Assert.False(MapLoader.TryFindPoint(world, "info_player_start", out _, out _));
+
+        MapLoader.Load(world, new RecordId("sandbox", "room"));
+        world.RunFixed(1f / 60f);
+
+        Assert.True(MapLoader.TryFindPoint(world, "info_player_start", out var at, out _));
+        Assert.Equal(new Vector3(10, 0.25f, -3), at);
     }
 }

@@ -345,7 +345,8 @@ Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire` — `io_list`
 your own modules can register more. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
 
 Connections are **checked when the level loads**: a typo names the map file and line rather than a door
-that quietly never opens. `map_load`, `map_list`, `map_unload` and `ent_fire <name> <input>` drive it
+that quietly never opens. `map_load`, `map_list`, `map_unload`, `map_goto` (stand where the map's
+`info_player_start` says) and `ent_fire <name> <input>` drive it
 from the console, and `io_trace 1` logs every wire as it fires.
 
 ---

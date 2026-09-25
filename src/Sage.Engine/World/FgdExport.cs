@@ -64,6 +64,17 @@ public static class FgdExport
         text.AppendLine("@SolidClass = worldspawn : \"The level itself: every brush in it becomes geometry and collision.\" []");
         text.AppendLine();
 
+        // The one point entity that is not a prefab. A mapper who cannot place it from the editor will
+        // not place it at all, and it is the marker every level wants; the engine reads it
+        // (`MapLevel.TryFindPoint`) and `map_goto` stands the player in it, but nothing spawns here,
+        // because where a game starts its player is the game's decision. Its keys are `origin` and
+        // `angle`, both of which the importer acts on, which is the rule this file holds to.
+        int half = (int)MathF.Round(0.3f * unitsPerMetre);       // a person, roughly: 0.6 m across
+        int tall = (int)MathF.Round(1.8f * unitsPerMetre);       // and 1.8 m of them, stood on the mark
+        text.AppendLine($"@PointClass base(Angled) size(-{half} -{half} 0, {half} {half} {tall}) = info_player_start : "
+                      + "\"Where the player starts. Nothing spawns here: a game reads it off the level, and map_goto stands you in it.\" []");
+        text.AppendLine();
+
         // Entity I/O, as a comment rather than as FGD `output` lines: TrenchBroom is a Quake-family
         // editor and does not parse Source's output syntax, but it does let a mapper type any key on any
         // entity — which is exactly what a wire is. So the file says what to type.

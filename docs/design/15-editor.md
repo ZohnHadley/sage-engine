@@ -77,8 +77,29 @@ EveryFaceFacesOutOfTheBrush, EveryBrushBecomesOneStaticHull)
   (test: ALevelLoadsItsBrushesAndStandsThemWhereTheRecordSays)
 - **`classname` is a prefab id.** `watcher` in a map is `sandbox:watcher`, with `origin`, `angle`
   (Quake's degrees counter-clockwise from east, a quarter turn from the engine's yaw) and `targetname`.
-  A classname with no prefab — `info_player_start`, `light` — is left for the game to read off the level,
-  and logged, not refused.
+  A classname with no prefab — `info_player_start` is the one every game has — is left for the game to
+  read off the level, and **named** in the log, not refused: "left for the game: info_player_start"
+  rather than a count, because a count tells you something was ignored and not what. (`light` used to be
+  the second example here and is a prefab now, F2.)
+- **What "left for the game" actually means.** `MapLevel.TryFindPoint(classname, out at, out yaw)`, or
+  `MapLoader.TryFindPoint(world, …)` to ask a whole world rather than one level. It was a promise
+  before it was a method: `PointEntities` hands out raw map coordinates, and both conversions between
+  those and a place in the world (the axis swap, and Quake's quarter turn) need the level's `MapSpace`
+  and `Position`, which are the engine's. A game could not have done it.
+  (test: AClassnameWithNoPrefabIsStillSomethingTheGameCanFind)
+  - **An unplaced level says no rather than guessing.** A level standing on terrain does not know its
+    height until the ground under it exists, and answering before then would be the map's own
+    coordinates dressed as the world's.
+    (test: ALevelThatDoesNotKnowWhereItIsYetSaysSoRatherThanGuessing)
+  - **`fgd_export` offers it**, next to `worldspawn` and the prefabs, as a person-sized box with
+    `angle` — a mapper who cannot place it from the editor will not place it at all. It is the one
+    classname in that file which is not a prefab, and the test that says every advertised classname
+    exists now names the exemption rather than dropping the rule.
+    (test: EverythingTheFgdAdvertisesActuallyExists)
+  - **`map_goto [classname]`** stands the player there, which is what a mapper testing a room wants and
+    what makes the marker do something. The engine still does not *spawn* you there: where a game starts
+    its player is the game's decision (the Sandbox's is a scene placement), and a level is not placed
+    yet when the player is spawned anyway.
 - **A texture name is a material id**: `wall` in `sandbox:hut` looks for `sandbox:wall`, and a texture
   with no material draws plain rather than as the error checkerboard, because blocking a room out with
   untextured brushes is working rather than a mistake.

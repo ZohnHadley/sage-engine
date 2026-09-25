@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
@@ -86,6 +87,37 @@ public sealed class MapLevel
     public int FaceCount
     {
         get { int n = 0; foreach (var brush in Brushes) n += brush.Faces.Length; return n; }
+    }
+
+    // Where a classname the engine has no prefab for actually stands (15 §10a).
+    //
+    // A mapper's furniture is the game's to interpret — `info_player_start` is the one every game wants
+    // — and until this existed "the game reads it off the level" was not something a game could do:
+    // `PointEntities` hands out raw map coordinates, and turning those into a place in the world needs
+    // the level's `MapSpace` and its `Position`, neither of which is a game's to have. Both conversions
+    // are subtle enough to get wrong twice (the axis swap, and Quake's quarter turn), so they are done
+    // once, here.
+    //
+    // False if the level has no such entity, or if it is not `Placed` yet — a level standing on terrain
+    // does not know where it is until the ground under it exists, and answering with its unplaced
+    // position would be a confident wrong answer.
+    public bool TryFindPoint(string className, out Vector3 at, out float yaw)
+    {
+        at = Vector3.Zero;
+        yaw = 0f;
+        if (!Placed) return false;
+
+        foreach (var entity in PointEntities)
+        {
+            if (!string.Equals(entity.ClassName, className, StringComparison.OrdinalIgnoreCase)) continue;
+
+            entity.TryGetVector("origin", out var origin);
+            at = Position + Space.ToEngine(origin);
+            yaw = entity.GetFloat("angle") - 90f;    // the same quarter turn `SpawnEntities` applies
+            return true;
+        }
+
+        return false;
     }
 }
 
@@ -315,6 +347,22 @@ public static class MapLoader
     }
 
     // Spawns the level's point entities, once, after it knows where it is.
+    // The same question asked of the whole world: is there an `info_player_start` anywhere? A game asks
+    // that, not "in this particular level", because which level is loaded is the game's own business.
+    // First match in load order wins, which is the only rule that makes a second one a mistake rather
+    // than a coin toss.
+    public static bool TryFindPoint(World world, string className, out Vector3 at, out float yaw)
+    {
+        at = Vector3.Zero;
+        yaw = 0f;
+        if (!world.Resources.TryGet<MapLevels>(out var levels) || levels == null) return false;
+
+        foreach (var level in levels.Loaded)
+            if (level.TryFindPoint(className, out at, out yaw)) return true;
+
+        return false;
+    }
+
     public static void EnsureEntities(World world, MapLevel level)
     {
         if (level.EntitiesSpawned) return;
@@ -329,7 +377,8 @@ public static class MapLoader
     private static void SpawnEntities(World world, MapLevel level, MapSpace space)
     {
         var engine = world.Engine!;
-        int spawned = 0, unknown = 0;
+        int spawned = 0;
+        List<string>? unknown = null;
 
         foreach (var entity in level.PointEntities)
         {
@@ -339,10 +388,13 @@ public static class MapLoader
             var prefab = new RecordId(level.Record.Namespace, className);
             if (!engine.Records.Exists(prefab))
             {
-                // Not an error: `info_player_start`, `light` and the rest of a mapper's furniture are
-                // meaningful to the game, not to the engine. The game reads them off the level.
+                // Not an error: `info_player_start` and the rest of a mapper's furniture is meaningful
+                // to the game, not to the engine, and `MapLevel.TryFindPoint` is how the game reads it
+                // off the level. They are *named* in the summary below rather than counted, because
+                // "1 classname(s) with no prefab" tells you something was ignored and not what.
                 Log.Debug(LogCat.Level, $"{level.Source}: no prefab for classname '{className}' (line {entity.Line})");
-                unknown++;
+                unknown ??= new List<string>();
+                if (!unknown.Contains(className, StringComparer.OrdinalIgnoreCase)) unknown.Add(className);
                 continue;
             }
 
@@ -377,9 +429,9 @@ public static class MapLoader
             if (entity.GetComponent<FromMap>().Level == level.Record)
                 MapEntityIO.Resolve(world, entity, level.Source);
 
-        if (spawned > 0 || unknown > 0)
+        if (spawned > 0 || unknown != null)
             Log.Info(LogCat.Level, $"{level.Source}: spawned {spawned} entit(ies)"
-                                 + (unknown > 0 ? $", {unknown} classname(s) with no prefab" : ""));
+                                 + (unknown != null ? $", left for the game: {string.Join(", ", unknown)}" : ""));
     }
 
     // A brush entity: a door, a lift, a trigger volume. It is an ordinary entity that happens to own
@@ -539,6 +591,34 @@ public sealed class MapModule : IModule
                                            + $"{level.Brushes.Count} brushes, {level.FaceCount} faces at {level.Position}");
                 if (levels.Loaded.Count == 0) Log.Info(LogCat.Console, $"  {world.Name}: no levels loaded");
             }
+        });
+
+        // What an `info_player_start` is *for*. The engine will not spawn you there — where a game starts
+        // its player is the game's decision, and the Sandbox's is a scene placement — but a mapper
+        // testing a room wants to stand in it, and before this the marker they placed did nothing at all
+        // and said nothing about it.
+        ctx.Engine.CVars.RegisterCommand("map_goto", CVarFlags.Cheat,
+            "map_goto [classname]: stand the player where the map says, `info_player_start` by default.", a =>
+        {
+            string className = a.Count > 0 ? a[0] : "info_player_start";
+            int moved = 0;
+
+            GameplayModules.ForEachPlayer(ctx.Engine, (world, player) =>
+            {
+                if (!MapLoader.TryFindPoint(world, className, out var at, out float yaw)) return;
+
+                var where = Transform.At(at);
+                where.LocalRotation = SageMath.RotationFromYaw(yaw * MathF.PI / 180f);
+                world.Teleport(player, where);
+                moved++;
+                Log.Info(LogCat.Console, $"  {world.Name}: player moved to '{className}' at {at}");
+            });
+
+            // A level that stands on terrain is not placed until the ground under it exists, so "not
+            // there" and "not there *yet*" are different answers and the message says which.
+            if (moved == 0)
+                Log.Warn(LogCat.Console, $"No '{className}' in any level that is loaded and placed "
+                                       + "(map_list shows what is), or no player to move.");
         });
 
         ctx.Engine.CVars.RegisterCommand("map_unload", CVarFlags.Cheat,
