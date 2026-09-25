@@ -3,6 +3,14 @@
 **No.** This is the honest assessment, written the day after the first vertical slice closed, so that
 the answer and its reasons live with the code rather than in a conversation.
 
+> **Corrected 2026-09-25.** This review is cited from `ARCHITECTURE.md`, `TODO.md`, the handoff and
+> two design docs as *the* account of what is missing, so rows that stop being true are worse here than
+> anywhere else. Four of them had: **audio** (F4 shipped the same day this was written — the slice is
+> not silent, and two systems read `CueTriggered`), **entity I/O** and **factions/quests** (F17 and F24
+> shipped), and the **editor** (F28 shipped documents, an outliner and an editable inspector). Those
+> rows are struck through below, with what is actually left in their place. The counts in the next
+> paragraph are from 2026-09-24 and are superseded by the census at the end.
+
 It is a **well-architected pre-alpha**: 17 roadmap items done, 14 partly done, **24 not started** (25 once this review adds R18). It
 can build a small demo of a Daggerfall-like. It cannot yet build the Daggerfall-like.
 
@@ -42,15 +50,27 @@ design doc, and a bug log with the reason each bug happened.
 
 | Missing | What it costs today |
 |---|---|
-| **Audio (F4)** | The game is **silent**. `CueTriggered` fires on every cast and impact and nothing listens. |
+| ~~**Audio (F4)**~~ *(done 2026-09-24)* | ~~The game is **silent**.~~ Built: mixer, buses, cues, weather loops. **Left:** music and crossfades, OGG, reverb and occlusion, footsteps from animation events, screens making any sound, and `effect` records raising their cues. |
 | **Large-world coordinates and streaming (R6, F14)** | One 1024 m sector. The premise of the target game — a world you travel across — is unbuilt. |
-| **Editor (F28–F30)** | Levels are hand-written JSON. Fine for a slice, not for content. |
+| ~~**Editor (F28)**~~ *(done 2026-09-24)* / **F29–F30** | ~~Levels are hand-written JSON.~~ Built: placement documents, outliner, editable inspector, and a Shipping build with no editor in it. **Left:** gizmos and picking (F29), undo/redo (F30), placing a prefab, per-entity overrides, play-in-editor. Editing runs against the live world, so `pause 1` first. |
 | **Pathfinding (F23)** | Creatures steer with raycasts; real interiors will trap them. |
 | **Skeletal animation (F9–F12)** | Acceptable for billboards, blocking for the HL1-, Lugaru- and Warband-like targets. |
 | **Asset server (R12, 05 §3.3)** | Synchronous loads, no ref counting, no scopes, no budget. MGCB is still in the pipeline. |
 | **Saves past v1 (F27)** | No maps or sectors, no tombstones, no upgraders. The format has never survived a migration. |
 | **Mod loading (F37)** | Designed in doc 17, unbuilt — so "data + trusted C# mods" is a plan, not a feature. |
-| **Entity I/O (F17), factions and quests (F24)** | No triggers, no dialogue, no reason to go anywhere. |
+| ~~**Entity I/O (F17), factions and quests (F24)**~~ *(done 2026-09-24)* | ~~No triggers, no dialogue, no reason to go anywhere.~~ Built: outputs wired to inputs in map data and checked at load, movers, trigger volumes, factions, reputation, dialogue and quests. **Left:** `@group` targets, an editor link view, **kinematic movers** — see the defect below. |
+
+**Added 2026-09-25, from a sweep of the code, the docs and the roadmap:**
+
+| Missing | What it costs today |
+|---|---|
+| **A closing door goes through you, and you never get out** (F17 + F7) | Three pieces, each filed as a minor leftover, one reachable bug. A `Mover` calls `PhysicsSpace.MoveStatic`, which sets a pose and rebuilds bounds — no sweep, no push. `OnHitAtZeroT` is an **empty method**, so a sweep that starts already overlapping is discarded. And there is no depenetration pass. Stand in the hut doorway and wait five seconds for `closeAfter`: the door shuts through you, and from then on every sweep reports clear while you are inside a hull. Skin width is the only thing keeping a capsule out of geometry, and it only works if you never got in. F7 is marked **done**. |
+| **Nothing spawned at run time survives a save** (F27) | `World.MakePersistent` is called only by tests. No spawn path — prefabs, drops, pickups, projectiles, map placement — calls it. |
+| **Extension points nothing calls** | `PhysicsSpace.SetVelocity` (so knockback or an explosion would silently do nothing), `AudioMixer.SetBusVolume` (bus volumes are stuck at defaults — a volume slider has nothing to write to), `CVarRegistry.Complete` (console Tab-completion, built and never wired), `World.RemoveSystem`, `GameplayTags.HasAll`/`HasAny`. `CommandLatch.SetView` was one of these until 2026-09-25. |
+| **Two lists of gameplay modules** *(fixed 2026-09-25)* | The host hand-wrote its own; `AddGameplay` held the other; tests used the second and the game used the first. `LightsModule` went into one and not the other and point lights were dead in the shipped build for a day, with an `ERROR` on every boot that nobody read. One list now, guarded by `ModuleSetTests`. |
+| **Docs that contradict the code or each other** | 25 cross-doc contradictions found on 2026-09-25. Two were mapper-facing and are fixed: doc 16 named the interaction output `OnUsed` (it is `OnUse`), and docs 04 and 10 named `TriggerEntered`/`TriggerExited` game events, which **do not exist in the codebase**. `check_docs` catches neither class, because its vocabulary check covers command and cvar names and not output or event names. |
+| **Streaming keeps what a game placed** | Unload destroys only `SectorOwned` entities, and nothing goes dormant: a prop or NPC a game puts in the world is never unloaded, and an NPC a few sectors out stands over a heightfield whose collision has gone. |
+| **A missing record is a silent default** | `RecordStore.Get<T>` logs once per call site and returns a default-constructed record, so a typo'd id becomes zero damage, a silent sound or a default material, with the complaint deduplicated away. |
 | Packaging, localisation, crash telemetry, non-Windows runs | None. Nothing has ever been built for another machine. |
 | The source generator (09 §3.2) | Records and saves are reflection-based, which is documented as temporary in both. |
 

@@ -48,7 +48,7 @@ How parts of the engine and game tell each other that something happened, withou
 | # | Mechanism | Payload | Delivery | Use for | Don't use for |
 |---|---|---|---|---|---|
 | 1 | **Structural notifications** | entity/component added/removed | Immediate *inside* the world (query caches, id index, editor); **queued** for gameplay | Reacting to things appearing/disappearing (register a physics body when `Collider` is added) | Gameplay facts ("died", "opened") |
-| 2 | **Game events** | typed `struct` | Queued per schedule; each reader has a cursor | Gameplay facts between systems: `Damaged`, `Died`, `ItemPickedUp`, `SpellCast`, `TriggerEntered` | Engine plumbing; things a level designer wires |
+| 2 | **Game events** | typed `struct` | Queued per schedule; each reader has a cursor | Gameplay facts between systems: `Damaged`, `Died`, `ItemPickedUp`, `SpellCast`, `Used` | Engine plumbing; things a level designer wires |
 | 3 | **Entity I/O** | output → target input, optional parameter and delay | Queued by fire time, dispatched in the `EntityIO` phase | Level/quest logic built in data: button `OnPressed` → door `Open`; quest stage triggers | System-to-system code paths |
 | 4 | **Engine signals** | plain C# `event` | Immediate, main thread, *outside* ticks | Rare engine callbacks: `AssetReloaded`, `RecordsReloaded`, `CVarChanged`, `WindowResized`, `WorldCreated` | Anything per-tick or per-entity |
 
@@ -190,7 +190,7 @@ public sealed class EngineSignals
 
 ```
 Commands ─ PlayerCommand → pawn intent
-PrePhysics / Physics / PostPhysics ─ physics writes TriggerEntered/Exited events
+PrePhysics / Physics / PostPhysics ─ physics fills trigger enter/exit *lists* (10 §"As built")
 Gameplay ─ systems read events, send Damaged/Died/…, fire I/O outputs, queue structural changes
 AI       ─ reads perception events, sends intents
 Animation

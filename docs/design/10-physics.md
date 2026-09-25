@@ -18,7 +18,7 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
 - **Tick order** (03 phases):
   1. `PrePhysics`: kinematic bodies, teleports and the character controller push `Transform` → Bepu.
   2. `Physics`: `Simulation.Timestep(tickDt)` with Bepu's thread dispatcher.
-  3. `PostPhysics`: dynamic bodies → `Transform`; contact/trigger buffers → game events (`TriggerEntered`, `TriggerExited`, `Collided`).
+  3. `PostPhysics`: dynamic bodies → `Transform`; contact/trigger buffers → the entity-I/O outputs `OnStartTouch`/`OnEndTouch` (04 §3.4). *Design-only:* `TriggerEntered`/`TriggerExited`/`Collided` as **game events** — no such type exists in the code (checked 2026-09-25); a system reads the spans instead.
 - **Coordinates:** Bepu runs in origin space (the same as `GlobalTransform`). When the origin sector changes (14), all bodies are shifted once.
 - **Layers:** a 32-bit layer mask per collider plus a collision matrix record (`physics_layers`). Filtered in Bepu's narrow-phase callbacks.
 - **Contact callbacks run on Bepu worker threads.** They write only to per-thread pooled buffers, which are merged on the main thread in `PostPhysics` (no world access from callbacks).
@@ -48,7 +48,12 @@ waking one deallocates it.
 - **Queries:** `Raycast` (nearest hit), `Sweep` (box/sphere/capsule, what the character controller will use) and `OverlapBox`. All take a `LayerMask`.
 - **Determinism:** `Simulation.Deterministic = true`, so a run repeats on the same machine. Bepu still has no state rollback (§2).
 - **Deviations:**
-  - **Triggers are lists, not events.** `PhysicsSpace.TriggerEnter/TriggerExit` are spans a system reads in `PostPhysics`; they become `TriggerEntered`/`TriggerExited` game events when the event bus exists (04).
+  - **Triggers are lists, not events**, and still are now that the event bus exists (R13).
+    `PhysicsSpace.TriggerEnter/TriggerExit` are spans a system reads in `PostPhysics`, and
+    `TriggerOutputSystem` turns them into the `OnStartTouch`/`OnEndTouch` outputs a mapper wires (F17).
+    `TriggerEntered`/`TriggerExited` as event structs were the plan and were never built — nothing in
+    the codebase declares them (checked 2026-09-25). Wiring in data turned out to be what the levels
+    wanted; a system that needs the signal in code reads the span.
   - `OverlapBox` is **broad phase only**: it can report entities whose shapes don't quite touch.
   - **`phys_debug` draws it all** (06 §3.2, needs `r_debugdraw 1`): every collider in its real place — cyan for solid, magenta for triggers — plus each character's swept capsule, green when it is grounded and orange when it is not, and an arrow along the ground normal that turns red on a slope too steep to stand on. A capsule sunk into the ground (review #44) is obvious at a glance in it.
   - **Queries see solid things.** A trigger has no surface, so it stops neither a ray, a sweep nor a sword; `includeTriggers: true` asks for them anyway. Before F20 a trigger volume blocked line of sight and swallowed a swing (review #53).
