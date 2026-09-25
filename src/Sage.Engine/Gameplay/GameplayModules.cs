@@ -22,23 +22,38 @@ namespace sage_engine;
 // is `before:`/`after:`, which names types and works across module boundaries.
 public static class GameplayModules
 {
-    // Games add the lot with one call, because "gameplay" is the unit a game wants, not six lines.
-    public static void AddGameplay(this ModuleManager modules)
+    // **The** list of gameplay modules, in `OnWorldCreated` order.
+    //
+    // It is a list rather than a line of `Add` calls because there were two of them: this one, and the
+    // host's own hand-written sequence in `Program.cs`. They agreed until they did not — `LightsModule`
+    // was added here and not there, so every test registered the `light` prefab part and the shipped
+    // game did not, and point lights silently did nothing in the only build anybody plays. The tests
+    // could not catch it because the tests were the ones using the good list.
+    //
+    // So: one list, both callers walk it, and `ModuleSetTests` fails if a gameplay module is missing
+    // from it. Adding a module is adding a line here and nowhere else.
+    public static IModule[] All() => new IModule[]
     {
-        modules.Add(new FactionsModule());
-        modules.Add(new AttributesModule());
-        modules.Add(new CharacterModule());
-        modules.Add(new AnimationModule());
-        modules.Add(new LightsModule());
-        modules.Add(new CombatModule());
-        modules.Add(new ItemsModule());
-        modules.Add(new AbilitiesModule());
-        modules.Add(new AIModule());
+        new FactionsModule(),
+        new AttributesModule(),
+        new CharacterModule(),
+        new AnimationModule(),
+        new LightsModule(),
+        new CombatModule(),
+        new ItemsModule(),
+        new AbilitiesModule(),
+        new AIModule(),
 
         // Level logic written in data, and the geometry it moves (04 §3.4, F17). Both are gameplay in
         // the sense that matters here: a headless server runs them, and they decide things.
-        modules.Add(new EntityIOModule());
-        modules.Add(new MoverModule());
+        new EntityIOModule(),
+        new MoverModule(),
+    };
+
+    // Games add the lot with one call, because "gameplay" is the unit a game wants, not six lines.
+    public static void AddGameplay(this ModuleManager modules)
+    {
+        foreach (var module in All()) modules.Add(module);
     }
 
     // Every cheat that acts on "the player" means the same thing by it (16 §3.1).

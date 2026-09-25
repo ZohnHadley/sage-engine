@@ -59,18 +59,11 @@ try
     AddDefaultModule(new PhysicsModule());
     AddDefaultModule(new StreamingModule());   // terrain rings and origin rebasing (R6, F14)
     AddDefaultModule(new MapModule());          // brush levels imported from TrenchBroom (15 §3, F16)
-    // One per feature since R15, and each still goes through AddDefaultModule, so `game.json` can
-    // disable them individually: a game with no items or no AI drops that module and nothing else.
-    AddDefaultModule(new FactionsModule());    // who counts as an enemy (16 §3.5, F24)
-    AddDefaultModule(new AttributesModule());
-    AddDefaultModule(new CharacterModule());
-    AddDefaultModule(new AnimationModule());
-    AddDefaultModule(new CombatModule());
-    AddDefaultModule(new ItemsModule());
-    AddDefaultModule(new AbilitiesModule());
-    AddDefaultModule(new AIModule());
-    AddDefaultModule(new EntityIOModule());     // level logic wired in data (04 §3.4, F17)
-    AddDefaultModule(new MoverModule());        // doors, lifts and the rest of what a wire moves (F17)
+    // One per feature since R15, from `GameplayModules.All()` — **not** a second hand-written list, which
+    // is what this was until 2026-09-25 and how `LightsModule` came to be in the tests' list and not the
+    // host's. Each still goes through AddDefaultModule, so `game.json` can disable them individually: a
+    // game with no items or no AI drops that module and nothing else.
+    foreach (var module in GameplayModules.All()) AddDefaultModule(module);
     AddDefaultModule(new ClientModule());
     engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));
     // `modules.add`: the game's other assemblies, such as its client half (01 §3.3, R15).

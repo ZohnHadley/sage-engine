@@ -38,7 +38,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 | **Abilities** | yes (fireball) | See 3.3 |
 | **Combat** | yes (minimal) | **Built (F20):** `Combat.ApplyDamage` → the damage type's resistance attribute → an effect on health → a `Damaged` game event (04). `attack` records, `Melee` + `MeleeCombatSystem`, hit detection by swept sphere (10), and sprite melee landing on the clip's "hit" event (12) |
 | **Inventory** | yes (pick up, equip one weapon) | `item` records; an `Inventory` component (item `RecordId`s + counts); equipment slots |
-| **Interaction** | yes | The `Use` action → raycast → `Interactable` → fires the I/O output `OnUsed` (04) and an `Interacted` event |
+| **Interaction** | yes | The `Use` action → raycast → `Interactable` → fires the I/O output `OnUse` (04) and a `Used` event |
 | **AI** | yes (one melee creature) | See 3.4 |
 | **Navigation** | yes (local grid) | A grid built round the agent when the straight line is blocked, A* and string-pulling, plus target memory (F23, "As built (navigation)"). A navmesh for brush-built interiors and a coarse graph for crossing sectors are still later |
 | **Narrative** (dialogue, quests, journal) | yes | `dialogue` records with conditions and outcomes, `quest` records with stages and objectives, a saved journal and two screens (F24) |

@@ -109,6 +109,22 @@ The host finds the game with `-game <folder>`; without it, dev builds use `games
 
 *As built (step 5, `modules.add` 2026-09-23):* `src/Sage.Engine/Core/GameManifest.cs`, `games/Sandbox/game.json`. `name`, `id`, `assembly`, `mounts`, `modules.disable` and `modules.add` work — the Sandbox uses `add` for its client half, and each added module still goes through the `disable` check, so one can be turned off by name. `modsDirectory` is parsed but unused until mods (17). **`defaultMap` is gone (R19):** it was parsed and never read, so a game could set it and nothing would happen — and now that levels exist (15 §10a), a game loads one from its own module or scene record, which is where the Sandbox does it. A missing assembly named in `add` stops the host with a message, the same as a missing game assembly. There is no framework content mount yet.
 
+### One list of gameplay modules (2026-09-25)
+
+The host used to hand-write its own sequence of `AddDefaultModule(new …Module())` calls while
+`GameplayModules.AddGameplay()` held a second copy for games and tests. They agreed until they did not:
+`LightsModule` was added to one and not the other, so every test registered the `light` prefab part and
+the only build anybody plays did not, and point lights silently did nothing for a day.
+
+The general shape is worth naming, because it is not about lighting: **a check that runs against a
+different configuration from the one that ships is not a check of the thing that ships.** The tests were
+not weak here — they were thorough, and they were thorough about the wrong list.
+
+`GameplayModules.All()` is now the only list. `AddGameplay` walks it; the host walks it too, still
+through `AddDefaultModule` so `game.json` can disable a single feature. `ModuleSetTests` reflects over
+the engine assembly and fails if a public `IModule` is neither in the list nor named there as installed
+elsewhere (physics, streaming, maps, which the host adds on its own terms).
+
 ## 4. Public API sketch
 
 ```csharp

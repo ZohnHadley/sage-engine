@@ -402,6 +402,22 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
 - **Content:** a `light` prefab part (`"light": { "colour": [...], "range": 8, "intensity": 1 }`,
   16 §3), registered as the `light` classname so a mapper places one in TrenchBroom like any other
   entity and `fgd_export` tells the editor about it. The Sandbox's hut has two lamps.
+- **Second pass, day two: the lamps were not lit in the game at all, and every test passed.** Moving
+  the `light` part into its own `LightsModule` (below) broke it: `Sage.Host/Program.cs` kept its own
+  hand-written list of gameplay modules and never called `AddGameplay`, so the new module was added in
+  every test and in no shipped build. The prefab part went unregistered, the lamp entities spawned with
+  no `PointLight` on them, and the game said so on every boot — one `ERROR Records  sandbox:light: no
+  prefab part 'light'` that nobody was reading. There is one list now (`GameplayModules.All()`, walked
+  by both callers) and `ModuleSetTests` fails if a module is missing from it.
+  (test: EveryGameplayModuleTheEngineDefinesIsInTheOneList)
+- **`r_stats` counts lights**, because the three verification attempts before it were all somebody
+  looking at a picture and deciding it seemed warmer — and a wooden floor in daylight reads exactly like
+  lamplight. `lights 2 (max 2 on a draw)` does not. The count is what finally showed the lamps were
+  missing, and then that `r_lights` was off.
+- **`r_lights` is `Archive`, so `+r_lights 0` in a scripted run persists.** A comparison run wrote
+  `r_lights "0"` into `user/<game>/config.cfg` and every run after it had lighting off, including the
+  ones used to decide whether lighting worked. Worth knowing before trusting any screenshot taken after
+  a scripted A/B: check the cvar, or read the number.
 - **Second pass (same day), and it did not show in a screenshot.** `RenderSnapshot.Lights` was added
   as a field and left out of `Clear()`, so the list grew by every lamp every frame and every draw
   walked all of them — and the picture stayed *right*, because the extras were duplicates of the same

@@ -10,6 +10,11 @@ namespace sage_engine;
 public struct RenderStats
 {
     public int Items, Sprites, Culled, DrawCalls, Triangles, MaterialSwitches, DebugLines;
+
+    // Point lights extracted this frame, and the most any one draw was lit by (06 §3.9). Here because
+    // lighting was otherwise only checkable by looking at a picture and saying it seemed warmer — and a
+    // warm-looking wooden floor in daylight reads exactly like a lamp. A number does not.
+    public int Lights, MaxLightsOnADraw;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -85,7 +90,8 @@ public sealed class Renderer : IDisposable
             "Draw debug geometry through walls (06 §3.2): what the AI is chasing is usually behind something).");
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
-                                     $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}; " +
+                                     $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
+                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw); " +
                                      $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials"));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
@@ -286,7 +292,10 @@ public sealed class Renderer : IDisposable
         _frame++;
         ref readonly var env = ref s.Environment;
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, new Color(env.ClearColor), 1f, 0);   // pass 3, sky: a clear colour in v1
-        var stats = new RenderStats { Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled };
+        var stats = new RenderStats
+        {
+            Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, Lights = s.Lights.Count,
+        };
         if (!s.HasView) { LastFrame = stats; return; }
 
         int items = s.Items.Count, sprites = s.Sprites.Count;
@@ -380,6 +389,7 @@ public sealed class Renderer : IDisposable
             var at = new System.Numerics.Vector3(item.World.M41, item.World.M42, item.World.M43);
             int lit = LightRules.Nearest(s.Lights.AsSpan(), at, _lights);
             m.Effect.SetLights(_lights.AsSpan(0, lit));
+            if (lit > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = lit;
             var part = _meshes[item.Mesh].Parts[item.Part];
             _device.SetVertexBuffer(part.VertexBuffer);
             _device.Indices = part.IndexBuffer;
