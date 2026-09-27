@@ -677,6 +677,15 @@ what the base therefore needs first:
 
 Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues/2) · Phase 1 [#9](https://github.com/ZohnHadley/sage-engine/issues/9) · Phase 2 [#15](https://github.com/ZohnHadley/sage-engine/issues/15) · Phase 3 [#23](https://github.com/ZohnHadley/sage-engine/issues/23). Each has its work split into sub-issues.
 
+**Status (2026-09-27; details in [`history/handoff-2026-09-27.md`](history/handoff-2026-09-27.md)):**
+
+| Phase | State |
+|---|---|
+| 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
+| 1 — Kernel | **Mostly done.** `SageApp` and `HostLoop` (#10), sealed registration and plugins (#12), `Add`/`Replace` and `CreateRules` (#13, part). Left: `Sage.Testing` (#14), resources out of `World`'s constructor (#13), the per-app log level (#11) |
+| 2 — Declarations | Not started |
+| 3 — Carve the base | Not started |
+
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|
 | **0** | Clean ground (days) | Hygiene (§4.8), CI, `global.json` and props, licence (D9), fix the doc contradictions (§7), fix `Release`/`{config}` | CI green on Windows and Linux; no dead projects |
