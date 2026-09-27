@@ -102,8 +102,13 @@ internal sealed class MaterialCache : IDisposable
     private readonly Dictionary<RecordId, int> _ids = new();
     private readonly List<RecordId> _idList = new();
     private MaterialRuntime?[] _runtimes = new MaterialRuntime?[16];
+    // Ids whose material *and* the sage:error fallback both failed to build. Remembered until the next
+    // Invalidate, so a broken material costs one attempt and one log line, not one per draw per frame
+    // (272,780 lines in eight seconds with the shaders missing, 2026-09-27).
+    private bool[] _unbuildable = new bool[16];
     private readonly Dictionary<Effect, EffectBinding> _effects = new();
     private MaterialRuntime? _error;
+    private bool _errorUnbuildable;
 
     private static readonly RasterizerState WireBack = new() { CullMode = CullMode.CullCounterClockwiseFace, FillMode = FillMode.WireFrame };
     private static readonly RasterizerState WireNone = new() { CullMode = CullMode.None, FillMode = FillMode.WireFrame };
@@ -133,7 +138,11 @@ internal sealed class MaterialCache : IDisposable
             index = _idList.Count;
             _ids[id] = index;
             _idList.Add(id);
-            if (index == _runtimes.Length) Array.Resize(ref _runtimes, _runtimes.Length * 2);
+            if (index == _runtimes.Length)
+            {
+                Array.Resize(ref _runtimes, _runtimes.Length * 2);
+                Array.Resize(ref _unbuildable, _runtimes.Length);
+            }
         }
         return index;
     }
@@ -142,9 +151,10 @@ internal sealed class MaterialCache : IDisposable
     public MaterialRuntime? Get(int id)
     {
         var runtime = _runtimes[id];
-        if (runtime != null) return runtime;
+        if (runtime != null || _unbuildable[id]) return runtime;
         runtime = Build(_idList[id]) ?? ErrorRuntime();
         _runtimes[id] = runtime;
+        _unbuildable[id] = runtime == null;
         return runtime;
     }
 
@@ -152,7 +162,9 @@ internal sealed class MaterialCache : IDisposable
     public void Invalidate()
     {
         Array.Clear(_runtimes);
+        Array.Clear(_unbuildable);
         _error = null;
+        _errorUnbuildable = false;
         _effects.Clear();   // an effect may have been reloaded under us; its bindings are dead
     }
 
@@ -161,10 +173,11 @@ internal sealed class MaterialCache : IDisposable
 
     private MaterialRuntime? ErrorRuntime()
     {
-        if (_error != null) return _error;
+        if (_error != null || _errorUnbuildable) return _error;
         var record = _records.TryGet(MaterialRecord.Error, out MaterialRecord r) ? r
             : new MaterialRecord { Effect = AssetPath.Intern("shaders/error.mgfxo"), Fog = false };
         _error = Build(MaterialRecord.Error, record);
+        _errorUnbuildable = _error == null;
         if (_error == null) Log.Once(LogCat.Shaders, LogLevel.Error, "no-error-material", "sage:error can't be built (shaders/error.mgfxo missing?); broken materials are not drawn");
         else _error.IsError = true;
         return _error;
