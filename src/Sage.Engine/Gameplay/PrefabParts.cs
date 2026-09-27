@@ -34,6 +34,11 @@ public static class PrefabParts
         }
     }
 
+    // The option classes below are filled by JsonSerializer (Read<T>) from a prefab and never assigned
+    // in code, which the compiler reports as CS0649. They become public, attributed part types in
+    // phase 2 (issue #17); until then the warning is off for this file only.
+#pragma warning disable CS0649
+
     // ---- physics ---------------------------------------------------------------------------------
 
     private sealed class CharacterOptions

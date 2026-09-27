@@ -22,26 +22,28 @@ public class Game1 : Game
     private readonly Engine engine;
     private readonly Action applyConfig;
     private readonly Action runLaunchCommands;
-    private World world;
-    private RecordHotReload recordHotReload;
-    private CVar<bool> recHotReload;
+    // Fields marked `= null!` are set in Initialize, which MonoGame calls once the graphics device
+    // exists and before the first Update or Draw. The boot sequence moves out of Game1 in phase 1 (#10).
+    private World world = null!;
+    private RecordHotReload recordHotReload = null!;
+    private CVar<bool> recHotReload = null!;
 
 
     private readonly GraphicsDeviceManager graphics;
-    private GraphicsDevice graphicsDevice;
-    private HostCVars hostCVars;
-    private InputDevices devices;
-    private InputActions actions;
+    private GraphicsDevice graphicsDevice = null!;
+    private HostCVars hostCVars = null!;
+    private InputDevices devices = null!;
+    private InputActions actions = null!;
     private readonly CommandLatch latch = new CommandLatch();
     private ActionId moveAction, lookAction, menuAction, toggleConsoleAction;
-    private PlayerInput playerInput;
-    private ActiveCamera activeCamera;
+    private PlayerInput playerInput = null!;
+    private ActiveCamera activeCamera = null!;
 
 #if SAGE_DEV
     // The console, the overlays, the free camera and the editor — everything a developer sees and a
     // player does not (15 §3, F28). A Shipping build has no such field, and references neither
     // `Sage.Editor` nor ImGui.
-    private DevTools dev;
+    private DevTools dev = null!;
 #endif
 
     private readonly FixedStepClock clock = new FixedStepClock();

@@ -34,7 +34,9 @@ public sealed class SandboxClientModule : IModule
         });
     }
 
+#pragma warning disable CS0649 // options filled by JsonSerializer from a prefab, never assigned in code
     private sealed class BoxMeshOptions { public Vector3 Size; public RecordId Material; }
+#pragma warning restore CS0649
 
     public void Start(ModuleContext ctx)
     {

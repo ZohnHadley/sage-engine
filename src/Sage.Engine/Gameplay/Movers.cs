@@ -158,10 +158,12 @@ public sealed class MoverModule : IModule
         mover.Direction = direction;
     }
 
+#pragma warning disable CS0649 // options filled by JsonSerializer from a prefab, never assigned in code
     private sealed class MoverOptions
     {
         public Vector3 Open;
         public float Seconds = 1f;
         public float CloseAfter;
     }
+#pragma warning restore CS0649
 }

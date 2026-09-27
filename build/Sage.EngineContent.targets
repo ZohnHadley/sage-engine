@@ -28,22 +28,28 @@
   </ItemGroup>
 
   <!--
+    SageSkipShaders=true compiles the host without its shaders: a build to check the code, not one to
+    run, since the renderer needs the .mgfxo files. It exists because mgfxc needs Wine on Linux
+    (MGFXC0001), and Linux CI still has to compile the host.
+  -->
+
+  <!--
     mgfxc is a local dotnet tool, so it has to be restored before it can be run. Until R12 this
     happened only as a side effect of the vendored ImGuiNet project restoring tools for MGCB; now that
     MGCB is gone, the one target that needs a tool restores it itself.
   -->
-  <Target Name="SageRestoreTools" BeforeTargets="SageCompileShaders">
+  <Target Name="SageRestoreTools" BeforeTargets="SageCompileShaders" Condition="'$(SageSkipShaders)' != 'true'">
     <Exec Command="dotnet tool restore" StandardOutputImportance="low" />
   </Target>
 
-  <Target Name="SageCompileShaders" BeforeTargets="AssignTargetPaths"
+  <Target Name="SageCompileShaders" BeforeTargets="AssignTargetPaths" Condition="'$(SageSkipShaders)' != 'true'"
           Inputs="@(SageShader);@(SageShaderInclude)"
           Outputs="@(SageShader->'$(SageShaderOutDir)%(Filename).mgfxo')">
     <MakeDir Directories="$(SageShaderOutDir)" />
     <Exec Command="dotnet mgfxc &quot;%(SageShader.FullPath)&quot; &quot;$(SageShaderOutDir)%(SageShader.Filename).mgfxo&quot; /Profile:OpenGL" />
   </Target>
 
-  <Target Name="SageIncludeShaders" BeforeTargets="AssignTargetPaths" DependsOnTargets="SageCompileShaders">
+  <Target Name="SageIncludeShaders" BeforeTargets="AssignTargetPaths" DependsOnTargets="SageCompileShaders" Condition="'$(SageSkipShaders)' != 'true'">
     <ItemGroup>
       <None Include="@(SageShader->'$(SageShaderOutDir)%(Filename).mgfxo')" Link="Content\shaders\%(Filename).mgfxo" CopyToOutputDirectory="PreserveNewest" />
       <FileWrites Include="@(SageShader->'$(SageShaderOutDir)%(Filename).mgfxo')" />

@@ -19,8 +19,8 @@ internal class KeyboardListener
 
     // Events fire on edges only (press / release); use the polling API for
     // continuous "is this key down right now" checks.
-    public event Action<Keys> OnKeyPressed;
-    public event Action<Keys> OnKeyReleased;
+    public event Action<Keys>? OnKeyPressed;
+    public event Action<Keys>? OnKeyReleased;
 
 
     public void Update(bool focused)

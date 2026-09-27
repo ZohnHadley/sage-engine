@@ -291,10 +291,14 @@ public static class Items
     public static Entity SpawnPickup(this World world, RecordId item, int count, Vector3 position, ItemRecord? record = null)
     {
         var records = world.Resources.Get<RecordStore>();
-        if (record == null && !records.TryGet(item, out record))
+        if (record == null)
         {
-            Log.Once(LogCat.Gameplay, LogLevel.Error, $"item:{item}", $"No item record {item}");
-            return default;
+            if (!records.TryGet(item, out ItemRecord found))
+            {
+                Log.Once(LogCat.Gameplay, LogLevel.Error, $"item:{item}", $"No item record {item}");
+                return default;
+            }
+            record = found;
         }
 
         var entity = world.Create(Transform.At(position), record.Describe(item));
