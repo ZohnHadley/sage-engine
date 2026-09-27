@@ -1,6 +1,6 @@
 # Sage Engine — TODO
 
-The working tracker: **open bugs in today's code** and the **roadmap**. Updated 2026-09-23.
+The working tracker: **open bugs in today's code** and the **roadmap**. Updated 2026-09-27. The plan for what comes next — and the GitHub issues it is tracked in — is [`docs/REDESIGN.md`](docs/REDESIGN.md).
 
 | Where else to look | For |
 |---|---|
@@ -17,7 +17,7 @@ Legend: `[ ]` open · `[~]` partly done · `[X]` done. When an item is done, tic
 
 ---
 
-## Open bugs in today's code (`engine/`)
+## Open bugs in today's code (`src/`, `games/`)
 
 Most of these were against the pre-migration single-project code and went away with the code they were
 in; what is left below is open against the engine as it stands, and new findings go here too. The
@@ -93,7 +93,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 
 #### Phase 2 — Physics and movement
 - [~] **F6. Physics layer (v1).** *Done 2026-09-22: BepuPhysics 2.4 per world through `PhysicsModule`, `Collider`/`RigidBody`/`PhysicsBody`, box/sphere/capsule/mesh shapes, terrain collision meshes, raycast/sweep/overlap with layers, trigger overlaps, `phys_stats`, deterministic stepping. Left: trigger and contact *events* (needs 04), `Collided`, `phys_debug` (needs `DebugDraw`), parented colliders, ragdolls (F11).* BepuPhysics v2 per world; colliders/rigid bodies via handles; raycasts/sweeps/overlaps; triggers → events; layers. → `10`
-- [X] **F7. Kinematic character controller (v1).** *Done 2026-09-22: capsule with collide-and-slide, step-up, slope limit with downhill sliding, ground snapping, crouch with a headroom check, jump and air control, all tuned by `movement_profile` records; `PawnIntent` and the player controller feed it, and a first-person camera rig sits in its head. Left: depenetration when something overlaps it, moving platforms, the GoldSrc air-strafe profile.* Capsule, collide-and-slide, step-up, slopes, crouch, jump; `movement_profile` records; GoldSrc air-acceleration profile later. → `10`, `16`
+- [~] **F7. Kinematic character controller (v1).** *Done 2026-09-22: capsule with collide-and-slide, step-up, slope limit with downhill sliding, ground snapping, crouch with a headroom check, jump and air control, all tuned by `movement_profile` records; `PawnIntent` and the player controller feed it, and a first-person camera rig sits in its head. Left: depenetration when something overlaps it, moving platforms, the GoldSrc air-strafe profile.* Capsule, collide-and-slide, step-up, slopes, crouch, jump; `movement_profile` records; GoldSrc air-acceleration profile later. → `10`, `16`
 - [ ] **F8. Mounts.** Rideable-entity controller, rider attachment, speed-based bonus damage. → `10` (later)
 
 #### Phase 3 — Animation

@@ -2,7 +2,7 @@
 
 Detailed subsystem designs. `ARCHITECTURE.md` is the overview (layers, rules, decisions); these docs say *how* each part works. The research behind them is in `docs/research/engine-survey.md`, the plan that produced them in `docs/ENGINE_DESIGN_PLAN.md`, and the build tasks in `TODO.md`. What building the vertical slice on top of these docs actually taught us — what is paying for itself, and where the debt is — is in [`../history/engine-review-2026-09-23.md`](../history/engine-review-2026-09-23.md); several docs below carry a pointer to the part of it that is about them. The readiness review — what is strong, what is missing before a game ships, and what has never been measured — is [`../history/readiness-2026-09-24.md`](../history/readiness-2026-09-24.md). The retrospective written when the slice **closed** — what it cost, what the design got right, and the debt the last features exposed — is [`../history/vertical-slice-2026-09-23.md`](../history/vertical-slice-2026-09-23.md).
 
-Status: design, 2026-09-22. Nothing here is built yet unless a doc's "As built" section (usually in §3, sometimes its own numbered heading) or its §10 "Mapping from today's code" says so.
+Status: designed 2026-09-22 and largely built since. Each doc's "As built" sections (usually in §3, sometimes their own numbered heading) say what exists; the rest is design. For what comes next, read [`../REDESIGN.md`](../REDESIGN.md).
 
 ## Reading order
 

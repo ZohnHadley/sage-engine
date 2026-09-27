@@ -141,6 +141,6 @@ Only the local player's KCC would be predicted (against static geometry). Bepu's
 ## 14. Build steps
 1. ~~`PhysicsSpace` resource + `Collider`/`RigidBody`/`PhysicsBody` + body sync~~ **Done 2026-09-22** (TODO F6).
 2. ~~Raycast/sweep/overlap queries + layers~~ **Done 2026-09-22** (overlap is broad phase only).
-3. Triggers → game events. **Overlaps are collected and published as lists (done); the events wait for 04.**
-4. ~~KCC + movement profile records~~ **Done 2026-09-22** (TODO F7).
-5. Origin rebasing hook (with 14).
+3. Triggers → game events. **Overlaps are collected as lists (`PhysicsSpace.TriggerEnter`/`TriggerExit`) and drive entity I/O's `OnStartTouch`/`OnEndTouch` (F17). The event bus exists (04, R13); moving the overlaps onto it is not done.**
+4. ~~KCC + movement profile records~~ **Done 2026-09-22** (TODO F7). Left: depenetration (TODO bug 61).
+5. ~~Origin rebasing hook (with 14)~~ **Done 2026-09-24** (R6; "As built (rebasing)").

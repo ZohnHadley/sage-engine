@@ -170,21 +170,21 @@ ctx.Engine.Records.Register<QuestBoardRecord>();
 
 Without that `Register` line the JSON is read, matched to nothing, and ignored.
 
-`rec_list <type>`, `rec_print <id>` and `rec_reload` in the console are how you check what actually
-loaded — and `rec_print` is the fastest way to learn a record's fields, because it prints the merged
+`rec_list <type>`, `rec_get <type> <id>` and `rec_reload` in the console are how you check what actually
+loaded — and `rec_get` is the fastest way to learn a record's fields, because it prints the merged
 result with the file each field came from.
 
 ### Every record type there is
 
-Twenty-four, and a game may use as few as it likes. Their fields are documented in the design doc named
-beside each group; `rec_print sage:<id>` on one of the engine's own is usually quicker.
+Twenty-five, and a game may use as few as it likes. Their fields are documented in the design doc named
+beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
 |---|---|
 | **Things that exist** (05) | `prefab` — components and parts; `scene` — where things start; `tag` |
 | **Look** (06, 07) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events |
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
-| **Levels** (15) | `map` — a `.map` file, its scale and where it stands |
+| **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
 | **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step; `physics_layers` — what collides with what |
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |

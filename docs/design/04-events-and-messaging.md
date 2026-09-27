@@ -256,7 +256,7 @@ Game events are simulation-internal and stay on the server. Clients get the *eff
 - Should I/O inputs be allowed to run in the same tick they're fired with 0 delay (Source does) or always the next EntityIO phase? Current choice: **same tick if the source fires before EntityIO**, next tick otherwise. Documented so level designers can reason about it.
 
 ## 14. Build steps
-1. Game event queues + `EventReader`/`EventWriter` + declarations (TODO R4).
-2. Structural notifications from `World` (with 03 step 2).
-3. `EngineSignals` (with 01/05).
-4. Entity I/O: attributes, generated dispatch, connections component, load-time resolution, `ent_fire` (TODO F17).
+1. ~~Game event queues + `EventReader`/`EventWriter` + declarations~~ **Done 2026-09-23** (R13; "As built (game events)").
+2. Structural notifications from `World` (with 03 step 2). **Partly:** `World` raises plain C# events (`EntityDestroyed`, …); the queued form in §3.1 is not built.
+3. `EngineSignals` (with 01/05). Not built.
+4. ~~Entity I/O: connections, load-time resolution, `ent_fire`~~ **Done 2026-09-24** (F17; §3.4a). Left: attributes and generated dispatch, which wait for the source generator (09 §3.2, REDESIGN §3.4).

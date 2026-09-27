@@ -45,9 +45,9 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
 | Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 518 headless tests | <!-- counts -->
 
-What is deliberately **not** here yet: skeletal animation, audio, world streaming, pathfinding,
-factions and quests, the editor, and multiplayer. The roadmap in [`TODO.md`](TODO.md) says where each
-one sits.
+What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
+is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
+where each one sits, and [`docs/REDESIGN.md`](docs/REDESIGN.md) is the plan for what comes next.
 
 ## Running it
 
