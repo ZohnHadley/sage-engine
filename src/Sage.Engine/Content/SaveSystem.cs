@@ -370,7 +370,14 @@ public sealed class SaveSystem
         });
     }
 
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    // The resolver is explicit because the .NET 8 runtime refuses to write a JsonValue with options
+    // that have none ("must specify a TypeInfoResolver"); .NET 9 and later default it, which is how
+    // every save failing on net8.0 hid behind RollForward=Major on machines with only a newer runtime.
+    private static readonly JsonSerializerOptions Indented = new()
+    {
+        WriteIndented = true,
+        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
+    };
 
     // A slot is a folder name, and a folder name is not a place to trust a string.
     private static string Sanitise(string name)
