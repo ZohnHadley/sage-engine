@@ -69,7 +69,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are Sandbox C#. Prefab overrides and nesting missing (F31) |
 | **Cameras as components**: perspective and ortho, rigs, several viewports | ● | ● | ● | ● | ● | ● | ● | ❌ one `ActiveCamera` resource, perspective only (`RenderSystems.cs:48`), one first-person rig (`CharacterController.cs:417`) |
 | 3D physics, queries, triggers | ● | ● | ● | ○ | ● | ○ | ● | ✅ Bepu |
-| 2D-plane physics | | | ○ | ● | | ○ | | ❌ |
+| 2D physics (bodies, tiles, one-way platforms, slopes) | | | ● | ● | | ○ | | ❌ |
 | Character controllers (FP, 3P, top-down, 2D) | ● | ● | ● | ● | ○ | | ● | ◐ one kinematic first-person capsule |
 | **Skeletal animation**, blending, anim state machine | ● | ● | ● | ○ | ● | | ○ | ❌ F9–F12. `Animation/` is only `SpriteAnimation.cs` (102 lines) |
 | Sprites, sorting, tilemaps, 2D layer | ○ | | ● | ● | ○ | ● | ● | ◐ billboards and sprite sheets; no ortho, sorting layers or tilemaps |
@@ -103,7 +103,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 ### The base-engine boundary (what goes where)
 
 - **Base engine.** `Sage.Core`, `Sage.Simulation`, `Sage.Client`, plus optional base plugins:
-  - `Sage.Physics3D`, `Sage.Physics2D` (plane-locked, see below);
+  - `Sage.Physics3D` (Bepu) and `Sage.Physics2D` (a real 2D engine; see "2D is first-class" below);
   - `Sage.Streaming`, `Sage.Navigation`, `Sage.Animation`, `Sage.UI`, `Sage.Audio`;
   - `Sage.Gameplay`: generic stats, effects, damage, inventory, factions, AI, and the
     conditions/actions vocabulary.
@@ -131,7 +131,41 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 - Our own brush editor: TrenchBroom stays.
 - AOT and consoles.
 - Mobile and web.
-- A true 2D physics engine, until the platformer sample shows that plane-locked Bepu isn't enough.
+- 2D skeletal animation (Spine- or DragonBones-style). Sprite animation covers 2D first; revisit after
+  the 2D samples.
+
+### 2D is first-class (decided 2026-09-27)
+
+**Decision:** the owner chose **3D and 2D**, so 2D is a peer of 3D, not a 3D camera pointed at a plane.
+The rule is **one engine, two spatial profiles**. Everything that isn't spatial is shared:
+- records, prefabs and scenes;
+- ECS, events and saves;
+- UI, input and audio;
+- gameplay (stats, effects, AI, conditions/actions);
+- the editor and modding.
+
+Only the spatial layer comes in a 2D and a 3D flavour. A game picks its profile in `game.json`, and can
+mix them: a 3D game with a 2D minigame world, or a 2D game with 3D backgrounds.
+
+| Concern | Shared | 2D profile | 3D profile |
+|---|---|---|---|
+| Transform | One `Transform` (position, rotation, scale). 2D uses X/Y with rotation about Z. **Z is sort depth, never gravity** | `Transform2D` view helpers (angle in degrees, `Vector2` accessors), generated from the same component | as today |
+| Physics | One `IPhysicsWorld` facade: bodies, layers, raycast/shape-cast/overlap, triggers, contact events, the same prefab parts (`body`, `collider`) and the same debug draw | **`Sage.Physics2D`**: a dedicated 2D engine. First candidate is **Aether.Physics2D** (pure C#, Box2D lineage, MIT, used with MonoGame); decide after a spike | `Sage.Physics3D`: Bepu, as today |
+| Character controller | `PawnIntent` drives both; `character` part settings | kinematic 2D controller: slopes, one-way platforms, coyote time, jump buffering, ladders | today's kinematic capsule, moved to the base |
+| Camera | camera component and rigs (4a) | ortho, **pixel-perfect** mode (integer scaling, snapping), 2D follow with dead zone, bounds and look-ahead | perspective rigs |
+| Rendering | pass registry, materials as records, the same `RenderSnapshot` | sprite batching, **sorting layers and order-in-layer**, Y-sort for top-down, 9-slice, parallax layers, 2D lights later | meshes, lights, billboards |
+| Levels | scenes, placements, entity I/O and logic entities | **Tiled** (`.tmx`/`.tmj`) import: tile layers become meshes plus collision; object layers become prefabs, using the TrenchBroom pattern (classname = prefab id, properties = map keys, I/O keys) | TrenchBroom `.map` |
+| Navigation | one `INavigation` service | grid/tile A* (today's grid planner, promoted) | grid now, navmesh later |
+| Animation | clips, events and state machines as data | sprite-sheet clips (today's `SpriteAnimation`, extended) | skeletal (4d) |
+| Audio | mixer and buses | 2D panning by screen position | 3D positional |
+
+**Why a real 2D engine and not Bepu locked to a plane.** One-way platforms, tile-edge snagging,
+ultra-thin colliders, pixel-scale units and per-contact callbacks for platformer feel are all awkward
+or slow on a 3D solver. The facade keeps the choice reversible. A spike in phase 4e decides between
+Aether.Physics2D and a thin wrapper of your own (Box2D v3 through bindings is the fallback).
+
+**What this changes for the headless tests:** nothing. Both physics backends are pure C# with no
+MonoGame, so 2D games stay testable exactly like the Sandbox.
 
 ---
 
@@ -622,7 +656,7 @@ commit" habit. The existing TODO ids are shown in brackets.
 | **0** | Clean ground (days) | Hygiene (§4.8), CI, `global.json` and props, licence (D9), fix the doc contradictions (§7), fix `Release`/`{config}` | CI green on Windows and Linux; no dead projects |
 | **1** | Kernel | `SageApp` and one boot path; per-app services instead of statics; plugins with sealed stages, string ids and a `kind`; plugin sets chosen in `game.json`; `Sage.Testing` headless app; the host ticks every world | Tests and the Player host boot the same way; a game with **no physics and no gameplay plugin** boots and runs |
 | **2** | Declarations | Source generator and analyzers (§3.4) for components, records, parts, systems, conditions and actions; stable ids in saves; JSON Schema output; strict loading; `sage validate` [09 §3.2, R11] | Deleting any `Register` call is a compile error; VS Code autocompletes records |
-| **3** | Carve the base | Assembly split (§3.1, §0.5 boundary): genre code moves to `Sage.Kits.Rpg`; own the ECS API (§3.5); `Sage.*` namespaces; PublicApi analyzers; `Died` event instead of direct calls; a `gameplay_conventions` record instead of `sage:` constants; open the closed enums into registries (§4.3 stage 1); engine-owned scenes; `Sage.Sdk` and `dotnet new sage-game` | `games/Hello` runs on the base alone; `Sandbox` runs unchanged on base plus `Kits.Rpg`; a game built **outside the repo** compiles and runs; an analyzer proves no base assembly references a kit |
+| **3** | Carve the base | Assembly split (§3.1, §0.5 boundary): genre code moves to `Sage.Kits.Rpg`; own the ECS API (§3.5); `Sage.*` namespaces; PublicApi analyzers; `Died` event instead of direct calls; a `gameplay_conventions` record instead of `sage:` constants; open the closed enums into registries (§4.3 stage 1); engine-owned scenes; physics moved behind an `IPhysicsWorld` facade in `Sage.Physics3D`, ready for the 2D backend; `Sage.Sdk` and `dotnet new sage-game` | `games/Hello` runs on the base alone; `Sandbox` runs unchanged on base plus `Kits.Rpg`; a game built **outside the repo** compiles and runs; an analyzer proves no base assembly references a kit |
 
 ### Stage B: fill the gaps, in order of how many genres each unblocks
 
@@ -632,7 +666,7 @@ commit" habit. The existing TODO ids are shown in brackets.
 | **4b** | **Timers, tweens, state machines**, plus the **conditions/actions vocabulary** (§4.3 stage 2), logic entities and bridge I/O (stage 3) | all | a door, elevator and puzzle sequence built in data only |
 | **4c** | **UI toolkit**: a retained widget tree (text, image, button, list, grid, slider, text field, scroll, layout containers), focus and gamepad navigation, `ui_style`/`ui_layout` records, localisation keys, HUD built on the same widgets. Keep `Screen`/`Panel` as view-models over it | all | the Sandbox HUD and bag rebuilt from records; a main menu that works with keyboard, mouse and gamepad |
 | **4d** | **Skeletal animation** [F9–F12]: glTF skins, clips, blending, an animation state machine as data, root motion, animation events (replacing the hard-coded `attack`/`hit` names) | FPS, 3P, RTS, iso RPG | a glTF character walks, runs and attacks, blended, driven by `PawnIntent` |
-| **4e** | **2D layer**: ortho plus pixel-perfect option, sprite sorting layers, tilemaps (Tiled `.tmx`/`.tmj` import, as TrenchBroom is for brushes), plane-locked physics (Bepu with Z locked) and a 2D character controller | platformer, top-down, puzzle | a tile level with a jumping character and one-way platforms |
+| **4e** | **2D profile** (§0.5 "2D is first-class"): the physics facade with a spike to choose the 2D backend, then `Sage.Physics2D`; the 2D character controller; pixel-perfect ortho; sorting layers, Y-sort, parallax and 9-slice; Tiled import with object layers as prefabs and I/O; 2D panning; 2D debug draw. **Start the facade in phase 3**, when the 3D physics is carved into its plugin, so 3D code already goes through it | platformer, top-down, puzzle, 2D RPGs | a Tiled level with a character that runs, jumps through one-way platforms and opens a door wired by I/O, identical in feel at 1× and 4× pixel scale; headless tests for the controller |
 | **4f** | **Render pass registry** and public `RenderContext` (§4.7); post-processing; mesh, sound and `.fx` hot reload | FPS, 3P, your game | a post-process pass added from game code |
 | **4g** | **Picking and world queries from the mouse**; selection sets; navigation as a general service (grid now, navmesh later) with group/formation movement; many-unit performance pass (scale doc numbers) | RTS, iso RPG, editor | drag-select 200 units and move them in formation at 60 Hz |
 | **4h** | Prefab overrides and nesting [F31]; runtime spawns persist; save upgraders and placeholders (§4.5) | all | a saved game survives a prefab rename with an upgrader |
@@ -644,7 +678,7 @@ genre needs them.
 
 | Phase | Work | Exit criterion |
 |---|---|---|
-| **5** | **Genre gauntlet.** `games/Samples/`: small but complete reference games, each with headless tests: an HL1-style room shooter, a third-person melee arena, a 2D platformer, a top-down twin-stick or click-to-move, an RTS skirmish, and a card or puzzle game. **Rule: gaps are fixed in the base, never worked around in a sample.** Each sample doubles as a `dotnet new` template | All samples run from the stock host; `git log` shows no genre-specific `if` in base assemblies; each sample's code is small (target: under about 1,500 lines) |
+| **5** | **Genre gauntlet.** `games/Samples/`: small but complete reference games, each with headless tests: an HL1-style room shooter, a third-person melee arena, an RTS skirmish; and on the 2D profile, a platformer, a top-down 2D action RPG (tiles, Y-sort, dialogue and quests from the same vocabulary as your game), and a card or puzzle game. **Half the samples are 2D.** That keeps the 2D profile from rotting behind the 3D one. **Rule: gaps are fixed in the base, never worked around in a sample.** Each sample doubles as a `dotnet new` template | All samples run from the stock host; `git log` shows no genre-specific `if` in base assemblies; each sample's code is small (target: under about 1,500 lines) |
 | **6** | **Your game.** Grow `Sandbox` into the Daggerfall-like on `Kits.Rpg`: the existing vertical slice, now using skeletal or billboard creatures, the new UI toolkit, the conditions vocabulary for quests and dialogue, and dungeons from TrenchBroom | The vertical slice from 2026-09-23 plays again, with no RPG code in the base |
 
 ### Stage D: open it up to designers and modders
@@ -663,7 +697,7 @@ metadata table, documents and registrations tracked per plugin. The later work i
 rewrite.
 
 **What deliberately waits:** multiplayer (keep the readiness rules), visual scripting, DesktopVK, AOT,
-and a real 2D physics engine (only if 4e's plane-locked approach fails the platformer sample).
+and 2D skeletal animation.
 
 ---
 
@@ -671,11 +705,9 @@ and a real 2D physics engine (only if 4e's plane-locked approach fails the platf
 
 These are the owner's calls, and the plan works with any answer. My recommendation comes first.
 
-0. **How far does "almost any game" go?**
-   - Recommended: 3D of any genre, plus 2D and 2.5D through the same renderer (ortho, sprites,
-     tilemaps, plane-locked physics). The phase-5 samples are the definition.
-   - Alternative: 3D only. That drops phase 4e and the platformer sample.
-   - Either way, multiplayer stays later.
+0. ~~How far does "almost any game" go?~~ **Decided 2026-09-27: 3D and 2D, both first-class**
+   (§0.5). Multiplayer stays later. Still open inside it: the 2D physics backend, which the phase-4e
+   spike decides (recommended first candidate: Aether.Physics2D).
 1. **Scripting (D3).**
    - Recommended: the typed vocabulary first, with a language decision after phase 4 on evidence.
    - Alternative: commit to Lua now for modders.
