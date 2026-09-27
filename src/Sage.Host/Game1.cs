@@ -8,20 +8,21 @@ using Microsoft.Xna.Framework.Input;
 namespace sage_engine;
 
 // The host's MonoGame Game: today it is both game and editor (docs/design/01 §10). It owns the
-// client-side services as plain instances (no singletons). The game itself (games/Sandbox) is a module
-// loaded from game.json; the host provides graphics to modules, loads records, starts modules and
-// creates the main World here, once the graphics device exists (01 §5.1).
+// client-side services as plain instances (no singletons). The app — engine, modules, the game — is a
+// SageApp that Program.cs created and registered; this class walks it through the rest of its stages
+// once the graphics device exists (01 §5.1, REDESIGN §3.2), doing the window's own work in between.
 //
 // Main loop (01 §5.2): MonoGame's fixed-step mode is off; each frame the host polls the input devices,
 // resolves input contexts and actions (08), latches them into the pending PlayerCommand, runs 0..N
-// fixed ticks through FixedStepClock (sim_tickrate), each with its own command, then the Frame
+// fixed ticks of every world through HostLoop (sim_tickrate), each with its own command, then the Frame
 // schedule (Extract → Render, 06) with the interpolation alpha. MonoGame's Update and Draw are one
 // pair per frame.
 public class Game1 : Game
 {
+    private readonly SageApp app;
     private readonly Engine engine;
-    private readonly Action applyConfig;
-    private readonly Action runLaunchCommands;
+    private readonly HostLoop loop;
+    private readonly Action<World> beforeTick;   // cached: a method group passed each frame would allocate
     // Fields marked `= null!` are set in Initialize, which MonoGame calls once the graphics device
     // exists and before the first Update or Draw. The boot sequence moves out of Game1 in phase 1 (#10).
     private World world = null!;
@@ -46,18 +47,17 @@ public class Game1 : Game
     private DevTools dev = null!;
 #endif
 
-    private readonly FixedStepClock clock = new FixedStepClock();
     private readonly Stopwatch frameClock = new Stopwatch();
-    private FixedStepResult step;
     private long frame;
     private double screenshotAt = -1;   // >= 0: take a screenshot once RealTime passes it
     private double quitAt = -1;         // >= 0: exit once RealTime passes it (`quit <seconds>`)
 
-    internal Game1(Engine engine, Action applyConfig, Action runLaunchCommands)
+    internal Game1(SageApp app)
     {
-        this.engine = engine;
-        this.applyConfig = applyConfig;
-        this.runLaunchCommands = runLaunchCommands;
+        this.app = app;
+        engine = app.Engine;
+        loop = new HostLoop(engine);
+        beforeTick = BeforeTick;
         graphics = new GraphicsDeviceManager(this);
         // No `Content.RootDirectory`: nothing uses MonoGame's `ContentManager` since R12 — not this
         // host, not the client, not the vendored ImGui renderer. The engine's own `Content/` folder is
@@ -105,31 +105,31 @@ public class Game1 : Game
             if (a.Count > 0 && float.TryParse(a[0], System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out float seconds) && seconds > 0f)
             {
-                quitAt = clock.RealTime + seconds;
+                quitAt = loop.RealTime + seconds;
                 Log.Info(LogCat.Console, $"quitting in {seconds:F1}s (`quit` now, Escape, or the window's close button end it sooner)");
                 return;
             }
             Exit();
         });
         cvars.RegisterCommand("screenshot", CVarFlags.None, "screenshot [delay]: save a frame as a PNG in the user folder's screenshots/, now or after `delay` seconds.", a =>
-            screenshotAt = a.Count > 0 && float.TryParse(a[0], out float delay) ? clock.RealTime + delay : 0);
+            screenshotAt = a.Count > 0 && float.TryParse(a[0], out float delay) ? loop.RealTime + delay : 0);
         WorldCommands.Register(cvars, engine);
         ScaleCommands.Register(cvars, engine);   // scale_spawn / scale_report (R18)
         CrashReporter.AddSection("GPU", () => $"{GraphicsAdapter.DefaultAdapter.Description}, profile {graphics.GraphicsProfile}");
         Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
-        applyConfig();   // config.cfg, now that every cvar and command exists
+        app.Configure();   // config.cfg, now that every cvar and command exists
         ApplyVSync();
 
         // Records, module Start, then the main world (01 §5.1). Modules install their resources and
         // systems in OnWorldCreated; the game spawns its scene there.
-        engine.Records.Load(engine.Vfs);
+        app.LoadContent();
         if (BuildInfo.IsDevBuild)
             recordHotReload = new RecordHotReload(engine.Records, engine.Vfs);
         engine.Modules.ProvideHostService(new ClientHost(this));
         engine.Modules.ProvideHostService(devices);
         engine.Modules.ProvideHostService(actions);
-        engine.Modules.StartAll();
-        world = engine.CreateWorld("main");
+        app.Start();
+        world = app.CreateWorld("main");
 
         activeCamera = world.Resources.Get<ActiveCamera>();
         playerInput = world.Resources.Get<PlayerInput>();
@@ -137,7 +137,7 @@ public class Game1 : Game
 #if SAGE_DEV
         dev.OnWorldCreated(world);
 #endif
-        runLaunchCommands();   // +args last, with the world up (Program.cs)
+        app.RunLaunchCommands();   // +args last, with the world up
 
         base.Initialize();
     }
@@ -226,23 +226,27 @@ public class Game1 : Game
 #endif
         if (recHotReload.Value) recordHotReload?.Poll();
 
-        step = clock.Advance(realDt, hostCVars.TickRate.Value, hostCVars.MaxFrameTime.Value, hostCVars.TimeScale.Value);
-        for (int i = 0; i < step.Ticks; i++)
-        {
-            playerInput.Command = latch.Sample(world.Tick + 1);   // the tick this command is for
-            playerInput.HasCommand = true;
-            world.RunFixed(step.TickDt);
-        }
+        // Every world ticks; the one the player is in gets the player's command for each tick. (One
+        // latch, sampled once per tick: a pressed edge belongs to exactly one tick of one world.)
+        loop.Update(realDt, hostCVars.TickRate.Value, hostCVars.MaxFrameTime.Value, hostCVars.TimeScale.Value, beforeTick);
 
         float exitAfter = hostCVars.ExitAfter.Value;
-        if (exitAfter > 0 && clock.RealTime >= exitAfter)
+        if (exitAfter > 0 && loop.RealTime >= exitAfter)
         {
             Log.Info(LogCat.Host, $"host_exitafter: {frame} frames, {world.Tick} ticks at sim_tickrate {hostCVars.TickRate.Value} " +
-                $"in {clock.RealTime:F2} s ({frame / clock.RealTime:F0} fps, {world.Tick / clock.RealTime:F1} ticks/s)");
+                $"in {loop.RealTime:F2} s ({frame / loop.RealTime:F0} fps, {world.Tick / loop.RealTime:F1} ticks/s)");
             Exit();
         }
 
         base.Update(gameTime);
+    }
+
+    // The player's world gets the command for the tick it is about to run; the others tick without one.
+    private void BeforeTick(World ticking)
+    {
+        if (ticking != world) return;
+        playerInput.Command = latch.Sample(world.Tick + 1);   // the tick this command is for
+        playerInput.HasCommand = true;
     }
 
     protected override void UnloadContent()
@@ -255,7 +259,7 @@ public class Game1 : Game
     // world's snapshot in Render, 06), then the ImGui layer.
     protected override void Draw(GameTime gameTime)
     {
-        world.RunFrame(step.FrameDt, step.Alpha, clock.RealTime);
+        loop.Frame();
         base.Draw(gameTime);
 
 #if SAGE_DEV
@@ -263,9 +267,9 @@ public class Game1 : Game
             dev.Draw(gameTime);
 #endif
 
-        if (quitAt >= 0 && clock.RealTime >= quitAt) { quitAt = -1; Exit(); }
+        if (quitAt >= 0 && loop.RealTime >= quitAt) { quitAt = -1; Exit(); }
 
-        if (screenshotAt >= 0 && clock.RealTime >= screenshotAt)
+        if (screenshotAt >= 0 && loop.RealTime >= screenshotAt)
         {
             screenshotAt = -1;
             SaveScreenshot();
