@@ -10,9 +10,6 @@
 *.userosscache
 *.sln.docstates
 
-commit_to_branch.bat
-merge_branch.bat
-
 # Mono auto generated files
 mono_crash.*
 

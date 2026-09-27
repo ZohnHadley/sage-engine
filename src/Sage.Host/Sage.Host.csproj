@@ -37,7 +37,7 @@
       "a game host without the editor" has meant in this file's comments since the beginning.
     -->
     <ProjectReference Include="..\Sage.Editor\Sage.Editor.csproj" Condition="'$(Configuration)' != 'Shipping'" />
-    <ProjectReference Include="..\..\packages\MonoGame.ImGuiNet-main\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" Condition="'$(Configuration)' != 'Shipping'" />
+    <ProjectReference Include="..\..\third_party\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" Condition="'$(Configuration)' != 'Shipping'" />
   </ItemGroup>
 
   <!-- engine_content/ → Content/ (shaders compiled with dotnet-mgfxc, data and textures copied). -->
