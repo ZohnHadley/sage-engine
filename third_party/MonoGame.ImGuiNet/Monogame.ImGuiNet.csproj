@@ -38,8 +38,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="ImGui.NET" Version="1.90.1.1" />
-        <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
+        <PackageReference Include="ImGui.NET" />
+        <PackageReference Include="MonoGame.Framework.DesktopGL" />
     </ItemGroup>
 
     <!--

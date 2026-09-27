@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Friflo.Engine.ECS;
@@ -43,13 +44,13 @@ public sealed class ComponentSchema
     public IEnumerable<string> ComponentNames { get { Build(); return _components.Keys; } }
     public IEnumerable<string> TagNames { get { Build(); return _tags.Keys; } }
 
-    public bool TryComponent(string name, out ComponentType type)
+    public bool TryComponent(string name, [MaybeNullWhen(false)] out ComponentType type)
     {
         Build();
         return _components.TryGetValue(name, out type);
     }
 
-    public bool TryTag(string name, out TagType type)
+    public bool TryTag(string name, [MaybeNullWhen(false)] out TagType type)
     {
         Build();
         return _tags.TryGetValue(name, out type);

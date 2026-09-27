@@ -24,18 +24,18 @@ internal class MouseListener
 
     // ---- Events (edge / per-frame notifications) ----
     // Button events fire on edges only; use IsButtonDown for continuous checks.
-    public event Action<MouseButton> OnButtonPressed;   // up   -> down (single frame)
-    public event Action<MouseButton> OnButtonReleased;  // down -> up   (single frame)
+    public event Action<MouseButton>? OnButtonPressed;   // up   -> down (single frame)
+    public event Action<MouseButton>? OnButtonReleased;  // down -> up   (single frame)
 
     // Per-frame cursor movement delta (current position - previous position).
-    public event Action<Point> OnMouseMoved;
+    public event Action<Point>? OnMouseMoved;
     // Per-frame scroll change (positive = wheel scrolled up / away from the user).
-    public event Action<int> OnScroll;
+    public event Action<int>? OnScroll;
 
     // ---- Drag gesture (threshold-gated, with a start/update/end lifecycle) ----
-    public event Action<MouseButton, Point> OnDragStart; // once, when the threshold is crossed; passes the anchor (press position)
-    public event Action<MouseButton, Point> OnDrag;      // each frame the cursor moves while dragging; passes the per-frame delta
-    public event Action<MouseButton> OnDragEnd;          // when the button is released after a drag
+    public event Action<MouseButton, Point>? OnDragStart; // once, when the threshold is crossed; passes the anchor (press position)
+    public event Action<MouseButton, Point>? OnDrag;      // each frame the cursor moves while dragging; passes the per-frame delta
+    public event Action<MouseButton>? OnDragEnd;          // when the button is released after a drag
 
     // ---- Queryable state (polling API) ----
     public Point Position => new Point(_currentMouseState.X, _currentMouseState.Y);

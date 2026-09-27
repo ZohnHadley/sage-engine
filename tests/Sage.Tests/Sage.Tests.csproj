@@ -3,7 +3,6 @@
     Headless tests. References Sage.Engine only: if simulation code ever picks up a MonoGame
     dependency, this project stops compiling (ARCHITECTURE.md §2 rule 2).
   -->
-  <Import Project="..\..\build\Sage.Configurations.props" />
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <!-- Same as the engine: run on the newest installed runtime when .NET 8 itself isn't installed. -->
@@ -14,10 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>

@@ -336,9 +336,11 @@ public sealed class ClientModule : IModule
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!), Phase.FrameUpdate, RunCondition.DevOnly);
     }
 
+#pragma warning disable CS0649 // options filled by JsonSerializer from a prefab, never assigned in code
     private sealed class AudioOptions { public RecordId Sound; public bool Loop = true; public float Volume; }
 
     private sealed class ParticleOptions { public RecordId Effect; public bool Enabled = true; }
+#pragma warning restore CS0649
 
     // `snd_play` is an audition, so it belongs to whichever world is listening — the first one with
     // a mixer, which in a single-world game is the only one there is.

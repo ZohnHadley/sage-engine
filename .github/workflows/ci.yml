@@ -1,10 +1,10 @@
 # Continuous integration (docs/REDESIGN.md §4.8, issue #6).
 #
-#   linux    every project except the host, the tests in Debug and Development on the .NET 8 runtime
+#   linux    the whole solution (the host without shaders), the tests in Debug and Development on the .NET 8 runtime
 #            the projects target, and the docs checked against the code with the real test count
 #   windows  the whole solution in all three configurations, shaders included, and the tests
 #
-# The host is Windows-only here because mgfxc needs Wine to compile shaders on Linux (MGFXC0001).
+# Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001).
 # The .NET 10 SDK builds; the .NET 8 runtime runs. Both matter: the 8.0.1xx SDK's compiler produced
 # code the runtime rejected (InvalidProgramException in Assert.Fail), and only the .NET 8 runtime
 # showed that every save was failing (SaveSystem's JsonSerializerOptions had no TypeInfoResolver).
@@ -42,16 +42,15 @@ jobs:
             8.0.x
             10.0.x
 
-      - name: Build every project except the host (Debug, Development, Shipping)
+      # The host is compiled without its shaders (SageSkipShaders): mgfxc needs Wine on Linux, and
+      # the Windows job builds the real thing.
+      - name: Build the solution (Debug, Development, Shipping; host without shaders)
         run: |
           set -euo pipefail
-          projects=$(dotnet sln Sage.sln list | grep '\.csproj$' | grep -v 'Sage.Host')
           for config in Debug Development Shipping; do
-            for project in $projects; do
-              echo "::group::$config $project"
-              dotnet build "$project" -c "$config"
-              echo "::endgroup::"
-            done
+            echo "::group::$config"
+            dotnet build Sage.sln -c "$config" -p:SageSkipShaders=true
+            echo "::endgroup::"
           done
 
       # Not Shipping: it compiles out what some tests assert (README, "Building and testing").

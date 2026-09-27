@@ -1,0 +1,7 @@
+<Project>
+  <!--
+    Vendored code keeps its own settings: this file stops the repository's Directory.Build.props
+    (nullable, language version) from reaching it. Package versions still come from
+    Directory.Packages.props, which MSBuild finds separately.
+  -->
+</Project>

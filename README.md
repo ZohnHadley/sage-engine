@@ -51,8 +51,9 @@ one sits.
 
 ## Running it
 
-You need the [.NET 8 SDK](https://dotnet.microsoft.com/download) or newer (the projects target
-net8.0 and roll forward). From the repo root:
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) or newer (pinned as a minimum in
+`global.json`), and ideally the .NET 8 runtime too: the projects target net8.0 and roll forward to a
+newer runtime only when .NET 8 isn't installed. From the repo root:
 
 ```bash
 dotnet run --project src/Sage.Host -c Debug
@@ -174,12 +175,14 @@ proves it, `(test: …)`, and the script checks the name resolves.
 
 **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs all of this on every push to `main`
 and every pull request:
-- **Linux** builds everything but the host in all three configurations, runs the tests in Debug and
+- **Linux** builds the whole solution in all three configurations, the host without its shaders
+  (`-p:SageSkipShaders=true`, because `mgfxc` needs Wine on Linux). It runs the tests in Debug and
   Development on the .NET 8 runtime the projects target, and runs `check_docs.py` with the count the
   tests reported.
 - **Windows** builds the whole solution, shaders included, and runs the tests.
 
-The host is Windows-only in CI because `mgfxc` needs Wine to compile shaders on Linux. `main` is
+Warnings are errors (`Directory.Build.props`), and package versions live in one place
+(`Directory.Packages.props`). `main` is
 protected by the ruleset in [`.github/rulesets/protect-main.json`](.github/rulesets/protect-main.json):
 changes go through a pull request with both CI jobs green, and `main` can't be force-pushed or deleted.
 

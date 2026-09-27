@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    Settings every project in the repository shares (issue #4). Folder-level Directory.Build.props
+    files (src/, games/, tests/) import this one and add their own; third_party/ opts out.
+
+    The SDK is pinned in global.json: the 8.0.1xx compiler emitted code the runtime rejected
+    (InvalidProgramException in Assert.Fail), so the floor is the SDK CI builds with.
+  -->
+  <PropertyGroup>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <Deterministic>true</Deterministic>
+    <!-- The build is warning-free; keep it so. Suppress with a scoped #pragma and a reason. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

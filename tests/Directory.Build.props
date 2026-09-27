@@ -1,0 +1,5 @@
+<Project>
+  <!-- Shared settings for test projects under tests/. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <Import Project="..\build\Sage.Configurations.props" />
+</Project>
