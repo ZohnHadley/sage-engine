@@ -199,7 +199,7 @@ Program.Main(args)
                     → asset scopes released → logs flushed last
 ```
 
-*As built (step 5):* `src/Sage.Host/Program.cs` does steps 1–5: args, `game.json` (a missing or invalid manifest logs, writes a crash report and exits 1), logging and the crash reporter (the user folder is named after the game id), core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), then modules (the defaults `PhysicsModule`, the six gameplay feature modules and `ClientModule`, in that order, unless `game.json` disables any of them, plus the game assembly; `Init` in dependency order). `Game1.Initialize` does the rest once the graphics device exists: input devices and actions (08) and the host's cvars and commands, then `config.cfg`, then records, then the host services (`ClientHost`, `InputDevices`, `InputActions`), then module `Start`, then the main world, and finally the `+launch` commands. *Step 6:* each frame the host polls devices, resolves actions, feeds the `CommandLatch`, and hands every fixed tick its `PlayerCommand` through the world's `PlayerInput` resource (08 §3.6).
+*As built (one boot path, 2026-09-27, issue #10):* the stages are **`SageApp`**'s (`src/Sage.Engine/Core/SageApp.cs`), not the host's, so the game executable, a headless server, the editor and a test boot the same way. `SageApp.Create` does steps 3–5 from a `SageAppOptions` (the `game.json`, the engine content folder, host modules such as `ClientModule`, `config.cfg`, the `+launch` commands): core cvars, the VFS (engine content in namespace `sage`, then the game's mounts), and the modules — **`SageApp.SimulationModules()`** (physics, streaming, maps, then every gameplay module), then the host's, then the game assembly and its `modules.add`, less anything `game.json` disables. A `disable` entry that names no module is a warning (a typo there means a module the game meant to turn off is running). Then `Register` (module `Init`, engine commands), `Configure` (`config.cfg`), `LoadContent` (records), `Start`, `CreateWorld`, `RunLaunchCommands` — each checks it follows the one before and throws if not (test: TheStagesRunInOrderAndSayWhenTheyDoNot). `Boot()` does them all for a headless app (test: HelloBootsHeadlesslyFromItsOwnManifest). `src/Sage.Host/Program.cs` is now only args, `game.json`, logging and the crash reporter, then `SageApp.Create` and `Register`; `Game1.Initialize` registers the window's cvars and commands and walks the app through the rest once the graphics device exists, providing the host services (`ClientHost`, `InputDevices`, `InputActions`) before `Start`. *Step 6:* each frame the host polls devices, resolves actions, feeds the `CommandLatch`, and hands each fixed tick of the player's world its `PlayerCommand` through that world's `PlayerInput` resource (08 §3.6).
 
 **`quit [seconds]`** takes a delay (2026-09-23), so a launch line that says `+quit 30` runs for
 thirty seconds and then exits, which is what everyone writing one assumes. It used to ignore the
@@ -230,14 +230,14 @@ each MonoGame Update/Draw pair:
 ```
 
 - `sim_tickrate` default **60 Hz**; `sim_maxframetime` default 0.25 s; `host_timescale` (DevOnly, Cheat) default 1.
-- **Built in step 4** (`FixedStepClock` in `Sage.Engine/Core/Time.cs`, loop in `Game1`). Measured with `host_exitafter 3` and vsync off: ~2,250 fps with exactly 60.0 ticks/s at `sim_tickrate 60` and 5.0 ticks/s at `sim_tickrate 5`.
+- **Built in step 4** (`FixedStepClock` in `Sage.Engine/Core/Time.cs`); the loop itself is **`HostLoop`** (`Sage.Engine/Core/HostLoop.cs`, issue #10), which ticks and frames **every** world — until then the host ran only the one world it had created (test: TheLoopTicksEveryWorldNotJustTheFirst). Measured with `host_exitafter 3` and vsync off: ~2,250 fps with exactly 60.0 ticks/s at `sim_tickrate 60` and 5.0 ticks/s at `sim_tickrate 5`.
 - `Extract` interpolates transforms between the previous and current tick using `alpha` (06).
 - Pausing (`pause`, `World.Paused`) skips `WhenNotPaused` systems; ticks keep counting and Frame systems (camera, UI, rendering) keep running.
 - Vsync is a cvar (`r_vsync`, Archive). `host_maxfps` (a frame cap with vsync off) is **not built yet**.
 - `host_exitafter <seconds>` (DevOnly) quits after that much real time and logs frame and tick counts, for automated smoke runs.
 
 ### 5.3 Worlds
-Several worlds can exist (Warband's overworld and battle scene, the editor's edit/play worlds, tests). The host runs every *active* world each frame. Inactive worlds are kept but not ticked.
+Several worlds can exist (Warband's overworld and battle scene, the editor's edit/play worlds, tests). The host runs every *active* world each frame. Inactive worlds are kept but not ticked. *As built:* `HostLoop` runs every world in creation order; a world created during a tick starts on the next one (test: AWorldCreatedDuringATickStartsOnTheNextOne). There is no *inactive* flag yet, and two worlds drawn at once need viewports (REDESIGN phase 4a).
 
 ## 6. Threading and memory
 - Boot, module `Init`, and the loop run on the main thread. `GraphicsDevice` is main-thread only (MonoGame).
