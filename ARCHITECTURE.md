@@ -1,6 +1,6 @@
 # Sage Engine — Architecture Overview
 
-Status: design, revised 2026-09-22 (third pass: research-backed; see §9). Nothing here is built yet except where "Today" says so.
+Status: design, revised 2026-09-22 (third pass: research-backed; see §9), and mostly built since: where a section's "Today" differs from its design, "Today" is what exists. [`docs/REDESIGN.md`](docs/REDESIGN.md) (2026-09-27) supersedes parts of it — the `Sage.Framework` layer (§2, §3) is replaced by the base-engine/kit split in REDESIGN §0.5 and §3.1, D7 (a separate editor host) is re-adopted, and D3 (no scripting) is under review in REDESIGN §4.3.
 
 | Document | Role |
 |---|---|

@@ -197,7 +197,10 @@ def check_vocabulary(problems, code, literals, content_names):
             continue
 
         name = os.path.basename(path)
-        whole_file = name == 'README.md'
+        # The README and the game-making guide both describe the engine as it is, not as planned, so
+        # every line in them is a claim (the guide once told readers to type `rec_print`, which never
+        # existed, and only "As built" lines were being checked).
+        whole_file = name in ('README.md', 'MAKING_A_GAME.md')
         section = whole_file          # inside a section that describes what exists
         block = False                 # inside a bullet that lists what does not
 

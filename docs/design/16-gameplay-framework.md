@@ -230,8 +230,8 @@ and the cast system cannot tell a composed spell from one in a content file.
 - **Steering** is raycast avoidance (probes ahead and to both sides just above step height, and turns toward the free side); it still runs, and is what keeps bodies apart. Pathfinding arrived with F23 — see "As built (navigation)".
 - **Deviations and gaps:**
   - schedule *selection* is code (`ChooseSchedule`), as in HL1's `GetSchedule`; utility scoring or a behaviour tree can replace it without touching the tasks;
-  - attacks already deal damage: `MeleeAttackTask` applies the profile's `AttackEffect` with `Effects.Apply` (F18), so `EffectSystem` runs it like any other effect. The hit is also published to an `AIEvents` list the game reads in a later phase, which is still how cues and reactions work until the event bus (04) exists;
-  - perception is sight only (no hearing), one enemy type (the local player), and no squads;
+  - attacks go through the same melee pipeline as the player's: `MeleeAttackTask` presses Attack on the creature's `PawnIntent`, and the swing, the hit and the damage are `Combat`'s, which raises `Damaged` on the world's event bus (04, R13) — that is how cues and reactions reach the rest of the game;
+  - perception is sight only (no hearing) and there are no squads; who counts as an enemy comes from factions (F24, "As built (factions and reputation)");
   - the AI phase runs after movement in the tick, so intent written this tick moves the creature on the next one.
 
 ### As built (quests and the journal, 2026-09-24 — F24)

@@ -39,9 +39,9 @@ public interface IEditorPanel { string Title { get; } void Draw(EditorContext ct
 | Today | Becomes |
 |---|---|
 | `src/Sage.Editor/Screens/EditorUI.cs` (menu bar; stubs; `game.Exit()`) | The editor host's menu: New/Open/Save map documents; Exit |
-| `src/Sage.Editor/Screens/EntityContextMenuUI.cs` (tree over `World.QueryAll()`, per-frame reflection field dump, Delete via `World.Destroy`) | Outliner + inspector (generated metadata; Delete becomes a command) |
+| `src/Sage.Editor/Screens/EntityOutlinerWindow.cs` and `EntityInspectorWindow.cs` (were `EntityContextMenuUI.cs`: tree over the world, reflection field editing, Delete via `World.Destroy`) | Outliner + inspector (generated metadata; Delete becomes a command) |
 | `src/Sage.Editor/Camera/DevCamera.cs` | The editor camera rig (actions-based, 08) |
-| `src/Sage.Editor/EditorManager.cs` (window size, camera holder) | Host window cvars (01) + editor state |
+| `src/Sage.Editor/DevTools.cs` (was `EditorManager.cs`: owns the dev windows and camera) | Host window cvars (01) + editor state |
 
 ## 10a. As built: the `.map` importer (F16, 2026-09-24)
 
