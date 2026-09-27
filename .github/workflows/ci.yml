@@ -1,7 +1,8 @@
 # Continuous integration (docs/REDESIGN.md §4.8, issue #6).
 #
 #   linux    the whole solution (the host without shaders), the tests in Debug and Development on the .NET 8 runtime
-#            the projects target, and the docs checked against the code with the real test count
+#            the projects target, the docs checked against the code with the real test count, and the real
+#            executable run for a few seconds on each game under Xvfb (tools/smoke_run.sh)
 #   windows  the whole solution in all three configurations, shaders included, and the tests
 #
 # Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001).
@@ -73,6 +74,18 @@ jobs:
           echo "dotnet test reported $count tests"
           python3 tools/check_docs.py --self-test
           python3 tools/check_docs.py --tests "$count"
+
+      # The real executable, for a few seconds, under a virtual display (issue #6): it boots each game,
+      # runs the loop and quits on its own, and fails on a crash, a non-zero exit, a missing shutdown or
+      # any WARN/ERROR outside the allowed categories. Shaders are allowed because this job builds the
+      # host without them (mgfxc needs Wine); Audio because a runner has no sound device.
+      - name: Smoke-run the games (Development host, Xvfb)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
+          host=src/Sage.Host/bin/Development/net8.0
+          tools/smoke_run.sh "$host" games/Hello 3 Shaders
+          tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
 
       - name: Upload test results
         if: always()

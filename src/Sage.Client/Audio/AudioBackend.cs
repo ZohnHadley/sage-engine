@@ -25,10 +25,12 @@ public sealed class NullAudioBackend : IAudioBackend
 {
     public int Playing => 0;
 
-    public void Apply(AudioMixer mixer)
+    public void Apply(AudioMixer mixer) => Drain(mixer);
+
+    // A one-shot with nothing to play it must still end, or the mixer fills up with voices that
+    // never finish and quietly refuses everything after the first thirty-two.
+    internal static void Drain(AudioMixer mixer)
     {
-        // A one-shot with nothing to play it must still end, or the mixer fills up with voices that
-        // never finish and quietly refuses everything after the first thirty-two.
         for (int i = mixer.Voices.Count - 1; i >= 0; i--)
         {
             var voice = mixer.Voices[i];
@@ -51,11 +53,34 @@ public sealed class MonoGameAudioBackend : IAudioBackend
     private readonly Dictionary<int, SoundEffectInstance> _instances = new();
     private readonly List<int> _finished = new();
 
+    // Set the first time MonoGame reports there is no audio device (a server, a CI runner, a machine
+    // with sound off). From then on this backend behaves as NullAudioBackend: the game runs silent
+    // instead of dying on its first sound, which is what it did until 2026-09-27.
+    private bool _noDevice;
+
     public MonoGameAudioBackend(ContentService content) => _content = content;
 
     public int Playing => _instances.Count;
 
     public void Apply(AudioMixer mixer)
+    {
+        if (_noDevice) { NullAudioBackend.Drain(mixer); return; }
+        try
+        {
+            ApplyToDevice(mixer);
+        }
+        catch (NoAudioHardwareException ex)
+        {
+            _noDevice = true;
+            Log.Warn(LogCat.Audio, $"No audio device ({ex.Message}); sound is off for this run. " +
+                                   "`snd_enabled 0` turns it off on purpose.");
+            foreach (var instance in _instances.Values) instance.Dispose();
+            _instances.Clear();
+            NullAudioBackend.Drain(mixer);
+        }
+    }
+
+    private void ApplyToDevice(AudioMixer mixer)
     {
         _finished.Clear();
 

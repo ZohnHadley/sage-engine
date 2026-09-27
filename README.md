@@ -178,7 +178,9 @@ and every pull request:
 - **Linux** builds the whole solution in all three configurations, the host without its shaders
   (`-p:SageSkipShaders=true`, because `mgfxc` needs Wine on Linux). It runs the tests in Debug and
   Development on the .NET 8 runtime the projects target, and runs `check_docs.py` with the count the
-  tests reported.
+  tests reported. Then it runs the real executable for a few seconds on Hello and the Sandbox under a
+  virtual display ([`tools/smoke_run.sh`](tools/smoke_run.sh)), and fails on a crash, a bad exit or any
+  warning outside the categories it expects.
 - **Windows** builds the whole solution, shaders included, and runs the tests.
 
 Warnings are errors (`Directory.Build.props`), and package versions live in one place
