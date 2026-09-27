@@ -23,6 +23,11 @@ public sealed class GameManifest
     public string ModsDirectory { get; set; } = "mods";
     public ModuleSettings Modules { get; set; } = new();
 
+    // Which of the engine's simulation plugins this game uses, by id: "sage.physics3d", or
+    // "sage.gameplay.*" for a family. Plugins they require come too. Null (the key left out) means all of
+    // them, as before; an empty list means none — a game with no physics and no gameplay (issue #12).
+    public List<string>? Plugins { get; set; }
+
     public sealed class ModuleSettings
     {
         public List<string> Disable { get; set; } = new();

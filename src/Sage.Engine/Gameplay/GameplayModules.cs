@@ -72,6 +72,7 @@ public static class GameplayModules
 // Attributes, tags and effects (16 §3.3): the one path by which a number on an entity changes.
 // Everything else that wants to change one — damage, a buff, a cheat — goes through here, which is
 // why this module has no dependencies and everything else depends on it.
+[Plugin("sage.gameplay.attributes", "0.1.0")]
 public sealed class AttributesModule : IModule
 {
     private RecordStore? _records;
@@ -112,6 +113,7 @@ public sealed class AttributesModule : IModule
 
 // A body that walks (10 §3, 16 §3.1): the capsule the engine moves, the intent its controller writes,
 // and the first-person rig that sits in its head.
+[Plugin("sage.gameplay.character", "0.1.0")]
 public sealed class CharacterModule : IModule
 {
     private RecordStore? _records;
@@ -151,6 +153,7 @@ public sealed class CharacterModule : IModule
 
 // Sprite animation is simulation, not rendering (12 §3): it runs at the tick rate, and its frame
 // events are what lands a sprite's blow. Its own module because skeletal animation lands here too.
+[Plugin("sage.gameplay.animation", "0.1.0")]
 public sealed class AnimationModule : IModule
 {
     private RecordStore? _records;
@@ -172,6 +175,7 @@ public sealed class AnimationModule : IModule
 // It is here and not in the client because a light is a fact about the world rather than about the
 // screen: a headless server has lamps, a map places them by classname like anything else, and only
 // `LightExtract` cares that one is ever drawn.
+[Plugin("sage.gameplay.lights", "0.1.0")]
 public sealed class LightsModule : IModule
 {
     public void Init(ModuleContext ctx) => ctx.Engine.Prefabs.Register("light", PrefabParts.Light);
@@ -179,6 +183,7 @@ public sealed class LightsModule : IModule
 
 // Hitting things (16 §3.2): one damage pipeline, `attack` records, and the melee both the player and
 // the AI drive by pressing the same button.
+[Plugin("sage.gameplay.combat", "0.1.0")]
 public sealed class CombatModule : IModule
 {
     private RecordStore? _records;
@@ -224,6 +229,7 @@ public sealed class CombatModule : IModule
 }
 
 // Carrying, wielding and picking up (16 §3.2, F19).
+[Plugin("sage.gameplay.items", "0.1.0")]
 public sealed class ItemsModule : IModule
 {
     private RecordStore? _records;
@@ -307,6 +313,7 @@ public sealed class ItemsModule : IModule
 // Spells and everything else that is cast (16 §3.3, F21). Almost all of what an ability *does* is
 // effects, which Attributes already owns; what lives here is the gating — cost, cooldown, tags — and
 // choosing what it lands on.
+[Plugin("sage.gameplay.abilities", "0.1.0")]
 public sealed class AbilitiesModule : IModule
 {
     private RecordStore? _records;
@@ -385,6 +392,7 @@ public sealed class AbilitiesModule : IModule
 
 // Creatures that decide for themselves (16 §3.4): HL1-style schedules of tasks, writing the same
 // `PawnIntent` the player's controller writes.
+[Plugin("sage.gameplay.ai", "0.1.0")]
 public sealed class AIModule : IModule
 {
     private RecordStore? _records;
@@ -537,6 +545,7 @@ public sealed class NavDebugSystem : ISystem
 //
 // First in the gameplay set, because combat, abilities and AI all ask it questions and a module may
 // only depend on one that is already there.
+[Plugin("sage.gameplay.factions", "0.1.0")]
 public sealed class FactionsModule : IModule
 {
     public void Init(ModuleContext ctx)

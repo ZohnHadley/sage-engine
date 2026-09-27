@@ -34,6 +34,9 @@ public sealed class CVarRegistry
     // never see its saved value. Commands stay open — a late command misses nothing.
     public RegistrationSeal CVarSeal { get; } = new("cvar", "its saved value in config.cfg was never applied");
 
+    // Who registered each cvar and command (issue #12); set by the Engine.
+    public RegistrationLedger? Ledger { get; set; }
+
     // ---- Registration ----------------------------------------------------------------------------
 
     public CVar<T> Register<T>(string name, T defaultValue, CVarFlags flags, string help) where T : notnull
@@ -51,6 +54,7 @@ public sealed class CVarRegistry
             return;   // DevOnly commands don't exist in Shipping
         CheckNameFree(name);
         _commands[name] = new ConsoleCommand(name, flags, help, handler);
+        Ledger?.Record("command", name);
     }
 
     // DevOnly cvars in Shipping still work from code (they keep their default value) but aren't
@@ -62,6 +66,7 @@ public sealed class CVarRegistry
         CVarSeal.Check(cvar.Name);
         CheckNameFree(cvar.Name);
         _cvars[cvar.Name] = cvar;
+        Ledger?.Record("cvar", cvar.Name);
         if (cvar.Name.Equals("sv_cheats", StringComparison.OrdinalIgnoreCase) && cvar is CVar<bool> cheats)
             _cheats = cheats;
         return cvar;

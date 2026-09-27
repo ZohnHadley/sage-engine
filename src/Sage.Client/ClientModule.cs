@@ -17,6 +17,7 @@ public sealed class ClientHost
 // The client engine module (a default module; docs/design/01 §3.1): registers the client record types
 // and the engine's input actions, provides ContentService and Renderer, and per world installs the
 // RenderSnapshot and the Extract/Render systems (06 §3.1).
+[Plugin("sage.client", "0.1.0")]
 public sealed class ClientModule : IModule
 {
     private ContentService? _content;

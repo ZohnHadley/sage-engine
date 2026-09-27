@@ -22,6 +22,12 @@ public sealed class Engine : IDisposable
         Records = records ?? new RecordStore();
         Components = new ComponentSchema(Records.Json);
         Saves = new SaveSystem(this);
+        // Every registry records who registered what (issue #12).
+        CVars.Ledger = Registrations;
+        Records.Ledger = Registrations;
+        Prefabs.Ledger = Registrations;
+        Inputs.Ledger = Registrations;
+        Actions.Ledger = Registrations;
         // The engine's own saved state. A `[SavedResource]` attribute is decoration until something
         // registers the type — which is exactly how reputation, the journal and the weather were all
         // "saved" and none of them were (F24/F40, found by the second pass).
@@ -30,6 +36,9 @@ public sealed class Engine : IDisposable
         Records.Register<PlacementsRecord>();  // and where it places them, so an editor can write it (15 §3)
         Modules = new ModuleManager(this);
     }
+
+    // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).
+    public RegistrationLedger Registrations { get; } = new();
 
     // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
     public ActionRegistry Actions { get; } = new();

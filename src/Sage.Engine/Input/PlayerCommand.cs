@@ -34,6 +34,9 @@ public sealed class ActionRegistry
     // Closed when content loads (SageApp.LoadContent): bindings are built from the input records then.
     public RegistrationSeal Seal { get; } = new("input action", "the bindings built when the records loaded have none for it");
 
+    // Who registered each action (issue #12); set by the Engine.
+    public RegistrationLedger? Ledger { get; set; }
+
     // Modules register their actions in Init. Registering the same name again with the same kind
     // returns the existing id (two modules may both need "Use").
     public ActionId Register(string name, ActionKind kind)
@@ -55,6 +58,7 @@ public sealed class ActionRegistry
         var info = new ActionInfo(new ActionId(_actions.Count, bit), name, kind);
         _actions.Add(info);
         _byName[name] = info;
+        Ledger?.Record("input action", name);
         return info.Id;
     }
 

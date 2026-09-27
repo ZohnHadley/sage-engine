@@ -99,11 +99,20 @@ time you name `Transform` the compiler cannot tell which one you mean.
 
 - **`id` is your record namespace.** Everything your game defines is `yourgame:something`, and that is
   how mods and the engine tell your records from `sage:`'s.
-- `{config}` is replaced with Debug / Development / Shipping, so one manifest works for all three.
+- `{config}` is replaced with the build's configuration name (Debug, Development, Shipping, or Release),
+  so one manifest works for all of them.
 - `mounts` are folders layered over the engine's own content, **later wins** — which is how a game (or a
   mod) replaces an engine texture without touching it.
-- `modules.disable` switches off engine modules by name. A game with no AI drops `AIModule` and nothing
-  else changes.
+- `assembly` is optional: a game made only of data and engine plugins leaves it out.
+- `plugins` (optional) picks which of the engine's plugins the game uses, by id — `"sage.physics3d"`, or
+  `"sage.gameplay.*"` for a family — and whatever they require comes with them, so
+  `["sage.gameplay.items"]` also brings attributes, combat, characters and physics. Left out, the game gets
+  all of them; `[]` is a game with no physics and no gameplay. The console's `plugins` command lists every
+  plugin with its version and what it needs, and `plugins <id>` what that one registered.
+- `modules.disable` switches off engine modules by class name or plugin id. A game with no AI drops
+  `AIModule` (or `sage.gameplay.ai`) and nothing else changes; a name that matches nothing is a warning.
+- A key the engine does not know is an error, so a misspelt `"mount"` stops the game at once instead of
+  quietly loading nothing.
 
 ### Running it
 

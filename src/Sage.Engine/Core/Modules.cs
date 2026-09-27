@@ -56,12 +56,16 @@ public sealed class ModuleManager
     private readonly Dictionary<Type, (object Service, IModule? Owner)> _services = new();
     private List<IModule> _ordered = new();
     private readonly Dictionary<IModule, string> _state = new();
+    private readonly Dictionary<IModule, PluginInfo> _plugins = new();
 
     public ModuleManager(Engine engine) { Engine = engine; }
 
     public Engine Engine { get; }
     public IReadOnlyList<IModule> Modules => _ordered.Count > 0 ? _ordered : _modules;
     public IGameModule? Game { get; private set; }
+
+    // A module's plugin identity: id, version, kind and what it requires by id (issue #12).
+    public PluginInfo Plugin(IModule module) => _plugins.TryGetValue(module, out var info) ? info : PluginInfo.Of(module);
 
     // Closed by InitAll: a module added after that would never run Init.
     public RegistrationSeal Seal { get; } = new("module", "it never ran Init");
@@ -71,6 +75,10 @@ public sealed class ModuleManager
         Seal.Check(module.Name);
         if (_modules.Any(m => m.GetType() == module.GetType()))
             throw new InvalidOperationException($"Module {module.Name} is already added.");
+        var info = PluginInfo.Of(module);
+        if (_modules.FirstOrDefault(m => _plugins[m].Id.Equals(info.Id, StringComparison.OrdinalIgnoreCase)) is { } same)
+            throw new InvalidOperationException($"Two modules claim the plugin id '{info.Id}': {same.GetType().FullName} and {module.GetType().FullName}.");
+        _plugins[module] = info;
         _modules.Add(module);
         if (module is IGameModule game) Game = game;
     }
@@ -99,7 +107,7 @@ public sealed class ModuleManager
     public void InitAll()
     {
         Seal.Seal("the modules ran Init");
-        _ordered = Sort(_modules);
+        _ordered = Sort(_modules, _plugins);
         foreach (var m in _ordered) Run(m, "Init", () => m.Init(new ModuleContext(this, m)));
         Log.Info(LogCat.Modules, $"Modules: {string.Join(", ", _ordered.Select(m => m.Name))}");
     }
@@ -127,16 +135,26 @@ public sealed class ModuleManager
     private void Run(IModule m, string step, Action action)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        action();   // failures propagate: a module that can't start is fatal (01 §8)
+        var ledger = Engine.Registrations;
+        ledger.Owner = Plugin(m).Id;   // whatever it registers now is this plugin's
+        try { action(); }   // failures propagate: a module that can't start is fatal (01 §8)
+        finally { ledger.Owner = "host"; }
         _state[m] = step;
         Log.Debug(LogCat.Modules, $"{m.Name}.{step} ({watch.Elapsed.TotalMilliseconds:F1} ms)");
     }
 
     // Topological sort by Dependencies, stable by the order modules were added. A missing dependency
     // or a cycle is fatal, reported with the chain (01 §8).
-    internal static List<IModule> Sort(IReadOnlyList<IModule> modules)
+    internal static List<IModule> Sort(IReadOnlyList<IModule> modules) =>
+        Sort(modules, modules.ToDictionary(m => m, PluginInfo.Of));
+
+    // Dependencies come two ways: by C# type (IModule.Dependencies, for modules in assemblies that
+    // reference each other) and by plugin id with a version range ([RequiresPlugin], for ones that
+    // don't). A missing plugin or a version outside the range is fatal, and says which and why.
+    internal static List<IModule> Sort(IReadOnlyList<IModule> modules, IReadOnlyDictionary<IModule, PluginInfo> plugins)
     {
         var byType = modules.ToDictionary(m => m.GetType());
+        var byId = modules.ToDictionary(m => plugins[m].Id, StringComparer.OrdinalIgnoreCase);
         var result = new List<IModule>();
         var state = new Dictionary<IModule, int>();   // 1 = visiting, 2 = done
         foreach (var m in modules) Visit(m, new Stack<IModule>());
@@ -157,6 +175,15 @@ public sealed class ModuleManager
                     throw new InvalidOperationException($"Module {m.Name} depends on {dep.Name}, which isn't loaded (disabled in game.json?).");
                 Visit(d, chain);
             }
+            foreach (var (id, range) in plugins[m].Requires)
+            {
+                if (!byId.TryGetValue(id, out var d))
+                    throw new InvalidOperationException($"{plugins[m].Id} requires plugin {id} {range}, which isn't loaded " +
+                        "(not in game.json's \"plugins\", or disabled?).");
+                if (!range.Contains(plugins[d].Version))
+                    throw new InvalidOperationException($"{plugins[m].Id} requires {id} {range}, but {id} {plugins[d].Version} is loaded.");
+                Visit(d, chain);
+            }
             chain.Pop();
             state[m] = 2;
             result.Add(m);
@@ -165,6 +192,26 @@ public sealed class ModuleManager
 
     public void RegisterCommands(CVarRegistry cvars)
     {
+        cvars.RegisterCommand("plugins", CVarFlags.None,
+            "plugins [id]: every plugin with its version, kind and requirements; with an id, what it registered.", a =>
+        {
+            if (a.Count > 0)
+            {
+                var owned = Engine.Registrations.By(a[0]).ToList();
+                Log.Info(LogCat.Console, owned.Count == 0 ? $"{a[0]} registered nothing (or no such plugin; `plugins` lists them)"
+                    : $"{a[0]} registered {owned.Count}:\n" + string.Join("\n", owned.Select(o => $"  {o.Kind,-13} {o.Name}")));
+                return;
+            }
+            foreach (var m in Modules)
+            {
+                var info = Plugin(m);
+                var needs = m.Dependencies.Select(d => _modules.FirstOrDefault(x => x.GetType() == d) is { } x ? Plugin(x).Id : d.Name)
+                    .Concat(info.Requires.Select(r => $"{r.Id} {r.Range}")).ToList();
+                int count = Engine.Registrations.By(info.Id).Count();
+                Log.Info(LogCat.Console, $"  {info.Id,-26} {info.Version,-8} {info.Kind,-8} {count,4} registered" +
+                                         (needs.Count > 0 ? $"  (needs {string.Join(", ", needs)})" : ""));
+            }
+        });
         cvars.RegisterCommand("modules", CVarFlags.None, "List modules in init order.", _ =>
         {
             foreach (var m in Modules)
