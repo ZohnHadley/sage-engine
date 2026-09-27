@@ -66,7 +66,7 @@ public sealed class SaveSystem
         _resources[attr.Name] = new SavedResource(
             attr.Name, typeof(T),
             world => world.Resources.TryGet<T>(out var r) ? r : null,
-            (world, value) => world.Resources.Set((T)value),
+            (world, value) => world.Resources.Replace((T)value),
             () => new T());
     }
 

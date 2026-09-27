@@ -59,27 +59,27 @@ public sealed class World : IDisposable
         _store.OnEntityDelete += OnEntityDelete;
         _propagation = new TransformPropagation(this);
         // Resources every world has (headless ones too, so simulation code can rely on them).
-        Resources.Set(new ActiveCamera());
-        Resources.Set(new RenderEnvironment());
+        Resources.Add(new ActiveCamera());
+        Resources.Add(new RenderEnvironment());
         // What the sky is doing belongs to the world, not to whoever draws it (06 §3.13): a headless
         // server can be rained on, and a save carries the storm you walked into.
-        Resources.Set(new Weather { Current = WeatherRecord.Clear, Target = WeatherRecord.Clear });
+        Resources.Add(new Weather { Current = WeatherRecord.Clear, Target = WeatherRecord.Clear });
         var origin = new Origin();       // which sector the simulation is running in (R6, 14 §3)
-        Resources.Set(origin);
-        Resources.Set(new Terrain { Origin = origin });
-        Resources.Set(new PlayerInput());
+        Resources.Add(origin);
+        Resources.Add(new Terrain { Origin = origin });
+        Resources.Add(new PlayerInput());
         _contracts = new PhaseContracts(this);   // what each phase promises, checked in dev (03 §3.5)
         _events = new GameEvents();          // the one place gameplay facts cross systems (04 §3.2)
         if (engine != null)
         {
             _events.UseCVars(engine.Core.EventMaxAge, engine.Core.EventTrace);
-            Resources.Set(engine.Records);   // effects, attacks and items all look records up per world
+            Resources.Add(engine.Records);   // effects, attacks and items all look records up per world
         }
-        Resources.Set(_events);
+        Resources.Add(_events);
         _debugDraw = new DebugDraw();        // always there, so `world.Debug()` needs no null check (06 §3.2)
-        Resources.Set(_debugDraw);
+        Resources.Add(_debugDraw);
         _messages = new MessageLog(_events); // and `world.Say(...)` works with or without a HUD (13 §3)
-        Resources.Set(_messages);
+        Resources.Add(_messages);
     }
 
     // The underlying store, for engine code (editor listing, serializers). Game code uses the API below.

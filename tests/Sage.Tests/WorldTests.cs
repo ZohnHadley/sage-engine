@@ -205,7 +205,7 @@ public class WorldTests
         Assert.Equal(1, battle.EntityCount);
 
         var resource = new DisposableResource();
-        battle.Resources.Set(resource);
+        battle.Resources.Add(resource);
         Assert.Same(resource, battle.Resources.Get<DisposableResource>());
         Assert.Throws<InvalidOperationException>(() => overworld.Resources.Get<DisposableResource>());
 

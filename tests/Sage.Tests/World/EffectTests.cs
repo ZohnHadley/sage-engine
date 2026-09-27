@@ -63,7 +63,7 @@ public class EffectTests
     {
         public readonly RecordingRules Rules = new();
         public void Init(ModuleContext ctx) { }
-        public void OnWorldCreated(World world) => world.Resources.Set<GameRules>(Rules);
+        public void OnWorldCreated(World world) => world.Resources.Replace<GameRules>(Rules);
     }
 
     private static (Engine Engine, World World, RecordingRules Rules) NewWorld()

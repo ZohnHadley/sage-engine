@@ -216,7 +216,7 @@ public sealed class PhysicsModule : IModule
     public void OnWorldCreated(World world)
     {
         var space = new PhysicsSpace();
-        world.Resources.Set(space);          // disposed with the world
+        world.Resources.Add(space);          // disposed with the world
         _spaces.Add(space);
         ApplyLayers(space);
 

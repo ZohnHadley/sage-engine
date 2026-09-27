@@ -52,7 +52,6 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
         world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
         world.AddSystem(new CombatLogSystem(world), Phase.Late);
-        world.Resources.Set<GameRules>(new SandboxRules(this));
         world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
         _worlds.Add(world);
         Spawn(world);
@@ -105,6 +104,9 @@ public sealed class SandboxModule : IGameModule
     public Vector3 PlayerStart(World world) =>
         Scene?.Player is { } start ? Ground(world, start)
                                    : world.Origin().ToOrigin(HillsGenerator.SceneCenter);   // absolute, like a placement
+
+    // The Sandbox's rules for each world; the engine starts them once every module has set it up.
+    public GameRules CreateRules(World world) => new SandboxRules(this);
 
     // Called by SandboxRules once every module has set the world up.
     public Entity SpawnPlayer(World world)

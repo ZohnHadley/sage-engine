@@ -254,7 +254,7 @@ Create ──► EntitySpawned ──► ComponentAdded (Transform, EntityName, 
 Destroy ─► ComponentRemoved for each component ──► EntityDestroyed ──► slot freed; old handles report IsNull
 (Commands.* record instead; the same notifications fire at FlushCommands.)
 ```
-World creation: resources installed by modules (physics space, origin, event queues) → `IGameModule.OnWorldCreated` installs `GameRules` and loads the map. World destruction: all entities destroyed (notifications suppressed; one `WorldDestroying` signal instead), then resources disposed in reverse order.
+World creation: resources installed by modules (physics space, origin, event queues) → `IGameModule.OnWorldCreated` loads the map → `IGameModule.CreateRules` supplies `GameRules` (issue #13). Resources go in with `Resources.Add`, which refuses a second of one type, or `Replace`, which swaps one on purpose and disposes the old (test: InstallingTheSameResourceTwiceIsAnError). World destruction: all entities destroyed (notifications suppressed; one `WorldDestroying` signal instead), then resources disposed in reverse order.
 
 ## 6. Threading and memory
 - Worlds are single-threaded in v1 (main thread). Systems may use jobs over **copied input spans**, writing results that a later system applies. Jobs never touch world structure.

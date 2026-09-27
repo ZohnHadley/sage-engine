@@ -397,7 +397,7 @@ public sealed class EntityIOModule : IModule
     public void OnWorldCreated(World world)
     {
         var io = new EntityIO();
-        world.Resources.Set(io);
+        world.Resources.Add(io);
         if (_trace != null) io.Trace = _trace.Value;
         if (_budget != null) io.Budget = _budget.Value;
         if (_trace != null) _trace.Changed += _ => io.Trace = _trace.Value;

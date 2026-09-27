@@ -291,11 +291,11 @@ public sealed class ClientModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        world.Resources.Set(new RenderSnapshot());
-        world.Resources.Set(new UiDraw());       // screen-space drawing for the game's HUD (13 §3)
+        world.Resources.Add(new RenderSnapshot());
+        world.Resources.Add(new UiDraw());       // screen-space drawing for the game's HUD (13 §3)
         // Screens (F38): the stack is a world resource because a screen acts on entities in a world.
         // A game says which screen a key opens (`stack.Bind`); the drawing and the navigation are here.
-        world.Resources.Set(new ScreenStack());
+        world.Resources.Add(new ScreenStack());
         // Sprite animation is simulation, not rendering (12 §3), so AnimationModule installs it: a
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
@@ -312,13 +312,13 @@ public sealed class ClientModule : IModule
         // world's origin space (R6), and two worlds do not share a frame. The backend is a world
         // resource so that the world's own teardown disposes it, and because voice handles are only
         // unique within one mixer — one shared backend would confuse two worlds' voices.
-        world.Resources.Set(new AudioMixer(_audioSettings!));
-        world.Resources.Set<IAudioBackend>(_audioDevice && _content != null
+        world.Resources.Add(new AudioMixer(_audioSettings!));
+        world.Resources.Add<IAudioBackend>(_audioDevice && _content != null
             ? new MonoGameAudioBackend(_content) : new NullAudioBackend());
         // Particles and the numbers over a fight are per world, like everything else that holds a
         // position in this world's origin space (06 §3.12, R6).
-        world.Resources.Set(new Particles());
-        world.Resources.Set(new FloatingTexts());
+        world.Resources.Add(new Particles());
+        world.Resources.Add(new FloatingTexts());
         world.AddSystem(new ParticleSystem(world, _records!, _particlesOn!, _damageNumbers!), Phase.FrameUpdate);
         world.AddSystem(new ParticleExtract(world, _renderer!), Phase.Extract,
                         after: new[] { typeof(CameraExtract) });

@@ -62,7 +62,7 @@ public class ScreenTests
             Engine.Modules.StartAll();
 
             World = Engine.CreateWorld("screens");
-            World.Resources.Set(Screens);
+            World.Resources.Add(Screens);
             var ground = World.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
             World.Add(ground, Collider.Box(new Vector3(100, 1, 100)));
         }
