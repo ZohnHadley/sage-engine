@@ -213,7 +213,7 @@ public class ModuleTests
         Assert.Equal(new[] { "ClientModule" }, m.Modules.Disable);
         Assert.Equal("mods", m.ModsDirectory);
         Assert.Equal(Path.GetFullPath(dir), m.Directory);
-        Assert.Equal(Path.Combine(Path.GetFullPath(dir), "bin", BuildInfo.Config.ToString(), "net8.0", "Test.dll"), m.AssemblyPath);
+        Assert.Equal(Path.Combine(Path.GetFullPath(dir), "bin", BuildInfo.ConfigurationName, "net8.0", "Test.dll"), m.AssemblyPath);
     }
 
     [Theory]
@@ -237,5 +237,19 @@ public class ModuleTests
         var m = GameManifest.Load(Path.Combine(repo, "games", "Sandbox"));
         Assert.Equal("sandbox", m.Id);
         Assert.Contains("content", m.Mounts);
+    }
+
+    // The tests reference Hello and Sandbox, so both were just built in the configuration the tests
+    // were — and `{config}` has to name the folder that build wrote, whatever the configuration was
+    // called. `-c Release` (what `dotnet publish` uses) once resolved to bin/Shipping, where nothing is.
+    [Theory]
+    [InlineData("Hello")]
+    [InlineData("Sandbox")]
+    public void ShippedManifest_PointsAtTheAssemblyThisBuildWrote(string game)
+    {
+        string repo = AppContext.BaseDirectory;
+        while (!File.Exists(Path.Combine(repo, "Sage.sln"))) repo = Path.GetDirectoryName(repo)!;
+        var m = GameManifest.Load(Path.Combine(repo, "games", game));
+        Assert.True(File.Exists(m.AssemblyPath), $"{game}: {m.AssemblyPath} does not exist");
     }
 }
