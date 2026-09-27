@@ -5,11 +5,11 @@ using System.Linq;
 using System.Threading;
 using sage_engine;
 
-// Boot sequence (docs/design/01-host-and-modules.md §5.1):
-//   args → game.json → logging + crash reporter → core cvars → VFS mounts → modules (game assembly
-//   loaded, Init = register) → [Game1.Initialize: host cvars/commands → config.cfg → records →
-//   modules Start → main world → +launch commands] → loop → shutdown.
-// The engine is disposed (worlds destroyed) before the log shuts down, so teardown is logged.
+// Boot sequence (docs/design/01-host-and-modules.md §5.1, REDESIGN §3.2):
+//   args → game.json → logging + crash reporter → SageApp.Create (cvars, VFS mounts, modules; the game
+//   assembly is loaded here) → Register (module Init) → [Game1.Initialize: host cvars/commands →
+//   Configure (config.cfg) → LoadContent (records) → Start → main world → +launch commands] → loop →
+//   shutdown. The stages are SageApp's; this file only decides what the app is made of.
 Thread.CurrentThread.Name = "main";
 
 var launch = LaunchArgs.Parse(args);
@@ -34,43 +34,27 @@ UserPaths.Initialize(manifest.Id);
 Log.Initialize(new LogOptions { LogDirectory = UserPaths.Logs, Stdout = true });
 CrashReporter.Install();
 
-var cvars = new CVarRegistry();
-var core = CoreCVars.Register(cvars);
-var engine = new Engine(cvars, core);
-CrashReporter.AddSection("CVars (non-default)", cvars.DumpNonDefault);
-CrashReporter.AddSection("Game / modules / mounts", () =>
-    $"Game: {manifest.Name} ({manifest.Id}) from {manifest.Directory}\n" +
-    $"Modules: {string.Join(", ", engine.Modules.Modules.Select(m => m.Name))}\n" +
-    $"Mounts: {string.Join(", ", engine.Vfs.Mounts.Select(m => m.ToString()))}");
-
 Log.Info(LogCat.Host, $"Sage {BuildInfo.EngineVersion} ({BuildInfo.Config}), game '{manifest.Name}' ({manifest.Id}), user folder {UserPaths.Root}");
 if (Log.File != null)
     Log.Info(LogCat.Host, $"Log file {Log.File.CurrentPath}");
 foreach (var option in launch.Options.Keys.Where(o => !o.Equals("game", StringComparison.OrdinalIgnoreCase)))
     Log.Warn(LogCat.Host, $"Unknown launch option -{option} (ignored)");
 
-// VFS (05 §3.1): engine content first, then the game's mounts in order (later wins). Mods: F37.
-engine.Vfs.Mount(new FolderMount("engine", Path.Combine(AppContext.BaseDirectory, "Content"), "sage"));
-foreach (string mount in manifest.Mounts)
-    engine.Vfs.Mount(new FolderMount($"{manifest.Id}/{mount}", Path.Combine(manifest.Directory, mount), manifest.Id));
-// Modules (01 §3.1, §5.1). The game assembly must be loaded before the first World exists (03 §3.1).
+// What this app is: the game, engine content beside the executable, the simulation modules and the
+// client (a server would leave the client out). The game assembly must be loaded before the first World
+// exists (03 §3.1), which SageApp.Create does.
+SageApp app;
 try
 {
-    AddDefaultModule(new PhysicsModule());
-    AddDefaultModule(new StreamingModule());   // terrain rings and origin rebasing (R6, F14)
-    AddDefaultModule(new MapModule());          // brush levels imported from TrenchBroom (15 §3, F16)
-    // One per feature since R15, from `GameplayModules.All()` — **not** a second hand-written list, which
-    // is what this was until 2026-09-25 and how `LightsModule` came to be in the tests' list and not the
-    // host's. Each still goes through AddDefaultModule, so `game.json` can disable them individually: a
-    // game with no items or no AI drops that module and nothing else.
-    foreach (var module in GameplayModules.All()) AddDefaultModule(module);
-    AddDefaultModule(new ClientModule());
-    engine.Modules.Add(ModuleManager.LoadGame(manifest.AssemblyPath));
-    // `modules.add`: the game's other assemblies, such as its client half (01 §3.3, R15).
-    foreach (string extra in manifest.ModuleAssemblies)
-        foreach (var module in ModuleManager.LoadModules(extra))
-            AddDefaultModule(module);
-    engine.Modules.InitAll();
+    app = SageApp.Create(new SageAppOptions
+    {
+        Game = manifest,
+        EngineContentDirectory = Path.Combine(AppContext.BaseDirectory, "Content"),
+        HostModules = new IModule[] { new ClientModule() },
+        ConfigFile = UserPaths.ConfigFile,
+        LaunchCommands = launch.Commands,
+    });
+    app.Register();
 }
 catch (Exception ex)
 {
@@ -79,26 +63,12 @@ catch (Exception ex)
     Log.Shutdown();
     return 1;
 }
-engine.Modules.RegisterCommands(cvars);
-VirtualFileSystem.RegisterCommands(cvars, engine.Vfs);
-engine.Records.RegisterCommands(cvars);
-engine.Saves.RegisterCommands(cvars);
-
-// config.cfg runs once every cvar and command is registered (the host's `quit`, `stat`... are
-// registered in Game1.Initialize), before records load and modules start. +args run last, once the main
-// world exists (like Source's +map), so `+stat fps`, `+rec_get spawn bunny` and `+ent_list` all work;
-// they still override config.cfg.
-void ApplyConfig()
-{
-    if (File.Exists(UserPaths.ConfigFile))
-        cvars.ExecFile(UserPaths.ConfigFile, ExecSource.Config);
-}
-
-void RunLaunchCommands()
-{
-    foreach (string command in launch.Commands)
-        cvars.Execute(command, ExecSource.LaunchArgs);
-}
+var engine = app.Engine;
+CrashReporter.AddSection("CVars (non-default)", engine.CVars.DumpNonDefault);
+CrashReporter.AddSection("Game / modules / mounts", () =>
+    $"Game: {manifest.Name} ({manifest.Id}) from {manifest.Directory}\n" +
+    $"Modules: {string.Join(", ", engine.Modules.Modules.Select(m => m.Name))}\n" +
+    $"Mounts: {string.Join(", ", engine.Vfs.Mounts.Select(m => m.ToString()))}");
 
 int exitCode = 0;
 try
@@ -106,7 +76,7 @@ try
 #if SAGE_DEV
     _ = typeof(DevTools).Assembly;   // Sage.Editor: loaded before the first World (03 §3.1)
 #endif
-    using var game = new Game1(engine, ApplyConfig, RunLaunchCommands);
+    using var game = new Game1(app);
     game.Run();
 }
 catch (SageFatalException fatal) when (fatal.Reported)
@@ -120,22 +90,11 @@ catch (Exception ex)
 }
 finally
 {
-    engine.Dispose();               // worlds first (their systems belong to modules)...
-    engine.Modules.ShutdownAll();   // ...then modules, in reverse dependency order
-    try { cvars.SaveArchived(UserPaths.ConfigFile); }
-    catch (Exception ex) { Log.Warn(LogCat.Host, $"Couldn't save {UserPaths.ConfigFile}: {ex.Message}"); }
+    app.Dispose();   // worlds, then modules in reverse dependency order, then config.cfg
     Log.Info(LogCat.Host, "Shutdown");
     Log.Shutdown();
 }
 return exitCode;
-
-void AddDefaultModule(IModule module)
-{
-    if (manifest.Modules.Disable.Contains(module.Name, StringComparer.OrdinalIgnoreCase))
-        Log.Info(LogCat.Modules, $"{module.Name} disabled by game.json");
-    else
-        engine.Modules.Add(module);
-}
 
 // -game <folder>, else the Sandbox game in dev builds (found from the repo root), else ./game next to the exe.
 static string ResolveGameDirectory(LaunchArgs launch)
