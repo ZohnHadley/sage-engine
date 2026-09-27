@@ -92,6 +92,9 @@ public sealed class RecordStore
     // Closed by the first Load: a type registered after that had its records skipped as unknown.
     public RegistrationSeal TypeSeal { get; } = new("record type", "every record of that type in the content was skipped as unknown");
 
+    // Who registered each record type (issue #12); set by the Engine.
+    public RegistrationLedger? Ledger { get; set; }
+
     // Modules register their record types in Init (docs/design/01 §5.1), before records load.
     public void Register<T>() where T : class, new()
     {
@@ -102,6 +105,7 @@ public sealed class RecordStore
             throw new InvalidOperationException($"Record type '{attr.Type}' is already registered by {existing.Name}.");
         _typesByName[attr.Type] = typeof(T);
         _namesByType[typeof(T)] = attr.Type;
+        Ledger?.Record("record type", attr.Type);
     }
 
     public IEnumerable<string> TypeNames => _typesByName.Keys.OrderBy(n => n, StringComparer.Ordinal);

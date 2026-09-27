@@ -10,6 +10,7 @@ namespace Hello;
 // only needs one when it wants a HUD or screens of its own (games/Sandbox.Client is that).
 //
 // Read it top to bottom; it is about sixty lines and every one of them is a decision a game makes.
+[Plugin("hello", "0.1.0")]
 public sealed class HelloModule : IGameModule
 {
     // Register only: cvars, console commands, record types of your own, prefab parts, entity inputs.

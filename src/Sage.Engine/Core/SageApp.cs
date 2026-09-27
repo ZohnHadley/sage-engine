@@ -6,6 +6,10 @@ using System.Linq;
 
 namespace sage_engine;
 
+// What kind of host an app runs in. A module's Kind says where it belongs: Runtime modules load in
+// every host, Editor modules only in the editor, Tool modules only in tools (issue #12).
+public enum HostKind { Game, Server, Editor, Tool }
+
 // What an app is made of (docs/REDESIGN.md §3.2, issue #10). Everything a host would otherwise decide
 // in its own boot code, so that the game executable, a headless server, the editor and a test all boot
 // the same way from the same description.
@@ -23,6 +27,9 @@ public sealed class SageAppOptions
     // by default, because a game without them is the exception; a game can still disable any one of
     // them by name in game.json.
     public bool IncludeSimulationModules { get; init; } = true;
+
+    // The host this app runs in; decides which module kinds load.
+    public HostKind Host { get; init; } = HostKind.Game;
 
     // Modules a host adds after the simulation ones and before the game's: the client, for a host
     // with a window. A headless host leaves this empty.
@@ -122,15 +129,19 @@ public sealed class SageApp : IDisposable
 
         void Add(IModule module)
         {
+            string id = PluginInfo.Of(module).Id;
             seen.Add(module.Name);
-            if (disabled.Contains(module.Name))
+            seen.Add(id);
+            if (disabled.Contains(module.Name) || disabled.Contains(id))
                 Log.Info(LogCat.Modules, $"{module.Name} disabled by game.json");
+            else if (!KindBelongs(module.Kind, _options.Host))
+                Log.Info(LogCat.Modules, $"{module.Name} is a {module.Kind} module; a {_options.Host} host doesn't load it");
             else
                 Engine.Modules.Add(module);
         }
 
         if (_options.IncludeSimulationModules)
-            foreach (var module in SimulationModules()) Add(module);
+            foreach (var module in ChooseSimulationModules(Game?.Plugins)) Add(module);
         foreach (var module in _options.HostModules) Add(module);
 
         if (Game is { } game)
@@ -148,6 +159,49 @@ public sealed class SageApp : IDisposable
         foreach (string name in disabled.Where(n => !seen.Contains(n)))
             Log.Warn(LogCat.Modules, $"game.json disables '{name}', which is not a module this app has " +
                 $"(modules: {string.Join(", ", seen.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))})");
+    }
+
+    private static bool KindBelongs(ModuleKind kind, HostKind host) => kind switch
+    {
+        ModuleKind.Editor => host == HostKind.Editor,
+        ModuleKind.Tool => host == HostKind.Tool,
+        _ => true,
+    };
+
+    // The simulation plugins a game.json asks for, plus everything they require (by type or by id), in
+    // SimulationModules' order. Null means all of them. A pattern that matches nothing is an error that
+    // lists what there is — a misspelt plugin would otherwise be a game quietly missing a system.
+    private static IEnumerable<IModule> ChooseSimulationModules(IReadOnlyList<string>? wanted)
+    {
+        var all = SimulationModules();
+        if (wanted == null) return all;
+
+        var infos = all.ToDictionary(m => m, PluginInfo.Of);
+        var chosen = new HashSet<IModule>();
+        foreach (string pattern in wanted)
+        {
+            var matches = all.Where(m => infos[m].Matches(pattern)).ToList();
+            if (matches.Count == 0)
+                throw new InvalidOperationException($"game.json asks for plugin '{pattern}', which isn't one the engine has. " +
+                    $"Plugins: {string.Join(", ", all.Select(m => infos[m].Id))}");
+            chosen.UnionWith(matches);
+        }
+
+        // Pull in what they need, so "sage.gameplay.items" brings attributes and combat with it.
+        var pending = new Stack<IModule>(chosen);
+        while (pending.Count > 0)
+        {
+            var module = pending.Pop();
+            var needs = module.Dependencies.Select(t => all.FirstOrDefault(m => m.GetType() == t))
+                .Concat(infos[module].Requires.Select(r => all.FirstOrDefault(m => infos[m].Id.Equals(r.Id, StringComparison.OrdinalIgnoreCase))));
+            foreach (var need in needs)
+                if (need != null && chosen.Add(need))
+                {
+                    Log.Info(LogCat.Modules, $"{infos[need].Id} added: {infos[module].Id} requires it");
+                    pending.Push(need);
+                }
+        }
+        return all.Where(chosen.Contains);
     }
 
     // Every module's Init — registration only — then the engine's own console commands.

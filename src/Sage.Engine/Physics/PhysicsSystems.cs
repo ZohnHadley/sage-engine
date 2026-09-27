@@ -183,6 +183,7 @@ internal sealed class TerrainCollisionSystem : ISystem
 
 // The engine's physics module (10 §14 steps 1–3): one space per world, the layer record, and the
 // tick systems. A headless server loads it exactly like the client does.
+[Plugin("sage.physics3d", "0.1.0")]
 public sealed class PhysicsModule : IModule
 {
     private readonly List<PhysicsSpace> _spaces = new();

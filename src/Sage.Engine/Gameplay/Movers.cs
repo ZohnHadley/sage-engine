@@ -99,6 +99,7 @@ internal sealed class MoverSystem : ISystem
     }
 }
 
+[Plugin("sage.gameplay.movers", "0.1.0")]
 public sealed class MoverModule : IModule
 {
     public void Init(ModuleContext ctx)

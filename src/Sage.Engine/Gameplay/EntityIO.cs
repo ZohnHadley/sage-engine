@@ -47,11 +47,17 @@ public sealed class EntityInputs
     // Closed when the first world exists (SageApp.CreateWorld): its level's wiring was checked without it.
     public RegistrationSeal Seal { get; } = new("entity input", "a level's wiring may already have been checked without it");
 
+    // Who registered each input (issue #12); set by the Engine.
+    public RegistrationLedger? Ledger { get; set; }
+
     public void Register(string name, EntityInput handler)
     {
         Seal.Check(name);
         if (!_inputs.TryAdd(name, handler))
-            Assert.Ensure(false, $"Entity input '{name}' is registered twice");
+            Assert.Ensure(false, $"Entity input '{name}' is registered twice" +
+                                 (Ledger?.OwnerOf("entity input", name) is { } first ? $" (first by {first})" : ""));
+        else
+            Ledger?.Record("entity input", name);
     }
 
     public bool Has(string name) => _inputs.ContainsKey(name);
@@ -314,6 +320,7 @@ internal sealed class TriggerOutputSystem : ISystem
     }
 }
 
+[Plugin("sage.gameplay.io", "0.1.0")]
 public sealed class EntityIOModule : IModule
 {
     private EntityInputs? _inputs;

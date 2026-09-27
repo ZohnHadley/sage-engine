@@ -13,6 +13,7 @@ namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Direct
 //
 // It is a plain `IModule`, not an `IGameModule` — there is exactly one of those per game, and it is
 // the simulation. The host loads this through `game.json`'s `modules.add`.
+[Plugin("sandbox.client", "0.1.0")]
 public sealed class SandboxClientModule : IModule
 {
     private Renderer? _renderer;

@@ -562,6 +562,7 @@ internal static class MapEntityIO
     }
 }
 
+[Plugin("sage.maps", "0.1.0")]
 public sealed class MapModule : IModule
 {
     public void Init(ModuleContext ctx)

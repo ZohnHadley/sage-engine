@@ -55,17 +55,25 @@ public sealed class PrefabRegistry
     // Closed when the first world exists (SageApp.CreateWorld): prefabs may have spawned without it.
     public RegistrationSeal Seal { get; } = new("prefab part", "prefabs may already have spawned without it");
 
+    // Who registered each part (issue #12); set by the Engine.
+    public RegistrationLedger? Ledger { get; set; }
+
     public void Register(IPrefabPart part)
     {
         Seal.Check(part.Name);
         if (_byName.TryGetValue(part.Name, out int existing))
         {
-            Log.Warn(LogCat.Records, $"Prefab part '{part.Name}' registered twice; {_parts[existing].GetType().Name} replaced by {part.GetType().Name}");
+            string? previous = Ledger?.OwnerOf("prefab part", part.Name);
+            Log.Warn(LogCat.Records, $"Prefab part '{part.Name}' registered twice; {_parts[existing].GetType().Name}" +
+                $"{(previous != null ? $" (from {previous})" : "")} replaced by {part.GetType().Name}" +
+                $"{(Ledger != null ? $" (from {Ledger.Owner})" : "")}");
             _parts[existing] = part;
+            Ledger?.Record("prefab part", part.Name);
             return;
         }
         _byName[part.Name] = _parts.Count;
         _parts.Add(part);
+        Ledger?.Record("prefab part", part.Name);
     }
 
     // A small helper so a module can register a part without declaring a type for it.

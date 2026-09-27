@@ -36,6 +36,7 @@ public struct SectorOwned : IComponent
 
 // Streaming is the engine's, not a game's: where the ground comes from is a world question (14 §1).
 // A game still chooses the generator and the seed.
+[Plugin("sage.streaming", "0.1.0")]
 public sealed class StreamingModule : IModule
 {
     private CVar<int>? _radius;
