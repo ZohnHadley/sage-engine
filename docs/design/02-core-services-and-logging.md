@@ -202,6 +202,8 @@ Systems receive these through their run context (03), never through `DateTime.No
 
 ### 4.4 Profiler
 *Built in migration step 4 (`Sage.Engine/Core/Diagnostics/Profiler.cs`). `World` wraps every phase (`Fixed.Gameplay`) and system (`Fixed.Gameplay/FaceCameraSystem`); the host adds `Frame.ImGui`. Per-frame totals and a ~20-frame moving average; enabled in dev builds, off in Shipping. Chrome-trace dump and Tracy are still later.*
+
+*As built (per-thread tables, 2026-09-27, issue #11):* the tables are per thread. A world is ticked on one thread and the game's is the main thread, where `stat` and `sys_list` read, so the game sees what it always did; a world ticked on another thread — a test running in parallel, later a server or an editor play world — gets tables of its own instead of writing into a shared `Dictionary`, which corrupted it and allocated on the other world's behalf (test: AFullWorldStillAllocatesNothingPerTick, which caught it once tests ran in parallel). `Enabled` is one setting for the process.
 ```csharp
 public static class Profiler
 {

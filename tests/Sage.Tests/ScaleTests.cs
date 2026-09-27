@@ -27,6 +27,7 @@ using Assert = Xunit.Assert;
 //
 // The wall-clock numbers themselves are recorded by running the game (`scale_spawn`, `scale_report`)
 // and written into docs/history/scale-2026-09-24.md, where a human can compare them next time.
+[Collection(MeasurementsCollection.Name)]
 public class ScaleTests
 {
     public ScaleTests() { _ = TestEnv.UserRoot; }

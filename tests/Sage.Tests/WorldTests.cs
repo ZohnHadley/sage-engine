@@ -15,6 +15,7 @@ public struct Velocity : IComponent { public Vector3 Value; }
 
 // World over Friflo.Engine.ECS (docs/design/03). Requirements E1–E9 from the spike, the notification
 // ordering guarantees (04 §3.3), and review items #15, #33, #38.
+[Collection(ProcessWideStateCollection.Name)]
 public class WorldTests
 {
     public WorldTests() { _ = TestEnv.UserRoot; }
