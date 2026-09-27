@@ -1,0 +1,120 @@
+# Continuous integration (docs/REDESIGN.md §4.8, issue #6).
+#
+#   linux    every project except the host, the tests in Debug and Development on the .NET 8 runtime
+#            the projects target, and the docs checked against the code with the real test count
+#   windows  the whole solution in all three configurations, shaders included, and the tests
+#
+# The host is Windows-only here because mgfxc needs Wine to compile shaders on Linux (MGFXC0001).
+# The .NET 10 SDK builds; the .NET 8 runtime runs. Both matter: the 8.0.1xx SDK's compiler produced
+# code the runtime rejected (InvalidProgramException in Assert.Fail), and only the .NET 8 runtime
+# showed that every save was failing (SaveSystem's JsonSerializerOptions had no TypeInfoResolver).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+jobs:
+  linux:
+    name: Linux · tests and docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Build every project except the host (Debug, Development, Shipping)
+        run: |
+          set -euo pipefail
+          projects=$(dotnet sln Sage.sln list | grep '\.csproj$' | grep -v 'Sage.Host')
+          for config in Debug Development Shipping; do
+            for project in $projects; do
+              echo "::group::$config $project"
+              dotnet build "$project" -c "$config"
+              echo "::endgroup::"
+            done
+          done
+
+      # Not Shipping: it compiles out what some tests assert (README, "Building and testing").
+      - name: Test (Debug)
+        run: dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug --no-build --logger "trx;LogFileName=Debug.trx" --results-directory TestResults
+
+      - name: Test (Development)
+        run: dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Development --no-build --logger "trx;LogFileName=Development.trx" --results-directory TestResults
+
+      - name: Check the docs against the code (R19)
+        run: |
+          set -euo pipefail
+          count=$(python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+          ns = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
+          counters = ET.parse("TestResults/Debug.trx").getroot().find(f".//{ns}Counters")
+          print(counters.get("total"))
+          EOF
+          )
+          echo "dotnet test reported $count tests"
+          python3 tools/check_docs.py --self-test
+          python3 tools/check_docs.py --tests "$count"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-linux
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+
+  windows:
+    name: Windows · full build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore local tools (mgfxc)
+        run: dotnet tool restore
+
+      - name: Build the solution (Debug)
+        run: dotnet build Sage.sln -c Debug
+
+      - name: Build the solution (Development)
+        run: dotnet build Sage.sln -c Development
+
+      - name: Build the solution (Shipping)
+        run: dotnet build Sage.sln -c Shipping
+
+      - name: Test (Debug)
+        run: dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug --no-build --logger "trx;LogFileName=Debug.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-windows
+          path: TestResults/*.trx
+          if-no-files-found: ignore

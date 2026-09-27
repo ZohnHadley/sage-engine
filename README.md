@@ -1,5 +1,7 @@
 # Sage
 
+[![CI](https://github.com/ZohnHadley/sage-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ZohnHadley/sage-engine/actions/workflows/ci.yml)
+
 A game engine in C# and MonoGame, built by writing a game with it. The target is a **Daggerfall-like
 first-person RPG**: a big outdoor world, billboard creatures, a kinematic character controller,
 data-driven records you can edit while the game runs, and mods that are data first and trusted C#
@@ -169,6 +171,17 @@ it *said about itself* being wrong. It checks that links resolve, that a command
 claim about what exists is really in the code, and that the numbers quoted on a `<!-- counts -->` line
 are the numbers there are. Behaviour it cannot check — so an "As built" bullet cites the test that
 proves it, `(test: …)`, and the script checks the name resolves.
+
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs all of this on every push to `main`
+and every pull request:
+- **Linux** builds everything but the host in all three configurations, runs the tests in Debug and
+  Development on the .NET 8 runtime the projects target, and runs `check_docs.py` with the count the
+  tests reported.
+- **Windows** builds the whole solution, shaders included, and runs the tests.
+
+The host is Windows-only in CI because `mgfxc` needs Wine to compile shaders on Linux. `main` is
+protected by the ruleset in [`.github/rulesets/protect-main.json`](.github/rulesets/protect-main.json):
+changes go through a pull request with both CI jobs green, and `main` can't be force-pushed or deleted.
 
 Three configurations, as UE does it: **Debug** (asserts, verbose logs, `developer 1`), **Development**
 (optimised, still has the console, cheats and dev tools) and **Shipping** (no dev cvars, no console;
