@@ -153,4 +153,110 @@ public class SageAppTests
         loop.Update(1.0 + 1e-6, 60, 2.0, 1.0);   // a hair over (sixty 1/60 s steps sum to just under 1.0), under the frame cap
         Assert.Equal(60L, world.Tick);
     }
+
+    // ---- Sealed registration (issue #12) -------------------------------------------------------------
+    //
+    // Each of these used to be accepted and then do nothing: a late cvar missed config.cfg, a late
+    // record type left its JSON as dead JSON, a late module never ran Init. Now each is an exception
+    // at the line that did it.
+
+    [Fact]
+    public void ACvarRegisteredAfterConfigCfgIsAnError()
+    {
+        using var app = Bare();
+        app.Register();
+        app.CVars.Register("early_enough", 1, CVarFlags.None, "fine: before config.cfg");
+        app.Configure();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => app.CVars.Register("too_late", 1, CVarFlags.Archive, "missed config.cfg"));
+        Assert.Contains("'too_late'", ex.Message);
+        Assert.Contains("config.cfg", ex.Message);
+        Assert.Contains("Init", ex.Message);
+
+        app.CVars.RegisterCommand("late_command", CVarFlags.None, "commands miss nothing", _ => { });   // still fine
+    }
+
+    [Fact]
+    public void ARecordTypeOrActionRegisteredAfterContentLoadedIsAnError()
+    {
+        using var app = Bare();
+        app.Register();
+        app.Configure();
+        app.LoadContent();
+
+        var record = Assert.Throws<InvalidOperationException>(() => app.Engine.Records.Register<LateRecord>());
+        Assert.Contains("record type 'late_record'", record.Message);
+        var action = Assert.Throws<InvalidOperationException>(() => app.Engine.Actions.Register("LateAction", ActionKind.Button));
+        Assert.Contains("input action 'LateAction'", action.Message);
+    }
+
+    [Fact]
+    public void AModuleAddedAfterInitOrAPartAfterTheFirstWorldIsAnError()
+    {
+        using var app = Bare();
+        app.Register();
+        var module = Assert.Throws<InvalidOperationException>(() => app.Engine.Modules.Add(new LateModule()));
+        Assert.Contains("never ran Init", module.Message);
+
+        app.Configure();
+        app.LoadContent();
+        app.Start();
+        app.Engine.Prefabs.Register("before_the_world", (_, _, _, _) => { });   // fine
+        app.CreateWorld("main");
+        var part = Assert.Throws<InvalidOperationException>(() => app.Engine.Prefabs.Register("after_the_world", (_, _, _, _) => { }));
+        Assert.Contains("prefab part 'after_the_world'", part.Message);
+    }
+
+    [Record("late_record")]
+    private sealed class LateRecord { }
+
+    private sealed class LateModule : IModule { public void Init(ModuleContext ctx) { } }
+
+    // ---- game.json ---------------------------------------------------------------------------------
+
+    // A game made only of data: no assembly, just a content folder the engine mounts in its namespace.
+    [Fact]
+    public void AGameWithNoCodeBootsAndLoadsItsRecords()
+    {
+        string dir = TestEnv.NewTempDir();
+        File.WriteAllText(Path.Combine(dir, "game.json"), """{ "name": "Data only", "id": "dataonly", "mounts": ["content"] }""");
+        Directory.CreateDirectory(Path.Combine(dir, "content", "data"));
+        File.WriteAllText(Path.Combine(dir, "content", "data", "things.json"), """
+            [ { "type": "prefab", "id": "rock", "name": "rock" } ]
+            """);
+
+        using var app = SageApp.Create(new SageAppOptions { Game = GameManifest.Load(dir) });
+        var world = app.Boot();
+
+        Assert.Null(app.Engine.Modules.Game);
+        Assert.True(app.Engine.Records.TryGet(new RecordId("dataonly", "rock"), out PrefabRecord _));
+        Assert.False(world.Spawn(new RecordId("dataonly", "rock")).IsNull);
+    }
+
+    [Fact]
+    public void AMisspeltGameJsonKeyIsAnError()
+    {
+        string dir = TestEnv.NewTempDir();
+        File.WriteAllText(Path.Combine(dir, "game.json"), """{ "name": "Typo", "id": "typo", "mount": ["content"] }""");
+
+        var ex = Assert.Throws<InvalidDataException>(() => GameManifest.Load(dir));
+        Assert.Contains("mount", ex.Message);
+    }
+
+    // `modules.add` adds every IModule in an assembly, but a game module belongs in "assembly": one
+    // named in `add` used to be skipped without a word.
+    [Fact]
+    public void AGameModuleUnderModulesAddIsReported()
+    {
+        string hello = Path.Combine(RepoRoot(), "games", "Hello").Replace('\\', '/');
+        string dir = TestEnv.NewTempDir();
+        File.WriteAllText(Path.Combine(dir, "game.json"), $$"""
+            { "name": "Mixed up", "id": "mixedup", "modules": { "add": ["{{hello}}/bin/{config}/net8.0/Hello.dll"] } }
+            """);
+
+        using var sink = new CaptureSink();
+        using var app = SageApp.Create(new SageAppOptions { Game = GameManifest.Load(dir) });
+
+        Assert.Contains(sink.Entries, e => e.Level == LogLevel.Warn && e.Message.Contains("HelloModule is an IGameModule"));
+    }
 }

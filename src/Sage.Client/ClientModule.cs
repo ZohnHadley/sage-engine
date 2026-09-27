@@ -23,6 +23,7 @@ public sealed class ClientModule : IModule
     private ClientHost? _host;
     private UiResources? _ui;
     private Renderer? _renderer;
+    private RendererCVars? _rendererCVars;
     private RecordStore? _records;
     private CVar<bool>? _debugDraw;
     private CVar<bool>? _crosshair;
@@ -41,6 +42,7 @@ public sealed class ClientModule : IModule
 
     public void Init(ModuleContext ctx)
     {
+        _rendererCVars = new RendererCVars(ctx.Engine.CVars);   // here, not in the Renderer: see RendererCVars
         ctx.Engine.Records.Register<MaterialRecord>();
         ctx.Engine.Records.Register<InputMapRecord>();
         ctx.Engine.Records.Register<SpriteSheetRecord>();
@@ -268,7 +270,7 @@ public sealed class ClientModule : IModule
         var host = _host = ctx.Get<ClientHost>();
         _records = ctx.Engine.Records;
         _content = new ContentService(host, ctx.Engine.Vfs);
-        _renderer = new Renderer(host, _content, ctx.Engine);
+        _renderer = new Renderer(host, _content, ctx.Engine, _rendererCVars!);
         _ui = new UiResources(host.GraphicsDevice);
         ctx.Provide(_content);
         ctx.Provide(_renderer);

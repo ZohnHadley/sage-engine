@@ -59,7 +59,7 @@ public sealed class Renderer : IDisposable
     private readonly CVar<bool> _debugThroughWalls;
     private long _frame;
 
-    internal Renderer(ClientHost host, ContentService content, Engine engine)
+    internal Renderer(ClientHost host, ContentService content, Engine engine, RendererCVars settings)
     {
         _device = host.GraphicsDevice;
         _content = content;
@@ -81,13 +81,11 @@ public sealed class Renderer : IDisposable
         _debugLines = new DebugLineBatch(_device);
 
         var cvars = engine.CVars;
-        _fog = cvars.Register("r_fog", true, CVarFlags.None, "Distance fog (the environment's fog settings).");
-        _wireframe = cvars.Register("r_wireframe", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Draw the scene as wireframe.");
-        _spriteFaceCamera = cvars.Register("r_sprite_facecamera", false, CVarFlags.DevOnly,
-            "Turn billboards toward the camera's position instead of the view plane (06 §3.8; the classic look is off).");
-        _freezeCull = cvars.Register("r_freezecull", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Keep the current culling frustum while the camera moves.");
-        _debugThroughWalls = cvars.Register("r_debugdraw_xray", false, CVarFlags.DevOnly,
-            "Draw debug geometry through walls (06 §3.2): what the AI is chasing is usually behind something).");
+        _fog = settings.Fog;
+        _wireframe = settings.Wireframe;
+        _spriteFaceCamera = settings.SpriteFaceCamera;
+        _freezeCull = settings.FreezeCull;
+        _debugThroughWalls = settings.DebugThroughWalls;
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
@@ -477,5 +475,29 @@ public sealed class Renderer : IDisposable
         _sprites.Dispose();
         _debugLines.Dispose();
         Materials.Dispose();
+    }
+}
+
+// The renderer's cvars, registered in ClientModule.Init. The renderer itself needs the GPU, so it is
+// built in Start — after config.cfg has been read — and registering these in its constructor meant a
+// `r_fog 0` in config.cfg was dropped as an unknown cvar (the #58 trap; found when registration was
+// sealed, issue #12).
+internal sealed class RendererCVars
+{
+    public readonly CVar<bool> Fog;
+    public readonly CVar<bool> Wireframe;
+    public readonly CVar<bool> SpriteFaceCamera;
+    public readonly CVar<bool> FreezeCull;
+    public readonly CVar<bool> DebugThroughWalls;
+
+    public RendererCVars(CVarRegistry cvars)
+    {
+        Fog = cvars.Register("r_fog", true, CVarFlags.None, "Distance fog (the environment's fog settings).");
+        Wireframe = cvars.Register("r_wireframe", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Draw the scene as wireframe.");
+        SpriteFaceCamera = cvars.Register("r_sprite_facecamera", false, CVarFlags.DevOnly,
+            "Turn billboards toward the camera's position instead of the view plane (06 §3.8; the classic look is off).");
+        FreezeCull = cvars.Register("r_freezecull", false, CVarFlags.DevOnly | CVarFlags.Cheat, "Keep the current culling frustum while the camera moves.");
+        DebugThroughWalls = cvars.Register("r_debugdraw_xray", false, CVarFlags.DevOnly,
+            "Draw debug geometry through walls (06 §3.2): what the AI is chasing is usually behind something).");
     }
 }

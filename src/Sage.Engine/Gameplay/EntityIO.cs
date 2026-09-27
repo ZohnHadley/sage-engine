@@ -44,8 +44,12 @@ public sealed class EntityInputs
 {
     private readonly Dictionary<string, EntityInput> _inputs = new(StringComparer.OrdinalIgnoreCase);
 
+    // Closed when the first world exists (SageApp.CreateWorld): its level's wiring was checked without it.
+    public RegistrationSeal Seal { get; } = new("entity input", "a level's wiring may already have been checked without it");
+
     public void Register(string name, EntityInput handler)
     {
+        Seal.Check(name);
         if (!_inputs.TryAdd(name, handler))
             Assert.Ensure(false, $"Entity input '{name}' is registered twice");
     }

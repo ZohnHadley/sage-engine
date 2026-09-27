@@ -52,8 +52,12 @@ public sealed class PrefabRegistry
     private readonly Dictionary<string, int> _byName = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _optional = new(StringComparer.OrdinalIgnoreCase);
 
+    // Closed when the first world exists (SageApp.CreateWorld): prefabs may have spawned without it.
+    public RegistrationSeal Seal { get; } = new("prefab part", "prefabs may already have spawned without it");
+
     public void Register(IPrefabPart part)
     {
+        Seal.Check(part.Name);
         if (_byName.TryGetValue(part.Name, out int existing))
         {
             Log.Warn(LogCat.Records, $"Prefab part '{part.Name}' registered twice; {_parts[existing].GetType().Name} replaced by {part.GetType().Name}");

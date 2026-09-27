@@ -53,14 +53,18 @@ public sealed class GameManifest
                 PropertyNameCaseInsensitive = true,
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 AllowTrailingCommas = true,
+                // A misspelt key ("mount", "modules": { "disabled": … }) used to be ignored, so the game
+                // silently ran without what it asked for (issue #12).
+                UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow,
             });
         }
         catch (JsonException ex)
         {
             throw new InvalidDataException($"{path}: {ex.Message}", ex);
         }
-        if (manifest == null || string.IsNullOrWhiteSpace(manifest.Id) || string.IsNullOrWhiteSpace(manifest.Assembly))
-            throw new InvalidDataException($"{path}: \"id\" and \"assembly\" are required.");
+        // "assembly" is optional: a game made only of data and engine modules has no code of its own.
+        if (manifest == null || string.IsNullOrWhiteSpace(manifest.Id))
+            throw new InvalidDataException($"{path}: \"id\" is required.");
         RecordId.Parse(manifest.Id, manifest.Id);   // the id is the game's record namespace: same rules
         manifest.Directory = Path.GetFullPath(gameDirectory);
         return manifest;

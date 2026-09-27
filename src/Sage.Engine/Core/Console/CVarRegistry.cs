@@ -30,6 +30,10 @@ public sealed class CVarRegistry
 
     public bool CheatsEnabled => _cheats?.Value ?? false;
 
+    // Closed once config.cfg has been read (SageApp.Configure): a cvar registered after that would
+    // never see its saved value. Commands stay open — a late command misses nothing.
+    public RegistrationSeal CVarSeal { get; } = new("cvar", "its saved value in config.cfg was never applied");
+
     // ---- Registration ----------------------------------------------------------------------------
 
     public CVar<T> Register<T>(string name, T defaultValue, CVarFlags flags, string help) where T : notnull
@@ -55,6 +59,7 @@ public sealed class CVarRegistry
     {
         if (cvar.Flags.HasFlag(CVarFlags.DevOnly) && !BuildInfo.IsDevBuild)
             return cvar;
+        CVarSeal.Check(cvar.Name);
         CheckNameFree(cvar.Name);
         _cvars[cvar.Name] = cvar;
         if (cvar.Name.Equals("sv_cheats", StringComparison.OrdinalIgnoreCase) && cvar is CVar<bool> cheats)
