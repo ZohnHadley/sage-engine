@@ -161,7 +161,7 @@ mix them: a 3D game with a 2D minigame world, or a 2D game with 3D backgrounds.
 
 **Why a real 2D engine and not Bepu locked to a plane.** One-way platforms, tile-edge snagging,
 ultra-thin colliders, pixel-scale units and per-contact callbacks for platformer feel are all awkward
-or slow on a 3D solver. The facade keeps the choice reversible. A spike in phase 4e decides between
+or slow on a 3D solver. The facade keeps the choice reversible. A spike in phase 7a decides between
 Aether.Physics2D and a thin wrapper of your own (Box2D v3 through bindings is the fallback).
 
 **What this changes for the headless tests:** nothing. Both physics backends are pure C# with no
@@ -640,61 +640,105 @@ because it edits the live play world (`DevTools.cs:84-87`).
 
 ---
 
-## 5. Roadmap (base engine first)
+## 5. Roadmap (base engine first, action RPGs as the first target family)
 
-**Ordering principle** (§0.5): each phase either makes the base engine *able to hold* more genres
-(phases 1–3), *actually holds* them (phases 4–5), or puts your game on top (phase 6). The designer and
-modder work (phases 7–9) builds on a base that has already been shown to carry several genres.
+**Ordering principle** (§0.5):
+- **Stage A** makes the base engine *able to hold* any genre.
+- **Stage B** fills the gaps for **one target family first: first- and third-person action RPGs**, which
+  is where the engine will first be used.
+- **Stage C** proves it with reference games from that family, including yours.
+- **Stage D** widens the base to the other genres, 2D included.
+- **Stage E** opens it up to designers and modders.
 
-Every phase ends with an **exit criterion you can demonstrate**, which keeps the "dogfood in the same
-commit" habit. The existing TODO ids are shown in brackets.
+**Decided 2026-09-27: the first family is action RPGs.** The design stays general. The genre-agnostic
+boundary in §0.5 and the 2D profile both still hold, and phase 3 still builds the physics facade the 2D
+backend needs. Only the *order* changes: the gaps that action RPGs hit come first, and the 2D profile,
+RTS picking and other genres move to Stage D.
 
-### Stage A: make the base able to hold any game
+**The reference family** is Daggerfall, Half-Life, Morrowind and S.T.A.L.K.E.R. What they share, and
+what the base therefore needs first:
+
+| Need | Daggerfall | HL1 | Morrowind | S.T.A.L.K.E.R. | Sage today |
+|---|---|---|---|---|---|
+| First-person play (third-person optional) with viewmodels | ● | ● | ● (both) | ● | ◐ first-person rig and sprite viewmodels only |
+| Skeletal characters and first-person arms | billboards | ● | ● | ● | ❌ |
+| Melee **and** ranged: projectile, hitscan, ammo, reload, hit locations | ● | ●● | ● | ●● | ◐ melee plus projectiles; no hitscan, ammo or reload |
+| Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ◐ attributes and effects; no skills or levelling |
+| Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ◐ bag, two slots; no containers, shops or use |
+| Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ closed enums (§4.3) |
+| Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ◐ entity I/O with 6 inputs |
+| AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ HL1-style schedules; no off-screen simulation |
+| Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ◐ terrain streams; entities don't; no cell transitions |
+| Time of day, weather, lighting, day/night | ● | | ● | ●● | ◐ weather and point lights; no time of day or shadows |
+| Save anywhere, robust across updates | ● | ● | ● | ● | ◐ runtime spawns lost; no upgraders |
+| Mod culture (data mods first) | ○ | ● | ●● | ●● | ❌ |
+
+### Stage A: make the base able to hold any game (unchanged, and ready as GitHub issues)
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|
 | **0** | Clean ground (days) | Hygiene (§4.8), CI, `global.json` and props, licence (D9), fix the doc contradictions (§7), fix `Release`/`{config}` | CI green on Windows and Linux; no dead projects |
 | **1** | Kernel | `SageApp` and one boot path; per-app services instead of statics; plugins with sealed stages, string ids and a `kind`; plugin sets chosen in `game.json`; `Sage.Testing` headless app; the host ticks every world | Tests and the Player host boot the same way; a game with **no physics and no gameplay plugin** boots and runs |
 | **2** | Declarations | Source generator and analyzers (§3.4) for components, records, parts, systems, conditions and actions; stable ids in saves; JSON Schema output; strict loading; `sage validate` [09 §3.2, R11] | Deleting any `Register` call is a compile error; VS Code autocompletes records |
-| **3** | Carve the base | Assembly split (§3.1, §0.5 boundary): genre code moves to `Sage.Kits.Rpg`; own the ECS API (§3.5); `Sage.*` namespaces; PublicApi analyzers; `Died` event instead of direct calls; a `gameplay_conventions` record instead of `sage:` constants; open the closed enums into registries (§4.3 stage 1); engine-owned scenes; physics moved behind an `IPhysicsWorld` facade in `Sage.Physics3D`, ready for the 2D backend; `Sage.Sdk` and `dotnet new sage-game` | `games/Hello` runs on the base alone; `Sandbox` runs unchanged on base plus `Kits.Rpg`; a game built **outside the repo** compiles and runs; an analyzer proves no base assembly references a kit |
+| **3** | Carve the base | Assembly split (§3.1, §0.5 boundary): genre code moves to `Sage.Kits.Rpg`; own the ECS API (§3.5); `Sage.*` namespaces; PublicApi analyzers; `Died` event instead of direct calls; a `gameplay_conventions` record instead of `sage:` constants; open the closed enums into registries (§4.3 stage 1); engine-owned scenes; physics behind an `IPhysicsWorld` facade in `Sage.Physics3D`; `Sage.Sdk` and `dotnet new sage-game` | `games/Hello` runs on the base alone; `Sandbox` runs unchanged on base plus `Kits.Rpg`; a game built **outside the repo** compiles and runs; an analyzer proves no base assembly references a kit |
 
-### Stage B: fill the gaps, in order of how many genres each unblocks
+### Stage B: the action-RPG base
 
-| Phase | Work (each is a base plugin or a Client feature) | Unblocks | Exit criterion |
-|---|---|---|---|
-| **4a** | **Cameras as components**: perspective and ortho projections; a rig library (first-person, moved out of Gameplay; third-person orbit with collision; top-down/RTS pan-zoom; 2D follow with bounds; fixed/cinematic); several views per snapshot; split-screen; render targets | all | one scene viewed four ways by switching a camera record |
-| **4b** | **Timers, tweens, state machines**, plus the **conditions/actions vocabulary** (§4.3 stage 2), logic entities and bridge I/O (stage 3) | all | a door, elevator and puzzle sequence built in data only |
-| **4c** | **UI toolkit**: a retained widget tree (text, image, button, list, grid, slider, text field, scroll, layout containers), focus and gamepad navigation, `ui_style`/`ui_layout` records, localisation keys, HUD built on the same widgets. Keep `Screen`/`Panel` as view-models over it | all | the Sandbox HUD and bag rebuilt from records; a main menu that works with keyboard, mouse and gamepad |
-| **4d** | **Skeletal animation** [F9–F12]: glTF skins, clips, blending, an animation state machine as data, root motion, animation events (replacing the hard-coded `attack`/`hit` names) | FPS, 3P, RTS, iso RPG | a glTF character walks, runs and attacks, blended, driven by `PawnIntent` |
-| **4e** | **2D profile** (§0.5 "2D is first-class"): the physics facade with a spike to choose the 2D backend, then `Sage.Physics2D`; the 2D character controller; pixel-perfect ortho; sorting layers, Y-sort, parallax and 9-slice; Tiled import with object layers as prefabs and I/O; 2D panning; 2D debug draw. **Start the facade in phase 3**, when the 3D physics is carved into its plugin, so 3D code already goes through it | platformer, top-down, puzzle, 2D RPGs | a Tiled level with a character that runs, jumps through one-way platforms and opens a door wired by I/O, identical in feel at 1× and 4× pixel scale; headless tests for the controller |
-| **4f** | **Render pass registry** and public `RenderContext` (§4.7); post-processing; mesh, sound and `.fx` hot reload | FPS, 3P, your game | a post-process pass added from game code |
-| **4g** | **Picking and world queries from the mouse**; selection sets; navigation as a general service (grid now, navmesh later) with group/formation movement; many-unit performance pass (scale doc numbers) | RTS, iso RPG, editor | drag-select 200 units and move them in formation at 60 Hz |
-| **4h** | Prefab overrides and nesting [F31]; runtime spawns persist; save upgraders and placeholders (§4.5) | all | a saved game survives a prefab rename with an upgrader |
-
-The sub-phases are independent after 4a, so they can run in parallel. 4a–4c come first because every
-genre needs them.
-
-### Stage C: prove it, then build your game
+Each piece lands **in the base or in the gameplay plugin, never in a game**, and must pass the §0.5
+test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *action-RPG kit*:
+- stats, skills and levelling rules;
+- inventory, equipment, containers and shop screens;
+- dialogue and quest screens;
+- the spellmaker as an optional Daggerfall-flavoured feature.
 
 | Phase | Work | Exit criterion |
 |---|---|---|
-| **5** | **Genre gauntlet.** `games/Samples/`: small but complete reference games, each with headless tests: an HL1-style room shooter, a third-person melee arena, an RTS skirmish; and on the 2D profile, a platformer, a top-down 2D action RPG (tiles, Y-sort, dialogue and quests from the same vocabulary as your game), and a card or puzzle game. **Half the samples are 2D.** That keeps the 2D profile from rotting behind the 3D one. **Rule: gaps are fixed in the base, never worked around in a sample.** Each sample doubles as a `dotnet new` template | All samples run from the stock host; `git log` shows no genre-specific `if` in base assemblies; each sample's code is small (target: under about 1,500 lines) |
-| **6** | **Your game.** Grow `Sandbox` into the Daggerfall-like on `Kits.Rpg`: the existing vertical slice, now using skeletal or billboard creatures, the new UI toolkit, the conditions vocabulary for quests and dialogue, and dungeons from TrenchBroom | The vertical slice from 2026-09-23 plays again, with no RPG code in the base |
+| **4a** | **Cameras as components**: perspective (and ortho, cheap to include); rigs for first-person (moved out of Gameplay), third-person over-the-shoulder with collision and 1P/3P toggle, fixed/cinematic for scripted scenes; several views per snapshot; render targets | switch 1P↔3P mid-fight; a scripted camera cut from I/O |
+| **4b** | **Timers, tweens, state machines**; the **conditions/actions vocabulary** (§4.3 stage 2); logic entities and bridge I/O (stage 3). This is HL1's scripted sequences and Morrowind's dialogue conditions in one mechanism | an HL1-style sequence (door, lift, NPC line, counter) and a conditional dialogue topic, built in data only |
+| **4c** | **UI toolkit** (retained widgets, layout, focus and gamepad, style/layout records, localisation keys). First consumers are RPG screens: HUD, inventory **grid with weight** (S.T.A.L.K.E.R.), equipment, container/loot, shop, dialogue topics, journal, map, and a main menu with save/load | inventory, loot and dialogue screens built from records over headless view-models, with tests |
+| **4d** | **Skeletal animation** [F9–F12]: glTF skins, clips, blending, anim state machine as data, animation events replacing the `attack`/`hit`/`idle` names, **first-person arms and viewmodels**, simple IK for aiming and feet | an NPC walks, runs, aims and attacks, blended; first-person arms reload a weapon |
+| **4e** | **Weapons and combat generalised**: one damage pipeline for melee, projectile and **hitscan**; ammo, magazines, reload; spread and recoil as records; hit locations (head/limbs) from colliders; armour by location; the existing melee and spells re-expressed on it | the same pipeline drives a sword, a crossbow, a pistol and a fireball, each defined by records only |
+| **4f** | **RPG progression and economy (generic)**: skills that rise with use or with XP (both as rules), levelling, perks as effects; containers, loot tables, shops and barter, item "use" (§4.3 `ItemUse`), durability and weight | a Morrowind-style "use a skill, it rises" and a S.T.A.L.K.E.R.-style trader, both in data |
+| **4g** | **Open world, part 2**: entities stream by sector (not only terrain), **interior cells** with load doors, fast travel, **time of day** (sun, sky, lighting, NPC schedules), and **off-screen simulation** (A-Life-lite: coarse movement and fights for unloaded NPCs, reconciled when they stream in) | walk from an exterior into a dungeon and back; an NPC keeps its schedule across a day while you are away |
+| **4h** | **Rendering for these worlds**: render pass registry and public `RenderContext` (§4.7), sun shadows, fog, day/night lighting, post-processing; mesh, sound and `.fx` hot reload | a dusk-to-night transition with shadows in a streamed exterior |
+| **4i** | **Saves you can trust**: prefab overrides and nesting [F31]; runtime spawns persist; upgraders and placeholders (§4.5); quick-save and autosave | save anywhere, change a prefab and a record, load: nothing lost and nothing duplicated |
+| **4j** | **Data mods, lite**: `mod.json`, mods folder, load order, `mod_conflicts` (§4.4, the data half only). This genre's players expect it, and the VFS and patching already do most of the work | a data mod that adds a weapon and patches a trader loads, and its conflicts are reported |
 
-### Stage D: open it up to designers and modders
+Order: 4a → 4b and 4c → 4d → the rest in parallel. 4a–4c unblock everything, and 4d is the longest
+single item.
+
+### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |
 |---|---|---|
-| **7** | Designer logic polish: AI behaviour trees (§4.3 stage 4), per-entity map keys, problems panel, `sage validate` in CI templates | A quest with a door, a counter and a custom-BT creature, built with no C# |
-| **8** | Modding and saves (§4.4, §4.5) [F37, F27] | Two conflicting example mods (data and code) show the report; saves survive mod changes |
-| **9** | Editor host (§4.6) [F28–F30, D7]. The multi-view renderer from 4a and picking from 4g are already in place | A designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
-| **gate** | Scripting decision (§4.3 stage 5) | A written decision with evidence, replacing or confirming D3 |
+| **5** | **Action-RPG gauntlet** in `games/Samples/`, each small, complete, headless-tested and doubling as a `dotnet new` template:<br>• **"Black Mesa lite"** (HL1): a linear chapter with a scripted sequence, hitscan and melee, doors, lifts, a scientist that follows you<br>• **"Vvardenfell lite"** (Morrowind): a small town with topic dialogue, a quest, a shop, skills that rise with use, 1P/3P<br>• **"Zone lite"** (S.T.A.L.K.E.R.): a streamed outdoor area with guns, a grid inventory, a trader, two factions fighting off-screen, and a day/night cycle<br>**Rule: gaps are fixed in the base, never in a sample.** | all three run from the stock host; no genre `if` in base assemblies; each sample's code stays small (target under about 1,500 lines) |
+| **6** | **Your game.** Grow `Sandbox` into the Daggerfall-like on `Kits.Rpg`: the vertical slice again, now on the new cameras, UI, weapons, progression, cells and saves | the 2026-09-23 vertical slice plays again, with no RPG code in the base |
 
-**Why this order and not the reverse.** The editor and the mod surface both *read* the base engine's
-declarations: components, records, conditions, UI widgets, cameras. Building them before the base
-settles means building them twice. Phases 1–3 still bake in what they will need: stable ids, a
-metadata table, documents and registrations tracked per plugin. The later work is additive, not a
-rewrite.
+### Stage D: widen the base to other genres (2D included)
+
+| Phase | Work | Exit criterion |
+|---|---|---|
+| **7a** | **2D profile** (§0.5 "2D is first-class"): a spike to choose the 2D physics backend behind the phase-3 facade, then `Sage.Physics2D`, the 2D controller, pixel-perfect ortho, sorting layers and Y-sort, parallax and 9-slice, Tiled import, 2D panning | a Tiled level with a character that runs, jumps through one-way platforms and opens a door wired by I/O, identical at 1× and 4× pixel scale |
+| **7b** | **Mouse picking, selection, group navigation**, many-unit performance (RTS and top-down) | drag-select 200 units and move them in formation at 60 Hz |
+| **7c** | **Genre gauntlet, part 2**: a third-person melee arena (Lugaru-like), an RTS or battle skirmish (Warband-like), and on the 2D profile a platformer, a top-down 2D action RPG and a card or puzzle game | same rules as phase 5 |
+
+### Stage E: open it up to designers and modders
+
+| Phase | Work | Exit criterion |
+|---|---|---|
+| **8** | Designer logic polish: AI behaviour trees (§4.3 stage 4), per-entity map keys, problems panel, `sage validate` in templates | a quest with a door, a counter and a custom-BT creature, built with no C# |
+| **9** | Full modding (code mods, `.sagemod` packages, namespaced assets, keyed list merge) and save headers (§4.4, §4.5) [F37, F27] | two conflicting example mods (data and code) show the report; saves survive mod changes |
+| **10** | Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
+| **gate** | Scripting decision (§4.3 stage 5), informed by what the phase-5 samples needed | a written decision with evidence, replacing or confirming D3 |
+
+**Why this order.**
+- Phases 1–3 make the base general.
+- Stage B makes it good at one family, so real games can start.
+- Stage D widens it before the editor and full modding, which both *read* the base engine's
+  declarations. Building them before the base settles means building them twice.
+- Phases 1–3 still bake in what the later work needs (stable ids, metadata, documents, per-plugin
+  registrations), so it is additive and not a rewrite.
+- The one exception is **4j**. Data mods are cheap on the existing VFS, and this genre lives on them.
 
 **What deliberately waits:** multiplayer (keep the readiness rules), visual scripting, DesktopVK, AOT,
 and 2D skeletal animation.
@@ -706,10 +750,10 @@ and 2D skeletal animation.
 These are the owner's calls, and the plan works with any answer. My recommendation comes first.
 
 0. ~~How far does "almost any game" go?~~ **Decided 2026-09-27: 3D and 2D, both first-class**
-   (§0.5). Multiplayer stays later. Still open inside it: the 2D physics backend, which the phase-4e
+   (§0.5), with **action RPGs as the first target family** (§5). Multiplayer stays later. Still open inside it: the 2D physics backend, which the phase-7a
    spike decides (recommended first candidate: Aether.Physics2D).
 1. **Scripting (D3).**
-   - Recommended: the typed vocabulary first, with a language decision after phase 4 on evidence.
+   - Recommended: the typed vocabulary first, with a language decision after the phase-5 samples, on evidence.
    - Alternative: commit to Lua now for modders.
 2. **Editor technology.**
    - Recommended: a MonoGame host with ImGui (proven in this repo, one stack).
