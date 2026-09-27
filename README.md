@@ -204,7 +204,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
 | `tests/Sage.Tests` | xUnit, headless |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |
-| `packages/` | One vendored dependency: MonoGame.ImGuiNet, dev-only |
+| `third_party/` | One vendored dependency: MonoGame.ImGuiNet, dev-only (see its `PATCHES.md`) |
 | `user/` | Written at runtime: logs, config, screenshots, crash reports (not in git) |
 
 ## Placeholder art

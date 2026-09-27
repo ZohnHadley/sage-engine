@@ -11,7 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
-    <ProjectReference Include="..\..\packages\MonoGame.ImGuiNet-main\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
+    <ProjectReference Include="..\..\third_party\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
   </ItemGroup>
 
   <ItemGroup>

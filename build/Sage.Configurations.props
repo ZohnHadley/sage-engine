@@ -8,7 +8,7 @@
                                      and dev tools are compiled out
 
     "Release" is accepted as an alias of Shipping, because `dotnet publish` defaults to it.
-    Imported by src/Directory.Build.props and tests/Sage.Tests; not by vendored packages/.
+    Imported by src/Directory.Build.props and tests/Sage.Tests; not by vendored third_party/.
   -->
   <PropertyGroup>
     <Configurations>Debug;Development;Shipping</Configurations>
