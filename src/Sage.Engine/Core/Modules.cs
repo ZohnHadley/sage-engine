@@ -63,8 +63,12 @@ public sealed class ModuleManager
     public IReadOnlyList<IModule> Modules => _ordered.Count > 0 ? _ordered : _modules;
     public IGameModule? Game { get; private set; }
 
+    // Closed by InitAll: a module added after that would never run Init.
+    public RegistrationSeal Seal { get; } = new("module", "it never ran Init");
+
     public void Add(IModule module)
     {
+        Seal.Check(module.Name);
         if (_modules.Any(m => m.GetType() == module.GetType()))
             throw new InvalidOperationException($"Module {module.Name} is already added.");
         _modules.Add(module);
@@ -94,6 +98,7 @@ public sealed class ModuleManager
 
     public void InitAll()
     {
+        Seal.Seal("the modules ran Init");
         _ordered = Sort(_modules);
         foreach (var m in _ordered) Run(m, "Init", () => m.Init(new ModuleContext(this, m)));
         Log.Info(LogCat.Modules, $"Modules: {string.Join(", ", _ordered.Select(m => m.Name))}");
@@ -188,6 +193,9 @@ public sealed class ModuleManager
                         && t is { IsAbstract: false, IsInterface: false })
             .Select(t => (IModule)Activator.CreateInstance(t)!)
             .ToList();
+        foreach (var game in assembly.GetExportedTypes().Where(t => typeof(IGameModule).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false }))
+            Log.Warn(LogCat.Modules, $"{assembly.GetName().Name}: {game.Name} is an IGameModule, and a game has one, in the assembly game.json names in \"assembly\"; " +
+                                     "from `modules.add` it is ignored. Make it an IModule, or move it.");
         if (found.Count == 0)
             Log.Warn(LogCat.Modules, $"{assembly.GetName().Name} has no public IModule class; nothing was added");
         else

@@ -511,8 +511,12 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 6. **A character left on the `default` physics layer falls through the world**, because a character
    ignores its own layer and the terrain is on that one. It warns now, but the symptom is memorable:
    the camera follows the player down and every direction looks like empty sky.
-7. **A cvar registered in `Start` instead of `Init`** is dropped from `config.cfg` with an "unknown cvar"
-   warning, so the saved setting silently never applies.
+7. **Register in `Init`, never later.** A cvar registered in `Start` used to miss `config.cfg`, and a
+   record type, input action, prefab part or module registered late did nothing either. Since
+   2026-09-27 these are **errors** at the line that did it (`SageApp` seals each registry at the stage
+   after which registering would be too late), so this one no longer happens silently — the rest of
+   the list still does. A misspelt key in `game.json` is an error too, and `disable` names that match no
+   module are warned about.
 8. **Prefab parts run in registration order, not JSON order**, and registering a name twice replaces it
    without complaint. A part your *client* half registers must be declared `Prefabs.Optional(name)` by
    your simulation half, or a headless run errors on every spawn of that prefab.

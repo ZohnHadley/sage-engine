@@ -89,11 +89,15 @@ public sealed class RecordStore
 
     // ---- Schemas ----------------------------------------------------------------------------------
 
+    // Closed by the first Load: a type registered after that had its records skipped as unknown.
+    public RegistrationSeal TypeSeal { get; } = new("record type", "every record of that type in the content was skipped as unknown");
+
     // Modules register their record types in Init (docs/design/01 §5.1), before records load.
     public void Register<T>() where T : class, new()
     {
         var attr = typeof(T).GetCustomAttribute<RecordAttribute>()
                    ?? throw new InvalidOperationException($"{typeof(T).Name} has no [Record(\"type\")] attribute.");
+        TypeSeal.Check(attr.Type);
         if (_typesByName.TryGetValue(attr.Type, out var existing) && existing != typeof(T))
             throw new InvalidOperationException($"Record type '{attr.Type}' is already registered by {existing.Name}.");
         _typesByName[attr.Type] = typeof(T);
@@ -139,6 +143,7 @@ public sealed class RecordStore
 
     public void Load(VirtualFileSystem vfs)
     {
+        TypeSeal.Seal("records were loaded");
         _vfs = vfs;
         var watch = System.Diagnostics.Stopwatch.StartNew();
         ErrorCount = 0;

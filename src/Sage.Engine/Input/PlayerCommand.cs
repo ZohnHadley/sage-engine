@@ -31,6 +31,9 @@ public sealed class ActionRegistry
 
     public IReadOnlyList<ActionInfo> All => _actions;
 
+    // Closed when content loads (SageApp.LoadContent): bindings are built from the input records then.
+    public RegistrationSeal Seal { get; } = new("input action", "the bindings built when the records loaded have none for it");
+
     // Modules register their actions in Init. Registering the same name again with the same kind
     // returns the existing id (two modules may both need "Use").
     public ActionId Register(string name, ActionKind kind)
@@ -41,6 +44,7 @@ public sealed class ActionRegistry
                 throw new InvalidOperationException($"Action '{name}' is already registered as {existing.Kind}, not {kind}.");
             return existing.Id;
         }
+        Seal.Check(name);
         int bit = -1;
         if (kind == ActionKind.Button)
         {

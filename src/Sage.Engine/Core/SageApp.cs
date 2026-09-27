@@ -165,6 +165,7 @@ public sealed class SageApp : IDisposable
     public void Configure()
     {
         Advance(AppStage.Registered, AppStage.Configured);
+        CVars.CVarSeal.Seal("config.cfg was read");
         if (_options.ConfigFile is { } config && File.Exists(config))
             CVars.ExecFile(config, ExecSource.Config);
     }
@@ -172,7 +173,8 @@ public sealed class SageApp : IDisposable
     public void LoadContent()
     {
         Advance(AppStage.Configured, AppStage.ContentLoaded);
-        Engine.Records.Load(Engine.Vfs);
+        Engine.Actions.Seal.Seal("content was loaded");
+        Engine.Records.Load(Engine.Vfs);   // seals record types
     }
 
     public void Start()
@@ -187,6 +189,8 @@ public sealed class SageApp : IDisposable
         if (Stage is not (AppStage.Started or AppStage.Running))
             throw new InvalidOperationException($"CreateWorld('{name}') needs a started app; it is {Stage}. Call Start first.");
         Stage = AppStage.Running;
+        Engine.Prefabs.Seal.Seal("the first world was created");
+        Engine.Inputs.Seal.Seal("the first world was created");
         return Engine.CreateWorld(name);
     }
 
