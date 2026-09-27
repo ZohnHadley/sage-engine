@@ -10,7 +10,7 @@ namespace sage_engine;
 // game.json, like Source's gameinfo.txt (docs/design/01 §3.3):
 //   {
 //     "name": "Sandbox", "id": "sandbox",
-//     "assembly": "bin/{config}/net8.0/Sandbox.dll",   // {config} = Debug | Development | Shipping
+//     "assembly": "bin/{config}/net8.0/Sandbox.dll",   // {config} = the build's configuration name
 //     "mounts": ["content"],                           // relative to the game folder, mounted in order
 //     "modules": { "disable": [] }
 //   }
@@ -38,7 +38,7 @@ public sealed class GameManifest
     public IEnumerable<string> ModuleAssemblies => Modules.Add.Select(Resolve);
 
     private string Resolve(string path) =>
-        Path.GetFullPath(Path.Combine(Directory, path.Replace("{config}", BuildInfo.Config.ToString())));
+        Path.GetFullPath(Path.Combine(Directory, path.Replace("{config}", BuildInfo.ConfigurationName)));
 
     public static GameManifest Load(string gameDirectory)
     {

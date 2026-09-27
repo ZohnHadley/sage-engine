@@ -16,6 +16,15 @@
     <SageShipping Condition="'$(Configuration)' == 'Shipping' Or '$(Configuration)' == 'Release'">true</SageShipping>
   </PropertyGroup>
 
+  <!--
+    The configuration's MSBuild name, which is also the folder under bin/ that the build writes to.
+    BuildInfo.ConfigurationName reads it, and `{config}` in game.json means it: a `-c Release` build
+    writes bin/Release even though Release behaves as Shipping.
+  -->
+  <ItemGroup>
+    <AssemblyMetadata Include="SageBuildConfiguration" Value="$(Configuration)" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <Optimize>false</Optimize>
     <DebugType>portable</DebugType>
