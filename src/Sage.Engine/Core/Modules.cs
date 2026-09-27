@@ -28,7 +28,14 @@ public interface IModule
 }
 
 // The single entry point of a game assembly (01 §4). Exactly one public class per game assembly.
-public interface IGameModule : IModule { }
+public interface IGameModule : IModule
+{
+    // The game's rules for a new world (16 §3.1). Called once every module's OnWorldCreated has run,
+    // then the rules' OnWorldStarted. Null means DefaultGameRules. This replaces having to install the
+    // rules as a resource inside OnWorldCreated at exactly the right moment (issue #13); a module that
+    // still does that keeps working, and CreateRules wins over it.
+    GameRules? CreateRules(World world) => null;
+}
 
 public sealed class ModuleContext
 {

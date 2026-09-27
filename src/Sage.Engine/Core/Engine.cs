@@ -71,14 +71,31 @@ public sealed class Engine : IDisposable
         Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active)");
         Modules.NotifyWorldCreated(world);   // modules install their resources and systems
 
-        // Engine modules run before the game's, so this is the first point where "did the game install
-        // its own rules?" has a real answer (review #47).
-        if (!world.Resources.TryGet<GameRules>(out _))
-            world.Resources.Set<GameRules>(new DefaultGameRules());
+        // The game's rules, now that every module has furnished the world (16 §3.1, issue #13): the game
+        // module's CreateRules if it has any, else rules a module installed in OnWorldCreated (the older
+        // way, review #47), else the defaults.
+        GameRules rules;
+        if (Modules.Game?.CreateRules(world) is { } fromGame)
+        {
+            if (world.Resources.TryGet<GameRules>(out var installed) && installed != null)
+                Log.Warn(LogCat.World, $"World '{name}': {Modules.Game.Name}.CreateRules returned {fromGame.GetType().Name}, " +
+                                       $"replacing the {installed.GetType().Name} a module installed in OnWorldCreated");
+            world.Resources.Replace<GameRules>(fromGame);
+            rules = fromGame;
+        }
+        else if (world.Resources.TryGet<GameRules>(out var installed) && installed != null)
+        {
+            rules = installed;
+        }
+        else
+        {
+            rules = new DefaultGameRules();
+            world.Resources.Add<GameRules>(rules);
+        }
+        Log.Info(LogCat.World, $"World '{name}': rules {rules.GetType().Name}");
 
         // Now that every module has had its turn, the game's rules may populate the world (16 §3.1).
-        if (world.Resources.TryGet<GameRules>(out var rules) && rules != null)
-            rules.OnWorldStarted(world);
+        rules.OnWorldStarted(world);
         return world;
     }
 

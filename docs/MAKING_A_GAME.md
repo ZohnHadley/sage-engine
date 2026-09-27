@@ -249,14 +249,20 @@ public void OnWorldCreated(World world)
     terrain.Seed = 1;
     terrain.Load(SectorCoord.Zero);
 
-    world.Resources.Set<GameRules>(new YourRules(this));
     world.AddSystem(new YourOwnSystem(world), Phase.Gameplay);
 }
+
+// The game's rules for each world. The engine asks once every module has furnished the world, then
+// starts them.
+public GameRules CreateRules(World world) => new YourRules(this);
 ```
 
+A world resource your module installs goes in with `world.Resources.Add(...)`, which refuses a second
+one of the same type; `Replace` is for swapping one on purpose, and disposes the old.
+
 **2. Rules.** `GameRules` is an abstract class with four hooks, and a game overrides the ones it cares
-about. Install it as a world resource, as above; without one the engine uses `DefaultGameRules`, which
-does nothing at all:
+about. Return yours from your game module's `CreateRules`, as above; without one the engine uses
+`DefaultGameRules`, which does nothing at all:
 
 ```csharp
 public sealed class YourRules : GameRules
@@ -512,9 +518,10 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
    times in this engine before anybody noticed.
 3. **An action that is not `Actions.Register`ed** makes every binding to it ignored (with a warning), and
    `ScreenStack.Bind` to it does nothing at all. Register actions in `Init`.
-4. **`GameRules` must be installed in `OnWorldCreated`.** The engine substitutes `DefaultGameRules` and
-   calls `OnWorldStarted` as soon as the last module has furnished the world; set it any later and your
-   world never starts.
+4. **Rules come from `CreateRules`.** Since 2026-09-27 a game module returns its `GameRules` from
+   `CreateRules(World)`, which the engine calls at the right moment. The older way — installing them as a
+   resource inside `OnWorldCreated` — still works, but set them any later than that and the engine has
+   already started `DefaultGameRules` in their place.
 5. **`Terrain.Load` without a `Generator`** trips an assert and loads nothing, after which `HeightAt`
    returns 0 everywhere — so everything you place stands at sea level.
 6. **A character left on the `default` physics layer falls through the world**, because a character

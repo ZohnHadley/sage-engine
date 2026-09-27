@@ -105,7 +105,7 @@ public sealed class AttributesModule : IModule
     public void OnWorldCreated(World world)
     {
         // As a world resource, not a module service: everything that reads it has a world in hand.
-        world.Resources.Set(Registries);
+        world.Resources.Add(Registries);
         Registries.Rebuild(_records!);
         world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);
     }
@@ -304,7 +304,7 @@ public sealed class ItemsModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        world.Resources.Set(new InteractionState());
+        world.Resources.Add(new InteractionState());
         world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!), Phase.Gameplay,
             before: new[] { typeof(EffectSystem) });
     }
@@ -460,7 +460,7 @@ public sealed class AIModule : IModule
             after: new[] { typeof(PlayerControlSystem) });
         // One navigation per world, like the physics space: the grid holds origin-space positions, and
         // two worlds do not share an origin (R6, and the lesson of the audio mixer in 11 §3).
-        world.Resources.Set(new Navigation
+        world.Resources.Add(new Navigation
         {
             Enabled = _navEnabled!.Value,
             CellSize = _navCell!.Value,
@@ -636,8 +636,8 @@ public sealed class FactionsModule : IModule
     // behaviour — what the conversation *did* is already in the world.
     public void OnWorldCreated(World world)
     {
-        world.Resources.Set(new Reputation());
-        world.Resources.Set(new Conversation());
-        world.Resources.Set(new Journal());
+        world.Resources.Add(new Reputation());
+        world.Resources.Add(new Conversation());
+        world.Resources.Add(new Journal());
     }
 }

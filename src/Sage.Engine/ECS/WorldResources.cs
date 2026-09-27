@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace sage_engine;
 
@@ -11,12 +12,42 @@ public sealed class WorldResources
     private readonly Dictionary<Type, object> _items = new();
     private readonly List<object> _order = new();   // installation order, for teardown
 
-    public void Set<T>(T resource) where T : class
+    // Installs a resource the world doesn't have yet. A second install of the same type is an error:
+    // it used to replace the first without a word and never dispose it (issue #13), so two modules both
+    // installing one resource was a bug nobody heard about. Swapping one on purpose is Replace.
+    public void Add<T>(T resource) where T : class
     {
-        if (_items.TryGetValue(typeof(T), out var previous)) _order.Remove(previous);
+        if (_items.TryGetValue(typeof(T), out var existing))
+            throw new InvalidOperationException($"World resource {typeof(T).Name} is already installed ({existing.GetType().Name}); " +
+                                                "use Replace to swap it on purpose.");
         _items[typeof(T)] = resource;
         _order.Add(resource);
     }
+
+    // Swaps a resource in on purpose (a save restoring the journal, a game's own rules), installing it if
+    // there was none. The one it replaces is disposed if it is IDisposable and not still installed under
+    // another type.
+    public void Replace<T>(T resource) where T : class
+    {
+        if (_items.TryGetValue(typeof(T), out var previous) && !ReferenceEquals(previous, resource))
+        {
+            _order.Remove(previous);
+            if (previous is IDisposable disposable && !_items.Any(kv => kv.Key != typeof(T) && ReferenceEquals(kv.Value, previous)))
+            {
+                try { disposable.Dispose(); }
+                catch (Exception ex) { Log.Error(LogCat.World, $"Disposing replaced world resource {previous.GetType().Name} failed: {ex.Message}"); }
+            }
+        }
+        else if (previous != null)
+        {
+            return;   // the same object again: nothing to do
+        }
+        _items[typeof(T)] = resource;
+        _order.Add(resource);
+    }
+
+    [Obsolete("Say which you mean: Add (install; an error if one is there) or Replace (swap on purpose, disposing the old).")]
+    public void Set<T>(T resource) where T : class => Replace(resource);
 
     public T Get<T>() where T : class =>
         _items.TryGetValue(typeof(T), out var r)

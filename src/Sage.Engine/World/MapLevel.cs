@@ -656,7 +656,7 @@ public sealed class MapModule : IModule
     public void OnWorldCreated(World world)
     {
         var levels = new MapLevels();
-        world.Resources.Set(levels);
+        world.Resources.Add(levels);
         world.AddSystem(new MapCollisionSystem(world), Phase.PrePhysics);
 
         // A level's `Position` is a world position held outside the ECS, and the rule for those is the

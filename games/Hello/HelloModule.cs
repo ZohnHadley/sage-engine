@@ -32,12 +32,10 @@ public sealed class HelloModule : IGameModule
         terrain.Generator = new RollingHills();
         terrain.Seed = 1;
         terrain.Load(SectorCoord.Zero);
-
-        // The rules have to be installed *here*: the engine substitutes `DefaultGameRules` and calls
-        // `OnWorldStarted` as soon as the last module has had its turn, so a game that installs them
-        // later never gets started.
-        world.Resources.Set<GameRules>(new HelloRules());
     }
+
+    // The game's rules for each world; the engine starts them once every module has set the world up.
+    public GameRules CreateRules(World world) => new HelloRules();
 }
 
 // What this game does, which is the smallest thing a game can do: put a player in the world and say

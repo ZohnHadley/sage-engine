@@ -200,7 +200,7 @@ public static class Spellmaker
         if (!world.Resources.TryGet<Spellbook>(out var book) || book is null)
         {
             book = new Spellbook();
-            world.Resources.Set(book);
+            world.Resources.Add(book);
         }
         return book;
     }
