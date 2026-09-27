@@ -45,6 +45,96 @@ this plan it comes first.**
 
 ---
 
+## 0.5 Priority: a base engine first, your game second
+
+**The owner's direction (2026-09-27):** build a **base engine** that the Daggerfall-like can be made in,
+and that can also make almost any other game. Every phase in §5 is ordered by that goal. Editor polish
+and the modding surface still matter, but they come *after* the base can carry several genres.
+
+### What "base engine" means
+
+A **base engine** is everything a game needs that is **not a genre decision**. Anything that assumes
+a genre (first person, a readied spell, 8-direction billboards, mana, Daggerfall-style quests) goes in a
+**kit** or a game.
+
+**The test:** can a new game in any row of the table below be written as *game code and data only*,
+with **zero edits to engine assemblies**? If a sample game needs an engine edit, that edit is a
+base-engine gap. Fix it in the base engine, never inside the sample.
+
+### The genre gauntlet: what "almost any game" asks of the base
+
+| Capability | FPS (HL1) | 3rd-person action (Lugaru) | Top-down / iso RPG | 2D platformer | RTS / battles (Warband) | Puzzle / card / UI-heavy | **Your game** (Daggerfall) | Sage today |
+|---|---|---|---|---|---|---|---|---|
+| App kernel, plugins, records, VFS, console, saves | ● | ● | ● | ● | ● | ● | ● | ✅ mostly; boot and plugins need redoing (§3.2–3.3) |
+| ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are Sandbox C#. Prefab overrides and nesting missing (F31) |
+| **Cameras as components**: perspective and ortho, rigs, several viewports | ● | ● | ● | ● | ● | ● | ● | ❌ one `ActiveCamera` resource, perspective only (`RenderSystems.cs:48`), one first-person rig (`CharacterController.cs:417`) |
+| 3D physics, queries, triggers | ● | ● | ● | ○ | ● | ○ | ● | ✅ Bepu |
+| 2D-plane physics | | | ○ | ● | | ○ | | ❌ |
+| Character controllers (FP, 3P, top-down, 2D) | ● | ● | ● | ● | ○ | | ● | ◐ one kinematic first-person capsule |
+| **Skeletal animation**, blending, anim state machine | ● | ● | ● | ○ | ● | | ○ | ❌ F9–F12. `Animation/` is only `SpriteAnimation.cs` (102 lines) |
+| Sprites, sorting, tilemaps, 2D layer | ○ | | ● | ● | ○ | ● | ● | ◐ billboards and sprite sheets; no ortho, sorting layers or tilemaps |
+| Meshes, materials, lights, particles, weather | ● | ● | ● | ○ | ● | ○ | ● | ✅ |
+| **Render pass registry**, render targets, post-processing | ● | ● | ○ | ○ | ○ | ○ | ● | ❌ `Passes` is a private static array |
+| **UI toolkit**: widgets, layout, focus and gamepad navigation, styling, localisation | ● | ● | ● | ● | ● | ●● | ● | ◐ list-style `Screen`/`Panel` only; HUD hand-drawn |
+| Input: actions, gamepad, mouse picking, rebinding | ● | ● | ● | ● | ●● | ● | ● | ◐ actions and scripted input done; picking and rebinding UI missing |
+| Navigation: grid now, navmesh later, groups | ● | ● | ● | | ●● | | ● | ◐ grid A* inside Gameplay |
+| Timers, tweens, state machines, conditions/actions | ● | ● | ● | ● | ● | ●● | ● | ❌ (only I/O `delay`) |
+| Large worlds and streaming | | | ○ | | ○ | | ● | ✅ (keep as an optional plugin) |
+| Audio (mixer, 3D, music) | ● | ● | ● | ● | ● | ● | ● | ✅ one-shots and loops; music streaming missing |
+| Stats, effects, damage, inventory, factions, AI (BT) | ● | ● | ● | ○ | ● | ○ | ● | ◐ built but RPG-shaped and closed (§4.3) |
+| Dialogue and quest *models* | ○ | ○ | ● | | ○ | | ● | ◐ closed enums; screens in engine |
+| Spellmaker, readied spell, journal, Daggerfall sprite rules | | | | | | | ● | ✅ **but in the engine; moves to `Sage.Kits.Rpg`** |
+
+● needs it · ●● leans on it hard · ○ nice to have · ✅ have · ◐ partial · ❌ missing
+
+**Reading the table:**
+- Almost everything your game needs **already exists**.
+- What stops Sage from being a general engine is a short list:
+  1. cameras and viewports;
+  2. skeletal animation;
+  3. a real UI toolkit;
+  4. render passes;
+  5. timers, tweens and state machines;
+  6. a 2D and orthographic layer;
+  7. picking;
+  8. the RPG code sitting inside the engine.
+- Each of those unblocks four or more columns. That's the order of §5.
+
+### The base-engine boundary (what goes where)
+
+- **Base engine.** `Sage.Core`, `Sage.Simulation`, `Sage.Client`, plus optional base plugins:
+  - `Sage.Physics3D`, `Sage.Physics2D` (plane-locked, see below);
+  - `Sage.Streaming`, `Sage.Navigation`, `Sage.Animation`, `Sage.UI`, `Sage.Audio`;
+  - `Sage.Gameplay`: generic stats, effects, damage, inventory, factions, AI, and the
+    conditions/actions vocabulary.
+
+  A game switches plugins on in `game.json`. A puzzle game loads neither physics nor gameplay.
+- **Kits.** `Sage.Kits.Rpg` holds the spellmaker, readied spell, journal and dialogue/quest *screens*,
+  plus the Daggerfall conventions. Later kits: `Sage.Kits.Shooter`, `Sage.Kits.Platformer`,
+  `Sage.Kits.Strategy`. A kit uses only base-engine public API.
+- **Games.** Your Daggerfall-like game is `Sandbox` grown up, and it is *Kit.Rpg plus its own content
+  and code*.
+- **Moves out of the base today:**
+  - `SpellmakerScreen`, `Spellmaker`, readied `Selected`, `JournalScreen`, `DialogueScreen`;
+  - `sage:mana` costing;
+  - the five hard-coded schedule ids;
+  - clip names `attack`/`hit`/`idle`;
+  - `FirstPersonCameraSystem`, which becomes one camera rig among several in the base.
+- **Stays in the base:**
+  - 8-direction billboards: generic sprite feature, useful for Doom-likes and isometric games;
+  - kinematic controller, entity I/O, streaming, factions and attributes.
+
+### Out of scope for the base (for now)
+
+- Multiplayer: keep the readiness rules.
+- Visual scripting.
+- Our own brush editor: TrenchBroom stays.
+- AOT and consoles.
+- Mobile and web.
+- A true 2D physics engine, until the platformer sample shows that plane-locked Bepu isn't enough.
+
+---
+
 ## 1. Who we are designing for
 
 | Audience | Works in | Needs from Sage | Today |
@@ -516,29 +606,64 @@ because it edits the live play world (`DevTools.cs:84-87`).
 
 ---
 
-## 5. Roadmap
+## 5. Roadmap (base engine first)
 
-Each phase ends with an **exit criterion you can demonstrate**, which keeps the "dogfood in the same
+**Ordering principle** (§0.5): each phase either makes the base engine *able to hold* more genres
+(phases 1–3), *actually holds* them (phases 4–5), or puts your game on top (phase 6). The designer and
+modder work (phases 7–9) builds on a base that has already been shown to carry several genres.
+
+Every phase ends with an **exit criterion you can demonstrate**, which keeps the "dogfood in the same
 commit" habit. The existing TODO ids are shown in brackets.
+
+### Stage A: make the base able to hold any game
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|
-| **0** | Clean ground (days) | Hygiene (§4.8), CI, `global.json` and props, licence decision (D9), fix the doc contradictions (§7), fix `Release`/`{config}` | CI green on Windows and Linux; `dev_branch_test` gone; no dead projects |
-| **1** | Foundations | `SageApp` and one boot path; statics made per-app; plugin model with sealed stages and string ids; `Sage.Testing` | Every test and the Player host boot through the same builder; parallel tests; the host ticks every world |
-| **2** | Declarations | Source generator and analyzers (§3.4): components, records, parts, systems; stable ids in saves; JSON Schema output; `sage validate`; strict loading; problems panel [09 §3.2, R11] | Deleting any `Register` call in the repo is a compile error; VS Code autocompletes `scene.json`; the inspector-loss and ignored-`color` bugs are errors |
-| **3** | Layering | Split into Core, Simulation, Gameplay and Kits.Rpg; own the ECS API; namespaces; PublicApi analyzers; `Died` event; conventions record; engine-owned scenes; data-only games; `Sage.Sdk` and templates | `dotnet new sage-game` outside the repo builds and runs; an RPG template with **zero C#** plays; Hello doesn't load the RPG kit |
-| **4** | Designer logic | Open registries (§4.3 stage 1); the conditions and actions vocabulary; logic entities and bridge I/O; per-entity map keys; AI behaviour trees [F17, F21–F23] | A quest where talking to an NPC opens a door, a counter gates a reward, and a creature has its own BT, built with no C# |
-| **5** | Modding and saves | `mod.json`, `.sagemod`, load order, collectible ALC, namespaced assets, keyed list merge, `$remove`/`replace`, conflict report and mod manager; save header, upgraders, placeholders, atomic load [F37, F27] | Two example mods (one data, one code) that conflict on a field show the report; a save survives adding, removing and updating a mod |
-| **6** | Editor | `Sage.EditorHost`, document model, command undo, PIE, gizmos and palette, schema forms, override diffs, comment-preserving write-back; renderer views and targets and public `RenderContext` [F28–F30, D7] | A designer builds the Sandbox yard (place, tune, wire, undo, play, save) without touching JSON, and the diff is clean |
-| **7** | Extensibility and reach | Render pass registry, UI style and layout records, declarative screens, localisation keys, mesh/sound/`.fx` hot reload, `sage package`, shippable modding tools | A mod adds a post-process pass and a new screen; `sage package` produces a runnable build on a clean machine |
-| **gate** | Scripting decision | Review stage 1–4 content: which asks needed C#? Decide on Lua or an expression language, or no | A written decision with evidence, replacing or confirming D3 |
+| **0** | Clean ground (days) | Hygiene (§4.8), CI, `global.json` and props, licence (D9), fix the doc contradictions (§7), fix `Release`/`{config}` | CI green on Windows and Linux; no dead projects |
+| **1** | Kernel | `SageApp` and one boot path; per-app services instead of statics; plugins with sealed stages, string ids and a `kind`; plugin sets chosen in `game.json`; `Sage.Testing` headless app; the host ticks every world | Tests and the Player host boot the same way; a game with **no physics and no gameplay plugin** boots and runs |
+| **2** | Declarations | Source generator and analyzers (§3.4) for components, records, parts, systems, conditions and actions; stable ids in saves; JSON Schema output; strict loading; `sage validate` [09 §3.2, R11] | Deleting any `Register` call is a compile error; VS Code autocompletes records |
+| **3** | Carve the base | Assembly split (§3.1, §0.5 boundary): genre code moves to `Sage.Kits.Rpg`; own the ECS API (§3.5); `Sage.*` namespaces; PublicApi analyzers; `Died` event instead of direct calls; a `gameplay_conventions` record instead of `sage:` constants; open the closed enums into registries (§4.3 stage 1); engine-owned scenes; `Sage.Sdk` and `dotnet new sage-game` | `games/Hello` runs on the base alone; `Sandbox` runs unchanged on base plus `Kits.Rpg`; a game built **outside the repo** compiles and runs; an analyzer proves no base assembly references a kit |
 
-**Parallel tracks that don't block the phases:** skeletal animation (F9–F12), which blocks three of the
-four target games; the door depenetration bug (#61); and lightmaps. Put skeletal animation after phase 3,
-so it lands in the right assembly.
+### Stage B: fill the gaps, in order of how many genres each unblocks
 
-**What deliberately waits:** multiplayer (keep the readiness rules), a visual graph editor,
-DesktopVK, and AOT. Phase 2's generator makes AOT possible, but nothing needs it yet.
+| Phase | Work (each is a base plugin or a Client feature) | Unblocks | Exit criterion |
+|---|---|---|---|
+| **4a** | **Cameras as components**: perspective and ortho projections; a rig library (first-person, moved out of Gameplay; third-person orbit with collision; top-down/RTS pan-zoom; 2D follow with bounds; fixed/cinematic); several views per snapshot; split-screen; render targets | all | one scene viewed four ways by switching a camera record |
+| **4b** | **Timers, tweens, state machines**, plus the **conditions/actions vocabulary** (§4.3 stage 2), logic entities and bridge I/O (stage 3) | all | a door, elevator and puzzle sequence built in data only |
+| **4c** | **UI toolkit**: a retained widget tree (text, image, button, list, grid, slider, text field, scroll, layout containers), focus and gamepad navigation, `ui_style`/`ui_layout` records, localisation keys, HUD built on the same widgets. Keep `Screen`/`Panel` as view-models over it | all | the Sandbox HUD and bag rebuilt from records; a main menu that works with keyboard, mouse and gamepad |
+| **4d** | **Skeletal animation** [F9–F12]: glTF skins, clips, blending, an animation state machine as data, root motion, animation events (replacing the hard-coded `attack`/`hit` names) | FPS, 3P, RTS, iso RPG | a glTF character walks, runs and attacks, blended, driven by `PawnIntent` |
+| **4e** | **2D layer**: ortho plus pixel-perfect option, sprite sorting layers, tilemaps (Tiled `.tmx`/`.tmj` import, as TrenchBroom is for brushes), plane-locked physics (Bepu with Z locked) and a 2D character controller | platformer, top-down, puzzle | a tile level with a jumping character and one-way platforms |
+| **4f** | **Render pass registry** and public `RenderContext` (§4.7); post-processing; mesh, sound and `.fx` hot reload | FPS, 3P, your game | a post-process pass added from game code |
+| **4g** | **Picking and world queries from the mouse**; selection sets; navigation as a general service (grid now, navmesh later) with group/formation movement; many-unit performance pass (scale doc numbers) | RTS, iso RPG, editor | drag-select 200 units and move them in formation at 60 Hz |
+| **4h** | Prefab overrides and nesting [F31]; runtime spawns persist; save upgraders and placeholders (§4.5) | all | a saved game survives a prefab rename with an upgrader |
+
+The sub-phases are independent after 4a, so they can run in parallel. 4a–4c come first because every
+genre needs them.
+
+### Stage C: prove it, then build your game
+
+| Phase | Work | Exit criterion |
+|---|---|---|
+| **5** | **Genre gauntlet.** `games/Samples/`: small but complete reference games, each with headless tests: an HL1-style room shooter, a third-person melee arena, a 2D platformer, a top-down twin-stick or click-to-move, an RTS skirmish, and a card or puzzle game. **Rule: gaps are fixed in the base, never worked around in a sample.** Each sample doubles as a `dotnet new` template | All samples run from the stock host; `git log` shows no genre-specific `if` in base assemblies; each sample's code is small (target: under about 1,500 lines) |
+| **6** | **Your game.** Grow `Sandbox` into the Daggerfall-like on `Kits.Rpg`: the existing vertical slice, now using skeletal or billboard creatures, the new UI toolkit, the conditions vocabulary for quests and dialogue, and dungeons from TrenchBroom | The vertical slice from 2026-09-23 plays again, with no RPG code in the base |
+
+### Stage D: open it up to designers and modders
+
+| Phase | Work | Exit criterion |
+|---|---|---|
+| **7** | Designer logic polish: AI behaviour trees (§4.3 stage 4), per-entity map keys, problems panel, `sage validate` in CI templates | A quest with a door, a counter and a custom-BT creature, built with no C# |
+| **8** | Modding and saves (§4.4, §4.5) [F37, F27] | Two conflicting example mods (data and code) show the report; saves survive mod changes |
+| **9** | Editor host (§4.6) [F28–F30, D7]. The multi-view renderer from 4a and picking from 4g are already in place | A designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
+| **gate** | Scripting decision (§4.3 stage 5) | A written decision with evidence, replacing or confirming D3 |
+
+**Why this order and not the reverse.** The editor and the mod surface both *read* the base engine's
+declarations: components, records, conditions, UI widgets, cameras. Building them before the base
+settles means building them twice. Phases 1–3 still bake in what they will need: stable ids, a
+metadata table, documents and registrations tracked per plugin. The later work is additive, not a
+rewrite.
+
+**What deliberately waits:** multiplayer (keep the readiness rules), visual scripting, DesktopVK, AOT,
+and a real 2D physics engine (only if 4e's plane-locked approach fails the platformer sample).
 
 ---
 
@@ -546,6 +671,11 @@ DesktopVK, and AOT. Phase 2's generator makes AOT possible, but nothing needs it
 
 These are the owner's calls, and the plan works with any answer. My recommendation comes first.
 
+0. **How far does "almost any game" go?**
+   - Recommended: 3D of any genre, plus 2D and 2.5D through the same renderer (ortho, sprites,
+     tilemaps, plane-locked physics). The phase-5 samples are the definition.
+   - Alternative: 3D only. That drops phase 4e and the platformer sample.
+   - Either way, multiplayer stays later.
 1. **Scripting (D3).**
    - Recommended: the typed vocabulary first, with a language decision after phase 4 on evidence.
    - Alternative: commit to Lua now for modders.
