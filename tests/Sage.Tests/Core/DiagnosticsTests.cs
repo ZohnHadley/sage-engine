@@ -8,6 +8,7 @@ namespace sage_engine.Tests;
 
 using Assert = Xunit.Assert;
 
+[Collection(ProcessWideStateCollection.Name)]
 public class DiagnosticsTests
 {
     public DiagnosticsTests() { _ = TestEnv.UserRoot; }

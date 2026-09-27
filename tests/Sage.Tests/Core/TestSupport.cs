@@ -4,9 +4,20 @@ using sage_engine;
 
 namespace sage_engine.Tests;
 
-// Log, LogCat defaults, UserPaths and the crash reporter are process-wide, so core tests share one
-// temporary user folder and capture log output with a sink. Parallelization is disabled for the
-// whole test assembly (EntityContextTests.cs).
+// Tests that change process-wide state on purpose — the default log level, per-category levels, the
+// log's rate limiter, the crash reporter's sections — and would change it under a test running beside
+// them. Run alone, after the parallel ones.
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class ProcessWideStateCollection { public const string Name = "Process-wide state"; }
+
+// Tests that measure time or allocation. Physics shares its work between the test's thread and Bepu's
+// workers, so how much of it (and its allocations) lands on the measured thread depends on what else
+// the machine is doing; a measurement is only a measurement when nothing else is running.
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class MeasurementsCollection { public const string Name = "Measurements"; }
+
+// UserPaths and the log are process-wide, so tests share one temporary user folder and capture log
+// output with a sink.
 internal static class TestEnv
 {
     private static readonly object Lock = new();

@@ -9,6 +9,7 @@ namespace sage_engine.Tests;
 
 using Assert = Xunit.Assert;
 
+[Collection(ProcessWideStateCollection.Name)]
 public class LoggingTests
 {
     public LoggingTests() { _ = TestEnv.UserRoot; }
