@@ -312,3 +312,9 @@ which is how to find out what is in it — that is how the ones above were chose
 
 The creatures fight with the same records the placeholder creature uses: the art is all that
 changed, which is the point of keeping gameplay in data. Delete `daggerfall.json` to go back.
+
+## Licence
+
+Sage is [MIT-licensed](LICENSE). Its dependencies keep their own licences, listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). A game shipped on Sage should include that file:
+three of the ECS library's dependencies are LGPL-3.0.
