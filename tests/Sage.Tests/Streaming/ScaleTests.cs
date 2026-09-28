@@ -135,6 +135,16 @@ public class ScaleTests
     // The rule the engine set itself (02 §4.6), at the size where breaking it would matter. Measured
     // as a difference against an empty world, because the tick is not otherwise silent: Bepu's
     // profiler allocates about 40 bytes inside `Timestep` (TODO #41).
+    //
+    // **With a little slack, and why that loses nothing.** The allocation is counted per thread, and
+    // Bepu hands its work to whichever threads are free — so on a loaded machine that 40-byte
+    // allocation lands on the measured thread in one run and on a worker in the other, and the
+    // difference comes out as exactly 40. It did, three times, while CI-sized builds ran beside the
+    // tests (2026-09-28). What this test exists to catch is an allocation *per tick*: even the smallest
+    // object, every tick for 60 ticks, is 60 × 24 = 1440 bytes. A slack of a quarter of that absorbs
+    // the scheduling noise and still fails on the smallest real regression.
+    private const long SchedulingSlackBytes = 360;
+
     [Xunit.Fact]
     public void AFullWorldStillAllocatesNothingPerTick()
     {
@@ -153,7 +163,7 @@ public class ScaleTests
         fx.Tick(60);
         long full = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        Assert.True(full - empty <= 0,
+        Assert.True(full - empty <= SchedulingSlackBytes,
             $"two thousand entities added {full - empty} bytes over 60 ticks (empty {empty}, full {full})");
     }
 
