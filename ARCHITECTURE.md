@@ -312,7 +312,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **98 console commands, 25 record types, 566 headless tests.** <!-- counts -->
+and audible: **98 console commands, 25 record types, 567 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight

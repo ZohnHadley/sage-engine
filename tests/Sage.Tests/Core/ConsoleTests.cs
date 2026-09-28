@@ -161,7 +161,7 @@ public class ConsoleTests
         try
         {
             var r = new CVarRegistry();
-            var core = CoreCVars.Register(r);
+            var core = CoreCVars.Register(r, ownsProcessLog: true);
 
             core.Developer.Value = 1;
             Assert.Equal(LogLevel.Debug, LogCat.DefaultLevel);
@@ -174,6 +174,30 @@ public class ConsoleTests
             Assert.True(r.Execute($"log_level {cat.Name} default"));
             Assert.False(cat.IsOverridden);
             Assert.True(core.ConsoleAvailable);   // dev build
+        }
+        finally { LogCat.DefaultLevel = before; }
+    }
+
+    // Only the app that owns the process's log configures it (issue #11): a test, a tool or a second
+    // app in the same process creates its cvars and leaves the log as the host set it.
+    [Fact]
+    public void AnAppThatDoesNotOwnTheLogLeavesItAlone()
+    {
+        var before = LogCat.DefaultLevel;
+        try
+        {
+            LogCat.DefaultLevel = LogLevel.Warn;   // what "the host" chose
+            using var app = SageApp.Create(new SageAppOptions { IncludeSimulationModules = false });
+            Assert.False(app.Engine.Core.OwnsProcessLog);
+            Assert.Equal(LogLevel.Warn, LogCat.DefaultLevel);
+
+            app.Engine.Core.Developer.Value = 1;
+            app.Engine.Core.Developer.Value = 0;
+            Assert.Equal(LogLevel.Warn, LogCat.DefaultLevel);
+
+            using var host = SageApp.Create(new SageAppOptions { IncludeSimulationModules = false, OwnsProcessLog = true });
+            Assert.True(host.Engine.Core.OwnsProcessLog);
+            Assert.NotEqual(LogLevel.Warn, LogCat.DefaultLevel);   // the owner applies its developer defaults
         }
         finally { LogCat.DefaultLevel = before; }
     }
