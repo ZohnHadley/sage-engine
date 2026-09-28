@@ -94,7 +94,7 @@ Not every record comes from a file. A spell the player composed in the spellmake
 - **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabRegistry`,
   `world.Spawn`), `ComponentSchema.cs` (components and tags by name),
   `src/Sage.Engine/Gameplay/PrefabParts.cs` (the parts the engine's modules register). Tests in
-  `tests/Sage.Tests/World/PrefabTests.cs`.
+  `tests/Sage.Tests/Gameplay/PrefabTests.cs`.
 - **A prefab is a record**, so `base` inheritance, per-field patching, load order, validation and hot
   reload all come from §3.5 for nothing. A `goblin_chief` can `base` a `goblin` and override one
   field of one component, because the merge runs on the JSON tree before anything is deserialized.

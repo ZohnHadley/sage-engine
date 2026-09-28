@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The harness the engine's tests boot through, and a game's tests can too (docs/REDESIGN.md §3.2,
+    issue #14): HeadlessApp, MountFixture, EventProbe, CaptureSink. A plain library on Sage.Engine
+    only: no test framework, so a game can use it from xUnit, NUnit or a console app, and no client,
+    so nothing here can need a window.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <RootNamespace>sage_engine.Testing</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" />
+  </ItemGroup>
+</Project>

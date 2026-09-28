@@ -243,8 +243,6 @@ public sealed class SageApp : IDisposable
         if (Stage is not (AppStage.Started or AppStage.Running))
             throw new InvalidOperationException($"CreateWorld('{name}') needs a started app; it is {Stage}. Call Start first.");
         Stage = AppStage.Running;
-        Engine.Prefabs.Seal.Seal("the first world was created");
-        Engine.Inputs.Seal.Seal("the first world was created");
         return Engine.CreateWorld(name);
     }
 

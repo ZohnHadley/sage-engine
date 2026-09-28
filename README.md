@@ -46,7 +46,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 565 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 566 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -210,7 +210,8 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `games/Sandbox` | The test game's **simulation**: its module, scene records, placeholder art and tools. References only `Sage.Engine`, so it is testable headlessly |
 | `games/Sandbox.Client` | The same game's **client half**: the HUD, and the prefab part that needs a renderer |
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
-| `tests/Sage.Tests` | xUnit, headless |
+| `tests/Sage.Tests` | xUnit, headless, in folders by subject (`Core`, `Ecs`, `Gameplay`, `Maps`, `UI`…) |
+| `tests/Sage.Testing` | The harness tests boot through — `HeadlessApp`, `MountFixture`, `EventProbe`, `CaptureSink` — for the engine's tests and a game's |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |
 | `third_party/` | One vendored dependency: MonoGame.ImGuiNet, dev-only (see its `PATCHES.md`) |
 | `user/` | Written at runtime: logs, config, screenshots, crash reports (not in git) |

@@ -24,8 +24,9 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
 - **Register in a module's `Init`.** Registries are sealed at later stages and throw (`RegistrationSeal`).
 - **Boot through `SageApp`**, not by hand; a game's rules come from `IGameModule.CreateRules`; world
   resources go in with `Resources.Add` (or `Replace`, on purpose).
-- **Tests are headless and parallel.** Tests that change process-wide state or measure time/allocation go
-  in the `ProcessWideState` / `Measurements` collections (`tests/Sage.Tests/Core/TestSupport.cs`).
+- **Tests are headless and parallel, and boot through `HeadlessApp`** (`tests/Sage.Testing`), never
+  `new Engine(...)`. Tests that change process-wide state or measure time/allocation go in the
+  `ProcessWideState` / `Measurements` collections (`tests/Sage.Tests/Core/TestSupport.cs`).
   `Sage.Engine` has no MonoGame; tests cannot reference `Sage.Client` — the smoke run checks the client.
 - **Docs are checked.** An "As built" claim cites the test that proves it (the `test:` marker, see the README); quoted counts are verified.
   A new test changes the count: run `check_docs.py --fix`.

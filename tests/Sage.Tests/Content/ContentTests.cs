@@ -94,34 +94,15 @@ public class VfsReverseLookupTests
     }
 }
 
-internal sealed class MountFixture
+internal static class MountFixtureRecords
 {
-    public readonly string Root = TestEnv.NewTempDir();
-    public readonly VirtualFileSystem Vfs = new();
-
-    public string Dir(string mount) => Path.Combine(Root, mount);
-
-    public void Write(string mount, string relative, string text)
-    {
-        string file = Path.Combine(Dir(mount), relative.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-        File.WriteAllText(file, text);
-    }
-
-    public FolderMount Mount(string mount, string ns)
-    {
-        Directory.CreateDirectory(Dir(mount));
-        var m = new FolderMount(mount, Dir(mount), ns);
-        Vfs.Mount(m);
-        return m;
-    }
-
-    public RecordStore Load()
+    // A record store with the test record types, loaded from the fixture's VFS.
+    public static RecordStore Load(this MountFixture fixture)
     {
         var store = new RecordStore();
         store.Register<TestItem>();
         store.Register<TestSpell>();
-        store.Load(Vfs);
+        store.Load(fixture.Vfs);
         return store;
     }
 }

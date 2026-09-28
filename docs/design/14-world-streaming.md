@@ -67,7 +67,7 @@ and the simulation carries on with small numbers, because the frame of reference
 - **Code:** `src/Sage.Engine/World/Origin.cs` (the `Origin` resource and `world.Rebase`),
   `src/Sage.Engine/World/Streaming.cs` (`StreamingSource`, `SectorOwned`, `StreamingSystem`,
   `StreamingModule`, `warp`), plus `Terrain` gaining `Unload`, `CornerOf` and origin-aware queries.
-  Tests in `tests/Sage.Tests/World/StreamingTests.cs`.
+  Tests in `tests/Sage.Tests/Streaming/StreamingTests.cs`.
 - **Origin space is the only space the simulation knows.** Transforms, physics bodies, the camera and
   every distance check are relative to the **origin sector**; sectors themselves are keyed absolutely,
   because sector (117, −79) is the same ground whatever the origin is. `Terrain` is where the two meet

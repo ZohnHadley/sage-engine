@@ -121,7 +121,7 @@ user://saves/<slot>/
 
 - **Code:** `src/Sage.Engine/Content/SaveSystem.cs` (slots, header, temp+rename), `SaveSerializer.cs`
   (components in and out), `SaveJson.cs` (the dialect and its three world-aware converters),
-  `SaveAttributes.cs` (`[Transient]`, `FromPrefab`). Tests in `tests/Sage.Tests/World/SaveTests.cs`.
+  `SaveAttributes.cs` (`[Transient]`, `FromPrefab`). Tests in `tests/Sage.Tests/Content/SaveTests.cs`.
   Console: `save [slot]`, `load [slot]`, `saves`.
 
 **Four deviations from the plan above, each deliberate.**

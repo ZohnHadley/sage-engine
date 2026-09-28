@@ -39,7 +39,7 @@ Not in scope: what the services do (02), how worlds run systems (03).
 > simulation — scene, rules, spawning, combat log — and references `Sage.Engine` and nothing else, so
 > the compiler enforces what used to be a habit. `games/Sandbox.Client` holds the HUD and the one
 > prefab part that builds a mesh at run time. The point is not tidiness: the game's own rules can now
-> be ticked in a headless test, and `tests/Sage.Tests/World/SandboxSimulationTests.cs` found a real
+> be ticked in a headless test, and `tests/Sage.Tests/Games/SandboxSimulationTests.cs` found a real
 > bug the first time it ran (review #59). A dedicated server would run the first and not the second.
 >
 > Exactly one `IGameModule` per game, in the simulation half. The client half is a plain `IModule`,
