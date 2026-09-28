@@ -156,11 +156,12 @@ have comments and trailing commas. A record is **content, and read-only at run t
 Four things to know before you write many:
 
 - **Ids are namespaced.** Inside your files a bare `goblin` means `yourgame:goblin`; write `sage:lit_default`
-  to reach the engine's.
+  to reach the engine's. That holds inside a patch of an engine record too: `"sound": "hit_flesh"` in
+  your patch of `sage:physical` is *your* `hit_flesh`.
 - **`base` inherits** from another record of the same type, and `"patch": true` merges into one that
   already exists — which is how a mod changes one field of yours without copying the file.
 - **Every `RecordId` field is checked** when records load: a reference to something that does not exist
-  is an error with the file and the field named, not a surprise at run time.
+  is an error naming `file:line:column`, not a surprise at run time. So is a value of the wrong kind.
 - **They hot reload.** Save the file and the running game picks it up; the Sandbox respawns its scene.
 
 A game can define **its own record types** — the Sandbox's `scene` is one. A plain class with public
@@ -201,9 +202,9 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
-| **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs |
+| **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs, as `[{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]` |
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `quest` — stages and objectives |
-| **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters |
+| **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
 
 ### Every prefab part the engine provides

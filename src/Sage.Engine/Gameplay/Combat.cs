@@ -29,7 +29,8 @@ public sealed class DamageTypeRecord
 {
     public RecordId Sound;                  // what landing this sounds like (11 §3, F4)
     public RecordId Particles;              // and what it throws off: sparks, blood, embers (06 §3.12, F39)
-    public uint Colour;                     // the damage number's colour, RGBA; 0 = the engine's default
+    [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
+    public uint Colour;                     // the damage number's colour: "#RRGGBB(AA)"; 0 = the engine's default
 
     public RecordId Resist;   // attribute read as a percentage, 0..95, that reduces this
     public RecordId Effect;   // the effect applied to the victim, scaled by the damage
