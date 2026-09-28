@@ -128,7 +128,6 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 
 - Multiplayer: keep the readiness rules.
 - Visual scripting.
-- Our own brush editor: TrenchBroom stays.
 - AOT and consoles.
 - Mobile and web.
 - 2D skeletal animation (Spine- or DragonBones-style). Sprite animation covers 2D first; revisit after
@@ -200,7 +199,9 @@ developer. It doesn't count as an error for a designer or modder.
 - **Phase contracts, `Deferred<T>`, deterministic ordering, and loud errors on cycles.**
 - **Console culture.** Every menu item is a command, there's scripted input with `wait`, and three build
   configurations.
-- **TrenchBroom for brushes** instead of writing our own brush editor.
+- **TrenchBroom for brushes** instead of writing our own brush editor — kept for now, but **not for
+  the long run** (decided 2026-09-28, §6 item 8): levels move into our own editor (§4.6), and the
+  `.map` importer stays until that editor can build the same levels.
 - **Screens as headless view-models,** and "can I?" answered in one place (R17).
 - **Docs-as-tests** (`check_docs.py`) and the second-pass habit.
 
@@ -580,7 +581,12 @@ because it edits the live play world (`DevTools.cs:84-87`).
   6. behaviour-tree view;
   7. asset browser;
   8. material preview.
-- Keep TrenchBroom for brushes. The editor launches it and hot-reloads the `.map` file.
+- **Levels are built in this editor, not in TrenchBroom** (decided 2026-09-28, §6 item 8). In the edit
+  world: block out rooms with simple brushes (boxes, wedges, cylinders; CSG only where a level needs
+  it), place prefabs on them, set per-entity overrides from the metadata forms (§3.4), and wire entity
+  I/O by picking source and target. A level is a document like any other, saved as records, so mods
+  patch levels the way they patch everything else. The `.map` importer (15 §3) stays until the editor
+  can build what it builds, then becomes an import path for existing maps.
 - The ImGui overlay stays in dev builds as a **debugger**: console, stats, outliner, `ent_dump`. It's
   not the authoring tool.
 - **Renderer prerequisites:**
@@ -787,6 +793,9 @@ These are the owner's calls, and the plan works with any answer. My recommendati
 6. **Target platforms for the first release.** Windows only, or Windows plus Linux. This affects CI
    and DesktopGL vs DesktopVK timing.
 7. **Distribution.** A NuGet feed plus templates (recommended), or source-only ("clone the repo").
+8. ~~How are levels built?~~ **Decided 2026-09-28: in our own in-engine editor**, not TrenchBroom
+   (the owner doesn't want TrenchBroom). Brushes, placement, overrides and I/O wiring in the editor
+   host (§4.6); the `.map` importer stays until the editor replaces it. Tracked as #61.
 
 ---
 
