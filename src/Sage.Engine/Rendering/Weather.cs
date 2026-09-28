@@ -22,7 +22,7 @@ public sealed class WeatherRecord
 
     // What falls, and how much of it a second. The effect is an ordinary `particle` record; weather is
     // just the thing that keeps asking for it, in a box that follows the camera.
-    public RecordId Particles;
+    public RecordRef<ParticleRecord> Particles;
     public float Rate;                            // particles a second, across the whole box
     public Vector3 Volume = new(28f, 16f, 28f);   // half-extents around the camera it falls inside
     public float Ceiling = 9f;                    // how far above the camera it starts
@@ -42,7 +42,7 @@ public sealed class WeatherRecord
 
     // What it sounds like: a 2D looping sound, started when this weather takes hold and stopped when it
     // lets go (11 §3). Rain you cannot hear is a screen saver.
-    public RecordId Sound;
+    public RecordRef<SoundRecord> Sound;
     public float SoundVolume = 1f;
 
     public static readonly RecordId Clear = new("sage", "clear");

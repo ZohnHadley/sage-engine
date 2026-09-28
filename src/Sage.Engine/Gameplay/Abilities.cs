@@ -32,12 +32,12 @@ public sealed class AbilityRecord
 
     // What it draws on and how much. The spend is an *effect*, not a subtraction: the pool goes down
     // through the one path everything else uses, so a "free casting" buff is an effect like any other.
-    public RecordId CostAttribute;
+    public RecordRef<AttributeRecord> CostAttribute;
     public float Cost;
 
     // The effect applied to the caster on a successful cast, whose granted tags then block the next
     // one (16 §3.3). A cooldown is therefore dispellable, survives a save and needs no second clock.
-    public RecordId Cooldown;
+    public RecordRef<EffectRecord> Cooldown;
 
     public AbilityTargeting Targeting = AbilityTargeting.Self;
     public float Range = 8f;      // how far Touch and TouchArea reach
@@ -50,9 +50,9 @@ public sealed class AbilityRecord
     // fire_resist means something against a fireball for the same reason armour means something
     // against a sword, and a kill by spell names its killer like any other.
     public float Damage;
-    public RecordId DamageType;               // empty with Damage > 0 means physical
+    public RecordRef<DamageTypeRecord> DamageType; // empty with Damage > 0 means physical
 
-    public List<RecordId> Effects = new();    // and whatever else it does, to whatever it lands on
+    public List<RecordRef<EffectRecord>> Effects = new();    // and whatever else it does, to whatever it lands on
 
     // Scales the effects (GAS's set-by-caller) — but only when the ability does no `Damage`. With
     // damage, they ride along with the hit and are applied as written, which is the rule a poisoned
@@ -60,8 +60,8 @@ public sealed class AbilityRecord
     // "as written" is what makes that one rule instead of two.
     public float Magnitude = 1f;
 
-    public List<RecordId> RequireTags = new();   // the caster must have all of these
-    public List<RecordId> BlockTags = new();     // and none of these
+    public List<RecordRef<TagRecord>> RequireTags = new();   // the caster must have all of these
+    public List<RecordRef<TagRecord>> BlockTags = new();     // and none of these
 
     // Presentation only (§3.3): sounds, particles, a flash. **A cue has a moment**, which is the whole
     // reason there are two lists: `CastCues` are raised where the spell leaves the caster and `Cues`
@@ -70,13 +70,13 @@ public sealed class AbilityRecord
     //
     // For an instant spell the two moments are the same instant, and that is correct: a self-buff is
     // cast and takes effect on you at once.
-    public List<RecordId> CastCues = new();
-    public List<RecordId> Cues = new();
+    public List<RecordRef<CueRecord>> CastCues = new();
+    public List<RecordRef<CueRecord>> Cues = new();
     public string Animation = "";
 
     // Projectile targeting only: the prefab that flies (F31 — so what a fireball looks like is data)
     // and how fast. `Radius` is still the burst it makes on arrival, `Width` how fat it is in flight.
-    public RecordId Projectile;
+    public RecordRef<PrefabRecord> Projectile;
     public float ProjectileSpeed = 18f;
 }
 
@@ -92,12 +92,12 @@ public sealed class CueRecord
     // What it sounds like (11 §3, F4). The simulation raises the cue and never learns this field
     // exists; the client's audio system reads it, so a mod can give a spell a new noise without
     // touching the spell.
-    public RecordId Sound;
+    public RecordRef<SoundRecord> Sound;
 
     // And what it throws off (06 §3.12, F39): the same arrangement one field down. A cue is the
     // simulation saying "something happened here"; what that looks like and what it sounds like are
     // both content, and neither is the spell's business.
-    public RecordId Particles;
+    public RecordRef<ParticleRecord> Particles;
     public int ParticleCount;              // 0 = whatever the effect's own `burst` says
 }
 

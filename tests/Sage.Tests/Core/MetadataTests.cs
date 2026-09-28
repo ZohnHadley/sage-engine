@@ -83,6 +83,10 @@ public class MetadataTests
         Assert.Equal("attack", Metadata.Of(typeof(Melee)).Field("attack")!.RecordType);
         Assert.Equal("ai_schedule", Metadata.Of(typeof(AIState)).Field("schedule")!.RecordType);
 
+        // A RecordRef<T> (issue #22) names its record type through T's [Record]; a list of them too.
+        var faction = Metadata.Of(typeof(FactionPart)).Field("id")!;
+        Assert.Equal((ValueKind.RecordId, "faction"), (faction.Kind, faction.RecordType));
+
         var effects = Metadata.Of(typeof(EffectsPart)).Field("ids")!;
         Assert.Equal(ValueKind.List, effects.Kind);
         Assert.Equal(ValueKind.RecordId, effects.Item!.Kind);
@@ -244,6 +248,7 @@ public class MetadataTests
             }
             [Plugin("game", "1.0.0")] public sealed class Game : IModule { public void Init(ModuleContext ctx) { } }
             [Record("loot")] public sealed class LootRecord { [RecordRef("item")] public List<RecordId> Items = new(); public int Rolls { get; set; } = 1; }
+            [Record("chest")] public sealed class ChestRecord { public RecordRef<LootRecord> Loot; }
             """);
 
         Assert.Empty(diagnostics);
@@ -255,6 +260,7 @@ public class MetadataTests
         Assert.Contains("{ JsonName = \"lastHit\", Transient = true }", output);
         Assert.Contains("{ JsonName = \"item\", RecordType = \"item\" }", output);
         Assert.Contains("new global::sage_engine.FieldMetadata(\"Rolls\", typeof(int), global::sage_engine.ValueKind.Integer", output);
+        Assert.Contains("{ JsonName = \"loot\", RecordType = \"loot\" }", output);   // RecordRef<LootRecord>
     }
 
     [Theory]
@@ -262,6 +268,7 @@ public class MetadataTests
     [InlineData("[Property(Min = 5, Max = 1)] public float Value;", "SAGE0040", "Health.Value: [Property] has Min 5 above Max 1")]
     [InlineData("[RecordRef(\"item\")] public float Value;", "SAGE0041", "Health.Value: [RecordRef] names the record type a RecordId points at, and this is float")]
     [InlineData("[RecordRef(\"\")] public RecordId Value;", "SAGE0041", "[RecordRef] needs a record type")]
+    [InlineData("[RecordRef(\"item\")] public RecordRef<LootRecord> Value;", "SAGE0041", "Health.Value: RecordRef<LootRecord> already names its record type")]
     [InlineData("[AssetKind(\"texture\")] public RecordId Value;", "SAGE0042", "Health.Value: [AssetKind] names the kind of asset an AssetPath points at, and this is RecordId")]
     public void AnAttributeOnTheWrongKindOfFieldIsABuildError(string field, string id, string message)
     {
@@ -269,6 +276,7 @@ public class MetadataTests
             using sage_engine;
             using Friflo.Engine.ECS;
             [Component("game:health")] public struct Health : IComponent { {{field}} }
+            [Record("loot")] public sealed class LootRecord { }
             """);
 
         var d = Assert.Single(diagnostics);

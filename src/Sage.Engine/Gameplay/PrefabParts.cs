@@ -27,8 +27,8 @@ public sealed class CharacterPart : IPrefabPart
 {
     [Property(Tooltip = "Physics layer by name (player, enemy); empty = default")]
     public string Layer = "";          // a physics layer by name (10 §3.2); empty = the default
-    [RecordRef("movement_profile"), Property(Tooltip = "How it moves; empty = the engine's default")]
-    public RecordId Profile;           // movement_profile record; empty = the engine's default
+    [Property(Tooltip = "How it moves; empty = the engine's default")]
+    public RecordRef<MovementProfileRecord> Profile; // movement_profile record; empty = the engine's default
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -131,10 +131,10 @@ public sealed class LightPart : IPrefabPart
 [PrefabPart("sprite", Plugin = "sage.gameplay.animation")]
 public sealed class SpritePart : IPrefabPart
 {
-    [RecordRef("sprite_sheet"), Property(Tooltip = "The sprite sheet to draw")]
-    public RecordId Sheet;
-    [RecordRef("material"), Property(Tooltip = "Empty = the default sprite material")]
-    public RecordId Material;
+    [Property(Tooltip = "The sprite sheet to draw")]
+    public RecordRef<SpriteSheetRecord> Sheet;
+    [Property(Tooltip = "Empty = the default sprite material")]
+    public RecordRef<MaterialRecord> Material;
     [Property(Min = 0, Unit = "m", Tooltip = "Width and height; 0 = the sheet's own")]
     public Vector2 Size;               // metres; 0 = the sheet's own
     [Property(Tooltip = "A clip name to play; empty = don't animate")]
@@ -173,8 +173,8 @@ public sealed class AttributesPart : IPrefabPart
 [PrefabPart("effects", Plugin = "sage.gameplay.attributes", After = new[] { "attributes" }, Shorthand = nameof(Ids))]
 public sealed class EffectsPart : IPrefabPart
 {
-    [RecordRef("effect"), Property(Tooltip = "Effects it starts with")]
-    public List<RecordId> Ids = new();
+    [Property(Tooltip = "Effects it starts with")]
+    public List<RecordRef<EffectRecord>> Ids = new();
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -191,10 +191,10 @@ public sealed class EffectsPart : IPrefabPart
 [PrefabPart("melee", Plugin = "sage.gameplay.combat")]
 public sealed class MeleePart : IPrefabPart
 {
-    [RecordRef("attack"), Property(Tooltip = "What it swings")]
-    public RecordId Attack;
-    [RecordRef("attack"), Property(Tooltip = "What it swings bare-handed; empty = the same as attack")]
-    public RecordId Natural;
+    [Property(Tooltip = "What it swings")]
+    public RecordRef<AttackRecord> Attack;
+    [Property(Tooltip = "What it swings bare-handed; empty = the same as attack")]
+    public RecordRef<AttackRecord> Natural;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -216,7 +216,7 @@ public sealed class InventoryPart : IPrefabPart
 
     public sealed class Stack
     {
-        [RecordRef("item")] public RecordId Item;
+        public RecordRef<ItemRecord> Item;
         [Property(Min = 1)] public int Count = 1;
     }
 
@@ -240,8 +240,8 @@ public sealed class InventoryPart : IPrefabPart
 [PrefabPart("pickup", Plugin = "sage.gameplay.items", After = new[] { "sprite", "body" })]
 public sealed class PickupPart : IPrefabPart
 {
-    [RecordRef("item"), Property(Tooltip = "The item taking it gives you")]
-    public RecordId Item;
+    [Property(Tooltip = "The item taking it gives you")]
+    public RecordRef<ItemRecord> Item;
     [Property(Min = 1, Tooltip = "How many")]
     public int Count = 1;
 
@@ -256,8 +256,8 @@ public sealed class PickupPart : IPrefabPart
 [PrefabPart("abilities", Plugin = "sage.gameplay.abilities", Shorthand = nameof(Ids))]
 public sealed class AbilitiesPart : IPrefabPart
 {
-    [RecordRef("ability"), Property(Tooltip = "Abilities it can cast")]
-    public List<RecordId> Ids = new();
+    [Property(Tooltip = "Abilities it can cast")]
+    public List<RecordRef<AbilityRecord>> Ids = new();
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -271,8 +271,8 @@ public sealed class AbilitiesPart : IPrefabPart
 [PrefabPart("faction", Plugin = "sage.gameplay.factions", Shorthand = nameof(Id))]
 public sealed class FactionPart : IPrefabPart
 {
-    [RecordRef("faction"), Property(Tooltip = "The faction it belongs to")]
-    public RecordId Id;
+    [Property(Tooltip = "The faction it belongs to")]
+    public RecordRef<FactionRecord> Id;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -286,8 +286,8 @@ public sealed class FactionPart : IPrefabPart
 [PrefabPart("dialogue", Plugin = "sage.gameplay.factions", Shorthand = nameof(Id))]
 public sealed class DialoguePart : IPrefabPart
 {
-    [RecordRef("dialogue"), Property(Tooltip = "What it says when used")]
-    public RecordId Id;
+    [Property(Tooltip = "What it says when used")]
+    public RecordRef<DialogueRecord> Id;
 
     public void Apply(in PrefabPartContext ctx)
     {

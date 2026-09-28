@@ -29,6 +29,14 @@ public sealed class Engine : IDisposable
         Inputs.Ledger = Registrations;
         Outputs.Ledger = Registrations;
         Actions.Ledger = Registrations;
+        // Prefab bodies are checked as content loads (issue #22): components, parts, their fields and
+        // what they name, at their lines, rather than at the first spawn.
+        Records.AddCheck<PrefabRecord>((prefab, check) => PrefabChecks.Check(this, prefab, check));
+        // And a patch of another namespace's prefab means its own namespace by a bare id inside a
+        // component or a part, as it does in any other field (R11).
+        Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Components), (key, body, ns) =>
+            Components.TryResolveComponent(key, ns, out var type, out _) ? type.Type : null);
+        Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Parts), (key, body, _) => PrefabChecks.BodyType(Prefabs, key, body));
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the

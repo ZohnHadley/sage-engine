@@ -46,9 +46,11 @@ public sealed class PropertyAttribute : Attribute
     public string? Category { get; set; }
 }
 
-// A RecordId field (or a list or map of them) names a record of this type: `[RecordRef("item")]`.
+// A plain RecordId field (or a list or map of them) names a record of this type: `[RecordRef("item")]`.
 // What makes a form offer the item ids instead of a text box, and what a schema turns into an enum.
-// (A typed RecordRef<T> is issue #22's; this is the attribute on the RecordId fields that exist now.)
+// A RecordRef<T> field (issue #22) already says so through T's [Record], checked when content loads,
+// and is the better choice where it fits; this is for the RecordId fields that stay plain (a component's
+// runtime state, say). Putting it on a RecordRef<T> is a build error (SAGE0041).
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false)]
 public sealed class RecordRefAttribute : Attribute
 {
@@ -309,7 +311,7 @@ public static class Metadata
         if (element != null)
         {
             item = Describe("item", element, null, depth + 1, seen, null, null);
-            if (recordType != null || assetKind != null) item = WithRefs(item, recordType, assetKind);
+            if ((recordType != null && item.RecordType == null) || assetKind != null) item = WithRefs(item, item.RecordType ?? recordType, assetKind);
         }
         else if (kind == ValueKind.Object && depth < MaxDepth)
             nested = ReflectFields(type, depth + 1, seen);
@@ -324,7 +326,7 @@ public static class Metadata
             Tooltip = property?.Tooltip,
             Category = property?.Category,
             EnumValues = kind == ValueKind.Enum ? Enum.GetNames(enumType) : Array.Empty<string>(),
-            RecordType = kind == ValueKind.RecordId ? recordType : null,
+            RecordType = kind == ValueKind.RecordId ? TypedTarget(type) ?? recordType : null,
             AssetKind = kind == ValueKind.AssetPath ? assetKind : null,
             Transient = member?.GetCustomAttribute<TransientAttribute>(false) != null,
             Item = item,
@@ -374,6 +376,7 @@ public static class Metadata
         if (type == typeof(RecordId)) return ValueKind.RecordId;
         if (type == typeof(AssetPath)) return ValueKind.AssetPath;
         if (type == typeof(Friflo.Engine.ECS.Entity)) return ValueKind.Entity;
+        if (TypedTarget(type) != null) return ValueKind.RecordId;   // RecordRef<T> (issue #22)
         if (typeof(JsonNode).IsAssignableFrom(type) || type == typeof(System.Text.Json.JsonElement)) return ValueKind.Json;
         if (type.IsArray && type.GetArrayRank() == 1)
         {
@@ -403,6 +406,15 @@ public static class Metadata
             || typeof(IEnumerable).IsAssignableFrom(type))
             return ValueKind.Other;
         return ValueKind.Object;
+    }
+
+    // For RecordRef<T>, the record type T is declared as ("" when T is not a record type); else null.
+    public static string? TypedTarget(Type type)
+    {
+        type = Nullable.GetUnderlyingType(type) ?? type;
+        return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(RecordRef<>)
+            ? RecordRefs.TypeNameOf(type.GetGenericArguments()[0]) ?? ""
+            : null;
     }
 
     public static string Camel(string name) => name.Length == 0 ? name : char.ToLowerInvariant(name[0]) + name.Substring(1);

@@ -305,7 +305,7 @@ public sealed class MetadataGenerator : IIncrementalGenerator
         if (element != null)
         {
             item = Describe("item", element, null, null, false, false, depth + 1, seen, problems, ownerName);
-            if (recordType != null && item.Kind == "RecordId") item = item with { RecordType = recordType };
+            if (recordType != null && item.Kind == "RecordId" && item.RecordType == null) item = item with { RecordType = recordType };
             if (assetKind != null && item.Kind == "AssetPath") item = item with { AssetKind = assetKind };
         }
         else if (kind == "Object" && depth < MaxDepth)
@@ -324,7 +324,10 @@ public sealed class MetadataGenerator : IIncrementalGenerator
             else if (min != null && max != null && min > max)
                 Report(BadRange, $"[Property] has Min {min.Value.ToString(CultureInfo.InvariantCulture)} above Max {max.Value.ToString(CultureInfo.InvariantCulture)}");
             string refersTo = item?.Kind ?? kind;
-            if (recordType != null && refersTo != "RecordId")
+            string? typedTarget = TypedTarget(element ?? type);
+            if (recordType != null && typedTarget != null)
+                Report(BadRecordRef, $"{Short(element ?? type)} already names its record type; [RecordRef] is for a plain RecordId");
+            else if (recordType != null && refersTo != "RecordId")
                 Report(BadRecordRef, $"[RecordRef] names the record type a RecordId points at, and this is {Short(type)}");
             else if (recordType != null && recordType.Trim().Length == 0)
                 Report(BadRecordRef, "[RecordRef] needs a record type, e.g. [RecordRef(\"item\")]");
@@ -350,7 +353,7 @@ public sealed class MetadataGenerator : IIncrementalGenerator
         return new Field(name, jsonName, type.ToDisplayString(TypeFormat), kind, owner, ownerIsValueType, canSet,
             min == null ? null : Format(min.Value), max == null ? null : Format(max.Value), unit, tooltip, category,
             enumValues,
-            kind == "RecordId" ? recordType : null,
+            kind == "RecordId" ? TypedTarget(type) ?? recordType : null,
             kind == "AssetPath" ? assetKind : null,
             member != null && Attribute(member, Ns + ".TransientAttribute") != null,
             item, nested);
@@ -388,6 +391,7 @@ public sealed class MetadataGenerator : IIncrementalGenerator
             case "Friflo.Engine.ECS.Entity": return "Entity";
             case "System.Text.Json.JsonElement": return "Json";
         }
+        if (TypedTarget(type) != null) return "RecordId";   // RecordRef<T> (issue #22): a RecordId that knows its type
         for (var t = type; t != null; t = t.BaseType)
             if (t.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat) == "System.Text.Json.Nodes.JsonNode") return "Json";
 
@@ -424,6 +428,19 @@ public sealed class MetadataGenerator : IIncrementalGenerator
         if (ns != null && (ns == "System" || ns.StartsWith("System.", StringComparison.Ordinal))) return "Other";
         if (type.AllInterfaces.Any(i => i.ToDisplayString() == "System.Collections.IEnumerable")) return "Other";
         return "Object";
+    }
+
+    // For RecordRef<T>, the record type T is declared as ([Record("name")]; "" when T is not a record
+    // type); null for anything else.
+    private static string? TypedTarget(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable)
+            type = nullable.TypeArguments[0];
+        if (type is not INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } generic
+            || generic.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat) != Ns + ".RecordRef<T>")
+            return null;
+        var record = Attribute(generic.TypeArguments[0], Ns + ".RecordAttribute");
+        return record?.ConstructorArguments.Length > 0 ? record.ConstructorArguments[0].Value as string ?? "" : "";
     }
 
     private static string Short(ITypeSymbol type) => type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);

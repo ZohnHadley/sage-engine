@@ -18,7 +18,7 @@ namespace sage_engine;
 // be written honestly today.
 public sealed class Placement
 {
-    public RecordId Prefab;
+    public RecordRef<PrefabRecord> Prefab;
     public Vector3 At;                 // absolute metres, like a scene's (R6: converted on spawn)
     public float Yaw;                  // degrees about +Y, 0 facing -Z
     public string Name = "";           // optional, so an outliner and a wire can name it

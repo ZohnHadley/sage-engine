@@ -176,6 +176,8 @@ internal sealed class EntityInspectorWindow
             }
             case ValueKind.RecordId when value is RecordId current:
                 return RecordField(label, field, boxed, current);
+            case ValueKind.RecordId when value is IRecordRef typed:   // RecordRef<T>
+                return RecordField(label, field, boxed, typed.Id);
             default:
                 ImGui.TextDisabled($"{field.JsonName}: {value}");
                 return false;
@@ -196,19 +198,23 @@ internal sealed class EntityInspectorWindow
         {
             if (ImGui.Selectable("(none)", current.IsEmpty))
             {
-                field.Set!(boxed, default(RecordId));
+                field.Set!(boxed, As(field, default));
                 changed = true;
             }
             foreach (var id in engine.Records.Ids(field.RecordType).OrderBy(i => i.ToString(), StringComparer.Ordinal))
             {
                 if (!ImGui.Selectable(id.ToString(), id == current)) continue;
-                field.Set!(boxed, id);
+                field.Set!(boxed, As(field, id));
                 changed = true;
             }
             ImGui.EndCombo();
         }
         return changed;
     }
+
+    // A RecordId as the field's own type: itself, or a RecordRef<T> wrapping it.
+    private static object As(FieldMetadata field, RecordId id) =>
+        field.Type == typeof(RecordId) ? id : Activator.CreateInstance(field.Type, id)!;
 }
 
 // What the outliner and the inspector agree about. One entity, because multi-select wants the command

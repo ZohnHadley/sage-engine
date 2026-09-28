@@ -223,7 +223,7 @@ public static class Spellmaker
             Radius = draft.Radius,
             Damage = draft.Damage,
             DamageType = draft.DamageType,
-            Effects = new List<RecordId>(draft.Effects),
+            Effects = draft.Effects.Select(e => (RecordRef<EffectRecord>)e).ToList(),
             Magnitude = draft.Magnitude,
             Projectile = draft.Projectile,
             ProjectileSpeed = draft.ProjectileSpeed,

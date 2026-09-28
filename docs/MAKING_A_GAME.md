@@ -153,15 +153,23 @@ have comments and trailing commas. A record is **content, and read-only at run t
 ]
 ```
 
-Four things to know before you write many:
+Five things to know before you write many:
 
 - **Ids are namespaced.** Inside your files a bare `goblin` means `yourgame:goblin`; write `sage:lit_default`
   to reach the engine's. That holds inside a patch of an engine record too: `"sound": "hit_flesh"` in
   your patch of `sage:physical` is *your* `hit_flesh`.
 - **`base` inherits** from another record of the same type, and `"patch": true` merges into one that
   already exists — which is how a mod changes one field of yours without copying the file.
-- **Every `RecordId` field is checked** when records load: a reference to something that does not exist
-  is an error naming `file:line:column`, not a surprise at run time. So is a value of the wrong kind.
+- **Every reference is checked** when records load: a reference to something that does not exist is an
+  error naming `file:line:column`, not a surprise at run time. So is a value of the wrong kind, and so is
+  **a field the type hasn't got** — `"light": { "color": … }` is an error that says `did you mean
+  'colour'?`, at any depth, where it used to be dropped without a word. A record with one is skipped.
+  A field typed `RecordRef<T>` (an item's `sound`, an attack's `damageType`, a part's `attack`) must
+  name a record of *that* type: a sound pointing at a particle says `(… is a particle)`.
+- **Prefab bodies are checked at load, not at the first spawn**: every component by id and every field
+  it writes, every part by id and its options, the tags, and every record and asset they name — each
+  error at its line, with the nearest real name when it looks like a typo. An asset path (a texture, a
+  map, a mesh) that is in no mount is a warning in a dev build and an error under `sage validate` (§9).
 - **They hot reload.** Save the file and the running game picks it up; the Sandbox respawns its scene.
 
 A game can define **its own record types** — the Sandbox's `scene` is one. A plain class with public
@@ -171,10 +179,20 @@ fields and an attribute, and that is all:
 [Record("quest_board")]
 public sealed class QuestBoardRecord
 {
-    public List<RecordId> Offers = new();
+    public List<RecordRef<QuestRecord>> Offers = new();   // must be quests
+    public RecordId Sponsor;                              // any record at all
     public float RefreshHours = 24f;
 }
 ```
+
+Prefer **`RecordRef<T>`** to a bare `RecordId` whenever a field points at one kind of record. In a file
+it is the same string; in code it converts to and from `RecordId`, compares with one, and
+`records.Get(offer)` needs no type argument. `RecordStore.Get<T>` is for records that must exist: a
+missing one throws in a dev build, naming the nearest id, and only a Shipping build hands back a blank
+record (logged once) to keep a player's game running. Ask `TryGet` when absence is normal.
+A plugin can check what a field's type can't say — the way `AIModule` checks interrupt names — with
+`Records.AddCheck<T>((record, check) => …)` in its `Init`; `check.Error("Tasks[2]", "…")` lands on
+that line.
 
 The engine's source generator (`src/Sage.Generators`, which every game project gets) writes the
 registration, and your plugin runs it just before its `Init` — so there is no `Register` call to
@@ -214,14 +232,14 @@ registry dump all use it:
 public struct Health : IComponent
 {
     [Property(Min = 0, Unit = "hp", Tooltip = "Current hit points", Category = "Vitals")] public float Value;
-    [RecordRef("effect")] public RecordId OnDeath;        // which record type the id names
+    public RecordRef<EffectRecord> OnDeath;               // a reference names its record type
 }
 ```
 
 `Min`/`Max` clamp the inspector's drag and reject an out-of-range map key; `Unit` is printed after the
 number; `Tooltip` is the hover text and the FGD key's description; an enum field is a dropdown of its
-names; a `[RecordRef]` field is a dropdown of the records of that type. `[AssetKind("texture")]` does the
-same for an `AssetPath`. Every part is optional. A range on a field that is not a number or a vector, a
+names; a `RecordRef<T>` field is a dropdown of the records of T's type (a plain `RecordId` can say which
+type with `[RecordRef("effect")]`). `[AssetKind("texture")]` names the kind of an `AssetPath`. Every part is optional. A range on a field that is not a number or a vector, a
 `[RecordRef]` on one that is not a `RecordId` and an `[AssetKind]` on one that is not an `AssetPath` are
 build errors (`SAGE0040`–`SAGE0042`).
 
@@ -617,7 +635,29 @@ None of this exists in a Shipping build, which contains no editor at all.
 
 ## 9. Checking your game without playing it
 
-Three tools, in the order you should reach for them:
+Four tools, in the order you should reach for them:
+
+**`sage validate`.** Loads your game headlessly — every mount, every record, every prefab body, every
+asset path, then the game's own start-up with its scene placed — and exits non-zero if anything was an
+error. CI runs it on every game in the repository; run it before you push, and before you publish a mod:
+
+```bash
+dotnet build Sage.sln -c Development -p:SageSkipShaders=true
+src/Sage.Cli/bin/Development/net8.0/sage validate games/YourGame
+src/Sage.Cli/bin/Development/net8.0/sage validate games/YourGame --mounts mods/better_swords=swords
+```
+
+Every problem is one line, `file:line:column: type id: what is wrong`:
+
+```
+ERROR Records: mod:data/lamp.json:3:27: prefab swords:lamp: unknown field 'color' in 'parts.light'; did you mean 'colour'?
+ERROR Records: mod:data/items.json:6:35: item swords:rock: 'sound' refers to sound sandbox:fire_burst, which doesn't exist (sandbox:fire_burst is a particle)
+```
+
+It loads what a dedicated server loads plus the engine client's record types (materials, sounds,
+sprite sheets, particles), so a prefab part only your client half declares is skipped there — the real
+game's load checks those, at the same lines. `--engine-content <dir>` points at engine content when the
+tool can't find `engine_content/` above it.
 
 **Headless tests.** Your simulation half can be ticked in a test with no window and no graphics device.
 This is the engine's own habit and the reason the split exists. Reference `tests/Sage.Testing` and your
@@ -671,7 +711,8 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 
 1. **`[Record]` without `Records.Register<T>()`** used to be dead JSON: the file loaded and the type
    matched nothing. Since issue #16 the attribute *is* the registration (the generator writes it), so
-   this can't happen any more.
+   this can't happen any more — and a `[Record("")]` that no content could name is SAGE0021
+   (test: AnEmptyRecordTypeOrResourceNameIsABuildError).
 2. **`[SavedResource]` without `Saves.RegisterResource<T>()`** used to save nothing — this exact bug
    shipped three times. Gone the same way: the attribute registers it.
 3. **An action that is not `Actions.Register`ed** makes every binding to it ignored (with a warning), and
@@ -689,8 +730,13 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
    record type, input action, prefab part or module registered late did nothing either. Since
    2026-09-27 these are **errors** at the line that did it (`SageApp` seals each registry at the stage
    after which registering would be too late), so this one no longer happens silently — the rest of
-   the list still does. A misspelt key in `game.json` is an error too, and `disable` names that match no
-   module are warned about.
+   the list still does. Since issue #19 the plain case is **a build error, SAGE0020**: a registration
+   call written in a module's `Start`, `OnWorldCreated` or `CreateRules`, or in a system's constructor
+   or `Run` — lambdas inside them included, since they cannot run any earlier — fails to compile
+   (test: RegisteringACvarInStartIsABuildError) (test: RegisteringInOnWorldCreatedOrCreateRulesIsABuildErrorLambdasIncluded)
+   (test: RegisteringInASystemIsABuildError). A helper method those call is not followed; the run-time
+   seal still catches that. A misspelt key in `game.json` is an error too, and `disable` names that
+   match no module are warned about.
 8. **Prefab parts run in their declared order, not JSON order**: after the parts their `After` names,
    then by id. Since issue #17 that order is written down and a second part with the same id is an
    error, where it used to be module order and a silent replacement. What still bites: a part your
@@ -709,6 +755,64 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 13. **Renaming a component, or one of its fields,** used to drop that data from every existing save
     silently. Since issue #20 a save is keyed by id, and a field the type no longer has is an error that
     tells you to write an `[Upgrade]` (§8).
+14. **An `[Upgrade]` method on a type nothing saves** never ran — only a `[Component]`, `[Tag]` or
+    `[SavedResource]` has its upgraders called. Since issue #19 that is **a build error, SAGE0022**, and
+    so is a saved resource's upgrader with the wrong shape or two upgraders from one version
+    (test: AnUpgraderNothingRunsIsABuildError).
+15. **A MonoGame type in your simulation half** used to be kept out by habit: one package reference
+    and the rules no longer ran headless. A project with `<SageSimulationOnly>true</SageSimulationOnly>`
+    (Sandbox and Hello have it) now fails to build on one, **SAGE0024**
+    (test: AMonoGameTypeInASimulationOnlyAssemblyIsABuildError).
+16. **A misspelt field in content** — `"color"` for `colour`, `"name"` on an item whose field is `label`
+    — used to be dropped, leaving the default in its place. Since issue #22 it is an error at its line
+    with the nearest real name, in records, component data and part options alike (§3).
+
+---
+
+## 10a. Build errors: the SAGE diagnostics
+
+The generators and analyzers in `src/Sage.Generators` run in every engine and game project (the
+`Directory.Build.props` in `src/` and `games/`), and every diagnostic they report is an error. One line
+each, with the fix:
+
+| Id | What | Fix |
+|---|---|---|
+| SAGE0001 | A `[Record]` or `[SavedResource]` whose plugin cannot be inferred (the assembly has no `[Plugin]`, or several) | Add `Plugin = "<plugin id>"` |
+| SAGE0002 | A declared record or saved resource the registration cannot construct (abstract, generic, private, no public parameterless constructor) | Make it a public (or internal) concrete class with `public X()` |
+| SAGE0003 | Two declarations of one record type or resource name in an assembly | Rename one |
+| SAGE0004 | An `IComponent` or `ITag` struct without `[Component("ns:name")]` / `[Tag(...)]` | Give it a stable id |
+| SAGE0005 | A malformed component or tag declaration (bad id, `Version` below 1, wrong interface, private, generic) | Follow the message |
+| SAGE0006 | Two components (or two tags) with one id in an assembly | Rename one id |
+| SAGE0007 | A component's `[Upgrade]` method with the wrong signature, or upgrading from a version it cannot have | `static void Name(ref JsonObject o)`, from 1 to `Version - 1` |
+| SAGE0010 | A `[PrefabPart]` whose plugin cannot be inferred | Add `Plugin = "<plugin id>"` |
+| SAGE0011 | A declared part or system that cannot be one (abstract, generic, private, not `IPrefabPart` / `ISystem`, a part without a public parameterless constructor) | Follow the message |
+| SAGE0012 | Two declarations of one part or system id in an assembly | Rename one |
+| SAGE0013 | A system ordered (`Before`/`After`) against a system of this assembly in another phase | Drop the constraint: the phase order decides it |
+| SAGE0020 | A cvar, command, input action, entity input, record type, prefab part, saved resource or module registered in `Start`, `OnWorldCreated`, `CreateRules`, or a system's constructor or `Run` (§10 item 7) | Register it in the module's `Init`; hand a system what it needs through its constructor |
+| SAGE0021 | A `[Record]` type or `[SavedResource]` name that is empty or has whitespace, or a saved resource with `Version` below 1 | Name it (`"item"`); versions start at 1 |
+| SAGE0022 | An `[Upgrade]` method nothing runs (not on a component, tag or saved resource), a saved resource's upgrader with the wrong shape or version, or two upgraders from one version | Move it to the type whose saved shape changed; fix the signature or the number |
+| SAGE0023 | *Strict saves only:* a public component field that is neither `[Property]` nor `[Transient]` | Decide: `[Property]` saves it, `[Transient]` leaves it out |
+| SAGE0024 | *Simulation-only projects:* a `Microsoft.Xna.Framework` (MonoGame) type | Move the code to the client half |
+
+An attribute on the wrong kind of type — `[Record]` on a struct, `[Component]` on a class — is the
+compiler's own CS0592, because each declaration attribute names what it may go on.
+
+Two are switched on per project, in its `.csproj`:
+
+- `<SageSimulationOnly>true</SageSimulationOnly>` — the project is simulation: it runs headless and
+  names no MonoGame type (SAGE0024). `Sage.Engine`, `games/Sandbox` and `games/Hello` set it; a client
+  half (`Sandbox.Client`) does not (test: AClientAssemblyMayUseMonoGame).
+- `<SageStrictSaves>true</SageStrictSaves>` — off by default. Today every public field of a component
+  is saved unless it is `[Transient]`, so a field added later is saved without anyone choosing it;
+  strict mode asks each one for a decision (REDESIGN §4.5)
+  (test: UnderStrictSavesAPublicComponentFieldMustDecide) (test: StrictSavesIsOffByDefault).
+  `[Property]` is recognised by name once the engine has it (issue #18); until then only `[Transient]`
+  counts, and the message says so (test: UnderStrictSavesPropertyIsADecisionOnceItExists).
+
+Registering in `Init` is not an error, of course (test: RegisteringInInitIsNotAnError). Not checked
+yet at build time: a `RecordRef<T>` whose `T` no plugin registers. `RecordRef<T>` exists since issue
+#22 and content loading checks every reference by type; an analyzer for the declaration itself is a
+follow-up.
 
 ---
 

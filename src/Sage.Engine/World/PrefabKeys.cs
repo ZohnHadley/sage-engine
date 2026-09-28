@@ -168,6 +168,7 @@ public static class PrefabKeys
             case System.Numerics.Vector3 v: return $"{v.X.ToString("0.###", culture)} {v.Y.ToString("0.###", culture)} {v.Z.ToString("0.###", culture)}";
             case System.Numerics.Vector2 v: return $"{v.X.ToString("0.###", culture)} {v.Y.ToString("0.###", culture)}";
             case RecordId r: return r.IsEmpty ? "" : r.ToString();
+            case IRecordRef r: return r.Id.IsEmpty ? "" : r.Id.ToString();
             case IFormattable f: return f.ToString(null, culture);
             default: return value.ToString() ?? "";
         }

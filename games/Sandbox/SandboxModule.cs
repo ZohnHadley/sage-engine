@@ -32,6 +32,9 @@ public sealed class SandboxModule : IGameModule
         // fine, which is what a dedicated server does.
         ctx.Engine.Prefabs.Optional("box_mesh");
         ctx.Engine.Prefabs.Optional("audio");     // the client declares it (11 §3); headless has no ears
+        // The campfire's embers, likewise the client's (06 §3.12). Missing until prefab bodies were
+        // checked at load (issue #22): only a headless spawn of the campfire ever said so.
+        ctx.Engine.Prefabs.Optional("particles");
     }
 
 
@@ -165,14 +168,14 @@ public sealed class SceneRecord
 
     // Brush levels to load with the scene (15 §3, F16). A `.map` places its own contents, so this is
     // the whole of what the scene has to say about one.
-    [RecordRef("map"), Property(Tooltip = "Brush levels to load with the scene")]
-    public List<RecordId> Maps = new();
+    [Property(Tooltip = "Brush levels to load with the scene")]
+    public List<RecordRef<MapRecord>> Maps = new();
 }
 
 public sealed class ScenePlacement
 {
-    [RecordRef("prefab"), Property(Tooltip = "What to place")]
-    public RecordId Prefab;
+    [Property(Tooltip = "What to place")]
+    public RecordRef<PrefabRecord> Prefab;
     [Property(Unit = "m", Tooltip = "Relative to the scene centre; y is height above the ground")]
     public Vector3 At;                        // relative to the scene centre; y is height above ground
     [Property(Unit = "deg", Tooltip = "Degrees about +Y; 0 faces -Z")]

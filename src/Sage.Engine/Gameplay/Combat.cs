@@ -27,13 +27,13 @@ public readonly record struct DamageInfo(
 [Record("damage_type", Plugin = "sage.gameplay.combat")]
 public sealed class DamageTypeRecord
 {
-    public RecordId Sound;                  // what landing this sounds like (11 §3, F4)
-    public RecordId Particles;              // and what it throws off: sparks, blood, embers (06 §3.12, F39)
+    public RecordRef<SoundRecord> Sound;    // what landing this sounds like (11 §3, F4)
+    public RecordRef<ParticleRecord> Particles; // and what it throws off: sparks, blood, embers (06 §3.12, F39)
     [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
     public uint Colour;                     // the damage number's colour: "#RRGGBB(AA)"; 0 = the engine's default
 
-    public RecordId Resist;   // attribute read as a percentage, 0..95, that reduces this
-    public RecordId Effect;   // the effect applied to the victim, scaled by the damage
+    public RecordRef<AttributeRecord> Resist;   // attribute read as a percentage, 0..95, that reduces this
+    public RecordRef<EffectRecord> Effect;   // the effect applied to the victim, scaled by the damage
                               // (element tags and cue ids arrive with cues, F21: a field nothing
                               //  reads is a promise the engine isn't keeping, review #50)
 
@@ -46,7 +46,7 @@ public sealed class DamageTypeRecord
 public sealed class AttackRecord
 {
     public float Damage = 10f;
-    public RecordId DamageType;             // empty = sage:physical
+    public RecordRef<DamageTypeRecord> DamageType; // empty = sage:physical
     public float Reach = 2f;                // metres, from the attacker's eye
     public float Radius = 0.35f;            // the swing's thickness: how forgiving it is
     public float ArcDegrees = 120f;         // how far off-centre a target may be
@@ -57,10 +57,10 @@ public sealed class AttackRecord
     // Raised where the swing starts (16 §3.3), so a weapon can be heard leaving its scabbard and seen
     // trailing without combat knowing what either looks like. The *hit* is the damage type's business:
     // one entry for fire covers a fireball and a torch, and a blade's own noise is this.
-    public RecordId SwingCue;
-    public RecordId Viewmodel;              // the sprite sheet a first-person wielder sees (13 §3):
+    public RecordRef<CueRecord> SwingCue;
+    public RecordRef<SpriteSheetRecord> Viewmodel; // the sprite sheet a first-person wielder sees (13 §3):
                                             // rest, wind-up and strike, in that order
-    public List<RecordId> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
+    public List<RecordRef<EffectRecord>> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
 
     public static readonly RecordId Default = new("sage", "default_attack");
 }
@@ -82,7 +82,7 @@ public static class Combat
     // `alsoApply` are the effects that ride along with a landed hit — a poisoned blade, a burning
     // brand. They are applied as written (no magnitude) and only if the damage itself got through,
     // so `god` stops the poison as well as the cut.
-    public static float ApplyDamage(World world, in DamageInfo hit, List<RecordId>? alsoApply = null)
+    public static float ApplyDamage(World world, in DamageInfo hit, List<RecordRef<EffectRecord>>? alsoApply = null)
     {
         if (!world.IsAlive(hit.Target) || hit.Amount <= 0f) return 0f;
 

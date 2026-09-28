@@ -78,7 +78,7 @@ public class PlacementTests
         var moved = saved.Place.Find(p => p.Name == "north post");
         Assert.NotNull(moved);
         Assert.Equal(new Vector3(3, 2, 1), moved!.At);
-        Assert.Equal(new RecordId("sandbox", "post"), moved.Prefab);
+        Assert.Equal(new RecordId("sandbox", "post"), moved.Prefab.Id);
     }
 
     [Fact]

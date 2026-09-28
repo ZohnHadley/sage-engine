@@ -179,7 +179,7 @@ public class SpriteSheetRecordTests
         Assert.Equal(5, sheet.Directions);
         Assert.Equal(new Vector2(1.1f, 1.7f), sheet.Size);
         Assert.Equal(BillboardMode.Cylindrical, sheet.Mode);
-        Assert.Equal(new RecordId("sage", "sprite_lit"), sheet.Material);
+        Assert.Equal(new RecordId("sage", "sprite_lit"), sheet.Material.Id);
         Assert.Equal(new[] { 0, 0, 64, 96 }, sheet.Frames[0].Rect);
         Assert.Equal(new[] { 32, 94 }, sheet.Frames[0].Pivot);
         Assert.Empty(sheet.Frames[1].Pivot);                        // the renderer defaults it to bottom centre

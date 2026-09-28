@@ -147,14 +147,14 @@ public class WeatherTests
     {
         var records = NewRecords();
         var weather = new Weather { Current = Id("storm"), Target = Id("storm") };
-        Assert.Equal(Id("raindrop"), WeatherRules.Falling(records, weather).Particles);
+        Assert.Equal(Id("raindrop"), WeatherRules.Falling(records, weather).Particles.Id);
 
         weather.Set(Id("snow"), 2f);
         weather.Advance(0.5f);
-        Assert.Equal(Id("raindrop"), WeatherRules.Falling(records, weather).Particles);   // still mostly rain
+        Assert.Equal(Id("raindrop"), WeatherRules.Falling(records, weather).Particles.Id);   // still mostly rain
 
         weather.Advance(1f);
-        Assert.Equal(Id("snowflake"), WeatherRules.Falling(records, weather).Particles);
+        Assert.Equal(Id("snowflake"), WeatherRules.Falling(records, weather).Particles.Id);
     }
 
     // A weather id nobody wrote makes the sun come out rather than crashing the sky.

@@ -24,8 +24,8 @@ public sealed class AttributeRecord
     // How this pool is *spent* (16 §3.3): an effect whose modifier takes one unit of it, scaled by
     // the magnitude of the spend. Naming it here rather than in every ability keeps the rule that
     // nothing subtracts an attribute directly — mana leaves the same way health does.
-    [RecordRef("effect"), Property(Tooltip = "The effect that spends one unit of this attribute (mana, stamina)")]
-    public RecordId SpendEffect;
+    [Property(Tooltip = "The effect that spends one unit of this attribute (mana, stamina)")]
+    public RecordRef<EffectRecord> SpendEffect;
 
     public static readonly RecordId Health = new("sage", "health");
 }

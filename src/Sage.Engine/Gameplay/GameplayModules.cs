@@ -395,6 +395,9 @@ public sealed class AIModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
+        // Interrupt names are a fixed set, so a schedule's are checked as content loads (issue #22);
+        // task names are open (a game adds its own until the first world), so they are checked then.
+        _records.AddCheck<AIScheduleRecord>(CheckInterrupts);
         _aiDebug = ctx.Engine.CVars.Register("ai_debug", false, CVarFlags.DevOnly,
             "Draw what each creature can see and what it is chasing (needs r_debugdraw 1).");
 
@@ -429,8 +432,43 @@ public sealed class AIModule : IModule
 
     public void Start(ModuleContext ctx) => ctx.Provide(AITasks);
 
+    private static void CheckInterrupts(AIScheduleRecord schedule, RecordCheck check)
+    {
+        var names = Enum.GetNames<AICondition>();
+        for (int i = 0; i < schedule.Interrupts.Count; i++)
+        {
+            string name = schedule.Interrupts[i];
+            if (!Enum.TryParse(name, true, out AICondition _) || int.TryParse(name, out _))
+                check.Error($"Interrupts[{i}]", $"no interrupt condition '{name}'" + Spelling.Suggest(name, names));
+        }
+    }
+
+    // Every schedule's tasks against the tasks there are, once, when the first world has them all:
+    // an unknown name or a misnamed argument is reported at its line, before any creature runs it.
+    private bool _tasksChecked;
+
+    private void CheckTasks()
+    {
+        if (_tasksChecked || _records == null) return;
+        _tasksChecked = true;
+        foreach (var id in _records.Ids("ai_schedule"))
+        {
+            if (!_records.TryGet(id, out AIScheduleRecord schedule)) continue;
+            for (int i = 0; i < schedule.Tasks.Count; i++)
+            {
+                var step = schedule.Tasks[i];
+                string where = $"{_records.Where("ai_schedule", id, $"Tasks[{i}]")}: ai_schedule {id}";
+                if (AITasks.Find(step.Task) is not { } task)
+                    Log.Error(LogCat.AI, $"{where}: no AI task named '{step.Task}'" + Spelling.Suggest(step.Task, AITasks.Names));
+                else if (step.Argument != null && task.Argument != null && !string.Equals(step.Argument, task.Argument, StringComparison.OrdinalIgnoreCase))
+                    Log.Error(LogCat.AI, $"{where}: task '{step.Task}' takes '{task.Argument}', not '{step.Argument}'");
+            }
+        }
+    }
+
     public void OnWorldCreated(World world)
     {
+        CheckTasks();
         // Both controllers write PawnIntent in the Commands phase, so movement (PrePhysics) acts on
         // it in the same tick it was decided. AI used to sit in Phase.AI, four phases *after* the
         // movement that reads it, which cost every creature a tick of lag (review #48) — and is now
