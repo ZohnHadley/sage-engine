@@ -682,7 +682,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | Phase | State |
 |---|---|
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
-| 1 — Kernel | **Mostly done.** `SageApp` and `HostLoop` (#10), sealed registration and plugins (#12), `Add`/`Replace` and `CreateRules` (#13, part), `Sage.Testing` and every test on `HeadlessApp` (#14). Left: resources out of `World`'s constructor (#13), the per-app log level (#11) |
+| 1 — Kernel | **Mostly done.** `SageApp` and `HostLoop` (#10), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Left: the per-app log level (#11) |
 | 2 — Declarations | Not started |
 | 3 — Carve the base | Not started |
 
