@@ -15,6 +15,7 @@ namespace sage_engine;
 // Forward lighting, four lights at a time, chosen per object. That ceiling is not a limitation of the
 // idea but of the shader model DesktopGL gives us (07 §2) — and four is enough for a room, which is what
 // this is for. Lightmaps (HL1's answer, and the right one for a big level) are still later.
+[Component("sage:point_light")]
 public struct PointLight : IComponent
 {
     public Vector3 Colour;      // linear rgb; 1,1,1 is white

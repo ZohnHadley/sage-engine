@@ -26,6 +26,9 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
   has several). A system is `[System("id", Phase.X, After = ...)]`, ordered by id and added with
   `world.AddSystem(new X(...))`; its event readers take `this` as owner so removal releases them.
   What is still registered by hand goes in a module's `Init`; registries are sealed later and throw.
+  Every component and tag has a stable id, `[Component("ns:name")]` / `[Tag(...)]` (a build error
+  without one); prefabs and saves use the id, never the C# name. Rename a saved field only with a
+  `Version` bump and an `[Upgrade]` method; `tests/Sage.Tests/Content/Saves` holds golden saves that must load.
 - **Boot through `SageApp`**, not by hand; a game's rules come from `IGameModule.CreateRules`; world
   resources go in with `Resources.Add` (or `Replace`, on purpose).
 - **Tests are headless and parallel, and boot through `HeadlessApp`** (`tests/Sage.Testing`), never

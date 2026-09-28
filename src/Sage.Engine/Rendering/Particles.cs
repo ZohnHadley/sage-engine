@@ -55,7 +55,10 @@ public sealed class ParticleRecord
     public Vector3 Wind;
     public float Drag;                        // fraction of speed lost per second
     public float SizeStart = 0.15f, SizeEnd = 0.05f;
-    public uint ColourStart = 0xFFFFFFFF;     // RGBA, and the alpha is what fades
+    // "#RRGGBBAA" or [r, g, b, a] in a record (ColourJsonConverter), and the alpha is what fades.
+    [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
+    public uint ColourStart = 0xFFFFFFFF;
+    [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
     public uint ColourEnd = 0x00FFFFFF;
     public float SpinDegrees;                 // turned per second, for smoke and leaves
 
@@ -67,6 +70,7 @@ public sealed class ParticleRecord
 
 // An entity that emits while it exists: a torch's embers, rain over the player, an aura. The component
 // is the engine's, so a headless run carries it and simply never draws anything.
+[Component("sage:particle_emitter")]
 public struct ParticleEmitter : IComponent
 {
     public RecordId Effect;

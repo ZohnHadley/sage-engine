@@ -42,6 +42,7 @@ public struct ItemStack
 }
 
 // What something is carrying. `Capacity` is kilograms; 0 means "as much as it likes".
+[Component("sage:inventory")]
 public struct Inventory : IComponent
 {
     public List<ItemStack> Items;
@@ -51,6 +52,7 @@ public struct Inventory : IComponent
 }
 
 // What it is holding. Two slots in v1: a weapon and a shield is enough to prove the idea.
+[Component("sage:equipment")]
 public struct Equipment : IComponent
 {
     public RecordId MainHand;
@@ -60,6 +62,7 @@ public struct Equipment : IComponent
 }
 
 // An item lying in the world, waiting to be picked up.
+[Component("sage:pickup")]
 public struct Pickup : IComponent
 {
     public RecordId Item;
@@ -68,6 +71,7 @@ public struct Pickup : IComponent
 
 // Tag: the Use action does something with this. A `Pickup` is one implicitly; anything else with the
 // tag raises an interaction its game can react to (a door, a lever, a corpse).
+[Tag("sage:interactable")]
 public struct Interactable : ITag { }
 
 // Somebody used something: the fact, for whatever a game wants to do with it (a door, a lever, a

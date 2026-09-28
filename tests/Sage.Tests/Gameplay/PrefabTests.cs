@@ -10,7 +10,7 @@ namespace sage_engine.Tests;
 using Assert = Xunit.Assert;
 
 // A tag with no meaning beyond "a prefab put it here", so the test can name one.
-public struct FromPrefab : ITag { }
+[Tag("test:from_prefab")] public struct FromPrefab : ITag { }
 
 // Prefabs (docs/design/05 §3.5, TODO F31). The point of the feature is that placing a thing is one
 // call against data, instead of eight calls in a particular order across five static classes
@@ -33,25 +33,25 @@ public class PrefabTests
 
       { "type": "prefab", "id": "creature", "abstract": true,
         "name": "creature",
-        "components": { "SpriteRenderer": { "size": [1.6, 1.9] } },
+        "components": { "sprite_renderer": { "size": [1.6, 1.9] } },
         "parts": { "character": { "layer": "enemy" }, "attributes": {}, "melee": { "attack": "claw" } } },
 
       { "type": "prefab", "id": "goblin", "base": "creature",
         "name": "goblin",
-        "components": { "AIState": { "schedule": "chase" } },
+        "components": { "ai_state": { "schedule": "chase" } },
         "parts": { "effects": ["tough_hide"] } },
 
       { "type": "prefab", "id": "goblin_chief", "base": "goblin",
         "name": "goblin chief",
-        "components": { "SpriteRenderer": { "size": [2.0, 2.4] } },
+        "components": { "sage:sprite_renderer": { "size": [2.0, 2.4] } },
         "parts": { "melee": { "attack": "bite" } } },
 
       { "type": "prefab", "id": "dropped_sword", "name": "a sword",
         "parts": { "pickup": { "item": "sword" } } },
 
       { "type": "prefab", "id": "rock",
-        "components": { "Collider": { "shape": "Box", "size": [1, 1, 1] } },
-        "tags": ["FromPrefab"] }
+        "components": { "collider": { "shape": "Box", "size": [1, 1, 1] } },
+        "tags": ["test:from_prefab"] }
     ]
     """;
 
@@ -191,7 +191,7 @@ public class PrefabTests
             var rock = world.Spawn(Id("rock"));
             Assert.Equal(ColliderShape.Box, world.Get<Collider>(rock).Shape);
             Assert.Equal(new Vector3(1, 1, 1), world.Get<Collider>(rock).Size);
-            Assert.Contains("FromPrefab", engine.Components.TagsOf(rock));
+            Assert.Contains("test:from_prefab", engine.Components.TagsOf(rock));
         }
     }
 
@@ -201,8 +201,8 @@ public class PrefabTests
     {
         const string bad = """
         [ { "type": "prefab", "id": "wonky",
-            "components": { "NoSuchComponent": { "x": 1 }, "Collider": { "shape": "Box", "size": [2,2,2] } },
-            "tags": ["NoSuchTag"],
+            "components": { "no_such_component": { "x": 1 }, "collider": { "shape": "Box", "size": [2,2,2] } },
+            "tags": ["no_such_tag"],
             "parts": { "no_such_part": {}, "attributes": {} } } ]
         """;
         var (engine, world) = NewWorld(bad);
@@ -218,33 +218,42 @@ public class PrefabTests
     // The schema is read on first use, never when the Engine is built: the host constructs the Engine
     // and only then loads the game assembly, so a game's own components have to be findable too.
     // `FromPrefab` and `Health` live in this assembly, which is a "game assembly" as far as the
-    // engine is concerned.
+    // engine is concerned — one built without Sage.Generators, so read by reflection (issue #16).
     [Fact]
-    public void ComponentTypesFromOtherAssembliesAreFoundByName()
+    public void ComponentTypesFromOtherAssembliesAreFoundById()
     {
         var (engine, world) = NewWorld();
         using (engine)
         {
-            Assert.True(engine.Components.TryComponent("Health", out _));
-            Assert.True(engine.Components.TryTag("FromPrefab", out _));
-            Assert.True(engine.Components.TryComponent("transform", out _));   // and case does not matter
+            Assert.True(engine.Components.TryComponent("test:health", out var health));
+            Assert.Equal(typeof(Health), health.Type);
+            Assert.True(engine.Components.TryTag("test:from_prefab", out _));
+            Assert.True(engine.Components.TryComponent("sage:transform", out var transform));
+            Assert.Equal(typeof(Transform), transform.Type);   // Sage's, not Friflo's own Transform
+            Assert.Equal("sage:transform", engine.Components.IdOf(typeof(Transform)));
+            Assert.Null(engine.Components.IdOf(typeof(Friflo.Engine.ECS.Transform)));   // Friflo's: no id
+
+            // Ids are exact: the case matters, and a bare type name is not an id.
+            Assert.False(engine.Components.TryComponent("sage:Transform", out _));
+            Assert.False(engine.Components.TryComponent("Transform", out _));
         }
     }
 
-    // What `ent_dump` prints, and what the editor's inspector (15) will read.
+    // What `ent_dump` prints, and what the editor's inspector (15) shows.
     [Fact]
-    public void EveryComponentOnAnEntityCanBeFoundByName()
+    public void EveryComponentOnAnEntityCanBeFoundById()
     {
         var (engine, world) = NewWorld();
         using (engine)
         {
             var goblin = world.Spawn(Id("goblin"));
-            var names = engine.Components.ComponentsOf(goblin).Select(c => c.Name).ToList();
+            var ids = engine.Components.ComponentsOf(goblin).Select(c => c.Id).ToList();
 
-            Assert.Contains("Transform", names);
-            Assert.Contains("Collider", names);
-            Assert.Contains("Melee", names);
-            Assert.Equal((object)world.Get<Melee>(goblin), engine.Components.ComponentsOf(goblin).First(c => c.Name == "Melee").Value);
+            Assert.Contains("sage:transform", ids);
+            Assert.Contains("sage:collider", ids);
+            Assert.Contains("sage:melee", ids);
+            Assert.DoesNotContain("EntityName", ids);   // Friflo's own components have no id
+            Assert.Equal((object)world.Get<Melee>(goblin), engine.Components.ComponentsOf(goblin).First(c => c.Id == "sage:melee").Value);
         }
     }
 }

@@ -22,6 +22,7 @@ public enum BodyKind { Static, Kinematic, Dynamic }
 // centre, so anything whose transform sits at its *feet* — a character, a tree — needs an offset of
 // half its height, or its collider ends up buried to the waist while the thing appears to stand on
 // the ground (review #44). Standing() does that for you.
+[Component("sage:collider")]
 public struct Collider : IComponent
 {
     public ColliderShape Shape;
@@ -56,6 +57,7 @@ public struct Collider : IComponent
 
 // How the collider moves. Static never moves, Kinematic is moved by gameplay (the transform wins),
 // Dynamic is moved by physics (the body wins, and its pose is written back to the transform).
+[Component("sage:rigid_body")]
 public struct RigidBody : IComponent
 {
     public BodyKind Kind;
@@ -69,6 +71,8 @@ public struct RigidBody : IComponent
 
 // The Bepu handle for an entity's collider, added and removed by the physics systems. Never authored
 // and never saved: it is rebuilt from Collider/RigidBody on load (09 §3.5).
+[Transient]
+[Component("sage:physics_body")]
 public struct PhysicsBody : IComponent
 {
     public int Handle;

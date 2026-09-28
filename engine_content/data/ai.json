@@ -1,6 +1,8 @@
 [
   // AI profile and schedules (docs/design/16 §3.4). A schedule is an ordered task list plus the
-  // conditions that interrupt it; tasks are registered by name and may take a number after a colon.
+  // conditions that interrupt it. A task is { "task": "<name>", "<argument>": number }, or just its
+  // name when it takes nothing: Wait takes "seconds", MoveToTarget "distance", MeleeAttack and
+  // CastSpell "giveUpAfter" (seconds).
   {
     "type": "ai_profile",
     "id": "default_ai",
@@ -13,13 +15,13 @@
   {
     "type": "ai_schedule",
     "id": "idle",
-    "tasks": ["Wait:1.5"],
+    "tasks": [{ "task": "Wait", "seconds": 1.5 }],
     "interrupts": ["SeeEnemy"]
   },
   {
     "type": "ai_schedule",
     "id": "chase",
-    "tasks": ["MoveToTarget:1.6"],
+    "tasks": [{ "task": "MoveToTarget", "distance": 1.6 }],
     "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"]
   },
   {
@@ -28,7 +30,7 @@
     // Casting is chosen over chasing, so a creature that cannot swing stops walking into reach.
     "type": "ai_schedule",
     "id": "hold_ground",
-    "tasks": ["FaceTarget", "Wait:0.3"],
+    "tasks": ["FaceTarget", { "task": "Wait", "seconds": 0.3 }],
     "interrupts": ["LostEnemy", "NoEnemy"]
   },
   {
@@ -38,7 +40,7 @@
     // nothing to do there.
     "type": "ai_schedule",
     "id": "cast_spell",
-    "tasks": ["FaceTarget", "CastSpell:2", "Wait:0.8"],
+    "tasks": ["FaceTarget", { "task": "CastSpell", "giveUpAfter": 2 }, { "task": "Wait", "seconds": 0.8 }],
     "interrupts": ["LostEnemy", "NoEnemy"]
   },
   {
@@ -47,7 +49,7 @@
     // MeleeAttack presses the Attack action and waits: what the swing does, how long it takes and
     // how often it may happen are the attack record's business (16 §3.2). The number is how long to
     // keep trying before giving up and thinking again.
-    "tasks": ["FaceTarget", "MeleeAttack:1.5", "Wait:0.5"],
+    "tasks": ["FaceTarget", { "task": "MeleeAttack", "giveUpAfter": 1.5 }, { "task": "Wait", "seconds": 0.5 }],
     "interrupts": ["LostEnemy", "NoEnemy"]
   }
 ]

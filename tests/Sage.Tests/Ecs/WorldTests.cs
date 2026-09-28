@@ -10,8 +10,10 @@ namespace sage_engine.Tests;
 
 using Assert = Xunit.Assert;
 
-public struct Health : IComponent { public float Current; }
-public struct Velocity : IComponent { public Vector3 Value; }
+// Declared the way every component is (issue #16). This assembly is built without Sage.Generators, so
+// ComponentSchema reads the attributes by reflection: the path a tool or test assembly takes.
+[Component("test:health")] public struct Health : IComponent { public float Current; }
+[Component("test:velocity")] public struct Velocity : IComponent { public Vector3 Value; }
 
 // World over Friflo.Engine.ECS (docs/design/03). Requirements E1–E9 from the spike, the notification
 // ordering guarantees (04 §3.3), and review items #15, #33, #38.

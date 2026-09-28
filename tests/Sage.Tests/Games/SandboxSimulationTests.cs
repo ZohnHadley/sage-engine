@@ -30,7 +30,7 @@ public class SandboxSimulationTests
       { "type": "attack", "id": "fists", "damage": 5, "reach": 1.5 },
 
       { "type": "prefab", "id": "hero", "name": "hero",
-        "tags": ["PlayerControlled"],
+        "tags": ["player_controlled"],
         "parts": { "character": { "layer": "player" }, "attributes": {}, "melee": { "attack": "fists" } } },
 
       { "type": "prefab", "id": "rock", "name": "rock",

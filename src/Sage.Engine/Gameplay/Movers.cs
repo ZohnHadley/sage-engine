@@ -15,6 +15,7 @@ namespace sage_engine;
 // It is in the engine rather than in a game because it is about *geometry*, not rules: what opens the
 // door — a button, a key, a quest stage — is a game's business and is wired to it from a map (04 §3.4).
 
+[Component("sage:mover")]
 public struct Mover : IComponent
 {
     // Where "open" is, relative to where the entity was placed, in metres. A door that slides into the

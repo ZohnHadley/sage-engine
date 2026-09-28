@@ -82,6 +82,10 @@ public sealed class Connection
     internal int Fired;
 }
 
+// [Transient]: a level's wiring comes from the map, the same as the walls do, and holds resolved entity
+// handles that mean nothing in another session.
+[Transient]
+[Component("sage:io_connections")]
 public struct IOConnections : IComponent
 {
     public Connection[] Wires;

@@ -35,7 +35,7 @@ public class ScreenTests
       { "type": "ability", "id": "pillar", "name": "pillar", "costAttribute": "mana", "cost": 90, "targeting": "Touch", "range": 8, "damage": 40, "damageType": "physical" },
 
       { "type": "prefab", "id": "hero", "name": "hero",
-        "tags": ["PlayerControlled"],
+        "tags": ["player_controlled"],
         "parts": { "character": { "layer": "player" }, "attributes": {}, "inventory": { "capacity": 40 },
                    "melee": { "attack": "swing" }, "abilities": ["spark", "pillar"] } }
     ]

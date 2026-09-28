@@ -27,9 +27,9 @@ public class FactionTests
            "radius": 0.45, "windupTime": 0.2, "recoverTime": 0.1, "cooldown": 0.5 },
 
          { "type": "ai_profile", "id": "default_ai", "sightRange": 30, "meleeRange": 1.8, "thinkRate": 20 },
-         { "type": "ai_schedule", "id": "idle", "tasks": ["Wait:1.5"], "interrupts": ["SeeEnemy"] },
-         { "type": "ai_schedule", "id": "chase", "tasks": ["MoveToTarget:1.6"], "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"] },
-         { "type": "ai_schedule", "id": "melee_attack", "tasks": ["FaceTarget", "MeleeAttack:0.2", "Wait:0.4"], "interrupts": ["LostEnemy", "NoEnemy"] },
+         { "type": "ai_schedule", "id": "idle", "tasks": [{ "task": "Wait", "seconds": 1.5 }], "interrupts": ["SeeEnemy"] },
+         { "type": "ai_schedule", "id": "chase", "tasks": [{ "task": "MoveToTarget", "distance": 1.6 }], "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"] },
+         { "type": "ai_schedule", "id": "melee_attack", "tasks": ["FaceTarget", { "task": "MeleeAttack", "giveUpAfter": 0.2 }, { "task": "Wait", "seconds": 0.4 }], "interrupts": ["LostEnemy", "NoEnemy"] },
 
          { "type": "faction", "id": "wolves", "label": "wolves", "standing": -50,
            "relations": [ { "faction": "sage:sheep", "stance": "Hostile" } ] },

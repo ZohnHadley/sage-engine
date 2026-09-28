@@ -29,7 +29,8 @@ public sealed class DamageTypeRecord
 {
     public RecordId Sound;                  // what landing this sounds like (11 §3, F4)
     public RecordId Particles;              // and what it throws off: sparks, blood, embers (06 §3.12, F39)
-    public uint Colour;                     // the damage number's colour, RGBA; 0 = the engine's default
+    [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
+    public uint Colour;                     // the damage number's colour: "#RRGGBB(AA)"; 0 = the engine's default
 
     public RecordId Resist;   // attribute read as a percentage, 0..95, that reduces this
     public RecordId Effect;   // the effect applied to the victim, scaled by the damage
@@ -128,6 +129,7 @@ public enum MeleePhase { Ready, Windup, Recover }
 
 // A character that can swing something (16 §3.2). The player's controller and an AI's MeleeAttack
 // task both just press the Attack action; this component and MeleeCombatSystem are the whole swing.
+[Component("sage:melee")]
 public struct Melee : IComponent
 {
     public RecordId Attack;     // what it swings now; empty = sage:default_attack

@@ -32,6 +32,7 @@ public sealed class PlacementsRecord
 
 // Marks an entity that came from a placements document, and which one — so an editor can tell what it
 // is responsible for from what the game or a level spawned, and a reload can sweep only its own.
+[Component("sage:from_placements")]
 public struct FromPlacements : IComponent
 {
     public RecordId Document;

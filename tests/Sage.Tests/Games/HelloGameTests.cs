@@ -36,7 +36,7 @@ public class HelloGameTests
             "type": "prefab",
             "id": "player",
             "name": "player",
-            "tags": ["PlayerControlled"],
+            "tags": ["player_controlled"],
             "parts": { "character": { "layer": "player" }, "attributes": {} }
           }
         ]

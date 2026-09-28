@@ -97,19 +97,21 @@ Not every record comes from a file. A spell the player composed in the spellmake
 ### As built (prefabs, 2026-09-23 — F31)
 
 - **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabPartAttribute`,
-  `PrefabRegistry`, `world.Spawn`), `ComponentSchema.cs` (components and tags by name),
+  `PrefabRegistry`, `world.Spawn`), `ComponentSchema.cs` (components and tags by stable id, issue #16),
   `src/Sage.Engine/Gameplay/PrefabParts.cs` (the parts the engine's plugins declare). Tests in
   `tests/Sage.Tests/Gameplay/PrefabTests.cs` and `PrefabPartTests.cs`.
 - **A prefab is a record**, so `base` inheritance, per-field patching, load order, validation and hot
   reload all come from §3.5 for nothing. A `goblin_chief` can `base` a `goblin` and override one
   field of one component, because the merge runs on the JSON tree before anything is deserialized.
-- **Its body is two halves.** `"components"` is component data by type name, applied as written.
+- **Its body is two halves.** `"components"` is component data by component id, applied as written
+  (by C# type name until issue #16; a bare name is the prefab's namespace, then `sage`: 03 "As built
+  (component ids)").
   `"parts"` are named setups a **plugin declared** — for the cases that are not one component.
 
   ```json
   { "type": "prefab", "id": "goblin", "base": "creature", "name": "goblin",
-    "components": { "SpriteRenderer": { "sheet": "goblin", "size": [1.6, 1.9] } },
-    "tags": ["Hostile"],
+    "components": { "sprite_renderer": { "sheet": "goblin", "size": [1.6, 1.9] } },
+    "tags": ["hostile"],
     "parts": { "character": { "layer": "enemy" }, "attributes": {},
                "melee": { "attack": "claw" }, "effects": ["tough_hide"] } }
   ```
@@ -290,7 +292,7 @@ than as art.
       "technique": "Unlit", "pass": "AlphaTested", "params": { "Albedo": "textures/creatures/goblin.png", "Tint": [1,1,1,1], "AlphaCutoff": 0.5 } }
   ]
   ```
-- **`RecordId` = `namespace:name`.** A bare `id` gets the namespace of the mount that defines it: the game's `id` from `game.json`, a mod's id, or `sage` for engine content. **Inside a patch, bare references resolve in the *patched record's* namespace**, not the patching mount's — a mod that points an engine record at one of its own records writes the id in full (`"attackEffect": "mymod:claw"`).
+- **`RecordId` = `namespace:name`.** A bare `id` gets the namespace of the mount that defines it: the game's `id` from `game.json`, a mod's id, or `sage` for engine content. **A bare reference means the namespace of the file it is written in**, including inside a patch of another namespace's record: a mod that points an engine record at one of its own writes `"attackEffect": "claw"` and gets `mymod:claw` (R11, issue #22; until 2026-09-28 it got `sage:claw`, and the workaround was to write ids in full, which still works) (test: Patch_BareIdsMeanThePatchingFilesNamespace). The loader writes such ids out in full before merging, guided by the record type's `RecordId` fields, so a list operation compares like with like (`"spells-": ["sage:frost"]` removes an engine record's bare `"frost"`).
 - **`base`, `type`, `id`, `patch`, `disabled` and `abstract` are reserved**: a record that wants a field of its own by one of those names has to call it something else (the engine's `attribute` records use `start`, not `base`).
 - **`base`:** single inheritance of field values from another record of the same type (Dungeon Siege templates). It's resolved after merging. **`"abstract": true`** marks a template: it can be a `base` but never becomes a record itself (so `creature_base` doesn't spawn), and the flag isn't inherited.
 - **Localized text** is a key (`@items.iron_sword.name`) into string tables, not inline text (ARCHITECTURE §4.7).
@@ -311,7 +313,8 @@ than as art.
 - **Code:** `src/Sage.Engine/Content/` (`VirtualFileSystem.cs`, `RecordId.cs`, `RecordStore.cs`, `RecordHotReload.cs`); tests in `tests/Sage.Tests/Content/ContentTests.cs`.
 - **VFS:** folder mounts only. Priority is mount order (`Mount(IMount)` has no priority argument). The host mounts engine content (`<exe>/Content`, namespace `sage`), then the game's `game.json` mounts (namespace = game id). `user://` is `UserPaths` (02), not a VFS root yet. `VirtualPath.Parse` rejects `.`, `..` and `:`.
 - **Records:** the rules above, deserialized with `System.Text.Json` reflection (fields and properties, case-insensitive names, comments and trailing commas allowed, `[x,y,z]` vectors, enums as strings). The generated readers (09) replace it later with the same rules. Differences from the design:
-  - errors name the file and the record's index in it (`scene.json[1]`), not a line number;
+  - errors name `file:line:column` (`sandbox:data/scene.json:385:5`) since 2026-09-28 (issue #22): the record, or the property a problem is in — the file that *set* that field, when a patch or a `base` did — or the element of a list. Positions are worked out only when there is an error to report; a clean load just keeps each file's bytes until it finishes (test: RecordErrors_SayFileLineAndColumn, test: AnErrorInAPatchedField_PointsAtThePatch, test: InvalidJson_SaysLineAndColumn);
+  - **colours** are `"#RRGGBB"`, `"#RRGGBBAA"` or `[r, g, b(, a)]` in whole numbers 0-255 on any field marked `[JsonConverter(typeof(ColourJsonConverter))]` (`damage_type.colour`, `particle.colourStart`/`colourEnd`); a plain number is still read as the packed value (red in the low byte, as MonoGame's `Color.PackedValue`), and 0-1 fractions are an error (test: Colours_ReadAsHex_Arrays_OrPackedNumbers, test: Colours_ThatAreNotColoursAreErrorsAtTheirLine);
   - no range checks yet (they come with `[Property]` attributes, 09);
   - reference validation checks that a referenced `RecordId` exists, not that it has the right type; `AssetPath` references aren't checked (no `AssetPath` yet);
   - no `RecordRef<T>` yet;

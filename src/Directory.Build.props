@@ -12,7 +12,8 @@
   </PropertyGroup>
 
   <!-- The declarations generator (issue #16): registration written from [Record] and
-       [SavedResource]. A project opts out with <SageGenerators>false</SageGenerators>. -->
+       [SavedResource], and the component id table from [Component] / [Tag]. A project opts out with
+       <SageGenerators>false</SageGenerators>. -->
   <ItemGroup Condition="'$(SageGenerators)' != 'false'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)Sage.Generators\Sage.Generators.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

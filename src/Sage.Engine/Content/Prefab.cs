@@ -18,7 +18,8 @@ namespace sage_engine;
 // order and hot reload come from for nothing (05 §3.5) — a `goblin_chief` can `base` a `goblin` and
 // override one field of one component. Its body is two halves:
 //
-//   "components": component data by type name, applied as written (09 §3.1);
+//   "components": component data by component id, applied as written (09 §3.1, issue #16): a bare
+//                 name means the prefab's own namespace, then `sage` (ComponentSchema);
 //   "parts":      named setups a plugin declared ([PrefabPart]), for the things that are not one component.
 //
 // The split is the honest one. A `SpriteRenderer` is data. "Make this a character" is a collider, a
@@ -26,8 +27,8 @@ namespace sage_engine;
 // and adding a feature means declaring a part, not editing this record.
 //
 //   { "type": "prefab", "id": "goblin", "name": "goblin",
-//     "components": { "SpriteRenderer": { "sheet": "sage:goblin", "size": [1.6, 1.9] } },
-//     "tags": ["Hostile"],
+//     "components": { "sprite_renderer": { "sheet": "sage:goblin", "size": [1.6, 1.9] } },
+//     "tags": ["hostile"],
 //     "parts": { "character": { "layer": "enemy" }, "melee": { "attack": "sage:claw" },
 //                "attributes": {}, "effects": ["sage:tough_hide"] } }
 [Record("prefab", Plugin = RegistrationOwners.Core)]
@@ -315,7 +316,7 @@ public static class PrefabExtensions
         RecordParseContext.Namespace = id.Namespace;
         try
         {
-            Build(world, entity, record, schema, engine, where);
+            Build(world, entity, record, schema, engine, id.Namespace, where);
         }
         finally
         {
@@ -324,15 +325,17 @@ public static class PrefabExtensions
     }
 
     private static void Build(World world, Entity entity, PrefabRecord record, ComponentSchema schema,
-                              Engine engine, string where)
+                              Engine engine, string ns, string where)
     {
         if (record.Components != null)
         {
             foreach (var (name, fields) in record.Components)
             {
-                if (!schema.TryComponent(name, out var type))
+                // By id, or a bare name in the prefab's namespace and then `sage` (ComponentSchema,
+                // issue #16). An old C# type name is an error that names the id to write instead.
+                if (!schema.TryResolveComponent(name, ns, out var type, out string? error))
                 {
-                    Log.Error(LogCat.Records, $"{where}: no component type '{name}' (see `ent_types`)");
+                    Log.Error(LogCat.Records, $"{where}: {error}");
                     continue;
                 }
                 schema.Add(entity, type, fields, where);
@@ -341,7 +344,7 @@ public static class PrefabExtensions
 
         foreach (var name in record.Tags)
         {
-            if (!schema.TryTag(name, out var tag)) { Log.Error(LogCat.Records, $"{where}: no tag '{name}'"); continue; }
+            if (!schema.TryResolveTag(name, ns, out var tag, out string? error)) { Log.Error(LogCat.Records, $"{where}: {error}"); continue; }
             var tags = new Tags(tag);
             entity.AddTags(tags);
         }

@@ -113,7 +113,7 @@ python tools/check_docs.py --self-test    # checks the checker still catches thi
 | `Melee` | Component: what a character swings and how far through a swing it is; `MeleeCombatSystem` is the only thing that swings, for players and AI alike | 16 |
 | `AnimationEvent` | A named moment in a clip ("hit"), sent as a game event; combat lands a blow on one | 12, 16, 04 |
 | `prefab` / `world.Spawn` | The record describing a placeable thing (components + parts) and the one call that places it | 05, 09 |
-| `IPrefabPart` / `ComponentSchema` | A named setup a plugin declares for a prefab (`[PrefabPart]`, its options are its fields), and components/tags addressable by name | 05, 09 |
+| `IPrefabPart` / `ComponentSchema` | A named setup a plugin declares for a prefab (`[PrefabPart]`, its options are its fields), and components/tags addressable by stable id (`[Component("sage:…")]`, issue #16) | 03, 05, 09 |
 | `effect` / `ActiveEffects` | The record describing a change (modifiers, duration, period, stacking, tags) and the instances running on an entity | 16 |
 | `GameRules` | Per-world resource a game subclasses: `OnWorldStarted` (populate the world), `SpawnPlayer`, `OnEntityDied` (called by `EffectSystem` when health runs out), `OnLoaded` (after a save load). Installed by the game's module in `OnWorldCreated`; `Engine.CreateWorld` installs `DefaultGameRules` if none was set, and calls `OnWorldStarted` once every module has seen the world | 16 |
 | `AIState` / `ai_schedule` / `ai_profile` | An agent's conditions, schedule and current task; the record listing a schedule's tasks and interrupts; the record with its sight, melee and think tuning | 16 |

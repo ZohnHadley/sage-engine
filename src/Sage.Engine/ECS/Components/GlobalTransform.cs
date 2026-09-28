@@ -48,6 +48,10 @@ public struct Pose
 //
 // Relative to the world origin for now; with large-world coordinates (TODO R6) it becomes relative
 // to the world's origin sector.
+// Never saved (issue #20): derived from Transform and the parent chain, and its Previous is a one-tick
+// render snapshot — restoring it makes the first frame after a load lerp from a pose that never existed.
+[Transient]
+[Component("sage:global_transform")]
 public struct GlobalTransform : IComponent
 {
     public Pose Current;

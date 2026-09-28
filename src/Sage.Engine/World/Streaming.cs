@@ -24,11 +24,13 @@ namespace sage_engine;
 
 // Tag: the world loads around this. The player has it; a followed companion or a remote camera could
 // too, and each one keeps its own ring.
+[Tag("sage:streaming_source")]
 public struct StreamingSource : ITag { }
 
 // What a sector owns: chunk meshes, its collision body, and later the props a map placed in it. When
 // the sector goes, these go. It is a component rather than a tag because the *which sector* is the
 // whole point, and because a save must be able to tell one sector's belongings from another's.
+[Component("sage:sector_owned")]
 public struct SectorOwned : IComponent
 {
     public SectorCoord Sector;

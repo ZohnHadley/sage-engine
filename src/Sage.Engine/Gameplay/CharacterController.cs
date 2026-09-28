@@ -40,6 +40,7 @@ public sealed class MovementProfileRecord
 // A character the engine moves. The entity's Transform is its feet position, and its Collider is a
 // Collider.Standing capsule anchored there (10 "As built"). Add one with World.AddCharacter, which
 // gives it the collider, the kinematic body and the intent to match.
+[Component("sage:character_controller")]
 public struct CharacterController : IComponent
 {
     public RecordId Profile;

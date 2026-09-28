@@ -12,6 +12,7 @@ namespace sage_engine;
 // It is a normal entity. The ability names a **prefab** for it (F31), so what a fireball looks like —
 // a sprite, a light later, a trail later — is data, and this component is only the flight: where it
 // is going, how long it has, and what to do when it stops.
+[Component("sage:projectile")]
 public struct Projectile : IComponent
 {
     public RecordId Ability;    // whose payload it carries, delivered where it lands

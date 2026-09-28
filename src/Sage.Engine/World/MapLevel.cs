@@ -735,6 +735,7 @@ internal sealed class MapCollisionSystem : ISystem
 }
 
 // Marks geometry built from a level's brushes — a hull or a mesh — so unloading can find it.
+[Component("sage:map_geometry")]
 public struct MapGeometry : IComponent
 {
     public RecordId Level;
@@ -742,6 +743,7 @@ public struct MapGeometry : IComponent
 
 // Marks an entity that owns one of a level's solid brush groups, and which one: the client builds its
 // meshes as children of it, so they move when it does.
+[Component("sage:map_solid")]
 public struct MapSolid : IComponent
 {
     public RecordId Level;
@@ -751,6 +753,7 @@ public struct MapSolid : IComponent
 // Marks an entity a level *spawned* from a `classname`. Separate from `MapGeometry` on purpose: what a
 // level spawns is an ordinary entity of any shape, mesh and all, and the two are cleaned up by different
 // halves of the engine.
+[Component("sage:from_map")]
 public struct FromMap : IComponent
 {
     public RecordId Level;

@@ -18,6 +18,7 @@ public enum BillboardMode
 
 // Draws a frame of a sprite sheet as a camera-facing quad at the entity's GlobalTransform.
 // An empty Material means the sheet's material (or sage:sprite_default).
+[Component("sage:sprite_renderer")]
 public struct SpriteRenderer : IComponent
 {
     public RecordId Sheet;
