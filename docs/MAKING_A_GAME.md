@@ -204,6 +204,27 @@ then wins). Another mod's component is written in full. A name that matches noth
 suggests the ids it might have meant, and one spelt the old way (`"AIState"`, a C# type name) names the
 id to write instead (`"sage:ai_state"`). `ent_types` lists every id there is.
 
+### Describing fields
+
+A field can say what it is for, and the inspector, `ent_dump`, `ent_types`, the TrenchBroom FGD and the
+registry dump all use it:
+
+```csharp
+[Component("yourgame:health")]
+public struct Health : IComponent
+{
+    [Property(Min = 0, Unit = "hp", Tooltip = "Current hit points", Category = "Vitals")] public float Value;
+    [RecordRef("effect")] public RecordId OnDeath;        // which record type the id names
+}
+```
+
+`Min`/`Max` clamp the inspector's drag and reject an out-of-range map key; `Unit` is printed after the
+number; `Tooltip` is the hover text and the FGD key's description; an enum field is a dropdown of its
+names; a `[RecordRef]` field is a dropdown of the records of that type. `[AssetKind("texture")]` does the
+same for an `AssetPath`. Every part is optional. A range on a field that is not a number or a vector, a
+`[RecordRef]` on one that is not a `RecordId` and an `[AssetKind]` on one that is not an `AssetPath` are
+build errors (`SAGE0040`–`SAGE0042`).
+
 `rec_list <type>`, `rec_get <type> <id>` and `rec_reload` in the console are how you check what actually
 loaded — and `rec_get` is the fastest way to learn a record's fields, because it prints the merged
 result with the file each field came from.
@@ -409,6 +430,10 @@ In the editor:
 
 - **`classname` is a prefab id.** An entity called `goblin` spawns `yourgame:goblin`. `origin`, `angle`
   and `targetname` are read; a classname with no prefab is left for your game to read off the level.
+- **Per-entity values**: any field of the prefab's parts and components, as `<part>.<field>` —
+  `"light.range" "12"`, `"body.mass" "20"`. The generated FGD lists them for each prefab, typed and
+  described, with the prefab's own value as the default; a value that is not a number where one is
+  wanted, or out of its range, is an error naming the map line.
 - **A face's texture name is a material id**: a face textured `wall` looks for `yourgame:wall`.
 - **Brushes with a classname become a solid entity** — a door, a lift, a trigger volume — which is an
   ordinary entity that owns its geometry. Give it a prefab with a `mover` part and it moves.
@@ -424,8 +449,9 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`.
-Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire` — `io_list` prints the live list, and
-your own modules can register more. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
+Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire` — `io_list` prints the live lists, and
+your own modules can register more inputs (`engine.Inputs.Register`) and declare the outputs they fire
+(`engine.Outputs.Declare(name, what it means)`), which puts them in the FGD. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
 
 Connections are **checked when the level loads**: a typo names the map file and line rather than a door
 that quietly never opens. `map_load`, `map_list`, `map_unload`, `map_goto` (stand where the map's

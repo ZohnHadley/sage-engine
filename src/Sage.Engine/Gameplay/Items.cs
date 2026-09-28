@@ -45,7 +45,9 @@ public struct ItemStack
 [Component("sage:inventory")]
 public struct Inventory : IComponent
 {
+    [Property(Tooltip = "What it carries")]
     public List<ItemStack> Items;
+    [Property(Min = 0, Unit = "kg", Tooltip = "How much it can carry; 0 = no limit")]
     public float Capacity;
 
     public static Inventory Create(float capacity = 0f) => new() { Items = new List<ItemStack>(), Capacity = capacity };

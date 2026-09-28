@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -16,9 +17,11 @@ namespace sage_engine;
 //
 // **Every key in here is a key the importer reads.** That rule is worth stating because the temptation
 // is the opposite: the engine could reflect over component fields and emit a key for each, and a mapper
-// would fill them in and nothing would happen, because `MapLoader` applies `origin`, `angle` and
-// `targetname` and leaves the rest on the parsed entity. Per-component keys wait for the declared
-// metadata the source generator brings (09 §3.2); until then an FGD that promises less is worth more.
+// would fill them in and nothing would happen. So a prefab's keys are exactly the ones PrefabKeys
+// offers — one per field of each part and component the prefab writes, from the metadata table (issue
+// #18) — and MapLoader applies exactly those, through the same PrefabKeys. Each key is typed (integer,
+// float, choices for an enum or a flag, color1 for a colour) and described from the field's [Property]:
+// its tooltip, unit and range, and the record type a RecordId names.
 public static class FgdExport
 {
     public static void RegisterCommand(Engine engine)
@@ -85,8 +88,11 @@ public static class FgdExport
         text.AppendLine("//   \"OnStartTouch\" \"!self,Say,Hello,0,1\"  once, when something walks in");
         text.AppendLine("//");
         text.AppendLine("// Targets may be a targetname, or !self / !activator / !caller.");
-        text.AppendLine("// Outputs the engine fires: OnUse (something used it), OnStartTouch / OnEndTouch (a");
-        text.AppendLine("// trigger volume: put \"trigger\" \"1\" on a brush entity), OnFullyOpen / OnFullyClosed (a mover).");
+        var outputs = new List<string>(engine.Outputs.Names);
+        outputs.Sort(StringComparer.OrdinalIgnoreCase);
+        text.AppendLine("// Outputs this game fires:");
+        foreach (string output in outputs)
+            text.AppendLine($"//   {output,-14} {engine.Outputs.Describe(output)}");
 
         var inputs = new List<string>(engine.Inputs.Names);
         inputs.Sort(StringComparer.OrdinalIgnoreCase);
@@ -103,7 +109,16 @@ public static class FgdExport
             var (min, max) = SizeOf(engine.Components, id, prefab, unitsPerMetre);
             string description = Describe(id, prefab);
 
-            text.AppendLine($"@PointClass base(Named, Angled) size({min}, {max}) = {id.Name} : \"{Escape(description)}\" []");
+            var keys = PrefabKeys.For(engine, id, prefab);
+            if (keys.Count == 0)
+            {
+                text.AppendLine($"@PointClass base(Named, Angled) size({min}, {max}) = {id.Name} : \"{Escape(description)}\" []");
+                continue;
+            }
+            text.AppendLine($"@PointClass base(Named, Angled) size({min}, {max}) = {id.Name} : \"{Escape(description)}\"");
+            text.AppendLine("[");
+            foreach (var key in keys) text.AppendLine("    " + Property(key));
+            text.AppendLine("]");
         }
 
         text.AppendLine();
@@ -177,4 +192,69 @@ public static class FgdExport
     }
 
     private static string Escape(string text) => text.Replace("\"", "'");
+
+    // One typed, described key: `light.range(float) : "light: Range" : "8" : "Where the light fades
+    // to nothing (m, at least 0)"`. The default is what the prefab writes, else the field's own.
+    internal static string Property(PrefabKey key)
+    {
+        var field = key.Field;
+        string display = $"{key.Section}: {Human(field.JsonName)}";
+        string text = key.DefaultText;
+        string description = Escape(DescriptionOf(key));
+
+        switch (field.Kind)
+        {
+            case ValueKind.Integer:
+                return $"{key.Key}(integer) : \"{Escape(display)}\" : {(long.TryParse(text, out long whole) ? whole : 0)} : \"{description}\"";
+            case ValueKind.Number:
+                return $"{key.Key}(float) : \"{Escape(display)}\" : \"{(text.Length > 0 ? text : "0")}\" : \"{description}\"";
+            case ValueKind.Bool:
+                return $"{key.Key}(choices) : \"{Escape(display)}\" : {(text == "1" ? 1 : 0)} : \"{description}\" = [ 0 : \"No\" 1 : \"Yes\" ]";
+            case ValueKind.Enum:
+            {
+                string choices = string.Join(" ", field.EnumValues.Select(v => $"\"{v}\" : \"{v}\""));
+                string chosen = field.EnumValues.FirstOrDefault(v => string.Equals(v, text, StringComparison.OrdinalIgnoreCase))
+                                ?? field.EnumValues.FirstOrDefault() ?? "";
+                return $"{key.Key}(choices) : \"{Escape(display)}\" : \"{chosen}\" : \"{description}\" = [ {choices} ]";
+            }
+            case ValueKind.Vector3 when IsColour(field):
+                return $"{key.Key}(color1) : \"{Escape(display)}\" : \"{(text.Length > 0 ? text : "1 1 1")}\" : \"{description}\"";
+            default:
+                return $"{key.Key}(string) : \"{Escape(display)}\" : \"{Escape(text)}\" : \"{description}\"";
+        }
+    }
+
+    private static bool IsColour(FieldMetadata field) =>
+        field.JsonName.Contains("colour", StringComparison.OrdinalIgnoreCase) || field.JsonName.Contains("color", StringComparison.OrdinalIgnoreCase);
+
+    // The field's tooltip, then what it is: its unit and range, what it names, whose it is.
+    private static string DescriptionOf(PrefabKey key)
+    {
+        var field = key.Field;
+        var facts = new List<string>();
+        if (field.Unit != null) facts.Add(field.Unit);
+        var culture = CultureInfo.InvariantCulture;
+        if (field.Min != null && field.Max != null) facts.Add($"{field.Min.Value.ToString(culture)} to {field.Max.Value.ToString(culture)}");
+        else if (field.Min != null) facts.Add($"at least {field.Min.Value.ToString(culture)}");
+        else if (field.Max != null) facts.Add($"at most {field.Max.Value.ToString(culture)}");
+        if (field.Kind is ValueKind.Vector2 or ValueKind.Vector3 && !IsColour(field))
+            facts.Add(field.Kind == ValueKind.Vector2 ? "x y" : "x y z");
+        if (field.RecordType != null) facts.Add($"{field.RecordType} record id");
+        facts.Add($"{(key.IsPart ? "part" : "component")} {key.Section}");
+
+        string tooltip = field.Tooltip ?? Human(field.JsonName);
+        return $"{tooltip} ({string.Join(", ", facts)})";
+    }
+
+    // "closeAfter" -> "Close after".
+    private static string Human(string name)
+    {
+        var text = new StringBuilder();
+        foreach (char c in name)
+        {
+            if (char.IsUpper(c) && text.Length > 0) text.Append(' ').Append(char.ToLowerInvariant(c));
+            else text.Append(text.Length == 0 ? char.ToUpperInvariant(c) : c);
+        }
+        return text.ToString();
+    }
 }

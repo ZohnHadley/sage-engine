@@ -265,7 +265,13 @@ public static class PrefabExtensions
     //
     // A prefab that doesn't exist costs the spawn and says so; a component or part that fails costs
     // itself and the rest of the entity still comes up (05 §8).
-    public static Entity Spawn(this World world, RecordId prefab, Vector3 position = default, float yawDegrees = 0f)
+    public static Entity Spawn(this World world, RecordId prefab, Vector3 position = default, float yawDegrees = 0f) =>
+        Spawn(world, prefab, position, yawDegrees, keys: null, where: null);
+
+    // The same, with per-entity values from a map (`"light.range" "12"`): the keys PrefabKeys offers for
+    // this prefab, applied to a copy of it for this one entity (issue #18). `where` names the map line.
+    public static Entity Spawn(this World world, RecordId prefab, Vector3 position, float yawDegrees,
+                               IReadOnlyDictionary<string, string>? keys, string? where)
     {
         var engine = world.Engine;
         if (engine is null)
@@ -279,6 +285,9 @@ public static class PrefabExtensions
             Log.Error(LogCat.Records, $"Spawn: no prefab '{prefab}'");
             return default;
         }
+
+        if (keys != null && keys.Count > 0)
+            record = PrefabKeys.Apply(engine, prefab, record, keys, where ?? prefab.ToString());
 
         var placed = Transform.At(position);
         placed.LocalRotation = SageMath.RotationFromYaw(yawDegrees * MathF.PI / 180f);

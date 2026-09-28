@@ -27,6 +27,7 @@ public sealed class Engine : IDisposable
         Records.Ledger = Registrations;
         Prefabs.Ledger = Registrations;
         Inputs.Ledger = Registrations;
+        Outputs.Ledger = Registrations;
         Actions.Ledger = Registrations;
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
@@ -62,6 +63,9 @@ public sealed class Engine : IDisposable
     // level's wiring may name an input from any of them, and because `ent_fire` has to check one list.
     public EntityInputs Inputs { get; } = new();
 
+    // And the outputs a wire can listen for, with what each means (issue #18).
+    public EntityOutputs Outputs { get; } = new();
+
     // Save and load (09 §3.5, F27).
     public SaveSystem Saves { get; }
 
@@ -81,6 +85,7 @@ public sealed class Engine : IDisposable
         // one added after the first world would exist in some worlds and not others.
         Prefabs.Seal.Seal("the first world was created");
         Inputs.Seal.Seal("the first world was created");
+        Outputs.Seal.Seal("the first world was created");
         var world = new World(name, this);
         _worlds.Add(world);
         Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active)");

@@ -16,3 +16,6 @@ SAGE0010 | Sage.Declarations | Error | A prefab part whose plugin cannot be infe
 SAGE0011 | Sage.Declarations | Error | A declared part or system that cannot be one (abstract, private, wrong interface)
 SAGE0012 | Sage.Declarations | Error | Two declarations of one part or system id in an assembly
 SAGE0013 | Sage.Declarations | Error | A system ordered against a system in another phase
+SAGE0040 | Sage.Declarations | Error | A [Property] range on a field that is not a number or a vector, or Min above Max
+SAGE0041 | Sage.Declarations | Error | A [RecordRef] on a field that is not a RecordId
+SAGE0042 | Sage.Declarations | Error | An [AssetKind] on a field that is not an AssetPath

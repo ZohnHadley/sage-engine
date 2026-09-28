@@ -32,7 +32,7 @@ public enum EmitShape
 [Record("particle", Plugin = "sage.client")]
 public sealed class ParticleRecord
 {
-    public AssetPath Texture;                 // the sprite each particle draws
+    [AssetKind("texture")] public AssetPath Texture;                 // the sprite each particle draws
     public RecordId Material;                 // empty = the engine's additive particle material
 
     // How many, and how they arrive.
@@ -73,7 +73,7 @@ public sealed class ParticleRecord
 [Component("sage:particle_emitter")]
 public struct ParticleEmitter : IComponent
 {
-    public RecordId Effect;
+    [RecordRef("particle")] public RecordId Effect;
     public bool Enabled;
     [Transient] public float Pending;      // fractional particles carried between ticks
 }

@@ -11,18 +11,31 @@ Claims fall into three kinds, and only two of them can be checked by a script:
   - **Behaviour** ("walking into a trigger fires OnStartTouch") — only a test proves this, so the rule is
     that the doc *cites* the test, and this script checks the citation resolves. Writing the citation is
     what makes you notice you have no test to cite.
-  - **Vocabulary** (command, cvar, record and input names) — extracted from the code and checked against
-    every name the docs use.
+  - **Vocabulary** (command, cvar, record and input names) — read from the engine's registry dump and
+    checked against every name the docs use.
   - **Numbers** (how many commands, records, tests) — computed rather than typed, and `--fix` writes them.
 
 What it cannot check is whether the thing works, which is what the scripted in-game runs are for.
 
+The names come from the **registry dump** (`RegistryDump`, docs/REDESIGN.md §4.8, issue #18): the host
+boots the Sandbox, writes every command, cvar, record type and entity input it registered, and quits. It
+used to find them with regular expressions over call shapes, which is how the day `[Record]` gained a
+`Plugin` argument the engine went from 25 record types to 1 without anyone being told. A name in the
+dump was registered by running code, so renaming the registration API cannot hide it.
+
 Usage:
+    # once per build: the dump (Linux needs a display, hence xvfb-run; Windows runs it as is)
+    dotnet build Sage.sln -c Development -p:SageSkipShaders=true
+    (cd src/Sage.Host/bin/Development/net8.0 && xvfb-run -a ./Sage.Host -game ../../../../../games/Sandbox \
+        -dump-registry ../../../../../user/registry.json)
+
     python tools/check_docs.py                 # links, citations, vocabulary, computable counts
     python tools/check_docs.py --tests 490     # also check the test count quoted in the docs
     python tools/check_docs.py --tests 490 --fix   # rewrite the counts to match
+    python tools/check_docs.py --registry other.json   # a dump somewhere else (default user/registry.json)
 """
 import argparse
+import json
 import os
 import re
 import sys
@@ -30,6 +43,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CODE_DIRS = ['src', 'games']
 DOC_SKIP_DIRS = {'.git', 'obj', 'bin', 'node_modules', 'user', 'packages'}
+DEFAULT_REGISTRY = os.path.join(ROOT, 'user', 'registry.json')
+REGISTRY_FORMAT = 1
 
 # A line that says a thing is absent is not claiming it exists, even inside an "As built" section —
 # those sections end with what is left to do, and naming it is the point.
@@ -39,29 +54,41 @@ ABSENCE = ('not yet', 'not built', 'not done', 'left:', 'left is', 'later', 'ope
 
 # ---------------------------------------------------------------- reading the code
 
-def read_code():
-    """Every name the engine registers, by kind."""
-    found = {'command': set(), 'cvar': set(), 'record': set(), 'input': set()}
-    patterns = [
-        ('command', re.compile(r'RegisterCommand\(\s*"([a-z_0-9]+)"')),
-        # A cvar is any `<something>.Register("name", ..., CVarFlags…)`: the receiver is whatever the
-        # local happens to be called, and `CVarFlags` is what distinguishes one from an input action
-        # (`actions.Register("Look", ActionKind…)`) or a prefab part.
-        ('cvar', re.compile(r'\.Register(?:<[^>]+>)?\(\s*"([a-z_0-9]+)"[^;]{0,400}?CVarFlags', re.S)),
-        ('record', re.compile(r'\[Record\("([a-z_0-9]+)"[,)]')),   # a Plugin = … may follow (issue #16)
-        ('input', re.compile(r'(?:I|i)nputs\.Register\(\s*"([A-Za-z_0-9]+)"')),
-    ]
+class RegistryError(Exception):
+    pass
 
-    for directory in CODE_DIRS:
-        for base, dirs, files in os.walk(os.path.join(ROOT, directory)):
-            dirs[:] = [d for d in dirs if d not in ('obj', 'bin')]
-            for name in files:
-                if not name.endswith('.cs'):
-                    continue
-                text = open(os.path.join(base, name), encoding='utf-8', errors='replace').read()
-                for kind, pattern in patterns:
-                    found[kind].update(pattern.findall(text))
-    return found
+
+def read_registry(path):
+    """Every name the engine registers, by kind, from the registry dump the host wrote.
+
+    Not from the source: two regex-based versions of this function each missed names the moment a
+    registration was spelled a new way (a helper taking the name as a parameter; `[Record("x", Plugin =
+    ...)]`), and each failure was silent — fewer names, fewer checks, and still "0 problem(s)".
+    """
+    if not os.path.exists(path):
+        raise RegistryError('no registry dump at %s; write one with the host\'s -dump-registry '
+                            '(see the top of tools/check_docs.py, or CLAUDE.md)' % rel(path))
+    with open(path, encoding='utf-8') as f:
+        dump = json.load(f)
+    if dump.get('format') != REGISTRY_FORMAT:
+        raise RegistryError('%s is registry format %r; this script reads format %d'
+                            % (rel(path), dump.get('format'), REGISTRY_FORMAT))
+
+    def names(section, key='name'):
+        return {entry[key] for entry in dump.get(section, [])}
+
+    return {
+        'command': names('commands'),
+        'cvar': names('cvars'),
+        'record': names('recordTypes'),
+        'input': names('entityInputs'),
+        'output': names('entityOutputs'),
+        'action': names('inputActions'),
+        'part': names('prefabParts', 'id'),
+        'component': names('components', 'id'),
+        'system': names('systems', 'id'),
+        'source': '%s (%s build, game %s)' % (rel(path), dump.get('config', '?'), dump.get('game') or 'none'),
+    }
 
 
 def read_code_literals():
@@ -183,8 +210,8 @@ def check_citations(problems, tests):
 
 
 def check_vocabulary(problems, code, literals, content_names):
-    """A snake_case name that looks like a command or cvar has to exist in the code or in content."""
-    vocabulary = literals | content_names
+    """A snake_case name that looks like a command or cvar has to exist in the registry, the code or content."""
+    vocabulary = literals | content_names | code['command'] | code['cvar'] | code['record'] | code['part']
     prefixes = {name.split('_')[0] for name in (code['command'] | code['cvar']) if '_' in name}
 
     checked = 0
@@ -400,10 +427,23 @@ SELF_TEST = """# Self test
 - See [the missing file](./nowhere-at-all.md).
 - **1 console commands, 2 record types, 3 headless tests.** <!-- counts -->
 - It has nine files and about two hundred lines of code. <!-- counts: files games/Hello, code games/Hello -->
+- **4 console commands, 5 record types.** <!-- counts -->
+- `selfdump_registered_only` is a command no source file spells, and the dump has it.
 
 ## Not yet
 - `map_neverexisted`, which a document may name here without being wrong.
 """
+
+# The registry the self test reads: what the host would write, with names in it that no source file
+# contains. The counts and the vocabulary have to come from here, or the planted faults and the two
+# planted truths come out the wrong way round.
+SELF_TEST_REGISTRY = {
+    'format': REGISTRY_FORMAT, 'config': 'SelfTest', 'game': 'selftest',
+    'commands': [{'name': n} for n in ('map_load', 'selfdump_registered_only', 'selfdump_b', 'selfdump_c')],
+    'cvars': [{'name': 'selfdump_volume'}],
+    'recordTypes': [{'name': n} for n in ('a', 'b', 'c', 'd', 'e')],
+    'entityInputs': [{'name': 'Open'}],
+}
 
 
 def self_test(test_count=0):
@@ -418,33 +458,41 @@ def self_test(test_count=0):
     the tool trains you to ignore it.
     """
     path = os.path.join(ROOT, 'docs', '_selftest.md')
+    registry = os.path.join(ROOT, 'docs', '_selftest.registry.json')
     open(path, 'w', encoding='utf-8', newline='').write(SELF_TEST)
+    json.dump(SELF_TEST_REGISTRY, open(registry, 'w', encoding='utf-8'))
     try:
         problems = []
         tests = read_test_names()
-        code = read_code()
+        code = read_registry(registry)
         check_links(problems)
         check_citations(problems, tests)
         check_vocabulary(problems, code, read_code_literals(), read_content_names())
         check_counts(problems, code, test_count, fix=False)
     finally:
         os.remove(path)
+        os.remove(registry)
 
     mine = [p for p in problems if '_selftest' in p]
     wanted = ['nowhere-at-all.md', 'ThisTestDoesNotExist', 'map_reloadx',
               '1 console commands', '2 record types', '3 headless tests',
               'nine files', 'hundred lines of code']
     missing = [w for w in wanted if not any(w in problem for problem in mine)]
-    wrong = [p for p in mine if 'map_neverexisted' in p]
+    # And what must *not* be reported: a "Not yet" name, and the two lines that are true of the dump —
+    # its counts, and a name only the dump has. Reported, they mean the names came from somewhere else.
+    wrong = [p for p in mine if 'map_neverexisted' in p or '4 console commands' in p or '5 record types' in p
+             or 'selfdump_registered_only' in p]
 
     for problem in mine:
         print('  found: ' + problem)
     if missing:
         print('SELF TEST FAILED: these faults were not reported: ' + ', '.join(missing))
     if wrong:
-        print('SELF TEST FAILED: a "Not yet" name was reported: ' + '; '.join(wrong))
+        print('SELF TEST FAILED: reported something true (a "Not yet" name, or a fact from the registry dump): '
+              + '; '.join(wrong))
     if not missing and not wrong:
-        print('self test: all %d faults found, and nothing in the "Not yet" list' % len(wanted))
+        print('self test: all %d faults found; the "Not yet" list and the registry\'s own names and counts '
+              'were left alone' % len(wanted))
     return 1 if (missing or wrong) else 0
 
 
@@ -458,6 +506,8 @@ def main():
                         help='how many tests `dotnet test` reported, so the quoted count can be checked')
     parser.add_argument('--fix', action='store_true', help='rewrite the counts rather than complaining')
     parser.add_argument('--self-test', action='store_true', help='check that the checker still catches things')
+    parser.add_argument('--registry', default=DEFAULT_REGISTRY,
+                        help='the registry dump the host wrote with -dump-registry (default user/registry.json)')
     args = parser.parse_args()
 
     if args.self_test:
@@ -465,7 +515,11 @@ def main():
         # gone stale — which would be a small joke at its own expense.
         return self_test(args.tests or 0)
 
-    code = read_code()
+    try:
+        code = read_registry(args.registry)
+    except (RegistryError, ValueError, KeyError) as error:
+        print('check_docs: %s' % error)
+        return 2
     literals = read_code_literals()
     content_names = read_content_names()
     tests = read_test_names()
@@ -477,9 +531,9 @@ def main():
     counts = check_counts(problems, code, args.tests, args.fix)
 
     print('%d links, %d test citations, %d vocabulary uses, %d counts checked '
-          '(%d commands, %d cvars, %d records, %d inputs in the code)'
+          '(%d commands, %d cvars, %d records, %d inputs in %s)'
           % (links, citations, vocabulary, counts,
-             len(code['command']), len(code['cvar']), len(code['record']), len(code['input'])))
+             len(code['command']), len(code['cvar']), len(code['record']), len(code['input']), code['source']))
     if args.tests is None:
         print('note: no --tests N, so the test count in the docs was not checked')
 

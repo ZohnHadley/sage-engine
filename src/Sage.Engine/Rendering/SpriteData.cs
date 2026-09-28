@@ -21,8 +21,8 @@ public enum BillboardMode
 [Component("sage:sprite_renderer")]
 public struct SpriteRenderer : IComponent
 {
-    public RecordId Sheet;
-    public RecordId Material;
+    [RecordRef("sprite_sheet")] public RecordId Sheet;
+    [RecordRef("material")] public RecordId Material;
     public Vector2 Size;     // metres (width, height); 0 = the sheet's default size
     public BillboardMode Mode;
     public byte Layer;
@@ -60,7 +60,7 @@ public sealed class SpriteAnimationEvent
 [Record("sprite_sheet", Plugin = "sage.client")]
 public sealed class SpriteSheetRecord
 {
-    public AssetPath Texture;
+    [AssetKind("texture")] public AssetPath Texture;
     public RecordId Material;                  // empty = sage:sprite_default
     public int Directions = 1;                 // 1 (always the same view), 5 (mirrored) or 8
     public Vector2 Size = new(1f, 1f);         // default world size in metres

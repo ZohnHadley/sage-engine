@@ -142,8 +142,22 @@ one, which is the point of a trigger: it is a shape you walk into, not a thing y
 The four keys the importer reads on a map entity are now `origin`, `angle`, `targetname` and `trigger`,
 plus any key named after an output (04 §3.4).
 
-**Not built:** lightmaps; per-entity keys beyond those, which want 09's declared metadata so the FGD can
-offer keys the importer actually reads; and **kinematic** movers — a door is a moving *static*, which
+**Per-entity keys (issue #18).** A point or brush entity whose classname is a prefab may also set any
+field of the prefab's parts and components: `"light.range" "12"`, `"body.mass" "20"` —
+`<section>.<field>`, the section as the prefab writes it (a namespaced one with its colon as a dot).
+`PrefabKeys` works the keys out from the prefab and the metadata table, so `fgd_export` offers exactly
+the keys the importer applies, each typed (`integer`, `float`, `choices` for an enum or a flag, `color1`
+for a colour) with the prefab's value as its default and a description made of the field's tooltip,
+unit, range and the record type it names (test: TheSandboxFgdHasTypedDescribedKeysForItsPrefabs). The
+value is applied to a copy of the prefab for that entity alone; one that does not read as its field, or
+is outside its `[Property]` range, is an error naming the key and the line, and the prefab's value
+stands (test: AMapEntitysKeysSetItsPrefabsFieldsForThatEntityAlone). Every default the FGD offers reads
+back as its field (test: EveryKeyTheFgdOffersReadsBackItsOwnDefault). A `[Transient]` field is never
+offered. The FGD's list of outputs comes from `engine.Outputs`, which each plugin declares beside the
+code that fires them.
+
+**Not built:** lightmaps; a save of a map entity keeps its prefab id, not its per-entity keys (the map
+puts them back when it loads); and **kinematic** movers — a door is a moving *static*, which
 does not push what is leaning on it.
 
 ## 10b. As built: documents, the outliner and the inspector (F28, 2026-09-24)

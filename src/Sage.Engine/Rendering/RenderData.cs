@@ -23,9 +23,9 @@ public readonly record struct MeshHandle(int Id)
 [Component("sage:mesh_renderer")]
 public struct MeshRenderer : IComponent
 {
-    public AssetPath Mesh;
+    [AssetKind("mesh")] public AssetPath Mesh;
     public MeshHandle Handle;
-    public RecordId Material;
+    [RecordRef("material")] public RecordId Material;
     public byte Layer;   // sort layer (0..15), before material in the sort key (06 §3.5)
 }
 
@@ -62,7 +62,7 @@ public sealed class SamplerDesc
 public sealed class MaterialParam
 {
     public float[]? Values;
-    public AssetPath Texture;
+    [AssetKind("texture")] public AssetPath Texture;
 
     public bool IsTexture => !Texture.IsEmpty;
     public override string ToString() => IsTexture ? Texture.ToString() : $"[{string.Join(", ", Values ?? Array.Empty<float>())}]";
@@ -108,7 +108,7 @@ internal sealed class MaterialParamJsonConverter : JsonConverter<MaterialParam>
 [Record("material", Plugin = "sage.client")]
 public sealed class MaterialRecord
 {
-    public AssetPath Effect;
+    [AssetKind("shader")] public AssetPath Effect;
     public string Technique = "Default";
     public RenderPass Pass = RenderPass.Opaque;
     public MaterialBlend Blend = MaterialBlend.Opaque;

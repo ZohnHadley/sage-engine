@@ -124,4 +124,10 @@ public sealed class SystemCatalog
     {
         lock (_lock) return _byId.TryGetValue(id, out declaration!);
     }
+
+    // Every declared system, by id: for the registry dump (issue #18).
+    public IReadOnlyList<SystemDeclaration> All
+    {
+        get { lock (_lock) return _byId.Values.OrderBy(d => d.Id, StringComparer.Ordinal).ToList(); }
+    }
 }

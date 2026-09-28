@@ -142,10 +142,11 @@ public sealed class LaunchArgs
                 Finish();
                 command = new StringBuilder(raw.Substring(1));
             }
-            else if (raw.Length > 1 && raw[0] == '-' && char.IsLetter(raw[1]))
+            else if (raw.Length > 1 && raw[0] == '-' && (char.IsLetter(raw[1]) || raw.Length > 2 && raw[1] == '-' && char.IsLetter(raw[2])))
             {
+                // `-game` as the host has always spelled it, and `--dump-registry` as tools usually do.
                 Finish();
-                option = raw.Substring(1);
+                option = raw.Substring(raw[1] == '-' ? 2 : 1);
                 result.Options[option] = null;
             }
             else if (command != null)

@@ -18,8 +18,11 @@ namespace sage_engine;
 [Component("sage:point_light")]
 public struct PointLight : IComponent
 {
+    [Property(Min = 0, Tooltip = "Linear RGB; 1 1 1 is white")]
     public Vector3 Colour;      // linear rgb; 1,1,1 is white
+    [Property(Min = 0, Unit = "m", Tooltip = "Where the light fades to nothing")]
     public float Range;         // metres to where it fades to nothing
+    [Property(Min = 0, Tooltip = "Multiplies the colour; 1 is a lamp")]
     public float Intensity;     // multiplies the colour; 1 is "a lamp"
 }
 
