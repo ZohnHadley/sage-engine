@@ -12,6 +12,7 @@ namespace sage_engine;
 // A struct's default is all zeros (zero rotation, zero scale — review item #3), so never create a
 // Transform with `default` or `new Transform()`: use Transform.Identity / Transform.At(...).
 // World.Create does this for you.
+[Component("sage:transform")]
 public struct Transform : IComponent
 {
     public Vector3 LocalPosition;

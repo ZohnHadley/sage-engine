@@ -100,7 +100,7 @@ public static class FgdExport
         {
             if (!engine.Records.TryGet(id, out PrefabRecord prefab)) continue;
 
-            var (min, max) = SizeOf(prefab, unitsPerMetre);
+            var (min, max) = SizeOf(engine.Components, id, prefab, unitsPerMetre);
             string description = Describe(id, prefab);
 
             text.AppendLine($"@PointClass base(Named, Angled) size({min}, {max}) = {id.Name} : \"{Escape(description)}\" []");
@@ -114,7 +114,7 @@ public static class FgdExport
     // The box TrenchBroom draws for the entity. A prefab that says how big it is in a `Collider` gets
     // that; anything else gets a small box, because an entity you cannot see is an entity you cannot
     // place. Note the units: the editor thinks in map units and the record is in metres.
-    private static (string Min, string Max) SizeOf(PrefabRecord prefab, float unitsPerMetre)
+    private static (string Min, string Max) SizeOf(ComponentSchema schema, RecordId id, PrefabRecord prefab, float unitsPerMetre)
     {
         float width = 0.5f, height = 1f;
 
@@ -122,7 +122,7 @@ public static class FgdExport
         // because that is how prefabs are written (`"body": { "size": [0.6, 1.8, 0.6] }` or a capsule's
         // radius and height). Both are read; without the part, every entity in TrenchBroom was the same
         // anonymous cube.
-        var collider = prefab.Components?["Collider"] as JsonObject ?? prefab.Parts?["body"] as JsonObject;
+        var collider = ComponentOf(schema, id, prefab, typeof(Collider)) ?? prefab.Parts?["body"] as JsonObject;
         if (collider != null)
         {
             if (collider["size"] is JsonArray size && size.Count >= 3)
@@ -145,6 +145,17 @@ public static class FgdExport
         // where the engine spawns it.
         return ($"{(-halfWidth).ToString("0", culture)} {(-halfWidth).ToString("0", culture)} 0",
                 $"{halfWidth.ToString("0", culture)} {halfWidth.ToString("0", culture)} {tall.ToString("0", culture)}");
+    }
+
+    // A prefab's fields for one component type, however the prefab spelled its id: `"collider"`,
+    // `"sage:collider"` — resolved the way spawning resolves it (ComponentSchema, issue #16).
+    private static JsonObject? ComponentOf(ComponentSchema schema, RecordId id, PrefabRecord prefab, Type type)
+    {
+        if (prefab.Components is null) return null;
+        foreach (var (name, fields) in prefab.Components)
+            if (schema.TryResolveComponent(name, id.Namespace, out var resolved, out _) && resolved.Type == type)
+                return fields as JsonObject;
+        return null;
     }
 
     private static float Read(JsonNode? node, float fallback) =>

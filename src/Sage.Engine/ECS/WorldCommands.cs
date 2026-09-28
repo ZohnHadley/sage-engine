@@ -100,10 +100,10 @@ public static class WorldCommands
 
                     found++;
                     Log.Info(LogCat.Console, $"[{world.Name}] {World.Describe(e)}");
-                    foreach (var (name, value) in engine.Components.ComponentsOf(e))
-                        Log.Info(LogCat.Console, $"  {name,-22} {Describe(value)}");
+                    foreach (var (componentId, value) in engine.Components.ComponentsOf(e))
+                        Log.Info(LogCat.Console, $"  {componentId,-28} {Describe(value)}");
                     string tags = string.Join(", ", engine.Components.TagsOf(e));
-                    if (tags.Length > 0) Log.Info(LogCat.Console, $"  {"tags",-22} {tags}");
+                    if (tags.Length > 0) Log.Info(LogCat.Console, $"  {"tags",-28} {tags}");
                     if (found >= 8) { Log.Info(LogCat.Console, "  ... (stopping at 8 matches)"); return; }
                 }
             }
@@ -111,12 +111,12 @@ public static class WorldCommands
         });
 
         cvars.RegisterCommand("ent_types", CVarFlags.None,
-            "ent_types [filter]: component and tag type names, as a prefab spells them.", a =>
+            "ent_types [filter]: component and tag ids, as a prefab or a save spells them (issue #16).", a =>
         {
             string filter = a.Count > 0 ? a[0] : "";
             bool Show(string n) => filter.Length == 0 || n.Contains(filter, StringComparison.OrdinalIgnoreCase);
-            Log.Info(LogCat.Console, "components: " + string.Join(", ", engine.Components.ComponentNames.Where(Show).OrderBy(n => n, StringComparer.Ordinal)));
-            Log.Info(LogCat.Console, "tags:       " + string.Join(", ", engine.Components.TagNames.Where(Show).OrderBy(n => n, StringComparer.Ordinal)));
+            Log.Info(LogCat.Console, "components: " + string.Join(", ", engine.Components.ComponentIds.Where(Show).OrderBy(n => n, StringComparer.Ordinal)));
+            Log.Info(LogCat.Console, "tags:       " + string.Join(", ", engine.Components.TagIds.Where(Show).OrderBy(n => n, StringComparer.Ordinal)));
             Log.Info(LogCat.Console, "prefab parts: " + string.Join(", ", engine.Prefabs.Names));
         });
 

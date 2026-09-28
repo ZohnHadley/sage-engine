@@ -123,6 +123,7 @@ public sealed class AttributeSet
 }
 
 // The component: one set per entity, filled from attribute records when the entity is created.
+[Component("sage:attributes")]
 public struct Attributes : IComponent
 {
     public AttributeSet Values;
@@ -131,6 +132,7 @@ public struct Attributes : IComponent
 }
 
 // A 64-tag bitset (16 §3.3). Tags come from effects (granted while active) or from gameplay directly.
+[Component("sage:gameplay_tags")]
 public struct GameplayTags : IComponent
 {
     public ulong Bits;

@@ -97,6 +97,7 @@ public sealed class DialogueRecord
 
 // Somebody worth talking to. The component is the engine's, so a headless server carries it and simply
 // never opens a window.
+[Component("sage:dialogue")]
 public struct Dialogue : IComponent
 {
     public RecordId Record;

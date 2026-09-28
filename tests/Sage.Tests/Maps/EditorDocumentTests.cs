@@ -19,7 +19,7 @@ public class EditorDocumentTests
 
     private const string Records = """
         [
-          { "type": "prefab", "id": "post", "components": { "Transform": {} } },
+          { "type": "prefab", "id": "post", "components": { "transform": {} } },
           {
             "type": "placements",
             "id": "yard",

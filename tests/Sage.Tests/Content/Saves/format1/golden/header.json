@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "game": "tests",
+  "engineVersion": "1.0.0.0",
+  "savedUtc": "2026-09-28T12:29:50.2736611Z",
+  "worlds": [
+    "main"
+  ]
+}

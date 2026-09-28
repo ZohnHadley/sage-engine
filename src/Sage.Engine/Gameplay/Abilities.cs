@@ -103,6 +103,7 @@ public sealed class CueRecord
 
 // What an entity can cast, and what it is casting. `Known` is a list because a spellbook is a list;
 // the cooldowns are tags on `GameplayTags`, so there is nothing to track here (16 §3.3).
+[Component("sage:abilities")]
 public struct Abilities : IComponent
 {
     public List<RecordId>? Known;

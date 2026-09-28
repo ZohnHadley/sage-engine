@@ -113,7 +113,7 @@ public class SpellmakerScreenTests
       { "type": "effect", "id": "house_only", "modifiers": [ { "attribute": "health", "op": "Add", "value": -1 } ] },
 
       { "type": "prefab", "id": "hero", "name": "hero",
-        "tags": ["PlayerControlled"],
+        "tags": ["player_controlled"],
         "parts": { "character": { "layer": "player" }, "attributes": {}, "abilities": [] } }
     ]
     """;

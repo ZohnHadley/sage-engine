@@ -52,7 +52,7 @@ public class MapLevelTests
     private const string Records = """
         [
           { "type": "map", "id": "room", "file": "maps/room.map", "at": [10, 0, -5] },
-          { "type": "prefab", "id": "marker", "components": { "Transform": {} } }
+          { "type": "prefab", "id": "marker", "components": { "transform": {} } }
         ]
         """;
 

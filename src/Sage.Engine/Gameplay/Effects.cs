@@ -54,6 +54,7 @@ public struct ActiveEffect
     public float Magnitude;     // scales the record's modifiers; 1 = the record as written
 }
 
+[Component("sage:active_effects")]
 public struct ActiveEffects : IComponent
 {
     public List<ActiveEffect> Effects;

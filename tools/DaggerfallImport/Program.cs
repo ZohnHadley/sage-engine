@@ -479,12 +479,12 @@ static string Scene(string[] creatures, string[] people)
     // Two that come after you, from opposite sides.
     blocks.Add("""
       { "type": "prefab", "id": "df_hunter_a", "base": "df_creature", "name": "skeleton hunter",
-        "components": { "AIState": { "schedule": "sage:idle" } },
+        "components": { "ai_state": { "schedule": "sage:idle" } },
         "parts": { "sprite": { "sheet": "skeleton", "animation": "idle" } } }
     """);
     blocks.Add("""
       { "type": "prefab", "id": "df_hunter_b", "base": "df_creature", "name": "orc hunter",
-        "components": { "AIState": { "schedule": "sage:idle" } },
+        "components": { "ai_state": { "schedule": "sage:idle" } },
         "parts": { "sprite": { "sheet": "orc", "animation": "idle" } } }
     """);
     places.Add("""

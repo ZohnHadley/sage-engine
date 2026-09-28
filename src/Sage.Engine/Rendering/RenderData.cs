@@ -20,6 +20,7 @@ public readonly record struct MeshHandle(int Id)
 
 // Draws a mesh at the entity's interpolated GlobalTransform (06 §3.2), either a mesh asset (Mesh) or
 // one the renderer built (Handle, which wins). An empty Material means sage:lit_default.
+[Component("sage:mesh_renderer")]
 public struct MeshRenderer : IComponent
 {
     public AssetPath Mesh;

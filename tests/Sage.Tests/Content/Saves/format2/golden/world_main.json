@@ -1,0 +1,353 @@
+{
+  "origin": {
+    "x": 0,
+    "z": 0
+  },
+  "entities": [
+    {
+      "id": "ceff879ec86f840e029d401822c71013",
+      "name": "lantern",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              1.5,
+              2,
+              4
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "test:lamp": {
+          "version": 2,
+          "data": {
+            "Lumens": 0.75,
+            "Charges": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "8b9ab36232d074624613b0bde3e51efa",
+      "prefab": "sage:goblin",
+      "name": "goblin",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0,
+              0.085,
+              -3
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:ai_state": {
+          "version": 1,
+          "data": {
+            "Profile": "",
+            "Schedule": "sage:chase",
+            "TaskIndex": 0,
+            "Target": "1bf64af0333ffa2a0ceec786a42cd365",
+            "NextThink": 0.17976192,
+            "TaskTime": 0,
+            "TaskStarted": false
+          }
+        },
+        "sage:attributes": {
+          "version": 1,
+          "data": {
+            "Values": {
+              "sage:armour": 0,
+              "sage:health": 100
+            }
+          }
+        },
+        "sage:gameplay_tags": {
+          "version": 1,
+          "data": []
+        },
+        "sage:character_controller": {
+          "version": 1,
+          "data": {
+            "Profile": "",
+            "Layer": 2,
+            "Velocity": [
+              0,
+              -0.6,
+              0
+            ],
+            "Crouching": false
+          }
+        },
+        "sage:active_effects": {
+          "version": 1,
+          "data": {
+            "Effects": []
+          }
+        },
+        "sage:pawn": {
+          "version": 1,
+          "data": {}
+        },
+        "sage:pawn_intent": {
+          "version": 1,
+          "data": {
+            "Yaw": 0,
+            "Pitch": 0
+          }
+        },
+        "sage:collider": {
+          "version": 1,
+          "data": {
+            "Shape": "Capsule",
+            "Size": [
+              0.35,
+              1.0999999,
+              0
+            ],
+            "Center": [
+              0,
+              0.9,
+              0
+            ],
+            "Layer": 2,
+            "IsTrigger": false
+          }
+        },
+        "sage:rigid_body": {
+          "version": 1,
+          "data": {
+            "Kind": "Kinematic",
+            "Mass": 0,
+            "Friction": 0,
+            "Restitution": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "1bf64af0333ffa2a0ceec786a42cd365",
+      "prefab": "sage:hero",
+      "name": "hero",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              3,
+              0.085,
+              -7
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:abilities": {
+          "version": 1,
+          "data": {
+            "Known": [
+              "sage:heal"
+            ],
+            "Selected": "sage:heal"
+          }
+        },
+        "sage:attributes": {
+          "version": 1,
+          "data": {
+            "Values": {
+              "sage:armour": 0,
+              "sage:health": 65
+            }
+          }
+        },
+        "sage:gameplay_tags": {
+          "version": 1,
+          "data": []
+        },
+        "sage:character_controller": {
+          "version": 1,
+          "data": {
+            "Profile": "",
+            "Layer": 1,
+            "Velocity": [
+              0,
+              -0.6,
+              0
+            ],
+            "Crouching": false
+          }
+        },
+        "sage:melee": {
+          "version": 1,
+          "data": {
+            "Attack": "sage:fists",
+            "Natural": "sage:fists",
+            "Cooldown": 0
+          }
+        },
+        "sage:active_effects": {
+          "version": 1,
+          "data": {
+            "Effects": [
+              {
+                "Record": "sage:curse",
+                "Source": "8b9ab36232d074624613b0bde3e51efa",
+                "Remaining": "Infinity",
+                "PeriodTimer": 0,
+                "Stacks": 1,
+                "Magnitude": 1
+              }
+            ]
+          }
+        },
+        "sage:inventory": {
+          "version": 1,
+          "data": {
+            "Items": [
+              {
+                "Item": "sage:sword",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              }
+            ],
+            "Capacity": 40
+          }
+        },
+        "sage:equipment": {
+          "version": 1,
+          "data": {
+            "MainHand": "sage:sword",
+            "OffHand": ""
+          }
+        },
+        "sage:pawn": {
+          "version": 1,
+          "data": {}
+        },
+        "sage:pawn_intent": {
+          "version": 1,
+          "data": {
+            "Yaw": 0,
+            "Pitch": 0
+          }
+        },
+        "sage:collider": {
+          "version": 1,
+          "data": {
+            "Shape": "Capsule",
+            "Size": [
+              0.35,
+              1.0999999,
+              0
+            ],
+            "Center": [
+              0,
+              0.9,
+              0
+            ],
+            "Layer": 1,
+            "IsTrigger": false
+          }
+        },
+        "sage:rigid_body": {
+          "version": 1,
+          "data": {
+            "Kind": "Kinematic",
+            "Mass": 0,
+            "Friction": 0,
+            "Restitution": 0
+          }
+        }
+      },
+      "tags": [
+        "sage:player_controlled"
+      ]
+    }
+  ],
+  "resources": {
+    "journal": {
+      "version": 1,
+      "data": {
+        "Entries": [
+          {
+            "Quest": "sandbox:errand",
+            "Stage": "hunt",
+            "Finished": false,
+            "Progress": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    "reputation": {
+      "version": 1,
+      "data": {
+        "Standings": [
+          {
+            "Faction": "sandbox:townsfolk",
+            "Value": -40
+          }
+        ]
+      }
+    },
+    "weather": {
+      "version": 1,
+      "data": {
+        "Current": "sage:clear",
+        "Target": "sandbox:storm",
+        "Blend": 0.25,
+        "BlendRate": 0.25,
+        "Settled": false,
+        "Showing": "sage:clear"
+      }
+    }
+  }
+}

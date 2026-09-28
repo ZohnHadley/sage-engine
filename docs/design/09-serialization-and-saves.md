@@ -35,14 +35,14 @@ Not in scope: the record merge rules (05), I/O semantics (04), streaming (14).
 
 | Attribute | On | Meaning |
 |---|---|---|
-| `[Component("health", Version = 1)]` | struct | Registers a component. The name is the stable identity in files (never the C# type name, so types can be renamed or moved) |
+| `[Component("health", Version = 1)]` | struct | Registers a component. The name is the stable identity in files (never the C# type name, so types can be renamed or moved). **As built (issue #16):** a namespaced id, `[Component("sage:health", Version = 1)]`, and `[Tag("sage:hostile")]` for tags — see "As built (stable ids and versions)" |
 | `[Saved(1)]` | field | Persisted in saves and maps, with a **stable tag** (int). Tags are never reused, even after a field is deleted |
 | `[Property(Min=…, Max=…, Category=…, Tooltip=…)]` | field | Shown and editable in the inspector (15). A field can be `[Property]` without being `[Saved]` (runtime-only debug values) |
 | `[Transient]` | field | Explicitly never saved (caches, handles to subsystem data like physics bodies) |
 | `[Record("item")]` | class | A record schema (05 §3.5); its fields use `[Property]`/`[Saved]` the same way |
 | `[GameEvent]` | struct | Game event (04) |
 | `[Output]` / `[Input("Open")]` | field / static method | Entity I/O (04) |
-| `[SavedResource("time_of_day", Version = 1)]` | class/struct | Per-world state saved with the world (`GameRules` state, quest log, calendar). **As built:** the name only — versioning waits for the first format change, as everywhere else here |
+| `[SavedResource("time_of_day", Version = 1)]` | class/struct | Per-world state saved with the world (`GameRules` state, quest log, calendar). **As built (issue #20):** the name and a `Version`, with `[Upgrade]` methods as for a component |
 
 A field with neither `[Saved]` nor `[Transient]` gets a **compile-time warning** from the generator, so nothing is left out of saves by accident.
 
@@ -80,7 +80,7 @@ maps/<name>/
 - Each placed entity: `persistentId`, optional `name` (for I/O), `prefab` (`RecordId`), the components that **override** the prefab (only differing fields), and `io` connections (04 §7).
 - **Built (F31, 2026-09-23):** the prefab half. `world.Populate(entity, record, id)` applies a prefab
   to an entity that already exists, which is what a map load needs after it has created one with its
-  saved id. Component data is read by name through `ComponentSchema`, the same path a save's
+  saved id. Component data is read by component id through `ComponentSchema`, the same path a save's
   per-component data will take — written against reflection now, against the generated readers later
   (§3.2), with the record pipeline's JSON dialect either way. See 05 "As built (prefabs)".
 - Per-sector files match streaming (14) and keep map diffs small in git. **Later:** one file per placed entity (UE One File Per Actor) if team editing makes per-sector files conflict.
@@ -160,9 +160,55 @@ user://saves/<slot>/
   placing anything. Without that, a save taken a hundred kilometres out would load its entities into
   the starting sector — the numbers would look right and the player would be standing on somebody
   else's ground.
-- **Not done here:** maps, sectors, tombstones, binary, upgraders, thumbnails, autosave rotation, and
-  the mod list in the header. `GameRules` state is still not saved — the mechanism exists now, and
+- **Not done here:** maps, sectors, tombstones, binary, thumbnails, autosave rotation, and the mod list
+  in the header. (Upgraders and stable ids came with issue #20: "As built (stable ids and versions)".) `GameRules` state is still not saved — the mechanism exists now, and
   nothing in the Sandbox's rules has state worth keeping yet.
+
+### As built (stable ids and versions, issues #16 and #20, 2026-09-28)
+
+Until this, a save keyed each component by its **C# type name**, and read back any JSON it was given
+ignoring unknown fields: renaming a struct dropped its data from every save, renaming a field dropped
+that field, and nothing said so. And `SaveSystem` refused any save whose `formatVersion` differed,
+because no upgrader existed.
+
+- **Components are saved under their stable id, each with a version** (save format 2):
+  `"sage:transform": { "version": 1, "data": { … } }`, tags as a list of ids, saved resources as
+  `"journal": { "version": 1, "data": { … } }` (test: ASaveIsKeyedByStableIdsWithAVersionPerEntry).
+  The id comes from `[Component]` (03 "As built (component ids)"), so renaming the type is free.
+- **`[Upgrade(fromVersion)] static void X(ref JsonObject o)`** on the type rewrites an older shape;
+  a type's upgraders run in order, oldest first, from the saved version to the declared `Version`, each
+  on the last one's output (test: UpgradersRunInOrderFromTheSavedVersion). The helpers are
+  `RenameField`, `RemoveField` and `MoveField` (dotted paths), matching a field the way the dialect
+  reads it: the exact name, then ignoring case (test: TheUpgradeHelpersRenameRemoveAndMove). Upgraders
+  are found by reflection when an old entry is first read — they may be private, being the type's past
+  rather than its API — and Sage.Generators checks their signature and version (`SAGE0007`). The same
+  works on a `[SavedResource]`, whose attribute gained `Version`.
+- **A field the type no longer has is an error**, naming the component, the field and the upgrader to
+  write; that component keeps what the prefab gave it and the rest of the world loads (test:
+  WithoutAnUpgraderTheErrorNamesTheComponentAndTheField). The save dialect disallows unmapped members,
+  so this holds for fields of nested types too. It also means a field later marked `[Transient]` needs an
+  upgrader that removes it from old saves.
+- **`[Component(FormerNames = …)]`** lists ids (or, for format 1 saves, C# type names) a component used
+  to be saved under, which is how a component's *id* is renamed.
+- **`FormatVersion` is 2, and older formats are upgraded, not refused.** A world file is brought up to
+  date in memory by a chain of format upgraders before anything reads it; a format newer than the build
+  is still refused (test: ASaveFromANewerFormatIsRefused). Format 1 → 2 maps each C# type name to its
+  id (ignoring case, as format 1 was read) and wraps every entry as version 1. **That step, and the
+  type-name lookup behind it, are for one release**: then `SaveSystem.OldestReadableFormat` becomes 2
+  and both go.
+- **Golden saves** (REDESIGN §4.5): `tests/Sage.Tests/Content/Saves/format1` was written by main before
+  this change (commit 77c57f0 records it) and `format2` by this format, from the same scene: a hero with
+  an inventory, equipment, a spell and a curse from a goblin, a goblin mid-chase, a lamp, and the
+  journal, reputation and weather. Both load, with every value checked — including the lamp, whose
+  type *and* one field have been renamed since format 1 was written (tests:
+  AGoldenSaveFromBeforeStableIdsStillLoads, AGoldenSaveInTheCurrentFormatLoads). A new format adds a
+  folder; `GoldenSaveTests` says how to write one.
+- **Never written, by type rather than by name:** a component or tag type marked `[Transient]`
+  (`GlobalTransform`, `PhysicsBody`, `IOConnections`, the Sandbox's `FromScene`), the two the entity
+  record carries itself (`Persistent`, `FromPrefab`), and Friflo's own components, which have no id.
+  The skip list used to be C# names, which a rename would have silently emptied.
+- **Fixed on the way:** an entity saved with a name but no prefab threw on load (Friflo's `Name` setter
+  needs the component to exist). No test had saved one; the golden save's lamp is one.
 
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
@@ -281,7 +327,8 @@ Summarised above:
     deliberately deferred (see the deviations above). What replaced the first two is simpler: every
     persistent entity written in full, so a destroyed one's tombstone is its absence;
   - `ser_check`.
-- **Later:** upgraders beyond v1 (none are needed until the first format change), finer change tracking, one-file-per-entity maps, save thumbnails, compression tuning.
+- **Later:** finer change tracking, one-file-per-entity maps, save thumbnails, compression tuning.
+  (Upgraders arrived with the first format change, issue #20: "As built (stable ids and versions)".)
 
 ## 12. Multiplayer-later notes
 The same generated metadata gains a `[Replicated]` flag and a quantization hint, producing delta encoders for snapshots. That's the whole reason to have one declaration (readiness rule 7).

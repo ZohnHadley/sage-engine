@@ -37,6 +37,7 @@ public readonly record struct PersistentId(Guid Value)
 
 // Marks an entity as persistent. World keeps a PersistentId → Entity index from it (World.Resolve).
 // Entities without it are never saved (docs/design/09 §3.5).
+[Component("sage:persistent")]
 public struct Persistent : IComponent
 {
     public PersistentId Id;

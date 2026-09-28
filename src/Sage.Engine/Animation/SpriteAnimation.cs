@@ -8,6 +8,7 @@ namespace sage_engine;
 // Sprite animation (docs/design/12 §3): the simulation owns animation time. `SpriteAnimationSystem`
 // advances it in the Animation phase, at the tick rate, so animation is deterministic and the same
 // on a future server. Rendering only reads the time to pick a frame (06 §3.8); it never advances it.
+[Component("sage:sprite_animator")]
 public struct SpriteAnimator : IComponent
 {
     public int Clip;        // index into the sheet's ClipNames

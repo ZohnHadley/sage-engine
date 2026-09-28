@@ -1,0 +1,269 @@
+{
+  "origin": {
+    "x": 0,
+    "z": 0
+  },
+  "entities": [
+    {
+      "id": "ceff879ec86f840e029d401822c71013",
+      "name": "lantern",
+      "components": {
+        "Transform": {
+          "LocalPosition": [
+            1.5,
+            2,
+            4
+          ],
+          "LocalRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "LocalScale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "GoldenLantern": {
+          "Brightness": 0.75,
+          "Charges": 3
+        }
+      }
+    },
+    {
+      "id": "8b9ab36232d074624613b0bde3e51efa",
+      "prefab": "sage:goblin",
+      "name": "goblin",
+      "components": {
+        "Transform": {
+          "LocalPosition": [
+            0,
+            0.085,
+            -3
+          ],
+          "LocalRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "LocalScale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "AIState": {
+          "Profile": "",
+          "Schedule": "sage:chase",
+          "TaskIndex": 0,
+          "Target": "1bf64af0333ffa2a0ceec786a42cd365",
+          "NextThink": 0.17976192,
+          "TaskTime": 0,
+          "TaskStarted": false
+        },
+        "Attributes": {
+          "Values": {
+            "sage:armour": 0,
+            "sage:health": 100
+          }
+        },
+        "GameplayTags": [],
+        "CharacterController": {
+          "Profile": "",
+          "Layer": 2,
+          "Velocity": [
+            0,
+            -0.6,
+            0
+          ],
+          "Crouching": false
+        },
+        "ActiveEffects": {
+          "Effects": []
+        },
+        "Pawn": {},
+        "PawnIntent": {
+          "Yaw": 0,
+          "Pitch": 0
+        },
+        "Collider": {
+          "Shape": "Capsule",
+          "Size": [
+            0.35,
+            1.0999999,
+            0
+          ],
+          "Center": [
+            0,
+            0.9,
+            0
+          ],
+          "Layer": 2,
+          "IsTrigger": false
+        },
+        "RigidBody": {
+          "Kind": "Kinematic",
+          "Mass": 0,
+          "Friction": 0,
+          "Restitution": 0
+        }
+      }
+    },
+    {
+      "id": "1bf64af0333ffa2a0ceec786a42cd365",
+      "prefab": "sage:hero",
+      "name": "hero",
+      "components": {
+        "Transform": {
+          "LocalPosition": [
+            3,
+            0.085,
+            -7
+          ],
+          "LocalRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "LocalScale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Abilities": {
+          "Known": [
+            "sage:heal"
+          ],
+          "Selected": "sage:heal"
+        },
+        "Attributes": {
+          "Values": {
+            "sage:armour": 0,
+            "sage:health": 65
+          }
+        },
+        "GameplayTags": [],
+        "CharacterController": {
+          "Profile": "",
+          "Layer": 1,
+          "Velocity": [
+            0,
+            -0.6,
+            0
+          ],
+          "Crouching": false
+        },
+        "Melee": {
+          "Attack": "sage:fists",
+          "Natural": "sage:fists",
+          "Cooldown": 0
+        },
+        "ActiveEffects": {
+          "Effects": [
+            {
+              "Record": "sage:curse",
+              "Source": "8b9ab36232d074624613b0bde3e51efa",
+              "Remaining": "Infinity",
+              "PeriodTimer": 0,
+              "Stacks": 1,
+              "Magnitude": 1
+            }
+          ]
+        },
+        "Inventory": {
+          "Items": [
+            {
+              "Item": "sage:sword",
+              "Count": 1
+            },
+            {
+              "Item": "sage:bread",
+              "Count": 1
+            },
+            {
+              "Item": "sage:bread",
+              "Count": 1
+            },
+            {
+              "Item": "sage:bread",
+              "Count": 1
+            },
+            {
+              "Item": "sage:bread",
+              "Count": 1
+            }
+          ],
+          "Capacity": 40
+        },
+        "Equipment": {
+          "MainHand": "sage:sword",
+          "OffHand": ""
+        },
+        "Pawn": {},
+        "PawnIntent": {
+          "Yaw": 0,
+          "Pitch": 0
+        },
+        "Collider": {
+          "Shape": "Capsule",
+          "Size": [
+            0.35,
+            1.0999999,
+            0
+          ],
+          "Center": [
+            0,
+            0.9,
+            0
+          ],
+          "Layer": 1,
+          "IsTrigger": false
+        },
+        "RigidBody": {
+          "Kind": "Kinematic",
+          "Mass": 0,
+          "Friction": 0,
+          "Restitution": 0
+        }
+      },
+      "tags": [
+        "PlayerControlled"
+      ]
+    }
+  ],
+  "resources": {
+    "journal": {
+      "Entries": [
+        {
+          "Quest": "sandbox:errand",
+          "Stage": "hunt",
+          "Finished": false,
+          "Progress": [
+            1
+          ]
+        }
+      ]
+    },
+    "reputation": {
+      "Standings": [
+        {
+          "Faction": "sandbox:townsfolk",
+          "Value": -40
+        }
+      ]
+    },
+    "weather": {
+      "Current": "sage:clear",
+      "Target": "sandbox:storm",
+      "Blend": 0.25,
+      "BlendRate": 0.25,
+      "Settled": false,
+      "Showing": "sage:clear"
+    }
+  }
+}

@@ -97,6 +97,7 @@ public sealed class AIScheduleRecord
 }
 
 // The agent's running state (16 §4). Saved with the entity (09); Target is rebuilt on load.
+[Component("sage:ai_state")]
 public struct AIState : IComponent
 {
     public RecordId Profile;

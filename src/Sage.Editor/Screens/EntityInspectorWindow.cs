@@ -58,7 +58,10 @@ internal sealed class EntityInspectorWindow
 
         foreach (var component in entity.Components)
         {
-            if (!ImGui.CollapsingHeader(component.Type.Name)) continue;
+            // Headed by the stable id a prefab or a save would write (issue #16); Friflo's own
+            // components have none and keep their type name.
+            string id = _schema.IdOf(component.Type.Type) ?? component.Type.Name;
+            if (!ImGui.CollapsingHeader(id)) continue;
 
 #pragma warning disable CS0618   // Friflo prefers GetComponent<T>(); an inspector only knows the type
             object? boxed = component.Value;                       // at run time, so it needs the box.
@@ -67,7 +70,7 @@ internal sealed class EntityInspectorWindow
 
             bool changed = false;
             foreach (var field in boxed.GetType().GetFields(PublicInstance))
-                changed |= Field(component.Type.Name, field, boxed);
+                changed |= Field(id, field, boxed);
 
             if (changed)
             {

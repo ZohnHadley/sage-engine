@@ -62,6 +62,7 @@ public sealed class FactionRecord
 // Which faction an entity belongs to. Entities without one are nobody's ally and nobody's enemy — except
 // that a creature with no faction at all still treats the player as an enemy, which is what "a monster"
 // means in the absence of any social model, and is exactly what the engine did before F24.
+[Component("sage:faction")]
 public struct Faction : IComponent
 {
     public RecordId Id;

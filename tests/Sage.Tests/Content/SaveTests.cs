@@ -40,12 +40,12 @@ public class SaveTests
       { "type": "ability", "id": "heal", "targeting": "Self", "effects": ["hurt"], "magnitude": 1 },
 
       { "type": "prefab", "id": "hero", "name": "hero",
-        "tags": ["PlayerControlled"],
+        "tags": ["player_controlled"],
         "parts": { "character": { "layer": "player" }, "attributes": {},
                    "melee": { "attack": "fists" }, "inventory": { "capacity": 40 } } },
 
       { "type": "prefab", "id": "goblin", "name": "goblin",
-        "components": { "AIState": { "schedule": "sage:idle" } },
+        "components": { "ai_state": { "schedule": "sage:idle" } },
         "parts": { "character": { "layer": "enemy" }, "attributes": {} } }
     ]
     """;

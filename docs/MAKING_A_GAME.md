@@ -141,7 +141,7 @@ have comments and trailing commas. A record is **content, and read-only at run t
   {
     "type": "prefab",
     "id": "goblin",
-    "components": { "AIState": {} },
+    "components": { "ai_state": {} },
     "parts": {
       "sprite": { "sheet": "goblin" },
       "body": { "shape": "Capsule", "radius": 0.35, "height": 1.8 },
@@ -183,6 +183,27 @@ each type, `[Record("quest_board", Plugin = "yourgame.quests")]`, or the build f
 type the registration can't create — abstract, private, no public parameterless constructor — is a build
 error too (`SAGE0002`).
 
+### Components have ids too
+
+A component is a struct, and it is named by a **stable id** you choose once — not by its C# name, so you
+can rename or move the type without breaking a prefab or a save:
+
+```csharp
+[Component("yourgame:health")]
+public struct Health : IComponent { public float Value; }
+
+[Tag("yourgame:hostile")] public struct Hostile : ITag { }
+```
+
+Every `IComponent` or `ITag` struct in your game's assembly needs one, or the build fails (`SAGE0004`);
+an id is `namespace:name` in lower case (`SAGE0005`), and one per type (`SAGE0006`). Components belong
+to the assembly, not to a plugin, so there is nothing to register. In a prefab, write the id — or a
+**bare name, which means your namespace first and then `sage`**: in your files `"health"` is
+`yourgame:health` and `"collider"` is `sage:collider` (unless you declared a `yourgame:collider`, which
+then wins). Another mod's component is written in full. A name that matches nothing is an error that
+suggests the ids it might have meant, and one spelt the old way (`"AIState"`, a C# type name) names the
+id to write instead (`"sage:ai_state"`). `ent_types` lists every id there is.
+
 `rec_list <type>`, `rec_get <type> <id>` and `rec_reload` in the console are how you check what actually
 loaded — and `rec_get` is the fastest way to learn a record's fields, because it prints the merged
 result with the file each field came from.
@@ -209,8 +230,8 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 
 ### Every prefab part the engine provides
 
-A prefab's `components` block sets components directly; its `parts` block calls these, which is the
-usual way, because a part does the assembling for you:
+A prefab's `components` block sets components directly, by id (`"sprite_renderer": { … }`); its `parts`
+block calls these, which is the usual way, because a part does the assembling for you:
 
 | Part | Gives the entity |
 |---|---|
@@ -448,6 +469,35 @@ It used to take a second line, `Saves.RegisterResource<T>()`, and that line was 
 separate resources in this engine were marked saved and none of them were. `save <name>`,
 `load <name>` and `saves` drive it from the console.
 
+**What a save holds.** Every public field of each component, under the component's id and a version:
+`"yourgame:health": { "version": 1, "data": { "Value": 80 } }`; saved resources the same way under
+their name. A field marked `[Transient]` is left out, and so is a whole component or tag type marked
+`[Transient]` (derived state, handles that mean nothing next session).
+
+**Changing a component after you have shipped.** Renaming the *type* costs nothing: the id is what the
+save knows. Adding a field costs nothing either: an old save leaves it at its default. Renaming, moving
+or removing a *field* is a new version of the component, with a method that rewrites the old shape:
+
+```csharp
+[Component("yourgame:health", Version = 2)]
+public struct Health : IComponent
+{
+    public float Current;   // was Value
+    [Upgrade(1)] static void From1(ref JsonObject o) => o.RenameField("Value", "Current");
+}
+```
+
+Upgraders run in order on load, oldest first (`RenameField`, `RemoveField` and `MoveField`, which takes
+dotted paths, do most of it). Forget one and the load **says so** — the component and the field are
+named, and that component keeps what the prefab gave it — rather than quietly dropping the value, which
+is what used to happen. To change a component's *id*, list the old one in `FormerNames`. The build checks
+an upgrader's signature and version (`SAGE0007`). The same `Version` and `[Upgrade]` work on a
+`[SavedResource]`.
+
+Saves from an older engine are upgraded as they load (their `formatVersion` is older); one from a newer
+engine is refused. The engine's tests keep a save from each format in `tests/Sage.Tests/Content/Saves`
+and load it every run.
+
 ---
 
 ## 8a. Placing things with the editor
@@ -561,6 +611,12 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
     the phase contract will tell you.
 11. **`in_tap` presses for one frame**, so two in a row need a `wait` between them, and a HUD string
     rebuilt every frame allocates in the steady state — cache it and rebuild when it changes.
+12. **Two assemblies that each declared a `Health` component** used to overwrite each other without a
+    word, because a component was its C# name. Since issue #16 it is its id (§3), and two types claiming
+    one id stop the engine with both named.
+13. **Renaming a component, or one of its fields,** used to drop that data from every existing save
+    silently. Since issue #20 a save is keyed by id, and a field the type no longer has is an error that
+    tells you to write an `[Upgrade]` (§8).
 
 ---
 

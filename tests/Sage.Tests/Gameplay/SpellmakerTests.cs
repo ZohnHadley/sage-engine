@@ -32,7 +32,7 @@ public class SpellmakerTests
       { "type": "effect", "id": "harm", "cost": 9, "modifiers": [ { "attribute": "health", "op": "Add", "value": -10 } ] },
 
       { "type": "prefab", "id": "hero", "name": "hero",
-        "tags": ["PlayerControlled"],
+        "tags": ["player_controlled"],
         "parts": { "character": { "layer": "player" }, "attributes": {}, "melee": { "attack": "fists" } } }
     ]
     """;
