@@ -23,4 +23,12 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Generators\Sage.Generators.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <!-- Project switches the Sage analyzers read (issue #19): SageSimulationOnly=true makes a MonoGame
+       type an error (SAGE0024); SageStrictSaves=true asks every public component field for a
+       [Property] or [Transient] decision (SAGE0023, off by default). -->
+  <ItemGroup Condition="'$(SageGenerators)' != 'false'">
+    <CompilerVisibleProperty Include="SageSimulationOnly" />
+    <CompilerVisibleProperty Include="SageStrictSaves" />
+  </ItemGroup>
 </Project>

@@ -645,7 +645,8 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 
 1. **`[Record]` without `Records.Register<T>()`** used to be dead JSON: the file loaded and the type
    matched nothing. Since issue #16 the attribute *is* the registration (the generator writes it), so
-   this can't happen any more.
+   this can't happen any more — and a `[Record("")]` that no content could name is SAGE0021
+   (test: AnEmptyRecordTypeOrResourceNameIsABuildError).
 2. **`[SavedResource]` without `Saves.RegisterResource<T>()`** used to save nothing — this exact bug
    shipped three times. Gone the same way: the attribute registers it.
 3. **An action that is not `Actions.Register`ed** makes every binding to it ignored (with a warning), and
@@ -663,8 +664,13 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
    record type, input action, prefab part or module registered late did nothing either. Since
    2026-09-27 these are **errors** at the line that did it (`SageApp` seals each registry at the stage
    after which registering would be too late), so this one no longer happens silently — the rest of
-   the list still does. A misspelt key in `game.json` is an error too, and `disable` names that match no
-   module are warned about.
+   the list still does. Since issue #19 the plain case is **a build error, SAGE0020**: a registration
+   call written in a module's `Start`, `OnWorldCreated` or `CreateRules`, or in a system's constructor
+   or `Run` — lambdas inside them included, since they cannot run any earlier — fails to compile
+   (test: RegisteringACvarInStartIsABuildError) (test: RegisteringInOnWorldCreatedOrCreateRulesIsABuildErrorLambdasIncluded)
+   (test: RegisteringInASystemIsABuildError). A helper method those call is not followed; the run-time
+   seal still catches that. A misspelt key in `game.json` is an error too, and `disable` names that
+   match no module are warned about.
 8. **Prefab parts run in their declared order, not JSON order**: after the parts their `After` names,
    then by id. Since issue #17 that order is written down and a second part with the same id is an
    error, where it used to be module order and a silent replacement. What still bites: a part your
@@ -683,6 +689,60 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 13. **Renaming a component, or one of its fields,** used to drop that data from every existing save
     silently. Since issue #20 a save is keyed by id, and a field the type no longer has is an error that
     tells you to write an `[Upgrade]` (§8).
+14. **An `[Upgrade]` method on a type nothing saves** never ran — only a `[Component]`, `[Tag]` or
+    `[SavedResource]` has its upgraders called. Since issue #19 that is **a build error, SAGE0022**, and
+    so is a saved resource's upgrader with the wrong shape or two upgraders from one version
+    (test: AnUpgraderNothingRunsIsABuildError).
+15. **A MonoGame type in your simulation half** used to be kept out by habit: one package reference
+    and the rules no longer ran headless. A project with `<SageSimulationOnly>true</SageSimulationOnly>`
+    (Sandbox and Hello have it) now fails to build on one, **SAGE0024**
+    (test: AMonoGameTypeInASimulationOnlyAssemblyIsABuildError).
+
+---
+
+## 10a. Build errors: the SAGE diagnostics
+
+The generators and analyzers in `src/Sage.Generators` run in every engine and game project (the
+`Directory.Build.props` in `src/` and `games/`), and every diagnostic they report is an error. One line
+each, with the fix:
+
+| Id | What | Fix |
+|---|---|---|
+| SAGE0001 | A `[Record]` or `[SavedResource]` whose plugin cannot be inferred (the assembly has no `[Plugin]`, or several) | Add `Plugin = "<plugin id>"` |
+| SAGE0002 | A declared record or saved resource the registration cannot construct (abstract, generic, private, no public parameterless constructor) | Make it a public (or internal) concrete class with `public X()` |
+| SAGE0003 | Two declarations of one record type or resource name in an assembly | Rename one |
+| SAGE0004 | An `IComponent` or `ITag` struct without `[Component("ns:name")]` / `[Tag(...)]` | Give it a stable id |
+| SAGE0005 | A malformed component or tag declaration (bad id, `Version` below 1, wrong interface, private, generic) | Follow the message |
+| SAGE0006 | Two components (or two tags) with one id in an assembly | Rename one id |
+| SAGE0007 | A component's `[Upgrade]` method with the wrong signature, or upgrading from a version it cannot have | `static void Name(ref JsonObject o)`, from 1 to `Version - 1` |
+| SAGE0010 | A `[PrefabPart]` whose plugin cannot be inferred | Add `Plugin = "<plugin id>"` |
+| SAGE0011 | A declared part or system that cannot be one (abstract, generic, private, not `IPrefabPart` / `ISystem`, a part without a public parameterless constructor) | Follow the message |
+| SAGE0012 | Two declarations of one part or system id in an assembly | Rename one |
+| SAGE0013 | A system ordered (`Before`/`After`) against a system of this assembly in another phase | Drop the constraint: the phase order decides it |
+| SAGE0020 | A cvar, command, input action, entity input, record type, prefab part, saved resource or module registered in `Start`, `OnWorldCreated`, `CreateRules`, or a system's constructor or `Run` (§10 item 7) | Register it in the module's `Init`; hand a system what it needs through its constructor |
+| SAGE0021 | A `[Record]` type or `[SavedResource]` name that is empty or has whitespace, or a saved resource with `Version` below 1 | Name it (`"item"`); versions start at 1 |
+| SAGE0022 | An `[Upgrade]` method nothing runs (not on a component, tag or saved resource), a saved resource's upgrader with the wrong shape or version, or two upgraders from one version | Move it to the type whose saved shape changed; fix the signature or the number |
+| SAGE0023 | *Strict saves only:* a public component field that is neither `[Property]` nor `[Transient]` | Decide: `[Property]` saves it, `[Transient]` leaves it out |
+| SAGE0024 | *Simulation-only projects:* a `Microsoft.Xna.Framework` (MonoGame) type | Move the code to the client half |
+
+An attribute on the wrong kind of type — `[Record]` on a struct, `[Component]` on a class — is the
+compiler's own CS0592, because each declaration attribute names what it may go on.
+
+Two are switched on per project, in its `.csproj`:
+
+- `<SageSimulationOnly>true</SageSimulationOnly>` — the project is simulation: it runs headless and
+  names no MonoGame type (SAGE0024). `Sage.Engine`, `games/Sandbox` and `games/Hello` set it; a client
+  half (`Sandbox.Client`) does not (test: AClientAssemblyMayUseMonoGame).
+- `<SageStrictSaves>true</SageStrictSaves>` — off by default. Today every public field of a component
+  is saved unless it is `[Transient]`, so a field added later is saved without anyone choosing it;
+  strict mode asks each one for a decision (REDESIGN §4.5)
+  (test: UnderStrictSavesAPublicComponentFieldMustDecide) (test: StrictSavesIsOffByDefault).
+  `[Property]` is recognised by name once the engine has it (issue #18); until then only `[Transient]`
+  counts, and the message says so (test: UnderStrictSavesPropertyIsADecisionOnceItExists).
+
+Registering in `Init` is not an error, of course (test: RegisteringInInitIsNotAnError). Not checked
+yet: a `RecordId` field naming a record type nothing registers, which waits on `RecordRef<T>`
+(issue #22) to give the analyzer a type to follow.
 
 ---
 
