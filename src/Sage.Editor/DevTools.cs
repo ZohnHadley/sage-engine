@@ -29,6 +29,7 @@ public sealed class DevTools : IDisposable
     private readonly CVar<bool> _showEntities;
     private readonly EditorSelection _selection = new();
 
+    private World? _world;
     private EditorDocument? _document;
     private EditorUI? _menu;
     private EntityOutlinerWindow? _outliner;
@@ -64,6 +65,8 @@ public sealed class DevTools : IDisposable
                 _camera.SetLook(yaw, a.Count >= 5 && float.TryParse(a[4], out float pitch) ? pitch : 0f);
             Log.Info(LogCat.Console, $"camera at {_camera.Position}");
         });
+
+        RegisterDocumentCommands();
     }
 
     // What ImGui is doing with the mouse and keyboard this frame: with no dev tools, nothing is, which
@@ -81,6 +84,7 @@ public sealed class DevTools : IDisposable
     // The editor's document and windows belong to a world, because a document is opened *into* one.
     public void OnWorldCreated(World world)
     {
+        _world = world;
         _document = new EditorDocument(_engine);
         _outliner = new EntityOutlinerWindow(world, _selection);
         _inspector = new EntityInspectorWindow(world, _engine.Components, _selection, _document);
@@ -89,46 +93,59 @@ public sealed class DevTools : IDisposable
         // The free camera keeps its own position, so it has to be told when the world moves under it
         // (R6): without this, `cam_free` after a rebase leaves it a sector behind what it was looking at.
         world.Origin().Rebased += offset => _camera.Position += new Vector3(offset.X, offset.Y, offset.Z);
-
-        RegisterDocumentCommands(world);
     }
 
     // Every menu item is a console command as well. That is a rule rather than a convenience: a menu a
     // script cannot press is a feature that cannot be checked the way the rest of this engine is.
-    private void RegisterDocumentCommands(World world)
+    //
+    // Registered once, with the tools (issue #19): they act on whichever world was created last. They
+    // used to be registered in OnWorldCreated, after the Register stage, which a second world would
+    // have turned into a "command already registered" error.
+    private void RegisterDocumentCommands()
     {
         var cvars = _engine.CVars;
-        var document = _document!;
 
         cvars.RegisterCommand("doc_new", CVarFlags.DevOnly, "doc_new: start an empty placements document.",
-            _ => document.New(world, NamespaceOfGame()));
+            _ => { if (Current(out var world, out var document)) document.New(world, NamespaceOfGame()); });
 
         cvars.RegisterCommand("doc_open", CVarFlags.DevOnly, "doc_open <id>: open a placements document.", a =>
         {
+            if (!Current(out var world, out var document)) return;
             if (a.Count == 0) { Log.Warn(LogCat.Console, "doc_open <id>   (see rec_list placements)"); return; }
             var id = _engine.Records.Resolve("placements", a[0]);
             if (!id.IsEmpty) document.Open(world, id);
         });
 
         cvars.RegisterCommand("doc_save", CVarFlags.DevOnly, "doc_save: write the open document back to its file.",
-            _ => document.Save(world));
+            _ => { if (Current(out var world, out var document)) document.Save(world); });
 
         cvars.RegisterCommand("doc_close", CVarFlags.DevOnly, "doc_close: close the document, removing what it placed.",
-            _ => document.Close(world));
+            _ => { if (Current(out var world, out var document)) document.Close(world); });
 
         cvars.RegisterCommand("doc_status", CVarFlags.None, "doc_status: what is open, and whether it is saved.",
-            _ => Log.Info(LogCat.Console, document.IsOpen
+            _ => Log.Info(LogCat.Console, _document is { IsOpen: true } document
                 ? $"{document.Title} — {(document.Path.Length > 0 ? document.Path : "never saved")}"
                 : "no document open"));
 
         cvars.RegisterCommand("ent_select", CVarFlags.DevOnly, "ent_select <name>: select an entity for the inspector.", a =>
         {
+            if (!Current(out var world, out _)) return;
             if (a.Count == 0) { _selection.Clear(); Log.Info(LogCat.Console, "selection cleared"); return; }
             var entity = world.FindByName(a.Rest);
             if (entity.IsNull) { Log.Warn(LogCat.Console, $"ent_select: no entity named '{a.Rest}'"); return; }
             _selection.Select(entity);
             Log.Info(LogCat.Console, $"selected {World.Describe(entity)}");
         });
+    }
+
+    // The world the document commands act on; before there is one, they say so and do nothing.
+    private bool Current(out World world, out EditorDocument document)
+    {
+        world = _world!;
+        document = _document!;
+        if (_world != null && _document != null) return true;
+        Log.Warn(LogCat.Console, "no world yet: the editor's document commands work once a world exists");
+        return false;
     }
 
     // The free camera runs at display rate, and gives the camera back to a rig that claimed it.

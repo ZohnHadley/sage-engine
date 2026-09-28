@@ -11,6 +11,8 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <RootNamespace>Sandbox</RootNamespace>
+    <!-- The simulation half: a MonoGame type here is a build error (SAGE0024). -->
+    <SageSimulationOnly>true</SageSimulationOnly>
     <!-- Don't copy MonoGame/Friflo etc. next to the game dll: the host already has them loaded. -->
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
