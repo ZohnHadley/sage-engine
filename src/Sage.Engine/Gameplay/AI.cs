@@ -226,6 +226,8 @@ public sealed class AITaskRegistry
 
     public IAITask? Find(string name) => _tasks.TryGetValue(name, out var task) ? task : null;
 
+    public IEnumerable<string> Names => _tasks.Keys;
+
     // The engine's own tasks' argument names, for an error that has no registry to ask (a record
     // being read): what to write in place of an old "Wait:1.5".
     internal static string ArgumentOf(string task) => task.ToLowerInvariant() switch

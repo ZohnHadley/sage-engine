@@ -363,7 +363,9 @@ public sealed class AIThinkSystem : ISystem
         var task = _tasks.Find(name);
         if (task == null)
         {
-            Log.Once(LogCat.AI, LogLevel.Error, $"ai-task:{name}", $"{state.Schedule}: no AI task named '{name}' is registered; the schedule stops here");
+            Log.Once(LogCat.AI, LogLevel.Error, $"ai-task:{name}",
+                $"{_records.Where("ai_schedule", state.Schedule, $"Tasks[{state.TaskIndex}]")}: ai_schedule {state.Schedule}: " +
+                $"no AI task named '{name}' is registered; the schedule stops here");
             state.TaskIndex = steps.Length;
             return;
         }
@@ -372,7 +374,8 @@ public sealed class AIThinkSystem : ISystem
         if (step.Argument != null && task.Argument != null && !string.Equals(step.Argument, task.Argument, StringComparison.OrdinalIgnoreCase))
         {
             Log.Once(LogCat.AI, LogLevel.Error, $"ai-arg:{state.Schedule}:{name}:{step.Argument}",
-                $"{state.Schedule}: task '{name}' takes '{task.Argument}', not '{step.Argument}'; the schedule stops here");
+                $"{_records.Where("ai_schedule", state.Schedule, $"Tasks[{state.TaskIndex}]")}: ai_schedule {state.Schedule}: " +
+                $"task '{name}' takes '{task.Argument}', not '{step.Argument}'; the schedule stops here");
             state.TaskIndex = steps.Length;
             return;
         }

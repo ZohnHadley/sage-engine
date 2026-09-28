@@ -30,7 +30,7 @@ public enum Stance
 // A list rather than a map because record ids are not JSON object keys (05 §3.5).
 public sealed class FactionRelation
 {
-    public RecordId Faction;
+    public RecordRef<FactionRecord> Faction;
     public Stance Stance = Stance.Neutral;
 }
 

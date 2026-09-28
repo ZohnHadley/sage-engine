@@ -29,7 +29,7 @@ public class PrefabTests
         "modifiers": [ { "attribute": "armour", "op": "Add", "value": 30 } ] },
       { "type": "attack", "id": "claw", "damage": 7, "reach": 1.2, "windupTime": 0.2, "recoverTime": 0.1 },
       { "type": "attack", "id": "bite", "damage": 12, "reach": 1.0 },
-      { "type": "item", "id": "sword", "name": "a sword", "weight": 3, "attack": "claw" },
+      { "type": "item", "id": "sword", "label": "a sword", "weight": 3, "attack": "claw" },
 
       { "type": "prefab", "id": "creature", "abstract": true,
         "name": "creature",

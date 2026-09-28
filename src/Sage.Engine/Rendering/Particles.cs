@@ -33,7 +33,7 @@ public enum EmitShape
 public sealed class ParticleRecord
 {
     public AssetPath Texture;                 // the sprite each particle draws
-    public RecordId Material;                 // empty = the engine's additive particle material
+    public RecordRef<MaterialRecord> Material; // empty = the engine's additive particle material
 
     // How many, and how they arrive.
     public int Burst;                         // emitted at once when something triggers it

@@ -25,9 +25,9 @@ public enum ObjectiveKind
 public sealed class QuestObjective
 {
     public ObjectiveKind Kind = ObjectiveKind.Kill;
-    public RecordId Faction;        // Kill: whose
-    public RecordId Prefab;         // Kill: or what, exactly
-    public RecordId Item;           // Have: which
+    public RecordRef<FactionRecord> Faction; // Kill: whose
+    public RecordRef<PrefabRecord> Prefab; // Kill: or what, exactly
+    public RecordRef<ItemRecord> Item; // Have: which
     public int Count = 1;
     public string Text = "";        // what the journal calls it; empty = built from the fields
 }

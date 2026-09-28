@@ -14,6 +14,7 @@ dotnet build Sage.sln -c Debug                          # .NET 10 SDK (global.js
 dotnet build Sage.sln -c Debug -p:SageSkipShaders=true  # Linux: mgfxc needs Wine, so compile without shaders
 dotnet test tests/Sage.Tests -c Debug                   # also -c Development; not Shipping
 python3 tools/check_docs.py --tests <count>             # docs against the code; --fix rewrites counts
+src/Sage.Cli/bin/Debug/net8.0/sage validate games/Sandbox # content checks, headless; exits 1 on errors (--mounts dir[=ns] ...)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
 ```
 

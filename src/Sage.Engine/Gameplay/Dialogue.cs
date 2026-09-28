@@ -20,17 +20,17 @@ namespace sage_engine;
 // What has to be true before a line may be said.
 public sealed class DialogueRequirement
 {
-    public RecordId Tag;            // the speaker's player must have this tag
-    public RecordId WithoutTag;     // ...and not this one
-    public RecordId Item;           // and be carrying this
+    public RecordRef<TagRecord> Tag; // the speaker's player must have this tag
+    public RecordRef<TagRecord> WithoutTag; // ...and not this one
+    public RecordRef<ItemRecord> Item; // and be carrying this
     public int Count = 1;
-    public RecordId Faction;        // and stand at least this well with them
+    public RecordRef<FactionRecord> Faction; // and stand at least this well with them
     public float MinStanding = float.NegativeInfinity;
     public float MaxStanding = float.PositiveInfinity;
 
     // And where they are in a quest. `stage` alone means "on this quest, at this stage"; `finished`
     // means the whole thing is behind them. This is how a conversation remembers what it asked for.
-    public RecordId Quest;
+    public RecordRef<QuestRecord> Quest;
     public string Stage = "";
     public bool Active;
     public bool Finished;
@@ -41,20 +41,20 @@ public sealed class DialogueRequirement
 // reputation that the rest of the game uses.
 public sealed class DialogueOutcome
 {
-    public RecordId GiveItem;
+    public RecordRef<ItemRecord> GiveItem;
     public int GiveCount = 1;
-    public RecordId TakeItem;
+    public RecordRef<ItemRecord> TakeItem;
     // Counted separately from what is given, because the commonest outcome in any game is a trade: one
     // relic for five coins. A single `count` for both made handing over one thing ask for five.
     public int TakeCount = 1;
-    public RecordId Effect;         // applied to the player (a blessing, a curse, a disease)
-    public RecordId Faction;        // and what this does to their name
+    public RecordRef<EffectRecord> Effect; // applied to the player (a blessing, a curse, a disease)
+    public RecordRef<FactionRecord> Faction; // and what this does to their name
     public float Standing;
 
     // Quests: asking for one, and saying it is done (16 §3.5).
-    public RecordId StartQuest;
-    public RecordId FinishQuest;    // reported, done, over
-    public RecordId Quest;          // the one whose stage to set
+    public RecordRef<QuestRecord> StartQuest;
+    public RecordRef<QuestRecord> FinishQuest; // reported, done, over
+    public RecordRef<QuestRecord> Quest; // the one whose stage to set
     public string Stage = "";
 }
 

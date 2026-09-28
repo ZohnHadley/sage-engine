@@ -80,14 +80,14 @@ public class StrictLoadingTests
         var store = fx.Load();
 
         var messages = MessagesAbout(capture, "lines");
-        Assert.Contains("lines:data/items.json:2:40: test_item sandbox:typo: unknown field 'vaule' (typo?)", messages);
+        Assert.Contains("lines:data/items.json:2:40: test_item sandbox:typo: unknown field 'vaule'; did you mean 'value'? (record skipped)", messages);
         Assert.Contains("lines:data/items.json:4:5: test_item sandbox:bad: The JSON value could not be converted to System.Int32. (record skipped)", messages);
         Assert.Contains("lines:data/items.json:6:31: test_item sandbox:deep: The JSON value could not be converted to System.Int32. (record skipped)", messages);
-        Assert.Contains("lines:data/items.json:7:62: test_item sandbox:dangling: 'Spells' refers to sandbox:no_such_spell, which doesn't exist", messages);
+        Assert.Contains("lines:data/items.json:7:62: test_item sandbox:dangling: 'spells' refers to sandbox:no_such_spell, which doesn't exist", messages);
         Assert.Contains("lines:data/items.json:8:5: unknown record type 'no_such_type_lines' (no module registered it); skipped", messages);
         Assert.Contains("lines:data/items.json:9:26: Invalid record id 'Bad Id' (expected [namespace:]name, lower case letters, digits, _ and .)", messages);
         Assert.Contains("lines:data/items.json:10:42: test_item sandbox:orphan: base sandbox:nothing not found (or broken)", messages);
-        Assert.Equal(5, store.ErrorCount);
+        Assert.Equal(6, store.ErrorCount);
     }
 
     [Fact]

@@ -38,6 +38,10 @@ public sealed class PrefabRecord
     public JsonObject? Components;
     public List<string> Tags = new();
     public JsonObject? Parts;
+
+    // Set when content loading checked this body (PrefabChecks, issue #22): what is wrong with it was
+    // said then, at its line, so a spawn says it again only at Debug rather than once per goblin.
+    [System.Text.Json.Serialization.JsonIgnore] public bool CheckedAtLoad { get; set; }
 }
 
 // A prefab part, declared (REDESIGN §3.4, issue #17). The class *is* the part's options: its public
@@ -120,10 +124,10 @@ public readonly struct PrefabPartContext
 // One registered part: its id, its options type, what it runs after and the plugin that registered it.
 public sealed class PrefabPartInfo
 {
-    private readonly Action<PrefabPartInfo, World, Entity, JsonNode?, string> _apply;
+    private readonly Action<PrefabPartInfo, World, Entity, JsonNode?, string, bool> _apply;
 
     internal PrefabPartInfo(string id, Type type, string[] after, string? shorthand, string owner,
-                            Action<PrefabPartInfo, World, Entity, JsonNode?, string> apply)
+                            Action<PrefabPartInfo, World, Entity, JsonNode?, string, bool> apply)
     {
         Id = id;
         Type = type;
@@ -139,8 +143,9 @@ public sealed class PrefabPartInfo
     public string? Shorthand { get; }
     public string Owner { get; }
 
-    internal void Apply(World world, Entity entity, JsonNode? options, string where) =>
-        _apply(this, world, entity, options, where);
+    // `reported`: the load already checked these options (PrefabChecks), so a read failure is Debug.
+    internal void Apply(World world, Entity entity, JsonNode? options, string where, bool reported = false) =>
+        _apply(this, world, entity, options, where, reported);
 }
 
 // The parts the loaded plugins declare, and the one order they are applied in.
@@ -200,16 +205,16 @@ public sealed class PrefabRegistry
         get { foreach (var p in Parts) yield return p.Id; }
     }
 
-    private static void ApplyAs<T>(PrefabPartInfo info, World world, Entity entity, JsonNode? options, string where)
+    private static void ApplyAs<T>(PrefabPartInfo info, World world, Entity entity, JsonNode? options, string where, bool reported)
         where T : class, IPrefabPart, new()
     {
-        var part = Read<T>(world, options, info, where);
+        var part = Read<T>(world, options, info, where, reported);
         part.Apply(new PrefabPartContext(info, world, entity, options, where));
     }
 
     // Reads a part's options as T. An absent or empty body gives the defaults, which is what `{}` means:
     // "yes, this part, nothing to say about it". A bare value fills the declared shorthand field.
-    private static T Read<T>(World world, JsonNode? options, PrefabPartInfo info, string where) where T : class, new()
+    private static T Read<T>(World world, JsonNode? options, PrefabPartInfo info, string where, bool reported) where T : class, new()
     {
         if (options is null) return new T();
         var json = world.Engine?.Records.Json;
@@ -222,7 +227,9 @@ public sealed class PrefabRegistry
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
         {
-            Log.Error(LogCat.Records, $"{where}: prefab part '{info.Id}': {ex.Message}");
+            string message = $"{where}: prefab part '{info.Id}': {ex.Message}";
+            if (reported) Log.Debug(LogCat.Records, message);
+            else Log.Error(LogCat.Records, message);
             return new T();
         }
     }
@@ -255,6 +262,97 @@ public sealed class PrefabRegistry
             throw new InvalidOperationException("Prefab parts name each other in `After` in a cycle: " +
                 string.Join(", ", incoming.Where(kv => kv.Value > 0).Select(kv => kv.Key.Id).OrderBy(id => id, StringComparer.Ordinal)));
         return result;
+    }
+}
+
+// A prefab's body, checked when content loads rather than when the first one spawns (issue #22):
+// every component by id and every field it writes, every tag, every part by id and its options, and
+// every record and asset they name — each error at its file:line:column. A prefab that fails a check
+// still loads, and spawns without what was wrong with it, which is what spawning always did; the
+// difference is that the error arrives with the content, not with the first goblin.
+internal static class PrefabChecks
+{
+    public static void Check(Engine engine, PrefabRecord prefab, RecordCheck check)
+    {
+        prefab.CheckedAtLoad = true;
+        string ns = check.Id.Namespace;
+        var schema = engine.Components;
+        var json = check.Json;
+
+        if (prefab.Components != null)
+            foreach (var (name, fields) in prefab.Components)
+            {
+                string path = JsonMembers.Child("Components", name);
+                if (!schema.TryResolveComponent(name, ns, out var type, out string? error)) { check.Error(path, error); continue; }
+                if (fields is null) continue;
+                if (!check.CheckFields(fields, type.Type, path)) continue;
+                if (Read(fields, type.Type, json, path, check) is { } value) check.CheckValues(value, path);
+            }
+
+        for (int i = 0; i < prefab.Tags.Count; i++)
+            if (!schema.TryResolveTag(prefab.Tags[i], ns, out _, out string? error))
+                check.Error($"Tags[{i}]", error);
+
+        if (prefab.Parts == null) return;
+        foreach (var (name, options) in prefab.Parts)
+        {
+            string path = JsonMembers.Child("Parts", name);
+            if (!engine.Prefabs.TryGet(name, out var part))
+            {
+                // A part only another host has (the client's `audio` on a server) is not a mistake.
+                if (!engine.Prefabs.IsOptional(name))
+                    check.Error(path, $"no prefab part '{name}'" + Spelling.Suggest(name, engine.Prefabs.Names) +
+                                      $" (have: {string.Join(", ", engine.Prefabs.Names)})");
+                continue;
+            }
+            if (options is null) continue;
+
+            // A bare value fills the part's shorthand field ("faction": "beasts"), and is checked there.
+            if (options is not JsonObject && part.Shorthand != null)
+            {
+                var member = part.Type.GetField(part.Shorthand);
+                var value = Read(new JsonObject { [part.Shorthand] = options.DeepClone() }, part.Type, json, path, check);
+                if (value != null && member != null) check.CheckValues(member.GetValue(value), path);
+                continue;
+            }
+            if (!check.CheckFields(options, part.Type, path)) continue;
+            if (Read(options, part.Type, json, path, check) is { } read) check.CheckValues(read, path);
+        }
+    }
+
+    // The type a part's body is read as: the part's options, or its shorthand field's type when the
+    // body is a bare value ("effects": ["x"]).
+    public static Type? BodyType(PrefabRegistry parts, string key, JsonNode? body)
+    {
+        if (!parts.TryGet(key, out var part)) return null;
+        if (body is JsonObject || part.Shorthand == null) return part.Type;
+        return part.Type.GetField(part.Shorthand)?.FieldType;
+    }
+
+    private static object? Read(JsonNode node, Type type, System.Text.Json.JsonSerializerOptions json, string path, RecordCheck check)
+    {
+        try
+        {
+            return node.Deserialize(type, json);
+        }
+        catch (JsonException ex)
+        {
+            // The exception's path is inside the body; the body is at `path` in the record.
+            string inner = ex.Path is { Length: > 1 } p && p.StartsWith('$') ? p[1..] : "";
+            check.Error(path + inner, $"{JsonMembers.Display(path)}: {WithoutPosition(ex.Message)}");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or FormatException)
+        {
+            check.Error(path, $"{JsonMembers.Display(path)}: {ex.Message}");
+        }
+        return null;
+    }
+
+    private static string WithoutPosition(string message)
+    {
+        int at = message.IndexOf(" Path: ", StringComparison.Ordinal);
+        if (at < 0) at = message.IndexOf(" LineNumber: ", StringComparison.Ordinal);
+        return at < 0 ? message : message[..at];
     }
 }
 
@@ -335,16 +433,16 @@ public static class PrefabExtensions
                 // issue #16). An old C# type name is an error that names the id to write instead.
                 if (!schema.TryResolveComponent(name, ns, out var type, out string? error))
                 {
-                    Log.Error(LogCat.Records, $"{where}: {error}");
+                    Said(record, $"{where}: {error}");
                     continue;
                 }
-                schema.Add(entity, type, fields, where);
+                schema.Add(entity, type, fields, where, record.CheckedAtLoad);
             }
         }
 
         foreach (var name in record.Tags)
         {
-            if (!schema.TryResolveTag(name, ns, out var tag, out string? error)) { Log.Error(LogCat.Records, $"{where}: {error}"); continue; }
+            if (!schema.TryResolveTag(name, ns, out var tag, out string? error)) { Said(record, $"{where}: {error}"); continue; }
             var tags = new Tags(tag);
             entity.AddTags(tags);
         }
@@ -362,7 +460,7 @@ public static class PrefabExtensions
             if (!written.Remove(part.Id, out var options)) continue;
             try
             {
-                part.Apply(world, entity, options, where);
+                part.Apply(world, entity, options, where, record.CheckedAtLoad);
             }
             catch (Exception ex)
             {
@@ -378,7 +476,14 @@ public static class PrefabExtensions
             if (engine.Prefabs.IsOptional(name))
                 Log.Debug(LogCat.Records, $"{where}: prefab part '{name}' is not installed here; skipped");
             else
-                Log.Error(LogCat.Records, $"{where}: no prefab part '{name}' (have: {string.Join(", ", engine.Prefabs.Names)})");
+                Said(record, $"{where}: no prefab part '{name}' (have: {string.Join(", ", engine.Prefabs.Names)})");
         }
+    }
+
+    // A problem with the body: an error, unless the load already reported it where it is written.
+    private static void Said(PrefabRecord record, string message)
+    {
+        if (record.CheckedAtLoad) Log.Debug(LogCat.Records, message);
+        else Log.Error(LogCat.Records, message);
     }
 }

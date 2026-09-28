@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace sage_engine;
 
@@ -39,7 +40,8 @@ public static class RecordWorldExtensions
 
 public sealed class RecordStore
 {
-    private static readonly HashSet<string> MetaKeys = new(StringComparer.Ordinal) { "type", "id", "base", "patch", "disabled", "abstract" };
+    // "$schema" is the editor's (a JSON Schema for autocomplete, REDESIGN §4.2), not the record's.
+    private static readonly HashSet<string> MetaKeys = new(StringComparer.Ordinal) { "type", "id", "base", "patch", "disabled", "abstract", "$schema" };
 
     private sealed class RawRecord
     {
@@ -85,6 +87,14 @@ public sealed class RecordStore
             IncludeFields = true,
             ReadCommentHandling = JsonCommentHandling.Skip,
             AllowTrailingCommas = true,
+            // A field the type does not have is an error (issue #22): `"light": {"color": …}` used to be
+            // dropped without a word because the field is `Colour`. The load reports every such field
+            // first, with the nearest real one (JsonMembers); this is the backstop for anything read
+            // with these options that the load did not look at — a prefab body read at spawn.
+            UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+            // Explicit, because the load asks it for types' contracts (GetTypeInfo) and the .NET 8
+            // runtime will not supply a default one (the save bug CI's comment describes).
+            TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
             Converters = { new Vector2JsonConverter(), new Vector3JsonConverter(), new QuaternionJsonConverter(), new EntityJsonConverter(), new JsonStringEnumConverter() },
         };
     }
@@ -94,6 +104,11 @@ public sealed class RecordStore
 
     public int Count => _records.Count;
     public int ErrorCount { get; private set; }
+    public int WarningCount { get; private set; }
+
+    // Whether an asset a record names that is in no mount is an error (`sage validate`) or a warning
+    // (a dev build's load). Shipping does not look: the game has shipped with what it has.
+    public bool MissingAssetsAreErrors { get; set; }
 
     // Raised on the main thread after Load/Reload. Records that still exist keep the same instances
     // (updated in place), so references held by systems stay valid.
@@ -131,14 +146,23 @@ public sealed class RecordStore
         return false;
     }
 
-    // Missing: Ensure fails (once per call site) and a default-constructed placeholder is returned,
-    // so the game keeps running (05 §8).
+    public bool TryGet<T>(RecordRef<T> id, out T record) where T : class => TryGet(id.Id, out record);
+
+    // A record that must be there. Missing is a bug, and a dev build stops on it (issue #22): the
+    // default-constructed placeholder it used to hand back is how a typo became a zero-damage sword.
+    // The placeholder is kept only as Shipping's safety net, and said loudly once per id there, so a
+    // player's game carries on (05 §8). Code that can do without a record asks TryGet.
     public T Get<T>(RecordId id) where T : class, new()
     {
         if (TryGet(id, out T record)) return record;
-        Assert.Ensure(false, $"Record {TypeName<T>()} {id} not found");
+        string type = TypeName<T>();
+        string message = $"no {type} record {id}" + Spelling.Suggest(id.ToString(), Ids(type).Select(i => i.ToString()));
+        if (BuildInfo.IsDevBuild) throw new KeyNotFoundException(message);
+        Log.Once(LogCat.Records, LogLevel.Error, $"missing:{type}:{id}", $"{message}; using a blank one (Shipping carries on)");
         return new T();
     }
+
+    public T Get<T>(RecordRef<T> id) where T : class, new() => Get<T>(id.Id);
 
     public IReadOnlyList<T> All<T>() where T : class
     {
@@ -152,6 +176,11 @@ public sealed class RecordStore
 
     public bool Exists(RecordId id) => _records.Keys.Any(k => k.Id == id);
 
+    public bool Exists(string type, RecordId id) => _records.ContainsKey((type, id));
+
+    // The record type name of a registered record class ("item" for ItemRecord); null if unregistered.
+    public string? TypeNameOf(Type type) => _namesByType.TryGetValue(type, out var n) ? n : null;
+
     private string TypeName<T>() =>
         _namesByType.TryGetValue(typeof(T), out var n) ? n : throw new InvalidOperationException($"{typeof(T).Name} is not a registered record type.");
 
@@ -163,10 +192,12 @@ public sealed class RecordStore
         _vfs = vfs;
         var watch = System.Diagnostics.Stopwatch.StartNew();
         ErrorCount = 0;
+        WarningCount = 0;
         var raw = ReadAndMerge(vfs);
         ResolveBases(raw);
         var built = Build(raw);
         ValidateReferences(built, raw);
+        RunChecks(built, raw);
 
         // Keep existing instances (hot reload): copy new values into them, add new, drop removed.
         var result = new Dictionary<(string, RecordId), object>();
@@ -277,7 +308,7 @@ public sealed class RecordStore
                 if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(idText)) { Error($"{source.At()}: record needs \"type\" and \"id\""); continue; }
                 if (!_typesByName.ContainsKey(type))
                 {
-                    if (warnedTypes.Add(type)) Log.Warn(LogCat.Records, $"{source.At("type")}: unknown record type '{type}' (no module registered it); skipped");
+                    if (warnedTypes.Add(type)) Warn(LogCat.Records, $"{source.At("type")}: unknown record type '{type}' (no module registered it); skipped");
                     continue;
                 }
 
@@ -309,7 +340,7 @@ public sealed class RecordStore
             {
                 if (isPatch)
                 {
-                    Log.Warn(LogCat.Records, $"{source.At()}: patch for {type} {id}, which isn't defined (yet) in load order; skipped");
+                    Warn(LogCat.Records, $"{source.At()}: patch for {type} {id}, which isn't defined (yet) in load order; skipped");
                     continue;
                 }
                 var record = new RawRecord { Id = id, Type = type, Fields = new JsonObject(), DefinedIn = file, Source = source };
@@ -477,10 +508,13 @@ public sealed class RecordStore
         {
             if (record.Abstract) continue;   // templates: bases only
             var clr = _typesByName[record.Type];
-            var known = SettableMembers(clr).Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var (field, _) in record.Fields)
-                if (!known.Contains(field))
-                    Log.Warn(LogCat.Records, $"{record.At(field)}: {record.Type} {record.Id}: unknown field '{field}' (typo?)");
+            // Every field the type hasn't got, at any depth, each where it is written (issue #22). A
+            // record with one is skipped like any other that doesn't read: its author meant something
+            // by that field, and a record built without it is not the record they wrote.
+            var unknown = JsonMembers.Find(record.Fields, clr, _json);
+            foreach (var field in unknown)
+                Error($"{record.At(field.Path)}: {record.Type} {record.Id}: {field.Message} (record skipped)");
+            if (unknown.Count > 0) continue;
 
             RecordParseContext.Namespace = record.Id.Namespace;
             try
@@ -505,49 +539,129 @@ public sealed class RecordStore
         return built;
     }
 
-    // References to other records (RecordId fields, and lists/arrays of them) must exist (05 §3.5).
+    // References to other records must exist (05 §3.5), and a RecordRef<T> must name a record of *its*
+    // type (issue #22); asset paths must name a file some mount has. At any depth: a list of objects
+    // holding ids is checked like a field holding one.
     private void ValidateReferences(Dictionary<(string, RecordId), object> built, Dictionary<(string, RecordId), RawRecord> raw)
     {
         var ids = built.Keys.Select(k => k.Item2).ToHashSet();
         foreach (var (key, record) in built)
-        {
-            foreach (var member in SettableMembers(record.GetType()))
-            {
-                object? value = member is FieldInfo f ? f.GetValue(record) : ((PropertyInfo)member).GetValue(record);
-                foreach (var (reference, index) in References(value))
-                    if (!reference.IsEmpty && !ids.Contains(reference))
-                    {
-                        string path = index < 0 ? member.Name : $"{member.Name}[{index}]";
-                        Error($"{raw[key].At(path)}: {key.Item1} {key.Item2}: '{member.Name}' refers to {reference}, which doesn't exist");
-                    }
-            }
-        }
+            CheckValues(record, "", built, ids, path => raw[key].At(path), $"{key.Item1} {key.Item2}");
+    }
 
-        // With its position in a list, so the error lands on the entry (-1: not in a list).
-        static IEnumerable<(RecordId, int)> References(object? value)
+    // The references and asset paths inside `value`, which was read from content: each problem is
+    // reported at `at(path)` and prefixed with `what` (the record).
+    private void CheckValues(object? value, string prefix, Dictionary<(string, RecordId), object> built, HashSet<RecordId> ids,
+                             Func<string, string> at, string what)
+    {
+        foreach (var (path, found) in ContentValues.Find(value, _json, prefix))
         {
-            if (value is RecordId id) yield return (id, -1);
-            else if (value is IEnumerable list and not string)
+            string field = JsonMembers.Display(path);
+            switch (found)
             {
-                int i = 0;
-                foreach (var item in list)
+                case IRecordRef reference when !reference.Id.IsEmpty:
                 {
-                    if (item is RecordId r) yield return (r, i);
-                    i++;
+                    // A reference to a type this app has not registered (a client record in a headless
+                    // server) cannot be checked, and is not wrong for being unreadable here.
+                    string? type = TypeNameOf(reference.Target);
+                    if (type == null || built.ContainsKey((type, reference.Id))) break;
+                    var other = built.Keys.Where(k => k.Item2 == reference.Id).Select(k => k.Item1).OrderBy(t => t, StringComparer.Ordinal).ToList();
+                    Error($"{at(path)}: {what}: '{field}' refers to {type} {reference.Id}, which doesn't exist" +
+                          (other.Count > 0 ? $" ({reference.Id} is {Article(other[0])} {string.Join(" and ", other)})"
+                                           : Spelling.Suggest(reference.Id.ToString(), built.Keys.Where(k => k.Item1 == type).Select(k => k.Item2.ToString()))));
+                    break;
                 }
+                case RecordId id when !id.IsEmpty && !ids.Contains(id):
+                    Error($"{at(path)}: {what}: '{field}' refers to {id}, which doesn't exist");
+                    break;
+                case AssetPath asset when !asset.IsEmpty:
+                    CheckAsset(asset, at(path), what, field);
+                    break;
             }
         }
     }
+
+    private static string Article(string word) => "aeiou".Contains(char.ToLowerInvariant(word[0])) ? "an" : "a";
+
+    private void CheckAsset(AssetPath asset, string where, string what, string field)
+    {
+        if (_vfs == null || (!BuildInfo.IsDevBuild && !MissingAssetsAreErrors)) return;
+        if (AssetChecks.Exists(_vfs, asset.Path)) return;
+        string message = $"{where}: {what}: '{field}' names {asset}, which is in no mount";
+        if (MissingAssetsAreErrors) Error(message);
+        // A compiled shader missing from a build made without them (SageSkipShaders) is the shader
+        // pipeline's news, and already said in that category.
+        else Warn(AssetChecks.IsCompiledShader(asset.Path) ? LogCat.Shaders : LogCat.Records, message);
+    }
+
+    // ---- Checks a plugin adds ---------------------------------------------------------------------
+
+    private readonly Dictionary<Type, List<Action<object, RecordCheck>>> _checks = new();
+    private Dictionary<(string, RecordId), object>? _checking;
+    private HashSet<RecordId>? _checkingIds;
+
+    // A check for one record type, run at every load once all records are built (issue #22): what a
+    // record means beyond its fields' types — a prefab's components and parts, an AI schedule's task
+    // names — found at load, at its line, rather than when something first uses it. Added in a
+    // plugin's Init, before content loads. A check reports through `RecordCheck`; it never skips the
+    // record (a prefab with one bad part still spawns without it).
+    public void AddCheck<T>(Action<T, RecordCheck> check) where T : class
+    {
+        if (!_checks.TryGetValue(typeof(T), out var list)) _checks[typeof(T)] = list = new();
+        list.Add((record, context) => check((T)record, context));
+    }
+
+    private void RunChecks(Dictionary<(string, RecordId), object> built, Dictionary<(string, RecordId), RawRecord> raw)
+    {
+        if (_checks.Count == 0) return;
+        _checking = built;
+        _checkingIds = built.Keys.Select(k => k.Item2).ToHashSet();
+        try
+        {
+            foreach (var (key, record) in built.OrderBy(kv => kv.Key.Item1, StringComparer.Ordinal).ThenBy(kv => kv.Key.Item2.ToString(), StringComparer.Ordinal))
+            {
+                if (!_checks.TryGetValue(record.GetType(), out var checks)) continue;
+                var context = new RecordCheck(this, key.Item1, key.Item2, raw[key].At);
+                foreach (var check in checks)
+                {
+                    string? outer = RecordParseContext.Namespace;
+                    RecordParseContext.Namespace = key.Item2.Namespace;
+                    try { check(record, context); }
+                    catch (Exception ex) when (ex is not OutOfMemoryException)
+                    {
+                        Error($"{raw[key].Source.At()}: {key.Item1} {key.Item2}: a check failed: {ex.Message}");
+                    }
+                    finally { RecordParseContext.Namespace = outer; }
+                }
+            }
+        }
+        finally
+        {
+            _checking = null;
+            _checkingIds = null;
+        }
+    }
+
+    // For RecordCheck: while checks run, "exists" means in the set being loaded.
+    internal bool ExistsWhileChecking(string? type, RecordId id) =>
+        type == null ? (_checkingIds?.Contains(id) ?? Exists(id))
+                     : (_checking?.ContainsKey((type, id)) ?? Exists(type, id));
+
+    internal void CheckValuesWhileChecking(object? value, string path, Func<string, string> at, string what) =>
+        CheckValues(value, path, _checking ?? _records, _checkingIds ?? _records.Keys.Select(k => k.Id).ToHashSet(), at, what);
+
+    internal void ReportError(string message) => Error(message);
+    internal void ReportWarning(string message) => Warn(LogCat.Records, message);
 
     // Rewrites every bare RecordId inside `node` to `ns:id`, guided by the record type's own fields so
     // that only ids are affected. Runs for an inherited record whose base is in another namespace, and
     // for a record written in a file of another namespace (a patch, R11), so it builds fresh nodes
     // rather than trying to re-parent the originals.
-    private static JsonNode? Qualify(JsonNode? node, Type type, string ns)
+    private JsonNode? Qualify(JsonNode? node, Type type, string ns)
     {
         if (node == null) return null;
 
-        if (type == typeof(RecordId))
+        if (IsReference(type))
         {
             if (node.GetValueKind() != JsonValueKind.String) return node.DeepClone();
             string? text = (string?)node;
@@ -574,12 +688,34 @@ public sealed class RecordStore
                 var member = valueType != null ? null
                     : SettableMembers(type).FirstOrDefault(m => string.Equals(m.Name, memberName, StringComparison.OrdinalIgnoreCase));
                 var memberType = valueType ?? (member == null ? null : MemberType(member));
+                // A body whose shape depends on its key (a prefab's components and parts): each entry
+                // is qualified as the type its key names, when a plugin has said how to find it.
+                if (member != null && value is JsonObject bodies && _bodies.TryGetValue((type, member.Name), out var typeOf))
+                {
+                    var qualified = new JsonObject();
+                    foreach (var (key, body) in bodies)
+                        qualified[key] = typeOf(key, body, ns) is { } bodyType ? Qualify(body, bodyType, ns) : body?.DeepClone();
+                    result[name] = qualified;
+                    continue;
+                }
                 result[name] = memberType == null ? value?.DeepClone() : Qualify(value, memberType, ns);
             }
             return result;
         }
         return node.DeepClone();
     }
+
+    private readonly Dictionary<(Type, string), Func<string, JsonNode?, string, Type?>> _bodies = new();
+
+    // For a record field that maps a key to a body whose type the key decides — a prefab's
+    // "components" and "parts" — how to find that type: `typeOf(key, body, fileNamespace)`, null when
+    // it can't be told. With it, bare ids inside those bodies are qualified like the record's own
+    // fields when a patch or a base comes from another namespace (R11, issue #22).
+    public void AddBodyTypes<T>(string member, Func<string, JsonNode?, string, Type?> typeOf) where T : class =>
+        _bodies[(typeof(T), member)] = typeOf;
+
+    private static bool IsReference(Type type) =>
+        type == typeof(RecordId) || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(RecordRef<>));
 
     private static Type? ElementType(Type type) =>
         type.IsArray ? type.GetElementType()
@@ -630,6 +766,12 @@ public sealed class RecordStore
         Log.Error(LogCat.Records, message);
     }
 
+    private void Warn(LogCat category, string message)
+    {
+        WarningCount++;
+        Log.Warn(category, message);
+    }
+
     // ---- Tools ------------------------------------------------------------------------------------
 
     // The merged record as JSON plus the file each top-level field came from (rec_get).
@@ -650,6 +792,12 @@ public sealed class RecordStore
         }
         return null;
     }
+
+    // Where a loaded record, or a field inside it ("Tasks[2]"), is written: "game:data/ai.json:14:9".
+    // For problems found after the load — a task name only a world's registry can judge — so they point
+    // at a line like the load's own errors do. The bare id when the record came from no file.
+    public string Where(string type, RecordId id, string? path = null) =>
+        _raw.TryGetValue((type, id), out var raw) ? raw.At(path) : id.ToString();
 
     public string Describe(string type, RecordId id)
     {

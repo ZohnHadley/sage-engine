@@ -477,7 +477,9 @@ public class AITests
         using var capture = new CaptureSink();
         Tick(world, 5);
 
-        Assert.Contains(capture.Entries, e => e.Message == "sage:idle: task 'Wait' takes 'seconds', not 'distance'; the schedule stops here");
+        // Where the step is written, like a load error (issue #22).
+        Assert.Contains(capture.Entries, e => e.Message.EndsWith(": ai_schedule sage:idle: task 'Wait' takes 'seconds', not 'distance'; the schedule stops here") &&
+                                              e.Message.StartsWith("engine:data/"));
         Assert.Equal(Vector2.Zero, world.Get<PawnIntent>(creature).Move);
     }
 }

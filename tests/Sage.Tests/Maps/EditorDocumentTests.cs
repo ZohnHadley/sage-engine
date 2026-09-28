@@ -88,7 +88,7 @@ public class EditorDocumentTests
             Assert.True(second.Records.TryGet(new RecordId("sandbox", "yard"), out PlacementsRecord record));
             var placement = Assert.Single(record.Place);
             Assert.Equal(new Vector3(7, 3, 2), placement.At);
-            Assert.Equal(new RecordId("sandbox", "post"), placement.Prefab);
+            Assert.Equal(new RecordId("sandbox", "post"), placement.Prefab.Id);
             Assert.Equal("corner", placement.Name);
         }
     }
