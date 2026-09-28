@@ -335,6 +335,13 @@ What the generator emits:
    - a `RecordRef<T>` to an unregistered type;
    - a public component field without a `[Property]`/`[Transient]` decision, when strict mode is on.
 
+   As built (issue #19): SAGE0020 (a registration written in `Start`, `OnWorldCreated`, `CreateRules` or
+   a system), SAGE0021/0022 (what the generators left unchecked: an empty record type or resource name,
+   an `[Upgrade]` nothing runs), SAGE0023 (strict saves, `<SageStrictSaves>`) and SAGE0024 (a MonoGame
+   type in a `<SageSimulationOnly>` project); `[SavedResource]` without a plugin was already SAGE0001.
+   The `RecordRef<T>` check waits on #22. Every id is listed in MAKING_A_GAME §10a
+   (test: RegisteringACvarInStartIsABuildError).
+
 The ids are **namespaced strings**, so two mods each defining `Health` no longer silently overwrite each
 other (`ComponentSchema.cs:39`).
 

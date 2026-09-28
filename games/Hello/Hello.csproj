@@ -11,6 +11,8 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <RootNamespace>Hello</RootNamespace>
+    <!-- The simulation half: a MonoGame type here is a build error (SAGE0024). -->
+    <SageSimulationOnly>true</SageSimulationOnly>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 

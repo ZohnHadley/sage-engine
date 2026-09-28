@@ -5,6 +5,8 @@
   -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
+    <!-- Belt and braces: MonoGame is not referenced at all, and SAGE0024 would name any use. -->
+    <SageSimulationOnly>true</SageSimulationOnly>
   </PropertyGroup>
 
   <ItemGroup>
