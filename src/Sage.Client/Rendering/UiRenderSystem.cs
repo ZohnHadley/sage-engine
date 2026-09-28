@@ -7,6 +7,7 @@ namespace sage_engine;
 
 // Overlay phase (docs/design/13 §3): draws whatever was queued into UiDraw this frame, plus the
 // crosshair, and clears the queue. One SpriteBatch, one pass, after the world and before the dev UI.
+[System("sage.client.ui", Phase.Overlay)]
 internal sealed class UiRenderSystem : ISystem
 {
     private readonly UiDraw _ui;

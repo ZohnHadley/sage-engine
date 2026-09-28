@@ -143,6 +143,7 @@ public struct Melee : IComponent
 // Gameplay phase, before effects tick: turns "the Attack action was pressed" into a hit, for players
 // and creatures alike (16 §3.1 — the payoff of the controller/pawn split is that combat never asks
 // which one it is dealing with).
+[System("sage.combat.melee", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
 public sealed class MeleeCombatSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController, Melee> _fighters;

@@ -26,14 +26,12 @@ public sealed class SandboxModule : IGameModule
         // SceneRecord needs no call here: [Record("scene")] is registered by generated code, and this
         // assembly's one plugin owns it (issue #16).
 
-        // What a game adding to prefabs looks like (05 "As built (prefabs)"). `hop` is a toy that has
-        // to read where the thing was placed, so it belongs to the simulation. `box_mesh` builds a
-        // mesh at run time, which needs the renderer, so it lives in Sandbox.Client — here the
-        // simulation only says that going without it is fine, which is what a dedicated server does.
+        // What a game adding to prefabs looks like (05 "As built (prefabs)"): `hop` is declared below
+        // (HopPart) and needs no call. `box_mesh` builds a mesh at run time, which needs the renderer,
+        // so it lives in Sandbox.Client — here the simulation only says that going without it is
+        // fine, which is what a dedicated server does.
         ctx.Engine.Prefabs.Optional("box_mesh");
-        ctx.Engine.Prefabs.Optional("audio");     // the client registers it (11 §3); headless has no ears
-        ctx.Engine.Prefabs.Register("hop", (world, entity, _, _) =>
-            world.Add(entity, new Hop { BaseY = world.Get<Transform>(entity).LocalPosition.Y }));
+        ctx.Engine.Prefabs.Optional("audio");     // the client declares it (11 §3); headless has no ears
     }
 
 
@@ -52,10 +50,10 @@ public sealed class SandboxModule : IGameModule
         terrain.Seed = 1;
         terrain.Load(SectorCoord.Zero);
 
-        world.AddSystem(new HopSystem(world, _jump), Phase.Gameplay);
-        world.AddSystem(new TriggerLogSystem(world), Phase.PostPhysics);
-        world.AddSystem(new CombatLogSystem(world), Phase.Late);
-        world.AddSystem(new FaceCameraSystem(world), Phase.Gameplay);
+        world.AddSystem(new HopSystem(world, _jump));
+        world.AddSystem(new TriggerLogSystem(world));
+        world.AddSystem(new CombatLogSystem(world));
+        world.AddSystem(new FaceCameraSystem(world));
         _worlds.Add(world);
         Spawn(world);
     }
@@ -188,9 +186,19 @@ public struct Hop : IComponent
     public float Velocity;
 }
 
+// "hop": {} — a toy that has to read where the thing was placed, so it is a part and belongs to the
+// simulation: the ground it bounces back to is wherever the scene put it.
+[PrefabPart("hop")]
+public sealed class HopPart : IPrefabPart
+{
+    public void Apply(in PrefabPartContext ctx) =>
+        ctx.World.Add(ctx.Entity, new Hop { BaseY = ctx.World.Get<Transform>(ctx.Entity).LocalPosition.Y });
+}
+
 // Gameplay phase (Fixed): Jump (from the tick's PlayerCommand, never from the keyboard) launches
 // every hopping entity that is on the ground. A tap shorter than a tick still counts: the command
 // latches presses between ticks (08 §3.4).
+[System("sandbox.hop", Phase.Gameplay)]
 public sealed class HopSystem : ISystem
 {
     private const float LaunchSpeed = 3.5f, Gravity = -12f;
@@ -229,6 +237,7 @@ public sealed class HopSystem : ISystem
 // Gameplay phase (Fixed): turns FacesCamera entities towards the active camera. Running at the tick
 // rate and drawn interpolated, it also shows the loop at work: try `sim_tickrate 5`.
 // (Sprite billboarding proper is a renderer job; docs/design/06 §3.8.)
+[System("sandbox.face_camera", Phase.Gameplay)]
 public sealed class FaceCameraSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform> _facing;
@@ -252,6 +261,7 @@ public sealed class FaceCameraSystem : ISystem
 
 // PostPhysics: says what fell through the trigger volume (10 §3). Once the event bus exists (04) this
 // becomes a TriggerEntered event instead of reading the space's lists.
+[System("sandbox.trigger_log", Phase.PostPhysics)]
 public sealed class TriggerLogSystem : ISystem
 {
     private readonly PhysicsSpace _space;
@@ -276,6 +286,7 @@ public sealed class TriggerLogSystem : ISystem
 //
 // It reads the same Damaged events the death seam does, with its own cursor (04 §3.2): two readers
 // of one queue, neither aware of the other, and no rule about which phase has to run first.
+[System("sandbox.combat_log", Phase.Late)]
 public sealed class CombatLogSystem : ISystem
 {
     private readonly EventReader<Damaged> _damage;

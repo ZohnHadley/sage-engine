@@ -96,15 +96,15 @@ Not every record comes from a file. A spell the player composed in the spellmake
 
 ### As built (prefabs, 2026-09-23 — F31)
 
-- **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabRegistry`,
-  `world.Spawn`), `ComponentSchema.cs` (components and tags by name),
-  `src/Sage.Engine/Gameplay/PrefabParts.cs` (the parts the engine's modules register). Tests in
-  `tests/Sage.Tests/Gameplay/PrefabTests.cs`.
+- **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabPartAttribute`,
+  `PrefabRegistry`, `world.Spawn`), `ComponentSchema.cs` (components and tags by name),
+  `src/Sage.Engine/Gameplay/PrefabParts.cs` (the parts the engine's plugins declare). Tests in
+  `tests/Sage.Tests/Gameplay/PrefabTests.cs` and `PrefabPartTests.cs`.
 - **A prefab is a record**, so `base` inheritance, per-field patching, load order, validation and hot
   reload all come from §3.5 for nothing. A `goblin_chief` can `base` a `goblin` and override one
   field of one component, because the merge runs on the JSON tree before anything is deserialized.
 - **Its body is two halves.** `"components"` is component data by type name, applied as written.
-  `"parts"` are named setups a **module registered** — for the cases that are not one component.
+  `"parts"` are named setups a **plugin declared** — for the cases that are not one component.
 
   ```json
   { "type": "prefab", "id": "goblin", "base": "creature", "name": "goblin",
@@ -118,9 +118,9 @@ Not every record comes from a file. A spell the player composed in the spellmake
   a controller, an intent and a pawn that have to agree about radius, height and layer, so it is a
   part `CharacterModule` owns. The test is whether a game could get it wrong by writing the components
   itself: if yes, it is a part. This is what stops the record becoming the god-object the Sandbox's
-  `spawn` record was — **adding a feature registers a part, it does not edit this record.**
-- **Games and mods register their own** in their module's `Init`:
-  `ctx.Engine.Prefabs.Register("loot", (world, entity, options, where) => …)`.
+  `spawn` record was — **adding a feature declares a part, it does not edit this record.**
+- **Games and mods declare their own** the same way the engine does (see "As built (declared parts)"
+  below): `[PrefabPart("loot")] public sealed class LootPart : IPrefabPart { … }`.
 - **Component names come from the ECS schema**, which Friflo builds by scanning loaded assemblies, so
   a component type is addressable the moment it is declared — nothing to register, and a game's own
   components work. The schema is read on **first use**, never when the `Engine` is constructed, because
@@ -129,9 +129,8 @@ Not every record comes from a file. A spell the player composed in the spellmake
   same rule record fields follow. The pipeline qualifies its own fields at merge time (review #56) but
   cannot see inside a component body, whose shape isn't known until the component type is, so `Populate`
   sets the parse namespace around the whole build.
-- **Order:** components, then tags, then parts in the order their modules registered them (module
-  dependency order), so `character` has built the body before `melee` hangs an attack on it. The
-  placement transform is set **before** the body (parts read it — `character` seeds the pawn's yaw
+- **Order:** components, then tags, then parts in the registry's declared order (below; until issue
+  #17 it was the order modules registered them). The placement transform is set **before** the body (parts read it — `character` seeds the pawn's yaw
   from it, review #43) **and again after**, so a prefab may carry a `Transform` for a scale it always
   wants without deciding where this one went.
 - **Failure is local.** An unknown component, tag or part costs that one thing and says so with the
@@ -148,10 +147,59 @@ Not every record comes from a file. A spell the player composed in the spellmake
   character" behind it) is gone; the Sandbox now has a four-field `scene` record of placements and
   calls `world.Spawn` once. The Daggerfall importer emits `prefab` records instead of game-shaped
   ones, and adds its placements with a **patch** (`"place+"`) on the scene it does not own — which is
-  §3.5's list-append doing exactly the job it was designed for. The Sandbox registers two parts of
+  §3.5's list-append doing exactly the job it was designed for. The Sandbox declares two parts of
   its own, `box_mesh` (it needs the renderer, which is client-side) and `hop`.
 - **Not done here:** placement/map files and overrides per placed entity (F27 §3.4), "revert to
   prefab" in the editor (15), and nested prefabs. A `scene` record is a game's own until then.
+
+### As built (declared parts, 2026-09-28 — issue #17)
+
+Parts used to be string-keyed delegates (`Prefabs.Register("light", PrefabParts.Light)`) whose options
+were private classes, so no tool could list them; they ran in module registration order, and a name
+registered twice was replaced with a warning. Now a part is a declaration, like a record type
+(REDESIGN §3.4):
+
+```csharp
+[PrefabPart("pickup", Plugin = "sage.gameplay.items", After = new[] { "sprite", "body" })]
+public sealed class PickupPart : IPrefabPart
+{
+    public RecordId Item;
+    public int Count = 1;
+    public void Apply(in PrefabPartContext ctx) { … }
+}
+```
+
+- **The class is the options.** Its public fields are what a prefab may write under the part's key,
+  read into a new instance for every entity (case-insensitively, with the record JSON options, so
+  bare ids resolve in the prefab's namespace as before). `ent_types` lists every part with its fields,
+  its plugin and its `After` (test: EntTypesListsEachPartWithItsOptions). `Shorthand = "Id"` lets a
+  bare value stand for the object — `"faction": "beasts"` (test: ABareValueFillsTheShorthandField).
+- **Registered by generated code** for the owning plugin, just before that plugin's `Init`
+  (`src/Sage.Generators/PartGenerator.cs`, a second `IGeneratedRegistrations` beside the records'
+  one). `Plugin = "id"`, or the assembly's only `[Plugin]`; otherwise `SAGE0010`. A part type that is
+  not an `IPrefabPart`, has no public parameterless constructor or is private is `SAGE0011`; two
+  parts with one id in an assembly is `SAGE0012`. Every part the engine and the Sandbox ship is
+  declared this way, by the plugin it belongs to (test: EveryPartInTheSandboxIsDeclaredByItsPlugin).
+- **Order, decided and written down:** a part runs after the parts its `After` names, and otherwise in
+  id order (a stable topological sort, `PrefabRegistry.Parts`). Not JSON order — a `base` prefab's parts
+  merge in ahead of the child's, so the order a file shows is an accident of inheritance — and not
+  module order, which moved whenever a game turned a plugin off (test:
+  PartsRunInTheirDeclaredOrderNotTheOrderTheyAreWritten). The engine's constraints are the real ones:
+  `effects` after `attributes` (an effect never adds the components it changes) and `pickup` after
+  `sprite` and `body` (it adds its own only when there are none). An `After` naming a part that is not
+  installed is no constraint; a cycle is an error when the order is first needed (test:
+  PartsThatWaitForEachOtherAreAnError).
+- **One id, one part.** A second registration of an id is an exception naming both types and plugins
+  (test: TwoPartsWithOneIdAreAnError).
+- **State a part needs** comes from its context, not a module's fields: `ctx.Get<T>()` returns a
+  service under the part's plugin's `ModuleContext.Get` rule (test:
+  APartGetsServicesFromItsContextUnderItsPluginsRules). The Sandbox's `box_mesh` gets the renderer this
+  way, where it used to close over a `_renderer` its module set in `Start`. `ctx.Error`/`ctx.Warn`
+  prefix the prefab and the part, which every part used to spell out by hand.
+- `Prefabs.Optional(name)` is unchanged: the simulation half declares that a client-only part may be
+  missing headless.
+- **Not done here:** namespaced part ids (`sage:light`, as REDESIGN §3.4 sketches) — ids stay the keys
+  prefabs already write — and generated metadata or schemas for the options (#18, #21).
 
 ### As built (asset hot reload, 2026-09-23 — part of F32)
 

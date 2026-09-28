@@ -10,6 +10,7 @@ namespace sage_engine;
 // Perception and schedule choice run at the profile's think rate (a few times a second), staggered by
 // entity id so a crowd doesn't think on the same tick. The current task runs every tick, because it
 // writes PawnIntent and the character controller consumes that every tick.
+[System("sage.ai.think", Phase.Commands, After = new[] { "sage.character.player_control" })]
 public sealed class AIThinkSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, AIState, PawnIntent> _agents;

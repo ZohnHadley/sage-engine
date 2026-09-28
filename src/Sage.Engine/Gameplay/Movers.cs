@@ -36,6 +36,7 @@ public struct Mover : IComponent
 }
 
 // Moves what has to move, and says when it arrives.
+[System("sage.movers.move", Phase.Gameplay)]
 internal sealed class MoverSystem : ISystem
 {
     private readonly World _world;
@@ -120,22 +121,11 @@ public sealed class MoverModule : IModule
             Set(world, io.Self, direction);
         });
 
-        // A mover a game wants placed by hand rather than drawn in a map: `"mover": { "open": [0, 3, 0],
-        // "seconds": 1.5 }` on a prefab.
-        ctx.Engine.Prefabs.Register("mover", (world, entity, options, where) =>
-        {
-            var o = PrefabParts.Read<MoverOptions>(world, options, "mover", where);
-            world.Add(entity, new Mover
-            {
-                OpenOffset = o.Open,
-                Seconds = o.Seconds <= 0f ? 1f : o.Seconds,
-                CloseAfter = o.CloseAfter,
-                Closed = entity.GetComponent<Transform>().LocalPosition,
-            });
-        });
+        // A mover a game wants placed by hand rather than drawn in a map is the `mover` prefab part
+        // (MoverPart below), which this plugin declares.
     }
 
-    public void OnWorldCreated(World world) => world.AddSystem(new MoverSystem(world), Phase.Gameplay);
+    public void OnWorldCreated(World world) => world.AddSystem(new MoverSystem(world));
 
     private static void Set(World world, Entity entity, sbyte direction)
     {
@@ -158,13 +148,23 @@ public sealed class MoverModule : IModule
 
         mover.Direction = direction;
     }
+}
 
-#pragma warning disable CS0649 // options filled by JsonSerializer from a prefab, never assigned in code
-    private sealed class MoverOptions
+// A mover a game wants placed by hand rather than drawn in a map: `"mover": { "open": [0, 3, 0],
+// "seconds": 1.5 }` on a prefab. Closed is wherever it was placed, which is why it reads the transform
+// (Spawn places the entity before any part runs).
+[PrefabPart("mover", Plugin = "sage.gameplay.movers")]
+public sealed class MoverPart : IPrefabPart
+{
+    public Vector3 Open;               // where "open" is, relative to where it was placed
+    public float Seconds = 1f;
+    public float CloseAfter;           // > 0: shuts itself this long after opening
+
+    public void Apply(in PrefabPartContext ctx) => ctx.World.Add(ctx.Entity, new Mover
     {
-        public Vector3 Open;
-        public float Seconds = 1f;
-        public float CloseAfter;
-    }
-#pragma warning restore CS0649
+        OpenOffset = Open,
+        Seconds = Seconds <= 0f ? 1f : Seconds,
+        CloseAfter = CloseAfter,
+        Closed = ctx.Entity.GetComponent<Transform>().LocalPosition,
+    });
 }

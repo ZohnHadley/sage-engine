@@ -16,6 +16,7 @@ namespace sage_engine;
 // **One mesh per texture, not per brush.** A `MeshRenderer` holds one material and `CreateMesh` makes
 // one part, so a room of two hundred brushes sharing four textures becomes four draws rather than two
 // hundred. Brushes are static, so there is nothing to keep separate.
+[System("sage.client.map_mesh", Phase.FrameUpdate)]
 internal sealed class MapMeshSystem : ISystem
 {
     private readonly World _world;

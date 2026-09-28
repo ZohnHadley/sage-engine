@@ -1,7 +1,10 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using System.Reflection;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Friflo.Engine.ECS;
 
@@ -16,11 +19,11 @@ namespace sage_engine;
 // override one field of one component. Its body is two halves:
 //
 //   "components": component data by type name, applied as written (09 §3.1);
-//   "parts":      named setups a module registered, for the things that are not one component.
+//   "parts":      named setups a plugin declared ([PrefabPart]), for the things that are not one component.
 //
 // The split is the honest one. A `SpriteRenderer` is data. "Make this a character" is a collider, a
 // controller, an intent and ground state that have to agree, so it is a part `PhysicsModule` owns —
-// and adding a feature means registering a part, not editing this record.
+// and adding a feature means declaring a part, not editing this record.
 //
 //   { "type": "prefab", "id": "goblin", "name": "goblin",
 //     "components": { "SpriteRenderer": { "sheet": "sage:goblin", "size": [1.6, 1.9] } },
@@ -36,21 +39,121 @@ public sealed class PrefabRecord
     public JsonObject? Parts;
 }
 
-// A named setup a module knows how to apply. `Name` is the key under "parts"; `options` is whatever
-// was written there, which may be any JSON the part cares to read (an object, a list, or `{}`).
+// A prefab part, declared (REDESIGN §3.4, issue #17). The class *is* the part's options: its public
+// fields are what a prefab may write under the part's key, so the inspector, a schema and `ent_types`
+// can list them, where the old string-keyed delegates hid their options in private classes.
+//
+//   [PrefabPart("light", Plugin = "sage.gameplay.lights")]
+//   public sealed class LightPart : IPrefabPart
+//   {
+//       public Vector3 Colour = Vector3.One;
+//       public float Range = 8f;
+//       public void Apply(in PrefabPartContext ctx) => ctx.World.Add(ctx.Entity, new PointLight { … });
+//   }
+//
+// Sage.Generators registers it for its plugin just before that plugin's Init, like a [Record]. A new
+// instance is read from the prefab's JSON for every entity it is applied to, so Apply may treat its own
+// fields as this entity's options and nothing else. What a part needs beyond them — the renderer, a
+// cvar — it asks `ctx.Get<T>()` for at Apply time, under the same rule as `ModuleContext.Get`, rather
+// than capturing a module's fields (box_mesh used to close over a `_renderer` set in Start).
 public interface IPrefabPart
 {
-    string Name { get; }
-    void Apply(World world, Entity entity, JsonNode? options, string where);
+    void Apply(in PrefabPartContext ctx);
 }
 
-// The parts every module has registered, in registration order — which is module dependency order
-// (01 §3.1), so physics has made a character before gameplay hangs an attack on it.
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class PrefabPartAttribute : Attribute
+{
+    public PrefabPartAttribute(string id) { Id = id; }
+
+    // The key a prefab writes under "parts". One id, one part: a second is an error (issue #17).
+    public string Id { get; }
+
+    // The plugin that registers it; inferred when the assembly has one [Plugin] (SAGE0011).
+    public string? Plugin { get; set; }
+
+    // Parts that must have been applied first, by id: `pickup` checks for a sprite and a collider and
+    // only adds its own when there are none. Parts otherwise run in id order (see PrefabRegistry).
+    public string[] After { get; set; } = Array.Empty<string>();
+
+    // A field a bare value fills: `"faction": "beasts"` is `"faction": { "id": "beasts" }` when this is
+    // "Id". A part that takes one value should not make every prefab write an object for it.
+    public string? Shorthand { get; set; }
+}
+
+// What a part is applying to, and where to report trouble.
+public readonly struct PrefabPartContext
+{
+    private readonly PrefabPartInfo _part;
+
+    internal PrefabPartContext(PrefabPartInfo part, World world, Entity entity, JsonNode? options, string where)
+    {
+        _part = part;
+        World = world;
+        Entity = entity;
+        Options = options;
+        Where = where;
+    }
+
+    public World World { get; }
+    public Entity Entity { get; }
+
+    // The prefab's id, for messages ("sandbox:goblin").
+    public string Where { get; }
+
+    // What the prefab wrote, as written. Rarely needed: the part's own fields already hold it.
+    public JsonNode? Options { get; }
+
+    public string Part => _part.Id;
+
+    // A service the part's plugin may use: one the host provides, or one from a plugin it depends on
+    // (ModuleContext.Get's rule, 01 §4). Services from Start exist by the time any prefab is spawned.
+    public T Get<T>() where T : class => World.Engine is { } engine
+        ? engine.Modules.GetService<T>(_part.Owner)
+        : throw new InvalidOperationException($"{Where}: prefab part '{Part}' asked for {typeof(T).Name} in a world with no engine");
+
+    public void Error(string message) => Log.Error(LogCat.Records, $"{Where}: {Part}: {message}");
+    public void Warn(string message) => Log.Warn(LogCat.Records, $"{Where}: {Part}: {message}");
+}
+
+// One registered part: its id, its options type, what it runs after and the plugin that registered it.
+public sealed class PrefabPartInfo
+{
+    private readonly Action<PrefabPartInfo, World, Entity, JsonNode?, string> _apply;
+
+    internal PrefabPartInfo(string id, Type type, string[] after, string? shorthand, string owner,
+                            Action<PrefabPartInfo, World, Entity, JsonNode?, string> apply)
+    {
+        Id = id;
+        Type = type;
+        After = after;
+        Shorthand = shorthand;
+        Owner = owner;
+        _apply = apply;
+    }
+
+    public string Id { get; }
+    public Type Type { get; }
+    public IReadOnlyList<string> After { get; }
+    public string? Shorthand { get; }
+    public string Owner { get; }
+
+    internal void Apply(World world, Entity entity, JsonNode? options, string where) =>
+        _apply(this, world, entity, options, where);
+}
+
+// The parts the loaded plugins declare, and the one order they are applied in.
+//
+// **Order** (issue #17): a part runs after the parts its [PrefabPart] names in `After`, and otherwise in
+// id order (ordinal). Not the order the prefab writes them — a `base` prefab's parts merge in ahead of
+// the child's, so JSON order is an accident of inheritance — and not module registration order either,
+// which changed whenever a game turned a plugin off. A named part that is not installed is no
+// constraint; a cycle is an error when the order is first needed.
 public sealed class PrefabRegistry
 {
-    private readonly List<IPrefabPart> _parts = new();
-    private readonly Dictionary<string, int> _byName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PrefabPartInfo> _byId = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _optional = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<PrefabPartInfo>? _ordered;
 
     // Closed when the first world exists (SageApp.CreateWorld): prefabs may have spawned without it.
     public RegistrationSeal Seal { get; } = new("prefab part", "prefabs may already have spawned without it");
@@ -58,29 +161,31 @@ public sealed class PrefabRegistry
     // Who registered each part (issue #12); set by the Engine.
     public RegistrationLedger? Ledger { get; set; }
 
-    public void Register(IPrefabPart part)
+    // Registers a declared part. Generated code calls this for each plugin's [PrefabPart] types; a test
+    // or a tool may call it by hand. A second part with the same id is an error, naming both: the old
+    // warn-and-replace let whichever plugin loaded last win without anyone choosing it.
+    public void Register<T>() where T : class, IPrefabPart, new()
     {
-        Seal.Check(part.Name);
-        if (_byName.TryGetValue(part.Name, out int existing))
-        {
-            string? previous = Ledger?.OwnerOf("prefab part", part.Name);
-            Log.Warn(LogCat.Records, $"Prefab part '{part.Name}' registered twice; {_parts[existing].GetType().Name}" +
-                $"{(previous != null ? $" (from {previous})" : "")} replaced by {part.GetType().Name}" +
-                $"{(Ledger != null ? $" (from {Ledger.Owner})" : "")}");
-            _parts[existing] = part;
-            Ledger?.Record("prefab part", part.Name);
-            return;
-        }
-        _byName[part.Name] = _parts.Count;
-        _parts.Add(part);
-        Ledger?.Record("prefab part", part.Name);
+        var declared = typeof(T).GetCustomAttribute<PrefabPartAttribute>(inherit: false)
+            ?? throw new InvalidOperationException($"{typeof(T).Name} is not declared with [PrefabPart(\"id\")]");
+        string id = declared.Id;
+        Seal.Check(id);
+        if (string.IsNullOrWhiteSpace(id))
+            throw new InvalidOperationException($"{typeof(T).Name}: a prefab part needs an id");
+        if (_byId.TryGetValue(id, out var existing))
+            throw new InvalidOperationException(
+                $"Prefab part '{id}' is declared twice: {existing.Type.Name} (from {existing.Owner}) and " +
+                $"{typeof(T).Name} (from {Ledger?.Owner ?? "host"}). Part ids are unique; rename one.");
+
+        _byId[id] = new PrefabPartInfo(id, typeof(T), declared.After, declared.Shorthand, Ledger?.Owner ?? "host", ApplyAs<T>);
+        _ordered = null;
+        Ledger?.Record("prefab part", id);
     }
 
-    // A small helper so a module can register a part without declaring a type for it.
-    public void Register(string name, Action<World, Entity, JsonNode?, string> apply) =>
-        Register(new Lambda(name, apply));
+    // The parts in the order Populate applies them.
+    public IReadOnlyList<PrefabPartInfo> Parts => _ordered ??= Order();
 
-    public IReadOnlyList<IPrefabPart> Parts => _parts;
+    public bool TryGet(string id, out PrefabPartInfo part) => _byId.TryGetValue(id, out part!);
 
     // A part that may legitimately be absent: one whose module is not loaded in this configuration.
     // A dedicated server has no renderer, so a prefab asking for a mesh should get no mesh, not an
@@ -91,15 +196,64 @@ public sealed class PrefabRegistry
 
     public IEnumerable<string> Names
     {
-        get { foreach (var p in _parts) yield return p.Name; }
+        get { foreach (var p in Parts) yield return p.Id; }
     }
 
-    private sealed class Lambda : IPrefabPart
+    private static void ApplyAs<T>(PrefabPartInfo info, World world, Entity entity, JsonNode? options, string where)
+        where T : class, IPrefabPart, new()
     {
-        private readonly Action<World, Entity, JsonNode?, string> _apply;
-        public Lambda(string name, Action<World, Entity, JsonNode?, string> apply) { Name = name; _apply = apply; }
-        public string Name { get; }
-        public void Apply(World world, Entity entity, JsonNode? options, string where) => _apply(world, entity, options, where);
+        var part = Read<T>(world, options, info, where);
+        part.Apply(new PrefabPartContext(info, world, entity, options, where));
+    }
+
+    // Reads a part's options as T. An absent or empty body gives the defaults, which is what `{}` means:
+    // "yes, this part, nothing to say about it". A bare value fills the declared shorthand field.
+    private static T Read<T>(World world, JsonNode? options, PrefabPartInfo info, string where) where T : class, new()
+    {
+        if (options is null) return new T();
+        var json = world.Engine?.Records.Json;
+        if (json is null) return new T();
+        if (options is not JsonObject && info.Shorthand != null)
+            options = new JsonObject { [info.Shorthand] = options.DeepClone() };
+        try
+        {
+            return options.Deserialize<T>(json) ?? new T();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
+        {
+            Log.Error(LogCat.Records, $"{where}: prefab part '{info.Id}': {ex.Message}");
+            return new T();
+        }
+    }
+
+    // Stable topological order: `After` edges between installed parts, ties by id.
+    private List<PrefabPartInfo> Order()
+    {
+        var incoming = _byId.Values.ToDictionary(p => p, _ => 0);
+        var edges = _byId.Values.ToDictionary(p => p, _ => new List<PrefabPartInfo>());
+        foreach (var part in _byId.Values)
+            foreach (string first in part.After)
+                if (_byId.TryGetValue(first, out var before) && before != part)
+                {
+                    edges[before].Add(part);
+                    incoming[part]++;
+                }
+
+        var ready = new SortedSet<PrefabPartInfo>(incoming.Where(kv => kv.Value == 0).Select(kv => kv.Key),
+            Comparer<PrefabPartInfo>.Create((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Id, b.Id)));
+        var result = new List<PrefabPartInfo>(_byId.Count);
+        while (ready.Count > 0)
+        {
+            var next = ready.Min!;
+            ready.Remove(next);
+            result.Add(next);
+            foreach (var to in edges[next])
+                if (--incoming[to] == 0) ready.Add(to);
+        }
+        if (result.Count != _byId.Count)
+            throw new InvalidOperationException("Prefab parts name each other in `After` in a cycle: " +
+                string.Join(", ", incoming.Where(kv => kv.Value > 0).Select(kv => kv.Key.Id).OrderBy(id => id, StringComparer.Ordinal)));
+        return result;
     }
 }
 
@@ -197,18 +351,19 @@ public static class PrefabExtensions
         var written = new Dictionary<string, JsonNode?>(StringComparer.OrdinalIgnoreCase);
         foreach (var (name, options) in record.Parts) written[name] = options;
 
-        // Parts run in the order their modules registered them, not the order they appear in the
-        // file: "character" has to have built the capsule before "melee" gives it something to swing.
+        // Parts run in the registry's order, not the order they appear in the file: "effects" needs the
+        // attributes they modify, and "pickup" only adds a sprite and a collider when nothing did
+        // (PrefabRegistry says how the order is decided).
         foreach (var part in engine.Prefabs.Parts)
         {
-            if (!written.Remove(part.Name, out var options)) continue;
+            if (!written.Remove(part.Id, out var options)) continue;
             try
             {
                 part.Apply(world, entity, options, where);
             }
             catch (Exception ex)
             {
-                Log.Error(LogCat.Records, $"{where}: prefab part '{part.Name}' failed: {ex.Message}");
+                Log.Error(LogCat.Records, $"{where}: prefab part '{part.Id}' failed: {ex.Message}");
             }
         }
 

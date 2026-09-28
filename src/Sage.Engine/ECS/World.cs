@@ -27,7 +27,7 @@ public sealed class World : IDisposable
 {
     private readonly EntityStore _store;
     private readonly Dictionary<PersistentId, Entity> _persistent = new();
-    private readonly SystemScheduler _scheduler = new();
+    private readonly SystemScheduler _scheduler;
     private readonly TransformPropagation _propagation;
     private CommandBuffer? _commands;
     private readonly GameEvents _events;
@@ -58,6 +58,12 @@ public sealed class World : IDisposable
         _store.OnComponentRemoved += OnComponentRemoved;
         _store.OnEntityDelete += OnEntityDelete;
         _propagation = new TransformPropagation(this);
+        // The system ids every loaded assembly declares: the engine's, which knows every plugin's, or
+        // for a bare world one of its own that learns each assembly as its systems arrive (issue #17).
+        var catalog = engine?.SystemCatalog ?? new SystemCatalog();
+        catalog.Include(typeof(World).Assembly);
+        _scheduler = new SystemScheduler(catalog);
+        Systems = new WorldSystems(this, _scheduler);
         // Resources every world has, headless ones too. What only some games have is installed by the
         // plugin it belongs to (issue #13): Terrain by sage.streaming; ActiveCamera and PlayerInput by
         // sage.gameplay.character (a player to look through and to command) and the client (a view to
@@ -233,19 +239,61 @@ public sealed class World : IDisposable
 
     // ---- Systems and schedules ---------------------------------------------------------------------
 
-    // Registers a system in a phase. `before`/`after` name system types in the same phase; otherwise
-    // systems run in registration order. A cycle throws.
-    public SystemInfo AddSystem(ISystem system, Phase phase, RunCondition condition = RunCondition.Default,
-        Type[]? before = null, Type[]? after = null)
+    // Adds a declared system (issue #17): its id, phase, order and run condition come from its
+    // [System] attribute, so the module that builds it says only what it is built from.
+    //
+    //     world.AddSystem(new AIThinkSystem(world, records, tasks, actions));
+    //
+    // `condition` overrides the declared one. A constraint across phases, or naming an id nothing
+    // declares, throws here (SystemScheduler).
+    public SystemInfo AddSystem(ISystem system, RunCondition? condition = null)
     {
-        var info = _scheduler.Add(system, phase, condition, before ?? Type.EmptyTypes, after ?? Type.EmptyTypes);
-        Log.Debug(LogCat.World, $"System {info.Name} added to {phase} in '{Name}'");
+        var declared = SystemDeclaration.Of(system.GetType())
+            ?? throw new InvalidOperationException($"{system.GetType().Name} has no [System(\"id\", Phase.X)]: declare it, " +
+                                                   "or add it unnamed with AddSystem(system, phase)");
+        return Add(system, declared.Id, declared.Phase, condition ?? declared.Condition, declared.Before, declared.After);
+    }
+
+    // Adds a system that is not declared: a test's probe, a tool's one-off. `id` is optional — without
+    // one nothing can order against it, replace it or disable it. A declared type goes through the
+    // overload above, so that the attribute is the one place its phase is written.
+    public SystemInfo AddSystem(ISystem system, Phase phase, RunCondition condition = RunCondition.Default,
+        string? id = null, string[]? before = null, string[]? after = null)
+    {
+        if (SystemDeclaration.Of(system.GetType()) is { } declared)
+            throw new InvalidOperationException($"{system.GetType().Name} is declared [System(\"{declared.Id}\", Phase.{declared.Phase})]: " +
+                                                "add it with AddSystem(system), which reads its phase and order from the declaration");
+        return Add(system, id, phase, condition, before ?? Array.Empty<string>(), after ?? Array.Empty<string>());
+    }
+
+    private SystemInfo Add(ISystem system, string? id, Phase phase, RunCondition condition, string[] before, string[] after)
+    {
+        var ledger = Engine?.Registrations;
+        var info = _scheduler.Add(system, id, phase, condition, before, after, ledger?.Owner ?? "host");
+        if (id != null) ledger?.Record("system", id);
+        Log.Debug(LogCat.World, $"System {id ?? info.Name} ({info.Name}) added to {phase} in '{Name}' by {info.Owner}");
         return info;
     }
 
-    public bool RemoveSystem(ISystem system) => _scheduler.Remove(system);
+    // Takes a system out of the world and lets go of what it held: its event readers, so the queues it
+    // read stop waiting for it (before issue #17 they stayed pinned until ev_maxage, and the warning then
+    // named a system that no longer existed), and the system itself when it is IDisposable.
+    public bool RemoveSystem(ISystem system)
+    {
+        if (_scheduler.Remove(system) is not { } info) return false;
+        Retire(system);
+        Log.Debug(LogCat.World, $"System {info.Id ?? info.Name} removed from '{Name}'");
+        return true;
+    }
 
-    public IEnumerable<SystemInfo> Systems => _scheduler.All;
+    internal void Retire(ISystem system)
+    {
+        _events.Release(system);
+        (system as IDisposable)?.Dispose();
+    }
+
+    // The systems in this world, by phase; and replacing or disabling one by id (issue #17).
+    public WorldSystems Systems { get; }
 
     // Gameplay facts between systems (04 §3.2). Get a reader once, in a constructor, and keep it.
     public GameEvents Events => _events;
@@ -400,6 +448,8 @@ public sealed class World : IDisposable
 
     public void Dispose()
     {
+        foreach (var s in _scheduler.All)
+            (s.System as IDisposable)?.Dispose();   // what a system took in its constructor (issue #17)
         Resources.DisposeAll();
         Log.Debug(LogCat.World, $"World '{Name}' destroyed");
     }

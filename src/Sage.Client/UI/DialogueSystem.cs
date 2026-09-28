@@ -7,6 +7,7 @@ namespace sage_engine;
 // The simulation does not open windows: it says "this was used" and this decides that a thing with
 // something to say means a conversation. Same shape as the audio system — a client-side reader of an
 // event the engine would raise on a headless server and nobody would show.
+[System("sage.client.dialogue", Phase.FrameUpdate)]
 public sealed class DialogueSystem : ISystem
 {
     private readonly EventReader<Used> _used;

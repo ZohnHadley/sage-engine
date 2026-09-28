@@ -14,6 +14,7 @@ namespace sage_engine;
 
 // Extract, first: clears the snapshot and extracts the view and environment from the world's
 // ActiveCamera and RenderEnvironment resources (the camera at display rate, not interpolated, 06 §3.3).
+[System("sage.client.extract.camera", Phase.Extract)]
 internal sealed class CameraExtract : ISystem
 {
     private readonly Renderer _renderer;
@@ -71,6 +72,7 @@ internal sealed class CameraExtract : ISystem
 
 // Extract: one RenderItem per visible mesh part (06 §5): the pose interpolated between the last two
 // ticks, made camera-relative, frustum-culled, with its sort key.
+[System("sage.client.extract.meshes", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class MeshExtract : ISystem
 {
     private readonly Renderer _renderer;
@@ -139,6 +141,7 @@ internal sealed class MeshExtract : ISystem
 }
 
 // Render (06 §3.4): draws the snapshot. Nothing here reads components.
+[System("sage.client.render", Phase.Render)]
 internal sealed class RenderSystem : ISystem
 {
     private readonly Renderer _renderer;
@@ -164,6 +167,7 @@ internal sealed class RenderSystem : ISystem
 // No culling beyond what `LightRules` does per object: a hundred lamps in a level is a list of a hundred
 // structs, and the work that matters is per *draw*, not per light. When that stops being true the answer
 // is a grid, not a longer loop here.
+[System("sage.client.extract.lights", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class LightExtract : ISystem
 {
     private readonly ArchetypeQuery<GlobalTransform, PointLight> _lights;
@@ -200,6 +204,7 @@ internal sealed class LightExtract : ISystem
     }
 }
 
+[System("sage.client.extract.debug", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class DebugExtract : ISystem
 {
     private readonly RenderSnapshot _snapshot;
@@ -252,6 +257,7 @@ internal sealed class DebugExtract : ISystem
     }
 }
 
+[System("sage.client.extract.sprites", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class SpriteExtract : ISystem
 {
     private readonly Renderer _renderer;

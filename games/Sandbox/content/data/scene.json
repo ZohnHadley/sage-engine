@@ -65,10 +65,10 @@
   // file. Until F31 the two were one `spawn` record, so "a creature" and "the creature at (0,0,-3)"
   // were the same thing, and a second one meant a second copy of the description.
   //
-  // A prefab's body is "components" (data by type name) and "parts" (setups a module registered).
+  // A prefab's body is "components" (data by type name) and "parts" (setups a plugin declared).
   // Nothing below names a field the engine invented for the Sandbox's benefit: `sprite`, `body`,
   // `character`, `attributes`, `melee`, `inventory`, `pickup` and `effects` are the engine's parts,
-  // and `box_mesh` and `hop` are the Sandbox's own, registered in SandboxModule.Init.
+  // and `box_mesh` and `hop` are the Sandbox's own, declared as BoxMeshPart and HopPart.
   {
     "type": "prefab",
     "id": "creature",

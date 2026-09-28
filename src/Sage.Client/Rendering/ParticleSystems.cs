@@ -17,6 +17,7 @@ namespace sage_engine;
 //
 // FrameUpdate, not a fixed phase: particles are presentation, they move at display rate, and a spark
 // simulated at tick rate would judder next to the sprite that threw it.
+[System("sage.client.particles", Phase.FrameUpdate)]
 public sealed class ParticleSystem : ISystem
 {
     private readonly Particles _particles;
@@ -149,6 +150,7 @@ public sealed class ParticleSystem : ISystem
 // draws exactly that — so this writes `SpriteInstance`s like `SpriteExtract` does, with a transparent
 // material and a full-texture UV. Sharing one material and one texture per effect keeps a puff of smoke
 // to one draw call.
+[System("sage.client.extract.particles", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 public sealed class ParticleExtract : ISystem
 {
     private readonly Particles _particles;
@@ -210,6 +212,7 @@ public sealed class ParticleExtract : ISystem
 // Overlay, with the HUD, because a number is text: it is drawn in pixels through `UiDraw` rather than as
 // a quad in the world. What makes it feel three-dimensional is the projection — the only world-to-screen
 // in the engine, written here because this is the first thing that needed one.
+[System("sage.client.floating_text", Phase.Overlay, Before = new[] { "sage.client.ui" })]
 public sealed class FloatingTextSystem : ISystem
 {
     private static readonly Color Shadow = new(0, 0, 0, 160);

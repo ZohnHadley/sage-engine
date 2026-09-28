@@ -118,7 +118,7 @@ public sealed class StreamingModule : IModule
 
         // Late in the tick: everything has moved by now, so the ring is computed from where the player
         // actually ended up, and a rebase lands between ticks rather than in the middle of one.
-        world.AddSystem(new StreamingSystem(world, _radius!, _enabled!), Phase.Late);
+        world.AddSystem(new StreamingSystem(world, _radius!, _enabled!));
 
         // Whatever a sector owns goes when the sector does. The terrain raises this; the sweep is here
         // because the entities are the world's, not the terrain resource's.
@@ -138,6 +138,7 @@ public sealed class StreamingModule : IModule
     }
 }
 
+[System("sage.streaming.sectors", Phase.Late)]
 public sealed class StreamingSystem : ISystem
 {
     private readonly World _world;

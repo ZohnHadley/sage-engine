@@ -14,6 +14,7 @@ namespace sage_engine;
 // spell and a swing are the same kind of thing at this level, which is why `Melee` keeps its own
 // timing rather than being folded in — a swing is an ability whose effect is a weapon, and when
 // that is worth unifying it will be obvious. It is not yet.
+[System("sage.abilities.cast", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
 public sealed class AbilitySystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, PawnIntent, Abilities> _casters;

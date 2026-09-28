@@ -83,12 +83,67 @@ State that isn't per-entity lives in world **resources**, the equivalent of Over
 - A system is a class implementing `ISystem`, registered into a **schedule** and **phase**:
   - `Schedule.Fixed`, at `sim_tickrate` (01 §5.2): `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late`.
   - `Schedule.Frame`, once per rendered frame: `FrameUpdate → Extract → Render → Overlay`.
-- Ordering within a phase: `before:`/`after:` constraints naming other system types (a stable topological sort; a cycle throws at registration). Otherwise registration order applies, deterministically. *(Built in step 4. "System sets" were dropped for now: type constraints cover today's needs.)*
+- Ordering within a phase: `Before`/`After` constraints naming other systems **by id** (a stable topological sort; a cycle throws at registration). Otherwise registration order applies, deterministically. *(Built in step 4 with type constraints; ids since issue #17, see "As built (declared systems)" below. "System sets" were dropped for now.)*
 - **Access declarations** (components read/written, game events read/sent, 04 §4) are **not built yet**. The event bus (R13) landed without them — a system asks for its readers in its constructor — so they are now purely the parallel scheduler's concern. What a phase *guarantees* is covered instead by contracts (below, R16), which watch the value rather than trust a declaration. v1 runs systems sequentially.
 - **Run conditions:** `Default` (= `WhenNotPaused` in Fixed phases, `Always` in Frame phases), `WhenNotPaused`, `Always`, `DevOnly`. `World.Paused` (console `pause`) skips `WhenNotPaused` systems; ticks still run.
 - **Command buffer flush points:** the end of every phase. Structural changes made during a phase become visible in the next phase.
 - Every phase and system is wrapped in a profiler scope (`Fixed.Gameplay`, `Fixed.Gameplay/FaceCameraSystem`), shown by `stat frame` and `sys_list`.
 - **Steady state allocates nothing**: a test runs 100 ticks + frames with systems and measures 0 bytes.
+
+### As built (declared systems, 2026-09-28 — issue #17)
+
+A system was added with `world.AddSystem(new X(...), Phase.Y, before: new[] { typeof(Z) })`: no stable
+id, constraints that named CLR types from other modules, a constraint naming a system in another phase
+silently ignored, and `RemoveSystem` leaving the system's event readers registered, so its queues were
+held until `ev_maxage` dropped them with a warning naming a system that no longer existed. Now
+(`src/Sage.Engine/ECS/Systems/SystemDeclarations.cs`, `SystemScheduler.cs`, `WorldSystems.cs`):
+
+```csharp
+[System("sage.ai.think", Phase.Commands, After = new[] { "sage.character.player_control" })]
+public sealed class AIThinkSystem : ISystem { … }
+
+world.AddSystem(new AIThinkSystem(world, records, tasks, actions));   // id, phase and order from the attribute
+```
+
+- **The attribute declares; the module constructs.** Systems take cvars, the renderer and records
+  through their constructors, which generated code could not supply, so modules keep building them and
+  `AddSystem(system)` reads the id, phase, `Before`/`After` and `Condition` from `[System]` (test:
+  ADeclaredSystemTakesItsIdPhaseAndOrderFromTheAttribute). What Sage.Generators emits is the list of each
+  assembly's declared system types (`IGeneratedSystems`), so the engine knows every id a loaded assembly
+  declares, including systems nobody added to this world; an assembly built without the generator (the
+  test assembly) is read by reflection instead. An undeclared system — a test's probe — is added with
+  an explicit phase (`AddSystem(system, Phase.Late)`) and may be given an id by hand; a declared one
+  cannot be added that way, so its phase is written once (test:
+  OneIdOncePerWorld_AndADeclaredSystemCannotBeAddedAsUndeclared).
+- **Every engine, client and Sandbox system is declared** (ids `sage.<area>.<name>`, `sandbox.<name>`),
+  and each was added by its own plugin (test: EverySystemInTheSandboxIsDeclaredAndOwned). The three
+  client systems added only sometimes (map meshes when `sage.maps` is loaded, dialogue when the
+  factions plugin is, asset reload when a watcher exists) still are.
+- **A constraint across phases is an error**, thrown when the system is added — against a system
+  already in the world, or against the phase the catalog says an absent one is declared in (test:
+  AConstraintAcrossPhasesIsAnError); between two systems of one assembly it is a build error,
+  `SAGE0013` (test: ASystemOrderedAgainstOneInAnotherPhaseIsACompileError).
+- **An id nobody declares** — no loaded assembly has it — is a typo or a plugin that is not installed:
+  an exception in dev builds, logged and ignored in Shipping. `"?id"` marks a soft dependency on a
+  plugin that may be absent (test: AConstraintNamingAnIdNothingDeclaresIsAnErrorUnlessMarkedOptional).
+  An id that is declared but not in this world is no constraint: its plugin is turned off, or its module
+  added it conditionally (test: AConstraintNamingADeclaredSystemThatIsNotHereIsNoConstraint). Checking
+  against what is *declared* rather than what is *added* is what makes this decidable when each system
+  is added, whatever order plugins add them in.
+- **Removing a system releases what it holds.** `world.Events.Reader<T>(this)` records the system as the
+  reader's owner; `RemoveSystem` releases every reader it owns and disposes it if it is `IDisposable`
+  (and a world disposes its systems) (test: RemovingASystemReleasesItsEventReadersAndDisposesIt).
+- **`world.Systems.Replace(id, system)` and `Disable(id)`** let a plugin change a system it did not add.
+  A replacement takes the slot — id, phase, order, run condition — and the old system is retired as by
+  `RemoveSystem` (test: ReplaceKeepsTheSlotAndRetiresTheOldSystem). A disabled system keeps its slot, so
+  constraints naming it still hold, never runs, and has its readers released; `sys_toggle` will not
+  turn it back on (test: DisableTurnsASystemOffForGoodAndLetsGoOfItsReaders). Both are logged, and
+  recorded in the `RegistrationLedger`, against the plugin whose code called them (test:
+  ReplaceAndDisableAreRecordedAgainstThePluginThatDidThem).
+- **`sys_list`** prints each system's phase, average time, id, type and owning plugin, with who
+  replaced or disabled it; `sys_toggle` takes an id or a type name.
+- **Not done here:** generated construction, access declarations (below), and system *sets*. Replace
+  and Disable act on one world; a plugin that wants it everywhere does it in every `OnWorldCreated`.
 
 ### As built (deferred work and phase contracts, 2026-09-23 — R14, R16)
 
@@ -206,10 +261,11 @@ public sealed class World : IDisposable
     public event Action<Entity>? EntityDestroyed;
 
     // Scheduling
+    public SystemInfo AddSystem(ISystem system, RunCondition? condition = null);   // declared: [System(id, phase)]
     public SystemInfo AddSystem(ISystem system, Phase phase, RunCondition condition = RunCondition.Default,
-                                Type[]? before = null, Type[]? after = null);
-    public bool RemoveSystem(ISystem system);
-    public IEnumerable<SystemInfo> Systems { get; }               // name, phase, condition, Enabled (sys_toggle)
+                                string? id = null, string[]? before = null, string[]? after = null);   // undeclared
+    public bool RemoveSystem(ISystem system);                     // releases its event readers, disposes it
+    public WorldSystems Systems { get; }                          // id, phase, owner, Enabled; Replace(id, s), Disable(id)
     public void RunFixed(float dt);                               // one tick: every Fixed phase
     public void RunFrame(float dt, float alpha, double realTime = 0);   // one frame: every Frame phase
     public bool Paused { get; set; }
@@ -278,7 +334,7 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
   - `ent_list [filter]` (**built, step 3**; registered by the host for the main world)
   - `ent_dump <id|name>` (all components via the generated inspector metadata)
   - `ent_kill`
-  - `sys_list` (systems per world and phase with average ms) — **built, step 4**
+  - `sys_list` (systems per world and phase with average ms; ids and owning plugins since issue #17) — **built, step 4**
   - `sys_toggle <name>` (DevOnly) — **built, step 4**
   - `pause` — **built, step 4**
 - **Overlay:** entity count per world, archetype count, command buffer ops per tick.

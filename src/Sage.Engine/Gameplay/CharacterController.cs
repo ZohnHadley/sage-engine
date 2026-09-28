@@ -106,6 +106,7 @@ public static class CharacterExtensions
 
 // PrePhysics, before the bodies are synced (10 §3): turns intent into movement, resolves it against
 // the world with sweeps, and leaves the result in Transform.
+[System("sage.character.move", Phase.PrePhysics, Before = new[] { "sage.physics.sync" })]
 public sealed class CharacterMovementSystem : ISystem
 {
     private const float Skin = 0.02f;         // never move fully into a surface
@@ -414,6 +415,7 @@ public sealed class CharacterMovementSystem : ISystem
 // the view angles the command carried (06 §3.3, 16 §3.2). While this drives the camera it says so
 // (ActiveCamera.DrivenByRig) and the editor's free camera stands aside; cam_free clears
 // ActiveCamera.RigEnabled and this system gives the camera back.
+[System("sage.character.camera", Phase.FrameUpdate)]
 public sealed class FirstPersonCameraSystem : ISystem
 {
     private readonly ArchetypeQuery<GlobalTransform, CharacterController, PawnIntent> _pawns;

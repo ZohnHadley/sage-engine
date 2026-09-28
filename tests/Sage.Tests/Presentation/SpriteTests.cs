@@ -225,7 +225,7 @@ public class SpriteAnimationSystemTests
         records.Load(fx.Vfs);
 
         var world = new World("anim");
-        world.AddSystem(new SpriteAnimationSystem(world, records), Phase.Animation);
+        world.AddSystem(new SpriteAnimationSystem(world, records));
         return (world, records);
     }
 

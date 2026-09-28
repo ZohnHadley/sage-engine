@@ -117,10 +117,22 @@ public static class WorldCommands
             bool Show(string n) => filter.Length == 0 || n.Contains(filter, StringComparison.OrdinalIgnoreCase);
             Log.Info(LogCat.Console, "components: " + string.Join(", ", engine.Components.ComponentNames.Where(Show).OrderBy(n => n, StringComparer.Ordinal)));
             Log.Info(LogCat.Console, "tags:       " + string.Join(", ", engine.Components.TagNames.Where(Show).OrderBy(n => n, StringComparer.Ordinal)));
-            Log.Info(LogCat.Console, "prefab parts: " + string.Join(", ", engine.Prefabs.Names));
+            // Each part with its options and its plugin, in the order they apply (issue #17): a part's
+            // public fields are what a prefab may write under it, so this is the part's whole manual.
+            Log.Info(LogCat.Console, "prefab parts, in the order they apply:");
+            foreach (var part in engine.Prefabs.Parts.Where(p => Show(p.Id)))
+            {
+                var fields = part.Type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                    .Select(f => f.Name == part.Shorthand ? f.Name + " (shorthand)" : f.Name);
+                Log.Info(LogCat.Console, $"  {part.Id,-12} {{ {string.Join(", ", fields)} }}  [{part.Owner}]" +
+                                         (part.After.Count > 0 ? $" after {string.Join(", ", part.After)}" : ""));
+            }
         });
 
-        cvars.RegisterCommand("sys_list", CVarFlags.None, "List systems per world and phase, with average ms (profiler).", _ =>
+        // Id, type and the plugin that added it (issue #17), plus who replaced or disabled it: the
+        // question a mod conflict starts with is "whose is this, and who touched it".
+        cvars.RegisterCommand("sys_list", CVarFlags.None,
+            "List systems per world and phase: id, type, owning plugin and average ms (profiler).", _ =>
         {
             foreach (var world in engine.Worlds)
             {
@@ -129,8 +141,9 @@ public static class WorldCommands
                 {
                     var p = Profiler.Find(s.ProfileName);
                     string ms = p == null ? "   -   " : $"{p.AverageMs,6:F3}";
-                    string state = s.Enabled ? "" : " (disabled)";
-                    Log.Info(LogCat.Console, $"  {s.Phase,-12} {ms} ms  {s.Name}{state}");
+                    string state = s.DisabledBy != null ? $" (disabled by {s.DisabledBy})" : s.Enabled ? "" : " (disabled)";
+                    string replaced = s.ReplacedBy != null ? $", replaced by {s.ReplacedBy}" : "";
+                    Log.Info(LogCat.Console, $"  {s.Phase,-12} {ms} ms  {s.Id ?? "(unnamed)",-32} {s.Name} [{s.Owner}{replaced}]{state}");
                 }
             }
         });
@@ -156,16 +169,24 @@ public static class WorldCommands
             }
         });
 
-        cvars.RegisterCommand("sys_toggle", CVarFlags.DevOnly, "sys_toggle <name>: enable/disable a system in every world.", a =>
+        cvars.RegisterCommand("sys_toggle", CVarFlags.DevOnly, "sys_toggle <id or type name>: enable/disable a system in every world.", a =>
         {
-            if (a.Count == 0) { Log.Warn(LogCat.Console, "sys_toggle <name>"); return; }
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "sys_toggle <id or type name>"); return; }
             int found = 0;
             foreach (var s in engine.Worlds.SelectMany(w => w.Systems)
-                         .Where(s => s.Name.Equals(a[0], StringComparison.OrdinalIgnoreCase)))
+                         .Where(s => s.Name.Equals(a[0], StringComparison.OrdinalIgnoreCase) ||
+                                     (s.Id != null && s.Id.Equals(a[0], StringComparison.OrdinalIgnoreCase))))
             {
-                s.Enabled = !s.Enabled;
                 found++;
-                Log.Info(LogCat.Console, $"{s.Name}: {(s.Enabled ? "enabled" : "disabled")}");
+                if (s.DisabledBy != null)
+                {
+                    // A plugin turned it off for good and released its event readers; running it again
+                    // would read queues nothing kept for it.
+                    Log.Warn(LogCat.Console, $"{s.Id ?? s.Name}: disabled by {s.DisabledBy}; not toggled");
+                    continue;
+                }
+                s.Enabled = !s.Enabled;
+                Log.Info(LogCat.Console, $"{s.Id ?? s.Name}: {(s.Enabled ? "enabled" : "disabled")}");
             }
             if (found == 0) Log.Warn(LogCat.Console, $"sys_toggle: no system named {a[0]} (see sys_list)");
         });

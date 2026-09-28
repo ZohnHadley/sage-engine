@@ -34,6 +34,7 @@ public sealed class Engine : IDisposable
         // type — which is how reputation, the journal and the weather were all "saved" and none of
         // them were (F24/F40). Each plugin's own are registered just before its Init.
         Generated.Include(typeof(Engine).Assembly);
+        SystemCatalog.Include(typeof(Engine).Assembly);
         Registrations.Owner = RegistrationOwners.Core;
         try { Generated.Register(RegistrationOwners.Core, new RegistrationBuilder(this)); }
         finally { Registrations.Owner = "host"; }
@@ -46,10 +47,14 @@ public sealed class Engine : IDisposable
     // The generated registrations of the engine's and every loaded module's assemblies (issue #16).
     public GeneratedRegistrations Generated { get; } = new();
 
+    // Every system id the engine's and the loaded modules' assemblies declare (issue #17): what tells a
+    // mistyped ordering constraint from one naming a system whose plugin is turned off.
+    public SystemCatalog SystemCatalog { get; } = new();
+
     // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
     public ActionRegistry Actions { get; } = new();
 
-    // Components and tags by name, and the prefab parts modules have registered (05 §3.5, F31).
+    // Components and tags by name, and the prefab parts plugins have declared (05 §3.5, F31, issue #17).
     public ComponentSchema Components { get; }
     public PrefabRegistry Prefabs { get; } = new();
 

@@ -180,6 +180,7 @@ public sealed class GameEvents
     private readonly Dictionary<(Type Type, Schedule Schedule), IEventQueue> _queues = new();
     private readonly List<IEventQueue> _fixed = new();
     private readonly List<IEventQueue> _frame = new();
+    private readonly Dictionary<object, List<Action>> _byOwner = new(ReferenceEqualityComparer.Instance);
 
     private CVar<int>? _maxAgeCVar;
     private CVar<string>? _traceCVar;
@@ -225,9 +226,29 @@ public sealed class GameEvents
         return queue;
     }
 
-    // `owner` is what a lagging-reader warning names, so pass the system that holds it.
-    public EventReader<T> Reader<T>(object owner, Schedule schedule = Schedule.Fixed) where T : struct =>
-        new(Queue<T>(schedule), owner as string ?? owner.GetType().Name);
+    // `owner` is what a lagging-reader warning names, so pass the system that holds it (`this`, in its
+    // constructor). It is also what the reader is released with: removing a system from a world
+    // releases every reader it asked for (Release, issue #17). A string owner is a name only.
+    public EventReader<T> Reader<T>(object owner, Schedule schedule = Schedule.Fixed) where T : struct
+    {
+        var reader = new EventReader<T>(Queue<T>(schedule), owner as string ?? owner.GetType().Name);
+        if (owner is not string)
+        {
+            if (!_byOwner.TryGetValue(owner, out var readers)) _byOwner[owner] = readers = new List<Action>();
+            readers.Add(reader.Release);
+        }
+        return reader;
+    }
+
+    // Releases every reader `owner` asked for, so the queues stop waiting for it. World.RemoveSystem
+    // and world.Systems.Replace/Disable call it with the system; before issue #17 a removed system's
+    // cursors pinned its queues until ev_maxage dropped the events with a warning naming it.
+    public int Release(object owner)
+    {
+        if (!_byOwner.Remove(owner, out var readers)) return 0;
+        foreach (var release in readers) release();
+        return readers.Count;
+    }
 
     public void Send<T>(in T ev, Schedule schedule = Schedule.Fixed) where T : struct
     {

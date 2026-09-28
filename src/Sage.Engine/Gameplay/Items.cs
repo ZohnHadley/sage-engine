@@ -322,6 +322,7 @@ public static class Items
 // Gameplay phase: the Use action, as a look-at-and-press (16 §3.2). A ray from the eye, the first
 // solid thing it reaches, and if that is something to take, it is taken. Everything else becomes an
 // interaction the game reacts to — the entity I/O version of this arrives with 04.
+[System("sage.items.use", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
 public sealed class InteractionSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController> _users;
