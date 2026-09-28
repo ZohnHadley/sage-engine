@@ -112,6 +112,10 @@ public sealed class StreamingModule : IModule
 
     public void OnWorldCreated(World world)
     {
+        // The terrain is this plugin's (issue #13): a game without streaming has none, and everything
+        // that reads it (collision, navigation, levels, the renderer) copes with that.
+        world.Resources.Add(new Terrain { Origin = world.Origin() });
+
         // Late in the tick: everything has moved by now, so the ring is computed from where the player
         // actually ended up, and a rebase lands between ticks rather than in the middle of one.
         world.AddSystem(new StreamingSystem(world, _radius!, _enabled!), Phase.Late);

@@ -123,7 +123,7 @@ internal sealed class PhysicsWriteBackSystem : ISystem
 internal sealed class TerrainCollisionSystem : ISystem
 {
     private readonly PhysicsSpace _space;
-    private readonly Terrain _terrain;
+    private Terrain? _terrain;
     private readonly World _world;
     private Vector3[] _vertices = Array.Empty<Vector3>();
     private int[] _indices = Array.Empty<int>();
@@ -132,12 +132,14 @@ internal sealed class TerrainCollisionSystem : ISystem
     {
         _world = world;
         _space = space;
-        _terrain = world.Resources.Get<Terrain>();
     }
 
     public void Run(in SystemContext ctx)
     {
-        var sectors = _terrain.Sectors;
+        // Looked up here rather than when the system is made: physics furnishes a world before streaming
+        // does, and a world with no streaming plugin has no terrain at all.
+        if (_terrain == null && !_world.Resources.TryGet(out _terrain)) return;
+        var sectors = _terrain!.Sectors;
         for (int i = 0; i < sectors.Count; i++)
         {
             var sector = sectors[i];
@@ -154,7 +156,7 @@ internal sealed class TerrainCollisionSystem : ISystem
         int side = heights.Resolution, cells = side - 1;
         // Origin space, not absolute: this mesh has to sit where the simulation currently is, and
         // move with it when the origin does (R6).
-        Vector3 origin = _terrain.CornerOf(sector.Coord);
+        Vector3 origin = _terrain!.CornerOf(sector.Coord);
         float spacing = heights.Spacing;
 
         if (_vertices.Length < side * side) _vertices = new Vector3[side * side];

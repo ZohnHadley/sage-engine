@@ -54,6 +54,17 @@ public sealed class WorldResources
             ? (T)r
             : throw new InvalidOperationException($"World resource {typeof(T).Name} is not installed.");
 
+    // The installed one, or `make`'s, installed now: for a resource more than one plugin can use and
+    // any of them may be first to need (the camera: the character plugin drives it, the client draws
+    // from it, and either may be loaded without the other).
+    public T GetOrAdd<T>(Func<T> make) where T : class
+    {
+        if (_items.TryGetValue(typeof(T), out var r)) return (T)r;
+        var resource = make();
+        Add(resource);
+        return resource;
+    }
+
     public bool TryGet<T>(out T? resource) where T : class
     {
         if (_items.TryGetValue(typeof(T), out var r)) { resource = (T)r; return true; }

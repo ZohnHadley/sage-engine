@@ -291,6 +291,7 @@ public sealed class ClientModule : IModule
 
     public void OnWorldCreated(World world)
     {
+        world.Resources.GetOrAdd(() => new ActiveCamera());   // what the world is drawn from (issue #13)
         world.Resources.Add(new RenderSnapshot());
         world.Resources.Add(new UiDraw());       // screen-space drawing for the game's HUD (13 §3)
         // Screens (F38): the stack is a world resource because a screen acts on entities in a world.
@@ -300,7 +301,10 @@ public sealed class ClientModule : IModule
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
         world.AddSystem(new TerrainMeshSystem(world, _renderer!), Phase.FrameUpdate);
-        world.AddSystem(new MapMeshSystem(world, _renderer!), Phase.FrameUpdate);   // brush levels (15 §3, F16)
+        // Brush levels (15 §3, F16), when sage.maps is loaded. The client comes after every simulation
+        // plugin (SageApp adds host modules after them), so what they furnish is there to look for.
+        if (world.Resources.TryGet<MapLevels>(out _))
+            world.AddSystem(new MapMeshSystem(world, _renderer!), Phase.FrameUpdate);
         world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);
         world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
         world.AddSystem(new SpriteExtract(world, _renderer!, _records!), Phase.Extract, after: new[] { typeof(CameraExtract) });
@@ -326,8 +330,10 @@ public sealed class ClientModule : IModule
         // The `Weather` state is the world's (installed with it); this only makes it *look* like it.
         world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!, _soundEnabled!), Phase.FrameUpdate,
                         after: new[] { typeof(AudioSystem) });
-        // Talking to somebody opens a window, which is the client's business (16 §3.5, F24).
-        world.AddSystem(new DialogueSystem(world), Phase.FrameUpdate);
+        // Talking to somebody opens a window, which is the client's business (16 §3.5, F24) — in a game
+        // with the dialogue plugin.
+        if (world.Resources.TryGet<Conversation>(out _))
+            world.AddSystem(new DialogueSystem(world), Phase.FrameUpdate);
         // Before the HUD is drawn, so a number never sits on top of the health bar.
         world.AddSystem(new FloatingTextSystem(world), Phase.Overlay,
                         before: new[] { typeof(UiRenderSystem) });

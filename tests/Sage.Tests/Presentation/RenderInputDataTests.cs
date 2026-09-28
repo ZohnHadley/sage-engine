@@ -211,14 +211,17 @@ public class InputActionTests
     }
 
     [Fact]
-    public void EveryWorld_HasCameraEnvironmentAndPlayerInput()
+    public void TheCharacterPluginBringsACameraAndPlayerInput_ABareWorldHasNeither()
     {
         _ = TestEnv.UserRoot;
-        using var world = new World("test");
-        Assert.NotNull(world.Resources.Get<ActiveCamera>());
-        Assert.NotNull(world.Resources.Get<RenderEnvironment>());
-        Assert.False(world.Resources.Get<PlayerInput>().HasCommand);   // headless: nothing samples input
-        Assert.Equal(0.1f, world.Resources.Get<ActiveCamera>().Near);
+        using var bare = new World("bare");
+        Assert.NotNull(bare.Resources.Get<RenderEnvironment>());
+        Assert.False(bare.Resources.TryGet<ActiveCamera>(out _));   // issue #13: the plugins' now
+        Assert.False(bare.Resources.TryGet<PlayerInput>(out _));
+
+        using var app = HeadlessApp.Gameplay().Boot("test");
+        Assert.False(app.World.Resources.Get<PlayerInput>().HasCommand);   // headless: nothing samples input
+        Assert.Equal(0.1f, app.World.Resources.Get<ActiveCamera>().Near);
     }
 
     // Turning the player is not something the simulation can simply do (08 §3.4): the view angles are

@@ -50,7 +50,7 @@ In `Sage.Engine` (data, terrain generation), with client parts for terrain meshe
 
 ### As built (F13, 2026-09-22): one sector, no streaming
 - **Code:** `src/Sage.Engine/World/Terrain.cs` (`SectorCoord`, `Heightfield`, `ITerrainGenerator`, `TerrainSector`, the `Terrain` world resource) and `src/Sage.Client/Rendering/TerrainMesh.cs` (`TerrainMeshSystem`).
-- **Every world has a `Terrain` resource.** A game sets `Generator` and `Seed` and calls `Load(sector)`; the sector's 129×129 heightfield (8 m spacing over 1024 m) is generated on the main thread, once per sector.
+- **`sage.streaming` installs a `Terrain` resource in every world** (it used to come with every world; issue #13 moved it to its plugin, test: TheStreamingPluginInstallsTheTerrain_AndLoadWithoutAGeneratorIsRefused). Collision, navigation, levels and the renderer look it up and do nothing without it. A game sets `Generator` and `Seed` and calls `Load(sector)`; the sector's 129×129 heightfield (8 m spacing over 1024 m) is generated on the main thread, once per sector.
 - **Meshes:** `TerrainMeshSystem` (FrameUpdate) builds the chunk meshes of any sector it hasn't drawn yet: 4×4 chunks of 32×32 cells, each its own `Renderer.CreateMesh` and its own entity with a `MeshRenderer` holding the **`MeshHandle`** (R9: subsystems own the data, components hold handles). Chunks are ordinary mesh items, so they cull, sort and draw with everything else — there is no separate `TerrainExtract`.
 - **Material:** `sage:terrain_default` (one tiling ground texture over `lit.fx`). Splat materials come with LOD.
 - **Ground height:** `Terrain.HeightAt/NormalAt/OnGround` sample the heightfield bilinearly. The Sandbox places its scene with them.

@@ -113,8 +113,6 @@ public class Game1 : Game
         });
         cvars.RegisterCommand("screenshot", CVarFlags.None, "screenshot [delay]: save a frame as a PNG in the user folder's screenshots/, now or after `delay` seconds.", a =>
             screenshotAt = a.Count > 0 && float.TryParse(a[0], out float delay) ? loop.RealTime + delay : 0);
-        WorldCommands.Register(cvars, engine);
-        ScaleCommands.Register(cvars, engine);   // scale_spawn / scale_report (R18)
         CrashReporter.AddSection("GPU", () => $"{GraphicsAdapter.DefaultAdapter.Description}, profile {graphics.GraphicsProfile}");
         Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
         app.Configure();   // config.cfg, now that every cvar and command exists
@@ -132,7 +130,9 @@ public class Game1 : Game
         world = app.CreateWorld("main");
 
         activeCamera = world.Resources.Get<ActiveCamera>();
-        playerInput = world.Resources.Get<PlayerInput>();
+        // Sampled every frame whether or not anything reads it: a game without the character plugin
+        // has no pawn to command, and its PlayerInput is only ever written (issue #13).
+        playerInput = world.Resources.GetOrAdd(() => new PlayerInput());
 
 #if SAGE_DEV
         dev.OnWorldCreated(world);

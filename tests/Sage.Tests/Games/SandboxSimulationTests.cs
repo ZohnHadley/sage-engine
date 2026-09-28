@@ -44,7 +44,7 @@ public class SandboxSimulationTests
 
     private static (Engine Engine, World World) NewGame()
     {
-        var app = HeadlessApp.Gameplay()
+        var app = HeadlessApp.Simulation()
             .With(new SandboxModule())   // the game, with no client half in sight
             .File("data/scene.json", Scene, ns: "sandbox")
             .Boot("sandbox");

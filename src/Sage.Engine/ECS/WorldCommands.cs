@@ -49,9 +49,13 @@ public static class WorldCommands
                 position = new Vector3(x, y, z);
                 if (a.Count >= 5 && float.TryParse(a[4], out float given)) yaw = given;
             }
+            else if (!world.Resources.TryGet<ActiveCamera>(out var camera) || camera == null)
+            {
+                Log.Warn(LogCat.Console, "ent_spawn: this world has no camera to spawn in front of; give x y z");
+                return;
+            }
             else
             {
-                var camera = world.Resources.Get<ActiveCamera>();
                 position = camera.Position + SageMath.ForwardFromYaw(SageMath.YawOf(camera.Rotation)) * 3f;
                 yaw = SageMath.YawOf(camera.Rotation) * 180f / MathF.PI + 180f;   // facing back at the camera
             }

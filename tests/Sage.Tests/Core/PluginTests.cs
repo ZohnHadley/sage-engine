@@ -169,14 +169,32 @@ public class PluginTests
         Assert.DoesNotContain("sage.streaming", ids);
     }
 
+    // And none of what those plugins furnish (issue #13): no terrain, no player input, no camera. The
+    // world still ticks, and the console commands that would reach for them say so instead of crashing.
     [Fact]
     public void NoPluginsAtAllIsAGameWithNoPhysicsAndNoGameplay()
     {
-        using var app = SageApp.Create(new SageAppOptions { Game = Manifest(""", "plugins": []""") });
+        var game = Manifest(""", "plugins": [], "mounts": ["content"]""");
+        File.WriteAllText(Path.Combine(Directory.CreateDirectory(Path.Combine(game.Directory, "content", "data")).FullName, "crate.json"),
+                          """[{ "type": "prefab", "id": "crate", "name": "crate" }]""");
+        using var app = SageApp.Create(new SageAppOptions { Game = game });
         Assert.Empty(app.Engine.Modules.Modules);
         var world = app.Boot();
-        world.RunFixed(1f / 60f);
-        Assert.Equal(1L, world.Tick);
+
+        Assert.False(world.Resources.TryGet<Terrain>(out _));
+        Assert.False(world.Resources.TryGet<PlayerInput>(out _));
+        Assert.False(world.Resources.TryGet<ActiveCamera>(out _));
+
+        for (int i = 0; i < 60; i++) world.RunFixed(1f / 60f);
+        Assert.Equal(60L, world.Tick);
+        string[] commands = { "sv_cheats 1", "ent_spawn crate", "ent_spawn crate 1 0 1", "ent_list", "sys_list", "scale_report", "saves", "plugins" };
+        using var sink = new CaptureSink();
+        foreach (string command in commands)
+            app.CVars.Execute(command, ExecSource.Console);
+        var names = commands.Select(c => c.Split(' ')[0] + ":").Distinct().ToArray();
+        Assert.DoesNotContain(sink.Entries, e => e.Level == LogLevel.Error && names.Any(n => e.Message.StartsWith(n)));
+        Assert.Contains(sink.Entries, e => e.Message.Contains("ent_spawn: this world has no camera"));
+        Assert.Equal(1, world.EntityCount);   // the one given a position
     }
 
     [Fact]

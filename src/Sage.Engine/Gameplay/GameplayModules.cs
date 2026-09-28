@@ -144,6 +144,11 @@ public sealed class CharacterModule : IModule
         // exactly review #48, found by reading code rather than by the engine saying so (03 §3.5).
         world.Contracts.FinalAfter<PawnIntent>(Phase.Commands);
 
+        // A player to command and to look through (issue #13): the host samples into PlayerInput and
+        // the first-person rig drives ActiveCamera. The client may have installed the camera already.
+        world.Resources.GetOrAdd(() => new PlayerInput());
+        world.Resources.GetOrAdd(() => new ActiveCamera());
+
         world.AddSystem(new PlayerControlSystem(world), Phase.Commands);
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,
             before: new[] { typeof(PhysicsSyncSystem) });

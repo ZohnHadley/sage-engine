@@ -1,0 +1,9 @@
+{
+  // The smallest thing a game can be (REDESIGN §5, Phase 1's exit criterion): no assembly, no plugins —
+  // no physics, no streaming, no gameplay — just records. CI runs it in the real host
+  // (tools/smoke_run.sh) to prove the engine and its client stand up without any of them (issue #13).
+  "name": "No plugins",
+  "id": "noplugins",
+  "plugins": [],
+  "mounts": ["content"]
+}

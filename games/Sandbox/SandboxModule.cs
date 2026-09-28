@@ -9,6 +9,8 @@ namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Direct
 // It references `Sage.Engine` and nothing else, so all of this is testable headlessly (R15); the HUD
 // and anything else needing a screen live in `Sandbox.Client`.
 [Plugin("sandbox", "0.1.0")]
+[RequiresPlugin("sage.streaming", ">=0.1")]            // its hills
+[RequiresPlugin("sage.gameplay.character", ">=0.1")]   // the player it commands and looks through
 public sealed class SandboxModule : IGameModule
 {
     private RecordStore? _records;

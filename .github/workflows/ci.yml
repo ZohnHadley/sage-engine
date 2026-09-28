@@ -86,6 +86,9 @@ jobs:
           host=src/Sage.Host/bin/Development/net8.0
           tools/smoke_run.sh "$host" games/Hello 3 Shaders
           tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
+          # No plugins at all (issue #13). Records and Input are allowed because engine content still
+          # ships every plugin's data in one folder, and says so when the plugin that reads it is absent.
+          tools/smoke_run.sh "$host" tests/games/no-plugins 3 Shaders Audio Records Input
 
       - name: Upload test results
         if: always()

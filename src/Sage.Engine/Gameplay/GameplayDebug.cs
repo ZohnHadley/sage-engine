@@ -18,7 +18,8 @@ public sealed class PhysicsDebugSystem : ISystem
     private readonly ArchetypeQuery<Transform, CharacterController> _characters;
     private readonly DebugDraw _debug;
     private readonly RecordStore _records;
-    private readonly ActiveCamera _camera;
+    private readonly World _world;
+    private ActiveCamera? _camera;
     private readonly CVar<bool> _enabled;
 
     // Far enough to cover what you are looking at, near enough that a streamed-in city doesn't turn
@@ -32,9 +33,16 @@ public sealed class PhysicsDebugSystem : ISystem
         _colliders = world.Query<Transform, Collider>();
         _characters = world.Query<Transform, CharacterController>();
         _debug = world.Debug();
-        _camera = world.Resources.Get<ActiveCamera>();
+        _world = world;
         _records = records;
         _enabled = enabled;
+    }
+
+    // Only what is near the camera; everything, in a world with no camera to be near (issue #13).
+    private bool OutOfRange(Vector3 at)
+    {
+        if (_camera == null) _world.Resources.TryGet(out _camera);
+        return _camera != null && SageMath.DistanceXZ(at, _camera.Position) > DrawRange;
     }
 
     public void Run(in SystemContext ctx)
@@ -47,7 +55,7 @@ public sealed class PhysicsDebugSystem : ISystem
             var c = colliders.Span;
             for (int n = 0; n < t.Length; n++)
             {
-                if (SageMath.DistanceXZ(t[n].LocalPosition, _camera.Position) > DrawRange) continue;
+                if (OutOfRange(t[n].LocalPosition)) continue;
                 var pose = Pose.FromLocal(t[n]);
                 Vector3 center = c[n].CenterAt(pose);
                 uint colour = c[n].IsTrigger ? DebugColour.Magenta : DebugColour.Cyan;
@@ -77,7 +85,7 @@ public sealed class PhysicsDebugSystem : ISystem
             var c = characters.Span;
             for (int n = 0; n < t.Length; n++)
             {
-                if (SageMath.DistanceXZ(t[n].LocalPosition, _camera.Position) > DrawRange) continue;
+                if (OutOfRange(t[n].LocalPosition)) continue;
                 var profile = _records.TryGet(c[n].Profile.IsEmpty ? MovementProfileRecord.Default : c[n].Profile,
                                               out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
                 float height = c[n].Height > 0f ? c[n].Height : profile.StandHeight;
@@ -96,7 +104,8 @@ public sealed class AIDebugSystem : ISystem
     private readonly ArchetypeQuery<Transform, AIState> _agents;
     private readonly DebugDraw _debug;
     private readonly RecordStore _records;
-    private readonly ActiveCamera _camera;
+    private readonly World _world;
+    private ActiveCamera? _camera;
     private readonly CVar<bool> _enabled;
     private static readonly AIProfileRecord Fallback = new();
 
@@ -108,9 +117,16 @@ public sealed class AIDebugSystem : ISystem
     {
         _agents = world.Query<Transform, AIState>();
         _debug = world.Debug();
-        _camera = world.Resources.Get<ActiveCamera>();
+        _world = world;
         _records = records;
         _enabled = enabled;
+    }
+
+    // Only what is near the camera; everything, in a world with no camera to be near (issue #13).
+    private bool OutOfRange(Vector3 at)
+    {
+        if (_camera == null) _world.Resources.TryGet(out _camera);
+        return _camera != null && SageMath.DistanceXZ(at, _camera.Position) > DrawRange;
     }
 
     public void Run(in SystemContext ctx)
@@ -124,7 +140,7 @@ public sealed class AIDebugSystem : ISystem
             var s = states.Span;
             for (int n = 0; n < t.Length; n++)
             {
-                if (SageMath.DistanceXZ(t[n].LocalPosition, _camera.Position) > DrawRange) continue;
+                if (OutOfRange(t[n].LocalPosition)) continue;
                 var profile = _records.TryGet(s[n].Profile.IsEmpty ? AIProfileRecord.Default : s[n].Profile,
                                               out AIProfileRecord found) ? found : Fallback;
                 Vector3 eye = t[n].LocalPosition + Vector3.UnitY * 1.4f;
