@@ -59,7 +59,9 @@ public sealed class SandboxClientModule : IModule
 [PrefabPart("box_mesh")]
 public sealed class BoxMeshPart : IPrefabPart
 {
+    [Property(Min = 0, Unit = "m", Tooltip = "Full extents of the box")]
     public Vector3 Size;
+    [RecordRef("material"), Property(Tooltip = "What the box is drawn with")]
     public RecordId Material;
 
     public void Apply(in PrefabPartContext ctx)

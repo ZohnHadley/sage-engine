@@ -46,7 +46,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 664 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 684 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -170,6 +170,21 @@ dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug     # or -c Development;
 python tools/check_docs.py --tests N    # the docs against the code (R19), N as dotnet test reported
 ```
 
+`check_docs.py` reads the engine's names from a **registry dump** — every command, cvar, record type,
+component, prefab part, system, entity input and output and input action the Sandbox registers, with
+the plugin that registered each and the declarations' fields — which the host writes and then quits:
+
+```bash
+dotnet build Sage.sln -c Development -p:SageSkipShaders=true
+(cd src/Sage.Host/bin/Development/net8.0 && xvfb-run -a ./Sage.Host -game ../../../../../games/Sandbox \
+    -dump-registry ../../../../../user/registry.json)   # what check_docs reads; Windows: no xvfb-run
+```
+
+It used to find them with regular expressions over the registration calls, and the day `[Record]` gained
+a `Plugin` argument that counted 1 record type instead of 25 without a word; a name in the dump was
+registered by running code (test: ANameRegisteredAnyWayAtAllIsInTheDump). A test or tool writes the same
+file headlessly with `RegistryDump.Write(engine, path)`.
+
 `check_docs.py` is there because three features in a row ended with the code being right and something
 it *said about itself* being wrong. It checks that links resolve, that a command or cvar named in a
 claim about what exists is really in the code, and that the numbers quoted on a `<!-- counts -->` line
@@ -180,8 +195,8 @@ proves it, `(test: …)`, and the script checks the name resolves.
 and every pull request:
 - **Linux** builds the whole solution in all three configurations, the host without its shaders
   (`-p:SageSkipShaders=true`, because `mgfxc` needs Wine on Linux). It runs the tests in Debug and
-  Development on the .NET 8 runtime the projects target, and runs `check_docs.py` with the count the
-  tests reported. Then it runs the real executable for a few seconds on Hello and the Sandbox under a
+  Development on the .NET 8 runtime the projects target, writes the registry dump with the host under a
+  virtual display, and runs `check_docs.py` against it with the count the tests reported. Then it runs the real executable for a few seconds on Hello and the Sandbox under a
   virtual display ([`tools/smoke_run.sh`](tools/smoke_run.sh)), and fails on a crash, a bad exit or any
   warning outside the categories it expects.
 - **Windows** builds the whole solution, shaders included, and runs the tests.

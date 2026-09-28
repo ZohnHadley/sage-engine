@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using Friflo.Engine.ECS;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -52,9 +53,12 @@ public class Game1 : Game
     private double screenshotAt = -1;   // >= 0: take a screenshot once RealTime passes it
     private double quitAt = -1;         // >= 0: exit once RealTime passes it (`quit <seconds>`)
 
-    internal Game1(SageApp app)
+    private readonly string? dumpRegistry;   // -dump-registry: write RegistryDump here once booted, then quit
+
+    internal Game1(SageApp app, string? dumpRegistry = null)
     {
         this.app = app;
+        this.dumpRegistry = dumpRegistry;
         engine = app.Engine;
         loop = new HostLoop(engine);
         beforeTick = BeforeTick;
@@ -138,6 +142,23 @@ public class Game1 : Game
         dev.OnWorldCreated(world);
 #endif
         app.RunLaunchCommands();   // +args last, with the world up
+
+        // Everything is registered now — the client's commands, the editor's, the host's own — which is
+        // why the dump is written here and not by a headless app, which has no window and so none of
+        // those (tools/check_docs.py reads it; docs/REDESIGN.md §4.8).
+        if (dumpRegistry != null)
+        {
+            try
+            {
+                RegistryDump.Write(engine, dumpRegistry);
+                Log.Info(LogCat.Host, $"Wrote the registry to {dumpRegistry}");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Error(LogCat.Host, $"-dump-registry: {ex.Message}");
+            }
+            quitAt = 0;   // on the first frame
+        }
 
         base.Initialize();
     }

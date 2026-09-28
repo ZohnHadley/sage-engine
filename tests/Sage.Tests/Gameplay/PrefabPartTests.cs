@@ -127,7 +127,7 @@ public class PrefabPartTests
         using var app = Boot();
         app.CVars.Execute("ent_types test_");
         var lines = capture.Entries.Select(e => e.Message).ToList();
-        Assert.Contains(lines, l => l.Contains("test_label") && l.Contains("{ Text (shorthand), Times }  [test.parts]"));
+        Assert.Contains(lines, l => l.Contains("test_label") && l.Contains("{ text: string (shorthand), times: int }  [test.parts]"));
         Assert.Contains(lines, l => l.Contains("test_beta") && l.Contains("[test.parts] after test_gamma"));
     }
 

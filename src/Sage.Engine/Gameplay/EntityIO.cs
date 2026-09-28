@@ -66,6 +66,32 @@ public sealed class EntityInputs
     public IEnumerable<string> Names => _inputs.Keys;
 }
 
+// Every output the engine and its plugins fire, by name, with what it means (issue #18). An output is
+// a name a wire listens for, so nothing *needs* this list to work — but a mapper does: the FGD, the
+// registry dump and `io_list` say which outputs exist from here, where they used to be a sentence in
+// FgdExport that nothing kept true. A module declares an output in Init beside the code that fires it.
+public sealed class EntityOutputs
+{
+    private readonly Dictionary<string, string> _outputs = new(StringComparer.OrdinalIgnoreCase);
+
+    // Closed with the inputs, when the first world exists.
+    public RegistrationSeal Seal { get; } = new("entity output", "the first world's FGD and wiring were checked without it");
+
+    public RegistrationLedger? Ledger { get; set; }
+
+    public void Declare(string name, string description)
+    {
+        Seal.Check(name);
+        if (_outputs.TryAdd(name, description)) Ledger?.Record("entity output", name);
+        else Assert.Ensure(false, $"Entity output '{name}' is declared twice" +
+                                  (Ledger?.OwnerOf("entity output", name) is { } first ? $" (first by {first})" : ""));
+    }
+
+    public bool Has(string name) => _outputs.ContainsKey(name);
+    public string? Describe(string name) => _outputs.TryGetValue(name, out var d) ? d : null;
+    public IEnumerable<string> Names => _outputs.Keys;
+}
+
 // One wire: "when this entity fires `Output`, send `Input` to `Target` after `Delay` seconds".
 public sealed class Connection
 {
@@ -337,6 +363,8 @@ public sealed class EntityIOModule : IModule
     public void Init(ModuleContext ctx)
     {
         _inputs = ctx.Engine.Inputs;
+        ctx.Engine.Outputs.Declare("OnStartTouch", "Something entered this trigger volume (\"trigger\" \"1\" on a brush entity).");
+        ctx.Engine.Outputs.Declare("OnEndTouch", "Something left this trigger volume.");
 
         // The inputs every game has. Anything that moves geometry is in `Movers`; anything about a
         // specific game's rules belongs to that game.
@@ -385,12 +413,16 @@ public sealed class EntityIOModule : IModule
             }
         });
 
-        ctx.Engine.CVars.RegisterCommand("io_list", CVarFlags.None, "Every entity input this game has.", _ =>
+        ctx.Engine.CVars.RegisterCommand("io_list", CVarFlags.None, "Every entity input and output this game has.", _ =>
         {
             var names = new List<string>(ctx.Engine.Inputs.Names);
             names.Sort(StringComparer.OrdinalIgnoreCase);
             foreach (var name in names) Log.Info(LogCat.Console, $"  {name}");
             Log.Info(LogCat.Console, $"{names.Count} input(s)");
+            var outputs = new List<string>(ctx.Engine.Outputs.Names);
+            outputs.Sort(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in outputs) Log.Info(LogCat.Console, $"  {name,-14} {ctx.Engine.Outputs.Describe(name)}");
+            Log.Info(LogCat.Console, $"{outputs.Count} output(s)");
         });
     }
 

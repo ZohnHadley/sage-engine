@@ -25,10 +25,15 @@ public enum BodyKind { Static, Kinematic, Dynamic }
 [Component("sage:collider")]
 public struct Collider : IComponent
 {
+    [Property(Category = "Shape", Tooltip = "Box, Sphere, Capsule or Mesh")]
     public ColliderShape Shape;
+    [Property(Category = "Shape", Min = 0, Unit = "m", Tooltip = "Box: full extents. Sphere: X is the radius. Capsule: X radius, Y cylinder length")]
     public Vector3 Size;
+    [Property(Category = "Shape", Unit = "m", Tooltip = "Offset from the entity's origin to the shape's centre")]
     public Vector3 Center;    // local offset from the entity's origin to the shape's centre
+    [Property(Category = "Collision", Min = 0, Max = 31, Tooltip = "Index into the physics_layers record (0 = default)")]
     public byte Layer;        // index into the physics_layers record (0 = "default")
+    [Property(Category = "Collision", Tooltip = "Reports overlaps and never blocks")]
     public bool IsTrigger;    // generates overlap events, never a collision response
 
     // The shortest cylinder a capsule may keep: two hemispheres and nothing between them is still a
@@ -60,9 +65,13 @@ public struct Collider : IComponent
 [Component("sage:rigid_body")]
 public struct RigidBody : IComponent
 {
+    [Property(Tooltip = "Static never moves, Kinematic is moved by gameplay, Dynamic by physics")]
     public BodyKind Kind;
+    [Property(Min = 0, Unit = "kg", Tooltip = "Dynamic bodies only; 0 becomes 1")]
     public float Mass;          // dynamic only; <= 0 becomes 1
+    [Property(Min = 0, Max = 1, Tooltip = "0 slides like ice; 0 means the default, 0.7")]
     public float Friction;      // 0..1-ish, default 0.7 when left at 0
+    [Property(Min = 0, Max = 1, Tooltip = "Bounciness: 0 stops dead, 1 bounces back as fast")]
     public float Restitution;   // bounciness 0..1
 
     public static RigidBody Dynamic(float mass) => new() { Kind = BodyKind.Dynamic, Mass = mass };

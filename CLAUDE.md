@@ -13,7 +13,10 @@ dotnet tool restore
 dotnet build Sage.sln -c Debug                          # .NET 10 SDK (global.json); projects target net8.0
 dotnet build Sage.sln -c Debug -p:SageSkipShaders=true  # Linux: mgfxc needs Wine, so compile without shaders
 dotnet test tests/Sage.Tests -c Debug                   # also -c Development; not Shipping
-python3 tools/check_docs.py --tests <count>             # docs against the code; --fix rewrites counts
+dotnet build Sage.sln -c Development -p:SageSkipShaders=true   # then the registry dump check_docs reads:
+(cd src/Sage.Host/bin/Development/net8.0 && xvfb-run -a ./Sage.Host -game ../../../../../games/Sandbox \
+    -dump-registry ../../../../../user/registry.json)   # what check_docs reads; Windows: no xvfb-run
+python3 tools/check_docs.py --tests <count>             # docs against the registry dump; --fix rewrites counts
 src/Sage.Cli/bin/Debug/net8.0/sage validate games/Sandbox # content checks, headless; exits 1 on errors (--mounts dir[=ns] ...)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
 ```
@@ -33,6 +36,9 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
   Every component and tag has a stable id, `[Component("ns:name")]` / `[Tag(...)]` (a build error
   without one); prefabs and saves use the id, never the C# name. Rename a saved field only with a
   `Version` bump and an `[Upgrade]` method; `tests/Sage.Tests/Content/Saves` holds golden saves that must load.
+- **Describe fields** with `[Property(Min, Max, Unit, Tooltip, Category)]`, `[RecordRef("type")]` on a
+  RecordId and `[AssetKind("kind")]` on an AssetPath: the generated metadata table (`Metadata`) feeds the
+  inspector, `ent_dump`, the FGD's per-entity keys and the registry dump (issue #18).
 - **Boot through `SageApp`**, not by hand; a game's rules come from `IGameModule.CreateRules`; world
   resources go in with `Resources.Add` (or `Replace`, on purpose).
 - **Tests are headless and parallel, and boot through `HeadlessApp`** (`tests/Sage.Testing`), never

@@ -173,7 +173,8 @@ public class AnalyzerTests
     {
         var d = Assert.Single(Analyze(Components, new StrictSavesAnalyzer(), ("SageStrictSaves", "true")));
         Assert.Equal("SAGE0023", d.Id);
-        Assert.StartsWith("Health.Value is public, so it is saved; with SageStrictSaves on, say so: mark it [Transient]", d.GetMessage());
+        // The engine defines [Property] since issue #18, so the message offers both decisions.
+        Assert.StartsWith("Health.Value is public, so it is saved; with SageStrictSaves on, say so: mark it [Property] to save it or [Transient]", d.GetMessage());
     }
 
     // [Property] is found by name (issue #18 defines it), so once it exists it counts as the decision.
