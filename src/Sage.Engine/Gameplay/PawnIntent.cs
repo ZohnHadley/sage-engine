@@ -42,6 +42,7 @@ public struct PawnIntent : IComponent, IEquatable<PawnIntent>
 
 // Commands phase: the local player's command becomes intent (16 §3.1, 08 §3.4). AI controllers write
 // the same component from their own state, so everything downstream is shared.
+[System("sage.character.player_control", Phase.Commands)]
 public sealed class PlayerControlSystem : ISystem
 {
     private readonly ArchetypeQuery<PawnIntent> _pawns;

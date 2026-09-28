@@ -12,6 +12,7 @@ namespace sage_engine;
 // Late phase: every collider in the world, in its real place. The colour says how it moves, which is
 // how a kinematic body that should be static (or a capsule sunk into the ground, review #44) shows up
 // at a glance.
+[System("sage.physics.debug", Phase.Late)]
 public sealed class PhysicsDebugSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, Collider> _colliders;
@@ -99,6 +100,7 @@ public sealed class PhysicsDebugSystem : ISystem
 
 // Late phase: what each agent knows (16 §3.4). The cone is what it can see, the line is what it is
 // chasing, and the colour is how close it thinks it is to swinging.
+[System("sage.ai.debug", Phase.Late)]
 public sealed class AIDebugSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, AIState> _agents;

@@ -655,7 +655,7 @@ public sealed class MapModule : IModule
     {
         var levels = new MapLevels();
         world.Resources.Add(levels);
-        world.AddSystem(new MapCollisionSystem(world), Phase.PrePhysics);
+        world.AddSystem(new MapCollisionSystem(world));
 
         // A level's `Position` is a world position held outside the ECS, and the rule for those is the
         // same as for particles, audio and AI: follow the rebase (R6, 14 §3). The entities built from it
@@ -669,6 +669,7 @@ public sealed class MapModule : IModule
 }
 
 // Brush hulls into the physics space, once per level (10 §3).
+[System("sage.maps.collision", Phase.PrePhysics)]
 internal sealed class MapCollisionSystem : ISystem
 {
     private readonly World _world;

@@ -12,3 +12,7 @@ SAGE0004 | Sage.Declarations | Error | An IComponent or ITag struct without [Com
 SAGE0005 | Sage.Declarations | Error | A malformed component or tag declaration
 SAGE0006 | Sage.Declarations | Error | Two components or tags with one id in an assembly
 SAGE0007 | Sage.Declarations | Error | An [Upgrade] method with the wrong signature or version
+SAGE0010 | Sage.Declarations | Error | A prefab part whose plugin cannot be inferred
+SAGE0011 | Sage.Declarations | Error | A declared part or system that cannot be one (abstract, private, wrong interface)
+SAGE0012 | Sage.Declarations | Error | Two declarations of one part or system id in an assembly
+SAGE0013 | Sage.Declarations | Error | A system ordered against a system in another phase

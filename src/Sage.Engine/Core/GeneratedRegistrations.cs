@@ -16,8 +16,8 @@ public interface IGeneratedRegistrations
 }
 
 // Marks the generated registrations of an assembly, so the module manager finds them without
-// scanning types.
-[AttributeUsage(AttributeTargets.Assembly)]
+// scanning types. One per generator that has something to register (records, and parts: issue #17).
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public sealed class GeneratedRegistrationsAttribute : Attribute
 {
     public GeneratedRegistrationsAttribute(Type type) { Type = type; }
@@ -34,6 +34,7 @@ public sealed class RegistrationBuilder
 
     public void Record<T>() where T : class, new() => _engine.Records.Register<T>();
     public void SavedResource<T>() where T : class, new() => _engine.Saves.RegisterResource<T>();
+    public void PrefabPart<T>() where T : class, IPrefabPart, new() => _engine.Prefabs.Register<T>();
 }
 
 // The plugin id of declarations the engine itself owns: record types every game uses (prefabs,
@@ -53,8 +54,8 @@ public sealed class GeneratedRegistrations
     public void Include(Assembly assembly)
     {
         if (!_assemblies.Add(assembly)) return;
-        if (assembly.GetCustomAttribute<GeneratedRegistrationsAttribute>() is not { } attr) return;
-        _all.Add((IGeneratedRegistrations)Activator.CreateInstance(attr.Type)!);
+        foreach (var attr in assembly.GetCustomAttributes<GeneratedRegistrationsAttribute>())
+            _all.Add((IGeneratedRegistrations)Activator.CreateInstance(attr.Type)!);
     }
 
     // Every declaration `plugin` owns, in every included assembly.

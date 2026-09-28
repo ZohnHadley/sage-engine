@@ -248,14 +248,49 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `effects` | effects already on it |
 | `inventory` | somewhere to put things |
 | `pickup` | makes it something you can pick up — `item`, `count` |
-| `loot` | what it drops |
 | `faction` | who it belongs to |
 | `dialogue` | something to say |
 
-Sixteen, and that is all of them — a game adds its own in `Init` the same way. The Sandbox has two:
-`hop` (a creature that bounces, eleven lines, in its simulation half) and `box_mesh` (a plain box mesh,
-in its *client* half, because building a mesh needs a renderer). A part whose module is missing (a mesh part in a headless run) is
-declared `Optional` so the same prefab loads with no renderer at all.
+Fifteen, and that is all of them. `ent_types` in the console lists each with its options, the plugin
+that declares it and what it runs after — the options *are* the part's public fields.
+
+**A part is a declared class**, like a record type (issue #17): its public fields are its options, and
+`[PrefabPart]` registers it for your plugin before your `Init` runs — there is no call to make.
+
+```csharp
+// "glow": { "colour": [1, 0.5, 0.2], "range": 6 }
+[PrefabPart("glow")]                          // Plugin = "yourgame.x" when the assembly has several
+public sealed class GlowPart : IPrefabPart
+{
+    public Vector3 Colour = Vector3.One;
+    public float Range = 6f;
+
+    public void Apply(in PrefabPartContext ctx)
+    {
+        if (Range <= 0f) { ctx.Error("needs a positive \"range\""); return; }   // "<prefab>: glow: ..."
+        ctx.World.Add(ctx.Entity, new PointLight { Colour = Colour, Range = Range, Intensity = 1f });
+    }
+}
+```
+
+- A new instance is read from the prefab for every entity, so `Apply` can treat its fields as this
+  entity's options. `{}` means "this part, with the defaults".
+- A part that takes one value can say so: `[PrefabPart("faction", Shorthand = nameof(Id))]` makes
+  `"faction": "beasts"` mean `"faction": { "id": "beasts" }`.
+- **What a part needs besides its options** — the renderer, a service — it asks `ctx.Get<T>()` for,
+  under the same rule as `ModuleContext.Get` (the host's, or a plugin yours depends on). It does not
+  capture a module's fields: a part is a declaration, with no module instance behind it. The Sandbox's
+  `box_mesh` does this for the renderer.
+- **Order:** parts run after the parts their attribute names in `After`, and otherwise in id order —
+  never in the order the prefab writes them, which a `base` prefab's merge would decide for you.
+  `pickup` runs after `sprite` and `body` because it adds its own only when there are none.
+- **One id, one part:** a second part with an id already taken is an error at startup, naming both
+  (and `SAGE0012` at build time within one assembly).
+
+The Sandbox has two of its own: `hop` (a creature that bounces, a few lines, in its simulation half) and
+`box_mesh` (a plain box mesh, in its *client* half, because building a mesh needs a renderer). A part
+whose plugin is missing (a mesh part in a headless run) is declared `Prefabs.Optional(name)` by the half
+that is always there, so the same prefab loads with no renderer at all.
 
 ---
 
@@ -282,7 +317,7 @@ public void OnWorldCreated(World world)
     terrain.Seed = 1;
     terrain.Load(SectorCoord.Zero);
 
-    world.AddSystem(new YourOwnSystem(world), Phase.Gameplay);
+    world.AddSystem(new YourOwnSystem(world));    // its id and phase are on the class: see §6
 }
 
 // The game's rules for each world. The engine asks once every module has furnished the world, then
@@ -411,14 +446,43 @@ of two halves, and keeping the split in mind answers most questions about where:
 Your module is an `IModule` (the game's own also implements `IGameModule`), and the four methods happen
 in a fixed order, which matters more than it looks:
 
-- `Init` — **register only**: record types, cvars, console commands, prefab parts, entity inputs. Records
-  are not loaded yet.
+- `Init` — **register only**: cvars, console commands, entity inputs, input actions. Records are not
+  loaded yet. (Record types, saved resources and prefab parts are declared with attributes and
+  registered for you just before `Init`.)
 - `Start` — records are loaded and the graphics device exists: read records, load assets.
 - `OnWorldCreated` — per world: install resources and add systems to phases.
 - `Shutdown` — in reverse order.
 
 Registering a cvar in `Start` instead of `Init` is a real trap: `config.cfg` is executed between the two,
 so the saved value is dropped with an "unknown cvar" warning and the setting silently never applies.
+
+**A system is declared too** (issue #17). The attribute gives it a stable id, its phase and its order
+against other systems *by id*; your module still builds it, because a system takes what it needs —
+cvars, records, a service — through its constructor, and adds it in `OnWorldCreated`:
+
+```csharp
+[System("yourgame.tides", Phase.Gameplay, After = new[] { "sage.movers.move" })]
+public sealed class TideSystem : ISystem
+{
+    private readonly EventReader<Damaged> _hits;
+    public TideSystem(World world) { _hits = world.Events.Reader<Damaged>(this); }   // `this`: see below
+    public void Run(in SystemContext ctx) { /* ... */ }
+}
+
+public void OnWorldCreated(World world) => world.AddSystem(new TideSystem(world));
+```
+
+- `Before`/`After` order systems **within one phase**. Naming a system in another phase is an error
+  when it is added, and so is naming an id nothing declares — a typo, or a plugin that is not installed.
+  Write `"?othermod.thing"` for a plugin that may legitimately be absent. An id that is declared but
+  not in this world (its plugin is turned off) is simply no constraint.
+- Ask for event readers with `this` as the owner, in the constructor: when the system is removed (or
+  replaced, or disabled) its readers are released, and a system that is `IDisposable` is disposed.
+- A plugin can **replace** or **disable** a system it did not add — `world.Systems.Replace("sage.ai.think",
+  new MyThink(world))`, `world.Systems.Disable("sage.effects.tick")` — from `OnWorldCreated`, in a
+  plugin that depends on the one it changes. Both are logged against your plugin, and `sys_list` shows
+  every system's id, its plugin and who replaced or disabled it.
+- A test's probe or a tool's one-off can stay undeclared: `world.AddSystem(probe, Phase.Late)`.
 
 ---
 
@@ -601,9 +665,11 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
    after which registering would be too late), so this one no longer happens silently — the rest of
    the list still does. A misspelt key in `game.json` is an error too, and `disable` names that match no
    module are warned about.
-8. **Prefab parts run in registration order, not JSON order**, and registering a name twice replaces it
-   without complaint. A part your *client* half registers must be declared `Prefabs.Optional(name)` by
-   your simulation half, or a headless run errors on every spawn of that prefab.
+8. **Prefab parts run in their declared order, not JSON order**: after the parts their `After` names,
+   then by id. Since issue #17 that order is written down and a second part with the same id is an
+   error, where it used to be module order and a silent replacement. What still bites: a part your
+   *client* half declares must be declared `Prefabs.Optional(name)` by your simulation half, or a
+   headless run errors on every spawn of that prefab.
 9. **Hot reload sweeps what the scene spawned — including the player.** If you respawn your scene on
    `RecordStore.Reloaded`, respawn the player too, or saving a JSON file leaves you with nothing to
    control.

@@ -60,9 +60,16 @@ public class ScheduleTests
         public Recorder(string name, List<string> log) { _name = name; _log = log; }
         public void Run(in SystemContext ctx) => _log.Add($"{ctx.Phase}:{_name}");
     }
+    [System("test.schedule.a", Phase.Gameplay, Before = new[] { "test.schedule.c" })]
     private sealed class A : ISystem { public List<string> Log; public A(List<string> l) { Log = l; } public void Run(in SystemContext ctx) => Log.Add("A"); }
+    [System("test.schedule.b", Phase.Gameplay, After = new[] { "test.schedule.c" })]
     private sealed class B : ISystem { public List<string> Log; public B(List<string> l) { Log = l; } public void Run(in SystemContext ctx) => Log.Add("B"); }
+    [System("test.schedule.c", Phase.Gameplay)]
     private sealed class C : ISystem { public List<string> Log; public C(List<string> l) { Log = l; } public void Run(in SystemContext ctx) => Log.Add("C"); }
+    [System("test.schedule.cycle_b", Phase.AI, After = new[] { "test.schedule.cycle_c" })]
+    private sealed class CycleB : ISystem { public void Run(in SystemContext ctx) { } }
+    [System("test.schedule.cycle_c", Phase.AI, After = new[] { "test.schedule.cycle_b" })]
+    private sealed class CycleC : ISystem { public void Run(in SystemContext ctx) { } }
 
     [Fact]
     public void Phases_RunInOrder_FixedAndFrameSeparately()
@@ -89,15 +96,16 @@ public class ScheduleTests
         using var world = new World("test");
         var log = new List<string>();
         // Registered B, C, A; constraints: B after C, A before C. Result must be A, C, B.
-        world.AddSystem(new B(log), Phase.Gameplay, after: new[] { typeof(C) });
-        world.AddSystem(new C(log), Phase.Gameplay);
-        world.AddSystem(new A(log), Phase.Gameplay, before: new[] { typeof(C) });
+        world.AddSystem(new B(log));
+        world.AddSystem(new C(log));
+        world.AddSystem(new A(log));
         world.RunFixed(0.1f);
         Assert.Equal(new[] { "A", "C", "B" }, log);
 
         using var bad = new World("cycle");
-        bad.AddSystem(new B(new()), Phase.AI, after: new[] { typeof(C) });
-        Assert.Throws<InvalidOperationException>(() => bad.AddSystem(new C(new()), Phase.AI, after: new[] { typeof(B) }));
+        bad.AddSystem(new CycleB());
+        Assert.Throws<InvalidOperationException>(() => bad.AddSystem(new CycleC()));
+        Assert.Single(bad.Systems);   // the one that closed the cycle is not left behind
     }
 
     private sealed class Killer : ISystem
@@ -124,8 +132,8 @@ public class ScheduleTests
         world.Create(); world.Create();
         var sameAfterKill = new Counter(world);
         var nextPhase = new Counter(world);
-        world.AddSystem(new Killer(world), Phase.Gameplay);
-        world.AddSystem(sameAfterKill, Phase.Gameplay, after: new[] { typeof(Killer) });
+        world.AddSystem(new Killer(world), Phase.Gameplay, id: "test.killer");
+        world.AddSystem(sameAfterKill, Phase.Gameplay, after: new[] { "test.killer" });
         world.AddSystem(nextPhase, Phase.AI);
 
         world.RunFixed(0.1f);

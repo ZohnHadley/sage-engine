@@ -164,9 +164,98 @@ public class DeclarationTests
         Assert.Equal("", output);
     }
 
+    // ---- Prefab parts and systems (issue #17) -------------------------------------------------------
+
+    [Fact]
+    public void ThePartGeneratorRegistersPartsForTheirPluginAndListsSystems()
+    {
+        var (output, diagnostics) = Generate("""
+            using sage_engine;
+            [Plugin("test.one", "1.0.0")] public sealed class One : IModule { public void Init(ModuleContext ctx) { } }
+            [Plugin("test.two", "1.0.0")] public sealed class Two : IModule { public void Init(ModuleContext ctx) { } }
+            [PrefabPart("glow", Plugin = "test.one")]
+            public sealed class GlowPart : IPrefabPart { public float Range = 4; public void Apply(in PrefabPartContext ctx) { } }
+            [System("test.two.spin", Phase.Gameplay, After = new[] { "sage.effects.tick" })]
+            internal sealed class SpinSystem : ISystem { public SpinSystem(int speed) { } public void Run(in SystemContext ctx) { } }
+            """, new PartGenerator());
+
+        Assert.Empty(diagnostics);
+        Assert.Contains("case \"test.one\":", output);
+        Assert.Contains("builder.PrefabPart<global::GlowPart>();", output);
+        Assert.Contains("typeof(global::SpinSystem),", output);   // listed, not constructed: it takes a speed
+    }
+
+    [Fact]
+    public void APartWithoutAnOwnerIsAnError()
+    {
+        var (_, diagnostics) = Generate("""
+            using sage_engine;
+            [PrefabPart("glow")] public sealed class GlowPart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
+            """, new PartGenerator());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("SAGE0010", d.Id);
+        Assert.Contains("GlowPart is declared with [PrefabPart] but names no plugin, and this assembly has no [Plugin]", d.GetMessage());
+    }
+
+    [Theory]
+    [InlineData("[PrefabPart(\"glow\")] public sealed class GlowPart { }", "it does not implement IPrefabPart")]
+    [InlineData("[PrefabPart(\"glow\")] public sealed class GlowPart : IPrefabPart { public GlowPart(int x) { } public void Apply(in PrefabPartContext ctx) { } }",
+                "it has no public parameterless constructor")]
+    [InlineData("public static class Outer { [PrefabPart(\"glow\")] private sealed class GlowPart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } } }",
+                "it is private or nested in a private type")]
+    [InlineData("[System(\"test.spin\", Phase.Gameplay)] public sealed class Spin { }", "it does not implement ISystem")]
+    [InlineData("[System(\"\", Phase.Gameplay)] public sealed class Spin : ISystem { public void Run(in SystemContext ctx) { } }", "its id is empty")]
+    public void APartOrSystemThatCannotBeOneIsAnError(string declaration, string why)
+    {
+        var (_, diagnostics) = Generate($$"""
+            using sage_engine;
+            [Plugin("mygame", "1.0.0")] public sealed class MyGame : IModule { public void Init(ModuleContext ctx) { } }
+            {{declaration}}
+            """, new PartGenerator());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("SAGE0011", d.Id);
+        Assert.Contains(why, d.GetMessage());
+    }
+
+    [Fact]
+    public void TwoPartsOrTwoSystemsWithOneIdAreAnError()
+    {
+        var (_, diagnostics) = Generate("""
+            using sage_engine;
+            [Plugin("mygame", "1.0.0")] public sealed class MyGame : IModule { public void Init(ModuleContext ctx) { } }
+            [PrefabPart("glow")] public sealed class GlowPart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
+            [PrefabPart("Glow")] public sealed class ShinePart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
+            [System("mygame.spin", Phase.Gameplay)] public sealed class Spin : ISystem { public void Run(in SystemContext ctx) { } }
+            [System("mygame.spin", Phase.Gameplay)] public sealed class Twirl : ISystem { public void Run(in SystemContext ctx) { } }
+            """, new PartGenerator());
+
+        Assert.Equal(new[] { "SAGE0012", "SAGE0012" }, diagnostics.Select(d => d.Id));
+        Assert.Contains(diagnostics, d => d.GetMessage().Contains("[PrefabPart(\"Glow\")] is declared by both GlowPart and ShinePart"));
+        Assert.Contains(diagnostics, d => d.GetMessage().Contains("[System(\"mygame.spin\")] is declared by both Spin and Twirl"));
+    }
+
+    // The compile-time half of the cross-phase rule: both systems are in this assembly, so the build
+    // can say so. A constraint naming another assembly's system is checked when it is added.
+    [Fact]
+    public void ASystemOrderedAgainstOneInAnotherPhaseIsACompileError()
+    {
+        var (_, diagnostics) = Generate("""
+            using sage_engine;
+            [System("mygame.perceive", Phase.AI)] public sealed class Perceive : ISystem { public void Run(in SystemContext ctx) { } }
+            [System("mygame.think", Phase.Gameplay, After = new[] { "mygame.perceive" })]
+            public sealed class Think : ISystem { public void Run(in SystemContext ctx) { } }
+            """, new PartGenerator());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("SAGE0013", d.Id);
+        Assert.Contains("Think (Gameplay) runs after 'mygame.perceive', which runs in AI", d.GetMessage());
+    }
+
     // Runs the generator over `source`, compiled against the engine, and returns what it wrote and
     // reported — plus any compile error in what it wrote, which would otherwise pass unnoticed.
-    private static (string Output, ImmutableArray<Diagnostic> Diagnostics) Generate(string source)
+    private static (string Output, ImmutableArray<Diagnostic> Diagnostics) Generate(string source, IIncrementalGenerator? generator = null)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
@@ -176,7 +265,7 @@ public class DeclarationTests
             new[] { CSharpSyntaxTree.ParseText(source) }, references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(new RegistrationGenerator());
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator ?? new RegistrationGenerator());
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updated, out var diagnostics);
 
         var result = driver.GetRunResult();

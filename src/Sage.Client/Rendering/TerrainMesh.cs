@@ -10,6 +10,7 @@ namespace sage_engine;
 // heightfield becomes a grid of chunks, each its own mesh and entity, so frustum culling and (later)
 // LOD work per chunk. v1 builds every chunk of a sector at once, on the frame the sector appears;
 // with streaming (F14) this moves onto jobs and the asset upload budget.
+[System("sage.client.terrain_mesh", Phase.FrameUpdate)]
 internal sealed class TerrainMeshSystem : ISystem
 {
     // 32 cells per chunk → 4x4 chunks of 33x33 vertices per sector.

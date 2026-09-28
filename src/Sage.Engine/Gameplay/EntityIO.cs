@@ -20,8 +20,9 @@ namespace sage_engine;
 // lives in the map file, so a mapper changes what a level does without a programmer.
 //
 // The dispatch table is a **registry**, not the `[Input]` attributes 04 §3.4 sketches: those want the
-// source generator (09 §3.2), which is still deferred. Modules register their inputs the way they
-// register prefab parts, and the generator will replace the registration rather than the design.
+// source generator (09 §3.2), which does not cover them yet. Modules register their inputs in Init,
+// the way prefab parts were registered before they were declared (issue #17); the generator will
+// replace the registration rather than the design.
 
 // What an input is handed. `Self` is the entity being fired at; `Activator` is who started the chain (the
 // player who pressed the button); `Caller` is the entity that fired the output.
@@ -286,6 +287,7 @@ public static class EntityIOExtensions
 }
 
 // The dispatch phase, plus the two outputs the engine itself fires.
+[System("sage.io.dispatch", Phase.EntityIO)]
 internal sealed class EntityIOSystem : ISystem
 {
     private readonly World _world;
@@ -304,6 +306,7 @@ internal sealed class EntityIOSystem : ISystem
 
 // Physics triggers become `OnStartTouch` / `OnEndTouch`. A trigger volume in a map is the oldest level
 // mechanism there is, and it costs one system to give it a wire (10 §3, 04 §3.4).
+[System("sage.io.triggers", Phase.PostPhysics)]
 internal sealed class TriggerOutputSystem : ISystem
 {
     private readonly World _world;
@@ -407,7 +410,7 @@ public sealed class EntityIOModule : IModule
         if (_trace != null) _trace.Changed += _ => io.Trace = _trace.Value;
         if (_budget != null) _budget.Changed += _ => io.Budget = _budget.Value;
 
-        world.AddSystem(new TriggerOutputSystem(world), Phase.PostPhysics);
-        world.AddSystem(new EntityIOSystem(world, _inputs!), Phase.EntityIO);
+        world.AddSystem(new TriggerOutputSystem(world));
+        world.AddSystem(new EntityIOSystem(world, _inputs!));
     }
 }
