@@ -303,10 +303,10 @@ than as art.
   4. A later *non-patch* definition of an existing id is an error (it would silently wipe the earlier one, which is Bethesda's "rule of one" problem). It's logged with both files, and the patch wins so the game still runs.
   5. `"disabled": true` in a patch removes a record.
 - **Typed schemas:** each record type is a C# class with `[Record("item")]`. A source generator (09) produces the JSON reader and validator. After all files are merged:
-  - unknown fields → `Warn` (catches typos);
+  - unknown fields → `Error` with the nearest known name (catches typos; a `Warn` until issue #22);
   - wrong types / out-of-range values → `Error` (the record is skipped);
   - `RecordId`/`AssetPath` references to things that don't exist → `Error` with the file and line.
-- **`RecordStore`** holds merged, validated records per type. Lookups by `RecordId` are dictionary-based. For hot paths, use `RecordRef<T>` (a cached index).
+- **`RecordStore`** holds merged, validated records per type. Lookups by `RecordId` are dictionary-based. `RecordRef<T>` is a typed reference, checked against records of its type (as built: an id with a type, not yet a cached index).
 - **Hot reload** (`rec_hotreload`, `DevOnly`, default on when `developer` ≥ 1): a changed `.json` re-runs load + merge + validate for that record type, replaces entries **in place** (so `RecordRef`s stay valid), then raises `RecordsReloaded(RecordType)` (04).
 
 ### 3.6 As built (migration step 5)
@@ -316,8 +316,14 @@ than as art.
   - errors name `file:line:column` (`sandbox:data/scene.json:385:5`) since 2026-09-28 (issue #22): the record, or the property a problem is in — the file that *set* that field, when a patch or a `base` did — or the element of a list. Positions are worked out only when there is an error to report; a clean load just keeps each file's bytes until it finishes (test: RecordErrors_SayFileLineAndColumn, test: AnErrorInAPatchedField_PointsAtThePatch, test: InvalidJson_SaysLineAndColumn);
   - **colours** are `"#RRGGBB"`, `"#RRGGBBAA"` or `[r, g, b(, a)]` in whole numbers 0-255 on any field marked `[JsonConverter(typeof(ColourJsonConverter))]` (`damage_type.colour`, `particle.colourStart`/`colourEnd`); a plain number is still read as the packed value (red in the low byte, as MonoGame's `Color.PackedValue`), and 0-1 fractions are an error (test: Colours_ReadAsHex_Arrays_OrPackedNumbers, test: Colours_ThatAreNotColoursAreErrorsAtTheirLine);
   - no range checks yet (they come with `[Property]` attributes, 09);
-  - reference validation checks that a referenced `RecordId` exists, not that it has the right type; `AssetPath` references aren't checked (no `AssetPath` yet);
-  - no `RecordRef<T>` yet;
+  - **strict loading, the rest of issue #22 (2026-09-28):**
+    - **unknown fields are errors at any depth**, with the nearest known name by edit distance (`unknown field 'agilty' in 'stats'; did you mean 'agility'?`), and the record is skipped (test: UnknownFields_AtAnyDepth_AreErrorsWithTheNearestName). The check walks the JSON beside the type's System.Text.Json contract, so a member with its own converter (a colour, an AI task) is a leaf; the options also carry `UnmappedMemberHandling.Disallow` as the backstop for anything read later. `"$schema"` is reserved for editors (#21);
+    - **`RecordRef<T>`** is a reference to one record type: the same string in a file, and in code it converts both ways with `RecordId`, compares with one and exposes `Target` for tools (#18). The load checks it against records *of that type*, and says what the id is when it names another (`(sandbox:sword is a test_item)`), or the nearest id; a plain `RecordId` still means any record (test: RecordRefs_AreCheckedByType). References are found at any depth — a list of objects holding them included — and one to a record type this host did not register (a sound on a server) is not checked. The engine's record fields and part options that point at one kind of record are `RecordRef<T>`;
+    - **`AssetPath` values must be in a mount**: a warning in a dev build, an error when `MissingAssetsAreErrors` is set (`sage validate`), not looked at in Shipping. A `.mgfxo` counts as present when its `.fx` source is, since the build makes one from the other (test: AssetPaths_MustBeInAMount_AWarningInDev_AnErrorWhenValidating);
+    - **`RecordStore.Get<T>` throws in a dev build** for a missing record (`no test_item record sandbox:swrod; did you mean 'sandbox:sword'?`); the blank `new T()` is Shipping's safety net only, logged once per id (test: AMissingRecord_StopsADevBuild_InsteadOfHandingBackABlankOne);
+    - **checks per record type**: `RecordStore.AddCheck<T>((record, check) => …)`, added in a plugin's `Init`, runs after every load with the built records; `RecordCheck` reports at a path inside the record (`check.Error("Tasks[2]", …)` → that line) and offers the load's own field and reference checks for data only the check can type. The engine adds one for prefabs (§ prefabs below), `AIModule` one for schedules' interrupt names (test: AISchedules_NameTheirLineForAnUnknownInterruptOrTask). `RecordStore.Where(type, id, path)` gives the same `file:line:column` after the load, for problems only a world can judge (an AI task name);
+    - **prefab bodies are checked at load**, not at the first spawn: each component by id (with the nearest id), its fields, each tag, each part by id (a part declared `Optional` is skipped), its options (shorthand included), and every record and asset they name. A prefab with problems still loads and spawns without the bad pieces, and the spawn logs them at Debug, since the load said so already (test: PrefabBodies_AreCheckedAtLoad_AtTheirLines). `AddBodyTypes<T>` tells the loader what type a keyed body is, so bare ids inside a patched prefab's components and parts mean the patching file's namespace too (test: APatchedPrefabBody_QualifiesBareIdsInThePatchersNamespace);
+    - **`sage validate <game> [--mounts dir[=ns] …]`** (`src/Sage.Cli`, headless, `ContentValidation.Run`): boots the game as a dedicated server would, plus the client's record types, with missing assets as errors, through the game's first world, and exits 1 on any error. CI runs it on Hello, the Sandbox and `tests/games/no-plugins` (test: Validate_TheSandboxAndHelloHaveNoErrors, test: Validate_AModMountWithMistakesFails_NamingEachOne). Options of parts only a client declares are not read there; the real host's load checks them;
   - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place.
 - **Hot reload** (`RecordHotReload`, dev builds): a `FileSystemWatcher` on each folder mount's `data/`, polled from the main thread and reloaded after 200 ms of quiet, while `rec_hotreload` is on. `games/Sandbox` respawns its scene on reload, so editing `content/data/scene.json` updates the running game.
 - **Assets — as built (R12, 2026-09-24):** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads everything through the VFS, so any asset can come from any mount and be shadowed like any other file:
@@ -381,7 +387,7 @@ public readonly struct RecordRef<T> where T : class { public T Value { get; } }
 public sealed class RecordStore                                   // as built (2026-09-23)
 {
     public void Register<T>() where T : class, new();             // a [Record] type; generated code calls it (issue #16)
-    public T Get<T>(RecordId id) where T : class, new();          // Ensure + placeholder record on miss
+    public T Get<T>(RecordId id) where T : class, new();          // dev: throws on miss; Shipping: placeholder record
     public bool TryGet<T>(RecordId id, out T value) where T : class;
     public IReadOnlyList<T> All<T>() where T : class;
     public IEnumerable<RecordId> Ids(string type);
@@ -436,7 +442,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 |---|---|
 | Missing asset | `Warn` once per path with the mount search list; the placeholder is used (checkerboard texture, error mesh — a red "ERROR" box like Source's error model — or a silent sound) |
 | Decode failure | `Error` with the exception and the mount that provided the file; placeholder |
-| Missing record | `Ensure` fails; a placeholder record (type defaults) keeps the game running |
+| Missing record | a reference to it is a load error at its line; `Get<T>` of one throws in a dev build, and only Shipping hands back a placeholder record (type defaults, logged once) to keep the game running |
 | Record validation error | Record skipped, `Error` with file:line:field |
 | Non-patch redefinition | `Error` naming both files; the later one is treated as a patch |
 | Corrupt `.pak` | Mount skipped, `Error`; boot continues |

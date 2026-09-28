@@ -61,7 +61,7 @@ public sealed class SpriteAnimationEvent
 public sealed class SpriteSheetRecord
 {
     public AssetPath Texture;
-    public RecordId Material;                  // empty = sage:sprite_default
+    public RecordRef<MaterialRecord> Material; // empty = sage:sprite_default
     public int Directions = 1;                 // 1 (always the same view), 5 (mirrored) or 8
     public Vector2 Size = new(1f, 1f);         // default world size in metres
     public BillboardMode Mode = BillboardMode.Cylindrical;

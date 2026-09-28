@@ -153,15 +153,23 @@ have comments and trailing commas. A record is **content, and read-only at run t
 ]
 ```
 
-Four things to know before you write many:
+Five things to know before you write many:
 
 - **Ids are namespaced.** Inside your files a bare `goblin` means `yourgame:goblin`; write `sage:lit_default`
   to reach the engine's. That holds inside a patch of an engine record too: `"sound": "hit_flesh"` in
   your patch of `sage:physical` is *your* `hit_flesh`.
 - **`base` inherits** from another record of the same type, and `"patch": true` merges into one that
   already exists — which is how a mod changes one field of yours without copying the file.
-- **Every `RecordId` field is checked** when records load: a reference to something that does not exist
-  is an error naming `file:line:column`, not a surprise at run time. So is a value of the wrong kind.
+- **Every reference is checked** when records load: a reference to something that does not exist is an
+  error naming `file:line:column`, not a surprise at run time. So is a value of the wrong kind, and so is
+  **a field the type hasn't got** — `"light": { "color": … }` is an error that says `did you mean
+  'colour'?`, at any depth, where it used to be dropped without a word. A record with one is skipped.
+  A field typed `RecordRef<T>` (an item's `sound`, an attack's `damageType`, a part's `attack`) must
+  name a record of *that* type: a sound pointing at a particle says `(… is a particle)`.
+- **Prefab bodies are checked at load, not at the first spawn**: every component by id and every field
+  it writes, every part by id and its options, the tags, and every record and asset they name — each
+  error at its line, with the nearest real name when it looks like a typo. An asset path (a texture, a
+  map, a mesh) that is in no mount is a warning in a dev build and an error under `sage validate` (§9).
 - **They hot reload.** Save the file and the running game picks it up; the Sandbox respawns its scene.
 
 A game can define **its own record types** — the Sandbox's `scene` is one. A plain class with public
@@ -171,10 +179,20 @@ fields and an attribute, and that is all:
 [Record("quest_board")]
 public sealed class QuestBoardRecord
 {
-    public List<RecordId> Offers = new();
+    public List<RecordRef<QuestRecord>> Offers = new();   // must be quests
+    public RecordId Sponsor;                              // any record at all
     public float RefreshHours = 24f;
 }
 ```
+
+Prefer **`RecordRef<T>`** to a bare `RecordId` whenever a field points at one kind of record. In a file
+it is the same string; in code it converts to and from `RecordId`, compares with one, and
+`records.Get(offer)` needs no type argument. `RecordStore.Get<T>` is for records that must exist: a
+missing one throws in a dev build, naming the nearest id, and only a Shipping build hands back a blank
+record (logged once) to keep a player's game running. Ask `TryGet` when absence is normal.
+A plugin can check what a field's type can't say — the way `AIModule` checks interrupt names — with
+`Records.AddCheck<T>((record, check) => …)` in its `Init`; `check.Error("Tasks[2]", "…")` lands on
+that line.
 
 The engine's source generator (`src/Sage.Generators`, which every game project gets) writes the
 registration, and your plugin runs it just before its `Init` — so there is no `Register` call to
@@ -591,7 +609,29 @@ None of this exists in a Shipping build, which contains no editor at all.
 
 ## 9. Checking your game without playing it
 
-Three tools, in the order you should reach for them:
+Four tools, in the order you should reach for them:
+
+**`sage validate`.** Loads your game headlessly — every mount, every record, every prefab body, every
+asset path, then the game's own start-up with its scene placed — and exits non-zero if anything was an
+error. CI runs it on every game in the repository; run it before you push, and before you publish a mod:
+
+```bash
+dotnet build Sage.sln -c Development -p:SageSkipShaders=true
+src/Sage.Cli/bin/Development/net8.0/sage validate games/YourGame
+src/Sage.Cli/bin/Development/net8.0/sage validate games/YourGame --mounts mods/better_swords=swords
+```
+
+Every problem is one line, `file:line:column: type id: what is wrong`:
+
+```
+ERROR Records: mod:data/lamp.json:3:27: prefab swords:lamp: unknown field 'color' in 'parts.light'; did you mean 'colour'?
+ERROR Records: mod:data/items.json:6:35: item swords:rock: 'sound' refers to sound sandbox:fire_burst, which doesn't exist (sandbox:fire_burst is a particle)
+```
+
+It loads what a dedicated server loads plus the engine client's record types (materials, sounds,
+sprite sheets, particles), so a prefab part only your client half declares is skipped there — the real
+game's load checks those, at the same lines. `--engine-content <dir>` points at engine content when the
+tool can't find `engine_content/` above it.
 
 **Headless tests.** Your simulation half can be ticked in a test with no window and no graphics device.
 This is the engine's own habit and the reason the split exists. Reference `tests/Sage.Testing` and your
@@ -683,6 +723,9 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 13. **Renaming a component, or one of its fields,** used to drop that data from every existing save
     silently. Since issue #20 a save is keyed by id, and a field the type no longer has is an error that
     tells you to write an `[Upgrade]` (§8).
+14. **A misspelt field in content** — `"color"` for `colour`, `"name"` on an item whose field is `label`
+    — used to be dropped, leaving the default in its place. Since issue #22 it is an error at its line
+    with the nearest real name, in records, component data and part options alike (§3).
 
 ---
 

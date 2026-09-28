@@ -224,11 +224,19 @@ public sealed class ComponentSchema
         string bare = name.Contains(':') ? name.Substring(name.IndexOf(':') + 1) : name;
         var candidates = table.Values.Where(e => string.Equals(e.Declaration.Name, bare, StringComparison.OrdinalIgnoreCase))
                                      .Select(e => e.Declaration.Id).OrderBy(i => i, StringComparer.Ordinal).ToList();
+        // Nothing by that name anywhere: the nearest spelling, if one is close (issue #22).
+        if (candidates.Count == 0 && Spelling.Nearest(bare, table.Values.Select(e => e.Declaration.Name)) is { } near)
+        {
+            var close = table.Values.Where(e => e.Declaration.Name == near).Select(e => e.Declaration.Id).OrderBy(i => i, StringComparer.Ordinal).ToList();
+            error = $"no {kind} '{name}'; did you mean {string.Join(" or ", close.Select(i => $"\"{i}\""))}? (see `ent_types`)";
+            return null;
+        }
+        string where = fileNamespace == EngineNamespace ? $"'{EngineNamespace}'" : $"'{fileNamespace}' or '{EngineNamespace}'";
         error = candidates.Count > 0
             ? $"no {kind} '{name}' here; did you mean {string.Join(" or ", candidates.Select(i => $"\"{i}\""))}?"
             : name.Contains(':')
                 ? $"no {kind} '{name}' (see `ent_types`)"
-                : $"no {kind} '{name}' in '{fileNamespace}' or '{EngineNamespace}' (see `ent_types`)";
+                : $"no {kind} '{name}' in {where} (see `ent_types`)";
         return null;
     }
 
@@ -268,7 +276,9 @@ public sealed class ComponentSchema
 
     // Reads `fields` as that component type and puts it on the entity, replacing any existing one.
     // Returns false and says why on bad JSON: one bad component costs that component, not the spawn.
-    public bool Add(Entity entity, in ComponentType type, JsonNode? fields, string where)
+    // `reported`: the content load already said what is wrong with these fields, at their line
+    // (issue #22), so a failure here is logged at Debug rather than again as an error.
+    public bool Add(Entity entity, in ComponentType type, JsonNode? fields, string where, bool reported = false)
     {
         object? value;
         try
@@ -279,7 +289,9 @@ public sealed class ComponentSchema
         }
         catch (JsonException ex)
         {
-            Log.Error(LogCat.Records, $"{where}: {IdOf(type.Type) ?? type.Name}: {ex.Message}");
+            string message = $"{where}: {IdOf(type.Type) ?? type.Name}: {ex.Message}";
+            if (reported) Log.Debug(LogCat.Records, message);
+            else Log.Error(LogCat.Records, message);
             return false;
         }
 

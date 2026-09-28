@@ -364,7 +364,7 @@ public class RecordStoreTests
     }
 
     [Fact]
-    public void UnknownField_Warns_BadValue_SkipsTheRecord_MissingReference_IsAnError()
+    public void UnknownField_BadValue_SkipTheRecord_MissingReference_IsAnError()
     {
         var fx = new MountFixture();
         fx.Write("game", "data/items.json", """
@@ -380,10 +380,10 @@ public class RecordStoreTests
         var messages = capture.Entries.Select(e => e.Message).ToList();
         Assert.Contains(messages, m => m.Contains("unknown field 'vaule'"));
         Assert.Contains(messages, m => m.Contains("unknown record type 'no_such_type'"));
-        Assert.True(store.TryGet(new RecordId("sandbox", "typo"), out TestItem _));
+        Assert.False(store.TryGet(new RecordId("sandbox", "typo"), out TestItem _));   // an error since issue #22
         Assert.False(store.TryGet(new RecordId("sandbox", "bad"), out TestItem _));
         Assert.Contains(messages, m => m.Contains("refers to sandbox:no_such_spell"));
-        Assert.Equal(2, store.ErrorCount);   // bad value, dangling reference (warnings don't count)
+        Assert.Equal(3, store.ErrorCount);   // unknown field, bad value, dangling reference (warnings don't count)
     }
 
     [Fact]

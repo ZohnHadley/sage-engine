@@ -22,15 +22,15 @@ public enum EquipSlot { None, MainHand, OffHand }
 public sealed class ItemRecord
 {
     public string Label = "";               // what the log and, later, the UI call it
-    public RecordId Sheet;                  // the billboard it uses lying on the ground
+    public RecordRef<SpriteSheetRecord> Sheet; // the billboard it uses lying on the ground
     public Vector2 Size;                    // ground size in metres; 0 = the sheet's
     public EquipSlot Slot = EquipSlot.None;
-    public RecordId Attack;                 // a weapon's swing: equipping puts this in Melee
-    public List<RecordId> Effects = new();  // applied while it is equipped, removed when it comes off
+    public RecordRef<AttackRecord> Attack;   // a weapon's swing: equipping puts this in Melee
+    public List<RecordRef<EffectRecord>> Effects = new();  // applied while it is equipped, removed when it comes off
     public float Weight = 1f;               // kg, against the carrier's capacity
     public int Value;                       // gold; shops are later
     public int MaxStack = 1;                // > 1 for arrows, potions and the like
-    public RecordId Sound;                  // picking it up (11 §3, F4)
+    public RecordRef<SoundRecord> Sound;     // picking it up (11 §3, F4)
 
     public string Describe(RecordId id) => string.IsNullOrEmpty(Label) ? id.Name : Label;
 }

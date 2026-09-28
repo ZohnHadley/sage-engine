@@ -1,8 +1,9 @@
 # Continuous integration (docs/REDESIGN.md §4.8, issue #6).
 #
 #   linux    the whole solution (the host without shaders), the tests in Debug and Development on the .NET 8 runtime
-#            the projects target, the docs checked against the code with the real test count, and the real
-#            executable run for a few seconds on each game under Xvfb (tools/smoke_run.sh)
+#            the projects target, the docs checked against the code with the real test count, each game's
+#            content through `sage validate`, and the real executable run for a few seconds on each game
+#            under Xvfb (tools/smoke_run.sh)
 #   windows  the whole solution in all three configurations, shaders included, and the tests
 #
 # Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001).
@@ -74,6 +75,17 @@ jobs:
           echo "dotnet test reported $count tests"
           python3 tools/check_docs.py --self-test
           python3 tools/check_docs.py --tests "$count"
+
+      # `sage validate` (issue #22): each game's content, headless, with every check the load makes —
+      # references by type, prefab bodies, asset paths, AI schedules — and missing assets as errors.
+      # Fails on any error; warnings (no-plugins' engine data for absent plugins) are printed only.
+      - name: Validate the games' content (sage validate)
+        run: |
+          set -euo pipefail
+          sage=src/Sage.Cli/bin/Development/net8.0/sage
+          "$sage" validate games/Hello
+          "$sage" validate games/Sandbox
+          "$sage" validate tests/games/no-plugins
 
       # The real executable, for a few seconds, under a virtual display (issue #6): it boots each game,
       # runs the loop and quits on its own, and fails on a crash, a non-zero exit, a missing shutdown or

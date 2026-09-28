@@ -26,7 +26,7 @@ namespace sage_engine;
 public sealed class CharacterPart : IPrefabPart
 {
     public string Layer = "";          // a physics layer by name (10 §3.2); empty = the default
-    public RecordId Profile;           // movement_profile record; empty = the engine's default
+    public RecordRef<MovementProfileRecord> Profile; // movement_profile record; empty = the engine's default
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -119,8 +119,8 @@ public sealed class LightPart : IPrefabPart
 [PrefabPart("sprite", Plugin = "sage.gameplay.animation")]
 public sealed class SpritePart : IPrefabPart
 {
-    public RecordId Sheet;
-    public RecordId Material;
+    public RecordRef<SpriteSheetRecord> Sheet;
+    public RecordRef<MaterialRecord> Material;
     public Vector2 Size;               // metres; 0 = the sheet's own
     public string Animation = "";      // a clip *name*; empty = don't animate
 
@@ -157,7 +157,7 @@ public sealed class AttributesPart : IPrefabPart
 [PrefabPart("effects", Plugin = "sage.gameplay.attributes", After = new[] { "attributes" }, Shorthand = nameof(Ids))]
 public sealed class EffectsPart : IPrefabPart
 {
-    public List<RecordId> Ids = new();
+    public List<RecordRef<EffectRecord>> Ids = new();
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -174,8 +174,8 @@ public sealed class EffectsPart : IPrefabPart
 [PrefabPart("melee", Plugin = "sage.gameplay.combat")]
 public sealed class MeleePart : IPrefabPart
 {
-    public RecordId Attack;
-    public RecordId Natural;
+    public RecordRef<AttackRecord> Attack;
+    public RecordRef<AttackRecord> Natural;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -193,7 +193,7 @@ public sealed class InventoryPart : IPrefabPart
     public float Capacity;
     public List<Stack> Items = new();
 
-    public sealed class Stack { public RecordId Item; public int Count = 1; }
+    public sealed class Stack { public RecordRef<ItemRecord> Item; public int Count = 1; }
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -215,7 +215,7 @@ public sealed class InventoryPart : IPrefabPart
 [PrefabPart("pickup", Plugin = "sage.gameplay.items", After = new[] { "sprite", "body" })]
 public sealed class PickupPart : IPrefabPart
 {
-    public RecordId Item;
+    public RecordRef<ItemRecord> Item;
     public int Count = 1;
 
     public void Apply(in PrefabPartContext ctx)
@@ -229,7 +229,7 @@ public sealed class PickupPart : IPrefabPart
 [PrefabPart("abilities", Plugin = "sage.gameplay.abilities", Shorthand = nameof(Ids))]
 public sealed class AbilitiesPart : IPrefabPart
 {
-    public List<RecordId> Ids = new();
+    public List<RecordRef<AbilityRecord>> Ids = new();
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -243,7 +243,7 @@ public sealed class AbilitiesPart : IPrefabPart
 [PrefabPart("faction", Plugin = "sage.gameplay.factions", Shorthand = nameof(Id))]
 public sealed class FactionPart : IPrefabPart
 {
-    public RecordId Id;
+    public RecordRef<FactionRecord> Id;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -257,7 +257,7 @@ public sealed class FactionPart : IPrefabPart
 [PrefabPart("dialogue", Plugin = "sage.gameplay.factions", Shorthand = nameof(Id))]
 public sealed class DialoguePart : IPrefabPart
 {
-    public RecordId Id;
+    public RecordRef<DialogueRecord> Id;
 
     public void Apply(in PrefabPartContext ctx)
     {

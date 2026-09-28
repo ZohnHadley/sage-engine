@@ -126,7 +126,8 @@ public class ComponentIdTests
 
         Assert.False(thing.IsNull);
         Assert.False(app.World.Has<AIState>(thing));
-        var errors = log.Entries.Where(e => e.Level == LogLevel.Error && e.Message.StartsWith("sage:old_style")).Select(e => e.Message).ToList();
+        // Said at load, where the prefab is written (issue #22), rather than when it spawns.
+        var errors = log.Entries.Where(e => e.Level == LogLevel.Error && e.Message.Contains(": prefab sage:old_style: ")).Select(e => e.Message).ToList();
         Assert.Contains(errors, m => m.Contains("'AIState' is a C# type name") && m.Contains("\"sage:ai_state\""));
         Assert.Contains(errors, m => m.Contains("'PlayerControlled' is a C# type name") && m.Contains("\"sage:player_controlled\""));
         Assert.Contains(errors, m => m.Contains("no component 'velocity' here; did you mean \"test:velocity\"?"));

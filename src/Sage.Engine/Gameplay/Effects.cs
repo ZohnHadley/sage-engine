@@ -15,7 +15,7 @@ public enum EffectStacking { Separate, Refresh, Stack }
 
 public sealed class AttributeModifier
 {
-    public RecordId Attribute;
+    public RecordRef<AttributeRecord> Attribute;
     public ModifierOp Op = ModifierOp.Add;
     public float Value;
 }
@@ -29,10 +29,10 @@ public sealed class EffectRecord
     public float Period = 0f;                   // > 0: apply the modifiers every Period seconds
     public EffectStacking Stacking = EffectStacking.Refresh;
     public int MaxStacks = 1;
-    public List<RecordId> GrantTags = new();    // held while the effect is active
-    public List<RecordId> RequireTags = new();  // the target must have all of these
-    public List<RecordId> BlockTags = new();    // the target must have none of these
-    public List<RecordId> Cues = new();         // presentation only (16 §3.3). Not raised yet: an effect
+    public List<RecordRef<TagRecord>> GrantTags = new();    // held while the effect is active
+    public List<RecordRef<TagRecord>> RequireTags = new();  // the target must have all of these
+    public List<RecordRef<TagRecord>> BlockTags = new();    // the target must have none of these
+    public List<RecordRef<CueRecord>> Cues = new();         // presentation only (16 §3.3). Not raised yet: an effect
                                                 // has three moments (applied, ticked, removed) and which
                                                 // of them a cue means is an open question, 11 §13.
 
