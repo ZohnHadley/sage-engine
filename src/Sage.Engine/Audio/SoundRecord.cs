@@ -16,7 +16,7 @@ namespace sage_engine;
 
 public enum AudioBus { Master, Music, Sfx, Voice, Ui, Ambient }
 
-[Record("sound")]
+[Record("sound", Plugin = "sage.client")]
 public sealed class SoundRecord
 {
     // One of these is picked each time it plays. A single-entry list is the normal case.

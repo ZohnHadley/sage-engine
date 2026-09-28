@@ -24,7 +24,7 @@ namespace sage_engine;
 
 // A level to load, and how to read it. Pointing at a `.map` from a record rather than hard-coding a path
 // means a mod can replace a level exactly as it replaces a texture (17 §3).
-[Record("map")]
+[Record("map", Plugin = "sage.maps")]
 public sealed class MapRecord
 {
     public AssetPath File;                          // e.g. "maps/hut.map"
@@ -567,8 +567,6 @@ public sealed class MapModule : IModule
 {
     public void Init(ModuleContext ctx)
     {
-        ctx.Engine.Records.Register<MapRecord>();
-
         ctx.Engine.CVars.RegisterCommand("map_load", CVarFlags.Cheat,
             "map_load <record>: load a .map level into the first world that can hold one.", a =>
         {

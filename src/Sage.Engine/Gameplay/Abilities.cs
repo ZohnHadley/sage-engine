@@ -25,7 +25,7 @@ public enum AbilityTargeting
     Projectile,  // a thing that flies, and delivers the same payload where it arrives
 }
 
-[Record("ability")]
+[Record("ability", Plugin = "sage.gameplay.abilities")]
 public sealed class AbilityRecord
 {
     public string Name = "";
@@ -84,7 +84,7 @@ public sealed class AbilityRecord
 // and what it looks like is the client's business (16 §3.3). It is a record so that cue ids are
 // checked like every other reference, and so the sound and particle fields have somewhere to go when
 // audio (11) and particles arrive.
-[Record("cue")]
+[Record("cue", Plugin = "sage.gameplay.abilities")]
 public sealed class CueRecord
 {
     public string Description = "";

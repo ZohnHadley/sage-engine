@@ -48,7 +48,7 @@ public enum AICondition : ulong
 }
 
 // How an agent senses and fights (16 §3.4). Tuning is data, like movement profiles.
-[Record("ai_profile")]
+[Record("ai_profile", Plugin = "sage.gameplay.ai")]
 public sealed class AIProfileRecord
 {
     public float SightRange = 22f;
@@ -65,7 +65,7 @@ public sealed class AIProfileRecord
 
 // An ordered task list plus the conditions that interrupt it (16 §3.4). Tasks are named, optionally
 // with a number: "MoveToTarget:1.6" means "until 1.6 m away".
-[Record("ai_schedule")]
+[Record("ai_schedule", Plugin = "sage.gameplay.ai")]
 public sealed class AIScheduleRecord
 {
     public List<string> Tasks = new();

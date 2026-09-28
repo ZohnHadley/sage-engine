@@ -21,7 +21,9 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
 - **One branch and one PR per issue**; say "Closes #N" in the PR. CI must be green (Linux and Windows);
   the owner has asked for green PRs to be merged.
 - **Warnings are errors.** Suppress only with a scoped `#pragma` and a reason.
-- **Register in a module's `Init`.** Registries are sealed at later stages and throw (`RegistrationSeal`).
+- **Declare, don't register.** `[Record]` and `[SavedResource]` are registered by generated code
+  (`src/Sage.Generators`) for the plugin that owns them (`Plugin = "id"` when an assembly has several).
+  What is still registered by hand goes in a module's `Init`; registries are sealed later and throw.
 - **Boot through `SageApp`**, not by hand; a game's rules come from `IGameModule.CreateRules`; world
   resources go in with `Resources.Add` (or `Replace`, on purpose).
 - **Tests are headless and parallel, and boot through `HeadlessApp`** (`tests/Sage.Testing`), never

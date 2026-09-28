@@ -24,7 +24,7 @@ public sealed class Placement
     public string Name = "";           // optional, so an outliner and a wire can name it
 }
 
-[Record("placements")]
+[Record("placements", Plugin = RegistrationOwners.Core)]
 public sealed class PlacementsRecord
 {
     public List<Placement> Place = new();

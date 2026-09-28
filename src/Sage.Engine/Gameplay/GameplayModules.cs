@@ -83,9 +83,6 @@ public sealed class AttributesModule : IModule
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
-        _records.Register<AttributeRecord>();
-        _records.Register<TagRecord>();
-        _records.Register<EffectRecord>();
         _records.Reloaded += () => Registries.Rebuild(_records);
 
         ctx.Engine.Prefabs.Register("attributes", PrefabParts.Attributes);
@@ -125,7 +122,6 @@ public sealed class CharacterModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        _records.Register<MovementProfileRecord>();
         ctx.Engine.Prefabs.Register("character", PrefabParts.Character);
 
         // Gameplay actions (08 §3.2): the simulation defines them, so a headless server has the same
@@ -201,8 +197,6 @@ public sealed class CombatModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        _records.Register<DamageTypeRecord>();
-        _records.Register<AttackRecord>();
         ctx.Engine.Prefabs.Register("melee", PrefabParts.Melee);
         _actions.Register("Attack", ActionKind.Button);
 
@@ -247,7 +241,6 @@ public sealed class ItemsModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        _records.Register<ItemRecord>();
         ctx.Engine.Prefabs.Register("inventory", PrefabParts.Inventory);
         ctx.Engine.Prefabs.Register("pickup", PrefabParts.Pickup);
         _actions.Register("Use", ActionKind.Button);
@@ -331,11 +324,8 @@ public sealed class AbilitiesModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        _records.Register<AbilityRecord>();
-        _records.Register<CueRecord>();
-        // The player's own spells are data in the save, and the records are made from it on load
-        // (F21's spellmaker, 09 §3.1).
-        ctx.Engine.Saves.RegisterResource<Spellbook>();
+        // The player's own spells are data in the save (the Spellbook, a [SavedResource] of this
+        // plugin), and the records are made from it on load (F21's spellmaker, 09 §3.1).
         Spellmaker.RegisterCommands(ctx.Engine);
         ctx.Engine.Prefabs.Register("abilities", PrefabParts.Abilities);
         _actions.Register("Cast", ActionKind.Button);
@@ -418,9 +408,6 @@ public sealed class AIModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        _records.Register<AIProfileRecord>();
-        _records.Register<AIScheduleRecord>();
-
         _aiDebug = ctx.Engine.CVars.Register("ai_debug", false, CVarFlags.DevOnly,
             "Draw what each creature can see and what it is chasing (needs r_debugdraw 1).");
 
@@ -555,15 +542,9 @@ public sealed class FactionsModule : IModule
 {
     public void Init(ModuleContext ctx)
     {
-        ctx.Engine.Records.Register<FactionRecord>();
-        ctx.Engine.Records.Register<DialogueRecord>();
-        ctx.Engine.Records.Register<QuestRecord>();
-
-        // What a world thinks of you and what you are half way through: both are saved, and both need
-        // saying so here — the attribute alone does nothing (09 §3.1).
-        ctx.Engine.Saves.RegisterResource<Reputation>();
-        ctx.Engine.Saves.RegisterResource<Journal>();
-
+        // Faction, dialogue and quest records, and the saved Reputation and Journal, are this
+        // plugin's by their attributes (Plugin = "sage.gameplay.factions"); generated code registers
+        // them (issue #16).
         ctx.Engine.Prefabs.Register("faction", PrefabParts.Faction);
         ctx.Engine.Prefabs.Register("dialogue", PrefabParts.DialoguePart);
 

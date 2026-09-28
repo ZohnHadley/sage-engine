@@ -56,7 +56,7 @@ public sealed class SpriteAnimationEvent
 // `*.sheet.json` asset, because records already give hot reload, mod patches and validation, and the
 // AssetServer doesn't exist yet (05 §3.5 lists sprite animation sets as records). It moves to an
 // asset with R12 if that turns out better.
-[Record("sprite_sheet")]
+[Record("sprite_sheet", Plugin = "sage.client")]
 public sealed class SpriteSheetRecord
 {
     public AssetPath Texture;

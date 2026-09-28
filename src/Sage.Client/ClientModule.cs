@@ -44,12 +44,6 @@ public sealed class ClientModule : IModule
     public void Init(ModuleContext ctx)
     {
         _rendererCVars = new RendererCVars(ctx.Engine.CVars);   // here, not in the Renderer: see RendererCVars
-        ctx.Engine.Records.Register<MaterialRecord>();
-        ctx.Engine.Records.Register<InputMapRecord>();
-        ctx.Engine.Records.Register<SpriteSheetRecord>();
-        ctx.Engine.Records.Register<SoundRecord>();
-        ctx.Engine.Records.Register<ParticleRecord>();
-        ctx.Engine.Records.Register<WeatherRecord>();
 
         // A thing that hums: `"audio": { "sound": "fire_loop", "loop": true }` on any prefab. The
         // component is the engine's, so a headless run carries it and simply never plays it.

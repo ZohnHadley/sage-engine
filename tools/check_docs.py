@@ -48,7 +48,7 @@ def read_code():
         # local happens to be called, and `CVarFlags` is what distinguishes one from an input action
         # (`actions.Register("Look", ActionKind…)`) or a prefab part.
         ('cvar', re.compile(r'\.Register(?:<[^>]+>)?\(\s*"([a-z_0-9]+)"[^;]{0,400}?CVarFlags', re.S)),
-        ('record', re.compile(r'\[Record\("([a-z_0-9]+)"\)\]')),
+        ('record', re.compile(r'\[Record\("([a-z_0-9]+)"[,)]')),   # a Plugin = … may follow (issue #16)
         ('input', re.compile(r'(?:I|i)nputs\.Register\(\s*"([A-Za-z_0-9]+)"')),
     ]
 

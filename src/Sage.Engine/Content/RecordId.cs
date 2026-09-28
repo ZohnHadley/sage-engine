@@ -40,6 +40,11 @@ public sealed class RecordAttribute : Attribute
 {
     public RecordAttribute(string type) { Type = type; }
     public string Type { get; }
+
+    // The plugin that registers this record type (issue #16): Sage.Generators writes the registration,
+    // run just before that plugin's Init. Leave it out when the assembly has one plugin (a game);
+    // RegistrationOwners.Core for the engine's own.
+    public string? Plugin { get; set; }
 }
 
 // While the RecordStore deserializes one record, bare RecordId references resolve against that

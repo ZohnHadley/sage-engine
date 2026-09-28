@@ -79,7 +79,7 @@ public sealed class DialogueNode
     public List<DialogueOption> Options = new();
 }
 
-[Record("dialogue")]
+[Record("dialogue", Plugin = "sage.gameplay.factions")]
 public sealed class DialogueRecord
 {
     public string Label = "";

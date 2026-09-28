@@ -23,7 +23,8 @@ public sealed class SandboxModule : IGameModule
 
     public void Init(ModuleContext ctx)
     {
-        ctx.Engine.Records.Register<SceneRecord>();
+        // SceneRecord needs no call here: [Record("scene")] is registered by generated code, and this
+        // assembly's one plugin owns it (issue #16).
 
         // What a game adding to prefabs looks like (05 "As built (prefabs)"). `hop` is a toy that has
         // to read where the thing was placed, so it belongs to the simulation. `box_mesh` builds a
