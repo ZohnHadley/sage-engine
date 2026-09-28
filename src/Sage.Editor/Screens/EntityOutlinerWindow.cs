@@ -74,7 +74,9 @@ internal sealed class EntityOutlinerWindow
             foreach (var component in entity.Components)
             {
                 ImGui.Separator();
-                if (ImGui.TreeNodeEx($"{component.Type.Name}##{entity.Id}", ImGuiTreeNodeFlags.SpanFullWidth))
+                // By stable id where it has one (issue #16), as the inspector and `ent_dump` show it.
+                string label = _world.Engine?.Components.IdOf(component.Type.Type) ?? component.Type.Name;
+                if (ImGui.TreeNodeEx($"{label}##{entity.Id}", ImGuiTreeNodeFlags.SpanFullWidth))
                 {
 #pragma warning disable CS0618   // Friflo marks the boxed Value obsolete in favour of GetComponent<T>(); a
                                  // reflection inspector only knows the type at runtime, so it needs the box.

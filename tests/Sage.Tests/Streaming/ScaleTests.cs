@@ -48,7 +48,7 @@ public class ScaleTests
       { "type": "prefab", "id": "walker", "name": "walker",
         "parts": { "character": { "layer": "enemy" }, "attributes": {} } },
       { "type": "prefab", "id": "creature", "name": "creature",
-        "components": { "AIState": { "schedule": "sage:idle" } },
+        "components": { "ai_state": { "schedule": "sage:idle" } },
         "parts": { "character": { "layer": "enemy" }, "attributes": {}, "melee": { "attack": "claws" } } }
     ]
     """;

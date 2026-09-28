@@ -67,6 +67,7 @@ public sealed class ParticleRecord
 
 // An entity that emits while it exists: a torch's embers, rain over the player, an aura. The component
 // is the engine's, so a headless run carries it and simply never draws anything.
+[Component("sage:particle_emitter")]
 public struct ParticleEmitter : IComponent
 {
     public RecordId Effect;

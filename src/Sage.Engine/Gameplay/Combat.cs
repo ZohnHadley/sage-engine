@@ -128,6 +128,7 @@ public enum MeleePhase { Ready, Windup, Recover }
 
 // A character that can swing something (16 §3.2). The player's controller and an AI's MeleeAttack
 // task both just press the Attack action; this component and MeleeCombatSystem are the whole swing.
+[Component("sage:melee")]
 public struct Melee : IComponent
 {
     public RecordId Attack;     // what it swings now; empty = sage:default_attack

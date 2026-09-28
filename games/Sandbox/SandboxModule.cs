@@ -177,11 +177,17 @@ public sealed class ScenePlacement
 }
 
 // Tags.
+[Tag("sandbox:faces_camera")]
 public struct FacesCamera : ITag { }
 // Placed by the scene record, so hot reload knows what to sweep away and put back.
+// [Transient]: saving it would make loaded entities eligible for the hot-reload sweep, or have them
+// double up with the scene's own (R15).
+[Transient]
+[Tag("sandbox:from_scene")]
 public struct FromScene : ITag { }
 
 // A little vertical hop with gravity.
+[Component("sandbox:hop")]
 public struct Hop : IComponent
 {
     public float BaseY;

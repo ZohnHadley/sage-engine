@@ -1,12 +1,12 @@
 [
   // The player. A prefab is components and parts; the `character` part brings the kinematic character
-  // controller, and the `PlayerControlled` tag is what makes the rest of the engine treat this one as
+  // controller, and the `player_controlled` tag is what makes the rest of the engine treat this one as
   // the local player — the first-person camera follows it for nothing, and the cheats act on it.
   {
     "type": "prefab",
     "id": "player",
     "name": "player",
-    "tags": ["PlayerControlled"],
+    "tags": ["player_controlled"],
     "parts": {
       // The layer matters more than it looks: a character sweeps against everything *except* its own
       // layer, and terrain collision is on "default" — so a character left on the default layer walks

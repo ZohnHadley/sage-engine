@@ -97,19 +97,21 @@ Not every record comes from a file. A spell the player composed in the spellmake
 ### As built (prefabs, 2026-09-23 — F31)
 
 - **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabRegistry`,
-  `world.Spawn`), `ComponentSchema.cs` (components and tags by name),
+  `world.Spawn`), `ComponentSchema.cs` (components and tags by stable id, issue #16),
   `src/Sage.Engine/Gameplay/PrefabParts.cs` (the parts the engine's modules register). Tests in
   `tests/Sage.Tests/Gameplay/PrefabTests.cs`.
 - **A prefab is a record**, so `base` inheritance, per-field patching, load order, validation and hot
   reload all come from §3.5 for nothing. A `goblin_chief` can `base` a `goblin` and override one
   field of one component, because the merge runs on the JSON tree before anything is deserialized.
-- **Its body is two halves.** `"components"` is component data by type name, applied as written.
+- **Its body is two halves.** `"components"` is component data by component id, applied as written
+  (by C# type name until issue #16; a bare name is the prefab's namespace, then `sage`: 03 "As built
+  (component ids)").
   `"parts"` are named setups a **module registered** — for the cases that are not one component.
 
   ```json
   { "type": "prefab", "id": "goblin", "base": "creature", "name": "goblin",
-    "components": { "SpriteRenderer": { "sheet": "goblin", "size": [1.6, 1.9] } },
-    "tags": ["Hostile"],
+    "components": { "sprite_renderer": { "sheet": "goblin", "size": [1.6, 1.9] } },
+    "tags": ["hostile"],
     "parts": { "character": { "layer": "enemy" }, "attributes": {},
                "melee": { "attack": "claw" }, "effects": ["tough_hide"] } }
   ```

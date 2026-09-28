@@ -10,9 +10,11 @@ namespace sage_engine;
 // gameplay framework; GameRules, possession and AI controllers come with 16/F19.
 
 // Marks a body a controller can drive.
+[Component("sage:pawn")]
 public struct Pawn : IComponent { }
 
 // Tag: this pawn is driven by the local player's PlayerCommand (08).
+[Tag("sage:player_controlled")]
 public struct PlayerControlled : ITag { }
 
 // What a controller wants the pawn to do this tick: written by controllers in the Commands phase,
@@ -21,6 +23,7 @@ public struct PlayerControlled : ITag { }
 // compares it after every phase. Without a typed `Equals`, `EqualityComparer<T>.Default` falls back to
 // `ValueType.Equals(object)` and **boxes both values on every comparison** — which measured at about
 // 3 KB per character per tick, and is what R18's scale test found first.
+[Component("sage:pawn_intent")]
 public struct PawnIntent : IComponent, IEquatable<PawnIntent>
 {
     [Transient] public Vector2 Move;       // rewritten by a controller every tick

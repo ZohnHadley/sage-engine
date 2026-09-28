@@ -65,6 +65,40 @@ The rest of this doc is written against the `World` API.
 - Math helpers such as `LookAt`/`Billboard` live in the static `TransformMath` class (done in step 3). The component stays data (TODO R4).
 - **Names** use Friflo's built-in `EntityName` component (`World.Create("bunny")` adds it).
 
+### As built (component ids, issue #16, 2026-09-28)
+- **Every component and tag has a stable id**, `[Component("sage:ai_state")]` / `[Tag("sage:player_controlled")]`:
+  `namespace:name` in the record id alphabet, matched exactly (case-sensitively). It is what a prefab
+  writes, what a save is keyed by (09 "As built (stable ids and versions)") and what `ent_dump`,
+  `ent_types` and the editor's inspector show. Before this a component was its bare C# type name,
+  matched ignoring case, so two assemblies that each declared `Health` silently overwrote each other.
+  Every engine and game component has one (test: EveryEngineAndGameComponentHasAStableId).
+- **Sage.Generators writes each assembly's id table** (`ComponentGenerator`, an `IGeneratedComponents`
+  marked on the assembly), which `ComponentSchema` reads for every assembly in Friflo's schema. An
+  `IComponent` or `ITag` struct without an id is a build error, `SAGE0004`; a malformed id, a `Version`
+  below 1 or the wrong interface is `SAGE0005`; two types with one id in an assembly, `SAGE0006`; a bad
+  `[Upgrade]` method, `SAGE0007` (tests: AHalfDeclaredComponentIsABuildError,
+  TwoComponentsWithOneIdAreABuildError, TheGeneratorWritesTheAssemblysIdTable).
+- **Components are per assembly, not per plugin.** A component type is in Friflo's schema whether or not
+  its plugin is loaded, so its id is too; nothing is registered. Two types claiming one id across
+  assemblies (two mods) stops the engine the first time the schema is used, naming both (test:
+  TwoTypesClaimingOneIdIsAnErrorNamingBoth). An assembly built without the generator (tests, tools) is
+  read by reflection over the same attributes (test: ComponentTypesFromOtherAssembliesAreFoundById).
+- **Friflo's own components** (`EntityName`, `TreeNode`, `UniqueEntity`, `Position`, `Rotation`,
+  `Scale3`, its own `Transform`, the `Disabled` tag) share the schema but have no id: content cannot
+  name them, saves do not write them, and Friflo's `Transform` no longer collides with Sage's by name
+  (test: EveryComponentOnAnEntityCanBeFoundById).
+- **Bare names in a prefab** resolve in the prefab's own namespace, then in `sage` — so a game's files
+  write `"hop"` and `"collider"`, and a game component deliberately shadows an engine one of the same name
+  (test: ABareNameMeansTheFilesNamespaceThenSage). Anything else is written in full. One trap: `base`
+  inheritance merges prefab JSON by key *before* names are resolved, so a derived prefab that patches
+  one field of a base's component must spell the key as the base does (`"ai_state"` both times, not
+  `"sage:ai_state"` in one), or its entry replaces the base's whole component instead of merging. A name that
+  resolves nowhere is an error listing ids it might have meant in other namespaces, and one spelt the
+  pre-#16 way (a C# type name, with capitals) is an error naming the id to write — a load error rather
+  than a deprecation warning, because every shipped file was migrated with the change and a warning
+  that still applied the component would keep the old spelling alive (test:
+  AnOldTypeNameOrAMissingNameSaysWhatToWrite).
+
 ### 3.3 Entity identity
 | Type | What | Lifetime |
 |---|---|---|
@@ -276,7 +310,8 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 ## 9. Debug and tooling hooks
 - **Commands:**
   - `ent_list [filter]` (**built, step 3**; registered by the host for the main world)
-  - `ent_dump <id|name>` (all components via the generated inspector metadata)
+  - `ent_dump <id|name>` (all components via the generated inspector metadata) — **built**, by
+    reflection for now; components are printed by stable id, and `ent_types` lists the ids (issue #16)
   - `ent_kill`
   - `sys_list` (systems per world and phase with average ms) — **built, step 4**
   - `sys_toggle <name>` (DevOnly) — **built, step 4**

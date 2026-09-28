@@ -17,7 +17,8 @@
     <Using Include="sage_engine.Transform" Alias="Transform" />
   </ItemGroup>
 
-  <!-- The declarations generator (issue #16): a game's [Record] types register themselves. -->
+  <!-- The declarations generator (issue #16): a game's [Record] types register themselves, and its
+       components and tags get their id table ([Component] / [Tag]). -->
   <ItemGroup Condition="'$(SageGenerators)' != 'false'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Generators\Sage.Generators.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

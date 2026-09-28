@@ -15,9 +15,9 @@ namespace sage_engine;
 //
 // **Three deviations from 09, each deliberate.**
 //
-// 1. *JSON, not tagged binary.* Field names are the stable identity for now. Binary is a format
-//    change, which is what the upgrader mechanism (§3.6) exists for, and a save you can read in a
-//    text editor is worth a great deal while the save system is the thing being debugged.
+// 1. *JSON, not tagged binary.* Component ids and field names are the stable identity. Binary is a
+//    format change, which is what the upgrader mechanism (§3.6) exists for, and a save you can read in
+//    a text editor is worth a great deal while the save system is the thing being debugged.
 // 2. *No maps, so no visited-sector rule and no tombstones.* A baseline here is the game's own
 //    records, not map files. v1 writes **every persistent entity in full** and load recreates them,
 //    so a destroyed entity's tombstone is simply its absence. Tombstones come back with maps (§3.4),
@@ -30,9 +30,24 @@ namespace sage_engine;
 // What is *not* a deviation: an entity is rebuilt by spawning its prefab and laying the saved
 // components over the top. That is why `Populate` was split out in F31 — a character's collider,
 // controller and intent come back because the prefab puts them there, not because they were saved.
+//
+// **Versions** (issue #20, REDESIGN §4.5). Two kinds, for two kinds of change:
+//
+// - `FormatVersion` is the layout of the files themselves. An older one is brought up to date by a
+//   format upgrader (`UpgradeWorld`) before anything reads it; a newer one is refused, because a
+//   format we do not understand would corrupt a playthrough quietly.
+// - Each component and saved resource carries its own `version`, and its [Upgrade] methods rewrite
+//   an older shape (SaveSerializer). That is what a game uses when it renames a field.
+//
+// Format 1 is what main wrote before issue #20: components keyed by C# type name, and components and
+// resources written bare. Format 2 keys them by stable id and wraps each as `{ "version", "data" }`.
 public sealed class SaveSystem
 {
-    public const int FormatVersion = 1;
+    public const int FormatVersion = 2;
+
+    // The oldest format this build upgrades. Format 1 (C# type names) is read for one release after
+    // issue #20, then this becomes 2 and `From1` goes (docs/design/09 §11).
+    public const int OldestReadableFormat = 1;
 
     private readonly Engine _engine;
     private readonly SaveSerializer _serializer;
@@ -49,7 +64,7 @@ public sealed class SaveSystem
     // closures made where `T` is still known, because `WorldResources` is keyed on `typeof(T)` and
     // reflecting a generic `Set` back into shape would be a lot of machinery for no gain.
     private readonly record struct SavedResource(
-        string Name, Type Type, Func<World, object?> Read, Action<World, object> Write, Func<object> Create);
+        string Name, Type Type, int Version, Func<World, object?> Read, Action<World, object> Write, Func<object> Create);
 
     private readonly Dictionary<string, SavedResource> _resources = new(StringComparer.Ordinal);
 
@@ -65,7 +80,7 @@ public sealed class SaveSystem
 
         _engine.Registrations.Record("saved resource", attr.Name);   // who registered it (issue #12)
         _resources[attr.Name] = new SavedResource(
-            attr.Name, typeof(T),
+            attr.Name, typeof(T), attr.Version,
             world => world.Resources.TryGet<T>(out var r) ? r : null,
             (world, value) => world.Resources.Replace((T)value),
             () => new T());
@@ -173,7 +188,7 @@ public sealed class SaveSystem
             if (value is null) continue;   // this world does not have one: nothing to say about it
             try
             {
-                resources[kind.Name] = JsonSerializer.SerializeToNode(value, kind.Type, json);
+                resources[kind.Name] = SaveSerializer.Entry(kind.Version, JsonSerializer.SerializeToNode(value, kind.Type, json));
             }
             catch (Exception ex) when (ex is NotSupportedException or JsonException or ArgumentException)
             {
@@ -201,20 +216,23 @@ public sealed class SaveSystem
         {
             var header = JsonNode.Parse(File.ReadAllText(Path.Combine(directory, "header.json"))) as JsonObject;
             int version = (int?)header?["formatVersion"] ?? 0;
-            if (version != FormatVersion)
+            if (version > FormatVersion || version < OldestReadableFormat)
             {
-                // No upgraders exist yet because no format change has happened (09 §11). Refusing is
-                // honest; loading a format we do not understand would corrupt a playthrough quietly.
-                Log.Error(LogCat.Save, $"Save '{slot}' is format {version}, this build reads {FormatVersion}");
+                // Newer than this build, or older than any upgrader here: refusing is honest, and
+                // loading a format we do not understand would corrupt a playthrough quietly.
+                Log.Error(LogCat.Save, $"Save '{slot}' is format {version}; this build reads formats " +
+                                       $"{OldestReadableFormat} to {FormatVersion}");
                 return false;
             }
+            if (version < FormatVersion)
+                Log.Info(LogCat.Save, $"Save '{slot}' is format {version}; upgrading it to {FormatVersion} as it loads");
 
             int total = 0;
             foreach (var world in _engine.Worlds)
             {
                 string file = Path.Combine(directory, $"world_{Sanitise(world.Name)}.json");
                 if (!File.Exists(file)) { Log.Warn(LogCat.Save, $"'{slot}' has nothing for world '{world.Name}'"); continue; }
-                total += ReadWorld(world, File.ReadAllText(file), $"{slot}/world_{world.Name}");
+                total += ReadWorld(world, File.ReadAllText(file), version, $"{slot}/world_{world.Name}");
             }
 
             foreach (var world in _engine.Worlds)
@@ -230,13 +248,14 @@ public sealed class SaveSystem
         }
     }
 
-    private int ReadWorld(World world, string json, string where)
+    private int ReadWorld(World world, string json, int format, string where)
     {
         if (JsonNode.Parse(json) is not JsonObject root || root["entities"] is not JsonArray entities)
         {
             Log.Error(LogCat.Save, $"{where}: no \"entities\"");
             return 0;
         }
+        UpgradeWorld(root, format);
 
         // Back to the frame these positions were written in, *before* anything is placed in it. This
         // also brings the terrain rings and the physics world along, because that is what a rebase
@@ -272,8 +291,10 @@ public sealed class SaveSystem
             if (entity.IsNull) { Log.Warn(LogCat.Save, $"{where}: {id} could not be rebuilt from {prefab}"); continue; }
 
             world.Add(entity, new Persistent { Id = id });
+            // Added rather than assigned when the entity has no name yet: Friflo's `Name` setter throws on
+            // an entity without one, which is every prefab-less entity (a golden save found it, #20).
             if ((string?)saved["name"] is { Length: > 0 } name)
-                entity.Name = new Friflo.Engine.ECS.EntityName(name);
+                entity.AddComponent(new Friflo.Engine.ECS.EntityName(name));
             rebuilt.Add((entity, saved));
         }
         world.FlushCommands();
@@ -303,16 +324,7 @@ public sealed class SaveSystem
         {
             object? value = null;
             if (saved?[kind.Name] is JsonNode node)
-            {
-                try
-                {
-                    value = JsonSerializer.Deserialize(node.ToJsonString(), kind.Type, dialect);
-                }
-                catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
-                {
-                    Log.Error(LogCat.Save, $"{where}: resource '{kind.Name}': {ex.Message}");
-                }
-            }
+                value = SaveSerializer.ReadEntry(kind.Type, kind.Name, kind.Version, node, dialect, $"{where}: resource '{kind.Name}'");
 
             kind.Write(world, value ?? kind.Create());
         }
@@ -320,6 +332,70 @@ public sealed class SaveSystem
         // After they are all installed, because one may look at another.
         foreach (var kind in _resources.Values)
             if (kind.Read(world) is ISavedResource restored) restored.AfterLoad(world);
+    }
+
+    // ---- format upgraders (issue #20) --------------------------------------------------------------
+
+    // Brings a world file from `format` up to FormatVersion, one step at a time, in memory. The file on
+    // disk is left as it was: the next save writes the current format.
+    private void UpgradeWorld(JsonObject root, int format)
+    {
+        for (int from = format; from < FormatVersion; from++)
+        {
+            switch (from)
+            {
+                case 1: From1(root); break;
+            }
+        }
+    }
+
+    // Format 1 → 2. Components were keyed by C# type name and written bare; now they are keyed by
+    // stable id and wrapped as `{ "version": 1, "data": … }` — version 1 because nothing had a version
+    // before, so every shape in a format 1 save is the first. A name that matches no component is
+    // kept as it is, and reading says it is unknown, as it would have then.
+    //
+    // For one release after issue #20, so saves from main keep loading. Remove it with
+    // OldestReadableFormat = 2, together with ComponentSchema's type-name lookup.
+    private void From1(JsonObject root)
+    {
+        var schema = _engine.Components;
+        if (root["entities"] is JsonArray entities)
+        {
+            foreach (var node in entities)
+            {
+                if (node is not JsonObject entity) continue;
+                if (entity["components"] is JsonObject components)
+                {
+                    var byId = new JsonObject();
+                    foreach (var (name, data) in components.ToList())
+                    {
+                        components.Remove(name);
+                        string id = schema.TryFormerComponent(name, typeNames: true, out var declaration) ? declaration.Id : name;
+                        byId[id] = SaveSerializer.Entry(1, data);
+                    }
+                    entity["components"] = byId;
+                }
+                if (entity["tags"] is JsonArray tags)
+                {
+                    var ids = new JsonArray();
+                    foreach (var tag in tags)
+                    {
+                        string name = (string?)tag ?? "";
+                        ids.Add(schema.TryFormerTag(name, typeNames: true, out var declaration) ? declaration.Id : name);
+                    }
+                    entity["tags"] = ids;
+                }
+            }
+        }
+
+        if (root["resources"] is JsonObject resources)
+        {
+            foreach (var (name, data) in resources.ToList())
+            {
+                resources.Remove(name);
+                resources[name] = SaveSerializer.Entry(1, data);
+            }
+        }
     }
 
     // ---- listing ------------------------------------------------------------------------------------

@@ -26,6 +26,9 @@ internal static class SaveJson
     {
         PropertyNameCaseInsensitive = true,
         IncludeFields = true,               // components are public fields
+        // A field in the save that the type no longer has is an error, not a silent loss (issue #20):
+        // it was renamed or removed, and an [Upgrade] method says which. SaveSerializer names it.
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         // An effect with no end has `Remaining = +∞` (16 §3.3), which is real data and not an

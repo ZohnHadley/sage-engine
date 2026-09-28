@@ -65,7 +65,8 @@
   // file. Until F31 the two were one `spawn` record, so "a creature" and "the creature at (0,0,-3)"
   // were the same thing, and a second one meant a second copy of the description.
   //
-  // A prefab's body is "components" (data by type name) and "parts" (setups a module registered).
+  // A prefab's body is "components" (data by component id: a bare name is this game's own or the
+  // engine's, issue #16) and "parts" (setups a module registered).
   // Nothing below names a field the engine invented for the Sandbox's benefit: `sprite`, `body`,
   // `character`, `attributes`, `melee`, `inventory`, `pickup` and `effects` are the engine's parts,
   // and `box_mesh` and `hop` are the Sandbox's own, registered in SandboxModule.Init.
@@ -80,7 +81,7 @@
     // armours it. `"animation": "idle"` is inherited, and is a clip *name*: clip 0 is whichever name
     // sorts first, which for a Daggerfall sheet is "attack" (12 §3).
     "type": "prefab", "id": "watcher", "base": "creature", "name": "watcher",
-    "components": { "AIState": { "schedule": "sage:idle" } },
+    "components": { "ai_state": { "schedule": "sage:idle" } },
     "parts": {
       "character": { "layer": "enemy" },
       "attributes": {},
@@ -634,7 +635,7 @@
     // swing must not walk into reach to do nothing, and this is what proves it doesn't — it stands at
     // range and throws bolts, because the AI prefers casting to closing when it cannot fight in reach.
     "type": "prefab", "id": "firebug", "base": "creature", "name": "firebug",
-    "components": { "AIState": { "schedule": "sage:idle" } },
+    "components": { "ai_state": { "schedule": "sage:idle" } },
     "parts": {
       "character": { "layer": "enemy" },
       "attributes": {},
@@ -649,7 +650,7 @@
     "type": "prefab",
     "id": "player",
     "name": "player",
-    "tags": ["PlayerControlled"],
+    "tags": ["player_controlled"],
     "parts": {
       "character": { "layer": "player" },
       "attributes": {},
@@ -696,13 +697,13 @@
 
   {
     // The mesh from step 6 is still here: meshes and sprites share the passes and the sort order.
-    // A MeshRenderer is plain data, so it is a component rather than a part, and `FacesCamera` is a
-    // tag the Sandbox declares — addressable by name because Friflo's schema already knows it.
+    // A mesh renderer is plain data, so it is a component rather than a part, and `faces_camera` is a
+    // tag the Sandbox declares ([Tag("sandbox:faces_camera")]): bare, because it is this game's own.
     "type": "prefab",
     "id": "bunny",
     "name": "bunny",
-    "components": { "MeshRenderer": { "mesh": "models/bunny.glb", "material": "bunny" } },
-    "tags": ["FacesCamera"],
+    "components": { "mesh_renderer": { "mesh": "models/bunny.glb", "material": "bunny" } },
+    "tags": ["faces_camera"],
     "parts": { "hop": {} }
   },
 

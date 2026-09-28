@@ -24,6 +24,9 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
 - **Declare, don't register.** `[Record]` and `[SavedResource]` are registered by generated code
   (`src/Sage.Generators`) for the plugin that owns them (`Plugin = "id"` when an assembly has several).
   What is still registered by hand goes in a module's `Init`; registries are sealed later and throw.
+  Every component and tag has a stable id, `[Component("ns:name")]` / `[Tag(...)]` (a build error
+  without one); prefabs and saves use the id, never the C# name. Rename a saved field only with a
+  `Version` bump and an `[Upgrade]` method; `tests/Sage.Tests/Content/Saves` holds golden saves that must load.
 - **Boot through `SageApp`**, not by hand; a game's rules come from `IGameModule.CreateRules`; world
   resources go in with `Resources.Add` (or `Replace`, on purpose).
 - **Tests are headless and parallel, and boot through `HeadlessApp`** (`tests/Sage.Testing`), never
