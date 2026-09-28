@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Friflo.Engine.ECS;
 
 namespace sage_engine;
@@ -63,33 +65,25 @@ public sealed class AIProfileRecord
     public static readonly RecordId Default = new("sage", "default_ai");
 }
 
-// An ordered task list plus the conditions that interrupt it (16 §3.4). Tasks are named, optionally
-// with a number: "MoveToTarget:1.6" means "until 1.6 m away".
+// An ordered task list plus the conditions that interrupt it (16 §3.4). Each task is an object naming
+// the task and, if it takes one, its argument by name:
+//
+//   "tasks": [{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]
+//
+// A task with no argument may be written as its bare name ("FaceTarget"). The old "Wait:1.5" strings
+// are a load error that says what to write instead (issue #22): a number with no name is how a
+// designer ends up writing seconds where a task wanted metres.
 [Record("ai_schedule", Plugin = "sage.gameplay.ai")]
 public sealed class AIScheduleRecord
 {
-    public List<string> Tasks = new();
+    public List<AITaskStep> Tasks = new();
     public List<string> Interrupts = new();   // AICondition names
 
     private ulong _mask = ulong.MaxValue;
-    private (string Name, float Param)[]? _parsed;
+    private AITaskStep[]? _steps;
 
-    // "MoveToTarget:1.6" -> ("MoveToTarget", 1.6), parsed once: schedules are read every tick.
-    public (string Name, float Param)[] Steps()
-    {
-        if (_parsed != null) return _parsed;
-        var steps = new (string, float)[Tasks.Count];
-        for (int i = 0; i < Tasks.Count; i++)
-        {
-            string entry = Tasks[i];
-            int colon = entry.IndexOf(':');
-            steps[i] = colon < 0
-                ? (entry, 0f)
-                : (entry[..colon], float.TryParse(entry.AsSpan(colon + 1), System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out float value) ? value : 0f);
-        }
-        return _parsed = steps;
-    }
+    // As an array, made once: schedules are read every tick.
+    public AITaskStep[] Steps() => _steps ??= Tasks.ToArray();
 
     public ulong InterruptMask()
     {
@@ -146,6 +140,72 @@ public interface IAITask
 {
     AITaskStatus Start(ref AITaskContext context) => AITaskStatus.Running;
     AITaskStatus Run(ref AITaskContext context);
+
+    // The name of the one number this task takes in a schedule ("seconds", "distance"), which arrives
+    // as `AITaskContext.Param`. A schedule that names another is an error when it runs. Null (a game's
+    // task that has not said) takes any name.
+    string? Argument => null;
+}
+
+// One step of a schedule (16 §3.4): which task, and its argument if it has one. `Argument` is the name
+// the file gave the number, kept so a mismatch with the task's own can be reported.
+[JsonConverter(typeof(AITaskStepJsonConverter))]
+public readonly record struct AITaskStep(string Task, string? Argument = null, float Value = 0f);
+
+// `{ "task": "Wait", "seconds": 1.5 }` or `"FaceTarget"`; "Wait:1.5" is refused with the object to write.
+internal sealed class AITaskStepJsonConverter : JsonConverter<AITaskStep>
+{
+    public override AITaskStep Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            string text = reader.GetString()!.Trim();
+            int colon = text.IndexOf(':');
+            if (colon >= 0)
+            {
+                string name = text[..colon].Trim(), value = text[(colon + 1)..].Trim();
+                throw new JsonException($"\"{text}\" is the old task syntax; write {{ \"task\": \"{name}\", \"{AITaskRegistry.ArgumentOf(name)}\": {value} }}");
+            }
+            if (text.Length == 0) throw new JsonException("a task needs a name");
+            return new AITaskStep(text);
+        }
+        if (reader.TokenType != JsonTokenType.StartObject)
+            throw new JsonException("a task is { \"task\": \"Wait\", \"seconds\": 1.5 }, or a bare name such as \"FaceTarget\"");
+
+        string? task = null, argument = null;
+        float number = 0f;
+        while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+        {
+            string key = reader.GetString()!;
+            reader.Read();
+            if (string.Equals(key, "task", StringComparison.OrdinalIgnoreCase))
+            {
+                if (reader.TokenType != JsonTokenType.String || reader.GetString() is not { Length: > 0 } name)
+                    throw new JsonException("\"task\" is the name of a task, such as \"Wait\"");
+                task = name.Trim();
+                continue;
+            }
+            if (argument != null)
+                throw new JsonException($"a task takes one argument; this one has '{argument}' and '{key}'");
+            if (reader.TokenType != JsonTokenType.Number)
+                throw new JsonException($"'{key}' must be a number");
+            argument = key;
+            number = reader.GetSingle();
+        }
+        if (task == null)
+            throw new JsonException(argument == null ? "a task object needs \"task\": \"<name>\""
+                : $"a task object needs \"task\": \"<name>\" beside '{argument}'");
+        return new AITaskStep(task, argument, number);
+    }
+
+    public override void Write(Utf8JsonWriter writer, AITaskStep value, JsonSerializerOptions options)
+    {
+        if (value.Argument == null) { writer.WriteStringValue(value.Task); return; }
+        writer.WriteStartObject();
+        writer.WriteString("task", value.Task);
+        writer.WriteNumber(value.Argument, value.Value);
+        writer.WriteEndObject();
+    }
 }
 
 // Tasks are registered by name, so schedules are data (16 §3.4). Games add their own.
@@ -165,13 +225,27 @@ public sealed class AITaskRegistry
     public void Register(string name, IAITask task) => _tasks[name] = task;
 
     public IAITask? Find(string name) => _tasks.TryGetValue(name, out var task) ? task : null;
+
+    // The engine's own tasks' argument names, for an error that has no registry to ask (a record
+    // being read): what to write in place of an old "Wait:1.5".
+    internal static string ArgumentOf(string task) => task.ToLowerInvariant() switch
+    {
+        "wait" => WaitTask.ArgumentName,
+        "movetotarget" => MoveToTargetTask.ArgumentName,
+        "meleeattack" => MeleeAttackTask.ArgumentName,
+        "castspell" => CastSpellTask.ArgumentName,
+        _ => "<argument>",
+    };
 }
 
 // ---- The built-in tasks --------------------------------------------------------------------------
 
-// Stand still for `param` seconds (default 1).
+// Stand still for `seconds` (default 1).
 internal sealed class WaitTask : IAITask
 {
+    public const string ArgumentName = "seconds";
+    public string? Argument => ArgumentName;
+
     public AITaskStatus Run(ref AITaskContext c)
     {
         c.Intent.Move = Vector2.Zero;
@@ -193,13 +267,16 @@ internal sealed class FaceTargetTask : IAITask
     }
 }
 
-// Walk toward the target until it is `param` metres away (default: melee range).
+// Walk toward the target until it is `distance` metres away (default: melee range).
 //
 // **Straight at it while that works, a path when it does not** (16 §3.4, F23). Most of the time the way
 // is clear and a plan would be waste; the moment something solid is between them, the creature asks
 // `Navigation` for the corners to walk and follows those instead. Before F23 it leaned on the wall.
 internal sealed class MoveToTargetTask : IAITask
 {
+    public const string ArgumentName = "distance";
+    public string? Argument => ArgumentName;
+
     // How close to a corner counts as reaching it, and how often a path is worth re-planning.
     private const float CornerReached = 0.8f;
     private const float ReplanSeconds = 0.6f;
@@ -329,10 +406,13 @@ internal sealed class MoveToTargetTask : IAITask
 // Swing at the target: the agent presses the same Attack action a player does, and
 // MeleeCombatSystem does the rest (16 §3.2). Reach, timing, hit detection and damage belong to the
 // attack record, so a creature and a player with the same weapon fight identically — and an AI can
-// miss. `param` is how long to keep trying before giving up (default 1.5 s), which is what makes it
+// miss. `giveUpAfter` is how many seconds to keep trying (default 1.5), which is what makes it
 // wait out its own cooldown instead of failing the moment it is not ready.
 internal sealed class MeleeAttackTask : IAITask
 {
+    public const string ArgumentName = "giveUpAfter";
+    public string? Argument => ArgumentName;
+
     public AITaskStatus Start(ref AITaskContext c)
     {
         if (c.World.Has<Melee>(c.Entity)) c.World.Get<Melee>(c.Entity).Swung = false;
@@ -370,10 +450,13 @@ internal sealed class MeleeAttackTask : IAITask
 // It aims with **pitch as well as yaw**, because a projectile leaves the caster's eye and the target's
 // chest is lower: without it a creature firing across a room shoots over your head.
 //
-// `param` is how long to keep trying before giving up (default 2 s), which covers a wind-up and lets
+// `giveUpAfter` is how many seconds to keep trying (default 2), which covers a wind-up and lets
 // the schedule end tidily if something eats the cast.
 internal sealed class CastSpellTask : IAITask
 {
+    public const string ArgumentName = "giveUpAfter";
+    public string? Argument => ArgumentName;
+
     public AITaskStatus Start(ref AITaskContext c)
     {
         if (c.State.Spell.IsEmpty) return AITaskStatus.Failed;

@@ -356,11 +356,22 @@ public sealed class AIThinkSystem : ISystem
             return;
         }
 
-        var (name, param) = steps[state.TaskIndex];
+        var step = steps[state.TaskIndex];
+        string name = step.Task;
+        float param = step.Value;
         var task = _tasks.Find(name);
         if (task == null)
         {
             Log.Once(LogCat.AI, LogLevel.Error, $"ai-task:{name}", $"{state.Schedule}: no AI task named '{name}' is registered; the schedule stops here");
+            state.TaskIndex = steps.Length;
+            return;
+        }
+        // A number under the wrong name is a number the task would misread: "seconds" given to a task
+        // that wants metres. Said once, and the schedule stops rather than running on a guess.
+        if (step.Argument != null && task.Argument != null && !string.Equals(step.Argument, task.Argument, StringComparison.OrdinalIgnoreCase))
+        {
+            Log.Once(LogCat.AI, LogLevel.Error, $"ai-arg:{state.Schedule}:{name}:{step.Argument}",
+                $"{state.Schedule}: task '{name}' takes '{task.Argument}', not '{step.Argument}'; the schedule stops here");
             state.TaskIndex = steps.Length;
             return;
         }

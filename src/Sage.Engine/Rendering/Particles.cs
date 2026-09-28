@@ -55,7 +55,10 @@ public sealed class ParticleRecord
     public Vector3 Wind;
     public float Drag;                        // fraction of speed lost per second
     public float SizeStart = 0.15f, SizeEnd = 0.05f;
-    public uint ColourStart = 0xFFFFFFFF;     // RGBA, and the alpha is what fades
+    // "#RRGGBBAA" or [r, g, b, a] in a record (ColourJsonConverter), and the alpha is what fades.
+    [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
+    public uint ColourStart = 0xFFFFFFFF;
+    [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
     public uint ColourEnd = 0x00FFFFFF;
     public float SpinDegrees;                 // turned per second, for smoke and leaves
 

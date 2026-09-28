@@ -82,9 +82,9 @@ public class AITests
            "radius": 0.45, "windupTime": 0.4, "recoverTime": 0.2, "cooldown": 1.0 },
 
          { "type": "ai_profile", "id": "default_ai", "sightRange": 25, "meleeRange": 1.8, "thinkRate": 20 },
-         { "type": "ai_schedule", "id": "idle", "tasks": ["Wait:1.5"], "interrupts": ["SeeEnemy"] },
-         { "type": "ai_schedule", "id": "chase", "tasks": ["MoveToTarget:1.6"], "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"] },
-         { "type": "ai_schedule", "id": "melee_attack", "tasks": ["FaceTarget", "MeleeAttack:0.2", "Wait:0.4"], "interrupts": ["LostEnemy", "NoEnemy"] },
+         { "type": "ai_schedule", "id": "idle", "tasks": [{ "task": "Wait", "seconds": 1.5 }], "interrupts": ["SeeEnemy"] },
+         { "type": "ai_schedule", "id": "chase", "tasks": [{ "task": "MoveToTarget", "distance": 1.6 }], "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"] },
+         { "type": "ai_schedule", "id": "melee_attack", "tasks": ["FaceTarget", { "task": "MeleeAttack", "giveUpAfter": 0.2 }, { "task": "Wait", "seconds": 0.4 }], "interrupts": ["LostEnemy", "NoEnemy"] },
 
          { "type": "attribute", "id": "mana", "start": 100, "min": 0, "max": 100, "spendEffect": "spend_mana" },
          { "type": "effect", "id": "spend_mana", "modifiers": [ { "attribute": "mana", "op": "Add", "value": -1 } ] },
@@ -93,16 +93,17 @@ public class AITests
          { "type": "ability", "id": "bolt", "name": "bolt", "costAttribute": "mana", "cost": 10,
            "cooldown": "bolt_cooldown", "targeting": "Touch", "range": 12, "width": 0.3,
            "castTime": 0.2, "damage": 7, "damageType": "physical" },
-         { "type": "ai_schedule", "id": "cast_spell", "tasks": ["FaceTarget", "CastSpell:2", "Wait:0.4"], "interrupts": ["LostEnemy", "NoEnemy"] },
-         { "type": "ai_schedule", "id": "hold_ground", "tasks": ["FaceTarget", "Wait:0.3"], "interrupts": ["LostEnemy", "NoEnemy"] }]
+         { "type": "ai_schedule", "id": "cast_spell", "tasks": ["FaceTarget", { "task": "CastSpell", "giveUpAfter": 2 }, { "task": "Wait", "seconds": 0.4 }], "interrupts": ["LostEnemy", "NoEnemy"] },
+         { "type": "ai_schedule", "id": "hold_ground", "tasks": ["FaceTarget", { "task": "Wait", "seconds": 0.3 }], "interrupts": ["LostEnemy", "NoEnemy"] }]
         """;
 
+    // `idleTask` is one task as JSON: "\"FaceTarget\"" or "{ \"task\": \"Wait\", \"seconds\": 1 }".
     private static Engine NewEngine(string? idleTask = null)
     {
         var builder = HeadlessApp.Gameplay().File("data/ai.json", AiRecords);
         if (idleTask != null)   // patch the idle schedule, the way a mod would
             builder.File("data/patch.json",
-                "[{ \"type\": \"ai_schedule\", \"id\": \"idle\", \"patch\": true, \"tasks\": [\"" + idleTask + "\"] }]");
+                "[{ \"type\": \"ai_schedule\", \"id\": \"idle\", \"patch\": true, \"tasks\": [" + idleTask + "] }]");
         return builder.Build().Engine;
     }
 
@@ -454,7 +455,7 @@ public class AITests
     [Fact]
     public void AScheduleWithAnUnknownTaskIsReportedAndStops()
     {
-        using var engine = NewEngine(idleTask: "NoSuchTask");
+        using var engine = NewEngine(idleTask: "\"NoSuchTask\"");
         var world = NewWorld(engine);
         Creature(world, Vector3.Zero);
 
@@ -462,6 +463,22 @@ public class AITests
         Tick(world, 5);
 
         Assert.Contains(capture.Entries, e => e.Message.Contains("no AI task named 'NoSuchTask'"));
+    }
+
+    // A task's number is named (issue #22), and a name the task does not take is how seconds end up
+    // read as metres: said once, and the schedule stops rather than running on a guess.
+    [Fact]
+    public void ATaskGivenAnArgumentItDoesNotTakeIsReportedAndStops()
+    {
+        using var engine = NewEngine(idleTask: "{ \"task\": \"Wait\", \"distance\": 2 }");
+        var world = NewWorld(engine);
+        var creature = Creature(world, Vector3.Zero);
+
+        using var capture = new CaptureSink();
+        Tick(world, 5);
+
+        Assert.Contains(capture.Entries, e => e.Message == "sage:idle: task 'Wait' takes 'seconds', not 'distance'; the schedule stops here");
+        Assert.Equal(Vector2.Zero, world.Get<PawnIntent>(creature).Move);
     }
 }
 

@@ -366,12 +366,6 @@
     "type": "cue", "id": "fireball_cast", "patch": true, "particles": "sparks", "particleCount": 6
   },
 
-  // The engine's damage types carry no sound, because the engine ships no audio (11 §3). Patching is
-  // how a game supplies one without owning the record: `sage:physical` keeps everything else it has.
-  //
-  // **The ids are written out in full on purpose.** A bare name in a patch resolves against the
-  // namespace of the record being patched (`sage:`), not the patch's own file, so `hit_flesh` here
-  // would look for a sound the engine does not have. See TODO R11.
   {
     // Something that hums on its own (11 §3): a campfire, as data. Nothing in the simulation knows it
     // makes a noise — the component says which sound, and the client's audio system follows it.
@@ -382,10 +376,14 @@
     }
   },
 
-  { "type": "damage_type", "id": "sage:physical", "patch": true, "sound": "sandbox:hit_flesh",
-    "particles": "sandbox:blood", "colour": 4294960111 },
-  { "type": "damage_type", "id": "sage:fire", "patch": true, "sound": "sandbox:boom_fire",
-    "particles": "sandbox:fire_burst", "colour": 4278229247 },
+  // The engine's damage types carry no sound, because the engine ships no audio (11 §3). Patching is
+  // how a game supplies one without owning the record: `sage:physical` keeps everything else it has.
+  // A bare id means this file's namespace even inside a patch of an engine record (R11), so
+  // `hit_flesh` is sandbox:hit_flesh. The colour is the damage number's.
+  { "type": "damage_type", "id": "sage:physical", "patch": true, "sound": "hit_flesh",
+    "particles": "blood", "colour": "#EFE3FF" },
+  { "type": "damage_type", "id": "sage:fire", "patch": true, "sound": "boom_fire",
+    "particles": "fire_burst", "colour": "#FF9800" },
 
   // ---- particles (docs/design/06 \u00a73.9, F39) ------------------------------------------------------
   //
@@ -401,7 +399,9 @@
     "shape": "Cone", "angleDegrees": 45,
     "gravity": -12, "drag": 1.5,
     "sizeStart": 0.07, "sizeEnd": 0.01,
-    "colourStart": 4294960000, "colourEnd": 8388352
+    // White-hot, cooling to orange as it fades. (Written as packed numbers until issue #22, these two
+    // had their bytes in the wrong order and drew a pale blue spark turning green.)
+    "colourStart": "#FFE380", "colourEnd": "#FF7F0000"
   },
   {
     "type": "particle", "id": "blood",
@@ -413,7 +413,7 @@
     "shape": "Cone", "angleDegrees": 60,
     "gravity": -9.8, "drag": 1,
     "sizeStart": 0.1, "sizeEnd": 0.04,
-    "colourStart": 4278190280, "colourEnd": 16777096
+    "colourStart": "#C80000", "colourEnd": "#88FFFF00"
   },
   {
     "type": "particle", "id": "fire_burst",
@@ -424,7 +424,7 @@
     "shape": "Sphere",
     "gravity": 1.5, "drag": 2,
     "sizeStart": 0.35, "sizeEnd": 0.02,
-    "colourStart": 4278233087, "colourEnd": 255
+    "colourStart": "#FFA700", "colourEnd": "#FF000000"
   },
   {
     // A steady stream rather than a burst: `rate` instead of `burst`, and that is the only difference
@@ -437,7 +437,7 @@
     "shape": "Cone", "angleDegrees": 20,
     "gravity": 0.8, "drag": 0.6,
     "sizeStart": 0.08, "sizeEnd": 0.01,
-    "colourStart": 4278237439, "colourEnd": 511
+    "colourStart": "#FFB800", "colourEnd": "#FF010000"
   },
 
   {
@@ -453,7 +453,7 @@
     "shape": "Box",
     "gravity": -6, "drag": 0,
     "sizeStart": 0.055, "sizeEnd": 0.055,
-    "colourStart": 3003121663, "colourEnd": 1660944383
+    "colourStart": "#FFFFFFB2", "colourEnd": "#FFFFFF62"
   },
   {
     // Snow: slow, drifting, and it keeps its size all the way down.
@@ -466,7 +466,7 @@
     "shape": "Box",
     "gravity": -0.4, "drag": 0.8,
     "sizeStart": 0.08, "sizeEnd": 0.07,
-    "colourStart": 4294967295, "colourEnd": 2164260863
+    "colourStart": "#FFFFFF", "colourEnd": "#FFFFFF80"
   },
 
   // ---- weather (docs/design/06 \u00a73.13, F40) --------------------------------------------------------

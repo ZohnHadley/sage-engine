@@ -22,7 +22,8 @@ namespace sage_engine;
 // matter). The first definition of an id creates the record; a later one with "patch": true merges FIELD BY FIELD (scalars replace, objects merge recursively, lists replace unless
 // patched with "field+": [...] / "field-": [...]). A later non-patch redefinition is an error (it would
 // silently wipe the earlier one — Bethesda's "rule of one"); it's logged with both files and applied
-// as a patch. "disabled": true in a patch removes the record. "base" inherits from another record of
+// as a patch. A bare id in a field means the namespace of the file it is written in, so a game's patch
+// of an engine record that says "sound": "hit_flesh" means the game's hit_flesh (R11). "disabled": true in a patch removes the record. "base" inherits from another record of
 // the same type, resolved after merging. "abstract": true marks a template: usable as a base, never
 // built into a record itself (and not inherited).
 //
@@ -46,7 +47,18 @@ public sealed class RecordStore
         public required string Type;
         public required JsonObject Fields;          // merged, meta keys removed except "base"
         public required string DefinedIn;
+        public required RecordSource Source;         // where the defining record is written
         public readonly Dictionary<string, string> FieldOrigins = new(StringComparer.Ordinal);   // top-level field → file
+        // top-level field → the record (file and position) that set it, for errors that say file:line:column
+        public readonly Dictionary<string, RecordSource> FieldSources = new(StringComparer.OrdinalIgnoreCase);
+
+        // Where to point a person at `path` ("$.tasks[1]", or a field name): the file that set that
+        // field, at the deepest part of the path that file wrote; the record itself when no file did.
+        public string At(string? path)
+        {
+            string? field = JsonSource.FieldOf(path);
+            return field != null && FieldSources.TryGetValue(field, out var source) ? source.At(path) : Source.At();
+        }
         public bool Disabled;
         public bool Abstract;
     }
@@ -222,64 +234,86 @@ public sealed class RecordStore
     {
         var raw = new Dictionary<(string, RecordId), RawRecord>();
         var warnedTypes = new HashSet<string>();
-        var entries = new List<(int Mount, bool IsPatch, string Where, string File, string Type, RecordId Id, JsonObject Obj)>();
+        var entries = new List<(int Mount, bool IsPatch, RecordSource Source, string Namespace, string Type, RecordId Id, JsonObject Obj)>();
         var mountIndex = vfs.Mounts.Select((m, i) => (m, i)).ToDictionary(x => x.m, x => x.i);
 
         foreach (var (path, mount) in vfs.Enumerate(VirtualPath.Parse("data"), "*.json"))
         {
-            string file = $"{mount.Name}:{path}";
+            string name = $"{mount.Name}:{path}";
+            JsonSource file;
             JsonNode? root;
             try
             {
-                using var stream = mount.Open(path);
-                root = JsonNode.Parse(stream, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+                using (var stream = mount.Open(path))
+                using (var bytes = new MemoryStream())
+                {
+                    stream.CopyTo(bytes);
+                    file = new JsonSource(name, bytes.ToArray());
+                }
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                Error($"{file}: invalid JSON: {ex.Message}");
+                Error($"{name}: cannot read: {ex.Message}");
+                continue;
+            }
+            try
+            {
+                root = JsonNode.Parse(file.Utf8, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            }
+            catch (JsonException ex)
+            {
+                string where = ex.LineNumber is long line ? file.AtLine(line, ex.BytePositionInLine ?? 0) : name;
+                Error($"{where}: invalid JSON: {WithoutPosition(ex.Message)}");
                 continue;
             }
 
             var items = root is JsonArray array ? array.ToList() : new List<JsonNode?> { root };
-            int index = 0;
-            foreach (var item in items)
+            for (int index = 0; index < items.Count; index++)
             {
-                string where = $"{file}[{index++}]";
-                if (item is not JsonObject obj) { Error($"{where}: a record must be a JSON object"); continue; }
+                var source = new RecordSource(file, index);
+                if (items[index] is not JsonObject obj) { Error($"{source.At()}: a record must be a JSON object"); continue; }
                 string? type = (string?)obj["type"];
                 string? idText = (string?)obj["id"];
-                if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(idText)) { Error($"{where}: record needs \"type\" and \"id\""); continue; }
+                if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(idText)) { Error($"{source.At()}: record needs \"type\" and \"id\""); continue; }
                 if (!_typesByName.ContainsKey(type))
                 {
-                    if (warnedTypes.Add(type)) Log.Warn(LogCat.Records, $"{where}: unknown record type '{type}' (no module registered it); skipped");
+                    if (warnedTypes.Add(type)) Log.Warn(LogCat.Records, $"{source.At("type")}: unknown record type '{type}' (no module registered it); skipped");
                     continue;
                 }
 
                 RecordId id;
                 try { id = RecordId.Parse(idText, mount.RecordNamespace); }
-                catch (FormatException ex) { Error($"{where}: {ex.Message}"); continue; }
+                catch (FormatException ex) { Error($"{source.At("id")}: {ex.Message}"); continue; }
 
-                entries.Add((mountIndex[mount], (bool?)obj["patch"] ?? false, where, file, type, id, obj));
+                entries.Add((mountIndex[mount], (bool?)obj["patch"] ?? false, source, mount.RecordNamespace, type, id, obj));
             }
         }
 
         // Mount order decides; within one mount, every definition comes before any patch, so a patch
         // doesn't depend on its file's name sorting after the definition's (OrderBy is stable).
-        foreach (var (_, isPatch, where, file, type, id, obj) in entries.OrderBy(e => e.Mount).ThenBy(e => e.IsPatch))
+        foreach (var (_, isPatch, source, ns, type, id, obj) in entries.OrderBy(e => e.Mount).ThenBy(e => e.IsPatch))
         {
             bool disabled = (bool?)obj["disabled"] ?? false;
             var key = (type, id);
             var fields = StripMeta(obj);
+            string file = source.File.Name;
+
+            // A bare id means the namespace of the file it is written in (R11), which is not the
+            // record's when a game patches an engine record: "sound": "hit_flesh" in the game's patch
+            // of sage:physical is the game's hit_flesh. Such ids are written out in full here, before
+            // the merge, because afterwards nothing knows which file a value came from.
+            bool foreign = !string.Equals(ns, id.Namespace, StringComparison.OrdinalIgnoreCase);
+            if (foreign) fields = QualifyFields(fields, type, ns);
 
             if (!raw.TryGetValue(key, out var existing))
             {
                 if (isPatch)
                 {
-                    Log.Warn(LogCat.Records, $"{where}: patch for {type} {id}, which isn't defined (yet) in load order; skipped");
+                    Log.Warn(LogCat.Records, $"{source.At()}: patch for {type} {id}, which isn't defined (yet) in load order; skipped");
                     continue;
                 }
-                var record = new RawRecord { Id = id, Type = type, Fields = new JsonObject(), DefinedIn = file };
-                MergeInto(record.Fields, fields, record.FieldOrigins, file);
+                var record = new RawRecord { Id = id, Type = type, Fields = new JsonObject(), DefinedIn = file, Source = source };
+                MergeInto(record.Fields, fields, record, source);
                 record.Disabled = disabled;
                 record.Abstract = (bool?)obj["abstract"] ?? false;
                 raw[key] = record;
@@ -287,8 +321,11 @@ public sealed class RecordStore
             }
 
             if (!isPatch)
-                Error($"{where}: {type} {id} is already defined in {existing.DefinedIn}; use \"patch\": true to change it. Treated as a patch.");
-            MergeInto(existing.Fields, fields, existing.FieldOrigins, file);
+                Error($"{source.At()}: {type} {id} is already defined at {existing.Source.At()}; use \"patch\": true to change it. Treated as a patch.");
+            // The record's own bare ids are written out too, in its own namespace, so that a list the
+            // patch adds to or removes from compares like with like ("tags-": ["sage:x"] against "x").
+            if (foreign) existing.Fields = QualifyFields(existing.Fields, type, id.Namespace);
+            MergeInto(existing.Fields, fields, existing, source);
             if (obj.ContainsKey("disabled")) existing.Disabled = disabled;
             if (obj.ContainsKey("abstract")) existing.Abstract = (bool?)obj["abstract"] ?? false;
             Log.Debug(LogCat.Records, $"{file} patches {type} {id}");
@@ -302,6 +339,27 @@ public sealed class RecordStore
         return raw;
     }
 
+    // System.Text.Json ends its messages with where it was in the text it read ("Path: $.x |
+    // LineNumber: 0 | BytePositionInLine: 12."). For a record that is the merged copy, not the file, so
+    // the numbers would mislead: the caller says where instead.
+    private static string WithoutPosition(string message)
+    {
+        int at = message.IndexOf(" Path: ", StringComparison.Ordinal);
+        if (at < 0) at = message.IndexOf(" LineNumber: ", StringComparison.Ordinal);
+        return at < 0 ? message : message[..at];
+    }
+
+    // `Qualify` for a record's top-level fields, which may also carry "base" and the "field+" /
+    // "field-" list operations of a patch.
+    private JsonObject QualifyFields(JsonObject fields, string type, string ns)
+    {
+        var qualified = (JsonObject)Qualify(fields, _typesByName[type], ns)!;
+        if (qualified["base"] is JsonValue baseValue && baseValue.GetValueKind() == JsonValueKind.String &&
+            (string?)baseValue is { Length: > 0 } baseText && !baseText.Contains(':'))
+            qualified["base"] = $"{ns}:{baseText.Trim()}";
+        return qualified;
+    }
+
     private static JsonObject StripMeta(JsonObject obj)
     {
         var copy = new JsonObject();
@@ -311,39 +369,39 @@ public sealed class RecordStore
         return copy;
     }
 
-    // Per-field merge (05 §3.5). `origins` tracks which file set each top-level field (rec_get).
-    private static void MergeInto(JsonObject target, JsonObject patch, Dictionary<string, string>? origins, string file)
+    // Per-field merge (05 §3.5). `record` (top level only) tracks which file set each field (rec_get)
+    // and where, for errors.
+    private static void MergeInto(JsonObject target, JsonObject patch, RawRecord? record, RecordSource source)
     {
         foreach (var (key, value) in patch)
         {
+            string field = key;
             if (key.EndsWith('+') && key.Length > 1)
             {
-                string field = key[..^1];
+                field = key[..^1];
                 var list = target[field] as JsonArray ?? new JsonArray();
                 if (value is JsonArray add) foreach (var item in add) list.Add(item?.DeepClone());
                 target[field] = list;
-                if (origins != null) origins[field] = file;
             }
             else if (key.EndsWith('-') && key.Length > 1)
             {
-                string field = key[..^1];
+                field = key[..^1];
                 if (target[field] is JsonArray list && value is JsonArray remove)
                 {
                     foreach (var r in remove)
                         for (int i = list.Count - 1; i >= 0; i--)
                             if (JsonNode.DeepEquals(list[i], r)) list.RemoveAt(i);
                 }
-                if (origins != null) origins[field] = file;
             }
             else if (value is JsonObject childPatch && target[key] is JsonObject childTarget)
-            {
-                MergeInto(childTarget, childPatch, null, file);
-                if (origins != null) origins[key] = file;
-            }
+                MergeInto(childTarget, childPatch, null, source);
             else
-            {
                 target[key] = value?.DeepClone();
-                if (origins != null) origins[key] = file;
+
+            if (record != null)
+            {
+                record.FieldOrigins[field] = source.File.Name;
+                record.FieldSources[field] = source;
             }
         }
     }
@@ -360,7 +418,7 @@ public sealed class RecordStore
             if (resolved.Contains(key)) return record.Fields;
             if (!chain.Add(key))
             {
-                Error($"{key.Type} {key.Id}: \"base\" cycle ({string.Join(" -> ", chain.Select(c => c.Item2))})");
+                Error($"{record.At("base")}: {key.Type} {key.Id}: \"base\" cycle ({string.Join(" -> ", chain.Select(c => c.Item2))})");
                 return null;
             }
             // "base" is reserved for inheritance (05 §3.5): a record that wants a field of its own by
@@ -370,17 +428,17 @@ public sealed class RecordStore
             if (record.Fields["base"] is JsonNode baseNode)
             {
                 if (baseNode.GetValueKind() == System.Text.Json.JsonValueKind.String) baseText = (string?)baseNode;
-                else Error($"{record.DefinedIn}: {key.Type} {key.Id}: \"base\" must be the id of another record, not {baseNode.GetValueKind()} " +
+                else Error($"{record.At("base")}: {key.Type} {key.Id}: \"base\" must be the id of another record, not {baseNode.GetValueKind()} " +
                            "(\"base\" is reserved for inheritance; rename the field)");
             }
             if (baseText is { Length: > 0 })
             {
                 RecordId baseId;
                 try { baseId = RecordId.Parse(baseText, record.Id.Namespace); }
-                catch (FormatException ex) { Error($"{record.DefinedIn}: {ex.Message}"); baseId = default; }
+                catch (FormatException ex) { Error($"{record.At("base")}: {ex.Message}"); baseId = default; }
                 var baseFields = baseId.IsEmpty ? null : Resolve((key.Type, baseId), chain);
                 if (baseFields == null && !baseId.IsEmpty)
-                    Error($"{record.DefinedIn}: {key.Type} {key.Id}: base {baseId} not found (or broken)");
+                    Error($"{record.At("base")}: {key.Type} {key.Id}: base {baseId} not found (or broken)");
                 else if (baseFields != null)
                 {
                     // A base in another namespace wrote its ids in its own terms: "physical" in an
@@ -394,15 +452,18 @@ public sealed class RecordStore
                     merged.Remove("base");
                     var own = (JsonObject)record.Fields.DeepClone();
                     own.Remove("base");
-                    MergeInto(merged, own, null, record.DefinedIn);
+                    MergeInto(merged, own, null, record.Source);
                     record.Fields.Clear();
                     foreach (var (k, v) in merged) record.Fields[k] = v?.DeepClone();
                     foreach (var (field, origin) in raw[(key.Type, baseId)].FieldOrigins)
                         record.FieldOrigins.TryAdd(field, $"{origin} (via base {baseId})");
+                    foreach (var (field, source) in raw[(key.Type, baseId)].FieldSources)
+                        record.FieldSources.TryAdd(field, source);
                 }
             }
             record.Fields.Remove("base");
             record.FieldOrigins.Remove("base");
+            record.FieldSources.Remove("base");
             resolved.Add(key);
             chain.Remove(key);
             return record.Fields;
@@ -419,7 +480,7 @@ public sealed class RecordStore
             var known = SettableMembers(clr).Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var (field, _) in record.Fields)
                 if (!known.Contains(field))
-                    Log.Warn(LogCat.Records, $"{record.DefinedIn}: {record.Type} {record.Id}: unknown field '{field}' (typo?)");
+                    Log.Warn(LogCat.Records, $"{record.At(field)}: {record.Type} {record.Id}: unknown field '{field}' (typo?)");
 
             RecordParseContext.Namespace = record.Id.Namespace;
             try
@@ -427,9 +488,14 @@ public sealed class RecordStore
                 var value = record.Fields.Deserialize(clr, _json);
                 if (value != null) built[key] = value;
             }
-            catch (Exception ex) when (ex is JsonException or FormatException or InvalidOperationException or NotSupportedException)
+            catch (JsonException ex)
             {
-                Error($"{record.DefinedIn}: {record.Type} {record.Id}: {ex.Message} (record skipped)");
+                // The path is into the merged record; `At` turns it back into the file that wrote it.
+                Error($"{record.At(ex.Path)}: {record.Type} {record.Id}: {WithoutPosition(ex.Message)} (record skipped)");
+            }
+            catch (Exception ex) when (ex is FormatException or InvalidOperationException or NotSupportedException)
+            {
+                Error($"{record.Source.At()}: {record.Type} {record.Id}: {WithoutPosition(ex.Message)} (record skipped)");
             }
             finally
             {
@@ -448,24 +514,35 @@ public sealed class RecordStore
             foreach (var member in SettableMembers(record.GetType()))
             {
                 object? value = member is FieldInfo f ? f.GetValue(record) : ((PropertyInfo)member).GetValue(record);
-                foreach (var reference in References(value))
+                foreach (var (reference, index) in References(value))
                     if (!reference.IsEmpty && !ids.Contains(reference))
-                        Error($"{raw[key].DefinedIn}: {key.Item1} {key.Item2}: '{member.Name}' refers to {reference}, which doesn't exist");
+                    {
+                        string path = index < 0 ? member.Name : $"{member.Name}[{index}]";
+                        Error($"{raw[key].At(path)}: {key.Item1} {key.Item2}: '{member.Name}' refers to {reference}, which doesn't exist");
+                    }
             }
         }
 
-        static IEnumerable<RecordId> References(object? value)
+        // With its position in a list, so the error lands on the entry (-1: not in a list).
+        static IEnumerable<(RecordId, int)> References(object? value)
         {
-            if (value is RecordId id) yield return id;
+            if (value is RecordId id) yield return (id, -1);
             else if (value is IEnumerable list and not string)
+            {
+                int i = 0;
                 foreach (var item in list)
-                    if (item is RecordId r) yield return r;
+                {
+                    if (item is RecordId r) yield return (r, i);
+                    i++;
+                }
+            }
         }
     }
 
     // Rewrites every bare RecordId inside `node` to `ns:id`, guided by the record type's own fields so
-    // that only ids are affected. Runs once per inherited record at load, so it builds fresh nodes
-    // rather than trying to re-parent the base's.
+    // that only ids are affected. Runs for an inherited record whose base is in another namespace, and
+    // for a record written in a file of another namespace (a patch, R11), so it builds fresh nodes
+    // rather than trying to re-parent the originals.
     private static JsonNode? Qualify(JsonNode? node, Type type, string ns)
     {
         if (node == null) return null;
@@ -474,7 +551,7 @@ public sealed class RecordStore
         {
             if (node.GetValueKind() != JsonValueKind.String) return node.DeepClone();
             string? text = (string?)node;
-            return string.IsNullOrEmpty(text) || text.Contains(':') ? node.DeepClone() : JsonValue.Create($"{ns}:{text}");
+            return string.IsNullOrWhiteSpace(text) || text.Contains(':') ? node.DeepClone() : JsonValue.Create($"{ns}:{text.Trim()}");
         }
 
         if (node is JsonArray array)
@@ -492,8 +569,10 @@ public sealed class RecordStore
             var valueType = DictionaryValueType(type);
             foreach (var (name, value) in obj)
             {
+                // "spells+" / "spells-" in a patch are the spells field too.
+                string memberName = name.Length > 1 && (name[^1] == '+' || name[^1] == '-') ? name[..^1] : name;
                 var member = valueType != null ? null
-                    : SettableMembers(type).FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+                    : SettableMembers(type).FirstOrDefault(m => string.Equals(m.Name, memberName, StringComparison.OrdinalIgnoreCase));
                 var memberType = valueType ?? (member == null ? null : MemberType(member));
                 result[name] = memberType == null ? value?.DeepClone() : Qualify(value, memberType, ns);
             }
