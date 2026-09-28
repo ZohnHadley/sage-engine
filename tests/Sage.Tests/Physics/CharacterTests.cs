@@ -216,7 +216,7 @@ public class CharacterTests
     {
         using var engine = NewEngine();
         var gentle = engine.CreateWorld("gentle");
-        gentle.Resources.Get<Terrain>().Generator = new SlopeGenerator(30f);
+        gentle.Resources.Add(new Terrain { Origin = gentle.Origin(), Generator = new SlopeGenerator(30f) });
         gentle.Resources.Get<Terrain>().Load(SectorCoord.Zero);
         var walker = Character(gentle, new Vector3(100, 60f, 100));
         Walk(gentle, walker, Vector2.Zero, 120);                 // fall onto the slope
@@ -226,7 +226,7 @@ public class CharacterTests
 
         using var engine2 = NewEngine();
         var cliff = engine2.CreateWorld("cliff");
-        cliff.Resources.Get<Terrain>().Generator = new SlopeGenerator(70f);
+        cliff.Resources.Add(new Terrain { Origin = cliff.Origin(), Generator = new SlopeGenerator(70f) });
         cliff.Resources.Get<Terrain>().Load(SectorCoord.Zero);
         var climber = Character(cliff, new Vector3(100, 300f, 100));
         Walk(cliff, climber, Vector2.Zero, 200);

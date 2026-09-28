@@ -230,8 +230,8 @@ public class PhysicsTests
     {
         using var engine = NewEngine();
         var world = engine.CreateWorld("physics");
-        var terrain = world.Resources.Get<Terrain>();
-        terrain.Generator = new SlopeGenerator();
+        var terrain = new Terrain { Origin = world.Origin(), Generator = new SlopeGenerator() };
+        world.Resources.Add(terrain);   // what sage.streaming installs; collision needs only the resource
         terrain.Load(SectorCoord.Zero);
 
         var ball = world.Create(Transform.At(new Vector3(40, 30, 40)), "ball");

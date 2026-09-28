@@ -136,10 +136,14 @@ public class TerrainTests
     }
 
     [Fact]
-    public void EveryWorldHasATerrainResource_AndLoadWithoutAGeneratorIsRefused()
+    public void TheStreamingPluginInstallsTheTerrain_AndLoadWithoutAGeneratorIsRefused()
     {
-        using var world = new World("terrain");
-        var terrain = world.Resources.Get<Terrain>();
+        using var bare = new World("bare");
+        Assert.False(bare.Resources.TryGet<Terrain>(out _));   // terrain is sage.streaming's (issue #13)
+
+        using var app = HeadlessApp.Bare().With(new PhysicsModule(), new StreamingModule()).Boot("terrain");
+        var terrain = app.World.Resources.Get<Terrain>();
+        Assert.Same(app.World.Origin(), terrain.Origin);
         Assert.Empty(terrain.Sectors);
         Assert.Null(terrain.Load(SectorCoord.Zero));   // Ensure fails, the game keeps running
         Assert.Equal(0f, terrain.HeightAt(0, 0));

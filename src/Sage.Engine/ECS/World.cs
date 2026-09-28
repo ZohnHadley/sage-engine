@@ -58,16 +58,18 @@ public sealed class World : IDisposable
         _store.OnComponentRemoved += OnComponentRemoved;
         _store.OnEntityDelete += OnEntityDelete;
         _propagation = new TransformPropagation(this);
-        // Resources every world has (headless ones too, so simulation code can rely on them).
-        Resources.Add(new ActiveCamera());
+        // Resources every world has, headless ones too. What only some games have is installed by the
+        // plugin it belongs to (issue #13): Terrain by sage.streaming; ActiveCamera and PlayerInput by
+        // sage.gameplay.character (a player to look through and to command) and the client (a view to
+        // draw). A world from `"plugins": []` has none of them.
         Resources.Add(new RenderEnvironment());
         // What the sky is doing belongs to the world, not to whoever draws it (06 §3.13): a headless
         // server can be rained on, and a save carries the storm you walked into.
         Resources.Add(new Weather { Current = WeatherRecord.Clear, Target = WeatherRecord.Clear });
-        var origin = new Origin();       // which sector the simulation is running in (R6, 14 §3)
-        Resources.Add(origin);
-        Resources.Add(new Terrain { Origin = origin });
-        Resources.Add(new PlayerInput());
+        // Which sector the simulation is running in (R6, 14 §3). Core rather than streaming's: it is the
+        // frame every absolute position converts through (placements, saves, levels), and without
+        // streaming it simply never moves from sector zero.
+        Resources.Add(new Origin());
         _contracts = new PhaseContracts(this);   // what each phase promises, checked in dev (03 §3.5)
         _events = new GameEvents();          // the one place gameplay facts cross systems (04 §3.2)
         if (engine != null)

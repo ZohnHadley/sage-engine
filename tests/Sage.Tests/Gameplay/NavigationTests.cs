@@ -233,8 +233,8 @@ public class NavigationTests
         var (engine, world) = NewWorld();
         using (engine)
         {
-            var terrain = world.Resources.Get<Terrain>();
-            terrain.Generator = new Cliff();
+            var terrain = new Terrain { Origin = world.Origin(), Generator = new Cliff() };
+            world.Resources.Add(terrain);   // what sage.streaming would install
             terrain.Load(SectorCoord.Zero);
 
             var nav = world.Resources.Get<Navigation>();

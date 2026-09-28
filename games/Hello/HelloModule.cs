@@ -10,7 +10,12 @@ namespace Hello;
 // only needs one when it wants a HUD or screens of its own (games/Sandbox.Client is that).
 //
 // Read it top to bottom; it is about sixty lines and every one of them is a decision a game makes.
+//
+// It stands on terrain and puts a player in the world, so it names the plugins those come from: a game
+// that leaves one out of game.json's `plugins` hears so at boot, not as a crash in OnWorldCreated.
 [Plugin("hello", "0.1.0")]
+[RequiresPlugin("sage.streaming", ">=0.1")]
+[RequiresPlugin("sage.gameplay.character", ">=0.1")]
 public sealed class HelloModule : IGameModule
 {
     // Register only: cvars, console commands, record types of your own, prefab parts, entity inputs.

@@ -16,7 +16,7 @@ internal sealed class TerrainMeshSystem : ISystem
     public const int ChunkCells = 32;
 
     private readonly Renderer _renderer;
-    private readonly Terrain _terrain;
+    private Terrain? _terrain;
     private readonly World _world;
     private readonly List<VertexPositionNormalTexture> _vertices = new();
     private readonly List<int> _indices = new();
@@ -25,12 +25,13 @@ internal sealed class TerrainMeshSystem : ISystem
     {
         _world = world;
         _renderer = renderer;
-        _terrain = world.Resources.Get<Terrain>();
     }
 
     public void Run(in SystemContext ctx)
     {
-        var sectors = _terrain.Sectors;
+        // No streaming plugin, no terrain (issue #13): nothing to mesh.
+        if (_terrain == null && !_world.Resources.TryGet(out _terrain)) return;
+        var sectors = _terrain!.Sectors;
         for (int i = 0; i < sectors.Count; i++)   // indexed: foreach over the interface would box an enumerator
         {
             var sector = sectors[i];
@@ -45,7 +46,7 @@ internal sealed class TerrainMeshSystem : ISystem
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var heights = sector.Heights;
         int chunks = (heights.Resolution - 1) / ChunkCells;
-        var corner = _terrain.CornerOf(sector.Coord);   // origin space (R6), not absolute
+        var corner = _terrain!.CornerOf(sector.Coord);   // origin space (R6), not absolute
         int built = 0;
 
         for (int cz = 0; cz < chunks; cz++)

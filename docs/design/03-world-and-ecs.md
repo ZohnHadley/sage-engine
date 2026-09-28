@@ -76,6 +76,8 @@ The rest of this doc is written against the `World` API.
 ### 3.4 Resources (per-world singletons)
 State that isn't per-entity lives in world **resources**, the equivalent of Overwatch's singleton components: `GameRules`, the physics space, the current `TickTime`, the origin sector, the event queues (04). Accessed as `world.Resources.Get<T>()`. No static singletons (TODO R1).
 
+**Core or plugin (issue #13).** A world comes with only what every game needs: the origin (the frame every absolute position converts through), the event queues, records, `DebugDraw`, `MessageLog`, `Weather` and `RenderEnvironment`. Everything else is installed by the plugin it belongs to: `PhysicsSpace` by `sage.physics3d`, `Terrain` by `sage.streaming`, `PlayerInput` and `ActiveCamera` by `sage.gameplay.character` (and the camera by the client too, through `Resources.GetOrAdd`, since either may be loaded without the other). A game from `"plugins": []` has none of them, ticks, and answers console commands (test: NoPluginsAtAllIsAGameWithNoPhysicsAndNoGameplay); CI runs one in the real host (`tests/games/no-plugins`).
+
 ### 3.5 Systems and schedules
 
 - A system is a class implementing `ISystem`, registered into a **schedule** and **phase**:
@@ -293,7 +295,7 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 | `ComponentTransform` class (`LookAt`/`Billboard` methods) | **Done (step 3):** `Transform` struct (`LocalPosition/LocalRotation/LocalScale`, `Transform.Identity`) + `TransformMath`. `SectorCoord`/`GlobalTransform` + propagation in step 4 |
 | `ComponentMeshRenderer` class → `ModelRenderer` struct (step 3) → **`MeshRenderer { AssetPath Mesh; RecordId Material; byte Layer; }` in Sage.Engine (done, step 6)** | `MeshRenderer` done; and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
 | (the `TransfomSystem.cs` stub, deleted 2026-09-22) | **Done (step 4):** transform propagation, run by `World` after `PostPhysics` and `Late` |
-| `Sage.Client/Rendering/ModelRendererSystem.cs` | **Done (step 6):** `CameraExtract` + `MeshExtract` + `RenderSystem` (06 §3.11). Every `World` now also has `RenderEnvironment`, `PlayerInput`, `Terrain` (14) and — with the physics module — `PhysicsSpace` (10) resources, next to `ActiveCamera` |
+| `Sage.Client/Rendering/ModelRendererSystem.cs` | **Done (step 6):** `CameraExtract` + `MeshExtract` + `RenderSystem` (06 §3.11). Every `World` then also had `RenderEnvironment`, `PlayerInput`, `Terrain` (14) and — with the physics module — `PhysicsSpace` (10) resources, next to `ActiveCamera`; since issue #13 only `RenderEnvironment` is core, the rest come from their plugins (§3.4) |
 
 ## 11. v1 scope vs later
 - **v1** (✓ = built in migration step 3):

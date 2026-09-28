@@ -107,7 +107,8 @@ time you name `Transform` the compiler cannot tell which one you mean.
 - `plugins` (optional) picks which of the engine's plugins the game uses, by id — `"sage.physics3d"`, or
   `"sage.gameplay.*"` for a family — and whatever they require comes with them, so
   `["sage.gameplay.items"]` also brings attributes, combat, characters and physics. Left out, the game gets
-  all of them; `[]` is a game with no physics and no gameplay. The console's `plugins` command lists every
+  all of them; `[]` is a game with no physics and no gameplay — and no terrain, camera or player input,
+  which belong to `sage.streaming` and `sage.gameplay.character`. The console's `plugins` command lists every
   plugin with its version and what it needs, and `plugins <id>` what that one registered.
 - `modules.disable` switches off engine modules by class name or plugin id. A game with no AI drops
   `AIModule` (or `sage.gameplay.ai`) and nothing else changes; a name that matches nothing is a warning.
@@ -239,9 +240,17 @@ declared `Optional` so the same prefab loads with no renderer at all.
 Four things, in this order, and you can walk around your own world.
 
 **1. A world, with ground.** Your module's `OnWorldCreated` is where a world is furnished. Terrain comes
-first, because things are placed on top of it:
+first, because things are placed on top of it. The terrain is the `sage.streaming` plugin's, and a player
+to control and look through is `sage.gameplay.character`'s, so a game that uses them says so — then a
+`game.json` that leaves one out stops at boot with the reason, instead of crashing here:
 
 ```csharp
+[Plugin("yourgame", "0.1.0")]
+[RequiresPlugin("sage.streaming", ">=0.1")]
+[RequiresPlugin("sage.gameplay.character", ">=0.1")]
+public sealed class YourGameModule : IGameModule
+...
+
 public void OnWorldCreated(World world)
 {
     var terrain = world.Resources.Get<Terrain>();

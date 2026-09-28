@@ -25,7 +25,7 @@ public class HelloGameTests
         fixture.Write("hello", "data/hello.json", Records);
         fixture.Mount("hello", "hello");
 
-        return HeadlessApp.Gameplay().With(new HelloModule()).Mount(fixture).Build().Engine;
+        return HeadlessApp.Simulation().With(new HelloModule()).Mount(fixture).Build().Engine;
     }
 
     // The example's own records, copied here rather than read from `games/Hello/content`, so that the
