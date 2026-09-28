@@ -3,7 +3,7 @@
 A C#/MonoGame game engine, being redesigned into a base engine for game designers, developers and
 modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3D and 2D.
 
-**Start here:** [`docs/history/handoff-2026-09-27.md`](docs/history/handoff-2026-09-27.md) (where things
+**Start here:** [`docs/history/handoff-2026-09-28.md`](docs/history/handoff-2026-09-28.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
 tracked as GitHub issues: phases #2, #9, #15, #23, each with sub-issues.
 
@@ -47,5 +47,9 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
   `Sage.Engine` has no MonoGame; tests cannot reference `Sage.Client` — the smoke run checks the client.
 - **Docs are checked.** An "As built" claim cites the test that proves it (the `test:` marker, see the README); quoted counts are verified.
   A new test changes the count: run `check_docs.py --fix`.
-- Traps worth knowing are in the handoff's §5 (`git clean -fdx` deletes new untracked files; this clone
-  may be shallow; the 8.0.1xx SDK miscompiles; `RollForward` hides .NET 8 runtime bugs).
+- Traps worth knowing are in the handoffs' §5 (2026-09-27: `git clean -fdx` deletes new untracked files;
+  this clone may be shallow; the 8.0.1xx SDK miscompiles; `RollForward` hides .NET 8 runtime bugs.
+  2026-09-28: merge `main` into a branch and re-run everything before merging it; allocation is
+  measured per thread; content mistakes are load errors now).
+- **Parallel work goes in git worktrees**, one branch per issue, each agent with its own SAGE id range;
+  the lead merges `main` into each branch and re-verifies before opening and merging its PR.

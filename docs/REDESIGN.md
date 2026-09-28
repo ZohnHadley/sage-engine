@@ -684,13 +684,13 @@ what the base therefore needs first:
 
 Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues/2) · Phase 1 [#9](https://github.com/ZohnHadley/sage-engine/issues/9) · Phase 2 [#15](https://github.com/ZohnHadley/sage-engine/issues/15) · Phase 3 [#23](https://github.com/ZohnHadley/sage-engine/issues/23). Each has its work split into sub-issues.
 
-**Status (2026-09-27; details in [`history/handoff-2026-09-27.md`](history/handoff-2026-09-27.md)):**
+**Status (2026-09-28; details in [`history/handoff-2026-09-28.md`](history/handoff-2026-09-28.md)):**
 
 | Phase | State |
 |---|---|
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
-| 2 — Declarations | Not started |
+| 2 — Declarations | **All but #21.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22). Left: JSON Schemas for VS Code (#21) |
 | 3 — Carve the base | Not started |
 
 | Phase | Theme | Main work | Exit criterion |
