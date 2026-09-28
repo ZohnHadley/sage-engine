@@ -21,10 +21,13 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="sage_engine.Testing" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" />
+    <!-- The harness every test boots through: HeadlessApp, MountFixture, EventProbe (issue #14). -->
+    <ProjectReference Include="..\Sage.Testing\Sage.Testing.csproj" />
     <!-- The Sandbox's *simulation* half only: no MonoGame, so the game's own rules can be ticked
          here the way the engine's are (R15). Sandbox.Client is deliberately not referenced. -->
     <ProjectReference Include="..\..\games\Sandbox\Sandbox.csproj" />

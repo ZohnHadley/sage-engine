@@ -66,6 +66,10 @@ public sealed class Engine : IDisposable
     // already be loaded (the host loads them first; see docs/design/03 §3.1).
     public World CreateWorld(string name)
     {
+        // Prefab parts and entity inputs are per engine, and a world's entities are built from them:
+        // one added after the first world would exist in some worlds and not others.
+        Prefabs.Seal.Seal("the first world was created");
+        Inputs.Seal.Seal("the first world was created");
         var world = new World(name, this);
         _worlds.Add(world);
         Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active)");

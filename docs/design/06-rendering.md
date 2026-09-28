@@ -298,7 +298,7 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
 - **Code:** `src/Sage.Engine/Rendering/Particles.cs` (`particle` records, the `ParticleEmitter`
   component, the `Particles` pool) and `FloatingText.cs` (`FloatingTexts`, `DamageNumbers`); the client
   half is `src/Sage.Client/Rendering/ParticleSystems.cs` (`ParticleSystem`, `ParticleExtract`,
-  `FloatingTextSystem`). Tests: `tests/Sage.Tests/World/ParticleTests.cs`.
+  `FloatingTextSystem`). Tests: `tests/Sage.Tests/Gameplay/ParticleTests.cs`.
 - **The simulation is engine-side, the drawing is not**, the same split as the audio mixer: where a
   spark is after four tenths of a second is arithmetic anybody can check, so twelve headless tests cover
   emission, ageing, gravity, drag, the fade, both ceilings and the rebase — without a window.
@@ -336,7 +336,7 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
 
 ### As built (weather, 2026-09-24 — F40)
 - **Code:** `src/Sage.Engine/Rendering/Weather.cs` (`weather` records, the `Weather` state, `WeatherRules`)
-  and `src/Sage.Client/Rendering/WeatherSystem.cs`. Tests: `tests/Sage.Tests/World/WeatherTests.cs`.
+  and `src/Sage.Client/Rendering/WeatherSystem.cs`. Tests: `tests/Sage.Tests/Gameplay/WeatherTests.cs`.
 - **The numbers are engine-side and tested**: the blend, the fog and sun it implies, the rate and wind at
   any point through a change, and which of two kinds of precipitation is falling. What the client does
   with the answer is emit particles round the camera, write `RenderEnvironment`, and start a sound.
@@ -374,7 +374,7 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
 - **Code:** `src/Sage.Engine/Rendering/Lights.cs` (the `PointLight` component, `LightSample`,
   `LightRules`), `LightExtract` in `src/Sage.Client/Rendering/RenderSystems.cs`,
   `EffectBinding.SetLights` in `MaterialCache.cs`, and `PointLights()` in
-  `engine_content/shaders/common.fxh`. Tests: `tests/Sage.Tests/World/LightTests.cs`.
+  `engine_content/shaders/common.fxh`. Tests: `tests/Sage.Tests/Gameplay/LightTests.cs`.
 - **Four lights per draw, chosen per object.** The ceiling is the shader model DesktopGL gives us (07
   §2), and four is enough for a room, which is what this is for. `LightRules.Nearest` picks them from
   the frame's whole list for each item, because a wall and a lamp across the room want different

@@ -469,21 +469,26 @@ None of this exists in a Shipping build, which contains no editor at all.
 Three tools, in the order you should reach for them:
 
 **Headless tests.** Your simulation half can be ticked in a test with no window and no graphics device.
-This is the engine's own habit and the reason the split exists:
+This is the engine's own habit and the reason the split exists. Reference `tests/Sage.Testing` and your
+game's project from a test project, and boot the game from its own `game.json` — the same plugins, mounts
+and stages the game executable uses, less the client:
 
 ```csharp
-var cvars = new CVarRegistry();
-using var engine = new Engine(cvars, CoreCVars.Register(cvars));
-engine.Modules.Add(new PhysicsModule());
-engine.Modules.AddGameplay();
-engine.Modules.Add(new YourGameModule());
-engine.Modules.InitAll();
-engine.Records.Load(engine.Vfs);
-engine.Modules.StartAll();
-
-var world = engine.CreateWorld("test");
-world.RunFixed(1f / 60f);
+using var app = HeadlessApp.ForGame("games/YourGame", new YourGameModule()).Boot("test");
+app.World.RunFixed(1f / 60f);
 ```
+
+Or pick the pieces a test is about, with records written on the spot:
+
+```csharp
+using var app = HeadlessApp.Gameplay()                          // physics and every gameplay plugin
+    .With(new YourGameModule())
+    .File("data/test.json", """[{ "type": "item", "id": "key" }]""", ns: "yourgame")
+    .OnRegistered(a => a.Records.Register<YourRecord>())        // what a module would do in Init
+    .Boot("test");
+```
+
+`EventProbe<T>` remembers every event of a type the world raised, and `CaptureSink` what the log said.
 
 **Scripted runs.** Drive the real game from the command line and read the log afterwards. Every one of
 these is a console command, so anything you can type you can script:

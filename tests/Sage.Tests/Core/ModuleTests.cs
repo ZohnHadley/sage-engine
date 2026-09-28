@@ -59,30 +59,19 @@ public class ModuleTests
         public void Init(ModuleContext ctx) { }
     }
 
-    private static Engine NewEngine()
-    {
-        var cvars = new CVarRegistry();
-        return new Engine(cvars, CoreCVars.Register(cvars));
-    }
-
     // A game with an overworld and a battle scene has two worlds (03 §3.3, ARCHITECTURE §4.2), and
     // modules install their systems in each. Anything a system registers per world — a cvar, a
     // command — would be registered twice, and the registry rightly refuses that.
     [Fact]
     public void ModulesCanInstallTheirSystemsInMoreThanOneWorld()
     {
-        var cvars = new CVarRegistry();
-        using var engine = new Engine(cvars, CoreCVars.Register(cvars));
-        engine.Modules.Add(new PhysicsModule());
-        engine.Modules.AddGameplay();
-        engine.Modules.InitAll();
-        engine.Modules.StartAll();
+        using var app = HeadlessApp.Gameplay().Build();
 
-        var overworld = engine.CreateWorld("overworld");
-        var battle = engine.CreateWorld("battle");
+        var overworld = app.CreateWorld("overworld");
+        var battle = app.CreateWorld("battle");
 
         Assert.NotSame(overworld, battle);
-        Assert.Equal(2, engine.Worlds.Count);
+        Assert.Equal(2, app.Engine.Worlds.Count);
     }
 
     // 16 §3.4 says a game adds its own AI tasks before the first world exists. That is only true if
@@ -91,14 +80,8 @@ public class ModuleTests
     [Fact]
     public void AGameCanReachTheAITaskRegistry()
     {
-        var cvars = new CVarRegistry();
-        using var engine = new Engine(cvars, CoreCVars.Register(cvars));
-        engine.Modules.Add(new PhysicsModule());
-        engine.Modules.AddGameplay();
         var game = new TaskAddingGame();
-        engine.Modules.Add(game);
-        engine.Modules.InitAll();
-        engine.Modules.StartAll();
+        using var app = HeadlessApp.Gameplay().With(game).Build();
 
         Assert.NotNull(game.Tasks);
         Assert.NotNull(game.Tasks!.Find("Loiter"));      // the game's own
@@ -129,33 +112,28 @@ public class ModuleTests
     public void Lifecycle_RunsInDependencyOrder_ShutdownReversed()
     {
         var calls = new List<string>();
-        using var engine = NewEngine();
         var b = new ModB(calls);
-        engine.Modules.Add(b);            // added before its dependency: sorted anyway
-        engine.Modules.Add(new ModA(calls));
-        engine.Modules.InitAll();
-        engine.Modules.StartAll();
-        engine.CreateWorld("w");
-        engine.Modules.ShutdownAll();
+        var app = HeadlessApp.Bare().With(b, new ModA(calls)).Boot("w");   // B before its dependency: sorted anyway
+        var order = app.Engine.Modules.Modules.Select(m => m.Name).ToArray();
+        app.Dispose();
 
         Assert.Equal(new[] { "A.Init", "B.Init", "A.Start", "B.Start", "A.World(w)", "B.Shutdown", "A.Shutdown" }, calls);
         Assert.NotNull(b.Got);
-        Assert.Equal(new[] { "ModA", "ModB" }, engine.Modules.Modules.Select(m => m.Name));
+        Assert.Equal(new[] { "ModA", "ModB" }, order);
     }
 
     [Fact]
     public void Get_IsRestrictedToDependencies_AndHostServices()
     {
         var calls = new List<string>();
-        using var engine = NewEngine();
         var c = new ModC();
-        engine.Modules.Add(new ModA(calls));
-        engine.Modules.Add(new ModB(calls));
-        engine.Modules.Add(c);
-        engine.Modules.ProvideHostService("host service");
-        engine.Modules.InitAll();
+        using var app = HeadlessApp.Bare().With(new ModA(calls), new ModB(calls), c).Create();
+        app.Engine.Modules.ProvideHostService("host service");
+        app.App.Register();
+        app.App.Configure();
+        app.App.LoadContent();
 
-        var ex = Assert.Throws<InvalidOperationException>(() => engine.Modules.StartAll());
+        var ex = Assert.Throws<InvalidOperationException>(app.App.Start);
         Assert.Equal("host service", c.Host);   // host services need no dependency
         Assert.Contains("ModC uses ServiceB from ModB but doesn't list it", ex.Message);
     }
@@ -163,10 +141,9 @@ public class ModuleTests
     [Fact]
     public void Provide_AnAlreadyProvidedService_Throws()
     {
-        using var engine = NewEngine();
-        engine.Modules.ProvideHostService(new ServiceA());
-        engine.Modules.Add(new ModA(new List<string>()));
-        Assert.Throws<InvalidOperationException>(() => engine.Modules.InitAll());
+        using var app = HeadlessApp.Bare().With(new ModA(new List<string>())).Create();
+        app.Engine.Modules.ProvideHostService(new ServiceA());
+        Assert.Throws<InvalidOperationException>(app.App.Register);
     }
 
     [Fact]
@@ -181,9 +158,8 @@ public class ModuleTests
     [Fact]
     public void Add_SameModuleTypeTwice_Throws()
     {
-        using var engine = NewEngine();
-        engine.Modules.Add(new ModA(new List<string>()));
-        Assert.Throws<InvalidOperationException>(() => engine.Modules.Add(new ModA(new List<string>())));
+        Assert.Throws<InvalidOperationException>(() =>
+            HeadlessApp.Bare().With(new ModA(new List<string>()), new ModA(new List<string>())).Create());
     }
 
     [Fact]

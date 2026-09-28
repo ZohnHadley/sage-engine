@@ -126,7 +126,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 
 - **Code:** `src/Sage.Engine/Gameplay/Abilities.cs` (the `ability` and `cue` records, the `Abilities`
   component, the `AbilityCast`/`CastRefused`/`CueTriggered` events) and `AbilitySystem.cs`. Tests in
-  `tests/Sage.Tests/World/AbilityTests.cs`; the Sandbox's fireball is in its `scene.json`.
+  `tests/Sage.Tests/Gameplay/AbilityTests.cs`; the Sandbox's fireball is in its `scene.json`.
 - **Almost none of it is new machinery.** An ability is a cost, a cooldown, a way of choosing targets
   and a list of effects. Everything it does to anybody is an effect (§3.3) or damage through the
   combat pipeline (§3.2) — so the `god` tag stops a fireball for the same reason it stops a sword,
@@ -238,7 +238,7 @@ and the cast system cannot tell a composed spell from one in a content file.
 Something to do, and something that notices you did it.
 
 - **Code:** `src/Sage.Engine/Gameplay/Quests.cs` (`quest` records, the saved `Journal`, the `Quests`
-  rules and `QuestChanged`) and `JournalScreen.cs`. Tests: `tests/Sage.Tests/World/QuestTests.cs`.
+  rules and `QuestChanged`) and `JournalScreen.cs`. Tests: `tests/Sage.Tests/Gameplay/QuestTests.cs`.
 - **A quest watches; it never moves anybody.** A stage is a line of text and a list of things that must
   be true. The things it watches for are things the game already does — somebody died, something is in
   your bag — so a quest adds no machinery to the rest of the engine, only a place to write down what
@@ -268,7 +268,7 @@ Talking to somebody, as data.
 
 - **Code:** `src/Sage.Engine/Gameplay/Dialogue.cs` (`dialogue` records, the `Dialogue` component, the
   `Conversation` resource, `DialogueRules`) and `DialogueScreen.cs`; the client half is one system,
-  `src/Sage.Client/UI/DialogueSystem.cs`. Tests: `tests/Sage.Tests/World/DialogueTests.cs`.
+  `src/Sage.Client/UI/DialogueSystem.cs`. Tests: `tests/Sage.Tests/Gameplay/DialogueTests.cs`.
 - **A conversation is a record, not a script.** Nodes hold a line and the things you may say back; an
   option leads to another node and may *do* something on the way. Everything it can do — give an item,
   take one, apply an effect, move a reputation — is machinery that already existed, which is the whole
@@ -300,7 +300,7 @@ The question three systems were guessing at.
 - **Code:** `src/Sage.Engine/Gameplay/Factions.cs` (`faction` records, the `Faction` component, the saved
   `Reputation` resource, the `Factions` rules and `ReputationChanged`), plus the three places that now
   ask it: `AIThinkSystem.FindNearestEnemy`, `AbilityPayload`, `MeleeCombatSystem`. Tests:
-  `tests/Sage.Tests/World/FactionTests.cs`.
+  `tests/Sage.Tests/Gameplay/FactionTests.cs`.
 - **A faction has an opinion of other factions, and a separate one of *you*.** The first is a table in
   the record (`Hostile`/`Neutral`/`Ally`, with a default for anyone unlisted); the second is a number
   that moves as you act, with two thresholds where it becomes a stance. That is Daggerfall's model, and
@@ -332,7 +332,7 @@ Creatures walk round things instead of into them.
 
 - **Code:** `src/Sage.Engine/Gameplay/Navigation.cs` (`NavGrid`, `NavPath`, `Navigation`), the changed
   `MoveToTargetTask` and target memory in `AI.cs`/`AIThinkSystem.cs`. Tests:
-  `tests/Sage.Tests/World/NavigationTests.cs`.
+  `tests/Sage.Tests/Gameplay/NavigationTests.cs`.
 - **A local grid, built when it is needed and thrown away.** Not a navmesh and nothing precomputed: when
   the straight line is blocked, the creature opens a window round itself and its target (96 cells a side
   at most, 1 m by default), stamps the colliders that are *there now* plus ground too steep to climb,

@@ -1,9 +1,11 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using sage_engine;
+using Sandbox;
 
 namespace sage_engine.Tests;
 
@@ -79,16 +81,36 @@ public class ModuleSetTests
     }
 
     // The regression itself, stated as what a game author would notice: a prefab asking for a `light`
-    // gets one. `AddGameplay` is the path the host now takes too, so this is a test of what ships.
+    // gets one — in the Sandbox, booted from its own game.json the way the host boots it.
     [Fact]
     public void TheLightPartIsRegisteredByTheModulesTheGameActuallyInstalls()
     {
-        var cvars = new CVarRegistry();
-        using var engine = new Engine(cvars, CoreCVars.Register(cvars));
-        engine.Modules.Add(new PhysicsModule());       // as the host does: characters sweep the space
-        engine.Modules.AddGameplay();
-        engine.Modules.InitAll();
+        using var app = HeadlessApp.ForGame(SandboxDirectory, new SandboxModule()).Build();
 
-        Assert.Contains("light", engine.Prefabs.Names);
+        Assert.Contains("light", app.Engine.Prefabs.Names);
     }
+
+    // The harness and the game executable resolve **the same plugins** for the Sandbox (issue #14).
+    // This used to be a claim in a comment ("AddGameplay is the path the host takes too"); now both
+    // are SageApps built from the same game.json, and the only difference allowed is the one that
+    // makes the harness headless: the host's client modules.
+    [Fact]
+    public void TheHarnessLoadsThePluginsThePlayerHostDoes()
+    {
+        using var headless = HeadlessApp.ForGame(SandboxDirectory, new SandboxModule()).Create();
+
+        // What Sage.Host/Program.cs builds, less ClientModule (tests cannot reference Sage.Client) and
+        // the game's `modules.add` client assembly.
+        var manifest = GameManifest.Load(SandboxDirectory);
+        manifest.Modules.Add.Clear();
+        manifest.Assembly = "";
+        using var host = SageApp.Create(new SageAppOptions { Game = manifest, HostModules = new IModule[] { new SandboxModule() } });
+
+        var hostIds = host.Engine.Modules.Modules.Select(m => host.Engine.Modules.Plugin(m).Id).ToArray();
+        Assert.Equal(hostIds, headless.PluginIds);
+        Assert.Contains("sage.gameplay.lights", hostIds);
+        Assert.Contains("sandbox", hostIds);
+    }
+
+    private static string SandboxDirectory => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
 }
