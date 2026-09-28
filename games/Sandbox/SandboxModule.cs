@@ -161,19 +161,26 @@ public sealed class SandboxModule : IGameModule
 [Record("scene")]
 public sealed class SceneRecord
 {
+    [Property(Tooltip = "Where the local player starts")]
     public ScenePlacement? Player;            // where the local player starts
+    [Property(Tooltip = "Everything else the scene places")]
     public List<ScenePlacement> Place = new();
 
     // Brush levels to load with the scene (15 §3, F16). A `.map` places its own contents, so this is
     // the whole of what the scene has to say about one.
+    [Property(Tooltip = "Brush levels to load with the scene")]
     public List<RecordRef<MapRecord>> Maps = new();
 }
 
 public sealed class ScenePlacement
 {
+    [Property(Tooltip = "What to place")]
     public RecordRef<PrefabRecord> Prefab;
+    [Property(Unit = "m", Tooltip = "Relative to the scene centre; y is height above the ground")]
     public Vector3 At;                        // relative to the scene centre; y is height above ground
+    [Property(Unit = "deg", Tooltip = "Degrees about +Y; 0 faces -Z")]
     public float Yaw;                         // degrees about +Y, 0 faces -Z (SageMath)
+    [Property(Tooltip = "Optional, so ent_list can tell two copies apart")]
     public string Name = "";                  // optional, so `ent_list` can tell two copies apart
 }
 
@@ -191,7 +198,9 @@ public struct FromScene : ITag { }
 [Component("sandbox:hop")]
 public struct Hop : IComponent
 {
+    [Property(Unit = "m", Tooltip = "The ground it lands back on")]
     public float BaseY;
+    [Property(Unit = "m/s", Tooltip = "Upward speed; set by a hop, pulled down by gravity")]
     public float Velocity;
 }
 

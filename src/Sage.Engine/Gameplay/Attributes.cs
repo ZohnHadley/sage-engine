@@ -13,14 +13,18 @@ namespace sage_engine;
 [Record("attribute", Plugin = "sage.gameplay.attributes")]
 public sealed class AttributeRecord
 {
+    [Property(Category = "Vitals", Tooltip = "The value an entity starts with")]
     public float Start;          // the value an entity gets when it is created ("base" is reserved
                                  // for record inheritance, 05 §3.5)
+    [Property(Category = "Vitals", Tooltip = "The lowest the value can go; it is clamped here")]
     public float Min;
+    [Property(Category = "Vitals", Tooltip = "The highest the value can go; it is clamped here")]
     public float Max = float.MaxValue;
 
     // How this pool is *spent* (16 §3.3): an effect whose modifier takes one unit of it, scaled by
     // the magnitude of the spend. Naming it here rather than in every ability keeps the rule that
     // nothing subtracts an attribute directly — mana leaves the same way health does.
+    [Property(Tooltip = "The effect that spends one unit of this attribute (mana, stamina)")]
     public RecordRef<EffectRecord> SpendEffect;
 
     public static readonly RecordId Health = new("sage", "health");

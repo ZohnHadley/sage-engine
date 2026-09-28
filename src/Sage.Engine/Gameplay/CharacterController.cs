@@ -43,13 +43,17 @@ public sealed class MovementProfileRecord
 [Component("sage:character_controller")]
 public struct CharacterController : IComponent
 {
+    [RecordRef("movement_profile"), Property(Tooltip = "How it moves; empty = sage:default_movement")]
     public RecordId Profile;
+    [Property(Min = 0, Max = 31, Tooltip = "Its own physics layer, which its sweeps ignore")]
     public byte Layer;              // its own layer, excluded from its sweeps ("player" or "enemy")
+    [Property(Unit = "m/s", Tooltip = "Current velocity")]
     public Vector3 Velocity;
     [Transient] public float Height;          // derived from Crouching and the profile            // current capsule height; 0 = take the profile's StandHeight
     [Transient] public Vector3 GroundNormal;  // GroundCheck overwrites all three every tick
     [Transient] public bool Grounded;
     [Transient] public bool OnSteep;        // touching a surface steeper than the slope limit: it slides down it
+    [Property(Tooltip = "Crouched: the capsule is the profile's crouch height")]
     public bool Crouching;
 
     // The layer is required: it is both what the character collides as and what its sweeps ignore, so

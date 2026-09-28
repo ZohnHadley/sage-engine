@@ -234,6 +234,7 @@ public sealed class ItemsModule : IModule
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
         _actions.Register("Use", ActionKind.Button);
+        ctx.Engine.Outputs.Declare("OnUse", "Something used this entity (the Use action).");
 
         _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
             "How far the Use action reaches, in metres.", 0.5f, 10f);

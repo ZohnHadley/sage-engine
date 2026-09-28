@@ -37,8 +37,16 @@ CrashReporter.Install();
 Log.Info(LogCat.Host, $"Sage {BuildInfo.EngineVersion} ({BuildInfo.Config}), game '{manifest.Name}' ({manifest.Id}), user folder {UserPaths.Root}");
 if (Log.File != null)
     Log.Info(LogCat.Host, $"Log file {Log.File.CurrentPath}");
-foreach (var option in launch.Options.Keys.Where(o => !o.Equals("game", StringComparison.OrdinalIgnoreCase)))
+foreach (var option in launch.Options.Keys.Where(o => !o.Equals("game", StringComparison.OrdinalIgnoreCase)
+                                                    && !o.Equals("dump-registry", StringComparison.OrdinalIgnoreCase)))
     Log.Warn(LogCat.Host, $"Unknown launch option -{option} (ignored)");
+
+// -dump-registry <file>: boot, write everything registered as JSON (RegistryDump, issue #18) and quit.
+// Resolved against the directory it was typed in, before anything changes it.
+string? dumpRegistry = launch.Options.TryGetValue("dump-registry", out var dumpPath) && !string.IsNullOrEmpty(dumpPath)
+    ? Path.GetFullPath(dumpPath) : null;
+if (launch.Options.ContainsKey("dump-registry") && dumpRegistry == null)
+    Log.Warn(LogCat.Host, "-dump-registry needs a file name (ignored)");
 
 // What this app is: the game, engine content beside the executable, the simulation modules and the
 // client (a server would leave the client out). The game assembly must be loaded before the first World
@@ -77,7 +85,7 @@ try
 #if SAGE_DEV
     _ = typeof(DevTools).Assembly;   // Sage.Editor: loaded before the first World (03 §3.1)
 #endif
-    using var game = new Game1(app);
+    using var game = new Game1(app, dumpRegistry);
     game.Run();
 }
 catch (SageFatalException fatal) when (fatal.Reported)

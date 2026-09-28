@@ -75,6 +75,10 @@ python tools/check_docs.py --tests N      # N as `dotnet test` reported
 python tools/check_docs.py --self-test    # checks the checker still catches things
 ```
 
+The names and counts come from the registry dump the host writes with `-dump-registry` (README,
+"Building and testing"; `user/registry.json` by default, `--registry` for another), not from the
+source: the self test plants a name and counts only a dump has, and fails if they are reported.
+
 ## Glossary (shared names — use these exactly)
 
 ### Host and core

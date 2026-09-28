@@ -86,6 +86,10 @@ public sealed class SaveSystem
             () => new T());
     }
 
+    // The registered saved resources, by name: for the registry dump and tools (issue #18).
+    public IEnumerable<(string Name, Type Type, int Version)> Resources =>
+        _resources.Values.OrderBy(r => r.Name, StringComparer.Ordinal).Select(r => (r.Name, r.Type, r.Version));
+
     private string? _root;
 
     // Where saves live. Settable so a tool or a test can point it somewhere of its own rather than

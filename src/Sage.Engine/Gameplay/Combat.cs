@@ -132,10 +132,13 @@ public enum MeleePhase { Ready, Windup, Recover }
 [Component("sage:melee")]
 public struct Melee : IComponent
 {
+    [RecordRef("attack"), Property(Tooltip = "What it swings now; empty = sage:default_attack")]
     public RecordId Attack;     // what it swings now; empty = sage:default_attack
+    [RecordRef("attack"), Property(Tooltip = "What it swings bare-handed, when a weapon comes off")]
     public RecordId Natural;    // and what it goes back to when a weapon comes off (16 §3.2, F19)
     [Transient] public MeleePhase Phase;   // mid-swing; a load starts you Ready rather than half-way
     [Transient] public float Timer;        // seconds in the current phase
+    [Property(Min = 0, Unit = "s", Tooltip = "Time until the next swing may start")]
     public float Cooldown;                 // seconds until the next swing may start (relative)
     [Transient] public bool Swung;         // this swing has landed (or missed): don't resolve it twice
 

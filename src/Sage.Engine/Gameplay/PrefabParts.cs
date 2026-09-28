@@ -25,7 +25,9 @@ namespace sage_engine;
 [PrefabPart("character", Plugin = "sage.gameplay.character")]
 public sealed class CharacterPart : IPrefabPart
 {
+    [Property(Tooltip = "Physics layer by name (player, enemy); empty = default")]
     public string Layer = "";          // a physics layer by name (10 §3.2); empty = the default
+    [Property(Tooltip = "How it moves; empty = the engine's default")]
     public RecordRef<MovementProfileRecord> Profile; // movement_profile record; empty = the engine's default
 
     public void Apply(in PrefabPartContext ctx)
@@ -51,12 +53,19 @@ public sealed class CharacterPart : IPrefabPart
 [PrefabPart("body", Plugin = "sage.physics3d")]
 public sealed class BodyPart : IPrefabPart
 {
+    [Property(Category = "Shape", Tooltip = "Box, Sphere or Capsule; a capsule stands on the origin")]
     public ColliderShape Shape = ColliderShape.Box;
+    [Property(Category = "Shape", Min = 0, Unit = "m", Tooltip = "Box only: full extents")]
     public Vector3 Size;               // box only: full extents
+    [Property(Category = "Shape", Min = 0, Unit = "m", Tooltip = "Sphere and capsule")]
     public float Radius;               // sphere and capsule
+    [Property(Category = "Shape", Min = 0, Unit = "m", Tooltip = "Capsule only: total height, feet to head")]
     public float Height;               // capsule only: total height, feet to head
+    [Property(Category = "Physics", Min = 0, Unit = "kg", Tooltip = "Above 0 it is a dynamic body that falls; 0 is static")]
     public float Mass;                 // > 0 = a dynamic body that falls; 0 = static
+    [Property(Category = "Physics", Tooltip = "Reports overlaps and never blocks")]
     public bool Trigger;
+    [Property(Category = "Physics", Tooltip = "Physics layer by name; empty = default")]
     public string Layer = "";
 
     public void Apply(in PrefabPartContext ctx)
@@ -99,8 +108,11 @@ public sealed class BodyPart : IPrefabPart
 [PrefabPart("light", Plugin = "sage.gameplay.lights")]
 public sealed class LightPart : IPrefabPart
 {
+    [Property(Min = 0, Tooltip = "Linear RGB; 0 0 0 means white")]
     public Vector3 Colour;             // zero = white
+    [Property(Min = 0, Unit = "m", Tooltip = "Where the light fades to nothing")]
     public float Range = 8f;
+    [Property(Min = 0, Tooltip = "Multiplies the colour; 1 is a lamp")]
     public float Intensity = 1f;
 
     public void Apply(in PrefabPartContext ctx) => ctx.World.Add(ctx.Entity, new PointLight
@@ -119,9 +131,13 @@ public sealed class LightPart : IPrefabPart
 [PrefabPart("sprite", Plugin = "sage.gameplay.animation")]
 public sealed class SpritePart : IPrefabPart
 {
+    [Property(Tooltip = "The sprite sheet to draw")]
     public RecordRef<SpriteSheetRecord> Sheet;
+    [Property(Tooltip = "Empty = the default sprite material")]
     public RecordRef<MaterialRecord> Material;
+    [Property(Min = 0, Unit = "m", Tooltip = "Width and height; 0 = the sheet's own")]
     public Vector2 Size;               // metres; 0 = the sheet's own
+    [Property(Tooltip = "A clip name to play; empty = don't animate")]
     public string Animation = "";      // a clip *name*; empty = don't animate
 
     public void Apply(in PrefabPartContext ctx)
@@ -157,6 +173,7 @@ public sealed class AttributesPart : IPrefabPart
 [PrefabPart("effects", Plugin = "sage.gameplay.attributes", After = new[] { "attributes" }, Shorthand = nameof(Ids))]
 public sealed class EffectsPart : IPrefabPart
 {
+    [Property(Tooltip = "Effects it starts with")]
     public List<RecordRef<EffectRecord>> Ids = new();
 
     public void Apply(in PrefabPartContext ctx)
@@ -174,7 +191,9 @@ public sealed class EffectsPart : IPrefabPart
 [PrefabPart("melee", Plugin = "sage.gameplay.combat")]
 public sealed class MeleePart : IPrefabPart
 {
+    [Property(Tooltip = "What it swings")]
     public RecordRef<AttackRecord> Attack;
+    [Property(Tooltip = "What it swings bare-handed; empty = the same as attack")]
     public RecordRef<AttackRecord> Natural;
 
     public void Apply(in PrefabPartContext ctx)
@@ -190,10 +209,16 @@ public sealed class MeleePart : IPrefabPart
 [PrefabPart("inventory", Plugin = "sage.gameplay.items")]
 public sealed class InventoryPart : IPrefabPart
 {
+    [Property(Min = 0, Unit = "kg", Tooltip = "How much it can carry; 0 = no limit")]
     public float Capacity;
+    [Property(Tooltip = "What it starts with")]
     public List<Stack> Items = new();
 
-    public sealed class Stack { public RecordRef<ItemRecord> Item; public int Count = 1; }
+    public sealed class Stack
+    {
+        public RecordRef<ItemRecord> Item;
+        [Property(Min = 1)] public int Count = 1;
+    }
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -215,7 +240,9 @@ public sealed class InventoryPart : IPrefabPart
 [PrefabPart("pickup", Plugin = "sage.gameplay.items", After = new[] { "sprite", "body" })]
 public sealed class PickupPart : IPrefabPart
 {
+    [Property(Tooltip = "The item taking it gives you")]
     public RecordRef<ItemRecord> Item;
+    [Property(Min = 1, Tooltip = "How many")]
     public int Count = 1;
 
     public void Apply(in PrefabPartContext ctx)
@@ -229,6 +256,7 @@ public sealed class PickupPart : IPrefabPart
 [PrefabPart("abilities", Plugin = "sage.gameplay.abilities", Shorthand = nameof(Ids))]
 public sealed class AbilitiesPart : IPrefabPart
 {
+    [Property(Tooltip = "Abilities it can cast")]
     public List<RecordRef<AbilityRecord>> Ids = new();
 
     public void Apply(in PrefabPartContext ctx)
@@ -243,6 +271,7 @@ public sealed class AbilitiesPart : IPrefabPart
 [PrefabPart("faction", Plugin = "sage.gameplay.factions", Shorthand = nameof(Id))]
 public sealed class FactionPart : IPrefabPart
 {
+    [Property(Tooltip = "The faction it belongs to")]
     public RecordRef<FactionRecord> Id;
 
     public void Apply(in PrefabPartContext ctx)
@@ -257,6 +286,7 @@ public sealed class FactionPart : IPrefabPart
 [PrefabPart("dialogue", Plugin = "sage.gameplay.factions", Shorthand = nameof(Id))]
 public sealed class DialoguePart : IPrefabPart
 {
+    [Property(Tooltip = "What it says when used")]
     public RecordRef<DialogueRecord> Id;
 
     public void Apply(in PrefabPartContext ctx)

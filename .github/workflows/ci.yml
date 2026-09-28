@@ -1,9 +1,9 @@
 # Continuous integration (docs/REDESIGN.md §4.8, issue #6).
 #
 #   linux    the whole solution (the host without shaders), the tests in Debug and Development on the .NET 8 runtime
-#            the projects target, the docs checked against the code with the real test count, each game's
-#            content through `sage validate`, and the real executable run for a few seconds on each game
-#            under Xvfb (tools/smoke_run.sh)
+#            the projects target, the docs checked against the registry dump (every name the host registered,
+#            written by -dump-registry) with the real test count, each game's content through `sage validate`,
+#            and the real executable run for a few seconds on each game under Xvfb (tools/smoke_run.sh)
 #   windows  the whole solution in all three configurations, shaders included, and the tests
 #
 # Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001).
@@ -62,6 +62,20 @@ jobs:
       - name: Test (Development)
         run: dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Development --no-build --logger "trx;LogFileName=Development.trx" --results-directory TestResults
 
+      # A virtual display, for the two steps that run the real executable.
+      - name: Install Xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
+
+      # Every command, cvar, record type, component, part, system, entity input/output and action the
+      # Sandbox registers, with owners and fields (RegistryDump, issue #18). The host boots, writes it and
+      # quits; check_docs.py reads names and counts from it instead of scanning the source.
+      - name: Dump the registry (Development host, Xvfb)
+        run: |
+          set -euo pipefail
+          ( cd src/Sage.Host/bin/Development/net8.0 && timeout 120 xvfb-run -a -s "-screen 0 1024x768x24" \
+              ./Sage.Host -game "$GITHUB_WORKSPACE/games/Sandbox" -dump-registry "$GITHUB_WORKSPACE/user/registry.json" > /dev/null )
+          test -s user/registry.json
+
       - name: Check the docs against the code (R19)
         run: |
           set -euo pipefail
@@ -74,7 +88,7 @@ jobs:
           )
           echo "dotnet test reported $count tests"
           python3 tools/check_docs.py --self-test
-          python3 tools/check_docs.py --tests "$count"
+          python3 tools/check_docs.py --tests "$count" --registry user/registry.json
 
       # `sage validate` (issue #22): each game's content, headless, with every check the load makes —
       # references by type, prefab bodies, asset paths, AI schedules — and missing assets as errors.
@@ -94,7 +108,6 @@ jobs:
       - name: Smoke-run the games (Development host, Xvfb)
         run: |
           set -euo pipefail
-          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
           host=src/Sage.Host/bin/Development/net8.0
           tools/smoke_run.sh "$host" games/Hello 3 Shaders
           tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
@@ -107,7 +120,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-linux
-          path: TestResults/*.trx
+          path: |
+            TestResults/*.trx
+            user/registry.json
           if-no-files-found: ignore
 
   windows:

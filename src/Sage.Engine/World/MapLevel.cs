@@ -27,7 +27,7 @@ namespace sage_engine;
 [Record("map", Plugin = "sage.maps")]
 public sealed class MapRecord
 {
-    public AssetPath File;                          // e.g. "maps/hut.map"
+    [AssetKind("map")] public AssetPath File;                          // e.g. "maps/hut.map"
 
     // Map units to metres, and the texture size its coordinates assume. Both are per level because both
     // are decisions of whoever drew it (see `MapSpace`).
@@ -372,7 +372,8 @@ public static class MapLoader
 
     // `classname` is a prefab id. That is the whole entity mapping, and it is deliberate: a `.map` says
     // "a watcher stands here", and what a watcher *is* stays in the prefab record where a game can change
-    // it without touching the level. Keys the engine understands are `origin` and `angle`; anything else
+    // it without touching the level. Keys the engine understands are `origin`, `angle`, `targetname`,
+    // outputs (`On…`) and a prefab's own fields (`light.range`, PrefabKeys); anything else
     // is kept on the parsed entity for whoever wants it (entity I/O, F17).
     private static void SpawnEntities(World world, MapLevel level, MapSpace space)
     {
@@ -405,7 +406,8 @@ public static class MapLoader
             // its own up axis, and map north became engine -Z, so the two differ by a quarter turn.
             float yaw = entity.GetFloat("angle") - 90f;
 
-            var spawnedEntity = world.Spawn(prefab, at, yaw);
+            // With the entity's own values for the prefab's fields (`"light.range" "12"`, PrefabKeys).
+            var spawnedEntity = world.Spawn(prefab, at, yaw, entity.Keys, $"{level.Source}:{entity.Line}");
             if (spawnedEntity.IsNull) continue;
 
             MapEntityIO.Attach(world, spawnedEntity,
@@ -453,7 +455,7 @@ public static class MapLoader
         // a solid means which way it *moves* rather than which way it faces, and nothing reads it yet.
         var prefab = new RecordId(level.Record.Namespace, className);
         var entity = engine.Records.Exists(prefab)
-            ? world.Spawn(prefab, at)
+            ? world.Spawn(prefab, at, 0f, solid.Source.Keys, where)
             : world.Create(Transform.At(at), className.Length > 0 ? className : "brush entity");
 
         if (entity.IsNull) return;

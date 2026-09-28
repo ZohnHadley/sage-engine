@@ -100,13 +100,18 @@ public sealed class AIScheduleRecord
 [Component("sage:ai_state")]
 public struct AIState : IComponent
 {
+    [RecordRef("ai_profile"), Property(Category = "Brain", Tooltip = "Senses and reach; empty = sage:default_ai")]
     public RecordId Profile;
+    [RecordRef("ai_schedule"), Property(Category = "Brain", Tooltip = "The task list it runs")]
     public RecordId Schedule;
+    [Property(Category = "Running", Min = 0, Tooltip = "Which task of the schedule it is on")]
     public int TaskIndex;                  // where in the schedule; bounds-checked on use
     [Transient] public ulong Conditions;   // Perceive rebuilds it wholesale every think
     [Transient] public RecordId Spell;     // what Perceive picked to cast; rebuilt with the conditions
     public Entity Target;                  // by PersistentId in a save; null if it is gone
+    [Property(Category = "Running", Unit = "s", Tooltip = "Simulation time of its next think")]
     public float NextThink;
+    [Property(Category = "Running", Min = 0, Unit = "s", Tooltip = "How long the current task has been running")]
     public float TaskTime;      // seconds the current task has been running
     public bool TaskStarted;
     // The corners it is walking, if anything is in the way (16 §3.4, F23). Transient like the rest of

@@ -20,8 +20,9 @@ public enum AudioBus { Master, Music, Sfx, Voice, Ui, Ambient }
 public sealed class SoundRecord
 {
     // One of these is picked each time it plays. A single-entry list is the normal case.
-    public List<AssetPath> Variations = new();
+    [AssetKind("sound")] public List<AssetPath> Variations = new();
 
+    [Property(Min = 0, Max = 1, Tooltip = "Loudness before the bus and distance apply")]
     public float Volume = 1f;            // 0..1 before the bus and distance are applied
     public float VolumeJitter;           // ± this, so repeats are not identical
     public float PitchJitter;            // ± semitone-ish fraction, -1..1 in MonoGame's terms
@@ -49,7 +50,7 @@ public sealed class SoundRecord
 [Component("sage:audio_source")]
 public struct AudioSource : Friflo.Engine.ECS.IComponent
 {
-    public RecordId Sound;
+    [RecordRef("sound")] public RecordId Sound;
     public bool Loop;
     public float Volume;
 

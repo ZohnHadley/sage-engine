@@ -107,6 +107,8 @@ public sealed class MoverModule : IModule
     public void Init(ModuleContext ctx)
     {
         var inputs = ctx.Engine.Inputs;
+        ctx.Engine.Outputs.Declare("OnFullyOpen", "This mover finished opening.");
+        ctx.Engine.Outputs.Declare("OnFullyClosed", "This mover finished closing.");
 
         inputs.Register("Open", static (World world, in IOContext io) => Set(world, io.Self, +1));
         inputs.Register("Close", static (World world, in IOContext io) => Set(world, io.Self, -1));

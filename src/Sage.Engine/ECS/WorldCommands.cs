@@ -120,10 +120,11 @@ public static class WorldCommands
             // Each part with its options and its plugin, in the order they apply (issue #17): a part's
             // public fields are what a prefab may write under it, so this is the part's whole manual.
             Log.Info(LogCat.Console, "prefab parts, in the order they apply:");
+            // Fields from the metadata table (issue #18): name, type, unit and range, as content writes them.
             foreach (var part in engine.Prefabs.Parts.Where(p => Show(p.Id)))
             {
-                var fields = part.Type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-                    .Select(f => f.Name == part.Shorthand ? f.Name + " (shorthand)" : f.Name);
+                var fields = Metadata.Of(part.Type).Fields
+                    .Select(f => FieldSummary(f) + (f.Name == part.Shorthand ? " (shorthand)" : ""));
                 Log.Info(LogCat.Console, $"  {part.Id,-12} {{ {string.Join(", ", fields)} }}  [{part.Owner}]" +
                                          (part.After.Count > 0 ? $" after {string.Join(", ", part.After)}" : ""));
             }
@@ -199,35 +200,40 @@ public static class WorldCommands
         });
     }
 
-    // Component values the way a prefab spells them: `field=value`, skipping what is at its default,
-    // so a dump is the interesting part of an entity rather than a wall of zeroes.
+    // Component values the way a prefab spells them: `field=value unit`, skipping what is at its
+    // default, so a dump is the interesting part of an entity rather than a wall of zeroes. The fields,
+    // their names, units and defaults come from the metadata table (issue #18).
     private static string Describe(object value)
     {
-        var type = value.GetType();
+        var meta = Metadata.Of(value.GetType());
         var parts = new List<string>();
-        object? blank = null;
-        try { blank = Activator.CreateInstance(type); } catch { /* no default ctor: show everything */ }
-
-        foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var field in meta.Fields)
         {
-            object? got = field.GetValue(value);
-            if (blank != null && Equals(got, field.GetValue(blank))) continue;
-            parts.Add($"{Lower(field.Name)}={Short(Format(got))}");
-        }
-        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-        {
-            if (!property.CanRead || property.GetIndexParameters().Length > 0) continue;
+            if (field.Get == null) continue;
             object? got;
-            try { got = property.GetValue(value); } catch { continue; }
-            if (blank != null)
-            {
-                object? other = null;
-                try { other = property.GetValue(blank); } catch { /* fall through and show it */ }
-                if (Equals(got, other)) continue;
-            }
-            parts.Add($"{Lower(property.Name)}={Short(Format(got))}");
+            try { got = field.Get(value); } catch (Exception ex) when (ex is InvalidOperationException or TargetInvocationException) { continue; }
+            if (Same(got, meta.DefaultOf(field))) continue;
+            string unit = field.Unit != null && got is float or double or int or Vector3 or Vector2 ? " " + field.Unit : "";
+            parts.Add($"{field.JsonName}={Short(Format(got))}{unit}");
         }
         return parts.Count == 0 ? "(defaults)" : string.Join("  ", parts);
+    }
+
+    private static bool Same(object? a, object? b) =>
+        Equals(a, b) || a is System.Collections.ICollection { Count: 0 } && b is null or System.Collections.ICollection { Count: 0 };
+
+    // `range: float m, 0..`, `shape: ColliderShape (Box|Sphere|Capsule|Mesh)`, `item: RecordId -> item`.
+    internal static string FieldSummary(FieldMetadata f)
+    {
+        var text = new System.Text.StringBuilder($"{f.JsonName}: {f.TypeName}");
+        if (f.Unit != null) text.Append(' ').Append(f.Unit);
+        if (f.Min != null || f.Max != null)
+            text.Append($" {f.Min?.ToString(System.Globalization.CultureInfo.InvariantCulture)}..{f.Max?.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        if (f.EnumValues.Count > 0) text.Append(" (").Append(string.Join("|", f.EnumValues)).Append(')');
+        var target = f.Item ?? f;
+        if (target.RecordType != null) text.Append(" -> ").Append(target.RecordType);
+        if (target.AssetKind != null) text.Append(" -> ").Append(target.AssetKind).Append(" asset");
+        return text.ToString();
     }
 
     private static string Lower(string name) => char.ToLowerInvariant(name[0]) + name[1..];

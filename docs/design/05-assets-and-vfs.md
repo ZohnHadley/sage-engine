@@ -201,7 +201,47 @@ public sealed class PickupPart : IPrefabPart
 - `Prefabs.Optional(name)` is unchanged: the simulation half declares that a client-only part may be
   missing headless.
 - **Not done here:** namespaced part ids (`sage:light`, as REDESIGN §3.4 sketches) — ids stay the keys
-  prefabs already write — and generated metadata or schemas for the options (#18, #21).
+  prefabs already write — and schemas for the options (#21); their metadata is "As built (metadata)".
+
+### As built (metadata, 2026-09-28 — issue #18)
+
+Every declaration — component, tag, record type, saved resource, prefab part, and the objects nested in
+their fields — has a row in a **metadata table** (`src/Sage.Engine/Core/Metadata.cs`), written per
+assembly by `src/Sage.Generators/MetadataGenerator.cs`:
+
+- **Shape.** `TypeMetadata` is the kind, the stable id, the CLR type and the fields; `FieldMetadata` is
+  the C# name, the JSON name, the type, a `ValueKind` (Bool, Integer, Number, String, Enum, Vector2/3/4,
+  Quaternion, RecordId, AssetPath, Entity, List, Map, Object, Json, Other — each maps to one JSON Schema
+  type, for #21), `Min`/`Max`/`Unit`/`Tooltip`/`Category` from `[Property]`, the enum's names, the record
+  type a `RecordRef<T>` names through T's `[Record]` (or, on a plain `RecordId`, `[RecordRef("item")]`;
+  on a `RecordRef<T>` that attribute is `SAGE0041`), the asset kind from `[AssetKind("texture")]`, `[Transient]`, a list's
+  `Item` and an object's `Fields`. A field's default is what a new instance holds (test:
+  AFieldCarriesItsRangeUnitTooltipAndDefault); references and nesting carry through lists (test:
+  ReferencesAndNestedShapesAreDescribed).
+- **Generated, not reflected.** Each field gets a getter and a setter as plain code; a boxed struct is
+  written in place (`Unsafe.Unbox`), which is how the inspector edits a component (test:
+  AGeneratedSetterWritesABoxedComponentInPlace). The engine's and the Sandbox's tables are generated
+  (test: TheEngineAndTheSandboxCarryGeneratedTables). An assembly built without the generator — the test
+  assembly — is read by `Metadata.Reflect` over the same attributes (test:
+  AnAssemblyBuiltWithoutTheGeneratorIsReadByReflection), and the two agree field for field on every
+  engine declaration (test: TheGeneratedTableMatchesReflectionForEveryEngineDeclaration).
+- **Checked.** A range on a field that is not a number or a vector (`SAGE0040`), a `[RecordRef]` on one
+  that is not a `RecordId` (`SAGE0041`) and an `[AssetKind]` on one that is not an `AssetPath`
+  (`SAGE0042`) are build errors (test: AnAttributeOnTheWrongKindOfFieldIsABuildError), and every
+  `[RecordRef]` names a record type something declares (test: EveryRecordRefNamesADeclaredRecordType).
+- **Annotated:** attributes, `Collider`, `RigidBody`, `CharacterController`, `PointLight` and the
+  `light` part, `Melee`, `Inventory`, `AIState`, every engine part's options, the asset paths of the
+  render and audio records, and the Sandbox's `hop`, scene and `box_mesh`.
+- **Used by** the editor's inspector (ranges clamp the drags, units show in the number, tooltips on
+  hover, fields grouped by category, enums and record references as dropdowns), `ent_dump` (JSON names
+  and units, defaults skipped) and `ent_types` (each part's fields with types, units, ranges and
+  references) (test: TheConsoleDescribesFieldsFromTheTable), the FGD's per-entity keys (15 "As built")
+  and the registry dump (`RegistryDump`, REDESIGN §4.8), which lists every command, cvar, record type,
+  component, tag, saved resource, part, system, entity input and output and input action with its owner
+  and fields (test: TheRegistryDumpListsEverythingRegisteredWithItsOwner). `tools/check_docs.py` reads
+  that dump instead of scanning the source (test: ANameRegisteredAnyWayAtAllIsInTheDump).
+- **Not done here:** JSON Schemas (#21), `RecordRef<T>` (#22) and the analyzers (#19); the record forms
+  an editor would build from the table.
 
 ### As built (asset hot reload, 2026-09-23 — part of F32)
 
