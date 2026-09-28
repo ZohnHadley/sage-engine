@@ -16,33 +16,17 @@ namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Direct
 [Plugin("sandbox.client", "0.1.0")]
 public sealed class SandboxClientModule : IModule
 {
-    private Renderer? _renderer;
     private ContentService? _content;
     private RecordStore? _records;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule) };
 
-    public void Init(ModuleContext ctx)
-    {
-        // A box mesh built at run time needs the renderer, which is why this part lives on the client
-        // side and the simulation only declares that it is optional (F31). Headless, a crate is a
-        // collider with no mesh, which is exactly right.
-        ctx.Engine.Prefabs.Register("box_mesh", (world, entity, options, where) =>
-        {
-            var o = PrefabParts.Read<BoxMeshOptions>(world, options, "box_mesh", where);
-            if (o.Size == Vector3.Zero) { Log.Error(LogCat.Records, $"{where}: box_mesh needs a \"size\""); return; }
-            world.Add(entity, new MeshRenderer { Handle = _renderer!.CreateBox(o.Size, World.Describe(entity)), Material = o.Material });
-        });
-    }
-
-#pragma warning disable CS0649 // options filled by JsonSerializer from a prefab, never assigned in code
-    private sealed class BoxMeshOptions { public Vector3 Size; public RecordId Material; }
-#pragma warning restore CS0649
+    // `box_mesh` (BoxMeshPart, below) is declared, so Init has nothing to register (issue #17).
+    public void Init(ModuleContext ctx) { }
 
     public void Start(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
-        _renderer = ctx.Get<Renderer>();
         _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
         _actions = ctx.Engine.Actions;
     }
@@ -51,7 +35,7 @@ public sealed class SandboxClientModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        world.AddSystem(new SandboxHud(world, _records!, _content!), Phase.FrameUpdate);   // 13 §3
+        world.AddSystem(new SandboxHud(world, _records!, _content!));   // 13 §3
 
         // Which screens this game has, and what opens them (13 §3, F38). The engine draws and drives
         // them; saying `I` is the bag and `B` is the spellbook is the game's decision, the same way
@@ -63,5 +47,25 @@ public sealed class SandboxClientModule : IModule
         // feature, not to this game. Binding it to a key is still the game's call.
         screens.Bind(_actions!.Get("Spellmaker"), new SpellmakerScreen());
         screens.Bind(_actions!.Get("Journal"), new JournalScreen());
+    }
+}
+
+// "box_mesh": { "size": [1, 1, 1], "material": "crate" } — a plain box mesh built at run time. That
+// needs the renderer, which is why this part lives on the client side and the simulation only declares
+// it optional (F31): headless, a crate is a collider with no mesh, which is exactly right.
+//
+// The renderer comes from the context when the part is applied, not from a module field set in Start
+// (issue #17): a part is a declaration, with no module instance behind it to capture.
+[PrefabPart("box_mesh")]
+public sealed class BoxMeshPart : IPrefabPart
+{
+    public Vector3 Size;
+    public RecordId Material;
+
+    public void Apply(in PrefabPartContext ctx)
+    {
+        if (Size == Vector3.Zero) { ctx.Error("needs a \"size\""); return; }
+        var renderer = ctx.Get<Renderer>();
+        ctx.World.Add(ctx.Entity, new MeshRenderer { Handle = renderer.CreateBox(Size, World.Describe(ctx.Entity)), Material = Material });
     }
 }

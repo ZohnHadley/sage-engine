@@ -193,6 +193,7 @@ public static class Effects
 // Gameplay phase: ticks the running effects, recomputes current attribute values and the tags the
 // effects grant, and tells the game's rules when something's health runs out (the seam combat, F20,
 // builds on).
+[System("sage.effects.tick", Phase.Gameplay)]
 public sealed class EffectSystem : ISystem
 {
     private readonly ArchetypeQuery<Attributes, ActiveEffects> _affected;

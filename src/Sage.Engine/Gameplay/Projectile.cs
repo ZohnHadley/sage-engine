@@ -30,6 +30,7 @@ public struct Projectile : IComponent
 // and anything that only looks at where it *ended up* flies straight through a creature standing
 // between the two points. That is the classic bullet-through-paper bug and it is invisible until
 // something moves quickly.
+[System("sage.abilities.projectiles", Phase.Gameplay, After = new[] { "sage.abilities.cast" }, Before = new[] { "sage.effects.tick" })]
 public sealed class ProjectileSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, Projectile> _flying;

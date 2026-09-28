@@ -45,24 +45,8 @@ public sealed class ClientModule : IModule
     {
         _rendererCVars = new RendererCVars(ctx.Engine.CVars);   // here, not in the Renderer: see RendererCVars
 
-        // A thing that hums: `"audio": { "sound": "fire_loop", "loop": true }` on any prefab. The
-        // component is the engine's, so a headless run carries it and simply never plays it.
-        // Something that smokes on its own: `"particles": { "effect": "sandbox:embers" }`. The twin of
-        // the `audio` part, and for the same reason — the component is the engine's, so a headless run
-        // carries it and never draws a thing.
-        ctx.Engine.Prefabs.Register("particles", (world, entity, options, where) =>
-        {
-            var o = PrefabParts.Read<ParticleOptions>(world, options, "particles", where);
-            if (o.Effect.IsEmpty) { Log.Error(LogCat.Records, $"{where}: particles needs an \"effect\""); return; }
-            world.Add(entity, new ParticleEmitter { Effect = o.Effect, Enabled = o.Enabled });
-        });
-
-        ctx.Engine.Prefabs.Register("audio", (world, entity, options, where) =>
-        {
-            var o = PrefabParts.Read<AudioOptions>(world, options, "audio", where);
-            if (o.Sound.IsEmpty) { Log.Error(LogCat.Records, $"{where}: audio needs a \"sound\""); return; }
-            world.Add(entity, new AudioSource { Sound = o.Sound, Loop = o.Loop, Volume = o.Volume <= 0f ? 1f : o.Volume });
-        });
+        // The `audio` and `particles` prefab parts are declared below (AudioPart, ParticlesPart) and
+        // registered for this plugin by generated code (issue #17).
 
         // The client's own actions (08 §3.2); the gameplay ones (Move, Jump, Crouch...) belong to the
         // gameplay module, so a headless server registers the same ids. Bindings for all of them are
@@ -294,18 +278,18 @@ public sealed class ClientModule : IModule
         // Sprite animation is simulation, not rendering (12 §3), so AnimationModule installs it: a
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
-        world.AddSystem(new TerrainMeshSystem(world, _renderer!), Phase.FrameUpdate);
+        world.AddSystem(new TerrainMeshSystem(world, _renderer!));
         // Brush levels (15 §3, F16), when sage.maps is loaded. The client comes after every simulation
         // plugin (SageApp adds host modules after them), so what they furnish is there to look for.
         if (world.Resources.TryGet<MapLevels>(out _))
-            world.AddSystem(new MapMeshSystem(world, _renderer!), Phase.FrameUpdate);
-        world.AddSystem(new CameraExtract(world, _renderer!), Phase.Extract);
-        world.AddSystem(new MeshExtract(world, _renderer!), Phase.Extract, after: new[] { typeof(CameraExtract) });
-        world.AddSystem(new SpriteExtract(world, _renderer!, _records!), Phase.Extract, after: new[] { typeof(CameraExtract) });
+            world.AddSystem(new MapMeshSystem(world, _renderer!));
+        world.AddSystem(new CameraExtract(world, _renderer!));
+        world.AddSystem(new MeshExtract(world, _renderer!));
+        world.AddSystem(new SpriteExtract(world, _renderer!, _records!));
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
-        world.AddSystem(new LightExtract(world, _renderer!, _lightsOn!), Phase.Extract, after: new[] { typeof(CameraExtract) });
-        world.AddSystem(new DebugExtract(world, _debugDraw!), Phase.Extract, after: new[] { typeof(CameraExtract) });
-        world.AddSystem(new RenderSystem(world, _renderer!), Phase.Render);
+        world.AddSystem(new LightExtract(world, _renderer!, _lightsOn!));
+        world.AddSystem(new DebugExtract(world, _debugDraw!));
+        world.AddSystem(new RenderSystem(world, _renderer!));
         // Audio is per world for the same reason the snapshot is: a voice's position is in *this*
         // world's origin space (R6), and two worlds do not share a frame. The backend is a world
         // resource so that the world's own teardown disposes it, and because voice handles are only
@@ -317,33 +301,23 @@ public sealed class ClientModule : IModule
         // position in this world's origin space (06 §3.12, R6).
         world.Resources.Add(new Particles());
         world.Resources.Add(new FloatingTexts());
-        world.AddSystem(new ParticleSystem(world, _records!, _particlesOn!, _damageNumbers!), Phase.FrameUpdate);
-        world.AddSystem(new ParticleExtract(world, _renderer!), Phase.Extract,
-                        after: new[] { typeof(CameraExtract) });
-        world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!), Phase.FrameUpdate);
+        world.AddSystem(new ParticleSystem(world, _records!, _particlesOn!, _damageNumbers!));
+        world.AddSystem(new ParticleExtract(world, _renderer!));
+        world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!));
         // The `Weather` state is the world's (installed with it); this only makes it *look* like it.
-        world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!, _soundEnabled!), Phase.FrameUpdate,
-                        after: new[] { typeof(AudioSystem) });
+        world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!, _soundEnabled!));
         // Talking to somebody opens a window, which is the client's business (16 §3.5, F24) — in a game
         // with the dialogue plugin.
         if (world.Resources.TryGet<Conversation>(out _))
-            world.AddSystem(new DialogueSystem(world), Phase.FrameUpdate);
+            world.AddSystem(new DialogueSystem(world));
         // Before the HUD is drawn, so a number never sits on top of the health bar.
-        world.AddSystem(new FloatingTextSystem(world), Phase.Overlay,
-                        before: new[] { typeof(UiRenderSystem) });
-        world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!), Phase.Overlay);
+        world.AddSystem(new FloatingTextSystem(world));
+        world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!));
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
-        world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!), Phase.Overlay,
-                        before: new[] { typeof(UiRenderSystem) });
-        if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!), Phase.FrameUpdate, RunCondition.DevOnly);
+        world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!));
+        if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!));
     }
-
-#pragma warning disable CS0649 // options filled by JsonSerializer from a prefab, never assigned in code
-    private sealed class AudioOptions { public RecordId Sound; public bool Loop = true; public float Volume; }
-
-    private sealed class ParticleOptions { public RecordId Effect; public bool Enabled = true; }
-#pragma warning restore CS0649
 
     // `snd_play` is an audition, so it belongs to whichever world is listening — the first one with
     // a mixer, which in a single-world game is the only one there is.
@@ -389,6 +363,7 @@ public sealed class ClientModule : IModule
 
 // FrameUpdate: gives the watcher its once-a-frame look on the main thread. A system rather than a
 // host-loop call so that a world without a client (a headless test) simply never has one.
+[System("sage.client.asset_reload", Phase.FrameUpdate, Condition = RunCondition.DevOnly)]
 public sealed class AssetReloadSystem : ISystem
 {
     private readonly AssetHotReload _watcher;
@@ -403,5 +378,38 @@ public sealed class AssetReloadSystem : ISystem
     public void Run(in SystemContext ctx)
     {
         if (_enabled.Value) _watcher.Poll();
+    }
+}
+
+// A thing that hums: `"audio": { "sound": "fire_loop", "loop": true }` on any prefab. The component is
+// the engine's, so a headless run carries it and simply never plays it — which is why a simulation that
+// uses it declares it `Prefabs.Optional("audio")`: without the client there is no part to apply.
+[PrefabPart("audio", Plugin = "sage.client")]
+public sealed class AudioPart : IPrefabPart
+{
+    public RecordId Sound;
+    public bool Loop = true;
+    public float Volume;               // 0 = full
+
+    public void Apply(in PrefabPartContext ctx)
+    {
+        if (Sound.IsEmpty) { ctx.Error("needs a \"sound\""); return; }
+        ctx.World.Add(ctx.Entity, new AudioSource { Sound = Sound, Loop = Loop, Volume = Volume <= 0f ? 1f : Volume });
+    }
+}
+
+// Something that smokes on its own: `"particles": { "effect": "sandbox:embers" }`. The twin of `audio`,
+// and for the same reason — the component is the engine's, so a headless run carries it and never
+// draws a thing.
+[PrefabPart("particles", Plugin = "sage.client")]
+public sealed class ParticlesPart : IPrefabPart
+{
+    public RecordId Effect;
+    public bool Enabled = true;
+
+    public void Apply(in PrefabPartContext ctx)
+    {
+        if (Effect.IsEmpty) { ctx.Error("needs an \"effect\""); return; }
+        ctx.World.Add(ctx.Entity, new ParticleEmitter { Effect = Effect, Enabled = Enabled });
     }
 }

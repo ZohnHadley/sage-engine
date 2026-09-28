@@ -85,9 +85,6 @@ public sealed class AttributesModule : IModule
         _records = ctx.Engine.Records;
         _records.Reloaded += () => Registries.Rebuild(_records);
 
-        ctx.Engine.Prefabs.Register("attributes", PrefabParts.Attributes);
-        ctx.Engine.Prefabs.Register("effects", PrefabParts.Effects);
-
         // `god`: the player stops taking damage. It is a tag, so effects block themselves with it
         // (16 §3.3) instead of every damage path checking a flag.
         ctx.Engine.CVars.RegisterCommand("god", CVarFlags.Cheat, "Toggle invulnerability for the local player.", _ =>
@@ -104,7 +101,7 @@ public sealed class AttributesModule : IModule
         // As a world resource, not a module service: everything that reads it has a world in hand.
         world.Resources.Add(Registries);
         Registries.Rebuild(_records!);
-        world.AddSystem(new EffectSystem(world, _records!), Phase.Gameplay);
+        world.AddSystem(new EffectSystem(world, _records!));
     }
 }
 
@@ -122,7 +119,6 @@ public sealed class CharacterModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        ctx.Engine.Prefabs.Register("character", PrefabParts.Character);
 
         // Gameplay actions (08 §3.2): the simulation defines them, so a headless server has the same
         // ids and a PlayerCommand means the same thing on both sides.
@@ -145,10 +141,9 @@ public sealed class CharacterModule : IModule
         world.Resources.GetOrAdd(() => new PlayerInput());
         world.Resources.GetOrAdd(() => new ActiveCamera());
 
-        world.AddSystem(new PlayerControlSystem(world), Phase.Commands);
-        world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!), Phase.PrePhysics,
-            before: new[] { typeof(PhysicsSyncSystem) });
-        world.AddSystem(new FirstPersonCameraSystem(world, _records!), Phase.FrameUpdate);
+        world.AddSystem(new PlayerControlSystem(world));
+        world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!));
+        world.AddSystem(new FirstPersonCameraSystem(world, _records!));
     }
 }
 
@@ -162,11 +157,10 @@ public sealed class AnimationModule : IModule
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
-        ctx.Engine.Prefabs.Register("sprite", PrefabParts.Sprite);
     }
 
     public void OnWorldCreated(World world) =>
-        world.AddSystem(new SpriteAnimationSystem(world, _records!), Phase.Animation);
+        world.AddSystem(new SpriteAnimationSystem(world, _records!));
 }
 
 // Lamps (06 §3.9, F2). One part and nothing else, which is what a module the size of a feature looks
@@ -179,7 +173,7 @@ public sealed class AnimationModule : IModule
 [Plugin("sage.gameplay.lights", "0.1.0")]
 public sealed class LightsModule : IModule
 {
-    public void Init(ModuleContext ctx) => ctx.Engine.Prefabs.Register("light", PrefabParts.Light);
+    public void Init(ModuleContext ctx) { }   // LightPart is declared ([PrefabPart], issue #17)
 }
 
 // Hitting things (16 §3.2): one damage pipeline, `attack` records, and the melee both the player and
@@ -197,7 +191,6 @@ public sealed class CombatModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        ctx.Engine.Prefabs.Register("melee", PrefabParts.Melee);
         _actions.Register("Attack", ActionKind.Button);
 
         // Registered here, once, rather than in the systems: systems are per world (review #57).
@@ -223,8 +216,7 @@ public sealed class CombatModule : IModule
     public void OnWorldCreated(World world) =>
         // Combat resolves before effects tick, so a blow struck this tick is felt this tick: the
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
-        world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!), Phase.Gameplay,
-            before: new[] { typeof(EffectSystem) });
+        world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
 }
 
 // Carrying, wielding and picking up (16 §3.2, F19).
@@ -241,8 +233,6 @@ public sealed class ItemsModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        ctx.Engine.Prefabs.Register("inventory", PrefabParts.Inventory);
-        ctx.Engine.Prefabs.Register("pickup", PrefabParts.Pickup);
         _actions.Register("Use", ActionKind.Button);
 
         _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
@@ -303,8 +293,7 @@ public sealed class ItemsModule : IModule
     public void OnWorldCreated(World world)
     {
         world.Resources.Add(new InteractionState());
-        world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!), Phase.Gameplay,
-            before: new[] { typeof(EffectSystem) });
+        world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!));
     }
 }
 
@@ -327,7 +316,6 @@ public sealed class AbilitiesModule : IModule
         // The player's own spells are data in the save (the Spellbook, a [SavedResource] of this
         // plugin), and the records are made from it on load (F21's spellmaker, 09 §3.1).
         Spellmaker.RegisterCommands(ctx.Engine);
-        ctx.Engine.Prefabs.Register("abilities", PrefabParts.Abilities);
         _actions.Register("Cast", ActionKind.Button);
 
         _debugCasts = ctx.Engine.CVars.Register("cast_debug", false, CVarFlags.DevOnly,
@@ -375,13 +363,11 @@ public sealed class AbilitiesModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        world.AddSystem(new AbilitySystem(world, _records!, _actions!, _debugCasts!), Phase.Gameplay,
-            before: new[] { typeof(EffectSystem) });
+        world.AddSystem(new AbilitySystem(world, _records!, _actions!, _debugCasts!));
 
         // Flight resolves before effects tick too, so a spell that arrives this tick is felt this
         // tick — and after the cast system, so one thrown *this* tick starts moving next (16 §3.2).
-        world.AddSystem(new ProjectileSystem(world, _records!, _debugCasts!), Phase.Gameplay,
-            after: new[] { typeof(AbilitySystem) }, before: new[] { typeof(EffectSystem) });
+        world.AddSystem(new ProjectileSystem(world, _records!, _debugCasts!));
     }
 }
 
@@ -448,8 +434,7 @@ public sealed class AIModule : IModule
         // it in the same tick it was decided. AI used to sit in Phase.AI, four phases *after* the
         // movement that reads it, which cost every creature a tick of lag (review #48) — and is now
         // a contract the engine checks rather than a comment (03 §3.5).
-        world.AddSystem(new AIThinkSystem(world, _records!, AITasks, _actions!), Phase.Commands,
-            after: new[] { typeof(PlayerControlSystem) });
+        world.AddSystem(new AIThinkSystem(world, _records!, AITasks, _actions!));
         // One navigation per world, like the physics space: the grid holds origin-space positions, and
         // two worlds do not share an origin (R6, and the lesson of the audio mixer in 11 §3).
         world.Resources.Add(new Navigation
@@ -459,9 +444,8 @@ public sealed class AIModule : IModule
             MaxNodes = _navNodes!.Value,
             PlansPerTick = _navPlans!.Value,
         });
-        world.AddSystem(new AIDebugSystem(world, _records!, _aiDebug!), Phase.Late);   // 16 §11
-        world.AddSystem(new NavDebugSystem(world, _navEnabled!, _navDebug!, _navCell!, _navNodes!, _navPlans!),
-                        Phase.Late);
+        world.AddSystem(new AIDebugSystem(world, _records!, _aiDebug!));   // 16 §11
+        world.AddSystem(new NavDebugSystem(world, _navEnabled!, _navDebug!, _navCell!, _navNodes!, _navPlans!));
     }
 }
 
@@ -470,6 +454,7 @@ public sealed class AIModule : IModule
 // A system rather than `Changed` handlers because there is one `Navigation` per world and several cvars:
 // copying four numbers once a tick is cheaper than four subscriptions per world that have to be undone
 // when the world goes.
+[System("sage.ai.nav_debug", Phase.Late)]
 public sealed class NavDebugSystem : ISystem
 {
     private readonly Navigation _nav;
@@ -542,11 +527,9 @@ public sealed class FactionsModule : IModule
 {
     public void Init(ModuleContext ctx)
     {
-        // Faction, dialogue and quest records, and the saved Reputation and Journal, are this
-        // plugin's by their attributes (Plugin = "sage.gameplay.factions"); generated code registers
-        // them (issue #16).
-        ctx.Engine.Prefabs.Register("faction", PrefabParts.Faction);
-        ctx.Engine.Prefabs.Register("dialogue", PrefabParts.DialoguePart);
+        // Faction, dialogue and quest records, the saved Reputation and Journal, and the `faction` and
+        // `dialogue` prefab parts are this plugin's by their attributes (Plugin =
+        // "sage.gameplay.factions"); generated code registers them (issues #16, #17).
 
         ctx.Engine.CVars.RegisterCommand("rep", CVarFlags.None,
             "What every faction thinks of you, and what that makes them.", _ =>

@@ -9,6 +9,7 @@ namespace Sandbox;
 // not in Sage.Client.
 //
 // FrameUpdate, so it runs at display rate and is queued before the Overlay phase draws it.
+[System("sandbox.hud", Phase.FrameUpdate)]
 public sealed class SandboxHud : ISystem
 {
     private static readonly RecordId Health = new("sage", "health");

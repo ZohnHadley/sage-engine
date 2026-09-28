@@ -109,13 +109,29 @@ public sealed class ModuleManager
         return (T)entry.Service;
     }
 
+    // A service for code a plugin declared rather than ran — a prefab part (issue #17) — under the same
+    // rule as that plugin's ModuleContext.Get. An owner that is not a loaded plugin (the host, a test
+    // registering a part by hand) gets what the host would.
+    internal T GetService<T>(string plugin) where T : class
+    {
+        foreach (var m in _modules)
+            if (_plugins[m].Id.Equals(plugin, StringComparison.OrdinalIgnoreCase)) return GetService<T>(m);
+        if (!_services.TryGetValue(typeof(T), out var entry))
+            throw new InvalidOperationException($"{plugin} asked for {typeof(T).Name}, which nothing provides.");
+        return (T)entry.Service;
+    }
+
     // ---- Lifecycle ---------------------------------------------------------------------------------
 
     public void InitAll()
     {
         Seal.Seal("the modules ran Init");
         _ordered = Sort(_modules, _plugins);
-        foreach (var m in _modules) Engine.Generated.Include(m.GetType().Assembly);
+        foreach (var m in _modules)
+        {
+            Engine.Generated.Include(m.GetType().Assembly);
+            Engine.SystemCatalog.Include(m.GetType().Assembly);
+        }
         var builder = new RegistrationBuilder(Engine);
         foreach (var m in _ordered)
             Run(m, "Init", () =>

@@ -12,6 +12,7 @@ namespace sage_engine;
 //   PostPhysics  dynamic bodies are written back to Transform; trigger overlaps are published
 
 // PrePhysics: keeps Bepu's contents in step with the world's colliders.
+[System("sage.physics.sync", Phase.PrePhysics, After = new[] { "sage.physics.terrain" })]
 internal sealed class PhysicsSyncSystem : ISystem
 {
     private readonly PhysicsSpace _space;
@@ -68,6 +69,7 @@ internal sealed class PhysicsSyncSystem : ISystem
 }
 
 // Physics: one Bepu step per tick.
+[System("sage.physics.step", Phase.Physics)]
 internal sealed class PhysicsStepSystem : ISystem
 {
     private readonly PhysicsSpace _space;
@@ -78,6 +80,7 @@ internal sealed class PhysicsStepSystem : ISystem
 }
 
 // PostPhysics: dynamic bodies win over their transform, and trigger overlaps become readable.
+[System("sage.physics.write_back", Phase.PostPhysics)]
 internal sealed class PhysicsWriteBackSystem : ISystem
 {
     private readonly PhysicsSpace _space;
@@ -120,6 +123,7 @@ internal sealed class PhysicsWriteBackSystem : ISystem
 
 // PrePhysics: gives loaded terrain sectors a collision mesh (14 §3, closes F13's collision gap).
 // One static mesh per sector; with streaming this becomes per chunk and is built on a job (F14).
+[System("sage.physics.terrain", Phase.PrePhysics)]
 internal sealed class TerrainCollisionSystem : ISystem
 {
     private readonly PhysicsSpace _space;
@@ -195,9 +199,8 @@ public sealed class PhysicsModule : IModule
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
-        // A collider and a body that agree about where the shape sits (review #44): physics owns
-        // the rule that a capsule stands on its point while a box is centred on it (F31).
-        ctx.Engine.Prefabs.Register("body", PrefabParts.Body);
+        // The `body` prefab part is this plugin's (BodyPart, [PrefabPart]): physics owns the rule that a
+        // capsule stands on its point while a box is centred on it (review #44, F31).
 
         _debugDraw = ctx.Engine.CVars.Register("phys_debug", false, CVarFlags.DevOnly,
             "Draw colliders and character capsules (needs r_debugdraw 1).");
@@ -221,11 +224,11 @@ public sealed class PhysicsModule : IModule
         _spaces.Add(space);
         ApplyLayers(space);
 
-        world.AddSystem(new TerrainCollisionSystem(world, space), Phase.PrePhysics);
-        world.AddSystem(new PhysicsSyncSystem(world, space), Phase.PrePhysics, after: new[] { typeof(TerrainCollisionSystem) });
-        world.AddSystem(new PhysicsStepSystem(space), Phase.Physics);
-        world.AddSystem(new PhysicsWriteBackSystem(world, space), Phase.PostPhysics);
-        world.AddSystem(new PhysicsDebugSystem(world, _records!, _debugDraw!), Phase.Late);   // 10 §9
+        world.AddSystem(new TerrainCollisionSystem(world, space));
+        world.AddSystem(new PhysicsSyncSystem(world, space));
+        world.AddSystem(new PhysicsStepSystem(space));
+        world.AddSystem(new PhysicsWriteBackSystem(world, space));
+        world.AddSystem(new PhysicsDebugSystem(world, _records!, _debugDraw!));   // 10 §9
 
         // A destroyed entity takes its body with it.
         world.EntityDestroyed += entity =>

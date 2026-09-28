@@ -201,9 +201,9 @@ public class SageAppTests
         app.Configure();
         app.LoadContent();
         app.Start();
-        app.Engine.Prefabs.Register("before_the_world", (_, _, _, _) => { });   // fine
+        app.Engine.Prefabs.Register<BeforeTheWorldPart>();   // fine
         app.CreateWorld("main");
-        var part = Assert.Throws<InvalidOperationException>(() => app.Engine.Prefabs.Register("after_the_world", (_, _, _, _) => { }));
+        var part = Assert.Throws<InvalidOperationException>(() => app.Engine.Prefabs.Register<AfterTheWorldPart>());
         Assert.Contains("prefab part 'after_the_world'", part.Message);
     }
 
@@ -211,6 +211,12 @@ public class SageAppTests
     private sealed class LateRecord { }
 
     private sealed class LateModule : IModule { public void Init(ModuleContext ctx) { } }
+
+    [PrefabPart("before_the_world")]
+    private sealed class BeforeTheWorldPart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
+
+    [PrefabPart("after_the_world")]
+    private sealed class AfterTheWorldPart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
 
     // ---- game.json ---------------------------------------------------------------------------------
 
