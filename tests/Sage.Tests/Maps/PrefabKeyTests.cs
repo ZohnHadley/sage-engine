@@ -27,6 +27,7 @@ public class PrefabKeyTests
         using var app = HeadlessApp.ForGame(SandboxDirectory, new Sandbox.SandboxModule()).Build();
 
         string fgd = FgdExport.Build(app.Engine);
+        Assert.DoesNotContain("\r", fgd);   // the same bytes on every platform
 
         // The lamp: a float with its unit and range, a colour picker, both at the prefab's values.
         Assert.Contains("light.range(float) : \"light: Range\" : \"7\" : \"Where the light fades to nothing (m, at least 0, part light)\"", fgd);

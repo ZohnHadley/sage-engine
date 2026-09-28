@@ -123,7 +123,9 @@ public static class FgdExport
 
         text.AppendLine();
         text.AppendLine($"// {prefabs.Count} prefab(s).");
-        return text.ToString();
+        // One line ending on every platform (AppendLine writes "\r\n" on Windows): a generated file
+        // should come out byte-for-byte the same wherever it is generated, and TrenchBroom reads both.
+        return text.ToString().Replace("\r\n", "\n");
     }
 
     // The box TrenchBroom draws for the entity. A prefab that says how big it is in a `Collider` gets
