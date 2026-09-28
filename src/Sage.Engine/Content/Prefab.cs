@@ -27,7 +27,7 @@ namespace sage_engine;
 //     "tags": ["Hostile"],
 //     "parts": { "character": { "layer": "enemy" }, "melee": { "attack": "sage:claw" },
 //                "attributes": {}, "effects": ["sage:tough_hide"] } }
-[Record("prefab")]
+[Record("prefab", Plugin = RegistrationOwners.Core)]
 public sealed class PrefabRecord
 {
     public string Name = "";              // what World.Describe calls it; empty = the record id

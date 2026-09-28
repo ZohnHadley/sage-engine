@@ -165,7 +165,7 @@ Four things to know before you write many:
 - **They hot reload.** Save the file and the running game picks it up; the Sandbox respawns its scene.
 
 A game can define **its own record types** — the Sandbox's `scene` is one. A plain class with public
-fields, an attribute, and one line in `Init`:
+fields and an attribute, and that is all:
 
 ```csharp
 [Record("quest_board")]
@@ -174,12 +174,14 @@ public sealed class QuestBoardRecord
     public List<RecordId> Offers = new();
     public float RefreshHours = 24f;
 }
-
-// in Init, before records load:
-ctx.Engine.Records.Register<QuestBoardRecord>();
 ```
 
-Without that `Register` line the JSON is read, matched to nothing, and ignored.
+The engine's source generator (`src/Sage.Generators`, which every game project gets) writes the
+registration, and your plugin runs it just before its `Init` — so there is no `Register` call to
+forget. An assembly with one `[Plugin]` owns what it declares; one with several says which plugin owns
+each type, `[Record("quest_board", Plugin = "yourgame.quests")]`, or the build fails (`SAGE0001`). A
+type the registration can't create — abstract, private, no public parameterless constructor — is a build
+error too (`SAGE0002`).
 
 `rec_list <type>`, `rec_get <type> <id>` and `rec_reload` in the console are how you check what actually
 loaded — and `rec_get` is the fastest way to learn a record's fields, because it prints the merged
@@ -439,12 +441,11 @@ steps, and **both are needed**:
 
 ```csharp
 [SavedResource("your_state")] public sealed class YourState { … }
-
-engine.Saves.RegisterResource<YourState>();     // in Init: the attribute alone saves nothing
 ```
 
-That second line is the trap — the attribute is decoration until something registers the type, which is
-how three separate resources in this engine were "saved" and none of them were. `save <name>`,
+The attribute is the whole of it: the generator registers the type for your plugin, as it does records.
+It used to take a second line, `Saves.RegisterResource<T>()`, and that line was the trap — three
+separate resources in this engine were marked saved and none of them were. `save <name>`,
 `load <name>` and `saves` drive it from the console.
 
 ---
@@ -494,7 +495,7 @@ Or pick the pieces a test is about, with records written on the spot:
 using var app = HeadlessApp.Gameplay()                          // physics and every gameplay plugin
     .With(new YourGameModule())
     .File("data/test.json", """[{ "type": "item", "id": "key" }]""", ns: "yourgame")
-    .OnRegistered(a => a.Records.Register<YourRecord>())        // what a module would do in Init
+    .OnRegistered(a => a.Records.Register<TestOnlyRecord>())   // a type no plugin declares, by hand
     .Boot("test");
 ```
 
@@ -528,9 +529,11 @@ swaps. `rec_reload`, `asset_reload [path]` and `asset_list` do it by hand.
 Most of what costs a newcomer an afternoon in this engine is not an error message — it is something
 quietly not happening. The engine's own history is mostly this list, so it is worth reading once:
 
-1. **`[Record]` without `Records.Register<T>()`** is dead JSON: the file loads, the type matches nothing.
-2. **`[SavedResource]` without `Saves.RegisterResource<T>()`** saves nothing. This exact bug shipped three
-   times in this engine before anybody noticed.
+1. **`[Record]` without `Records.Register<T>()`** used to be dead JSON: the file loaded and the type
+   matched nothing. Since issue #16 the attribute *is* the registration (the generator writes it), so
+   this can't happen any more.
+2. **`[SavedResource]` without `Saves.RegisterResource<T>()`** used to save nothing — this exact bug
+   shipped three times. Gone the same way: the attribute registers it.
 3. **An action that is not `Actions.Register`ed** makes every binding to it ignored (with a warning), and
    `ScreenStack.Bind` to it does nothing at all. Register actions in `Init`.
 4. **Rules come from `CreateRules`.** Since 2026-09-27 a game module returns its `GameRules` from

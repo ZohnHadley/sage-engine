@@ -50,7 +50,7 @@ public enum AICondition : ulong
 }
 
 // How an agent senses and fights (16 §3.4). Tuning is data, like movement profiles.
-[Record("ai_profile")]
+[Record("ai_profile", Plugin = "sage.gameplay.ai")]
 public sealed class AIProfileRecord
 {
     public float SightRange = 22f;
@@ -73,7 +73,7 @@ public sealed class AIProfileRecord
 // A task with no argument may be written as its bare name ("FaceTarget"). The old "Wait:1.5" strings
 // are a load error that says what to write instead (issue #22): a number with no name is how a
 // designer ends up writing seconds where a task wanted metres.
-[Record("ai_schedule")]
+[Record("ai_schedule", Plugin = "sage.gameplay.ai")]
 public sealed class AIScheduleRecord
 {
     public List<AITaskStep> Tasks = new();

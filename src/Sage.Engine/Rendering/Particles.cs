@@ -29,7 +29,7 @@ public enum EmitShape
 
 // What a puff of something looks like, as data (05 §3.5). One record covers a burst and a steady
 // stream, because the difference is `burst` against `rate` and nothing else.
-[Record("particle")]
+[Record("particle", Plugin = "sage.client")]
 public sealed class ParticleRecord
 {
     public AssetPath Texture;                 // the sprite each particle draws

@@ -74,6 +74,11 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 ### 3.5 Data records
 One pipeline for **every** definition: items, spells, creatures, factions, loot tables, materials (07), input maps (08), sprite animation sets, and **prefabs** (a prefab record's body is component data, parsed by the serializer from 09).
 
+### As built (declared record types, 2026-09-28 — issue #16)
+- A record type is **declared, not registered**: `[Record("item", Plugin = "sage.gameplay.items")]`. `src/Sage.Generators` (a Roslyn incremental generator every engine and game project takes as an analyzer) writes each assembly's registrations, grouped by owning plugin, and the module manager runs a plugin's just before its `Init` — so a type exists for exactly the plugins that are loaded (test: APluginThatIsNotLoadedRegistersNothing), with the same seals and ledger as a hand-written call.
+- An assembly with one `[Plugin]` (a game) owns what it declares without saying so. Otherwise a declaration without `Plugin` is a build error (`SAGE0001`), as is one the registration can't construct (`SAGE0002`) and two of one id (`SAGE0003`) (test: WithSeveralPluginsADeclarationMustSayWhichOwnsIt). The engine's own types use `RegistrationOwners.Core` and are registered when the `Engine` is made.
+- Record type names are still the short names (`"type": "item"`); namespaced type ids, components and systems are the rest of Phase 2 (REDESIGN §3.4).
+
 ### As built (records made at run time, 2026-09-23 — F21)
 Not every record comes from a file. A spell the player composed in the spellmaker (16 §3.3) is an
 `ability` record that no mount defines, and later a generated quest will be the same shape.
@@ -325,7 +330,7 @@ public readonly struct RecordRef<T> where T : class { public T Value { get; } }
 
 public sealed class RecordStore                                   // as built (2026-09-23)
 {
-    public void Register<T>() where T : class, new();             // a [Record] type, in a module's Init
+    public void Register<T>() where T : class, new();             // a [Record] type; generated code calls it (issue #16)
     public T Get<T>(RecordId id) where T : class, new();          // Ensure + placeholder record on miss
     public bool TryGet<T>(RecordId id, out T value) where T : class;
     public IReadOnlyList<T> All<T>() where T : class;

@@ -35,7 +35,7 @@ public sealed class FactionRelation
 }
 
 // A group with opinions (16 §3.5). Everything about *who* fights whom is here rather than in combat.
-[Record("faction")]
+[Record("faction", Plugin = "sage.gameplay.factions")]
 public sealed class FactionRecord
 {
     public string Label = "";
@@ -71,7 +71,7 @@ public struct Faction : IComponent
 // content (09 §3.1): it is saved, because a world that forgot you had robbed it is not the world you
 // left. A list rather than a dictionary so it serialises as it stands, and a dozen factions are not
 // worth a hash table.
-[SavedResource("reputation")]
+[SavedResource("reputation", Plugin = "sage.gameplay.factions")]
 public sealed class Reputation
 {
     public sealed class Standing

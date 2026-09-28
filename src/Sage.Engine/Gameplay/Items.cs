@@ -18,7 +18,7 @@ namespace sage_engine;
 
 public enum EquipSlot { None, MainHand, OffHand }
 
-[Record("item")]
+[Record("item", Plugin = "sage.gameplay.items")]
 public sealed class ItemRecord
 {
     public string Label = "";               // what the log and, later, the UI call it

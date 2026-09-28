@@ -16,4 +16,10 @@
     <Using Include="Friflo.Engine.ECS" />
     <Using Include="sage_engine.Transform" Alias="Transform" />
   </ItemGroup>
+
+  <!-- The declarations generator (issue #16): a game's [Record] types register themselves. -->
+  <ItemGroup Condition="'$(SageGenerators)' != 'false'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Generators\Sage.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
 </Project>

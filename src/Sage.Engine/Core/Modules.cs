@@ -115,7 +115,16 @@ public sealed class ModuleManager
     {
         Seal.Seal("the modules ran Init");
         _ordered = Sort(_modules, _plugins);
-        foreach (var m in _ordered) Run(m, "Init", () => m.Init(new ModuleContext(this, m)));
+        foreach (var m in _modules) Engine.Generated.Include(m.GetType().Assembly);
+        var builder = new RegistrationBuilder(Engine);
+        foreach (var m in _ordered)
+            Run(m, "Init", () =>
+            {
+                // What the plugin declares, then what it registers by hand: its declarations exist
+                // by the time its own Init runs, as if it had registered them first (issue #16).
+                Engine.Generated.Register(_plugins[m].Id, builder);
+                m.Init(new ModuleContext(this, m));
+            });
         Log.Info(LogCat.Modules, $"Modules: {string.Join(", ", _ordered.Select(m => m.Name))}");
     }
 

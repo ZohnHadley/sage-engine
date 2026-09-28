@@ -20,7 +20,7 @@ public sealed class AttributeModifier
     public float Value;
 }
 
-[Record("effect")]
+[Record("effect", Plugin = "sage.gameplay.attributes")]
 public sealed class EffectRecord
 {
     public List<AttributeModifier> Modifiers = new();

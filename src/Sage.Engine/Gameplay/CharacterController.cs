@@ -11,7 +11,7 @@ namespace sage_engine;
 
 // Movement tuning as data (10 §3). A game can give different profiles to the player, a guard or a
 // horse without touching code.
-[Record("movement_profile")]
+[Record("movement_profile", Plugin = "sage.gameplay.character")]
 public sealed class MovementProfileRecord
 {
     public float WalkSpeed = 4.2f;

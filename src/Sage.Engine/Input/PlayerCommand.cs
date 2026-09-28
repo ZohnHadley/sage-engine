@@ -199,7 +199,7 @@ public sealed class InputBinding
 
 // Input map (08 §4): bindings for one context. Several maps may target the same context (engine,
 // game, mods); their bindings add up. Player rebinds will be record patches (08 §3.2).
-[Record("input_map")]
+[Record("input_map", Plugin = "sage.client")]
 public sealed class InputMapRecord
 {
     public InputContext Context = InputContext.Gameplay;

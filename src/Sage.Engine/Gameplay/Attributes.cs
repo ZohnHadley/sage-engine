@@ -10,7 +10,7 @@ namespace sage_engine;
 // changes them, so buffs, damage over time and cooldowns all go through one path.
 
 // An attribute's definition: its default base value and the range it is clamped to.
-[Record("attribute")]
+[Record("attribute", Plugin = "sage.gameplay.attributes")]
 public sealed class AttributeRecord
 {
     public float Start;          // the value an entity gets when it is created ("base" is reserved
@@ -27,7 +27,7 @@ public sealed class AttributeRecord
 }
 
 // A gameplay tag. Names are hierarchical by convention: "state.dead", "element.fire".
-[Record("tag")]
+[Record("tag", Plugin = "sage.gameplay.attributes")]
 public sealed class TagRecord
 {
     public string Description = "";
