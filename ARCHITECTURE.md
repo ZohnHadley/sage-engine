@@ -335,7 +335,7 @@ and the code, because three features in a row ended with the code right and its 
 [`games/Hello`](games/Hello) is the smallest game this engine runs — four files, in the solution so it
 cannot rot — which found an engine trap on its first run that the Sandbox had hidden for months.
 
-The handoff at [`docs/history/handoff-2026-09-27.md`](docs/history/handoff-2026-09-27.md) says where to
+The handoff at [`docs/history/handoff-2026-09-28.md`](docs/history/handoff-2026-09-28.md) says where to
 start, and [`docs/REDESIGN.md`](docs/REDESIGN.md) where the engine is going; [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) is for using the engine rather than building it.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).
