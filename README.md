@@ -272,6 +272,10 @@ dotnet run --project src/Sage.Host -c Development -- -game games/Hello
 
 ## Levels
 
+> **Changing:** levels will be built in Sage's own editor rather than TrenchBroom (decided 2026-09-28,
+> `docs/REDESIGN.md` §4.6 and §6 item 8). What follows is how it works today, and the `.map` importer
+> stays until the editor replaces it.
+
 Interiors are **brushes**, and the editor is [TrenchBroom](https://trenchbroom.github.io/): the engine
 reads the `.map` files it writes (standard, Valve 220 and Quake 2/3 dialects) and turns each brush into
 a convex hull to walk into and a mesh to look at. 32 map units to the metre, Z-up becomes Y-up, and a
