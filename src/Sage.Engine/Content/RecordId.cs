@@ -55,7 +55,10 @@ internal sealed class RecordIdJsonConverter : JsonConverter<RecordId>
     {
         string? text = reader.GetString();
         if (string.IsNullOrWhiteSpace(text)) return default;
-        return RecordId.Parse(text, RecordParseContext.Namespace ?? "sage");
+        // As a JsonException, so the serializer adds the path and the record store can say which
+        // line of which file holds the bad id (issue #22).
+        try { return RecordId.Parse(text, RecordParseContext.Namespace ?? "sage"); }
+        catch (FormatException ex) { throw new JsonException(ex.Message, ex); }
     }
 
     public override void Write(Utf8JsonWriter writer, RecordId value, JsonSerializerOptions options) =>

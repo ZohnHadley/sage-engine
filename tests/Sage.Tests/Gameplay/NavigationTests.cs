@@ -261,9 +261,9 @@ public class NavigationTests
         [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "tag", "id": "state.dead" },
          { "type": "ai_profile", "id": "default_ai", "sightRange": 60, "meleeRange": 1.8, "thinkRate": 20 },
-         { "type": "ai_schedule", "id": "idle", "tasks": ["Wait:1.5"], "interrupts": ["SeeEnemy"] },
-         { "type": "ai_schedule", "id": "chase", "tasks": ["MoveToTarget:1.6"], "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"] },
-         { "type": "ai_schedule", "id": "melee_attack", "tasks": ["FaceTarget", "Wait:0.4"], "interrupts": ["LostEnemy", "NoEnemy"] }]
+         { "type": "ai_schedule", "id": "idle", "tasks": [{ "task": "Wait", "seconds": 1.5 }], "interrupts": ["SeeEnemy"] },
+         { "type": "ai_schedule", "id": "chase", "tasks": [{ "task": "MoveToTarget", "distance": 1.6 }], "interrupts": ["EnemyInMeleeRange", "LostEnemy", "NoEnemy"] },
+         { "type": "ai_schedule", "id": "melee_attack", "tasks": ["FaceTarget", { "task": "Wait", "seconds": 0.4 }], "interrupts": ["LostEnemy", "NoEnemy"] }]
         """;
 
     private static (Engine, World) NewWorld()

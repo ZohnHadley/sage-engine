@@ -19,6 +19,7 @@ public sealed class TestItem
     public List<string> Tags = new();
     public TestStats Stats = new();
     public RecordId Spell;
+    public List<RecordId> Spells = new();
 }
 
 public sealed class TestStats
