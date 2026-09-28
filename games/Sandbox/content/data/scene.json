@@ -398,7 +398,9 @@
     "shape": "Cone", "angleDegrees": 45,
     "gravity": -12, "drag": 1.5,
     "sizeStart": 0.07, "sizeEnd": 0.01,
-    "colourStart": "#80E3FF", "colourEnd": "#00FF7F00"
+    // White-hot, cooling to orange as it fades. (Written as packed numbers until issue #22, these two
+    // had their bytes in the wrong order and drew a pale blue spark turning green.)
+    "colourStart": "#FFE380", "colourEnd": "#FF7F0000"
   },
   {
     "type": "particle", "id": "blood",
