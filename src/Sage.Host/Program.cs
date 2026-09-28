@@ -53,6 +53,7 @@ try
         HostModules = new IModule[] { new ClientModule() },
         ConfigFile = UserPaths.ConfigFile,
         LaunchCommands = launch.Commands,
+        OwnsProcessLog = true,   // the one app in this process, so its log cvars are the log's
     });
     app.Register();
 }

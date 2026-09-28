@@ -214,7 +214,6 @@ public class WorldTests
         Assert.True(resource.Disposed);
         Assert.Single(engine.Worlds);
         app.Dispose();
-        LogCat.DefaultLevel = LogLevel.Info;   // CoreCVars.Register applied developer defaults
     }
 
     private sealed class DisposableResource : IDisposable

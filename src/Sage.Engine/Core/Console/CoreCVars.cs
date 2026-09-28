@@ -24,8 +24,15 @@ public sealed class CoreCVars
     // True when the console may be opened: always in dev builds, via con_enable in Shipping.
     public bool ConsoleAvailable => BuildInfo.IsDevBuild || ConsoleEnabled.Value;
 
-    private CoreCVars(CVarRegistry r)
+    // Whether this app's log cvars configure the process's log: its default level, stdout, the file's
+    // level and the queue (issue #11). The log is one per process, so only one app may: the host's.
+    // Every other app — a test, a tool, a second app in the same process — still has the cvars (a
+    // config.cfg naming them is not an error), and setting them changes nothing outside it.
+    public bool OwnsProcessLog { get; }
+
+    private CoreCVars(CVarRegistry r, bool ownsProcessLog)
     {
+        OwnsProcessLog = ownsProcessLog;
         Developer = r.Register("developer", BuildInfo.Config == BuildConfig.Debug ? 1 : 0, CVarFlags.DevOnly,
             "Developer defaults: 1 = Debug-level logs, stdout log, hot reload on; 0 = off. Each feature keeps its own cvar.", 0, 2);
         Cheats = r.Register("sv_cheats", false, CVarFlags.None,
@@ -47,6 +54,7 @@ public sealed class CoreCVars
         EventTrace = r.Register("ev_trace", "", CVarFlags.DevOnly,
             "Log every send of this game event type, or * for all. Empty = off. See `ev_stats`.");
 
+        if (!ownsProcessLog) return;
         Developer.Changed += _ => ApplyDeveloperDefaults();
         LogKeep.Changed += _ => Log.File?.Prune(LogKeep.Value);
         LogFileLevel.Changed += _ => { if (Log.File != null) Log.File.MinLevel = LogFileLevel.Value; };
@@ -56,9 +64,11 @@ public sealed class CoreCVars
         Log.QueueCapacity = LogQueueSize.Value;
     }
 
-    public static CoreCVars Register(CVarRegistry registry)
+    // `ownsProcessLog`: see OwnsProcessLog. SageAppOptions.OwnsProcessLog passes it; the executable
+    // sets it, and nothing else should.
+    public static CoreCVars Register(CVarRegistry registry, bool ownsProcessLog = false)
     {
-        var core = new CoreCVars(registry);
+        var core = new CoreCVars(registry, ownsProcessLog);
         RegisterCommands(registry);
         return core;
     }

@@ -41,6 +41,11 @@ public sealed class SageAppOptions
 
     // `+command` launch arguments, run once the first world exists.
     public IReadOnlyList<string> LaunchCommands { get; init; } = Array.Empty<string>();
+
+    // Whether `developer`, `log_file_level` and `log_queue_size` configure the process's log (issue
+    // #11). The executable's app does; a test, a tool or a second app in the same process leaves the
+    // log as the host set it (CoreCVars.OwnsProcessLog).
+    public bool OwnsProcessLog { get; init; }
 }
 
 // The order an app goes through. Each step checks it comes after the one before, so a host that
@@ -97,7 +102,7 @@ public sealed class SageApp : IDisposable
     public static SageApp Create(SageAppOptions options)
     {
         var cvars = new CVarRegistry();
-        var engine = new Engine(cvars, CoreCVars.Register(cvars));
+        var engine = new Engine(cvars, CoreCVars.Register(cvars, options.OwnsProcessLog));
         var app = new SageApp(options, engine);
         try
         {

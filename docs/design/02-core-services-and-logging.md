@@ -58,6 +58,11 @@ Pluggable; each has its own minimum level.
 | Editor log panel | editor only | Filter, search, click-to-select the entity if the entry has an `entity` field |
 | Ring buffer | always | The last 2,000 entries in memory, for crash reports and the console's scroll-back |
 
+The log is one per process, so **only the app that owns it applies these defaults** (issue #11): the
+executable's app sets `SageAppOptions.OwnsProcessLog`, and its `developer`, `log_file_level` and
+`log_queue_size` configure the log. Any other app in the process — a test, a tool, a second app —
+still has those cvars, and setting them leaves the log as the host set it (test: AnAppThatDoesNotOwnTheLogLeavesItAlone).
+
 ## 4. Public API sketch
 
 ```csharp
