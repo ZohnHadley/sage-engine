@@ -36,7 +36,7 @@ public sealed class SpellDraft
 // A world's book of composed spells: the drafts, and nothing else. It is a saved resource (09 §3.1)
 // rather than a component on the player because it is the *world's* magic — in a party game it is not
 // one character's, and the same book is what a spellmaker shop would list.
-[SavedResource("spellbook")]
+[SavedResource("spellbook", Plugin = "sage.gameplay.abilities")]
 public sealed class Spellbook : ISavedResource
 {
     public List<SpellDraft> Drafts { get; set; } = new();

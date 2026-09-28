@@ -104,7 +104,7 @@ internal sealed class MaterialParamJsonConverter : JsonConverter<MaterialParam>
 // A material (07 §3.3): effect + technique + render state + parameters. Every parameter the effect
 // uses (other than the engine's frame/object parameters) needs a value here or in the base chain,
 // because OpenGL ignores .fx default values; the client checks that when it builds the material.
-[Record("material")]
+[Record("material", Plugin = "sage.client")]
 public sealed class MaterialRecord
 {
     public AssetPath Effect;

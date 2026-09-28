@@ -28,17 +28,23 @@ public sealed class Engine : IDisposable
         Prefabs.Ledger = Registrations;
         Inputs.Ledger = Registrations;
         Actions.Ledger = Registrations;
-        // The engine's own saved state. A `[SavedResource]` attribute is decoration until something
-        // registers the type — which is exactly how reputation, the journal and the weather were all
-        // "saved" and none of them were (F24/F40, found by the second pass).
-        Saves.RegisterResource<Weather>();
-        Records.Register<PrefabRecord>();     // every game places things, so the engine owns the type
-        Records.Register<PlacementsRecord>();  // and where it places them, so an editor can write it (15 §3)
+        // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
+        // which every game uses, and the weather every world saves. Registered by generated code
+        // (issue #16), because an attribute used to be decoration until someone also registered the
+        // type — which is how reputation, the journal and the weather were all "saved" and none of
+        // them were (F24/F40). Each plugin's own are registered just before its Init.
+        Generated.Include(typeof(Engine).Assembly);
+        Registrations.Owner = RegistrationOwners.Core;
+        try { Generated.Register(RegistrationOwners.Core, new RegistrationBuilder(this)); }
+        finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
     }
 
     // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).
     public RegistrationLedger Registrations { get; } = new();
+
+    // The generated registrations of the engine's and every loaded module's assemblies (issue #16).
+    public GeneratedRegistrations Generated { get; } = new();
 
     // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
     public ActionRegistry Actions { get; } = new();

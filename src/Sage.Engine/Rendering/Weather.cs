@@ -15,7 +15,7 @@ namespace sage_engine;
 // half past a storm" a question a test can ask. What the client does with the answer is spawn particles
 // round the camera and write the environment resource.
 
-[Record("weather")]
+[Record("weather", Plugin = "sage.client")]
 public sealed class WeatherRecord
 {
     public string Label = "";
@@ -53,7 +53,7 @@ public sealed class WeatherRecord
 // Saved, because a storm you walked into is part of the world you left (09 §3.1). The rate is a finite
 // number even for an instant change: `Infinity` is not JSON, and a save that cannot be written is worse
 // than a storm that takes a hundredth of a second to arrive.
-[SavedResource("weather")]
+[SavedResource("weather", Plugin = RegistrationOwners.Core)]
 public sealed class Weather
 {
     private const float Instant = 1000f;

@@ -24,7 +24,7 @@ public readonly record struct DamageInfo(
 }
 
 // A kind of damage and what stands up to it (16 §3.2). Games add their own: frost, poison, falling.
-[Record("damage_type")]
+[Record("damage_type", Plugin = "sage.gameplay.combat")]
 public sealed class DamageTypeRecord
 {
     public RecordId Sound;                  // what landing this sounds like (11 §3, F4)
@@ -41,7 +41,7 @@ public sealed class DamageTypeRecord
 
 // One swing: how far it reaches, how forgiving it is, what it costs in time (16 §3.2). Weapons hand
 // the wielder one of these when inventory arrives (F19); until then a character carries its own.
-[Record("attack")]
+[Record("attack", Plugin = "sage.gameplay.combat")]
 public sealed class AttackRecord
 {
     public float Damage = 10f;

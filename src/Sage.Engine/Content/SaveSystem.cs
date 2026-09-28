@@ -63,6 +63,7 @@ public sealed class SaveSystem
         if (_resources.TryGetValue(attr.Name, out var existing) && existing.Type != typeof(T))
             throw new InvalidOperationException($"Saved resource '{attr.Name}' is already registered by {existing.Type.Name}.");
 
+        _engine.Registrations.Record("saved resource", attr.Name);   // who registered it (issue #12)
         _resources[attr.Name] = new SavedResource(
             attr.Name, typeof(T),
             world => world.Resources.TryGet<T>(out var r) ? r : null,

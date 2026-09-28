@@ -76,7 +76,7 @@ public struct PhysicsBody : IComponent
 }
 
 // Which layers collide with which (10 §3). Layer 0 is "default"; a missing entry means "collides".
-[Record("physics_layers")]
+[Record("physics_layers", Plugin = "sage.physics3d")]
 public sealed class PhysicsLayersRecord
 {
     public List<string> Layers = new();                                  // index → name

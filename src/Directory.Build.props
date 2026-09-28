@@ -10,4 +10,11 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
+
+  <!-- The declarations generator (issue #16): registration written from [Record] and
+       [SavedResource]. A project opts out with <SageGenerators>false</SageGenerators>. -->
+  <ItemGroup Condition="'$(SageGenerators)' != 'false'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Sage.Generators\Sage.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
 </Project>

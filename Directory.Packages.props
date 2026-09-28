@@ -12,6 +12,10 @@
     <PackageVersion Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
     <PackageVersion Include="SharpGLTF.Core" Version="1.0.7" />
     <PackageVersion Include="ImGui.NET" Version="1.90.1.1" />
+    <!-- The declarations generator (src/Sage.Generators). 4.8 runs in every compiler since the
+         .NET 8 SDK; the engine builds with a newer one (global.json), which loads older generators. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
     <!-- Tests -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

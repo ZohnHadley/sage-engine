@@ -17,6 +17,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- To run Sage.Generators on source text and check what it writes and reports (issue #16). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +30,8 @@
     <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" />
     <!-- The harness every test boots through: HeadlessApp, MountFixture, EventProbe (issue #14). -->
     <ProjectReference Include="..\Sage.Testing\Sage.Testing.csproj" />
+    <!-- The generator as a library, not as an analyzer: the tests drive it directly. -->
+    <ProjectReference Include="..\..\src\Sage.Generators\Sage.Generators.csproj" />
     <!-- The Sandbox's *simulation* half only: no MonoGame, so the game's own rules can be ticked
          here the way the engine's are (R15). Sandbox.Client is deliberately not referenced. -->
     <ProjectReference Include="..\..\games\Sandbox\Sandbox.csproj" />

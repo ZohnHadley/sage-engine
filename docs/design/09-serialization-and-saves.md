@@ -168,10 +168,10 @@ user://saves/<slot>/
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
 spells a player composed are the *world's*, not any one entity's.
 
-- **`[SavedResource("name")]`** on a world-resource class (03 §3.4), and
-  `engine.Saves.RegisterResource<T>()` in the owning module's `Init` — explicit, exactly as record
-  types are registered, so a mod's resource is only in the save when the game that reads it back knows
-  what to do with it. The attribute's *name* is the key in the file, so renaming the class is free.
+- **`[SavedResource("name")]`** on a world-resource class (03 §3.4), registered for the plugin that owns
+  it (`Plugin = "…"`, issue #16) by generated code just before that plugin's `Init` — so a mod's resource
+  is only in the save when the plugin that reads it back is loaded. The attribute's *name* is the key in
+  the file, so renaming the class is free.
 - Written into the world file beside `entities`, read back in the same JSON dialect, and installed with
   `world.Resources.Set`.
 - **A load replaces every registered resource, including the ones the file says nothing about.** Absent
@@ -205,7 +205,7 @@ public sealed class SaveSystem                             // per Engine; as bui
     public bool Load(string slot);                         // rebuilds each persistent entity from its prefab + saved state
     public bool Exists(string slot);
     public IEnumerable<(string Slot, DateTime SavedUtc, int Entities)> List();
-    public void RegisterResource<T>() where T : class, new();   // a [SavedResource]; in the owning module's Init
+    public void RegisterResource<T>() where T : class, new();   // what the generated registration calls (issue #16)
 }                                                          // richer result types (SaveResult/LoadResult) when a caller needs them
 
 public interface ISavedResource                           // optional, for a resource that implies more
@@ -290,12 +290,12 @@ The same generated metadata gains a `[Replicated]` flag and a quantization hint,
 - If Friflo is adopted (03 §3.1), does its component storage let our generated serializers read and write components directly (by ref)? The spike must confirm (requirement E7). Friflo's own JSON serializer would then go unused.
 - Binary compression: none, Deflate (built in), or a faster codec? Start with `System.IO.Compression` Brotli/Deflate at the fastest level; measure.
 
-### Sharp edge: `[SavedResource]` saves nothing on its own
-The attribute names a resource in the save file; it does **not** put it there. A type is only written and
-restored once something calls `Engine.Saves.RegisterResource<T>()`, which is how the spellbook has always
-worked — and how reputation, the journal and the weather were all marked saved and none of them were
-(found by F40's second pass, 2026-09-24). The engine registers its own (`Weather`) where the save system
-is built; a module registers its own beside the records it owns.
+### Sharp edge, closed: `[SavedResource]` used to save nothing on its own
+The attribute named a resource in the save file but did not put it there: a type was only written and
+restored once something called `Engine.Saves.RegisterResource<T>()` — and reputation, the journal and the
+weather were all marked saved and none of them were (found by F40's second pass, 2026-09-24). Since issue
+#16 the attribute is the registration: Sage.Generators writes the call for the owning plugin
+(`Plugin = RegistrationOwners.Core` for the engine's `Weather`), test: TheSandboxRegistersTheRecordTypesItDidBeforeByTheSamePlugins.
 
 There is no warning for this, because nothing can tell the difference between "a resource the game does
 not want saved" and "a resource somebody forgot to register". The test is the check: a save round trip

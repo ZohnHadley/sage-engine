@@ -44,7 +44,7 @@ public sealed class QuestStage
     public bool Done;
 }
 
-[Record("quest")]
+[Record("quest", Plugin = "sage.gameplay.factions")]
 public sealed class QuestRecord
 {
     public string Label = "";
@@ -62,7 +62,7 @@ public sealed class QuestRecord
 
 // What the player is on, and how far. Saved, because a quest you have half done is the thing a save is
 // most obviously *for* (09 §3.1).
-[SavedResource("journal")]
+[SavedResource("journal", Plugin = "sage.gameplay.factions")]
 public sealed class Journal
 {
     public sealed class Entry

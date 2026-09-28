@@ -39,6 +39,9 @@ public sealed class SavedResourceAttribute : Attribute
 {
     public SavedResourceAttribute(string name) { Name = name; }
     public string Name { get; }
+
+    // The plugin that registers it, as for [Record] (issue #16).
+    public string? Plugin { get; set; }
 }
 
 // For a saved resource whose data implies something else that has to be rebuilt — a spellbook's
