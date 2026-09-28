@@ -45,6 +45,10 @@ public static class ContentValidation
     {
         var report = new ValidationReport();
         using var sink = new ThreadSink(Environment.CurrentManagedThreadId);
+        // The log is asynchronous: whatever this thread logged before now may still be queued, and would
+        // reach the sink on its first flush and be counted as this run's. Drain it first. (A test that
+        // disabled a system earlier on the same xUnit thread turned up in the Sandbox's report in CI.)
+        Log.Flush();
         Log.AddSink(sink);
         try
         {
