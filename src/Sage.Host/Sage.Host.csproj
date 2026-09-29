@@ -6,6 +6,7 @@
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <SageSimulationOnly>false</SageSimulationOnly>
     <AssemblyName>Sage.Host</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
@@ -29,7 +30,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
     <!--
       The editor and ImGui are referenced only where `SAGE_DEV` is defined (F28). A Shipping build of the
@@ -42,4 +42,16 @@
 
   <!-- engine_content/ → Content/ (shaders compiled with dotnet-mgfxc, data and textures copied). -->
   <Import Project="..\..\build\Sage.EngineContent.targets" />
+
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <Using Include="Sage.Client" />
+    <Using Include="Sage.Editor" Condition="'$(Configuration)' != 'Shipping'" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
+  </ItemGroup>
 </Project>

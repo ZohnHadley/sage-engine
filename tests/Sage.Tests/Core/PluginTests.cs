@@ -2,9 +2,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -58,7 +57,7 @@ public class PluginTests
     private sealed class ImpostorModule : IModule { public void Init(ModuleContext ctx) { } }
 
     private static SageApp BareWith(params IModule[] modules) =>
-        SageApp.Create(new SageAppOptions { IncludeSimulationModules = false, HostModules = modules });
+        SageApp.Create(new SageAppOptions { HostModules = modules });
 
     [Fact]
     public void ADependencyByIdIsInitialisedFirst()
@@ -102,7 +101,7 @@ public class PluginTests
     [Fact]
     public void EveryRegistrationIsRecordedAgainstItsPlugin()
     {
-        using var app = SageApp.Create(new SageAppOptions());   // the engine's simulation plugins
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All() });   // the engine's simulation plugins
         app.Boot();
         var ledger = app.Engine.Registrations;
 
@@ -130,10 +129,10 @@ public class PluginTests
     [Fact]
     public void AnEditorModuleLoadsOnlyInTheEditor()
     {
-        using var game = SageApp.Create(new SageAppOptions { IncludeSimulationModules = false, HostModules = new IModule[] { new EditorOnlyModule() } });
+        using var game = SageApp.Create(new SageAppOptions { HostModules = new IModule[] { new EditorOnlyModule() } });
         Assert.Empty(game.Engine.Modules.Modules);
 
-        using var editor = SageApp.Create(new SageAppOptions { IncludeSimulationModules = false, Host = HostKind.Editor,
+        using var editor = SageApp.Create(new SageAppOptions { Host = HostKind.Editor,
                                                                HostModules = new IModule[] { new EditorOnlyModule() } });
         Assert.Single(editor.Engine.Modules.Modules);
     }
@@ -153,7 +152,7 @@ public class PluginTests
     [Fact]
     public void AGameGetsThePluginsItNamesAndWhatTheyNeed()
     {
-        using var app = SageApp.Create(new SageAppOptions { Game = Manifest(""", "plugins": ["sage.gameplay.items"]""") });
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = Manifest(""", "plugins": ["sage.gameplay.items"]""") });
         Assert.Equal(new[] { "sage.gameplay.attributes", "sage.gameplay.character", "sage.gameplay.combat",
                              "sage.gameplay.items", "sage.physics3d" }, Ids(app));
         app.Boot();
@@ -162,7 +161,7 @@ public class PluginTests
     [Fact]
     public void AFamilyIsNamedWithAWildcard()
     {
-        using var app = SageApp.Create(new SageAppOptions { Game = Manifest(""", "plugins": ["sage.gameplay.*"]""") });
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = Manifest(""", "plugins": ["sage.gameplay.*"]""") });
         var ids = Ids(app);
         Assert.Equal(GameplayModules.All().Length + 1, ids.Length);   // every gameplay plugin, and physics for characters
         Assert.Contains("sage.physics3d", ids);
@@ -177,7 +176,7 @@ public class PluginTests
         var game = Manifest(""", "plugins": [], "mounts": ["content"]""");
         File.WriteAllText(Path.Combine(Directory.CreateDirectory(Path.Combine(game.Directory, "content", "data")).FullName, "crate.json"),
                           """[{ "type": "prefab", "id": "crate", "name": "crate" }]""");
-        using var app = SageApp.Create(new SageAppOptions { Game = game });
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = game });
         Assert.Empty(app.Engine.Modules.Modules);
         var world = app.Boot();
 
@@ -201,7 +200,7 @@ public class PluginTests
     public void AMisspeltPluginSaysWhatThereIs()
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            SageApp.Create(new SageAppOptions { Game = Manifest(""", "plugins": ["sage.physics"]""") }));
+            SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = Manifest(""", "plugins": ["sage.physics"]""") }));
         Assert.Contains("'sage.physics'", ex.Message);
         Assert.Contains("sage.physics3d", ex.Message);
     }
@@ -209,14 +208,14 @@ public class PluginTests
     [Fact]
     public void LeavingPluginsOutMeansAllOfThem()
     {
-        using var app = SageApp.Create(new SageAppOptions { Game = Manifest("") });
-        Assert.Equal(SageApp.SimulationModules().Length, app.Engine.Modules.Modules.Count);
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = Manifest("") });
+        Assert.Equal(BasePlugins.All().Length, app.Engine.Modules.Modules.Count);
     }
 
     [Fact]
     public void APluginCanBeDisabledByItsId()
     {
-        using var app = SageApp.Create(new SageAppOptions { Game = Manifest(""", "modules": { "disable": ["sage.streaming"] }""") });
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = Manifest(""", "modules": { "disable": ["sage.streaming"] }""") });
         Assert.DoesNotContain("sage.streaming", Ids(app));
     }
 }

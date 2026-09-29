@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -252,6 +251,7 @@ public class StrictContentTests
             {
                 GameDirectory = Path.Combine(Repo, "games", game),
                 EngineContentDirectory = Path.Combine(Repo, "engine_content"),
+                AvailablePlugins = BasePlugins.All(),
                 GameModule = module,
             });
             Assert.True(report.Ok, $"{game}: " + string.Join("\n", report.Errors));
@@ -276,6 +276,7 @@ public class StrictContentTests
         {
             GameDirectory = Path.Combine(Repo, "games", "Sandbox"),
             EngineContentDirectory = Path.Combine(Repo, "engine_content"),
+            AvailablePlugins = BasePlugins.All(),
             GameModule = new Sandbox.SandboxModule(),
             Mounts = new[] { (mod, "rockmod") },
         });

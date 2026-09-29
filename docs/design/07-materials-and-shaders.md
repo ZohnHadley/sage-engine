@@ -102,7 +102,7 @@ Game shaders that include it get lighting and fog consistent with engine materia
 ### 3.6 As built (migration step 6)
 - **Shaders:** `engine_content/shaders/`: `common.fxh` (the §3.5 contract), `lit.fx` (`Default`, `AlphaTest`, `Unlit`), `sprite.fx` (`Unlit`, `Lit`, `UnlitBlend`; F1) and `error.fx`. `debug.fx` comes with `DebugDraw`.
 - **Build:** `build/Sage.EngineContent.targets` runs `dotnet mgfxc … /Profile:OpenGL` (pinned 3.8.5.1 in `.config/dotnet-tools.json`, where since R12 it is the only tool; the target restores it itself, which until R12 happened only as a side effect of the vendored ImGuiNet project restoring tools for MGCB) and copies `engine_content/` into the exe's `Content/` (minus `tools/`, which *makes* content — the font and texture generators — rather than being it). Any `.fx`/`.fxh` change recompiles all; unchanged builds skip it. **Deviation:** the target is imported by `Sage.Host` (the exe owns the Content folder), not `Sage.Client`.
-- **Material records:** `MaterialRecord` in `src/Sage.Engine/Rendering/RenderData.cs`; engine materials `sage:lit_default`, `sage:unlit_default`, `sage:terrain_default` (one tiling ground texture over `lit_default`, 14 §3), `sage:sprite_default`, `sage:sprite_lit` and `sage:error` in `engine_content/data/materials.json`; the Sandbox inherits `sage:lit_default` for its bunny and `sage:sprite_lit` for its trees.
+- **Material records:** `MaterialRecord` in `src/Sage.Simulation/Rendering/RenderData.cs`; engine materials `sage:lit_default`, `sage:unlit_default`, `sage:terrain_default` (one tiling ground texture over `lit_default`, 14 §3), `sage:sprite_default`, `sage:sprite_lit` and `sage:error` in `engine_content/data/materials.json`; the Sandbox inherits `sage:lit_default` for its bunny and `sage:sprite_lit` for its trees.
 - **Sprite materials (F1):** the sprite sheet's texture replaces the material's `Albedo` per draw, so one material draws every sheet. Sprite quads carry their own per-vertex colour, multiplied with `AlbedoColor` and the object `Tint`.
 - **`MaterialCache`** (client) builds a runtime per material on first use: effect, technique, material params and cached state objects. It binds the three tiers of §3.4, and rebuilds everything lazily when records reload (material hot reload works; **shader** hot reload is §14 step 4, not done).
 - **Deviations:**
@@ -116,7 +116,7 @@ Game shaders that include it get lighting and fog consistent with engine materia
 
 ```csharp
 [Record("material")]
-public sealed class MaterialRecord                         // Sage.Engine (data only; no MonoGame types)
+public sealed class MaterialRecord                         // Sage.Simulation (data only; no MonoGame types)
 {
     public AssetPath Effect;  public string Technique;
     public RenderPass Pass;   public BlendMode Blend;  public CullMode Cull;

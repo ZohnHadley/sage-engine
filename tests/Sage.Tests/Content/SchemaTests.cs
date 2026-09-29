@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -34,6 +33,7 @@ public class SchemaTests
             {
                 GameDirectory = Path.Combine(Repo, "games", game),
                 EngineContentDirectory = Path.Combine(Repo, "engine_content"),
+                AvailablePlugins = BasePlugins.All(),
                 GameModule = module,
                 Mounts = mounts,
                 Inspect = catalog.Add,
@@ -166,7 +166,7 @@ public class SchemaTests
 
         // Every field of every component that has a tooltip or a unit says so on hover.
         int checkedFields = 0;
-        foreach (var meta in Metadata.In(typeof(Engine).Assembly).Values.Concat(Metadata.In(typeof(Sandbox.SandboxModule).Assembly).Values)
+        foreach (var meta in EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).SelectMany(a => Metadata.In(a).Values)
                                      .Where(m => m.Kind == DeclarationKind.Component))
             foreach (var field in meta.Fields.Where(f => f.Tooltip != null || f.Unit != null))
             {

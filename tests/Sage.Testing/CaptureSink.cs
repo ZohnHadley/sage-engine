@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine.Testing;
+namespace Sage.Testing;
 
 // Everything the log says while it lives, at every level. The log is process-wide, so a test that
 // runs beside others sees their lines too: look for your own (TestEnv.Unique helps).

@@ -25,7 +25,6 @@ namespace Sage.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RegistrationStageAnalyzer : DiagnosticAnalyzer
 {
-    private const string Ns = "sage_engine";
 
     internal static readonly DiagnosticDescriptor Late = new(
         "SAGE0020", "Register in Init, not later",
@@ -36,21 +35,23 @@ public sealed class RegistrationStageAnalyzer : DiagnosticAnalyzer
     // (the seal's own words where there is one, RegistrationSeal).
     private static readonly (string Type, string Method, string What, string Why)[] Registrations =
     {
-        (Ns + ".CVarRegistry", "Register", "a cvar",
+        (SageTypes.CVarRegistry, "Register", "a cvar",
             "cvars are sealed once config.cfg is read, so its saved value would never apply"),
-        (Ns + ".CVarRegistry", "RegisterCommand", "a console command",
+        (SageTypes.CVarRegistry, "RegisterCommand", "a console command",
             "commands are registered once, with the cvars; per world or per system it is registered twice"),
-        (Ns + ".ActionRegistry", "Register", "an input action",
+        (SageTypes.ActionRegistry, "Register", "an input action",
             "actions are sealed when content loads, and the bindings built then have none for it"),
-        (Ns + ".EntityInputs", "Register", "an entity input",
+        (SageTypes.EntityInputs, "Register", "an entity input",
             "entity inputs are sealed when the first world exists, and its wiring is checked without it"),
-        (Ns + ".RecordStore", "Register", "a record type",
+        (SageTypes.RecordStore, "Register", "a record type",
             "record types are sealed when records load, and its records were skipped as unknown"),
-        (Ns + ".PrefabRegistry", "Register", "a prefab part",
+        (SageTypes.PrefabRegistry, "Register", "a prefab part",
             "prefab parts are sealed when the first world exists, and prefabs may have spawned without it"),
-        (Ns + ".SaveSystem", "RegisterResource", "a saved resource",
+        (SageTypes.SaveSystem, "RegisterResource", "a saved resource",
             "a save written or read before it has left the resource out"),
-        (Ns + ".ModuleManager", "Add", "a module",
+        (SageTypes.SaveSystem, "AddConverter", "a save converter",
+            "a save written or read before it has used the default shape, which does not load back"),
+        (SageTypes.ModuleManager, "Add", "a module",
             "modules are sealed once Init has run, so it would never run Init"),
     };
 
@@ -62,10 +63,10 @@ public sealed class RegistrationStageAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
         context.RegisterCompilationStartAction(start =>
         {
-            var module = start.Compilation.GetTypeByMetadataName(Ns + ".IModule");
+            var module = start.Compilation.GetTypeByMetadataName(SageTypes.IModule);
             if (module == null) return;   // not built against the engine: nothing registers here
-            var game = start.Compilation.GetTypeByMetadataName(Ns + ".IGameModule");
-            var system = start.Compilation.GetTypeByMetadataName(Ns + ".ISystem");
+            var game = start.Compilation.GetTypeByMetadataName(SageTypes.IGameModule);
+            var system = start.Compilation.GetTypeByMetadataName(SageTypes.ISystem);
 
             var registries = new Dictionary<(INamedTypeSymbol, string), (string What, string Why)>();
             foreach (var (type, method, what, why) in Registrations)

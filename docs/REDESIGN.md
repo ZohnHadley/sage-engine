@@ -247,6 +247,57 @@ developer. It doesn't count as an error for a designer or modder.
 - Cross-module calls become events. `Effects.Die` raises `Died`, and factions and quests subscribe to it.
 - No `InternalsVisibleTo` except to test assemblies. If the editor needs something, it's public API.
 
+*As built (issue #24, 2026-09-29).* `Sage.Engine` is now **`Sage.Core` ← `Sage.Simulation` ←
+`Sage.Physics3D` ← `Sage.Gameplay`**, with `Sage.Client`, `Sage.Editor`, `Sage.Host`, `Sage.Cli`,
+`Sage.Testing` and `Sage.Tests` on top, one namespace per assembly and no `sage_engine` left. Registry
+dump, `sage validate`, the committed JSON Schemas and the ECS schema (45 components and 7 tags for the
+Sandbox) are the same as before the split. Where it differs from the diagram above, deliberately:
+
+- **`Engine`, `World`, `SageApp`, `IModule`/`ModuleManager`, `HostLoop` and `GameRules` are in
+  `Sage.Simulation`, not Core.** `World` holds its `Engine`, and `IModule.OnWorldCreated(World)` is the
+  module contract, so they cannot be pulled apart without a second abstraction nobody needs yet. Core is
+  the world-free kernel: cvars/console, log, diagnostics, VFS, records, plugin identity and versions,
+  the registration ledger and seals, the declaration attributes and the metadata table. It references
+  no package; Friflo's `Entity` is recognised by name in the metadata, and the ECS's entity converter
+  for record JSON is added by the `Engine`.
+- **Physics is its own base plugin, `Sage.Physics3D` (Bepu)**, with the character controller and the
+  first-person rig (until the camera-rig work). The simulation reaches physics only through
+  **`IPhysicsWorld`** (the seed of #30: counts, trigger overlaps, `AddHull`, `Rebase`), which the space
+  is installed as too. `Sage.Gameplay` still references `Sage.Physics3D` (AI, combat, items and abilities
+  sweep the space) until #30. `PawnIntent`, `Pawn`, `PlayerControlled` and `Players.ForEachPlayer` are
+  simulation (`Sage.Simulation/Input`), because streaming, maps, entity I/O and the controller all read them.
+- **No `Sage.Kits.Rpg` yet.** The client builds the dialogue screen itself, so the RPG screens
+  (spellmaker, journal, dialogue, panels) wait in `Sage.Gameplay/Rpg/` for #27. What stops them from
+  coming back once the kit exists is **SAGE0025**: a base assembly (`SageBaseAssembly`, set for Core to
+  Gameplay, Client and Editor) that references a `Sage.Kits.*` assembly or uses its types is a build error.
+- **Plugin ids did not change** (`sage.physics3d`, `sage.streaming`, `sage.gameplay.*` — `game.json`
+  names them), even where the plugin's assembly did: entity I/O (`sage.gameplay.io`) and maps are in
+  `Sage.Simulation`, the character (`sage.gameplay.character`) in `Sage.Physics3D`.
+- **The one list of base plugins is `BasePlugins.All()` in `Sage.Gameplay`** (it is the only assembly
+  that can name them all); `SageAppOptions.AvailablePlugins` replaces `IncludeSimulationModules`, and the
+  host, `sage`, `HeadlessApp` and the tests pass it. `SaveSystem.AddConverter` (attributes and tags by
+  name, added by `AttributesModule`) and `MapLevels.SolidSpawned` (a mover's shut position, from
+  `MoverModule`) replace the two places the simulation reached into gameplay.
+- **A declaration outside `Sage.Simulation` belongs to a plugin in its own assembly**: the engine
+  includes its own assembly's generated registrations and each loaded module's, so one owned by a
+  plugin elsewhere would never register (test: EveryDeclarationOutsideTheSimulationBelongsToAPluginInItsOwnAssembly).
+  The `physics_layers` record (owned by `sage.physics3d`) stays in `Sage.Simulation` beside the other
+  physics data, which is always included.
+- **Friflo builds its schema from every loaded assembly that references it**, the split ones included
+  (22 in Simulation, 1 in Physics3D, 15 in Gameplay) (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
+- **`InternalsVisibleTo` goes only to `Sage.Tests`**, so what the next layer used became public: the record
+  JSON helpers (`JsonMembers`, `RecordParseContext`, the vector converters), `Upgraders`,
+  `Screen.Index`'s setter, `RegistrationLedger.Owner`'s setter, `MovementProfileRecord.Fallback` and the
+  client's keyboard and mouse listeners. #31's public-API pass decides which stay.
+- Each project imports the layers below as **global usings in its csproj** (with the `Transform`
+  alias), and games take the four base references and usings from `games/Directory.Build.props`
+  (`Private="false"`, so a game's `bin/` still holds only its own dll). The generators name engine types
+  from one list, `src/Sage.Generators/SageTypes.cs` (test: EveryTypeTheGeneratorsNameExists). Every
+  engine project is simulation-only (SAGE0024) unless it opts out (Client, Editor, Host).
+- Not done here: `GameplayModules.cs`, `PrefabParts.cs` and `MapLevel.cs` moved whole rather than one
+  file per module or type; the render, audio, input and UI view-models stay in `Sage.Simulation` rather
+  than separate `Sage.UI`/`Sage.Audio` plugins (§0.5); `Sage.Sdk` is #32.
+
 ### 3.2 One boot path: `SageApp`
 
 Today boot is split between inline `Program.cs` and `Game1.Initialize`, and it's re-implemented
@@ -707,7 +758,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
-| 3 — Carve the base | **In progress.** The assembly split (#24) first, on branch `claude/p3-assembly-split` ([plan](history/plan-24-assembly-split.md)); then #25, #26, #29 and #30 in parallel, then #27, #28, #31 and #32 |
+| 3 — Carve the base | **In progress.** The assembly split (#24) is done ([plan](history/plan-24-assembly-split.md), as built in §3.1); next #25, #26, #29 and #30 in parallel, then #27, #28, #31 and #32 |
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|

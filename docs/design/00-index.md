@@ -84,7 +84,7 @@ source: the self test plants a name and counts only a dump has, and fails if the
 ### Host and core
 | Name | Meaning | Doc |
 |---|---|---|
-| `Engine` | Process-wide core services object: cvars (`CVars`), core cvars (`Core`), VFS, `RecordStore`, input actions (`Actions`), modules and worlds today; `AssetServer`, jobs and engine signals join in later steps. Created by the host, passed in (never a static singleton). Lives in `Sage.Engine`, so it has no MonoGame types. Client services (renderer, input devices, audio) are provided by client modules through `ModuleContext.Provide` | 01 |
+| `Engine` | Process-wide core services object: cvars (`CVars`), core cvars (`Core`), VFS, `RecordStore`, input actions (`Actions`), modules and worlds today; `AssetServer`, jobs and engine signals join in later steps. Created by the host, passed in (never a static singleton). Lives in `Sage.Simulation`, so it has no MonoGame types. Client services (renderer, input devices, audio) are provided by client modules through `ModuleContext.Provide` | 01 |
 | `IModule` / `ModuleKind` | A logical engine or game unit with dependencies and `Init` (register) → `Start` (use records/GPU) → `OnWorldCreated` (per world) → `Shutdown`. Kinds: `Runtime`, `Editor`, `Tool` | 01 |
 | `ModuleContext` | What a module gets in `Init`/`Start`: `Engine`, `Get<T>` (services from the host or declared dependencies only), `Provide<T>` | 01 |
 | `IGameModule` | The single entry point a game assembly implements (exactly one public class per game assembly) | 01 |

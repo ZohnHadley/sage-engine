@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    Headless tests. References Sage.Engine only: if simulation code ever picks up a MonoGame
-    dependency, this project stops compiling (ARCHITECTURE.md §2 rule 2).
+    Headless tests. References the base engine only (Sage.Core to Sage.Gameplay): if simulation code
+    ever picks up a MonoGame dependency, this project stops compiling (ARCHITECTURE.md §2 rule 2).
   -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <!-- Same as the engine: run on the newest installed runtime when .NET 8 itself isn't installed. -->
     <RollForward>Major</RollForward>
-    <RootNamespace>sage_engine.Tests</RootNamespace>
+    <RootNamespace>Sage.Tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
@@ -23,11 +23,21 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
-    <Using Include="sage_engine.Testing" />
+    <Using Include="Sage.Testing" />
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" />
+    <!-- The base engine, every assembly by name (issue #24): the tests read each one's declarations. -->
+    <ProjectReference Include="..\..\src\Sage.Core\Sage.Core.csproj" />
+    <ProjectReference Include="..\..\src\Sage.Simulation\Sage.Simulation.csproj" />
+    <ProjectReference Include="..\..\src\Sage.Physics3D\Sage.Physics3D.csproj" />
+    <ProjectReference Include="..\..\src\Sage.Gameplay\Sage.Gameplay.csproj" />
     <!-- The harness every test boots through: HeadlessApp, MountFixture, EventProbe (issue #14). -->
     <ProjectReference Include="..\Sage.Testing\Sage.Testing.csproj" />
     <!-- The generator as a library, not as an analyzer: the tests drive it directly. -->

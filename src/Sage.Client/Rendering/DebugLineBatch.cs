@@ -3,7 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Draws the frame's debug lines (docs/design/06 §3.2): one dynamic vertex buffer, one draw call per
 // batch, no material and no sorting — debug geometry is the one thing in the frame that is allowed

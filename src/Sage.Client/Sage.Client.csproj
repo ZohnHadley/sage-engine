@@ -2,6 +2,8 @@
   <!-- Client layer: rendering, input, client-side assets. The only engine layer that uses MonoGame. -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
+    <SageSimulationOnly>false</SageSimulationOnly>
+    <SageBaseAssembly>true</SageBaseAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,12 +12,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
+    <!-- The base engine it presents: the simulation and every base plugin (issue #24). -->
+    <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
   </ItemGroup>
 
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
   <ItemGroup>
-    <InternalsVisibleTo Include="Sage.Editor" />
-    <InternalsVisibleTo Include="Sage.Host" />
-    <InternalsVisibleTo Include="Sage.Tests" />
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 </Project>

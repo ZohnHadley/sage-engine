@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Turns loaded terrain sectors into chunk meshes (docs/design/14 §3, 06 §3.2). One sector's 129x129
 // heightfield becomes a grid of chunks, each its own mesh and entity, so frustum culling and (later)

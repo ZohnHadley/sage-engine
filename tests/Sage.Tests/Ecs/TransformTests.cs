@@ -1,7 +1,6 @@
 using System.Numerics;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 // The engine has its own `Assert` (Assert.Dev/Ensure/Check); inside this namespace it would hide xUnit's.
 using Assert = Xunit.Assert;

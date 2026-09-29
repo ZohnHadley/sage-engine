@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The simulation (REDESIGN §3.1, issue #24): the engine and its app (Engine, SageApp, modules), the
+    World and its ECS (Friflo), systems and events, prefabs, saves, levels, streaming, entity I/O, and
+    the data the client presents (render, audio, input and UI view-models). Must never reference
+    MonoGame (ARCHITECTURE.md §2 rule 2); math is System.Numerics (decision D2). Physics is a plugin
+    on top of it (Sage.Physics3D), reached through IPhysicsWorld.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <SageBaseAssembly>true</SageBaseAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ECS storage (decision D4; spike results in docs/design/03 §3.1). Components are structs
+         implementing Friflo.Engine.ECS.IComponent; World (ECS/World.cs) is the thin wrapper. -->
+    <PackageReference Include="Friflo.Engine.ECS" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sage.Core\Sage.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sage.Tests" />
+  </ItemGroup>
+
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+  </ItemGroup>
+</Project>

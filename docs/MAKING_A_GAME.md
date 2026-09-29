@@ -34,7 +34,8 @@ console, saves, hot reload, and a renderer. **It gives you no game.** What a gam
 | How it looks on screen | your **HUD** and screens, in your game's client half |
 | Art and sound | PNG, WAV, `.glb` — read at runtime, no build step |
 
-The split that matters: **your simulation half references `Sage.Engine` only** — no MonoGame — so it can
+The split that matters: **your simulation half references the base engine only** (`Sage.Core`, `Sage.Simulation`,
+`Sage.Physics3D`, `Sage.Gameplay`) — no MonoGame — so it can
 be tested headlessly and could run on a server one day. Anything that needs a screen goes in a second
 project, your *client half*.
 
@@ -46,7 +47,7 @@ Copy the Sandbox's layout; it is the worked example this guide refers to through
 
 ```
 games/YourGame/                 the simulation half
-    YourGame.csproj             references src/Sage.Engine only
+    YourGame.csproj             references the base engine only
     game.json                   the manifest the host reads
     YourGameModule.cs           your IGameModule
     content/
@@ -56,12 +57,11 @@ games/YourGame/                 the simulation half
         models/*.glb
         maps/*.map
 games/YourGame.Client/          the client half (optional but usual)
-    YourGame.Client.csproj      references Sage.Engine, Sage.Client, YourGame
+    YourGame.Client.csproj      references the base engine, Sage.Client, YourGame
     YourGameClientModule.cs     HUD, screens, anything with a screen
 ```
 
-Both projects are plain libraries, and both reference the engine **compile-time only** so the host's
-copies are used at run time:
+Both projects are plain libraries:
 
 ```xml
 <PropertyGroup>
@@ -69,17 +69,18 @@ copies are used at run time:
   <RootNamespace>YourGame</RootNamespace>
   <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
 </PropertyGroup>
-<ItemGroup>
-  <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" Private="false" />
-</ItemGroup>
 ```
 
 That is *all* a project under `games/` needs, because `games/Directory.Build.props` gives every one of
-them the rest: `net8.0`, nullable, the Debug/Development/Shipping configurations, and three global
-usings — `sage_engine`, `Friflo.Engine.ECS`, and an alias making `Transform` mean **Sage's** rather than
-Friflo's, which ships a `Transform` of its own. Put your game somewhere else and you inherit none of
-that: add the target framework yourself, `using sage_engine;` in every file, and the alias, or the first
-time you name `Transform` the compiler cannot tell which one you mean.
+them the rest: `net8.0`, nullable, the Debug/Development/Shipping configurations, the four base engine
+assemblies referenced **compile-time only** (`Private="false"`, so the host's copies are used at run
+time and your `bin/` holds only your dll), and global usings — `Sage.Core`, `Sage.Simulation`,
+`Sage.Physics3D`, `Sage.Gameplay`, `Friflo.Engine.ECS`, and an alias making `Transform` mean **Sage's**
+rather than Friflo's, which ships a `Transform` of its own. A client half adds
+`<ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />` and
+`<Using Include="Sage.Client" />` (see `games/Sandbox.Client`). Put your game somewhere else and you
+inherit none of that: add the target framework, the four references, the usings and the alias yourself,
+or the first time you name `Transform` the compiler cannot tell which one you mean.
 
 ### `game.json`
 
@@ -829,20 +830,26 @@ each, with the fix:
 | SAGE0011 | A declared part or system that cannot be one (abstract, generic, private, not `IPrefabPart` / `ISystem`, a part without a public parameterless constructor) | Follow the message |
 | SAGE0012 | Two declarations of one part or system id in an assembly | Rename one |
 | SAGE0013 | A system ordered (`Before`/`After`) against a system of this assembly in another phase | Drop the constraint: the phase order decides it |
-| SAGE0020 | A cvar, command, input action, entity input, record type, prefab part, saved resource or module registered in `Start`, `OnWorldCreated`, `CreateRules`, or a system's constructor or `Run` (§10 item 7) | Register it in the module's `Init`; hand a system what it needs through its constructor |
+| SAGE0020 | A cvar, command, input action, entity input, record type, prefab part, saved resource or module registered (or a save converter added) in `Start`, `OnWorldCreated`, `CreateRules`, or a system's constructor or `Run` (§10 item 7) | Register it in the module's `Init`; hand a system what it needs through its constructor |
 | SAGE0021 | A `[Record]` type or `[SavedResource]` name that is empty or has whitespace, or a saved resource with `Version` below 1 | Name it (`"item"`); versions start at 1 |
 | SAGE0022 | An `[Upgrade]` method nothing runs (not on a component, tag or saved resource), a saved resource's upgrader with the wrong shape or version, or two upgraders from one version | Move it to the type whose saved shape changed; fix the signature or the number |
 | SAGE0023 | *Strict saves only:* a public component field that is neither `[Property]` nor `[Transient]` | Decide: `[Property]` saves it, `[Transient]` leaves it out |
 | SAGE0024 | *Simulation-only projects:* a `Microsoft.Xna.Framework` (MonoGame) type | Move the code to the client half |
+| SAGE0025 | *Base engine assemblies:* a reference to a `Sage.Kits.*` assembly, or a use of one of its types or members | The base never depends on a kit: move the code into the kit, or give the base a hook the kit plugs into |
 
 An attribute on the wrong kind of type — `[Record]` on a struct, `[Component]` on a class — is the
 compiler's own CS0592, because each declaration attribute names what it may go on.
 
-Two are switched on per project, in its `.csproj`:
+Three are switched on per project, in its `.csproj`:
 
 - `<SageSimulationOnly>true</SageSimulationOnly>` — the project is simulation: it runs headless and
-  names no MonoGame type (SAGE0024). `Sage.Engine`, `games/Sandbox` and `games/Hello` set it; a client
-  half (`Sandbox.Client`) does not (test: AClientAssemblyMayUseMonoGame).
+  names no MonoGame type (SAGE0024). Every engine project under `src/` is simulation-only unless it
+  says otherwise (`src/Directory.Build.props`; `Sage.Client`, `Sage.Editor` and `Sage.Host` do), and
+  `games/Sandbox` and `games/Hello` set it; a client half (`Sandbox.Client`) does not
+  (test: AClientAssemblyMayUseMonoGame) (test: EveryBaseAssemblyIsSimulationOnly).
+- `<SageBaseAssembly>true</SageBaseAssembly>` — the project is part of the base engine (`Sage.Core`
+  to `Sage.Gameplay`, `Sage.Client`, `Sage.Editor`), which never depends on a kit (SAGE0025,
+  REDESIGN §0.5) (test: ABaseAssemblyThatUsesAKitIsABuildError) (test: AKitOrAGameMayUseAKit).
 - `<SageStrictSaves>true</SageStrictSaves>` — off by default. Today every public field of a component
   is saved unless it is `[Transient]`, so a field added later is saved without anyone choosing it;
   strict mode asks each one for a decision (REDESIGN §4.5)

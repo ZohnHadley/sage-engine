@@ -1,10 +1,10 @@
 using System.Numerics;
 
-namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Directory.Build.props
+namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/Directory.Build.props
 
 // The Sandbox's client half (docs/design/01 §3.1, TODO R15): the parts of the game that need a
 // screen. Everything else — the scene, the rules, spawning, the combat log — is in `Sandbox`, which
-// references only `Sage.Engine`, so it can be ticked headlessly in a test.
+// references only the base engine, so it can be ticked headlessly in a test.
 //
 // The split is the one the engine review asked games to follow (item 6). It costs a second assembly
 // and buys two things: a game's simulation becomes testable without MonoGame, and the boundary is

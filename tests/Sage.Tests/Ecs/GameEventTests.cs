@@ -1,8 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 

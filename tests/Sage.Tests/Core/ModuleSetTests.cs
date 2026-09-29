@@ -4,10 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using sage_engine;
 using Sandbox;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -43,7 +42,7 @@ public class ModuleSetTests
             typeof(MapModule),          // brush levels (F16)
         };
 
-        var defined = typeof(GameplayModules).Assembly.GetTypes()
+        var defined = EngineAssemblies.Base.SelectMany(a => a.GetTypes())
             .Where(t => typeof(IModule).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false })
             .Where(t => t.IsPublic)
             .Where(t => !installedElsewhere.Contains(t))
@@ -104,7 +103,7 @@ public class ModuleSetTests
         var manifest = GameManifest.Load(SandboxDirectory);
         manifest.Modules.Add.Clear();
         manifest.Assembly = "";
-        using var host = SageApp.Create(new SageAppOptions { Game = manifest, HostModules = new IModule[] { new SandboxModule() } });
+        using var host = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = manifest, HostModules = new IModule[] { new SandboxModule() } });
 
         var hostIds = host.Engine.Modules.Modules.Select(m => host.Engine.Modules.Plugin(m).Id).ToArray();
         Assert.Equal(hostIds, headless.PluginIds);

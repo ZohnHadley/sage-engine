@@ -15,7 +15,7 @@ Daggerfall-scale exteriors and separate interiors:
 - **dormancy** of unloaded content;
 - fast travel.
 
-In `Sage.Engine` (data, terrain generation), with client parts for terrain meshes. Expanded when roadmap Phase 4 starts.
+In `Sage.Simulation` (data, terrain generation), with client parts for terrain meshes. Expanded when roadmap Phase 4 starts.
 
 ## 2. Research basis
 - Float precision: ≈1 mm at 10 km, ≈8 mm at 100 km (survey §3.3).
@@ -49,7 +49,7 @@ In `Sage.Engine` (data, terrain generation), with client parts for terrain meshe
 - **Fast travel / teleport:** load the target sectors behind a loading screen, rebase the origin, place the player.
 
 ### As built (F13, 2026-09-22): one sector, no streaming
-- **Code:** `src/Sage.Engine/World/Terrain.cs` (`SectorCoord`, `Heightfield`, `ITerrainGenerator`, `TerrainSector`, the `Terrain` world resource) and `src/Sage.Client/Rendering/TerrainMesh.cs` (`TerrainMeshSystem`).
+- **Code:** `src/Sage.Simulation/World/Terrain.cs` (`SectorCoord`, `Heightfield`, `ITerrainGenerator`, `TerrainSector`, the `Terrain` world resource) and `src/Sage.Client/Rendering/TerrainMesh.cs` (`TerrainMeshSystem`).
 - **`sage.streaming` installs a `Terrain` resource in every world** (it used to come with every world; issue #13 moved it to its plugin, test: TheStreamingPluginInstallsTheTerrain_AndLoadWithoutAGeneratorIsRefused). Collision, navigation, levels and the renderer look it up and do nothing without it. A game sets `Generator` and `Seed` and calls `Load(sector)`; the sector's 129×129 heightfield (8 m spacing over 1024 m) is generated on the main thread, once per sector.
 - **Meshes:** `TerrainMeshSystem` (FrameUpdate) builds the chunk meshes of any sector it hasn't drawn yet: 4×4 chunks of 32×32 cells, each its own `Renderer.CreateMesh` and its own entity with a `MeshRenderer` holding the **`MeshHandle`** (R9: subsystems own the data, components hold handles). Chunks are ordinary mesh items, so they cull, sort and draw with everything else — there is no separate `TerrainExtract`.
 - **Material:** `sage:terrain_default` (one tiling ground texture over `lit.fx`). Splat materials come with LOD.
@@ -64,8 +64,8 @@ In `Sage.Engine` (data, terrain generation), with client parts for terrain meshe
 The world is now unbounded. A player can walk, or `warp`, a hundred kilometres from where they started
 and the simulation carries on with small numbers, because the frame of reference follows them.
 
-- **Code:** `src/Sage.Engine/World/Origin.cs` (the `Origin` resource and `world.Rebase`),
-  `src/Sage.Engine/World/Streaming.cs` (`StreamingSource`, `SectorOwned`, `StreamingSystem`,
+- **Code:** `src/Sage.Simulation/World/Origin.cs` (the `Origin` resource and `world.Rebase`),
+  `src/Sage.Simulation/World/Streaming.cs` (`StreamingSource`, `SectorOwned`, `StreamingSystem`,
   `StreamingModule`, `warp`), plus `Terrain` gaining `Unload`, `CornerOf` and origin-aware queries.
   Tests in `tests/Sage.Tests/Streaming/StreamingTests.cs`.
 - **Origin space is the only space the simulation knows.** Transforms, physics bodies, the camera and
@@ -139,5 +139,5 @@ The server tracks one streaming source per player. Origin space becomes per clie
 ## 14. Build steps
 1. `SectorCoord`/`Origin` + propagation relative to the origin + rebasing (with 03; TODO R6).
 2. Sector load/unload with asset scopes and dormancy (TODO F14).
-3. ~~Heightfield terrain: generator interface, meshes, collision~~ **Done 2026-09-22** (TODO F13, "As built"): generator + meshes in step 6; collision (`TerrainCollisionSystem`, `src/Sage.Engine/Physics/PhysicsSystems.cs`) with physics (F6).
+3. ~~Heightfield terrain: generator interface, meshes, collision~~ **Done 2026-09-22** (TODO F13, "As built"): generator + meshes in step 6; collision (`TerrainCollisionSystem`, `src/Sage.Physics3D/PhysicsSystems.cs`) with physics (F6).
 4. Interiors as spaces + door transitions.

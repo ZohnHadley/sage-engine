@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Listening to the simulation and making a noise about it (docs/design/11 §3, TODO F4).
 //
 // **The simulation does not play sounds.** It says what happened — a cue fired, something was hit,
 // something was picked up — and this reads those events with its own cursors (04 §3.1) and decides
 // what that sounds like. A headless server raises the same events into a queue nobody reads, which is
-// why nothing in `Sage.Engine` changed to make the game audible.
+// why nothing in the simulation changed to make the game audible.
 //
 // It runs in **FrameUpdate**: sounds start at display rate, not tick rate, because a sound started a
 // tick late is inaudible and a sound started twice is not.

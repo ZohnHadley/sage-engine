@@ -3,9 +3,8 @@ using System;
 using System.IO;
 using System.Linq;
 using Friflo.Engine.ECS;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -25,7 +24,7 @@ public class SageAppTests
 
     // A bare engine: no game, no simulation modules. Everything a test world needs is still there,
     // because World and Engine install it; physics and gameplay are modules on top.
-    private static SageApp Bare() => SageApp.Create(new SageAppOptions { IncludeSimulationModules = false });
+    private static SageApp Bare() => SageApp.Create(new SageAppOptions());
 
     [Fact]
     public void TheStagesRunInOrderAndSayWhenTheyDoNot()
@@ -113,7 +112,7 @@ public class SageAppTests
         var manifest = GameManifest.Load(dir);
 
         using var sink = new CaptureSink();
-        using var app = SageApp.Create(new SageAppOptions { Game = manifest });
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = manifest });
 
         Assert.DoesNotContain(app.Engine.Modules.Modules, m => m.Name == "AIModule");   // the real one worked
         Assert.Contains(sink.Entries, e => e.Level == LogLevel.Warn && e.Message.Contains("'LightModule'")
@@ -127,7 +126,7 @@ public class SageAppTests
     {
         var expected = new[] { typeof(PhysicsModule), typeof(StreamingModule), typeof(MapModule) }
             .Concat(GameplayModules.All().Select(m => m.GetType()));
-        Assert.Equal(expected, SageApp.SimulationModules().Select(m => m.GetType()));
+        Assert.Equal(expected, BasePlugins.All().Select(m => m.GetType()));
     }
 
     // The smallest real game, from its real game.json and content folder, through the same path the
@@ -138,13 +137,14 @@ public class SageAppTests
         string repo = RepoRoot();
         using var app = SageApp.Create(new SageAppOptions
         {
+            AvailablePlugins = BasePlugins.All(),
             Game = GameManifest.Load(Path.Combine(repo, "games", "Hello")),
             EngineContentDirectory = Path.Combine(repo, "engine_content"),
         });
         var world = app.Boot();
 
         Assert.Contains(app.Engine.Modules.Modules, m => m.Name == "HelloModule");
-        Assert.Equal(SageApp.SimulationModules().Length + 1, app.Engine.Modules.Modules.Count);
+        Assert.Equal(BasePlugins.All().Length + 1, app.Engine.Modules.Modules.Count);
 
         var players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList();
         Assert.Single(players);
@@ -231,7 +231,7 @@ public class SageAppTests
             [ { "type": "prefab", "id": "rock", "name": "rock" } ]
             """);
 
-        using var app = SageApp.Create(new SageAppOptions { Game = GameManifest.Load(dir) });
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = GameManifest.Load(dir) });
         var world = app.Boot();
 
         Assert.Null(app.Engine.Modules.Game);
@@ -261,7 +261,7 @@ public class SageAppTests
             """);
 
         using var sink = new CaptureSink();
-        using var app = SageApp.Create(new SageAppOptions { Game = GameManifest.Load(dir) });
+        using var app = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = GameManifest.Load(dir) });
 
         Assert.Contains(sink.Entries, e => e.Level == LogLevel.Warn && e.Message.Contains("HelloModule is an IGameModule"));
     }

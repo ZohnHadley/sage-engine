@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Generic gameplay, the base plugins every genre can use (REDESIGN §0.5, §3.1, issue #24):
+    attributes, effects, combat, items, abilities, AI, navigation, factions, dialogue and quest
+    models, movers, sprite animation and lights; BasePlugins, the one list of the base's plugins.
+    The RPG kit's screens wait in Rpg/ until Sage.Kits.Rpg exists (#27). It references
+    Sage.Physics3D (characters sweep the space) until #30 puts physics behind IPhysicsWorld. No MonoGame.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <SageBaseAssembly>true</SageBaseAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sage.Physics3D\Sage.Physics3D.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sage.Tests" />
+  </ItemGroup>
+
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
+  </ItemGroup>
+</Project>

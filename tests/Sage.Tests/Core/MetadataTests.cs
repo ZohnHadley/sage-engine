@@ -9,9 +9,9 @@ using Friflo.Engine.ECS;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sage.Generators;
-using sage_engine;
+using Metadata = Sage.Core.Metadata;   // not Microsoft.CodeAnalysis.Metadata
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -28,7 +28,7 @@ public class MetadataTests
     [Fact]
     public void TheEngineAndTheSandboxCarryGeneratedTables()
     {
-        var engine = Metadata.In(typeof(Engine).Assembly);
+        var engine = EngineAssemblies.Base.SelectMany(a => Metadata.In(a).Values).ToDictionary(t => t.Type);
         var sandbox = Metadata.In(typeof(Sandbox.SandboxModule).Assembly);
 
         Assert.NotEmpty(engine);
@@ -106,7 +106,7 @@ public class MetadataTests
     [Fact]
     public void EveryRecordRefNamesADeclaredRecordType()
     {
-        var tables = Metadata.In(typeof(Engine).Assembly).Values.Concat(Metadata.In(typeof(Sandbox.SandboxModule).Assembly).Values).ToList();
+        var tables = EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).SelectMany(a => Metadata.In(a).Values).ToList();
         var recordTypes = tables.Where(t => t.Kind == DeclarationKind.Record).Select(t => t.Id).ToHashSet();
 
         var refs = new List<(string Where, string Type)>();
@@ -130,7 +130,7 @@ public class MetadataTests
     [Fact]
     public void TheGeneratedTableMatchesReflectionForEveryEngineDeclaration()
     {
-        var generated = Metadata.In(typeof(Engine).Assembly).Values.Concat(Metadata.In(typeof(Sandbox.SandboxModule).Assembly).Values).ToList();
+        var generated = EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).SelectMany(a => Metadata.In(a).Values).ToList();
         Assert.True(generated.Count > 60, $"only {generated.Count} declarations");
 
         foreach (var table in generated)
@@ -235,7 +235,8 @@ public class MetadataTests
     public void TheGeneratorWritesEachFieldWithItsAttributes()
     {
         var (output, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             using Friflo.Engine.ECS;
             using System.Collections.Generic;
             public enum Mood { Calm, Angry }
@@ -252,14 +253,14 @@ public class MetadataTests
             """);
 
         Assert.Empty(diagnostics);
-        Assert.Contains("[assembly: global::sage_engine.GeneratedMetadataAttribute(typeof(global::Sage.Generated.SageMetadata_Declarations))]", output);
-        Assert.Contains("new(global::sage_engine.DeclarationKind.Component, \"game:health\", typeof(global::Health), static () => new global::Health(),", output);
+        Assert.Contains("[assembly: global::Sage.Core.GeneratedMetadataAttribute(typeof(global::Sage.Generated.SageMetadata_Declarations))]", output);
+        Assert.Contains("new(global::Sage.Core.DeclarationKind.Component, \"game:health\", typeof(global::Health), static () => new global::Health(),", output);
         Assert.Contains("{ JsonName = \"value\", Min = 0d, Unit = \"hp\", Tooltip = \"Current hit points\", Category = \"Vitals\" }", output);
         Assert.Contains("global::System.Runtime.CompilerServices.Unsafe.Unbox<global::Health>(o).Value = (float)v!", output);
         Assert.Contains("{ JsonName = \"mood\", EnumValues = new string[] { \"Calm\", \"Angry\" } }", output);
         Assert.Contains("{ JsonName = \"lastHit\", Transient = true }", output);
         Assert.Contains("{ JsonName = \"item\", RecordType = \"item\" }", output);
-        Assert.Contains("new global::sage_engine.FieldMetadata(\"Rolls\", typeof(int), global::sage_engine.ValueKind.Integer", output);
+        Assert.Contains("new global::Sage.Core.FieldMetadata(\"Rolls\", typeof(int), global::Sage.Core.ValueKind.Integer", output);
         Assert.Contains("{ JsonName = \"loot\", RecordType = \"loot\" }", output);   // RecordRef<LootRecord>
     }
 
@@ -273,7 +274,8 @@ public class MetadataTests
     public void AnAttributeOnTheWrongKindOfFieldIsABuildError(string field, string id, string message)
     {
         var (_, diagnostics) = Generate($$"""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             using Friflo.Engine.ECS;
             [Component("game:health")] public struct Health : IComponent { {{field}} }
             [Record("loot")] public sealed class LootRecord { }
@@ -289,7 +291,7 @@ public class MetadataTests
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
-            .Append(MetadataReference.CreateFromFile(typeof(Engine).Assembly.Location))
+            .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
             .Append(MetadataReference.CreateFromFile(typeof(IComponent).Assembly.Location));
         var compilation = CSharpCompilation.Create("Declarations",
             new[] { CSharpSyntaxTree.ParseText(source) }, references,

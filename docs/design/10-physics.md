@@ -1,7 +1,7 @@
 # 10 — Physics (short)
 
 ## 1. Purpose and scope
-Collision, queries, triggers, rigid bodies and the character controller. Built on **BepuPhysics v2**, in `Sage.Engine` (Bepu uses `System.Numerics`, so it has no MonoGame dependency). Expanded when roadmap Phase 2 starts.
+Collision, queries, triggers, rigid bodies and the character controller. Built on **BepuPhysics v2**, in the `Sage.Physics3D` plugin (Bepu uses `System.Numerics`, so it has no MonoGame dependency). Expanded when roadmap Phase 2 starts.
 
 ## 2. Research basis
 Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character *demos* (dynamic character without crouch or step-up); **local determinism only; no full-state snapshot/restore**. That's fine for single-player, and it's why the character controller is our own kinematic one.
@@ -41,7 +41,7 @@ because a rebase happens once per kilometre of travel — and walks the sleeping
 waking one deallocates it.
 
 ### As built (F6, 2026-09-22)
-- **Code:** `src/Sage.Engine/Physics/` — `PhysicsData.cs` (components, layers, query results), `PhysicsSpace.cs` (the Bepu simulation, callbacks and queries), `PhysicsCallbackData.cs` (what the worker threads may touch), `PhysicsSystems.cs` (the tick systems, terrain collision and `PhysicsModule`). BepuPhysics 2.4.0 is a package reference of `Sage.Engine`, so physics runs headless.
+- **Code:** `src/Sage.Simulation/Physics/` — `PhysicsData.cs` (components, layers, query results) and `IPhysicsWorld.cs` (what the simulation asks of a world's physics, issue #24); `src/Sage.Physics3D/` — `PhysicsSpace.cs` (the Bepu simulation, callbacks and queries), `PhysicsCallbackData.cs` (what the worker threads may touch), `PhysicsSystems.cs` (the tick systems, terrain collision and `PhysicsModule`). BepuPhysics 2.4.0 is a package reference of `Sage.Physics3D`, so physics runs headless.
 - **`PhysicsModule`** is an engine module the host loads like `ClientModule`; it creates a `PhysicsSpace` per world, applies the `physics_layers` record and installs the systems. Tests drive it the same way a dedicated server would.
 - **Tick order** as designed: `PrePhysics` (terrain collision meshes, new colliders get bodies, kinematic transforms are pushed) → `Physics` (`Simulation.Timestep` with Bepu's thread dispatcher) → `PostPhysics` (dynamic bodies write back to `Transform`, trigger overlaps are published).
 - **Shapes:** box, sphere and capsule, plus meshes the engine builds (`AddMesh`). Terrain sectors get one static collision mesh each (32k triangles for a 1024 m sector), which closes F13's collision gap.
@@ -61,7 +61,7 @@ waking one deallocates it.
   - `Collided` events, `phys_debug` (it needs `DebugDraw`, 06) and dynamic-vs-kinematic teleport smoothing are not built.
   - Stepping allocates ~40 bytes per tick inside Bepu's own profiler; everything else in the frame allocates nothing (TODO #41).
 ### The character controller (F7, 2026-09-22)
-- **Code:** `src/Sage.Engine/Gameplay/CharacterController.cs` — the `movement_profile` record, the `CharacterController` component and `CharacterMovementSystem` (PrePhysics, before the bodies sync), plus the first-person camera rig. It is simulation code, so it runs headless and a server would run the same paths.
+- **Code:** `src/Sage.Physics3D/Character/CharacterController.cs` — the `movement_profile` record, the `CharacterController` component and `CharacterMovementSystem` (PrePhysics, before the bodies sync), plus the first-person camera rig. It is simulation code, so it runs headless and a server would run the same paths.
 - **Each tick:** intent → acceleration (ground or air, with friction when there is no input) → jump/gravity → **horizontal collide-and-slide** (up to 4 planes) with a **step-up** attempt → **vertical move** (falling or a ceiling) → **ground check** with snapping. The character is a kinematic body, so the world collides with it and it pushes dynamic props.
 - **Details that matter:**
   - Horizontal sweeps start a few centimetres above the feet. Otherwise the ground the capsule rests on answers every horizontal sweep at zero distance and the character never moves.

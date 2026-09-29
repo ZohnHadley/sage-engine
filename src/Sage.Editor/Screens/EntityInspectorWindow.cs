@@ -5,7 +5,7 @@ using System.Linq;
 using Friflo.Engine.ECS;
 using ImGuiNET;
 
-namespace sage_engine;
+namespace Sage.Editor;
 
 // The editable inspector (docs/design/15 §3, TODO F28).
 //

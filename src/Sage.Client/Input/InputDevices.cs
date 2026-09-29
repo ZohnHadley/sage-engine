@@ -3,15 +3,15 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // The device layer (docs/design/08 §3.1): keyboard, mouse and gamepad, polled once per frame by the
 // host before anything reads them. Edges (pressed/released this frame) stay valid until the next
 // Poll. Only UI, editor and camera code may use devices directly; gameplay reads PlayerCommand.
 public sealed class InputDevices
 {
-    internal KeyboardListener Keyboard { get; } = new();
-    internal MouseListener Mouse { get; } = new();
+    public KeyboardListener Keyboard { get; } = new();
+    public MouseListener Mouse { get; } = new();
     public GamepadListener Gamepad { get; } = new();
 
     // What was *typed* this frame, in order, as the operating system decided it: the host feeds this

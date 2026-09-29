@@ -1,19 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     The harness the engine's tests boot through, and a game's tests can too (docs/REDESIGN.md §3.2,
-    issue #14): HeadlessApp, MountFixture, EventProbe, CaptureSink. A plain library on Sage.Engine
-    only: no test framework, so a game can use it from xUnit, NUnit or a console app, and no client,
+    issue #14): HeadlessApp, MountFixture, EventProbe, CaptureSink. A plain library on the base engine
+    (Sage.Gameplay and below) only: no test framework, so a game can use it from xUnit, NUnit or a console app, and no client,
     so nothing here can need a window.
   -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RollForward>Major</RollForward>
-    <RootNamespace>sage_engine.Testing</RootNamespace>
+    <RootNamespace>Sage.Testing</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Sage.Engine\Sage.Engine.csproj" />
+    <ProjectReference Include="..\..\src\Sage.Gameplay\Sage.Gameplay.csproj" />
+  </ItemGroup>
+
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 </Project>

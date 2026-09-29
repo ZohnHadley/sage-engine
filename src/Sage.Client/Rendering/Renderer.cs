@@ -5,7 +5,7 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 public struct RenderStats
 {

@@ -5,7 +5,7 @@ using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Client asset loading through the VFS (docs/design/05 §3.6), interim until the AssetServer with
 // scopes and async loading (05 §14 step 2):

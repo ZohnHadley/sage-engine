@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace sage_engine;
-internal class MouseListener
+namespace Sage.Client;
+public class MouseListener
 {
     // Cached once to avoid Enum.GetValues allocating/boxing on every frame.
     private static readonly MouseButton[] AllButtons = (MouseButton[])Enum.GetValues(typeof(MouseButton));
@@ -209,7 +209,7 @@ internal class MouseListener
 }
 
 [Flags]
-internal enum MouseButton
+public enum MouseButton
 {
     LEFT = 1,
     RIGHT = 2,

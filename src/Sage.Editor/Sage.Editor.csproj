@@ -2,6 +2,8 @@
   <!-- Editor/dev tools: ImGui panels, the free-fly dev camera, editor state. -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
+    <SageSimulationOnly>false</SageSimulationOnly>
+    <SageBaseAssembly>true</SageBaseAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,12 +11,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
     <ProjectReference Include="..\..\third_party\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
   </ItemGroup>
 
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
   <ItemGroup>
-    <InternalsVisibleTo Include="Sage.Host" />
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <Using Include="Sage.Client" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 </Project>

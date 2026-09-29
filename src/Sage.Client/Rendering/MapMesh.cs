@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Brush levels, drawn (docs/design/15 §3, TODO F16).
 //

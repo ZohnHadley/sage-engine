@@ -130,7 +130,7 @@ A system was added with `world.AddSystem(new X(...), Phase.Y, before: new[] { ty
 id, constraints that named CLR types from other modules, a constraint naming a system in another phase
 silently ignored, and `RemoveSystem` leaving the system's event readers registered, so its queues were
 held until `ev_maxage` dropped them with a warning naming a system that no longer existed. Now
-(`src/Sage.Engine/ECS/Systems/SystemDeclarations.cs`, `SystemScheduler.cs`, `WorldSystems.cs`):
+(`src/Sage.Simulation/ECS/Systems/SystemDeclarations.cs`, `SystemScheduler.cs`, `WorldSystems.cs`):
 
 ```csharp
 [System("sage.ai.think", Phase.Commands, After = new[] { "sage.character.player_control" })]
@@ -183,7 +183,7 @@ world.AddSystem(new AIThinkSystem(world, records, tasks, actions));   // id, pha
 
 Both came out of the engine review (items 2 and 7).
 
-**`Deferred<T>`** (`src/Sage.Engine/ECS/Deferred.cs`). Touching another entity's components inside a
+**`Deferred<T>`** (`src/Sage.Simulation/ECS/Deferred.cs`). Touching another entity's components inside a
 query throws, so a system that reacts to what its loop found has to collect the work and run it
 afterwards. Three features had grown the same four lines to do it: a `List<T>` field, `Clear()` at
 the top of `Run`, `Add` in the loop, `foreach` after.
@@ -197,7 +197,7 @@ between "runs later" and "runs forever". Melee hits, interactions and deaths all
 It is not the `CommandBuffer`: that defers *component* changes and the world plays it back at the end
 of every phase. This defers a system's own work, with its own data, to a point the system chooses.
 
-**`PhaseContracts`** (`src/Sage.Engine/ECS/Systems/PhaseContracts.cs`). `before:`/`after:` fixes the
+**`PhaseContracts`** (`src/Sage.Simulation/ECS/Systems/PhaseContracts.cs`). `before:`/`after:` fixes the
 order systems run in; what it cannot express is the promise downstream code depends on — "by the end
 of Commands, `PawnIntent` is what this tick will act on". That lived in a comment, and review #48 is
 what it cost: `AIThinkSystem` wrote intent in the AI phase while `CharacterMovementSystem` consumed
@@ -248,7 +248,7 @@ came to read +Z as "front" while everything else read -Z (review #43): don't.
 
 ## 4. Public API sketch
 
-Built in steps 3 and 4 (`src/Sage.Engine/ECS/World.cs`, `ECS/Systems/*`).
+Built in steps 3 and 4 (`src/Sage.Simulation/ECS/World.cs`, `ECS/Systems/*`).
 ```csharp
 public readonly record struct PersistentId(Guid Value) { public static PersistentId New(); }
 public struct Persistent : IComponent { public PersistentId Id; }
@@ -384,7 +384,7 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 | `EntityContextListener` + `ArchetypeView` | **Done (step 3):** typed `ArchetypeQuery` (membership) + `World` notifications |
 | `IComponent` interface | **Done (step 3):** Friflo's `IComponent` on struct components. `IComponentSystem`/`IEngineSystem` replaced by `ISystem` (step 4) |
 | `ComponentTransform` class (`LookAt`/`Billboard` methods) | **Done (step 3):** `Transform` struct (`LocalPosition/LocalRotation/LocalScale`, `Transform.Identity`) + `TransformMath`. `SectorCoord`/`GlobalTransform` + propagation in step 4 |
-| `ComponentMeshRenderer` class → `ModelRenderer` struct (step 3) → **`MeshRenderer { AssetPath Mesh; RecordId Material; byte Layer; }` in Sage.Engine (done, step 6)** | `MeshRenderer` done; and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
+| `ComponentMeshRenderer` class → `ModelRenderer` struct (step 3) → **`MeshRenderer { AssetPath Mesh; RecordId Material; byte Layer; }` in Sage.Simulation (done, step 6)** | `MeshRenderer` done; and `SpriteRenderer { AssetPath Sheet; RecordId Material; … }` (06). A MonoGame type can't live in simulation (01 §3.1). `AssetPath` is an unloaded, interned path (05), so the simulation never loads render data; the client resolves it to GPU resources |
 | (the `TransfomSystem.cs` stub, deleted 2026-09-22) | **Done (step 4):** transform propagation, run by `World` after `PostPhysics` and `Late` |
 | `Sage.Client/Rendering/ModelRendererSystem.cs` | **Done (step 6):** `CameraExtract` + `MeshExtract` + `RenderSystem` (06 §3.11). Every `World` then also had `RenderEnvironment`, `PlayerInput`, `Terrain` (14) and — with the physics module — `PhysicsSpace` (10) resources, next to `ActiveCamera`; since issue #13 only `RenderEnvironment` is core, the rest come from their plugins (§3.4) |
 

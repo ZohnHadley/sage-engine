@@ -3,7 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // The engine's own font (docs/design/13 §3, TODO R12).
 //

@@ -7,9 +7,8 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sage.Generators;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -66,8 +65,8 @@ public class DeclarationTests
     public void EveryOwnerTheEngineDeclaresIsAPluginItShips()
     {
         var generated = new GeneratedRegistrations();
-        generated.Include(typeof(Engine).Assembly);
-        var known = SageApp.SimulationModules().Select(m => PluginInfo.Of(m).Id)
+        foreach (var assembly in EngineAssemblies.Base) generated.Include(assembly);
+        var known = BasePlugins.All().Select(m => PluginInfo.Of(m).Id)
             .Append(RegistrationOwners.Core).Append("sage.client").ToHashSet();
         Assert.All(generated.Owners, owner => Assert.Contains(owner, known));
     }
@@ -78,7 +77,8 @@ public class DeclarationTests
     public void TheGeneratorRegistersEachDeclarationForItsPlugin()
     {
         var (output, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("test.one", "1.0.0")] public sealed class One : IModule { public void Init(ModuleContext ctx) { } }
             [Plugin("test.two", "1.0.0")] public sealed class Two : IModule { public void Init(ModuleContext ctx) { } }
             [Record("widget", Plugin = "test.one")] public sealed class WidgetRecord { }
@@ -96,7 +96,8 @@ public class DeclarationTests
     public void AnAssemblyWithOnePluginOwnsWhatItDeclares()
     {
         var (output, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("mygame", "1.0.0")] public sealed class MyGame : IModule { public void Init(ModuleContext ctx) { } }
             [Record("scene")] public sealed class SceneRecord { }
             """);
@@ -110,7 +111,8 @@ public class DeclarationTests
     public void WithSeveralPluginsADeclarationMustSayWhichOwnsIt()
     {
         var (_, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("test.one", "1.0.0")] public sealed class One : IModule { public void Init(ModuleContext ctx) { } }
             [Plugin("test.two", "1.0.0")] public sealed class Two : IModule { public void Init(ModuleContext ctx) { } }
             [Record("widget")] public sealed class WidgetRecord { }
@@ -131,7 +133,8 @@ public class DeclarationTests
     public void ATypeTheRegistrationCannotCreateIsAnError(string declaration, string why)
     {
         var (_, diagnostics) = Generate($$"""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("mygame", "1.0.0")] public sealed class MyGame : IModule { public void Init(ModuleContext ctx) { } }
             {{declaration}}
             """);
@@ -145,7 +148,8 @@ public class DeclarationTests
     public void TwoDeclarationsOfOneIdAreAnError()
     {
         var (_, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("mygame", "1.0.0")] public sealed class MyGame : IModule { public void Init(ModuleContext ctx) { } }
             [Record("widget")] public sealed class WidgetRecord { }
             [Record("widget")] public sealed class GadgetRecord { }
@@ -170,7 +174,8 @@ public class DeclarationTests
     public void ThePartGeneratorRegistersPartsForTheirPluginAndListsSystems()
     {
         var (output, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("test.one", "1.0.0")] public sealed class One : IModule { public void Init(ModuleContext ctx) { } }
             [Plugin("test.two", "1.0.0")] public sealed class Two : IModule { public void Init(ModuleContext ctx) { } }
             [PrefabPart("glow", Plugin = "test.one")]
@@ -189,7 +194,8 @@ public class DeclarationTests
     public void APartWithoutAnOwnerIsAnError()
     {
         var (_, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [PrefabPart("glow")] public sealed class GlowPart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
             """, new PartGenerator());
 
@@ -209,7 +215,8 @@ public class DeclarationTests
     public void APartOrSystemThatCannotBeOneIsAnError(string declaration, string why)
     {
         var (_, diagnostics) = Generate($$"""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("mygame", "1.0.0")] public sealed class MyGame : IModule { public void Init(ModuleContext ctx) { } }
             {{declaration}}
             """, new PartGenerator());
@@ -223,7 +230,8 @@ public class DeclarationTests
     public void TwoPartsOrTwoSystemsWithOneIdAreAnError()
     {
         var (_, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [Plugin("mygame", "1.0.0")] public sealed class MyGame : IModule { public void Init(ModuleContext ctx) { } }
             [PrefabPart("glow")] public sealed class GlowPart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
             [PrefabPart("Glow")] public sealed class ShinePart : IPrefabPart { public void Apply(in PrefabPartContext ctx) { } }
@@ -242,7 +250,8 @@ public class DeclarationTests
     public void ASystemOrderedAgainstOneInAnotherPhaseIsACompileError()
     {
         var (_, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             [System("mygame.perceive", Phase.AI)] public sealed class Perceive : ISystem { public void Run(in SystemContext ctx) { } }
             [System("mygame.think", Phase.Gameplay, After = new[] { "mygame.perceive" })]
             public sealed class Think : ISystem { public void Run(in SystemContext ctx) { } }
@@ -260,7 +269,7 @@ public class DeclarationTests
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
-            .Append(MetadataReference.CreateFromFile(typeof(Engine).Assembly.Location));
+            .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)));
         var compilation = CSharpCompilation.Create("Declarations",
             new[] { CSharpSyntaxTree.ParseText(source) }, references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

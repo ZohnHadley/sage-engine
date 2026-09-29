@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 // A JSON Schema validator for exactly the draft-07 vocabulary RecordSchemas writes (issue #21), so the
 // tests can prove what VS Code will underline without a NuGet package or a Python module in CI. It

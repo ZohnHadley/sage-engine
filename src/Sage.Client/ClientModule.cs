@@ -3,7 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // What the host offers client modules (ModuleManager.ProvideHostService): the MonoGame Game and its
 // graphics device. Provided before Start, so client modules can create GPU resources there.

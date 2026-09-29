@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using ImGuiNET;
 
-namespace sage_engine;
+namespace Sage.Editor;
 
 // `stat fps` / `stat mem` / `stat frame` overlays (docs/design/02 §4.4, §4.6 and §9). Dev builds only
 // (ImGui dev tools). `stat frame` shows the profiler: ms per phase and per system, averaged.

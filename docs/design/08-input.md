@@ -9,7 +9,7 @@ From hardware to intent:
 
 Also covered: mouse capture, text input routing, rebinding, and command recording for replays.
 
-In `Sage.Client`, except `PlayerCommand` itself, which is simulation data in `Sage.Engine`.
+In `Sage.Client`, except `PlayerCommand` itself, which is simulation data in `Sage.Simulation`.
 
 ## 2. Research basis
 - Quake 3 turns every input into an `event_t` in one queue, which makes sessions replayable (survey §1.1).
@@ -59,7 +59,7 @@ Mouse capture: when `Gameplay` is the top active context, the cursor is hidden a
 One tick's worth of player intent:
 
 ```csharp
-public struct PlayerCommand                  // Sage.Engine (simulation data)
+public struct PlayerCommand                  // Sage.Simulation (simulation data)
 {
     public long Tick;
     public Vector2 Move;                     // normalized, local to view yaw
@@ -81,7 +81,7 @@ Text typed into UI fields (the console, name entry, editor fields) comes from Mo
 
 ### 3.6 As built (migration step 6)
 - **Code:**
-  - `src/Sage.Engine/Input/PlayerCommand.cs`: `ActionRegistry` (on `Engine.Actions`), `ActionId`, `ActionMask`, `PlayerCommand`, `CommandLatch`, the `PlayerInput` world resource, and the `input_map` record;
+  - `src/Sage.Simulation/Input/PlayerCommand.cs`: `ActionRegistry` (on `Engine.Actions`), `ActionId`, `ActionMask`, `PlayerCommand`, `CommandLatch`, the `PlayerInput` world resource, and the `input_map` record;
   - `src/Sage.Client/Input/`: `InputDevices` (keyboard, mouse, the new `GamepadListener`) and `InputActions`.
 - **Actions** are registered by modules in `Init`, and where they are registered follows the layer: the simulation registers them with the feature that uses them — `CharacterModule` owns `Move`/`Jump`/`Run`/`Crouch`, `CombatModule` owns `Attack`, `ItemsModule` owns `Use`, `AbilitiesModule` owns `Cast`, and `ClientModule` owns the screen ones (including `Spellmaker`). Screens read the pointer from the device layer directly, as the editor camera does — a cursor is not an action (13 "As built (the mouse)") (`MenuUp`/`MenuDown`/`MenuConfirm`/`MenuAlternate`/`MenuBack`, `Inventory`, `Spellbook`) because screens are the client's (13 "As built (screens)") — so a headless server has the same ids; `ClientModule` registers the client's own `Look`, `Menu` and `ToggleConsole`. The maps for all of them are in `engine_content/data/input.json` (`sage:console`, `sage:gameplay`).
 - **Contexts:** evaluated top-down with consumption. Console (while open) consumes the whole keyboard; UI takes whatever ImGui captures (its flags from the previous frame).
@@ -121,7 +121,7 @@ Three things that are not a press, each of which produced one anyway:
   every time its cooldown ends.
 
 **The seam either side of focus is where the awkward cases are**, so it is a decision and lives in the
-engine (`Sage.Engine/Input/InputGating.cs`, `FocusPolicy` and `InputEdges`) where the headless tests can
+engine (`Sage.Simulation/Input/InputGating.cs`, `FocusPolicy` and `InputEdges`) where the headless tests can
 reach it — the devices themselves are in `Sage.Client` and the test project cannot see them by design:
 
 | Frame | What happens |
@@ -234,7 +234,7 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 ### As built (scripted input, 2026-09-23)
 
 - **Code:** `src/Sage.Client/Input/InputActions.cs` (the `Scripted` list and the `in_*` commands),
-  `src/Sage.Engine/Core/Console/CVarRegistry.cs` (`wait` and the deferred statement queue).
+  `src/Sage.Core/Console/CVarRegistry.cs` (`wait` and the deferred statement queue).
 - **Injected after the bindings, not instead of them.** A scripted action is written into the same
   per-frame action state a device writes, so it goes through binding → `PlayerCommand` → `PawnIntent`
   → the character controller like a keyboard does. That is the point: an automated check that takes

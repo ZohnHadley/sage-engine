@@ -102,9 +102,9 @@ Sorting by material first minimises effect and texture switches; depth last give
 
 ### 3.10 Debug drawing
 
-**Built (2026-09-23, TODO F5).** `DebugDraw` is a **world resource** (`src/Sage.Engine/Rendering/DebugDraw.cs`), not the static API sketched below: the engine has no static singletons (01 §4, 03 §3.4), and a per-world queue is what lets an editor's edit world and play world draw different things. Any simulation system can call it — `Line`, `Ray`, `Arrow`, `Cross`, `Box`, `Sphere`, `Capsule`, `Circle`, `Cone` — with a colour and an optional duration in seconds.
+**Built (2026-09-23, TODO F5).** `DebugDraw` is a **world resource** (`src/Sage.Simulation/Rendering/DebugDraw.cs`), not the static API sketched below: the engine has no static singletons (01 §4, 03 §3.4), and a per-world queue is what lets an editor's edit world and play world draw different things. Any simulation system can call it — `Line`, `Ray`, `Arrow`, `Cross`, `Box`, `Sphere`, `Capsule`, `Circle`, `Cone` — with a colour and an optional duration in seconds.
 
-- **Everything becomes line segments in the engine**, so the client stays a line list and nothing in `Sage.Engine` needs a graphics type. A capsule is two rings, four sides and four arcs; a sphere is three rings.
+- **Everything becomes line segments in the engine**, so the client stays a line list and nothing in `Sage.Simulation` needs a graphics type. A capsule is two rings, four sides and four arcs; a sphere is three rings.
 - **Runtime-gated, not compiled out.** Nothing is recorded while `Enabled` is false, which the client sets from `r_debugdraw` each frame, so a Shipping build pays one bool test per call and a Development build (optimised, the one you profile in) still has the tool. `[Conditional("SAGE_DEV")]` would have stripped the argument evaluation too, but it also strips it from Development.
 - **Momentary shapes belong to the tick that drew them.** `World.RunFixed` clears them at the start of every tick, so a frame draws the newest state rather than every tick since it last looked — at 60 Hz against 50 fps that difference is a few hundred lines against sixteen thousand. A duration keeps a shape alive across frames, which is how you see something that happened in one tick (a swing that missed).
 - **Depth is a cvar, not a per-shape flag**: `r_debugdraw_xray 1` draws through walls, which is what you want when the thing you are chasing is behind something. Shapes are drawn in pass 5, after the world and under the UI, and near-plane clipped at extract (an unclipped line with an endpoint behind the camera draws as a streak across the whole screen).
@@ -112,12 +112,12 @@ Sorting by material first minimises effect and texture switches; depth last give
 - **Not built:** `Text3D` (there is no runtime text yet, 13), per-shape depth flags, and the visual logger (02 §12).
 
 ### 3.11 As built (migration step 6)
-- **Code:** `src/Sage.Client/Rendering/` (`RenderSnapshot.cs`, `RenderSystems.cs`, `Renderer.cs`, `MaterialCache.cs`, `SpriteBatcher.cs` — expands `SpriteInstance`s into quads in a `DynamicVertexBuffer`, §3.7 — and `TerrainMesh.cs` — `TerrainMeshSystem`, builds a sector's chunk meshes the frame it appears, 14 §3); components and the environment in `src/Sage.Engine/Rendering/RenderData.cs`.
+- **Code:** `src/Sage.Client/Rendering/` (`RenderSnapshot.cs`, `RenderSystems.cs`, `Renderer.cs`, `MaterialCache.cs`, `SpriteBatcher.cs` — expands `SpriteInstance`s into quads in a `DynamicVertexBuffer`, §3.7 — and `TerrainMesh.cs` — `TerrainMeshSystem`, builds a sector's chunk meshes the frame it appears, 14 §3); components and the environment in `src/Sage.Simulation/Rendering/RenderData.cs`.
 - **Extract → snapshot → Render:** `ClientModule` installs a `RenderSnapshot` resource in every world, plus `CameraExtract` and `MeshExtract` (Extract phase, in that order) and `RenderSystem` (Render phase). Only Extract reads components; the `Renderer` draws only from the snapshot.
   - `MeshExtract`: `GlobalTransform` interpolated with alpha, camera-relative matrices, frustum culling per mesh part (bounding sphere), and sort keys (§3.5).
   - The Render phase clears to the environment's colour (the v1 sky), sorts, and draws opaque → alpha-tested → transparent in key order. Materials switch only when the material id changes.
 - **Deviations and gaps:**
-  - **Camera:** there's no `Camera` component yet. `CameraExtract` reads the world's `ActiveCamera` resource (position, rotation, fov, near 0.1, far 1000). A camera rig fills it when one is driving: `FirstPersonCameraSystem` (`src/Sage.Engine/Gameplay/CharacterController.cs`, FrameUpdate) puts it in the local pawn's head and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when no rig did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the rig hands the camera back when it's set again (16 §3.2).
+  - **Camera:** there's no `Camera` component yet. `CameraExtract` reads the world's `ActiveCamera` resource (position, rotation, fov, near 0.1, far 1000). A camera rig fills it when one is driving: `FirstPersonCameraSystem` (`src/Sage.Physics3D/Character/CharacterController.cs`, FrameUpdate) puts it in the local pawn's head and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when no rig did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the rig hands the camera back when it's set again (16 §3.2).
   - **Snapshot:** one view (`RenderSnapshot.View`), not a list.
   - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
   - **Tint:** always 1 (no per-entity tint component yet).
@@ -138,7 +138,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 ### 3.12 Particles (F39)
 A particle is a billboard with a tint and a short life, so it is drawn by §3.8's path and simulated by
 nobody else: `particle` records say how many, how fast, how long, and what colour they fade to; the pool
-is flat arrays in `Sage.Engine` (testable without a device); the client turns live particles into
+is flat arrays in `Sage.Simulation` (testable without a device); the client turns live particles into
 `SpriteInstance`s in Extract. Two ceilings — per effect and across the world — and both are counted.
 Emission comes from the events that already exist (a cue, a hit) or a `ParticleEmitter` component. See
 "As built (particles and damage numbers)".
@@ -184,7 +184,7 @@ public sealed class RenderSnapshot
 public struct RenderItem     { public int Mesh; public int Part; public int Material; public Matrix World; public Vector4 Tint; public ulong SortKey; }
 public struct SpriteInstance { public Vector3 Center; public Vector2 Size; public Vector2 Pivot; public Vector4 Uv; public Vector4 Tint; public int Material; public int Texture; public BillboardMode Mode; public ulong SortKey; }
 
-// Components (simulation data, in Sage.Engine; no MonoGame types)
+// Components (simulation data, in Sage.Simulation; no MonoGame types)
 public struct MeshRenderer   { public AssetPath Mesh; public MeshHandle Handle; public RecordId Material; public byte Layer; }
 public struct SpriteRenderer { public RecordId Sheet; public RecordId Material; public Vector2 Size; public BillboardMode Mode; public byte Layer; }
 public struct Camera         { public float FovY; public float Near; public float Far; public bool Active; }   // not built: ActiveCamera is a resource, not a component (§3.11)
@@ -194,7 +194,7 @@ public struct PointLight     { public Vector3 Colour; public float Range; public
 public readonly record struct LightSample(Vector3 Position, Vector3 Colour, float Range) { public float InfluenceAt(Vector3 at); }
 public static class LightRules { public const int PerObject = 4; public static int Nearest(ReadOnlySpan<LightSample> lights, Vector3 at, Span<LightSample> result); }
 
-// In Sage.Engine (simulation code calls it too), so System.Numerics and Sage types only. A world
+// In Sage.Simulation (simulation code calls it too), so System.Numerics and Sage types only. A world
 // resource, reached with world.Debug() — see §3.10 for why it is not static.
 public sealed class DebugDraw
 {
@@ -210,7 +210,7 @@ public sealed class DebugDraw
 }
 ```
 
-Positions passed to `DebugDraw` are in origin space (the same space as `GlobalTransform`). `Material`/`Mesh`/`Texture` above are plain `int` ids — `MaterialCache`'s and the `Renderer`'s own compact indices — not wrapper structs. `RenderItem`, `SpriteInstance` and `Renderer` are client types and may use MonoGame types. The components (`MeshRenderer`, `SpriteRenderer`, `Camera`, `PointLight`) and `DebugDraw` live in `Sage.Engine`, so they use `System.Numerics` and the Sage types, not MonoGame types.
+Positions passed to `DebugDraw` are in origin space (the same space as `GlobalTransform`). `Material`/`Mesh`/`Texture` above are plain `int` ids — `MaterialCache`'s and the `Renderer`'s own compact indices — not wrapper structs. `RenderItem`, `SpriteInstance` and `Renderer` are client types and may use MonoGame types. The components (`MeshRenderer`, `SpriteRenderer`, `Camera`, `PointLight`) and `DebugDraw` live in `Sage.Simulation`, so they use `System.Numerics` and the Sage types, not MonoGame types.
 
 **Still design-only** (everything above this line is shipped): `RenderView` as a list (`Views`, for split screen, mirrors, shadow views — v1 has one `RenderSnapshot.View`); `LightSet` as a per-view struct (the sun and ambient live in the snapshot's `EnvironmentParams`, and `RenderSnapshot.Lights` is a flat `PooledList<LightSample>`, §3.9); the `Camera` component (the camera is the `ActiveCamera` resource today, §3.11); `Renderer.UpdateMesh` (only `CreateMesh`/`CreateBox`/`DestroyMesh` exist); `SpriteInstance.FlipU` as a field (the flip is folded into `Uv` at extract instead); per-object tint beyond the always-1 `RenderItem.Tint`/`SpriteInstance.Tint`.
 
@@ -264,7 +264,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `src/Sage.Client/Rendering/ModelRendererSystem.cs` + `ModelRenderer` + the `RenderView` resource (BasicEffect, TODO #25) | **Done (step 6):** `MeshRenderer` (Sage.Engine) + `MeshExtract` + the `Renderer`'s passes with material effects (07); the old files are deleted |
+| `src/Sage.Client/Rendering/ModelRendererSystem.cs` + `ModelRenderer` + the `RenderView` resource (BasicEffect, TODO #25) | **Done (step 6):** `MeshRenderer` (Sage.Simulation) + `MeshExtract` + the `Renderer`'s passes with material effects (07); the old files are deleted |
 | Any procedural geometry (terrain chunks) | Built with `Renderer.CreateMesh`, wound **clockwise seen from the front**: MonoGame's default rasterizer culls counter-clockwise faces, so the other winding renders nothing |
 | `Game1.Draw`: sets `DepthStencilState.Default`, `RasterizerState.CullCounterClockwise`, clears to `DarkOliveGreen` | **Done (step 6):** the Renderer clears to `RenderEnvironment.ClearColor` (the same green by default); render state comes from materials |
 | `DevCamera`: `projectionMatrix`/`viewMatrix`, 45° FOV, near 0.01 / far 1000 | **Step 6:** `DevCamera` only moves a position and yaw/pitch; `CameraExtract` builds the matrices from `ActiveCamera` (near 0.1). A `Camera` component and rigs come with the pawn (16) |
@@ -295,7 +295,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 ### As built (particles and damage numbers, 2026-09-24 — F39)
 Sparks, embers, smoke, blood, and the numbers over a fight.
 
-- **Code:** `src/Sage.Engine/Rendering/Particles.cs` (`particle` records, the `ParticleEmitter`
+- **Code:** `src/Sage.Simulation/Rendering/Particles.cs` (`particle` records, the `ParticleEmitter`
   component, the `Particles` pool) and `FloatingText.cs` (`FloatingTexts`, `DamageNumbers`); the client
   half is `src/Sage.Client/Rendering/ParticleSystems.cs` (`ParticleSystem`, `ParticleExtract`,
   `FloatingTextSystem`). Tests: `tests/Sage.Tests/Gameplay/ParticleTests.cs`.
@@ -335,7 +335,7 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   stay (blood on the floor), and GPU simulation.
 
 ### As built (weather, 2026-09-24 — F40)
-- **Code:** `src/Sage.Engine/Rendering/Weather.cs` (`weather` records, the `Weather` state, `WeatherRules`)
+- **Code:** `src/Sage.Simulation/Rendering/Weather.cs` (`weather` records, the `Weather` state, `WeatherRules`)
   and `src/Sage.Client/Rendering/WeatherSystem.cs`. Tests: `tests/Sage.Tests/Gameplay/WeatherTests.cs`.
 - **The numbers are engine-side and tested**: the blend, the fog and sun it implies, the rate and wind at
   any point through a change, and which of two kinds of precipitation is falling. What the client does
@@ -371,7 +371,7 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
 Interiors that look like interiors: F16 gave the engine rooms with roofs on them, and a roof is what a
 sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box until this.
 
-- **Code:** `src/Sage.Engine/Rendering/Lights.cs` (the `PointLight` component, `LightSample`,
+- **Code:** `src/Sage.Simulation/Rendering/Lights.cs` (the `PointLight` component, `LightSample`,
   `LightRules`), `LightExtract` in `src/Sage.Client/Rendering/RenderSystems.cs`,
   `EffectBinding.SetLights` in `MaterialCache.cs`, and `PointLights()` in
   `engine_content/shaders/common.fxh`. Tests: `tests/Sage.Tests/Gameplay/LightTests.cs`.

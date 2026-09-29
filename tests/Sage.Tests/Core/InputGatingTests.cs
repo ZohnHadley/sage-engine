@@ -1,7 +1,6 @@
 #nullable enable
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -10,7 +9,7 @@ using Assert = Xunit.Assert;
 // These are the three ways the player swung with nobody pressing anything: a window that did not have
 // focus, a button a screen had already swallowed, and an analogue trigger resting on its threshold. The
 // devices live in `Sage.Client` and cannot be tested here — which is exactly why the *decisions* are in
-// `Sage.Engine`, where this file can see them.
+// `Sage.Simulation`, where this file can see them.
 public class InputGatingTests
 {
     // Alt-tab away mid-stride and the player must stop walking; alt-tab back with the key still down and

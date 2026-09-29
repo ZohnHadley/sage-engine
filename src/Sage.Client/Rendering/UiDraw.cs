@@ -3,7 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Immediate-mode screen-space drawing (docs/design/13 §3): rectangles, text and images, in pixels,
 // queued by anything that runs in a Frame phase and drawn once in Overlay.

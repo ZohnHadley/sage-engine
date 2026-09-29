@@ -12,7 +12,7 @@ How parts of the engine and game tell each other that something happened, withou
 
 ### As built (game events, 2026-09-23 — R13)
 
-- **Code:** `src/Sage.Engine/ECS/Events/GameEvents.cs` — `GameEvents` (the world's bus, `world.Events`),
+- **Code:** `src/Sage.Simulation/ECS/Events/GameEvents.cs` — `GameEvents` (the world's bus, `world.Events`),
   `EventQueue<T>`, `EventReader<T>` with its cursor, `EventIterator<T>`, and the `[GameEvent]` marker.
   Tests in `tests/Sage.Tests/Ecs/GameEventTests.cs`; `EventProbe<T>` is the test-side reader.
 - **What it replaced.** Four features had each grown their own queue with its own `Clear()` and its

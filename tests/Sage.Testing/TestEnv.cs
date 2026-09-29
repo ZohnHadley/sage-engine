@@ -2,7 +2,7 @@
 using System;
 using System.IO;
 
-namespace sage_engine.Testing;
+namespace Sage.Testing;
 
 // UserPaths and the log are process-wide, so tests share one temporary user folder and capture log
 // output with a sink (CaptureSink).

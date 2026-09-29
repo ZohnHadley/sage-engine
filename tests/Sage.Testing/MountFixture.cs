@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace sage_engine.Testing;
+namespace Sage.Testing;
 
 // Content folders a test writes on the spot and mounts (docs/design/05 §3.1): a mod, a game, the
 // engine's own data, whichever the test is about. Its own VFS for tests of the VFS itself; hand it to

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The kernel (REDESIGN §3.1, issue #24): cvars and the console, logging, diagnostics, the virtual
+    file system, records, plugin identity and versions, and the declaration attributes the metadata
+    table reads. No ECS, no physics, no MonoGame: nothing here knows what a World is.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <SageBaseAssembly>true</SageBaseAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sage.Tests" />
+  </ItemGroup>
+</Project>
