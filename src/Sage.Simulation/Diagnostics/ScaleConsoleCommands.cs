@@ -15,7 +15,7 @@ namespace Sage.Simulation;
 // `scale_report` is the more important half. A profiler that nobody reads is a profiler that is
 // wrong — this prints one table, in run order, with the phases that matter and the counts beside
 // them, so a run of the game produces a record rather than an impression.
-public static class ScaleCommands
+public static class ScaleConsoleCommands
 {
     public static void Register(CVarRegistry cvars, Engine engine)
     {

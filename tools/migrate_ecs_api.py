@@ -19,6 +19,8 @@ What it does (every rule is a plain regex over the text; see CS_RULES and PROJEC
     `e.TryGetComponent<EntityName>(out var n) ? n.value : x` -> `e.Name ?? x`,
     `e.GetComponent<EntityName>().value` and `e.Name.value` -> `e.Name`;
   - an entity component's `.Type.Type` (Friflo's ComponentType) -> `.Type` (a System.Type);
+  - the console registrars WorldCommands -> WorldConsoleCommands and ScaleCommands ->
+    ScaleConsoleCommands (their files are renamed with `git mv` too);
   - in .csproj / .props: drops the `Friflo.Engine.ECS` global using and the `Transform` alias (with its
     comment), which only existed to beat Friflo's own Transform.
 
@@ -68,6 +70,9 @@ CS_RULES = [
     (r"\.Name is \{ \} (\w+) \? \1 : ", ".Name ?? "),
     # one of an entity's components: Friflo's ComponentType -> System.Type
     (r"\b(component|c|entry)\.Type\.Type\b", r"\1.Type"),
+    # the console registrars (ConsoleCommand is the console's; EntityCommands the ECS's)
+    (r"\bWorldCommands\b", "WorldConsoleCommands"),
+    (r"\bScaleCommands\b", "ScaleConsoleCommands"),
 ]
 
 PROJECT_RULES = [
@@ -76,7 +81,10 @@ PROJECT_RULES = [
     (r"^[ \t]*<Using Include=\"Sage\.Simulation\.Transform\" Alias=\"Transform\" />[ \t]*\r?\n", ""),
 ]
 
-FILE_RENAMES = []
+FILE_RENAMES = [
+    ("src/Sage.Simulation/ECS/WorldCommands.cs", "src/Sage.Simulation/ECS/WorldConsoleCommands.cs"),
+    ("src/Sage.Simulation/Diagnostics/ScaleCommands.cs", "src/Sage.Simulation/Diagnostics/ScaleConsoleCommands.cs"),
+]
 
 CS_COMPILED = [(re.compile(p, re.MULTILINE), r) for p, r in CS_RULES]
 PROJECT_COMPILED = [(re.compile(p, re.MULTILINE), r) for p, r in PROJECT_RULES]
