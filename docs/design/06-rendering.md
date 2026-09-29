@@ -121,6 +121,9 @@ value type with its own matrices, frustum and cull state, target, viewport and r
   corner. `r_stats` prints the views, how many went into targets, and the pool's size. CI's Linux smoke
   run runs both modes. Under Xvfb the shaders aren't compiled, so that proves the code path and the
   clears, not the picture.
+- **The editor viewport** (`ed_viewport 1`, dev builds, #81) is the first target code declares: a camera
+  entity draws the editor's free camera into `editor`, and an ImGui window shows the texture
+  ("As built (the editor's cameras)").
 - **Allocations:** none added. Measured with `mem_warn_bytes 1` and `ui_entities 0` in the Sandbox, the
   host allocates 152 B/frame on `main` and 112–152 B/frame with `r_testview` 0, 1 or 2.
 
@@ -183,7 +186,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - `MeshExtract`: `GlobalTransform` interpolated with alpha, camera-relative matrices, frustum culling per mesh part (bounding sphere), and sort keys (§3.5).
   - The Render phase clears to the environment's colour (the v1 sky), sorts, and draws opaque → alpha-tested → transparent in key order. Materials switch only when the material id changes.
 - **Deviations and gaps:**
-  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), and since #77 `CameraExtract` draws every view the world's `CameraViews` holds (§3.4a); `ActiveCamera` is the `CameraDirector`'s mirror of the screen view, and the fallback for a world without `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. Since #78 the player's view is a camera entity too ("As built (camera rigs)" below): its `FirstPersonRig` puts it in the local pawn's head, and the director mirrors it into `ActiveCamera` and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when nothing did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the director hands the screen back to the camera entity when it's set again (16 §3.2).
+  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), and since #77 `CameraExtract` draws every view the world's `CameraViews` holds (§3.4a); `ActiveCamera` is the `CameraDirector`'s mirror of the screen view, and the fallback for a world without `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. Since #78 the player's view is a camera entity too ("As built (camera rigs)" below): its `FirstPersonRig` puts it in the local pawn's head, and the director mirrors it into `ActiveCamera`. Since #81 so is the editor's free camera: a `DebugCamera` that draws only where no other camera does, and over every camera while `cam_free` is on; the host no longer writes `ActiveCamera`, and `ActiveCamera.RigEnabled`/`DrivenByRig` are inert ("As built (the editor's cameras)" below, 16 §3.2).
   - **Snapshot:** one view (`RenderSnapshot.View`) at first; a list of views since issue #77 (§3.4a).
   - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
   - **Tint:** always 1 (no per-entity tint component yet).
@@ -531,13 +534,12 @@ renderer read `ActiveCamera` until #77 made it draw every view in `CameraViews` 
   and a frame allocates nothing. (test: ViewsAreOnePerTarget_OffScreenFirstByName_TheScreenLast)
   (test: ResolvingCamerasEveryFrameAllocatesNothing)
 - **`ActiveCamera` stays, as a mirror (decision D1).** Once a camera entity draws to the screen, the
-  director copies its view into `ActiveCamera` and sets `DrivenByRig`, so everything that reads it — audio,
-  weather, particles, the HUD, `CameraExtract` — follows. (test: ActiveCameraMirrorsTheMainView_AndSaysSomethingDroveIt)
+  director copies its view into `ActiveCamera`, so everything that reads it follows.
+  (test: ActiveCameraMirrorsTheMainView)
   With **no** camera entity the director leaves it exactly as it was and makes the screen view from it,
   measured against a world whose director is switched off. (test: WithNoCameraEntity_ActiveCameraIsLeftExactlyAsItWas)
-  `cam_free` still wins the screen over any camera entity. (test: CamFree_GivesTheScreenToTheFreeCamera_AndLeavesActiveCameraToIt)
-  `ActiveCamera.RigEnabled` and `DrivenByRig` are `[Obsolete]` for games; the engine still uses them,
-  under scoped pragmas, until the first-person rig (#78) and the editor camera (#81) are camera entities.
+  Until #81 `cam_free` was a special case here, and `ActiveCamera.RigEnabled`/`DrivenByRig` its protocol
+  with the host; both are gone ("As built (the editor's cameras)").
 - **Order, and a deviation from the issue.** The issue asked for the director *last* in FrameUpdate.
   It runs after the legacy first-person rig (`After = "?sage.character.camera"`) and otherwise first —
   the engine adds it before any plugin's systems — because the FrameUpdate systems that read
@@ -553,7 +555,7 @@ renderer read `ActiveCamera` until #77 made it draw every view in `CameraViews` 
 - **Since #77** every view is drawn, into its target and viewport, with its own projection (an
   orthographic screen camera draws orthographic), §3.4a.
 - **Not yet:** rigs as camera entities, the first-person one moved over (#78), third-person (#79);
-  scripted cuts from entity I/O (#80, done: "As built (scripted cameras from entity I/O)"); the editor camera as an entity (#81). One view per target means
+  scripted cuts from entity I/O (#80, done: "As built (scripted cameras from entity I/O)"); the editor camera as an entity (#81, done: "As built (the editor's cameras)"). One view per target means
   split screen is two targets for now (the renderer itself draws several views into one target; the
   director resolves one). Pixel-perfect ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work,
   not this.
@@ -591,9 +593,9 @@ toggle (#79).
   `CameraViews` after the director: the engine's crosshair and the Sandbox's viewmodel ask it instead of
   the obsolete `ActiveCamera.DrivenByRig`, so neither shows from a fixed camera, a cutscene or `cam_free`.
   (test: ACameraOfHigherPriorityTakesTheScreen_AndTheRigKindSaysSo)
-- **`cam_free`** is unchanged: the director's special case gives the screen to the free camera and back.
-  `RigEnabled`/`DrivenByRig` remain its protocol with the host until the editor camera is an entity (#81).
-  (test: CamFree_FliesOverThePlayersCamera_AndGivesTheScreenBack)
+- **`cam_free`** flies the editor's free camera over the player's and gives the screen back; since #81
+  that camera is a `DebugCamera` and the director has no special case for it ("As built (the editor's
+  cameras)"). (test: TheEditorsFreeCamera_FliesOverThePlayersCamera_AndGivesTheScreenBack)
 - **Allocation:** a frame with the player's camera in its head allocates nothing.
   (test: ThePlayersCameraAllocatesNothingPerFrame)
 - **The third-person rig** (`sage:third_person_rig`, the `third_person_rig` part; system
@@ -633,9 +635,10 @@ toggle (#79).
   sprite, with no animation (a clip with a `hit` event would time the player's swings).
 - **The crosshair** shows for either rig (`MainViewRig()` is `FirstPerson` or `ThirdPerson`): the
   over-the-shoulder camera looks along the aim. The Sandbox's viewmodel (hands) is first person only.
-- **The director** now clears `ActiveCamera.DrivenByRig` when the last camera entity lets go of the screen
-  (it used to stay set, and the free camera never got the view back).
-  (test: WhenTheLastCameraEntityLetsGo_DrivenByRigIsCleared)
+- **The director** cleared `ActiveCamera.DrivenByRig` when the last camera entity let go of the screen
+  (it used to stay set, and the free camera never got the view back). Since #81 nothing reads the flag:
+  a camera that lets go leaves `ActiveCamera` where it was, and the screen view is made from it again.
+  (test: WhenTheLastCameraEntityLetsGo_ActiveCameraStaysWhereItWas)
 - **Allocation:** the third-person rig and its probe, sweeping every frame against a wall, allocate
   nothing. (test: TheThirdPersonCameraAndItsProbeAllocateNothingPerFrame)
 - **Deviations.** The director no longer orders itself after the legacy rig (`?sage.character.camera` is
@@ -648,7 +651,7 @@ toggle (#79).
   pawn holds is drawn unless hidden the same way.
 - **Not yet:** a camera that turns the pawn toward where it looks in third person (strafe-only today, as
   in first person); orbiting the pawn freely while it stands (the view angles are the pawn's); a
-  third-person crosshair that corrects for the shoulder's parallax; the editor camera as an entity (#81).
+  third-person crosshair that corrects for the shoulder's parallax.
 
 ### As built (scripted cameras from entity I/O, 2026-09-29 — #80)
 Phase 4a's exit criterion "a scripted camera cut from I/O": an HL1 scene cuts to a placed camera when a
@@ -712,10 +715,73 @@ trigger fires, and back.
 - **Zero allocation per tick** with holds running and the player locked. (test: CountingDownAndLockingAllocateNothing)
 - **Not yet:** blends (4b); a camera that looks *at* something (a target to track) — a scripted camera
   looks where it is placed, or where a mover or a rig takes it; letterboxing or a HUD hidden during a cut;
-  the editor showing a camera's frustum and wiring (#81). A wire's delay fired from outside the dispatch
+  the editor showing a camera's frustum and wiring (phase 10's editor host). A wire's delay fired from outside the dispatch
   (a trigger's `OnStartTouch`, in PostPhysics) is counted from the previous tick's I/O clock, so a
   `CameraOff` wired two seconds behind a `CameraOn` from the same trigger arrives after 119 ticks, not 120
   (entity I/O's, older than this; a hold is exact).
+
+### As built (the editor's cameras, and phase 4a's exit, 2026-09-29 — #81)
+The last piece of phase 4a: the host and the editor move onto camera views, the editor gets a viewport
+that is a render target, and the Sandbox shows both exit criteria.
+
+- **The free camera is a camera entity.** `DebugCamera` (`src/Sage.Simulation/Camera/DebugCamera.cs`,
+  SAGE0123) is a `Camera` plus a `CameraPose` that a tool writes by hand, before the frame's FrameUpdate:
+  `DebugCamera.Spawn(world, name, target)` and `DebugCamera.Drive(world, camera, position, rotation,
+  overriding)`. Overriding, it is at `DebugCamera.OverridePriority` (`int.MaxValue`), above every camera a
+  game places, a scripted cut included; otherwise at `IdlePriority`, below every camera and above only
+  the director's `ActiveCamera` fallback. `DevTools` (`src/Sage.Editor/DevTools.cs`) spawns the
+  "editor free camera", drives it from `DevCamera` every frame and overrides with `cam_free`.
+  (test: ADebugCameraOverridesTheScreen_OverEveryCamera_AndGivesItBack)
+  (test: TheEditorsFreeCamera_FliesOverThePlayersCamera_AndGivesTheScreenBack)
+  Idle, it has the screen only where nothing else draws: a world with no player, where the free camera
+  flew before #81 too. (test: AnIdleDebugCamera_DrawsOnlyWhereNothingElseDoes)
+- **No special case in the director.** It no longer reads `ActiveCamera.RigEnabled` or writes
+  `DrivenByRig`, and the host no longer writes `ActiveCamera` (it had a Shipping branch that reset
+  `RigEnabled` every frame; it is gone). Every `#pragma warning disable CS0618` naming #78 or #81 is
+  removed. The director mirrors the free camera into `ActiveCamera` like any camera, so audio and gameplay
+  follow it as before; it is not a rig, so `MainViewRig()` is `None` (no crosshair, no hands, and the
+  player's body drawn). Turned on, `cam_free` starts from the view that had the screen rather than from
+  wherever the free camera was left (unless `cam_set` just placed it, or the viewport has been showing it);
+  hidden, the free camera no longer follows the player's WASD.
+- **Decision: `ActiveCamera.RigEnabled` and `DrivenByRig` stay, `[Obsolete]` and inert.** They shipped
+  in 0.1.0 (`PublicAPI.Shipped.txt`) without the attribute, which #76 added after that release: a 0.1
+  game that sets them should get a warning from the next release, not an error. Nothing in the engine
+  reads or writes them now, and their messages say so. They are removed (`*REMOVED*` lines) in the minor
+  after the one that first ships them obsolete (RELEASING.md's 0.x rule: a minor may break).
+- **What follows the main view.** `world.TryGetMainView(out CameraView)` (`MainViewExtensions`, SAGE0123)
+  is the screen's view — `CameraViews.Main` once the director has run, else one made from `ActiveCamera`,
+  else false. (test: TryGetMainView_IsTheScreensView_ElseActiveCamera_ElseNothing) The audio listener,
+  the weather around the eye, `fx_play` and `ent_spawn` ask it instead of `ActiveCamera`, which stays the
+  mirror (decision D1) for gameplay that reads it in the fixed tick. The HUD already asked
+  `MainViewRig()` (#78); the Sandbox's HUD hides its Use prompt and its view hint while a cut or the free
+  camera has the screen.
+- **The editor viewport** (`ed_viewport 1`, or View → Viewport): a second debug camera, the "editor
+  viewport camera", draws the free camera's view into the render target `editor`
+  (`Renderer.DeclareTarget("editor", 480, 270)`) and an ImGui window shows it through the ImGui renderer's
+  texture binding (`BindTexture`, rebound when the target is remade). Click it, then WASD and right-drag
+  fly the free camera there while the game goes on in the player's view. It is the prerequisite REDESIGN
+  §4.6's editor host builds on: an editor's view of a world is a camera entity and a named target, not a
+  renderer path of its own. Dev builds only; the host reaches the renderer through `ClientModule.Renderer`.
+  The View menu's items are cvars, like every menu item (`cam_free`, `ed_viewport`).
+- **The window's size** is `vid_width`/`vid_height` (Archive; 800×410 as before), applied when they change,
+  so `+vid_width 1600 +vid_height 900` on the command line or in `config.cfg` sizes it.
+- **Phase 4a's exit, in the Sandbox.** *1P↔3P mid-fight:* V is on the HUD (top right, "V third person" /
+  "V first person", while the player's rig has the screen) and in the README's controls; switching mid-swing
+  changes nothing about the fight. (test: ToggleView_MidMeleeInTheSandbox_SwitchesWithinAFrame_AndCombatIsUnaffected)
+  *A scripted cut from I/O:* the scene places a `hut_path` trigger in front of the hut's door and a
+  `sage:scripted_camera` named `hut_cam` beside the path; the trigger's `OnStartTouch` wire turns the camera
+  on for three seconds, once, and the camera's `OnCameraOn` says what it shows. The trigger is on a
+  `player_zone` physics layer the Sandbox adds (a `physics_layers` patch with `layers+`) that ignores every
+  layer but the player's, so the creatures wandering the scene never fire it — HL1's `trigger_once`.
+  (test: TheSandboxCutsToTheHut_WhenThePlayerWalksUpThePath_AndBack) CI smoke-runs the viewport,
+  `cam_free` and the cut in the real host.
+- **SAGE0123 stays experimental (decision).** The camera API has no consumer outside 4a yet: 4b's tweens
+  will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host
+  will own the viewport. Its shape should settle against those, not before; the id leaves when 4b and 4c
+  have used it.
+- **Not yet:** blends (4b); an editor viewport that picks, shows camera frustums and wiring, or looks at
+  another world (the edit world is phase 10's); the free camera on Editor-context actions (08 §14 step 4);
+  resizing the viewport with its window (it is a fixed 480×270 target, scaled).
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

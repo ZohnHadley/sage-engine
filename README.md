@@ -49,7 +49,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 851 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 854 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -79,7 +79,8 @@ dotnet new sage-game -n MyGame -o ~/games/MyGame --feed ~/sage-feed && cd ~/game
 ```
 
 You should get a hilly field, some creatures, some crates falling through a trigger, a creature that
-notices you and comes over to hit you, and a firebug that stands off and throws bolts of fire at you. The HUD shows your health, what is in your hands, what
+notices you and comes over to hit you, and a firebug that stands off and throws bolts of fire at you.
+Walk up the path to the hut on the hill and a scripted camera shows it to you for three seconds. The HUD shows your health, what is in your hands, what
 pressing `E` would pick up, and what just hit you.
 
 ### Controls
@@ -109,6 +110,9 @@ searches both. Some worth knowing:
 | `sv_cheats 1`, then `god`, `hurt 30` | invulnerability; run damage through the pipeline by hand |
 | `r_stats`, `phys_stats`, `mem`, `stat` | draw calls and batches, bodies and step time, allocations |
 | `cam_free 1`, `cam_set <x> <y> <z> [yaw] [pitch]` | detach the camera from the player and fly it |
+| `ed_viewport 1` | the free camera in a window (a render target), beside the game |
+| `sv_cheats 1`, then `ent_fire hut_cam CameraOn 3` | the scripted cut the path to the hut triggers, by hand |
+| `vid_width 1600`, `vid_height 900` | the window's size (saved) |
 | `screenshot [delay]` | PNG into `user/sandbox/screenshots` |
 | `rec_list`, `rec_get prefab watcher`, `rec_reload` | what records loaded, one record's values and where each field came from, reload them |
 | `vfs_mounts`, `vfs_which textures/creature.png` | the mount stack, and which mount a path resolves to |

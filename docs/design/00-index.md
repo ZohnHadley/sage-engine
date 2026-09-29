@@ -132,7 +132,7 @@ source: the self test plants a name and counts only a dump has, and fails if the
 | `LayerMask` | Which collision layers a query or a contact considers | 10 |
 | `World.AddCharacter` | Adds a `CharacterController` + `Pawn` + a `PawnIntent` seeded from the entity's facing + a standing capsule `Collider` + a kinematic `RigidBody`, so the sweep layer, collider layer and capsule height can't drift apart | 10, 16 |
 | `GlobalTransform` | Computed `Pose Current` + `Pose Previous` relative to the world's origin sector; interpolated by Extract | 03, 06 |
-| `ActiveCamera` | World resource: the camera position/rotation/fov/near/far the view is rendered from. The `CameraDirector` mirrors the screen's camera entity into it (the player's camera since #78) and sets `DrivenByRig`; otherwise the host's editor camera fills it. `RigEnabled` (cleared by `cam_free`) hands the camera back to the editor. Read by `CameraExtract` and by simulation code such as billboard facing | 03, 06, 16 |
+| `ActiveCamera` | World resource: the camera position/rotation/fov/near/far the view is rendered from. The `CameraDirector` mirrors the screen's camera entity into it (the player's camera since #78, the editor's free camera since #81); with no camera entity it is left to whoever writes it. `world.TryGetMainView` gives the same view with its projection. `RigEnabled`/`DrivenByRig` are obsolete and inert (#81). Read by `CameraExtract` and by simulation code such as billboard facing | 03, 06, 16 |
 | `RenderEnvironment` | World resource: clear (sky) colour, sun, hemispheric ambient, fog | 06 |
 | `PlayerInput` | World resource: the local player's `PlayerCommand` for the tick being simulated | 08 |
 

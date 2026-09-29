@@ -650,6 +650,9 @@ looking out of the player's eyes (a crosshair, a viewmodel), `world.MainViewRig(
 The player's camera also has a third-person rig over the shoulder that keeps out of walls, switched with the
 `ToggleView` action (V, or the right stick's button); the choice is saved. The first-person view does not
 draw the player's own body, so give the player a body (a `sprite`, a mesh) and it shows in third person.
+To place something where the player is looking from — a sound, an effect, a spawn in front of them —
+ask `world.TryGetMainView(out var view)`: the screen's view this frame (the player's camera, a cut, the
+editor's free camera), with its position, rotation and projection. `ActiveCamera` holds the same pose.
 
 A camera of your own — a fixed security camera, a top-down or 2D view, a scripted shot — is an entity
 with a `camera` part (issue #76; its options are the `sage:camera` component's fields):
@@ -686,6 +689,12 @@ something that happens (§5, "Wiring"):
 kind is a prefab with the two parts, `camera` (`"enabled": false` and a priority above your rig's) and
 `scripted_camera` (`holdTime`, the default hold; `lockInput`). `tests/games/camera-cut` is a game with
 no C# that does both kinds of cut.
+The Sandbox has one too: the path to the hut (`hut_path` and `hut_cam` in its `scene.json`), on a physics
+layer only the player touches so nothing else fires it.
+
+A tool that flies a camera by hand (the editor's free camera, `cam_free`) uses a `DebugCamera`: a camera
+entity it drives each frame with `DebugCamera.Drive`, above every other camera while it overrides the
+screen and below every other otherwise. A game rarely needs one.
 
 **4. A scene** — the engine's `scene` record (issue #29): what stands where, where the player starts,
 the maps and placements documents to load, and the weather to start in. Name it in `game.json` and every
@@ -1284,7 +1293,7 @@ names their types needs the opt-in.
 | SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
-| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs` | Phase 4a is still building on it: the editor camera (#81); blends wait for 4b's tweens |
+| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
