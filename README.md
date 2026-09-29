@@ -19,7 +19,7 @@ the `games/Sandbox` test game in the same commit.
 - [`TODO.md`](TODO.md) — the roadmap, with every item's id (F7, R9…) as the docs reference them.
 - [`docs/REDESIGN.md`](docs/REDESIGN.md) — the plan the engine is following now: a base engine for
   designers, developers and modders, action RPGs first, 2D and 3D. Tracked as GitHub issues.
-- [`docs/history/handoff-2026-09-28.md`](docs/history/handoff-2026-09-28.md) — **start here after a
+- [`docs/history/handoff-2026-09-29.md`](docs/history/handoff-2026-09-29.md) — **start here after a
   break**: what landed, how to build, test and verify it now, what is next, and the traps that have
   already cost a session.
 - [`docs/history/code-review-log.md`](docs/history/code-review-log.md) — every bug worth remembering,
