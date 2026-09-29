@@ -121,7 +121,8 @@ The RPG kit, the Sandbox, Hello and the `sage-game` template declare `>=0.1`.
 2. On a branch: **move the public API to Shipped.** For each `src/*/PublicAPI.Unshipped.txt`, append its
    lines (not the `#nullable enable` header) to `PublicAPI.Shipped.txt`, drop the `*REMOVED*` lines
    together with the Shipped lines they name, and leave Unshipped with only `#nullable enable`. Sort
-   Shipped if you like; the analyzer does not care. Build: nothing else changes.
+   Shipped if you like; the analyzer does not care. Build: nothing else changes. (For 0.1.0 this step
+   also retired the test that held Shipped empty before the first release.)
 3. Review `docs/` for the version (MAKING_A_GAME's install line names the templates' file), merge.
 4. Tag the merge commit and push the tag: `git tag -a v0.1.0 -m "Sage 0.1.0" && git push origin v0.1.0`.
    Every build of that commit is now `0.1.0`; the next commit is `0.1.1-alpha.0.1`.
