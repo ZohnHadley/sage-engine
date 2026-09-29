@@ -189,4 +189,45 @@ public class RpgKitTests
             """));
         Assert.Contains("sage:one, sage:two", ex.Message);
     }
+
+    // ---- equipment slots ----------------------------------------------------------------------------
+
+    private const string Armoury = """
+    [
+      { "type": "item", "id": "sword",  "label": "a sword",  "slot": "MainHand" },
+      { "type": "item", "id": "helmet", "label": "a helmet", "slot": "Head" }
+    ]
+    """;
+
+    private static EquipSlots SlotsOf(HeadlessApp app) => app.Engine.Modules.Modules.OfType<ItemsModule>().Single().Slots;
+
+    // The base assumes no body: it has no equipment slots, and an item that names one nobody registered
+    // is a load error. The kit's default is two hands; a game adds what else it wears in its Init.
+    [Fact]
+    public void TheKitHasTwoHandsAndTheBaseNone()
+    {
+        using (var bare = HeadlessApp.Gameplay().File("data/armoury.json", Armoury).Boot("bare"))
+        {
+            Assert.Empty(SlotsOf(bare).Names);
+            Assert.Equal(2, bare.Records.ErrorCount);   // neither slot exists
+        }
+
+        using var kit = HeadlessApp.Gameplay().With(new RpgKitModule())
+            .OnRegistered(app => SlotsOf(app).Register("Head"))   // the game's own, beside the kit's
+            .File("data/armoury.json", Armoury).Boot("kit");
+        Assert.Equal(new[] { RpgKitModule.MainHand, RpgKitModule.OffHand, "Head" }, SlotsOf(kit).Names);
+        Assert.Equal(0, kit.Records.ErrorCount);
+
+        var world = kit.World;
+        var knight = world.Create(Transform.At(Vector3.Zero), "knight");
+        world.AddInventory(knight);
+        Assert.True(world.Give(knight, Id("sword")) && world.Give(knight, Id("helmet")));
+        Assert.True(world.Equip(knight, Id("sword")) && world.Equip(knight, Id("helmet")));
+        Assert.Equal(Id("sword"), world.Get<Equipment>(knight).In(RpgKitModule.MainHand));
+        Assert.Equal(Id("helmet"), world.Get<Equipment>(knight).In("head"));   // slot names ignore case
+
+        world.Unequip(knight, "Head");
+        Assert.True(world.Get<Equipment>(knight).In("Head").IsEmpty);
+        Assert.Equal(Id("sword"), world.Get<Equipment>(knight).In(RpgKitModule.MainHand));
+    }
 }

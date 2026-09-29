@@ -8,8 +8,8 @@ namespace Sage.Kits.Rpg;
 
 // The RPG kit (REDESIGN §0.5, issue #27): the rules the action-RPG family shares, on top of the base's
 // generic models. The base has abilities, items, quests and dialogue; this adds what makes them a
-// Daggerfall — a readied spell the Cast button fires, a spellmaker and the book it writes, and the
-// bag, spellbook, journal and conversation as panels and screens.
+// Daggerfall — a readied spell the Cast button fires, a spellmaker and the book it writes, two hands to
+// hold things in, and the bag, spellbook, journal and conversation as panels and screens.
 //
 // Loaded only for a game that names it (game.json `"kits": ["sage.kits.rpg"]`); never part of
 // BasePlugins.All(). Its client half, Sage.Kits.Rpg.Client (`sage.kits.rpg.client`), comes with it in
@@ -18,6 +18,11 @@ namespace Sage.Kits.Rpg;
 public sealed class RpgKitModule : IModule
 {
     public const string Id = "sage.kits.rpg";
+
+    // The kit's equipment slots: a weapon and a shield, Daggerfall's two hands (issue #27). The base
+    // has no slots of its own; a game adds more with EquipSlots.Register in its Init.
+    public const string MainHand = "MainHand";
+    public const string OffHand = "OffHand";
 
     private ActionRegistry? _actions;
 
@@ -33,6 +38,10 @@ public sealed class RpgKitModule : IModule
         _actions.Register("Cast", ActionKind.Button);
         var actions = _actions;
         ctx.Engine.Records.AddCheck<RpgConventionsRecord>((conventions, check) => RpgConventions.Check(actions, conventions, check));
+
+        var slots = ctx.Get<EquipSlots>();
+        slots.Register(MainHand);
+        slots.Register(OffHand);
 
         // Composing spells at the console (F21), the same rules a spellmaker screen calls.
         Spellmaker.RegisterCommands(ctx.Engine);

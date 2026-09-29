@@ -171,12 +171,12 @@ public class ScreenTests
         int sword = IndexOf(screen, Id("sword"));
         fx.Screens.Move(sword);
         Assert.True(fx.Screens.Activate(fx.World, hero));
-        Assert.Equal(Id("sword"), fx.World.Get<Equipment>(hero).MainHand);
+        Assert.Equal(Id("sword"), fx.World.Get<Equipment>(hero).In(RpgKitModule.MainHand));
         Assert.True(screen.Panel.TryFind(Id("sword"), out var equipped));
         Assert.True(equipped.Selected);
 
         Assert.True(fx.Screens.Activate(fx.World, hero));                 // again: take it off
-        Assert.True(fx.World.Get<Equipment>(hero).MainHand.IsEmpty);
+        Assert.True(fx.World.Get<Equipment>(hero).In(RpgKitModule.MainHand).IsEmpty);
     }
 
     // Dropping the last row must not leave the highlight past the end of the list.
@@ -215,7 +215,7 @@ public class ScreenTests
         Assert.False(bread.Enabled);
 
         Assert.False(fx.Screens.Activate(fx.World, hero));
-        Assert.True(fx.World.Get<Equipment>(hero).MainHand.IsEmpty);
+        Assert.True(fx.World.Get<Equipment>(hero).In(RpgKitModule.MainHand).IsEmpty);
         Assert.Equal(3, fx.World.CountOf(hero, Id("bread")));
     }
 

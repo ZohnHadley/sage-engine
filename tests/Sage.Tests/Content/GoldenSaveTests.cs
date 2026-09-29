@@ -82,7 +82,7 @@ public class GoldenSaveTests
 
     private static HeadlessApp NewApp(string savesRoot)
     {
-        var app = HeadlessApp.Gameplay().File("data/golden.json", Records).Build();
+        var app = HeadlessApp.Gameplay().WithHands().File("data/golden.json", Records).Build();
         app.Engine.Saves.Root = savesRoot;
         return app;
     }
@@ -117,7 +117,7 @@ public class GoldenSaveTests
 
         Assert.Equal(new Vector3(3f, 0.085f, -7f), world.Get<Transform>(hero).LocalPosition);
         Assert.Equal(4, world.CountOf(hero, Id("bread")));
-        Assert.Equal(Id("sword"), world.Get<Equipment>(hero).MainHand);
+        Assert.Equal(Id("sword"), world.Get<Equipment>(hero).In(Hands.Main));   // two fields then, a slot now (#27)
         Assert.True(world.Knows(hero, Id("heal")));
         Assert.Equal(65f, world.Attribute(hero, Id("health")));
         Assert.True(hero.Tags.Has<PlayerControlled>(), "the tag, by id now, by type name then");

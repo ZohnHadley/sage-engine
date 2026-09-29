@@ -85,7 +85,7 @@ public static class GameplayPanels
         {
             if (stack.Count <= 0) continue;
             records.TryGet(stack.Item, out ItemRecord record);
-            bool equipped = record != null && record.Slot != EquipSlot.None
+            bool equipped = record != null && record.Slot.Length > 0
                          && equipment.In(record.Slot) == stack.Item && ticked.Add(stack.Item);
             bool can = Items.CanEquip(world, who, stack.Item, out string why);
 

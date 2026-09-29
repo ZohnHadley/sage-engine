@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Sage.Physics3D;   // CharacterModule, in the list below and nowhere else (issue #30)
 
@@ -202,11 +203,23 @@ public sealed class ItemsModule : IModule
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CombatModule) };
 
+    // Where things are worn (issue #27): none in the base. A kit or a game registers its own in Init
+    // (the RPG kit's two hands), and items are checked against them as content loads.
+    public EquipSlots Slots { get; } = new();
+
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
         _actions.Register("Use", ActionKind.Button);
+        ctx.Provide(Slots);
+        _records.AddCheck<ItemRecord>((item, check) =>
+        {
+            if (item.Slot.Length == 0 || Slots.Find(item.Slot) != null) return;
+            check.Error(nameof(ItemRecord.Slot), $"no equipment slot '{item.Slot}'" + (Slots.Names.Count == 0
+                ? " (this game registers none: a kit or the game's module registers them in Init, EquipSlots.Register)"
+                : Spelling.Suggest(item.Slot, Slots.Names)));
+        });
         ctx.Engine.Outputs.Declare("OnUse", "Something used this entity (the Use action).");
 
         _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
@@ -240,10 +253,19 @@ public sealed class ItemsModule : IModule
                     : $"{World.Describe(entity)} cannot equip {item.Name}: {why}"));
         });
 
-        ctx.Engine.CVars.RegisterCommand("unequip", CVarFlags.Cheat, "unequip [main|off]: put away what the local player is holding.", a =>
+        ctx.Engine.CVars.RegisterCommand("unequip", CVarFlags.Cheat, "unequip [slot]: put away what the local player wears in a slot, or everything.", a =>
         {
-            var slot = a.Count > 0 && a[0].StartsWith("off", StringComparison.OrdinalIgnoreCase) ? EquipSlot.OffHand : EquipSlot.MainHand;
-            ctx.Engine.ForEachPlayer((world, entity) => { world.Unequip(entity, slot); Log.Info(LogCat.Console, $"{World.Describe(entity)} puts away its {slot}"); });
+            string? slot = a.Count > 0 ? Slots.Find(a[0]) : null;
+            if (a.Count > 0 && slot == null)
+            {
+                Log.Warn(LogCat.Console, $"unequip: no equipment slot '{a[0]}' (slots: {string.Join(", ", Slots.Names)})");
+                return;
+            }
+            ctx.Engine.ForEachPlayer((world, entity) =>
+            {
+                foreach (string each in slot != null ? new[] { slot } : Slots.Names.ToArray()) world.Unequip(entity, each);
+                Log.Info(LogCat.Console, $"{World.Describe(entity)} puts away {(slot != null ? $"its {slot}" : "everything")}");
+            });
         });
 
         ctx.Engine.CVars.RegisterCommand("drop", CVarFlags.Cheat, "drop <item> [count]: put an item on the ground in front of the local player.", a =>
@@ -257,6 +279,9 @@ public sealed class ItemsModule : IModule
                     : $"{World.Describe(entity)} drops {count}x {item.Name}"));
         });
     }
+
+    // Items were checked against the slots as content loaded: one registered now would have missed that.
+    public void Start(ModuleContext ctx) => Slots.Seal.Seal("content was loaded");
 
     public void OnWorldCreated(World world)
     {
