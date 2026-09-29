@@ -1,0 +1,27 @@
+[
+  // The keys for the RPG kit's screens (issue #27): the kit (game.json "kits") registers the Spellbook,
+  // Spellmaker and Journal actions, and which key opens each is this game's decision, like the screens
+  // SandboxClientModule binds them to. Maps add up per context, so these sit beside the engine's own
+  // `ui` and `gameplay` maps (engine_content/data/input.json). Bound in both, so the key that opened a
+  // screen also closes it.
+  {
+    "type": "input_map",
+    "id": "rpg_ui",
+    "context": "UI",
+    "actions": {
+      "Spellbook":     [ { "key": "B" } ],
+      "Spellmaker":    [ { "key": "M" } ],
+      "Journal":       [ { "key": "J" } ]
+    }
+  },
+  {
+    "type": "input_map",
+    "id": "rpg_gameplay",
+    "context": "Gameplay",
+    "actions": {
+      "Spellbook":     [ { "key": "B" } ],
+      "Spellmaker":    [ { "key": "M" } ],
+      "Journal":       [ { "key": "J" } ]
+    }
+  }
+]

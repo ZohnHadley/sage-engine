@@ -32,6 +32,11 @@ public sealed class Engine : IDisposable
         Inputs.Ledger = Registrations;
         Outputs.Ledger = Registrations;
         Actions.Ledger = Registrations;
+        Vocabularies.Ledger = Registrations;
+        // Fields typed as a vocabulary (issue #28) read the entry their JSON names, from this engine's
+        // registries; bare ids inside one are qualified as the entry's own type.
+        Records.Json.Converters.Add(new VocabularyJsonConverterFactory(Vocabularies));
+        Records.PolymorphicTypes = Vocabularies.ConcreteTypeOf;
         // Prefab bodies are checked as content loads (issue #22): components, parts, their fields and
         // what they name, at their lines, rather than at the first spawn.
         Records.AddCheck<PrefabRecord>((prefab, check) => PrefabChecks.Check(this, prefab, check));
@@ -63,6 +68,12 @@ public sealed class Engine : IDisposable
     // Every system id the engine's and the loaded modules' assemblies declare (issue #17): what tells a
     // mistyped ordering constraint from one naming a system whose plugin is turned off.
     public SystemCatalog SystemCatalog { get; } = new();
+
+    // The open vocabularies (issue #28): AI conditions and schedule selectors, quest objectives,
+    // dialogue conditions and actions, ability deliveries, effect executions, item uses, and any a
+    // game declares. Entries are declared ([AICondition("is_night")] …) and registered by generated
+    // code for their plugin; sealed when content loads.
+    public Vocabularies Vocabularies { get; } = new();
 
     // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
     public ActionRegistry Actions { get; } = new();

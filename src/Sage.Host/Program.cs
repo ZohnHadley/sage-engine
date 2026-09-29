@@ -62,6 +62,7 @@ try
         EngineContentDirectory = Path.Combine(AppContext.BaseDirectory, "Content"),
         AvailablePlugins = BasePlugins.All(),
         HostModules = new IModule[] { new ClientModule() },
+        LoadKitClients = true,   // a kit's screens come with it (game.json "kits", issue #27)
         ConfigFile = UserPaths.ConfigFile,
         LaunchCommands = launch.Commands,
         OwnsProcessLog = true,   // the one app in this process, so its log cvars are the log's

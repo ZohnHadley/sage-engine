@@ -27,6 +27,9 @@ namespace Sage.Simulation;
 //   ids.schema.json               the ids content has loaded, per record type: "record:<type>" (what a
 //                                 reference may name) and "base:<type>" (abstract ones too), and the
 //                                 tag ids; regenerate after adding a record
+//   vocabularies.schema.json      the open vocabularies (issue #28): "<name>" is an entry — its id, or
+//                                 an object naming it under the vocabulary's key with its settings —
+//                                 and "<name>:id" the registered ids, which a [VocabularyRef] field names
 //
 // JSON Schema draft-07, which every editor reads. `$ref` never has siblings (draft-07 ignores them):
 // a field that refers elsewhere and has a description says `allOf: [{ $ref }]`. The output is
@@ -45,6 +48,7 @@ public static class RecordSchemas
     public const string Ids = "ids.schema.json";
     public const string Components = "prefab-components.schema.json";
     public const string Parts = "prefab-parts.schema.json";
+    public const string Vocabularies = "vocabularies.schema.json";
 
     // A record id as content writes it: `name` or `namespace:name` (RecordId.Parse).
     public const string IdPattern = "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$";
@@ -58,7 +62,7 @@ public static class RecordSchemas
     public static SortedDictionary<string, string> Write(SchemaCatalog catalog)
     {
         foreach (string name in catalog.RecordTypes.Keys)
-            if (FileOf(name) is Root or Ids or Components or Parts)
+            if (FileOf(name) is Root or Ids or Components or Parts or Vocabularies)
                 throw new InvalidOperationException($"record type '{name}' would overwrite {FileOf(name)}; rename it");
 
         var writer = new Writer(catalog);
@@ -68,6 +72,7 @@ public static class RecordSchemas
             [Ids] = writer.IdsSchema(),
             [Components] = writer.ComponentsSchema(),
             [Parts] = writer.PartsSchema(),
+            [Vocabularies] = writer.VocabulariesSchema(),
         };
         foreach (var (name, type) in catalog.RecordTypes) files[FileOf(name)] = writer.RecordSchema(name, type);
 
@@ -244,6 +249,94 @@ public static class RecordSchemas
             };
         }
 
+        // Every vocabulary the engines registered: "<name>" (an entry, bare or as an object) and
+        // "<name>:id" (the ids, as registered and in the other common spelling: `kill` and `Kill`).
+        public JsonObject VocabulariesSchema()
+        {
+            var definitions = new JsonObject();
+            foreach (var (name, vocabulary) in _catalog.Vocabularies)
+            {
+                var ids = vocabulary.Entries.Keys.ToList();
+                definitions[name + ":id"] = new JsonObject
+                {
+                    ["description"] = ids.Count == 0 ? $"{A(name)} by id (none is registered)." : $"{A(name)} by id: {string.Join(", ", ids)}.",
+                    ["type"] = "string",
+                    ["enum"] = Strings(ids.SelectMany(Spellings).Distinct().OrderBy(i => i, StringComparer.Ordinal)),
+                };
+
+                var cases = new JsonArray();
+                foreach (var (id, type) in vocabulary.Entries)
+                {
+                    var meta = Metadata.Of(type);
+                    var body = ObjectSchema(type, meta.Fields, meta, 1);
+                    var properties = body["properties"] as JsonObject ?? new JsonObject();
+                    properties[vocabulary.Key] = new JsonObject { ["description"] = $"The {name}: {id}.", ["enum"] = Strings(Spellings(id)) };
+                    body["properties"] = Sorted(properties);
+                    body["additionalProperties"] = false;
+                    body["description"] = $"{name} '{id}' ({type.Name}).";
+                    var when = new JsonObject
+                    {
+                        ["properties"] = new JsonObject { [vocabulary.Key] = new JsonObject { ["enum"] = Strings(Spellings(id)) } },
+                        ["required"] = Strings(new[] { vocabulary.Key }),
+                    };
+                    cases.Add(new JsonObject { ["if"] = when, ["then"] = body });
+                    if (vocabulary.Default != null && Vocabulary.Normalize(vocabulary.Default) == Vocabulary.Normalize(id))
+                        cases.Add(new JsonObject   // no key: the default entry
+                        {
+                            ["if"] = new JsonObject { ["required"] = Strings(new[] { vocabulary.Key }) },
+                            ["else"] = body.DeepClone(),
+                        });
+                }
+
+                var entry = new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject { [vocabulary.Key] = Ref($"#/definitions/{Pointer(name + ":id")}") },
+                };
+                if (vocabulary.Default == null) entry["required"] = Strings(new[] { vocabulary.Key });
+                if (cases.Count > 0) entry["allOf"] = cases;
+                definitions[name] = new JsonObject
+                {
+                    ["description"] = $"{A(name)}: its id, or {{ \"{vocabulary.Key}\": \"<id>\", … }} with its settings" +
+                                      (vocabulary.Default != null ? $" (no \"{vocabulary.Key}\" means {vocabulary.Default})" : "") + ".",
+                    ["anyOf"] = new JsonArray(Ref($"#/definitions/{Pointer(name + ":id")}"), entry),
+                };
+            }
+            return new JsonObject
+            {
+                ["$schema"] = Draft,
+                ["title"] = "Sage vocabularies",
+                ["description"] = "The open vocabularies (issue #28) and the entries plugins registered: AI conditions, quest " +
+                                  "objectives, dialogue conditions and actions, ability deliveries, effect executions, item uses. " +
+                                  "Generated by `sage schema`.",
+                ["definitions"] = definitions,
+            };
+        }
+
+        private static string A(string noun) => ("aeiou".Contains(noun[0]) ? "An " : "A ") + noun;
+
+        // An id as registered, and in the other common spelling: snake_case for PascalCase and back.
+        private static IEnumerable<string> Spellings(string id)
+        {
+            yield return id;
+            if (id.Contains(':')) yield break;
+            if (id.Any(char.IsUpper))
+            {
+                var snake = new System.Text.StringBuilder();
+                for (int i = 0; i < id.Length; i++)
+                {
+                    if (char.IsUpper(id[i]) && i > 0) snake.Append('_');
+                    snake.Append(char.ToLowerInvariant(id[i]));
+                }
+                if (snake.ToString() != id) yield return snake.ToString();
+            }
+            else
+            {
+                string pascal = string.Concat(id.Split('_', '-').Where(p => p.Length > 0).Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
+                if (pascal != id) yield return pascal;
+            }
+        }
+
         public JsonObject ComponentsSchema()
         {
             var properties = new JsonObject();
@@ -342,8 +435,9 @@ public static class RecordSchemas
             };
 
             var body = ObjectSchema(clr, meta.Fields, meta, 0, skip: MetaKeys);
-            foreach (var (name, schema) in (JsonObject)body["properties"]!)
-                properties[name] = schema?.DeepClone();
+            if (body["properties"] is JsonObject fields)   // a record type with no fields has none
+                foreach (var (name, schema) in fields)
+                    properties[name] = schema?.DeepClone();
 
             // A prefab's two halves are keyed by what they name, which the metadata cannot say (they are
             // JsonObjects to the record); its tags are tag ids.
@@ -427,6 +521,15 @@ public static class RecordSchemas
                 && member.GetCustomAttribute<JsonConverterAttribute>(false) is { } converter)
                 return Shape(converter.ConverterType);
 
+            // A string naming a vocabulary entry (issue #28): the ids registered.
+            if (declaringType != null && Member(declaringType, field.Name)?.GetCustomAttribute<VocabularyRefAttribute>(false) is { } named)
+            {
+                var id = Ref($"{Vocabularies}#/definitions/{Pointer(named.Vocabulary + ":id")}");
+                if (field.Kind == ValueKind.List) return new JsonObject { ["type"] = "array", ["items"] = id };
+                // Empty is "none" for a string that has a fallback (an ability's delivery, a profile's selector).
+                if (field.Kind == ValueKind.String) return new JsonObject { ["anyOf"] = new JsonArray(id, new JsonObject { ["const"] = "" }) };
+            }
+
             var type = Nullable.GetUnderlyingType(field.Type) ?? field.Type;
             var schema = KindSchema(field, type, depth);
             return Nullable.GetUnderlyingType(field.Type) != null
@@ -436,6 +539,9 @@ public static class RecordSchemas
 
         private JsonObject KindSchema(FieldMetadata field, Type type, int depth)
         {
+            // An entry of an open vocabulary (issue #28), whichever registered type it is.
+            if (_catalog.VocabularyOf(type) is { } vocabulary) return Ref($"{Vocabularies}#/definitions/{Pointer(vocabulary)}");
+
             switch (field.Kind)
             {
                 case ValueKind.Bool: return new JsonObject { ["type"] = "boolean" };
@@ -637,6 +743,15 @@ public sealed class SchemaCatalog
     // unless that half's assembly is read too.
     public SortedSet<string> OptionalParts { get; } = new(StringComparer.Ordinal);
 
+    // The open vocabularies (issue #28), by name: the type an entry is, its JSON key and default, and
+    // every registered entry's id and type.
+    public sealed record VocabularyInfo(Type EntryType, string Key, string? Default, SortedDictionary<string, Type> Entries);
+    public SortedDictionary<string, VocabularyInfo> Vocabularies { get; } = new(StringComparer.Ordinal);
+
+    // The vocabulary a field of `type` holds entries of, or null.
+    public string? VocabularyOf(Type type) =>
+        Vocabularies.FirstOrDefault(kv => kv.Value.EntryType == type).Key;
+
     // How the records were read, for quoting defaults as content writes them.
     public JsonSerializerOptions Json { get; private set; } = new RecordStore().Json;
 
@@ -662,6 +777,14 @@ public sealed class SchemaCatalog
         foreach (var part in engine.Prefabs.Parts)
             Parts[part.Id] = new Part(Metadata.Of(part.Type), part.Shorthand);
         foreach (string name in engine.Prefabs.OptionalNames) OptionalParts.Add(name);
+
+        foreach (var vocabulary in engine.Vocabularies.All)
+        {
+            if (!Vocabularies.TryGetValue(vocabulary.Name, out var info))
+                Vocabularies[vocabulary.Name] = info = new VocabularyInfo(vocabulary.EntryType, vocabulary.Key, vocabulary.Default,
+                                                                          new SortedDictionary<string, Type>(StringComparer.Ordinal));
+            foreach (var entry in vocabulary.Entries) info.Entries[entry.Id] = entry.Type;
+        }
     }
 
     // The declarations in one assembly's metadata table: record types, components, tags and parts.

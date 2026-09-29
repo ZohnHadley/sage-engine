@@ -96,7 +96,7 @@ internal sealed class GameplayTagsSaveConverter : JsonConverter<GameplayTags>
         for (int i = 0; i < registries.TagCount; i++)
         {
             // Owned, not granted: `Granted` is rebuilt from ActiveEffects.
-            if (!value.Has(i) || (value.Granted & (1UL << i)) != 0) continue;
+            if (!value.Has(i) || value.Granted.Has(i)) continue;
             writer.WriteStringValue(registries.TagId(i).ToString());
         }
         writer.WriteEndArray();

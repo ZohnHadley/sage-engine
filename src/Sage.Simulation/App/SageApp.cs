@@ -36,6 +36,11 @@ public sealed class SageAppOptions
     // with a window. A headless host leaves this empty.
     public IReadOnlyList<IModule> HostModules { get; init; } = Array.Empty<IModule>();
 
+    // Whether the kits game.json names (`kits`, issue #27) bring their client halves too
+    // (`Sage.Kits.Rpg.Client` beside `Sage.Kits.Rpg`): the host with a window says yes; a headless
+    // one, a tool or a test leaves them out, as it leaves out `modules.add`.
+    public bool LoadKitClients { get; init; }
+
     // Executed once every cvar and command exists, before content loads (Source's config.cfg).
     // Archived cvars are written back to it on shutdown. Null: neither.
     public string? ConfigFile { get; init; }
@@ -135,6 +140,9 @@ public sealed class SageApp : IDisposable
         }
 
         foreach (var module in ChoosePlugins(_options.AvailablePlugins, Game?.Plugins)) Add(module);
+        // The kits the game is built on (issue #27), before anything of the game's: its assemblies
+        // reference them, and an assembly loaded by path finds its references among those loaded.
+        foreach (var module in LoadKits()) Add(module);
         foreach (var module in _options.HostModules) Add(module);
 
         if (Game is { } game)
@@ -152,6 +160,17 @@ public sealed class SageApp : IDisposable
         foreach (string name in disabled.Where(n => !seen.Contains(n)))
             Log.Warn(LogCat.Modules, $"game.json disables '{name}', which is not a module this app has " +
                 $"(modules: {string.Join(", ", seen.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))})");
+    }
+
+    // game.json's `kits`, each looked for beside the game's assemblies and then beside the host.
+    private IEnumerable<IModule> LoadKits()
+    {
+        if (Game is not { Kits.Count: > 0 } game) return Array.Empty<IModule>();
+        var folders = new List<string>();
+        if (!string.IsNullOrEmpty(game.Assembly)) folders.Add(Path.GetDirectoryName(game.AssemblyPath)!);
+        folders.AddRange(game.ModuleAssemblies.Select(path => Path.GetDirectoryName(path)!));
+        folders.Add(AppContext.BaseDirectory);
+        return game.Kits.SelectMany(kit => ModuleManager.LoadKit(kit, folders, _options.LoadKitClients)).ToList();
     }
 
     private static bool KindBelongs(ModuleKind kind, HostKind host) => kind switch
@@ -225,6 +244,7 @@ public sealed class SageApp : IDisposable
     {
         Advance(AppStage.Configured, AppStage.ContentLoaded);
         Engine.Actions.Seal.Seal("content was loaded");
+        Engine.Vocabularies.Seal("content was loaded");   // records name their entries (issue #28)
         Engine.Records.Load(Engine.Vfs);   // seals record types
         ChooseStartScene();
     }

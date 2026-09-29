@@ -1130,21 +1130,71 @@
     "sage:equipment": {
       "type": "object",
       "properties": {
-        "mainHand": {
-          "description": "(RecordId)",
-          "allOf": [
-            {
-              "$ref": "ids.schema.json#/definitions/id"
-            }
-          ]
+        "worn": {
+          "description": "What is worn or wielded, by slot. (List<EquippedItem>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
         },
-        "offHand": {
-          "description": "(RecordId)",
-          "allOf": [
-            {
-              "$ref": "ids.schema.json#/definitions/id"
-            }
-          ]
+        "worn+": {
+          "description": "Adds to \"worn\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "worn-": {
+          "description": "Removes these from \"worn\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false,
@@ -1214,16 +1264,12 @@
       "type": "object",
       "properties": {
         "bits": {
-          "description": "(ulong, default 0)",
-          "default": 0,
-          "type": "integer",
-          "minimum": 0
+          "description": "(TagSet)",
+          "type": "object"
         },
         "granted": {
-          "description": "Not saved. (ulong, default 0)",
-          "default": 0,
-          "type": "integer",
-          "minimum": 0
+          "description": "Not saved. (TagSet)",
+          "type": "object"
         }
       },
       "additionalProperties": false,

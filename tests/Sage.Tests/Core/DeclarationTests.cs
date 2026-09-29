@@ -44,6 +44,7 @@ public class DeclarationTests
             ["physics_layers"] = "sage.physics3d",
             ["prefab"] = RegistrationOwners.Core, ["placements"] = RegistrationOwners.Core,
             ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
+            ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)
@@ -264,7 +265,7 @@ public class DeclarationTests
 
     // Runs the generator over `source`, compiled against the engine, and returns what it wrote and
     // reported — plus any compile error in what it wrote, which would otherwise pass unnoticed.
-    private static (string Output, ImmutableArray<Diagnostic> Diagnostics) Generate(string source, IIncrementalGenerator? generator = null)
+    internal static (string Output, ImmutableArray<Diagnostic> Diagnostics) Generate(string source, IIncrementalGenerator? generator = null)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)

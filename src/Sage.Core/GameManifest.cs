@@ -13,6 +13,7 @@ namespace Sage.Core;
 //     "assembly": "bin/{config}/net8.0/Sandbox.dll",   // {config} = the build's configuration name
 //     "mounts": ["content"],                           // relative to the game folder, mounted in order
 //     "modules": { "disable": [] },
+//     "kits": ["sage.kits.rpg"],                       // kits the game is built on (issue #27)
 //     "scene": "main"                                  // the scene every world starts in (issue #29)
 //   }
 public sealed class GameManifest
@@ -28,6 +29,13 @@ public sealed class GameManifest
     // "sage.gameplay.*" for a family. Plugins they require come too. Null (the key left out) means all of
     // them, as before; an empty list means none — a game with no physics and no gameplay (issue #12).
     public List<string>? Plugins { get; set; }
+
+    // The kits this game is built on, by plugin id: "sage.kits.rpg" (issue #27). A kit is not part of
+    // the base engine, so it is never loaded unless a game names it here — and a game that names one
+    // also references its assembly, compile-time, like the base. The host finds `Sage.Kits.Rpg.dll`
+    // (an id's assembly is the id with each part capitalised) beside the game's assembly, its
+    // `modules.add` assemblies or the host itself; a host with a window loads `….Client.dll` too.
+    public List<string> Kits { get; set; } = new();
 
     // The `scene` record every world starts in: "main" (this game's namespace) or "ns:main". Left out,
     // worlds start empty and the game's rules place what they want (issue #29).

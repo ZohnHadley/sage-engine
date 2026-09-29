@@ -61,6 +61,7 @@ public sealed class QuestsModule : IModule
     {
         world.Resources.Add(new Journal());
         world.AddSystem(new QuestDeathSystem(world));
+        world.AddSystem(new QuestWatchSystem(world));   // conversations and places (issue #28)
     }
 }
 

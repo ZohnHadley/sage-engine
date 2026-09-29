@@ -152,9 +152,13 @@
       "enum": [
         "console",
         "gameplay",
+        "rpg_gameplay",
+        "rpg_ui",
         "sage:console",
         "sage:gameplay",
         "sage:ui",
+        "sandbox:rpg_gameplay",
+        "sandbox:rpg_ui",
         "ui"
       ]
     },
@@ -298,6 +302,11 @@
         "sandbox:thin_the_wood",
         "thin_the_wood"
       ]
+    },
+    "record:rpg_conventions": {
+      "description": "The id of a rpg_conventions record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "record:scene": {
       "description": "The id of a scene record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -524,9 +533,13 @@
       "enum": [
         "console",
         "gameplay",
+        "rpg_gameplay",
+        "rpg_ui",
         "sage:console",
         "sage:gameplay",
         "sage:ui",
+        "sandbox:rpg_gameplay",
+        "sandbox:rpg_ui",
         "ui"
       ]
     },
@@ -672,6 +685,11 @@
         "sandbox:thin_the_wood",
         "thin_the_wood"
       ]
+    },
+    "base:rpg_conventions": {
+      "description": "The id of a rpg_conventions record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:scene": {
       "description": "Another scene record to inherit every field from, abstract or not.",

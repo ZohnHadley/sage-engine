@@ -70,7 +70,7 @@ public sealed class InputActions
     private bool[] _wasRawHeld = Array.Empty<bool>();
     private bool[] _held = Array.Empty<bool>();
     private Vector2[] _axis = Array.Empty<Vector2>();
-    private ulong _heldBits, _pressedBits, _releasedBits;
+    private ActionMask _heldBits, _pressedBits, _releasedBits;
     // Scripted input (08 §9): actions driven from the console instead of a device, for automated
     // checks and for repeating a bug without a person at the keyboard. Injected *after* the bindings
     // are evaluated, so a script goes through the same PlayerCommand path a keyboard does — what it
@@ -270,9 +270,9 @@ public sealed class InputActions
         }
     }
 
-    public ActionMask HeldMask => new(_heldBits);
-    public ActionMask PressedMask => new(_pressedBits);
-    public ActionMask ReleasedMask => new(_releasedBits);
+    public ActionMask HeldMask => _heldBits;
+    public ActionMask PressedMask => _pressedBits;
+    public ActionMask ReleasedMask => _releasedBits;
 
     // ---- Per frame ----
     public void Update(float dt)
@@ -317,20 +317,19 @@ public sealed class InputActions
         }
         ApplyScripted(dt);
 
-        _heldBits = _pressedBits = _releasedBits = 0;
+        _heldBits = _pressedBits = _releasedBits = default;
         var all = _registry.All;
         for (int a = 0; a < all.Count; a++)   // for, not foreach: no enumerator allocation per frame
         {
             var info = all[a];
             if (info.Kind != ActionKind.Button) continue;
             int i = info.Id.Index;
-            ulong bit = 1UL << info.Id.Bit;
             // Swallowed: the devices say it is down but something above this took it, so it is not
             // held *and* the press it began must not surface later (`InputEdges`).
             bool swallowed = _rawHeld[i] && !_held[i];
-            if (InputEdges.Held(_rawHeld[i], swallowed)) _heldBits |= bit;
-            if (InputEdges.Pressed(_rawHeld[i], _wasRawHeld[i], swallowed)) _pressedBits |= bit;
-            if (InputEdges.Released(_rawHeld[i], _wasRawHeld[i])) _releasedBits |= bit;
+            if (InputEdges.Held(_rawHeld[i], swallowed)) _heldBits = _heldBits.With(info.Id);
+            if (InputEdges.Pressed(_rawHeld[i], _wasRawHeld[i], swallowed)) _pressedBits = _pressedBits.With(info.Id);
+            if (InputEdges.Released(_rawHeld[i], _wasRawHeld[i])) _releasedBits = _releasedBits.With(info.Id);
         }
     }
 

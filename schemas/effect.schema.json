@@ -260,6 +260,27 @@
       "description": "(float, default 0)",
       "default": 0,
       "type": "number"
+    },
+    "executions": {
+      "description": "(List<IEffectExecution>)",
+      "type": "array",
+      "items": {
+        "$ref": "vocabularies.schema.json#/definitions/effect_execution"
+      }
+    },
+    "executions+": {
+      "description": "Adds to \"executions\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "$ref": "vocabularies.schema.json#/definitions/effect_execution"
+      }
+    },
+    "executions-": {
+      "description": "Removes these from \"executions\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "$ref": "vocabularies.schema.json#/definitions/effect_execution"
+      }
     }
   },
   "additionalProperties": false

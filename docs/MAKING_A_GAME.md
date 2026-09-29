@@ -34,8 +34,13 @@ console, saves, hot reload, and a renderer. **It gives you no game.** What a gam
 | How it looks on screen | your **HUD** and screens, in your game's client half |
 | Art and sound | PNG, WAV, `.glb` — read at runtime, no build step |
 
+The engine assumes no genre. What a family of games shares beyond that is a **kit**: `Sage.Kits.Rpg`
+(the readied spell and its Cast button, the spellmaker, two hands to hold things in, the bag, spellbook,
+journal and conversation screens) is the one there is, and a game opts in with one line of `game.json`
+(§2, "Kits").
+
 The split that matters: **your simulation half references the base engine only** (`Sage.Core`, `Sage.Simulation`,
-`Sage.Physics3D`, `Sage.Gameplay`) — no MonoGame — so it can
+`Sage.Physics3D`, `Sage.Gameplay`), and any kit it is built on — no MonoGame — so it can
 be tested headlessly and could run on a server one day. Anything that needs a screen goes in a second
 project, your *client half*.
 
@@ -171,8 +176,52 @@ replaces for a game that uses it.
   reaches them as a `Died` event, and dialogue treats a missing one as "standing 0" or "not on that quest"
   (test: EachNarrativePluginCanBeSwitchedOffAlone). Content for a plugin that is off — its record types —
   is skipped with a warning; its prefab parts are errors, so leave them out of that game's prefabs.
+- `kits` (optional) names the kits the game is built on, by plugin id — `["sage.kits.rpg"]`; see
+  "Kits" below. Left out, the game has none.
 - A key the engine does not know is an error, so a misspelt `"mount"` stops the game at once instead of
   quietly loading nothing.
+
+### Kits
+
+A **kit** is the shared rules and screens of a family of games, built on the base engine's public API
+and never part of it (issue #27): the base must not assume a genre, so a platformer does not carry a
+spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L.K.E.R.):
+
+| | `sage.kits.rpg` (`Sage.Kits.Rpg`, simulation) | `sage.kits.rpg.client` (`Sage.Kits.Rpg.Client`) |
+|---|---|---|
+| Casting | the **readied spell** — `world.Ready(e, id)`, `world.Readied(e)` — which the `Cast` button fires; `ready`, `spells` | |
+| Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects` | the `"spellmaker"` screen |
+| Things you carry | the two hands, `MainHand` and `OffHand`, as equipment slots; `inv` | |
+| Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook) | registers them as `"spellmaker"`, `"journal"`, `"dialogue"`; the `Spellbook`, `Spellmaker` and `Journal` actions |
+| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`) and `castAction` (`"Cast"`) | |
+
+To build on it, name it in `game.json` and reference it, compile-time only, like the base:
+
+```json
+"kits": ["sage.kits.rpg"]
+```
+
+```xml
+<!-- YourGame.csproj -->
+<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
+<!-- YourGame.Client.csproj: both halves, by name -->
+<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
+<ProjectReference Include="..\..\src\Sage.Kits.Rpg.Client\Sage.Kits.Rpg.Client.csproj" Private="false" />
+```
+
+The host finds a kit by its id: `sage.kits.rpg` is `Sage.Kits.Rpg.dll` (each part capitalised), looked
+for beside your game's assembly, its `modules.add` assemblies and the host itself — the kits ship
+beside `Sage.Host` and `sage`, built by `build/Sage.Kits.targets`. It is loaded before your assemblies,
+and a host with a window loads its client half, `Sage.Kits.Rpg.Client.dll`, too; `sage validate`, a
+server or a test loads the simulation half only. A kit that is not there stops the game with a message
+naming the file and where it looked (test: AKitThatIsNotThereIsAnErrorThatSaysWhere). `games/Sandbox`
+is built on the RPG kit; `games/Hello` is not, and runs on the base alone
+(test: HelloHasNoKitAndTheSandboxHasTheRpgKit).
+
+Which keys open the kit's screens is your game's: bind the kit's actions in your own `input_map`
+records (`games/Sandbox/content/data/input.json`) and the screens in your client module (§7). The kit
+has no content of its own, so its words have defaults, and a game that wants others adds one
+`rpg_conventions` record in its own namespace (test: AGameChoosesTheNamespaceItsComposedSpellsLiveIn).
 
 ### Running it
 
@@ -333,7 +382,8 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 The engine's gameplay code knows no record id of its own (issue #26). Which attribute kills you when it
 runs out, which tag says you are dead, what a swing does when nobody gave the fighter an attack, which
 schedule a creature idles with, which faction the player is in, what a spell made in the spellmaker
-costs and which buttons swing, use, cast and jump — all of it is one record,
+costs, which buttons swing, use and jump, and which sprite clips a swing plays (`animations`: the clip,
+the frame event that lands the blow, the clip it goes back to) — all of it is one record,
 `sage:default_conventions` (`engine_content/data/conventions.json`), and code reads that record. To
 change a word, patch it from your content:
 
@@ -350,7 +400,44 @@ module registered — `Actions.Register("Swing", ActionKind.Button)` in your mod
 `"actions": { "attack": "Swing" }` — and a name nobody registered is a load error
 (test: AConventionNamingAnActionNobodyRegisteredIsALoadError). Your C# reads the same record:
 `world.Conventions().Health`, never `new RecordId("sage", "health")`
-(test: NoGameplayCodeNamesAnEngineRecordId).
+(test: NoGameplayCodeNamesAnEngineRecordId). A sheet whose clips are called something else says so here
+(test: AGameNamesTheSpriteClipsCombatPlays). The button that fires the readied spell is the RPG kit's
+word, not the base's (`rpg_conventions`, §2 "Kits").
+
+### What things *do*: open vocabularies
+
+Where content says what something does — what a quest stage asks for, what a line of dialogue needs
+and does, how a spell reaches its target, what an effect does besides changing numbers, what using an
+item does, what a creature knows and how it picks a schedule — it names an **entry of a vocabulary**,
+and a plugin (yours included) can add entries (issue #28). Each vocabulary has a key that names the
+entry inside an object; an entry that takes no settings can be written as its bare name:
+
+| Vocabulary | Where content uses it | The engine's entries |
+|---|---|---|
+| `quest_objective` (key `kind`, default `kill`) | a quest stage's `objectives` | `kill`, `have`, `reach`, `talk` |
+| `condition` (key `condition`) | a dialogue option's `conditions` | `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest` |
+| `action` (key `action`) | a dialogue option's `actions` | `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest` |
+| `ability_delivery` | an ability's `delivery` (its `targeting` still names one) | `self`, `touch`, `touch_area`, `area`, `projectile` |
+| `effect_execution` (key `execution`) | an effect's `executions` | `knockback`, `teleport`, `summon`, `dispel` |
+| `item_use` (key `use`) | an item's `uses`, run in order by `world.UseItem` and `use_item` | `consume`, `read`, `cast` |
+| `ai_condition` | an `ai_schedule`'s `interrupts`, an `ai_profile`'s `rules` | `SeeEnemy`, `EnemyInMeleeRange`, `NoEnemy`, … (the eleven the engine senses) |
+| `ai_schedule_selector` | an `ai_profile`'s `selector` | `default` (the engine's choice), `rules` |
+
+```json
+{ "type": "quest", "id": "errand", "stages": [
+    { "id": "go",    "objectives": [{ "kind": "reach", "at": [410, 0, 96], "radius": 3, "place": "the well" }], "next": "speak" },
+    { "id": "speak", "objectives": [{ "kind": "talk", "dialogue": "hermit_talk" }], "done": true } ] },
+{ "type": "item", "id": "potion_red", "uses": [{ "use": "consume", "effects": ["mend"] }] },
+{ "type": "effect", "id": "shove", "executions": [{ "execution": "knockback", "force": 8, "lift": 2 }] },
+{ "type": "ai_profile", "id": "nocturnal", "rules": [{ "when": ["is_night"], "schedule": "prowl" }] }
+```
+
+Names match ignoring case, `_` and `-` (`"Kill"` is `kill`, `"see_enemy"` is `SeeEnemy`). A name
+nobody registered, or a setting an entry does not have, is a load error at its line with the nearest
+real one (test: AnUnknownEntryIsALoadErrorThatSaysTheNearestName), and `sage schema` lists every
+registered name and each entry's settings in `schemas/vocabularies.schema.json`
+(test: TheCommittedSchemasCheckEntriesAndTheirSettings). Dialogue's older `requires` and `then` objects
+still work, and mean exactly the engine's conditions and actions above. §6 says how to add an entry.
 
 ### Every prefab part the engine provides
 
@@ -740,6 +827,49 @@ A sweep that starts inside something hits it at distance 0 (`StartsInside`), whi
 pressed against its target wants; contact begin/end is reported only for colliders with
 `ReportContacts` (the `body` part's `"contacts": true`).
 
+**Adding a word content can use** (issue #28). Every vocabulary in §3's table is declared like a
+record: a class, an attribute, and the generator registers it for your plugin just before your `Init`.
+Your game senses night, and its creatures and its conversations can then ask for it by name:
+
+```csharp
+[AICondition("is_night")]                        // asked every think, after the engine's perception
+public sealed class IsNight : IAICondition
+{
+    public bool Sense(in AIPerception p) => p.World.Resources.Get<Clock>().Hour is < 6 or >= 21;
+}
+
+[ItemUse("heal")]                                // "uses": [{ "use": "heal", "amount": 25 }, "consume"]
+public sealed class Heal : IItemUse
+{
+    public float Amount;                         // settings are fields, read from the entry's JSON
+    public bool Use(in ItemUse use, out string why) { /* … */ why = ""; return true; }
+}
+```
+
+The attributes are `[AICondition]`, `[AIScheduleSelector]`, `[QuestObjective]`, `[Condition]`,
+`[Action]`, `[AbilityDelivery]`, `[EffectExecution]` and `[ItemUse]`; each class implements the
+vocabulary's type (`IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`,
+`IAbilityDelivery`, `IEffectExecution`, `IItemUse`), is public (or internal) with a public
+parameterless constructor, and may carry several attributes to answer to several names. `Plugin =
+"id"` says which plugin owns it when your assembly has more than one (SAGE0100). Registration closes
+when content loads, like every registry (test: VocabulariesAreSealedWhenContentLoads). Your own
+vocabulary is one `[Vocabulary("name")]` on an interface and one attribute class deriving from
+`VocabularyEntryAttribute<T>`; a field of that interface type then reads entries from JSON. Worth
+knowing about each:
+
+- **AI conditions** keep to 64 in all (a creature's conditions are one 64-bit mask); the engine's eleven
+  keep their bits and yours take the rest (test: TheEnginesConditionsKeepTheirBitsAndAGamesTakeTheNextFree).
+  A profile's `rules` pick a schedule by them without any selector of your own
+  (test: AGamesConditionPicksASchedulesThroughAProfilesRules).
+- **Quest objectives** either measure progress from the world (`Measure`) or count happenings
+  (`Notice`): the engine sends kills, conversations and where the player is; send your own with
+  `Quests.Notice(world, new QuestHappening("yourgame:lever", lever, player))`
+  (test: ReachTalkAndAGamesObjectiveMoveAQuestAlong).
+- **Effect executions** may run inside a system's loop: queue anything structural with
+  `execution.Defer(world => …)` (the engine's `summon` and `dispel` do).
+
+Tags go up to 256 and button actions to 128 (test: TagsGoPast64) (test: ActionMask_HoldsButtonsPast64).
+
 ---
 
 ## 7. The HUD, and screens
@@ -768,9 +898,15 @@ to an action in its client module:
 ```csharp
 var screens = world.Resources.Get<ScreenStack>();
 screens.Bind(actions.Get("Inventory"), new InventoryScreen());
+// A kit's screen, by its id in the client's ScreenRegistry (ctx.Get<ScreenRegistry>() in Start):
+screens.Bind(actions.Get("Journal"), registry.Create("journal")!);
 ```
 
-While a screen is open it takes the input, so gameplay does not also react.
+While a screen is open it takes the input, so gameplay does not also react. The base client ships no
+screen of its own: when somebody with a `dialogue` is used it asks the `ScreenRegistry` for
+`"dialogue"`, which the RPG kit's client half registers, and with none registered nobody is talked to.
+A game registers its own screens there in its client module's `Init` (`registry.Register("map", () =>
+new MapScreen())`).
 
 ---
 
@@ -1007,12 +1143,17 @@ diagnostic they report is an error. One line each, with the fix:
 | SAGE0011 | A declared part or system that cannot be one (abstract, generic, private, not `IPrefabPart` / `ISystem`, a part without a public parameterless constructor) | Follow the message |
 | SAGE0012 | Two declarations of one part or system id in an assembly | Rename one |
 | SAGE0013 | A system ordered (`Before`/`After`) against a system of this assembly in another phase | Drop the constraint: the phase order decides it |
-| SAGE0020 | A cvar, command, input action, entity input, record type, prefab part, saved resource or module registered (or a save converter added) in `Start`, `OnWorldCreated`, `CreateRules`, or a system's constructor or `Run` (§10 item 7) | Register it in the module's `Init`; hand a system what it needs through its constructor |
+| SAGE0020 | A cvar, command, input action, entity input, record type, prefab part, saved resource, vocabulary entry or module registered (or a save converter added) in `Start`, `OnWorldCreated`, `CreateRules`, or a system's constructor or `Run` (§10 item 7) | Register it in the module's `Init`; hand a system what it needs through its constructor |
 | SAGE0021 | A `[Record]` type or `[SavedResource]` name that is empty or has whitespace, or a saved resource with `Version` below 1 | Name it (`"item"`); versions start at 1 |
 | SAGE0022 | An `[Upgrade]` method nothing runs (not on a component, tag or saved resource), a saved resource's upgrader with the wrong shape or version, or two upgraders from one version | Move it to the type whose saved shape changed; fix the signature or the number |
 | SAGE0023 | *Strict saves only:* a public component field that is neither `[Property]` nor `[Transient]` | Decide: `[Property]` saves it, `[Transient]` leaves it out |
 | SAGE0024 | *Simulation-only projects:* a `Microsoft.Xna.Framework` (MonoGame) type | Move the code to the client half |
 | SAGE0025 | *Base engine assemblies:* a reference to a `Sage.Kits.*` assembly, or a use of one of its types or members | The base never depends on a kit: move the code into the kit, or give the base a hook the kit plugs into |
+| SAGE0100 | A vocabulary entry (`[AICondition]`, `[QuestObjective]`, `[ItemUse]`, …) whose plugin cannot be inferred | Add `Plugin = "<plugin id>"` |
+| SAGE0101 | A vocabulary entry that cannot be one: abstract, generic, private, no public parameterless constructor, or not of the vocabulary's type | Follow the message |
+| SAGE0102 | Two entries of one vocabulary with one id in an assembly (ids compare ignoring case, `_` and `-`) | Rename one |
+| SAGE0103 | A vocabulary entry with an empty id | Name it |
+| SAGE0104 | An entry attribute whose type is not marked `[Vocabulary("name")]`, so content could not name it | Mark the interface (or abstract class) |
 | SAGE0050 | A `Friflo.*` type or namespace named anywhere but `Sage.Simulation`, which implements the ECS over it | Use Sage's `Entity`, `IComponent`, `ITag`, `Tags`, `Query<…>`, `EntityCommands` (§6) |
 | SAGE0110 | *Sage.Sdk, after a build:* `game.json` names an `assembly` or `modules.add` path that the build did not write | Point it at `bin/{config}/Name.dll` (relative to the game folder; no target framework in the path) |
 | SAGE0111 | *Sage.Sdk, after a build:* `game.json` does not load the project's own dll | Name it as `assembly` (the simulation half) or in `modules.add` (a client half); the message has the path |

@@ -43,7 +43,7 @@ public sealed class GameplayRegistries
     private readonly Dictionary<RecordId, int> _tags = new();
     private readonly List<RecordId> _tagIds = new();
 
-    public const int MaxTags = 64;   // a ulong bitset; a real bitset class comes if a game needs more
+    public const int MaxTags = TagSet.Capacity;   // 256 (issue #28; it was one ulong, 64)
 
     public int AttributeCount => _attributeIds.Count;
     public int TagCount => _tagIds.Count;
@@ -129,19 +129,75 @@ public struct Attributes : IComponent
     public static Attributes Create() => new() { Values = new AttributeSet() };
 }
 
-// A 64-tag bitset (16 §3.3). Tags come from effects (granted while active) or from gameplay directly.
+// A tag bitset (16 §3.3). Tags come from effects (granted while active) or from gameplay directly.
 [Component("sage:gameplay_tags")]
 public struct GameplayTags : IComponent
 {
-    public ulong Bits;
-    [Transient] public ulong Granted;   // rebuilt from ActiveEffects; saving it would strip real tags   // the part currently granted by active effects
+    public TagSet Bits;
+    [Transient] public TagSet Granted;   // the part granted by active effects: rebuilt from ActiveEffects; saving it would strip real tags
 
-    public readonly bool Has(int tag) => tag >= 0 && (Bits & (1UL << tag)) != 0;
-    public readonly bool HasAll(ulong mask) => (Bits & mask) == mask;
-    public readonly bool HasAny(ulong mask) => (Bits & mask) != 0;
+    public readonly bool Has(int tag) => Bits.Has(tag);
+    public readonly bool HasAll(in TagSet mask) => Bits.HasAll(mask);
+    public readonly bool HasAny(in TagSet mask) => Bits.HasAny(mask);
 
-    public void Add(int tag) { if (tag >= 0) Bits |= 1UL << tag; }
-    public void Remove(int tag) { if (tag >= 0) Bits &= ~(1UL << tag); }
+    public void Add(int tag) => Bits.Add(tag);
+    public void Remove(int tag) => Bits.Remove(tag);
+}
+
+// 256 tag bits in four words (issue #28: one word was 64 tags, and a game's own tags ran out long
+// before its content did). A value, so a component holding one copies without allocating; the tick
+// folds granted tags into one on the stack. Saved by name, never as bits (GameplayTagsSaveConverter).
+public struct TagSet : IEquatable<TagSet>
+{
+    public const int Capacity = 256;
+
+    private ulong _w0, _w1, _w2, _w3;
+
+    public readonly bool Has(int tag) => tag is >= 0 and < Capacity && (Word(tag >> 6) & (1UL << (tag & 63))) != 0;
+
+    public void Add(int tag)
+    {
+        if (tag is < 0 or >= Capacity) return;
+        SetWord(tag >> 6, Word(tag >> 6) | (1UL << (tag & 63)));
+    }
+
+    public void Remove(int tag)
+    {
+        if (tag is < 0 or >= Capacity) return;
+        SetWord(tag >> 6, Word(tag >> 6) & ~(1UL << (tag & 63)));
+    }
+
+    public readonly bool IsEmpty => (_w0 | _w1 | _w2 | _w3) == 0;
+    public readonly bool HasAll(in TagSet mask) =>
+        (_w0 & mask._w0) == mask._w0 && (_w1 & mask._w1) == mask._w1 && (_w2 & mask._w2) == mask._w2 && (_w3 & mask._w3) == mask._w3;
+    public readonly bool HasAny(in TagSet mask) =>
+        ((_w0 & mask._w0) | (_w1 & mask._w1) | (_w2 & mask._w2) | (_w3 & mask._w3)) != 0;
+
+    // (this without `remove`) with `add`: how the tick swaps last tick's granted tags for this tick's.
+    public readonly TagSet Replace(in TagSet remove, in TagSet add) => new()
+    {
+        _w0 = (_w0 & ~remove._w0) | add._w0,
+        _w1 = (_w1 & ~remove._w1) | add._w1,
+        _w2 = (_w2 & ~remove._w2) | add._w2,
+        _w3 = (_w3 & ~remove._w3) | add._w3,
+    };
+
+    private readonly ulong Word(int index) => index switch { 0 => _w0, 1 => _w1, 2 => _w2, _ => _w3 };
+
+    private void SetWord(int index, ulong value)
+    {
+        switch (index)
+        {
+            case 0: _w0 = value; break;
+            case 1: _w1 = value; break;
+            case 2: _w2 = value; break;
+            default: _w3 = value; break;
+        }
+    }
+
+    public readonly bool Equals(TagSet other) => _w0 == other._w0 && _w1 == other._w1 && _w2 == other._w2 && _w3 == other._w3;
+    public readonly override bool Equals(object? obj) => obj is TagSet other && Equals(other);
+    public readonly override int GetHashCode() => HashCode.Combine(_w0, _w1, _w2, _w3);
 }
 
 // Helpers for gameplay code that works with record ids rather than indices.

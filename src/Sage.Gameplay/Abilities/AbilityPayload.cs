@@ -29,16 +29,18 @@ internal sealed class AbilityPayload
     {
         _targets.Clear();
 
-        // Who it lands on, all three cases in one place. "On me" is not a burst of radius zero and not
-        // a touch that happened to hit the caster: it is its own answer, and putting it here is what
-        // stops a self-targeted spell quietly skipping the damage pipeline.
-        if (record.Targeting == AbilityTargeting.Self) _targets.Add(caster);
-        else if (record.Radius > 0f) Gather(world, point, record.Radius, caster, includeCaster: record.Targeting == AbilityTargeting.Area);
-        // The same rule as the blast below: a bolt that strikes an ally fizzles rather than burning it.
-        // Without this a firebug's ember bolt hurt whatever wandered into its flight path, which was
-        // visible in the Sandbox the day factions arrived.
-        else if (CanBeAffected(world, direct) && direct != caster && Factions.MayHurt(world, caster, direct))
-            _targets.Add(direct);
+        // Who it lands on is the delivery's to say (issue #28): the caster, a burst, or what it struck —
+        // and a bolt that strikes an ally fizzles rather than burning it. Without that rule a firebug's
+        // ember bolt hurt whatever wandered into its flight path, which was visible in the Sandbox the
+        // day factions arrived.
+        if (AbilityDeliveries.Of(world, record) is { } delivery)
+        {
+            var landing = new AbilityLanding
+            {
+                Payload = this, World = world, Caster = caster, Record = record, Point = point, Struck = direct,
+            };
+            delivery.Gather(ref landing);
+        }
 
         foreach (var target in _targets)
         {
@@ -67,7 +69,12 @@ internal sealed class AbilityPayload
     // The space offers a box, and the box is the broad phase: the distance check is what makes the
     // burst round. `OverlapBox` can also report things whose shapes don't quite touch (10 §4), which
     // matters less for a blast than it would for a sword.
-    private void Gather(World world, Vector3 point, float radius, Entity caster, bool includeCaster)
+    internal void AddTarget(Entity entity)
+    {
+        if (!entity.IsNull && !_targets.Contains(entity)) _targets.Add(entity);
+    }
+
+    internal void Gather(World world, Vector3 point, float radius, Entity caster, bool includeCaster)
     {
         int count = _space.OverlapBox(point, new Vector3(radius), _nearby, LayerMask.All);
         for (int i = 0; i < count; i++)

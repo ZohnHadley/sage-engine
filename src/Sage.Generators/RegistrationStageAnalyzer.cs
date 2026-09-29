@@ -51,6 +51,8 @@ public sealed class RegistrationStageAnalyzer : DiagnosticAnalyzer
             "a save written or read before it has left the resource out"),
         (SageTypes.SaveSystem, "AddConverter", "a save converter",
             "a save written or read before it has used the default shape, which does not load back"),
+        (SageTypes.Vocabulary, "Register", "a vocabulary entry",
+            "vocabularies are sealed when content loads, and the records naming it were read without it"),
         (SageTypes.ModuleManager, "Add", "a module",
             "modules are sealed once Init has run, so it would never run Init"),
     };

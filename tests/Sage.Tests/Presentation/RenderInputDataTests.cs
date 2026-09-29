@@ -127,8 +127,9 @@ public class InputActionTests
     }
 
     [Fact]
-    public void Registry_LimitsButtonsTo64()
+    public void Registry_LimitsButtonsTo128()   // two words of an ActionMask (issue #28; it was one)
     {
+        Assert.Equal(128, ActionRegistry.MaxButtons);
         var r = new ActionRegistry();
         for (int i = 0; i < ActionRegistry.MaxButtons; i++) r.Register($"b{i}", ActionKind.Button);
         r.Register("axis", ActionKind.Axis1D);                                        // axes don't count
@@ -147,6 +148,31 @@ public class InputActionTests
         Assert.False(mask.Has(a));
         Assert.False(mask.Has(axis));
         Assert.Equal(1UL << b.Bit, mask.Bits);
+    }
+
+    // A button past the 64th lives in the mask's second word, and the latch carries it like any other.
+    [Fact]
+    public void ActionMask_HoldsButtonsPast64()
+    {
+        var r = new ActionRegistry();
+        for (int i = 0; i < 100; i++) r.Register($"b{i}", ActionKind.Button);
+        var low = r.Get("b3");
+        var high = r.Get("b99");
+        Assert.Equal(99, high.Bit);
+
+        var mask = default(ActionMask).With(high);
+        Assert.True(mask.Has(high));
+        Assert.False(mask.Has(low));
+        Assert.Equal(0UL, mask.Bits);
+        Assert.Equal(1UL << 35, mask.High);
+        Assert.True(mask.With(low).Has(low) && mask.With(low).Has(high));
+
+        var latch = new CommandLatch();
+        latch.AddFrame(held: mask, pressed: mask, released: default, Vector2.Zero);
+        latch.AddFrame(held: default, pressed: default(ActionMask).With(low), released: mask, Vector2.Zero);
+        var command = latch.Sample(1);
+        Assert.True(command.Pressed.Has(high) && command.Pressed.Has(low) && command.Released.Has(high));
+        Assert.False(command.Held.Has(high));
     }
 
     [Fact]

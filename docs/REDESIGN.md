@@ -83,7 +83,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | Audio (mixer, 3D, music) | ● | ● | ● | ● | ● | ● | ● | ✅ one-shots and loops; music streaming missing |
 | Stats, effects, damage, inventory, factions, AI (BT) | ● | ● | ● | ○ | ● | ○ | ● | ◐ built but RPG-shaped and closed (§4.3) |
 | Dialogue and quest *models* | ○ | ○ | ● | | ○ | | ● | ◐ closed enums; screens in engine |
-| Spellmaker, readied spell, journal, Daggerfall sprite rules | | | | | | | ● | ✅ **but in the engine; moves to `Sage.Kits.Rpg`** |
+| Spellmaker, readied spell, journal, Daggerfall sprite rules | | | | | | | ● | ✅ in `Sage.Kits.Rpg` since #27 (the sprite clip names are `gameplay_conventions`) |
 
 ● needs it · ●● leans on it hard · ○ nice to have · ✅ have · ◐ partial · ❌ missing
 
@@ -114,12 +114,13 @@ base-engine gap. Fix it in the base engine, never inside the sample.
   `Sage.Kits.Strategy`. A kit uses only base-engine public API.
 - **Games.** Your Daggerfall-like game is `Sandbox` grown up, and it is *Kit.Rpg plus its own content
   and code*.
-- **Moves out of the base today:**
+- **Moves out of the base today:** *(done: #26 and #27, see §3.1 "As built")*
   - `SpellmakerScreen`, `Spellmaker`, readied `Selected`, `JournalScreen`, `DialogueScreen`;
   - `sage:mana` costing;
   - the five hard-coded schedule ids;
   - clip names `attack`/`hit`/`idle`;
-  - `FirstPersonCameraSystem`, which becomes one camera rig among several in the base.
+  - `FirstPersonCameraSystem`, which becomes one camera rig among several in the base;
+  - the two equipment slots (main and off hand), as a kit default.
 - **Stays in the base:**
   - 8-direction billboards: generic sprite feature, useful for Doom-likes and isometric games;
   - kinematic controller, entity I/O, streaming, factions and attributes.
@@ -260,14 +261,13 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   the registration ledger and seals, the declaration attributes and the metadata table. It references
   no package; Friflo's `Entity` is recognised by name in the metadata, and the ECS's entity converter
   for record JSON is added by the `Engine`.
-- **Physics is its own base plugin, `Sage.Physics3D` (Bepu)**, with character movement and the
-  first-person rig (until the camera-rig work). The simulation and gameplay reach physics only through
+- **Physics is its own base plugin, `Sage.Physics3D` (Bepu)**, with character movement; the
+  first-person rig it installs is `Sage.Simulation`'s since #27. The simulation and gameplay reach physics only through
   **`IPhysicsWorld`** (issue #30, below), which the space is installed as too. `PawnIntent`, `Pawn`, `PlayerControlled` and `Players.ForEachPlayer` are
   simulation (`Sage.Simulation/Input`), because streaming, maps, entity I/O and the controller all read them.
-- **No `Sage.Kits.Rpg` yet.** The client builds the dialogue screen itself, so the RPG screens
-  (spellmaker, journal, dialogue, panels) wait in `Sage.Gameplay/Rpg/` for #27. What stops them from
-  coming back once the kit exists is **SAGE0025**: a base assembly (`SageBaseAssembly`, set for Core to
-  Gameplay, Client and Editor) that references a `Sage.Kits.*` assembly or uses its types is a build error.
+- **The RPG kit came with #27** (below). What stops its code coming back into the base is **SAGE0025**:
+  a base assembly (`SageBaseAssembly`, set for Core to Gameplay, Client and Editor) that references a
+  `Sage.Kits.*` assembly or uses its types is a build error.
 - **Plugin ids did not change** (`sage.physics3d`, `sage.streaming`, `sage.gameplay.*` — `game.json`
   names them), even where the plugin's assembly did: entity I/O (`sage.gameplay.io`) and maps are in
   `Sage.Simulation`, the character (`sage.gameplay.character`) in `Sage.Physics3D` (its data in
@@ -307,6 +307,34 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   `character` parts under the same ids, options and plugins, and `phys_debug`'s system. A sweep that
   starts inside something is a hit now rather than nothing, which was the "overlapped sweeps are
   discarded" gap (test: ASwingHitsATargetPressedAgainstTheAttacker).
+- *As built (issue #27, 2026-09-29): the RPG kit.* **`Sage.Kits.Rpg`** (plugin `sage.kits.rpg`,
+  simulation-only) and **`Sage.Kits.Rpg.Client`** (`sage.kits.rpg.client`) sit on the base and are not
+  part of it: not base assemblies, not in `BasePlugins.All()`, loaded only for a game whose `game.json`
+  says `"kits": ["sage.kits.rpg"]` (test: HelloHasNoKitAndTheSandboxHasTheRpgKit). The kit has the
+  spellmaker and its saved `spellbook`, the readied spell and the `Cast` button that fires it through
+  `world.Cast`'s queue (test: TheCastButtonFiresTheReadiedSpell), the bag and spellbook panels, the
+  journal, conversation and spellmaker screens, the `spells`/`ready`/`inv`/`spell_*` commands, the two
+  hands as equipment slots, and an optional `rpg_conventions` record (`spellNamespace`, formerly the
+  fixed `custom`; `castAction`) (test: AGameChoosesTheNamespaceItsComposedSpellsLiveIn). Its client half
+  registers the screens by id in the client's new **`ScreenRegistry`**, and the client's
+  `DialogueSystem` asks for `"dialogue"` instead of making `DialogueScreen`. What the base keeps:
+  ability use (`world.Cast`, the AI's casting), `Abilities.Selected` as data only (saves carry it under
+  `sage:abilities`; the base never reads it), and equipment **by slot name**: `ItemRecord.Slot` is a
+  string, `sage:equipment` a list of `{ Slot, Item }` (version 2, whose upgrader brings the golden
+  saves' `MainHand`/`OffHand` across), and the slots are whatever the kit and the game register in
+  `EquipSlots` — none in the base (test: TheKitHasTwoHandsAndTheBaseNone). Spell prices are worded in the
+  conventions' `costAttribute`, and the sprite clips combat plays are `gameplay_conventions`
+  `animations` (test: AGameNamesTheSpriteClipsCombatPlays). **How the host finds a kit:** by its id —
+  `sage.kits.rpg` is `Sage.Kits.Rpg.dll` — beside the game's assembly or its `modules.add` ones, or
+  beside the host, where `build/Sage.Kits.targets` copies every kit without the host referencing one
+  (a referenced kit would be loaded, and put in the ECS schema, for every game); loaded before the
+  game's assemblies, with the `.Client` half in a host with a window (`SageAppOptions.LoadKitClients`)
+  (test: AKitThatIsNotThereIsAnErrorThatSaysWhere). Layering: the kit references the base and no client
+  (test: TheRpgKitIsBuiltOnTheBaseAndIsNotPartOfIt), neither the built client nor the editor references
+  a kit (test: NeitherTheClientNorTheEditorReferencesAKit), and SAGE0025 fires against the real kit
+  (test: ABaseAssemblyThatUsesTheRealRpgKitIsABuildError). `FirstPersonCameraSystem` moved to
+  `Sage.Simulation` (it needed nothing of Bepu's). The kit has no content mount yet, so its defaults are
+  code and a game binds the kit's keys itself (`games/Sandbox/content/data/input.json`).
 - Not done here: `GameplayModules.cs`, `PrefabParts.cs` and `MapLevel.cs` moved whole rather than one
   file per module or type; the render, audio, input and UI view-models stay in `Sage.Simulation` rather
   than separate `Sage.UI`/`Sage.Audio` plugins (§0.5); `Sage.Sdk` is #32.
@@ -502,7 +530,8 @@ AGameRenamesHealthToHpByChangingOneRecord). No `new RecordId("sage", …)` is le
   - `Sage.Gameplay`: generic;
   - `Sage.Kits.Rpg`: the spellmaker, readied `Selected` spell, journal and dialogue screens,
     `sage:mana` cost, and sprite clip names `attack`/`hit`/`idle`. The Kit exposes these as conventions
-    in data.
+    in data. *Done (issue #27), see §3.1: the cost and the clip names are `gameplay_conventions` fields,
+    the rest is the kit's.*
 - Move dialogue and quest record registration out of `FactionsModule` (`GameplayModules.cs:544-554`). *Done (issue #26): `QuestsModule` and `DialogueModule`, see §3.1.*
   Split `GameplayModules.cs` (634 lines) and `MapLevel.cs` (757 lines, 11 types) into one file per module.
 - **Promote scene spawning into the engine.** `SceneRecord`, the spawn loop and respawn-on-reload are
@@ -585,6 +614,36 @@ measured need.
 | Effects only modify numbers | `[EffectExecution]` registry (knockback, teleport, summon, dispel) |
 | Items have no "use" (`Items.cs:21-35`) | `[ItemUse]` registry (consume, read, cast) |
 | 64-tag and 64-action caps (`Attributes.cs:48`, `PlayerCommand.cs:26`) | bitset grows, or tags become interned ids |
+
+As built (issue #28): one mechanism serves every row. A vocabulary is an interface (or abstract class)
+marked `[Vocabulary("name", Key = …, Default = …)]`; an entry is a class carrying an attribute derived
+from `VocabularyEntryAttribute<T>` (`[AICondition("is_night")]`), and `VocabularyGenerator` registers
+it for its plugin just before that plugin's `Init`, like records and parts (SAGE0100–0104; SAGE0020
+covers `Vocabulary<T>.Register` by hand). `Engine.Vocabularies` holds the registries, sealed when
+content loads; a field of a vocabulary's type reads `"name"` or `{ "<key>": "name", …settings }` from
+JSON through the engine's converter, strictly (an unknown name or setting is a load error with the
+nearest one). `sage schema` writes `schemas/vocabularies.schema.json` (every registered id, and each
+entry's settings), a `[VocabularyRef]` string names ids from it, and the registry dump lists every
+entry with its owner. Every closed set became one, with today's behaviour as registered defaults and
+no content change (test: AnUnknownEntryIsALoadErrorThatSaysTheNearestName)
+(test: TheEnginesEntriesAreRegisteredByTheirPlugins):
+
+| Was | Is | Owner | Defaults |
+|---|---|---|---|
+| `AICondition` mask | `ai_condition` (`IAICondition.Sense`, asked every think); a game's take free bits of the 64 | `sage.gameplay.ai` | the eleven perceived ones, at their old bits |
+| `ChooseSchedule` | `ai_schedule_selector`, named by `ai_profile.selector`; `rules` reads the profile's `rules` | `sage.gameplay.ai` | `default` (the old code), `rules` |
+| `ObjectiveKind` | `quest_objective` (`QuestObjective`: measured or counted via `QuestHappening`) | `sage.gameplay.quests` | `kill`, `have`, `reach`, `talk` |
+| dialogue `requires`/`then` | `condition`/`action` lists on an option; the old fields are shorthand for them | `sage.gameplay.dialogue` (quest ones: `sage.gameplay.quests`) | `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest`; `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest` |
+| `AbilityTargeting` + payload | `ability_delivery` (release, then gather), named by `delivery`; `targeting` still names one | `sage.gameplay.abilities` | `self`, `touch`, `touch_area`, `area`, `projectile` |
+| effects only modify numbers | `effect_execution` list on an effect, run on each application and period | `sage.gameplay.attributes` | `knockback`, `teleport`, `summon`, `dispel` |
+| items have no use | `item_use` list on an item, `world.UseItem`, `use_item` | `sage.gameplay.items` | `consume`, `read`, `cast` |
+| 64 tags, 64 buttons | a 256-bit `TagSet`; a two-word `ActionMask` (128 buttons) | — | saves still write tags by name |
+
+(test: AGamesConditionPicksASchedulesThroughAProfilesRules) (test: ReachTalkAndAGamesObjectiveMoveAQuestAlong)
+(test: ADialogueOptionUsesAGamesConditionAndActionsByName) (test: AnAbilityNamesAGamesDelivery)
+(test: AnEffectRunsAGamesExecutionAndTheEnginesOwn) (test: AnItemIsUsedThroughItsUsesInOrder)
+(test: TagsGoPast64) (test: ActionMask_HoldsButtonsPast64). AI conditions stay a 64-bit mask, which a
+think reads without allocating; the conditions and actions are stage 2's seed, read by dialogue only so far.
 
 **Stage 2: one shared condition and action language in data.** Anything that decides or does
 something uses the same typed vocabulary, including dialogue, quests, triggers, items, AI and I/O:
@@ -846,7 +905,7 @@ what the base therefore needs first:
 | Skeletal characters and first-person arms | billboards | ● | ● | ● | ❌ |
 | Melee **and** ranged: projectile, hitscan, ammo, reload, hit locations | ● | ●● | ● | ●● | ◐ melee plus projectiles; no hitscan, ammo or reload |
 | Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ◐ attributes and effects; no skills or levelling |
-| Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ◐ bag, two slots; no containers, shops or use |
+| Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ◐ bag, slots by name (the RPG kit's two hands); no containers, shops or use |
 | Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ closed enums (§4.3) |
 | Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ◐ entity I/O with 6 inputs |
 | AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ HL1-style schedules; no off-screen simulation |
@@ -866,7 +925,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
-| 3 — Carve the base | **In progress.** Done: the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30) and the owned ECS API (#25), each with an "As built" note, and the SDK and templates (#32, §4.8); next #27, #28 and #31 |
+| 3 — Carve the base | **In progress.** Done: the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), each with an "As built" note; next #31 |
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|

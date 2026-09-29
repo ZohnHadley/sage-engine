@@ -287,6 +287,33 @@ public class AnalyzerTests
         Assert.Empty(AnalyzeWith(UsesAKit, new KitReferenceAnalyzer(), new[] { FakeKit() }));
     }
 
+    // The same against the real kit (issue #27): the analyzer knows Sage.Kits.Rpg by its assembly name,
+    // so the day it is renamed or split this is the test that says SAGE0025 went quiet.
+    private const string UsesTheRpgKit = """
+        namespace Sage.Gameplay.Screens
+        {
+            public static class Prices
+            {
+                public static float Of(Sage.Core.RecordStore records, Sage.Kits.Rpg.SpellDraft draft) =>
+                    Sage.Kits.Rpg.Spellmaker.Price(records, draft);
+            }
+        }
+        """;
+
+    [Fact]
+    public void ABaseAssemblyThatUsesTheRealRpgKitIsABuildError()
+    {
+        var kit = new[] { MetadataReference.CreateFromFile(typeof(Sage.Kits.Rpg.RpgKitModule).Assembly.Location) };
+        var diagnostics = AnalyzeWith(UsesTheRpgKit, new KitReferenceAnalyzer(), kit, ("SageBaseAssembly", "true"));
+
+        Assert.All(diagnostics, d => Assert.Equal("SAGE0025", d.Id));
+        Assert.StartsWith("The project reference is from the kit Sage.Kits.Rpg", Assert.Single(diagnostics, d => d.Location == Location.None).GetMessage());
+        Assert.Equal(new[] { "SpellDraft", "Spellmaker" },
+                     diagnostics.Where(d => d.Location != Location.None).Select(d => d.GetMessage().Split(' ')[0]));
+        // And a kit, a game or a host may.
+        Assert.Empty(AnalyzeWith(UsesTheRpgKit, new KitReferenceAnalyzer(), kit));
+    }
+
     [Fact]
     public void ABaseAssemblyWithoutAKitHasNothingToReport()
     {
@@ -345,7 +372,7 @@ public class AnalyzerTests
     // Runs `analyzer` over `source`, compiled against the engine and Friflo with the given MSBuild
     // properties visible (as CompilerVisibleProperty makes them), and returns what it reported in source
     // order — failing if the source itself does not compile, so a test cannot pass on a typo.
-    private static ImmutableArray<Diagnostic> Analyze(string source, DiagnosticAnalyzer analyzer,
+    internal static ImmutableArray<Diagnostic> Analyze(string source, DiagnosticAnalyzer analyzer,
                                                       params (string Name, string Value)[] properties) =>
         AnalyzeWith(source, analyzer, Array.Empty<MetadataReference>(), properties);
 
@@ -355,6 +382,8 @@ public class AnalyzerTests
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
+            // Not the real kits this test project references (issue #27): a test that wants one says so.
+            .Where(path => !Path.GetFileName(path).StartsWith("Sage.Kits", StringComparison.Ordinal))
             .Select(path => MetadataReference.CreateFromFile(path))
             .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
             // Friflo's assembly: Sage's IComponent extends Friflo's, so a game compiles against it too.

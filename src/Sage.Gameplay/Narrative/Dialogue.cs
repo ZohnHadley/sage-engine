@@ -69,6 +69,24 @@ public sealed class DialogueOption
     public DialogueRequirement? Requires;
     public DialogueOutcome? Then;
     public string Refusal = "";                 // what the row says when it is greyed out
+
+    // Conditions and actions by name (issue #28), asked and done after what `requires` and `then` say —
+    // which are shorthand for the engine's own entries (DialogueSugar).
+    public List<ICondition> Conditions = new();
+    public List<IAction> Actions = new();
+
+    // Everything it requires and does, shorthand first: made once per option (a reload makes new ones).
+    internal List<ICondition> AllConditions() => _conditions ??= Combine(DialogueSugar.Conditions(Requires), Conditions);
+    internal List<IAction> AllActions() => _actions ??= Combine(DialogueSugar.Actions(Then), Actions);
+
+    private List<ICondition>? _conditions;
+    private List<IAction>? _actions;
+
+    private static List<T> Combine<T>(List<T> sugar, List<T> named)
+    {
+        sugar.AddRange(named);
+        return sugar;
+    }
 }
 
 public sealed class DialogueNode
@@ -175,46 +193,16 @@ public static class DialogueRules
     public static bool CanPick(World world, Entity listener, DialogueOption option, out string why)
     {
         why = "";
-        var requires = option.Requires;
-        if (requires == null) return true;
+        var conditions = option.AllConditions();
+        if (conditions.Count == 0) return true;
 
-        if (!requires.Tag.IsEmpty && !world.HasTag(listener, requires.Tag))
+        var speaker = world.Resources.TryGet<Conversation>(out var conversation) && conversation != null ? conversation.Speaker : default;
+        var context = new ConditionContext(world, listener, speaker);
+        foreach (var condition in conditions)
         {
-            why = option.Refusal.Length > 0 ? option.Refusal : "not yet";
+            if (condition.Test(in context, out string refusal)) continue;
+            why = option.Refusal.Length > 0 ? option.Refusal : refusal;
             return false;
-        }
-        if (!requires.WithoutTag.IsEmpty && world.HasTag(listener, requires.WithoutTag))
-        {
-            why = option.Refusal.Length > 0 ? option.Refusal : "already done";
-            return false;
-        }
-        if (!requires.Item.IsEmpty && world.CountOf(listener, requires.Item) < Math.Max(requires.Count, 1))
-        {
-            why = option.Refusal.Length > 0 ? option.Refusal : "you do not have it";
-            return false;
-        }
-        if (!requires.Faction.IsEmpty)
-        {
-            float standing = Factions.StandingWith(world, requires.Faction);
-            if (standing < requires.MinStanding || standing > requires.MaxStanding)
-            {
-                why = option.Refusal.Length > 0 ? option.Refusal : "they do not trust you";
-                return false;
-            }
-        }
-        if (!requires.Quest.IsEmpty)
-        {
-            bool ok = true;
-            if (requires.NotStarted) ok = Quests.IsNotStarted(world, requires.Quest);
-            else if (requires.Finished) ok = Quests.IsFinished(world, requires.Quest);
-            else if (requires.Active) ok = Quests.IsActive(world, requires.Quest);
-            if (ok && requires.Stage.Length > 0)
-                ok = Quests.StageOf(world, requires.Quest) == requires.Stage && Quests.IsActive(world, requires.Quest);
-            if (!ok)
-            {
-                why = option.Refusal.Length > 0 ? option.Refusal : "there is nothing to say about that";
-                return false;
-            }
         }
         return true;
     }
@@ -228,7 +216,7 @@ public static class DialogueRules
         var listener = conversation.Listener;
         if (!CanPick(world, listener, option, out _)) return false;
 
-        Apply(world, listener, option.Then);
+        Apply(world, listener, conversation.Speaker, option);
 
         var records = world.Resources.Get<RecordStore>();
         if (option.End || option.Goto.Length == 0 || !records.TryGet(conversation.Record, out DialogueRecord record))
@@ -251,19 +239,13 @@ public static class DialogueRules
         return true;
     }
 
-    private static void Apply(World world, Entity listener, DialogueOutcome? outcome)
+    private static void Apply(World world, Entity listener, Entity speaker, DialogueOption option)
     {
-        if (outcome == null) return;
+        var actions = option.AllActions();
+        if (actions.Count == 0 && option.Then == null) return;
 
-        if (!outcome.GiveItem.IsEmpty) world.Give(listener, outcome.GiveItem, Math.Max(outcome.GiveCount, 1));
-        if (!outcome.TakeItem.IsEmpty) world.Take(listener, outcome.TakeItem, Math.Max(outcome.TakeCount, 1));
-        if (!outcome.Effect.IsEmpty) Effects.Apply(world, listener, outcome.Effect);
-        if (!outcome.Faction.IsEmpty && outcome.Standing != 0f)
-            Factions.Change(world, outcome.Faction, outcome.Standing);
-
-        if (!outcome.StartQuest.IsEmpty) Quests.Start(world, outcome.StartQuest);
-        if (!outcome.Quest.IsEmpty && outcome.Stage.Length > 0) Quests.SetStage(world, outcome.Quest, outcome.Stage);
-        if (!outcome.FinishQuest.IsEmpty) Quests.Finish(world, outcome.FinishQuest);
+        var context = new ActionContext(world, listener, speaker);
+        foreach (var action in actions) action.Run(in context);
 
         // Taking or giving may have finished an errand: "bring me five pelts" is met the moment the
         // fifth is in the bag, and the conversation that took them should not leave it hanging.

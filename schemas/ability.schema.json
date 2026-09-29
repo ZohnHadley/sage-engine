@@ -82,6 +82,18 @@
         "Projectile"
       ]
     },
+    "delivery": {
+      "description": "A registered delivery by name; empty = the one targeting names. (string, default \"\")",
+      "default": "",
+      "anyOf": [
+        {
+          "$ref": "vocabularies.schema.json#/definitions/ability_delivery:id"
+        },
+        {
+          "const": ""
+        }
+      ]
+    },
     "range": {
       "description": "(float, default 8)",
       "default": 8,

@@ -40,6 +40,11 @@ public sealed class EffectRecord
     // has no price because no player composes with it. It lives on the effect rather than in the
     // spellmaker so that a mod adding an effect prices it in the same file it defines it in.
     public float Cost;
+
+    // What it does besides changing numbers (issue #28): knock back, teleport, summon, dispel, or a
+    // game's own `effect_execution`. Run whenever the effect is applied, and on each period of a
+    // periodic one (EffectExecutions).
+    public List<IEffectExecution> Executions = new();
 }
 
 // A running effect on an entity.
@@ -96,6 +101,7 @@ public static class Effects
         if (record.Duration == EffectDuration.Instant)
         {
             ApplyInstant(world, target, record, registries, 1, magnitude);
+            EffectExecutions.Run(world, target, source, effect, record, 1, magnitude);
             return true;
         }
 
@@ -113,6 +119,7 @@ public static class Effects
                 if (record.Stacking == EffectStacking.Stack)
                     existing.Stacks = Math.Min(existing.Stacks + 1, Math.Max(record.MaxStacks, 1));
                 list[i] = existing;
+                EffectExecutions.Run(world, target, source, effect, record, existing.Stacks, magnitude);
                 return true;
             }
         }
@@ -126,6 +133,7 @@ public static class Effects
             Stacks = 1,
             Magnitude = magnitude,
         });
+        EffectExecutions.Run(world, target, source, effect, record, 1, magnitude);
         return true;
     }
 
@@ -270,6 +278,7 @@ public sealed class EffectSystem : ISystem
                 {
                     running.PeriodTimer -= record.Period;
                     Effects.ApplyInstant(world, entity, record, _registries, running.Stacks, Magnitude(running));
+                    EffectExecutions.Run(world, entity, running.Source, running.Record, record, running.Stacks, Magnitude(running));
                 }
             }
 
@@ -291,7 +300,7 @@ public sealed class EffectSystem : ISystem
     private void Recompute(World world, Entity entity, ref Attributes attributes, ref ActiveEffects active)
     {
         var list = active.Effects;
-        ulong granted = 0;
+        var granted = default(TagSet);
 
         for (int attribute = 0; attribute < _registries.AttributeCount; attribute++)
         {
@@ -311,13 +320,12 @@ public sealed class EffectSystem : ISystem
                 if (_records.TryGet(running.Record, out EffectRecord record))
                     foreach (var tag in record.GrantTags)
                     {
-                        int index = _registries.Tag(tag);
-                        if (index >= 0) granted |= 1UL << index;
+                        granted.Add(_registries.Tag(tag));
                     }
 
         if (!world.Has<GameplayTags>(entity)) return;   // set up by AddAttributes; never added here
         ref var tags = ref world.Get<GameplayTags>(entity);
-        tags.Bits = (tags.Bits & ~tags.Granted) | granted;   // keep tags gameplay set directly
+        tags.Bits = tags.Bits.Replace(tags.Granted, granted);   // keep tags gameplay set directly
         tags.Granted = granted;
     }
 

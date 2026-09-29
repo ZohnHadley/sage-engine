@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     3D physics, a base plugin (REDESIGN §0.5, §3.1, issue #24): one BepuPhysics space per world
-    (installed as IPhysicsWorld too), its tick systems, the kinematic character controller and the
-    first-person rig. No MonoGame.
+    (installed as IPhysicsWorld too), its tick systems and the kinematic character controller; the
+    first-person rig it installs is the simulation's (FirstPersonCameraSystem, issue #27). No MonoGame.
   -->
   <PropertyGroup>
     <OutputType>Library</OutputType>

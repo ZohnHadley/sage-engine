@@ -131,12 +131,15 @@ public sealed class SandboxHud : ISystem
     private void DrawHands(World world, Entity player, float x, float y)
     {
         if (!world.TryGet<Equipment>(player, out var equipment)) return;
-        if (equipment.MainHand != _lastMain || equipment.OffHand != _lastOff)
+        // The RPG kit's two hands (issue #27): the only slots this game has.
+        var mainHand = equipment.In(RpgKitModule.MainHand);
+        var offHand = equipment.In(RpgKitModule.OffHand);
+        if (mainHand != _lastMain || offHand != _lastOff)
         {
-            string main = Describe(equipment.MainHand, "bare hands");
-            _handsText = equipment.OffHand.IsEmpty ? main : $"{main} / {Describe(equipment.OffHand, "")}";
-            _lastMain = equipment.MainHand;
-            _lastOff = equipment.OffHand;
+            string main = Describe(mainHand, "bare hands");
+            _handsText = offHand.IsEmpty ? main : $"{main} / {Describe(offHand, "")}";
+            _lastMain = mainHand;
+            _lastOff = offHand;
         }
         _ui.Text(x, y, _handsText, new Color(215, 215, 215, 230));
     }

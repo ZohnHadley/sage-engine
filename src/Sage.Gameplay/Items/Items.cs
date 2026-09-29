@@ -1,7 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using System.Text.Json.Nodes;
 
 namespace Sage.Gameplay;
 
@@ -14,8 +16,32 @@ namespace Sage.Gameplay;
 // Equipping is where items meet the rest of the game: a weapon hands its `attack` record to the
 // wielder's `Melee` (16 §3.2), and anything else it carries — armour, a cursed ring — is an effect
 // applied while it is worn (16 §3.3). Combat never asks what you are holding; it reads `Melee`.
+//
+// Where it is worn is a slot, by name, and which slots there are is the game's (issue #27): the base
+// has none, and registers none. The RPG kit's two hands ("MainHand", "OffHand") are a kit default; a
+// game adds a head, a ring finger or a sidearm the same way, with EquipSlots.Register in its Init.
 
-public enum EquipSlot { None, MainHand, OffHand }
+// The slots items may name (ItemRecord.Slot), registered in Init by a kit or a game and checked as
+// content loads: an item for a slot nobody has is a load error, not a sword that cannot be drawn.
+public sealed class EquipSlots
+{
+    private readonly List<string> _names = new();
+
+    public RegistrationSeal Seal { get; } = new("equipment slot", "items that name it were checked without it");
+
+    public IReadOnlyList<string> Names => _names;
+
+    public void Register(string name)
+    {
+        Seal.Check(name);
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An equipment slot needs a name.", nameof(name));
+        if (Find(name) != null) throw new InvalidOperationException($"The equipment slot '{name}' is already registered.");
+        _names.Add(name);
+    }
+
+    // The registered spelling of a slot, found ignoring case; null for one nobody registered.
+    public string? Find(string name) => _names.FirstOrDefault(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+}
 
 [Record("item", Plugin = "sage.gameplay.items")]
 public sealed class ItemRecord
@@ -23,13 +49,14 @@ public sealed class ItemRecord
     public string Label = "";               // what the log and, later, the UI call it
     public RecordRef<SpriteSheetRecord> Sheet; // the billboard it uses lying on the ground
     public Vector2 Size;                    // ground size in metres; 0 = the sheet's
-    public EquipSlot Slot = EquipSlot.None;
+    public string Slot = "";                // where it is worn (EquipSlots); empty = not something you wear
     public RecordRef<AttackRecord> Attack;   // a weapon's swing: equipping puts this in Melee
     public List<RecordRef<EffectRecord>> Effects = new();  // applied while it is equipped, removed when it comes off
     public float Weight = 1f;               // kg, against the carrier's capacity
     public int Value;                       // gold; shops are later
     public int MaxStack = 1;                // > 1 for arrows, potions and the like
     public RecordRef<SoundRecord> Sound;     // picking it up (11 §3, F4)
+    public List<IItemUse> Uses = new();     // what using it does, in order (issue #28, ItemUses)
 
     public string Describe(RecordId id) => string.IsNullOrEmpty(Label) ? id.Name : Label;
 }
@@ -52,14 +79,50 @@ public struct Inventory : IComponent
     public static Inventory Create(float capacity = 0f) => new() { Items = new List<ItemStack>(), Capacity = capacity };
 }
 
-// What it is holding. Two slots in v1: a weapon and a shield is enough to prove the idea.
-[Component("sage:equipment")]
+// One slot's item.
+public struct EquippedItem
+{
+    public string Slot;
+    public RecordId Item;
+}
+
+// What it is wearing and holding, by slot (issue #27). Version 1 had two fields, `MainHand` and
+// `OffHand` — the two-slot assumption the RPG kit now makes as its default — and its upgrader turns
+// them into slots of those names, so a save from then loads with the sword still in hand.
+[Component("sage:equipment", Version = 2)]
 public struct Equipment : IComponent
 {
-    public RecordId MainHand;
-    public RecordId OffHand;
+    [Property(Tooltip = "What is worn or wielded, by slot")]
+    public List<EquippedItem>? Worn;
 
-    public readonly RecordId In(EquipSlot slot) => slot == EquipSlot.OffHand ? OffHand : MainHand;
+    public readonly RecordId In(string slot)
+    {
+        if (Worn != null)
+            foreach (var worn in Worn)
+                if (string.Equals(worn.Slot, slot, StringComparison.OrdinalIgnoreCase)) return worn.Item;
+        return default;
+    }
+
+    // Puts an item in a slot, or empties it (`default`).
+    internal void Set(string slot, RecordId item)
+    {
+        Worn ??= new List<EquippedItem>();
+        Worn.RemoveAll(w => string.Equals(w.Slot, slot, StringComparison.OrdinalIgnoreCase));
+        if (!item.IsEmpty) Worn.Add(new EquippedItem { Slot = slot, Item = item });
+    }
+
+    [Upgrade(1)]
+    private static void From1(ref JsonObject o)
+    {
+        var worn = new JsonArray();
+        foreach (string slot in new[] { "MainHand", "OffHand" })
+        {
+            string? item = o[slot]?.GetValue<string>();
+            if (!string.IsNullOrEmpty(item)) worn.Add(new JsonObject { ["Slot"] = slot, ["Item"] = item });
+            o.RemoveField(slot);
+        }
+        o["Worn"] = worn;
+    }
 }
 
 // An item lying in the world, waiting to be picked up.
@@ -193,11 +256,9 @@ public static class Items
         }
 
         // Something being worn has left the inventory with it.
-        if (world.TryGet<Equipment>(entity, out var equipment) && world.CountOf(entity, item) == 0)
-        {
-            if (equipment.MainHand == item) world.Unequip(entity, EquipSlot.MainHand);
-            if (equipment.OffHand == item) world.Unequip(entity, EquipSlot.OffHand);
-        }
+        if (world.TryGet<Equipment>(entity, out var equipment) && equipment.Worn != null && world.CountOf(entity, item) == 0)
+            foreach (var worn in equipment.Worn.Where(w => w.Item == item).ToList())
+                world.Unequip(entity, worn.Slot);
         return true;
     }
 
@@ -208,7 +269,7 @@ public static class Items
     {
         var records = world.Resources.Get<RecordStore>();
         if (!records.TryGet(item, out ItemRecord record)) { reason = "there is no such thing"; return false; }
-        if (record.Slot == EquipSlot.None) { reason = "not something you can wear or wield"; return false; }
+        if (record.Slot.Length == 0) { reason = "not something you can wear or wield"; return false; }
         if (!world.Has<Equipment>(entity)) { reason = "nothing to hold it with"; return false; }
         if (world.CountOf(entity, item) == 0) { reason = "you are not carrying it"; return false; }
         reason = "";
@@ -228,8 +289,7 @@ public static class Items
 
         records.TryGet(item, out ItemRecord record);
         world.Unequip(entity, record.Slot);
-        ref var equipment = ref world.Get<Equipment>(entity);
-        if (record.Slot == EquipSlot.OffHand) equipment.OffHand = item; else equipment.MainHand = item;
+        world.Get<Equipment>(entity).Set(record.Slot, item);
 
         // A weapon simply replaces what the wielder swings; combat asks Melee, never the inventory.
         if (!record.Attack.IsEmpty)
@@ -244,14 +304,14 @@ public static class Items
         return true;
     }
 
-    public static void Unequip(this World world, Entity entity, EquipSlot slot)
+    public static void Unequip(this World world, Entity entity, string slot)
     {
         if (!world.Has<Equipment>(entity)) return;
         ref var equipment = ref world.Get<Equipment>(entity);
         var item = equipment.In(slot);
         if (item.IsEmpty) return;
 
-        if (slot == EquipSlot.OffHand) equipment.OffHand = default; else equipment.MainHand = default;
+        equipment.Set(slot, default);
         var records = world.Resources.Get<RecordStore>();
         if (records.TryGet(item, out ItemRecord record))
         {

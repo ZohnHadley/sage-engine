@@ -63,7 +63,7 @@ In short: **Unity's composition and editor, Source's framework, console culture 
 Gregory's reference stack (survey §2.1) maps onto this directly. "Gameplay foundations" is our framework layer.
 
 ### Dependency rules (enforced by csproj references; details in [01 §3.1](docs/design/01-host-and-modules.md))
-1. **Down only:** game → framework → engine. The engine never references framework or game types.
+1. **Down only:** game → kit → framework → engine. The engine never references a kit, the framework or game types (a kit: SAGE0025).
 2. **The simulation never references MonoGame or client code.** `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D` and `Sage.Gameplay` (the framework layer) use `System.Numerics` (D2), and the build says so (SAGE0024). Rendering *reads* simulation state through Extract (§4.6); the simulation never calls rendering.
 3. **Presentation → simulation only through `PlayerCommand` or command queues.** UI and camera code never write gameplay components directly ([04 §3.1](docs/design/04-events-and-messaging.md)).
 4. **Runtime never references tools or the editor.**
@@ -81,6 +81,8 @@ sage-engine/
                             streaming, entity I/O, presentation data   (no MonoGame)
     Sage.Physics3D/         Bepu physics, character controller          (no MonoGame)
     Sage.Gameplay/          optional gameplay modules, simulation side  (no MonoGame)
+    Sage.Kits.Rpg/          the action-RPG kit: spellmaker, readied spell, RPG screens (no MonoGame;
+    Sage.Kits.Rpg.Client/   and its client half)   not part of the base: a game names it in game.json (#27)
     Sage.Client/            rendering, materials/shaders, input, audio, dev UI     (MonoGame)
     Sage.Framework.Client/  camera rigs, cue playback, HUD helpers
     Sage.Editor/            editor host + panels
@@ -315,7 +317,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **99 console commands, 26 record types, 738 headless tests.** <!-- counts -->
+and audible: **100 console commands, 27 record types, 778 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
