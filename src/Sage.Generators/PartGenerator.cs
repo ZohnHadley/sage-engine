@@ -154,16 +154,20 @@ public sealed class PartGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine($"        public void Register(string plugin, global::{Ns}.RegistrationBuilder builder)");
         sb.AppendLine("        {");
-        sb.AppendLine("            switch (plugin)");
-        sb.AppendLine("            {");
-        foreach (var entry in byOwner)
+        // An assembly with systems and no parts has nothing to switch on (an empty switch is CS1522).
+        if (byOwner.Count > 0)
         {
-            sb.AppendLine($"                case {Literal(entry.Key)}:");
-            foreach (var p in entry.Value)
-                sb.AppendLine($"                    builder.PrefabPart<{p.FullyQualifiedName}>();");
-            sb.AppendLine("                    break;");
+            sb.AppendLine("            switch (plugin)");
+            sb.AppendLine("            {");
+            foreach (var entry in byOwner)
+            {
+                sb.AppendLine($"                case {Literal(entry.Key)}:");
+                foreach (var p in entry.Value)
+                    sb.AppendLine($"                    builder.PrefabPart<{p.FullyQualifiedName}>();");
+                sb.AppendLine("                    break;");
+            }
+            sb.AppendLine("            }");
         }
-        sb.AppendLine("            }");
         sb.AppendLine("        }");
         sb.AppendLine();
         sb.AppendLine("        public global::System.Collections.Generic.IReadOnlyList<global::System.Type> Systems { get; } = new global::System.Type[]");

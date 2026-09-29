@@ -29,7 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
     <!--
       The editor and ImGui are referenced only where `SAGE_DEV` is defined (F28). A Shipping build of the

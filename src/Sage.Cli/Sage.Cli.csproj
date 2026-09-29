@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    `sage`, the engine's command line (REDESIGN §4.2, §4.8). Headless: it references Sage.Engine and
-    nothing with a window, so it runs on a build machine. Verbs:
+    `sage`, the engine's command line (REDESIGN §4.2, §4.8). Headless: it references the base engine
+    (Sage.Gameplay and below) and nothing with a window, so it runs on a build machine. Verbs:
       sage validate (game folder) [mounts ...] [engine content folder]; Program.cs has the options
     Build it with the solution and run src/Sage.Cli/bin/(config)/net8.0/sage, or run it through
     `dotnet run` with the project path (MAKING_A_GAME.md, "Checking content").
@@ -14,6 +14,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
+    <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
   </ItemGroup>
 </Project>

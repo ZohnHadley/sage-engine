@@ -698,7 +698,7 @@ public sealed class SchemaCatalog
                 string beside = Path.Combine(directory, reference.Name + ".dll");
                 if (!File.Exists(beside)) continue;
                 var dependency = Assembly.LoadFrom(beside);
-                if (dependency.GetReferencedAssemblies().Any(r => r.Name == typeof(Engine).Assembly.GetName().Name)) AddDeclarations(dependency);
+                if (dependency.GetReferencedAssemblies().Any(r => r.Name == EngineName || r.Name == KernelName)) AddDeclarations(dependency);
             }
             AddDeclarations(assembly);
             return true;
@@ -708,6 +708,10 @@ public sealed class SchemaCatalog
             return false;
         }
     }
+
+    // What an assembly built on the engine references (Sage.Client does both).
+    private static readonly string? EngineName = typeof(Engine).Assembly.GetName().Name;
+    private static readonly string? KernelName = typeof(RecordStore).Assembly.GetName().Name;
 
     private static SortedSet<string> Set(SortedDictionary<string, SortedSet<string>> table, string key)
     {

@@ -25,7 +25,7 @@ public abstract class Screen
     public Panel Panel { get; } = new();
 
     // The highlighted row.
-    public int Index { get; internal set; }
+    public int Index { get; set; }
 
     public abstract void Build(World world, Entity subject);
 

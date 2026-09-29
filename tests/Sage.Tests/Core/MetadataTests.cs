@@ -28,7 +28,7 @@ public class MetadataTests
     [Fact]
     public void TheEngineAndTheSandboxCarryGeneratedTables()
     {
-        var engine = Metadata.In(typeof(Engine).Assembly);
+        var engine = EngineAssemblies.Base.SelectMany(a => Metadata.In(a).Values).ToDictionary(t => t.Type);
         var sandbox = Metadata.In(typeof(Sandbox.SandboxModule).Assembly);
 
         Assert.NotEmpty(engine);
@@ -106,7 +106,7 @@ public class MetadataTests
     [Fact]
     public void EveryRecordRefNamesADeclaredRecordType()
     {
-        var tables = Metadata.In(typeof(Engine).Assembly).Values.Concat(Metadata.In(typeof(Sandbox.SandboxModule).Assembly).Values).ToList();
+        var tables = EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).SelectMany(a => Metadata.In(a).Values).ToList();
         var recordTypes = tables.Where(t => t.Kind == DeclarationKind.Record).Select(t => t.Id).ToHashSet();
 
         var refs = new List<(string Where, string Type)>();
@@ -130,7 +130,7 @@ public class MetadataTests
     [Fact]
     public void TheGeneratedTableMatchesReflectionForEveryEngineDeclaration()
     {
-        var generated = Metadata.In(typeof(Engine).Assembly).Values.Concat(Metadata.In(typeof(Sandbox.SandboxModule).Assembly).Values).ToList();
+        var generated = EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).SelectMany(a => Metadata.In(a).Values).ToList();
         Assert.True(generated.Count > 60, $"only {generated.Count} declarations");
 
         foreach (var table in generated)

@@ -71,7 +71,7 @@ public static class JsonUpgrades
 
 // Runs a type's [Upgrade] methods on saved JSON (issue #20). Found by reflection, once per type, when an
 // old entry is first read — a current save never needs them.
-internal static class Upgraders
+public static class Upgraders
 {
     private delegate void Upgrade(ref JsonObject o);
 

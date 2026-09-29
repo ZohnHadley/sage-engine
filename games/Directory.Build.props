@@ -17,6 +17,16 @@
     <Using Include="sage_engine.Transform" Alias="Transform" />
   </ItemGroup>
 
+  <!-- The base engine, compile-time only (Private=false): at run time the host's own copies are used,
+       so a game's bin holds its own dll and nothing else. All four by name, because a transitive
+       reference would be copied (issue #24). A game's client half adds Sage.Client itself. -->
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Core\Sage.Core.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Simulation\Sage.Simulation.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Physics3D\Sage.Physics3D.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Gameplay\Sage.Gameplay.csproj" Private="false" />
+  </ItemGroup>
+
   <!-- The declarations generator (issue #16): a game's [Record] types register themselves, and its
        components and tags get their id table ([Component] / [Tag]). -->
   <ItemGroup Condition="'$(SageGenerators)' != 'false'">

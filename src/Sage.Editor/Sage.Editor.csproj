@@ -9,12 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sage.Engine\Sage.Engine.csproj" />
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
     <ProjectReference Include="..\..\third_party\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="Sage.Host" />
   </ItemGroup>
 </Project>

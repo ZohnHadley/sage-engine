@@ -43,7 +43,7 @@ public class ModuleSetTests
             typeof(MapModule),          // brush levels (F16)
         };
 
-        var defined = typeof(GameplayModules).Assembly.GetTypes()
+        var defined = EngineAssemblies.Base.SelectMany(a => a.GetTypes())
             .Where(t => typeof(IModule).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false })
             .Where(t => t.IsPublic)
             .Where(t => !installedElsewhere.Contains(t))

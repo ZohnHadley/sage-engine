@@ -60,7 +60,7 @@ public static class Spelling
 // nearest real field suggested. Walks the JSON beside the type as System.Text.Json would read it —
 // its contract, not reflection — so a member with a converter of its own (a colour, an AI task, a
 // vector) is taken as a leaf and never second-guessed.
-internal static class JsonMembers
+public static class JsonMembers
 {
     public readonly record struct Unknown(string Path, string Name, string Parent, string? Suggestion)
     {

@@ -66,7 +66,7 @@ public class DeclarationTests
     public void EveryOwnerTheEngineDeclaresIsAPluginItShips()
     {
         var generated = new GeneratedRegistrations();
-        generated.Include(typeof(Engine).Assembly);
+        foreach (var assembly in EngineAssemblies.Base) generated.Include(assembly);
         var known = BasePlugins.All().Select(m => PluginInfo.Of(m).Id)
             .Append(RegistrationOwners.Core).Append("sage.client").ToHashSet();
         Assert.All(generated.Owners, owner => Assert.Contains(owner, known));

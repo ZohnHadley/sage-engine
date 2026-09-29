@@ -167,7 +167,7 @@ public class SchemaTests
 
         // Every field of every component that has a tooltip or a unit says so on hover.
         int checkedFields = 0;
-        foreach (var meta in Metadata.In(typeof(Engine).Assembly).Values.Concat(Metadata.In(typeof(Sandbox.SandboxModule).Assembly).Values)
+        foreach (var meta in EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).SelectMany(a => Metadata.In(a).Values)
                                      .Where(m => m.Kind == DeclarationKind.Component))
             foreach (var field in meta.Fields.Where(f => f.Tooltip != null || f.Unit != null))
             {

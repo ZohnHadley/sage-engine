@@ -10,8 +10,8 @@ namespace sage_engine;
 // Poll. Only UI, editor and camera code may use devices directly; gameplay reads PlayerCommand.
 public sealed class InputDevices
 {
-    internal KeyboardListener Keyboard { get; } = new();
-    internal MouseListener Mouse { get; } = new();
+    public KeyboardListener Keyboard { get; } = new();
+    public MouseListener Mouse { get; } = new();
     public GamepadListener Gamepad { get; } = new();
 
     // What was *typed* this frame, in order, as the operating system decided it: the host feeds this

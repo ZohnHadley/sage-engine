@@ -34,7 +34,7 @@ public class ComponentIdTests
     {
         using var app = HeadlessApp.Bare().Build();
         var schema = EntityStore.GetEntitySchema();
-        var ours = new[] { typeof(Engine).Assembly, typeof(Sandbox.SandboxModule).Assembly };
+        var ours = EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).ToList();
 
         var types = schema.ComponentTypeByType.Keys.Concat(schema.TagTypeByType.Keys)
                           .Where(t => ours.Contains(t.Assembly)).ToList();
@@ -43,7 +43,7 @@ public class ComponentIdTests
         {
             string? id = app.Engine.Components.IdOf(type);
             Assert.True(id != null, $"{type.Name} has no id");
-            Assert.StartsWith(type.Assembly == typeof(Engine).Assembly ? "sage:" : "sandbox:", id);
+            Assert.StartsWith(EngineAssemblies.Base.Contains(type.Assembly) ? "sage:" : "sandbox:", id);
         }
         Assert.Equal("sage:ai_state", app.Engine.Components.IdOf(typeof(AIState)));
         Assert.Equal("sandbox:hop", app.Engine.Components.IdOf(typeof(Sandbox.Hop)));

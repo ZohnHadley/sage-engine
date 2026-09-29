@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    3D physics, a base plugin (REDESIGN §0.5, §3.1, issue #24): one BepuPhysics space per world
+    (installed as IPhysicsWorld too), its tick systems, the kinematic character controller and the
+    first-person rig. No MonoGame.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <SageSimulationOnly>true</SageSimulationOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepuPhysics" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sage.Simulation\Sage.Simulation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sage.Tests" />
+  </ItemGroup>
+</Project>

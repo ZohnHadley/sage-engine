@@ -35,7 +35,7 @@ public class RegistryDumpTests
         Assert.Equal("sage.gameplay.movers", (string?)Entry("entityInputs", "Open")["owner"]);
         Assert.Equal("sage.gameplay.items", (string?)Entry("entityOutputs", "OnUse")["owner"]);
         Assert.Equal("sage.gameplay.items", (string?)Entry("inputActions", "Use")["owner"]);
-        Assert.Equal("Sage.Engine", (string?)Entry("components", "sage:point_light", "id")["assembly"]);
+        Assert.Equal("Sage.Simulation", (string?)Entry("components", "sage:point_light", "id")["assembly"]);
         Assert.Contains(dump["tags"]!.AsArray(), t => (string?)t!["id"] == "sandbox:faces_camera");
         Assert.Contains(dump["savedResources"]!.AsArray(), r => (string?)r!["id"] == "journal");
 

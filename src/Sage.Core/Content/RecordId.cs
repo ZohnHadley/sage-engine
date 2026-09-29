@@ -49,7 +49,7 @@ public sealed class RecordAttribute : Attribute
 
 // While the RecordStore deserializes one record, bare RecordId references resolve against that
 // record's namespace. Deserialization is single-threaded (main thread), so a thread-static is enough.
-internal static class RecordParseContext
+public static class RecordParseContext
 {
     [ThreadStatic] public static string? Namespace;
 }
@@ -71,7 +71,7 @@ internal sealed class RecordIdJsonConverter : JsonConverter<RecordId>
 }
 
 // [x, y] in record files.
-internal sealed class Vector2JsonConverter : JsonConverter<Vector2>
+public sealed class Vector2JsonConverter : JsonConverter<Vector2>
 {
     public override Vector2 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
@@ -98,7 +98,7 @@ internal sealed class Vector2JsonConverter : JsonConverter<Vector2>
 // [x, y, z] in record files.
 // [x, y, z, w]. Without this a rotation writes X/Y/Z/W *and* a derived `IsIdentity`, which is noise
 // in a save and a trap in a record: five members where the maths has four.
-internal sealed class QuaternionJsonConverter : JsonConverter<Quaternion>
+public sealed class QuaternionJsonConverter : JsonConverter<Quaternion>
 {
     public override Quaternion Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
@@ -123,7 +123,7 @@ internal sealed class QuaternionJsonConverter : JsonConverter<Quaternion>
     }
 }
 
-internal sealed class Vector3JsonConverter : JsonConverter<Vector3>
+public sealed class Vector3JsonConverter : JsonConverter<Vector3>
 {
     public override Vector3 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

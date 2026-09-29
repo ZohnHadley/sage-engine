@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Input;
 
 
 namespace sage_engine;
-internal class KeyboardListener
+public class KeyboardListener
 {
     // Cached once: Enum.GetValues allocates a new array (and boxes every value)
     // on each call, so we avoid doing it per-frame.
