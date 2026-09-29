@@ -50,7 +50,7 @@ public interface IRecordRef
     Type Target { get; }
 }
 
-public static class RecordRefs
+internal static class RecordRefs
 {
     // The record type name a RecordRef<T> points at ("sound" for SoundRecord), from its [Record];
     // null for a T that is not a record type.

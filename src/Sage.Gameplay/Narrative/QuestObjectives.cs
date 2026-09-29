@@ -9,7 +9,7 @@ namespace Sage.Gameplay;
 
 // Members of a faction, or entities from a prefab, killed by the player (Died, 16 §3.5).
 [QuestObjective("kill", Plugin = "sage.gameplay.quests")]
-public sealed class KillObjective : QuestObjective
+internal sealed class KillObjective : QuestObjective
 {
     [Property(Tooltip = "Whose members count")]
     public RecordRef<FactionRecord> Faction;
@@ -39,7 +39,7 @@ public sealed class KillObjective : QuestObjective
 
 // An item in the bag, right now: measured, never counted, so dropping it undoes it.
 [QuestObjective("have", Plugin = "sage.gameplay.quests")]
-public sealed class HaveObjective : QuestObjective
+internal sealed class HaveObjective : QuestObjective
 {
     [Property(Tooltip = "The item to carry")]
     public RecordRef<ItemRecord> Item;
@@ -53,7 +53,7 @@ public sealed class HaveObjective : QuestObjective
 // reached whatever the terrain's height there). `at` is absolute, so it means the same place however
 // far the origin has moved (R6).
 [QuestObjective("reach", Plugin = "sage.gameplay.quests")]
-public sealed class ReachObjective : QuestObjective
+internal sealed class ReachObjective : QuestObjective
 {
     [Property(Unit = "m", Tooltip = "Where to go, in absolute world coordinates")]
     public Vector3 At;
@@ -78,7 +78,7 @@ public sealed class ReachObjective : QuestObjective
 // Somebody to speak to: a conversation with a speaker of this dialogue (or from this prefab) that
 // reaches `node`, or begins when no node is named (Spoke, 16 §3.5).
 [QuestObjective("talk", Plugin = "sage.gameplay.quests")]
-public sealed class TalkObjective : QuestObjective
+internal sealed class TalkObjective : QuestObjective
 {
     [Property(Tooltip = "The conversation: a speaker with this dialogue counts")]
     public RecordRef<DialogueRecord> Dialogue;
@@ -112,7 +112,7 @@ public sealed class TalkObjective : QuestObjective
 // What the quests plugin hears besides deaths (issue #28): conversations, for `talk`, and where the
 // player is, for `reach`. Cheap when nobody is on a quest that asks — one journal look per tick.
 [System("sage.quests.watch", Phase.Gameplay, After = new[] { "sage.effects.tick" })]
-public sealed class QuestWatchSystem : ISystem
+internal sealed class QuestWatchSystem : ISystem
 {
     private readonly EventReader<Spoke> _spoke;
     private readonly Query<Transform> _players;

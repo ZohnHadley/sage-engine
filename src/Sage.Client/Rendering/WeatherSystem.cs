@@ -14,7 +14,7 @@ namespace Sage.Client;
 // Client-side, like the particles it throws and the sound it plays: a headless server has weather in its
 // records and never spends a cycle on it.
 [System("sage.client.weather", Phase.FrameUpdate, After = new[] { "sage.client.audio" })]
-public sealed class WeatherSystem : ISystem
+internal sealed class WeatherSystem : ISystem
 {
     private readonly Weather _weather;
     private readonly Particles _particles;

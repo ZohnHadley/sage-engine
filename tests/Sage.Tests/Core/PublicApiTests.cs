@@ -45,7 +45,8 @@ public class PublicApiTests
             var client = context.LoadFromAssemblyPath(path);
             var problems = Exposures(client).ToList();
             Assert.True(problems.Count == 0, "Friflo in the client's public API:\n  " + string.Join("\n  ", problems));
-            Assert.True(client.GetExportedTypes().Length > 20, $"the client's types did not load ({client.GetExportedTypes().Length})");
+            // 17 since #31 made the renderer's, audio's and the client systems' types internal.
+            Assert.True(client.GetExportedTypes().Length > 10, $"the client's types did not load ({client.GetExportedTypes().Length})");
         }
         finally
         {

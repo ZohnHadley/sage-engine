@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Simulation;
 
@@ -25,6 +26,7 @@ namespace Sage.Simulation;
 //   - **Valve 220** (Half-Life, and TrenchBroom's default for Quake): `TEX [ ux uy uz uoff ] [ ... ] rot xscale yscale`,
 //     which writes the axes down instead and so survives a face being rotated;
 //   - **Quake 2/3**: standard plus trailing surface flags, which are read past.
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class MapFace
 {
     public Vector3 P1, P2, P3;          // the three points as written, in map space
@@ -45,12 +47,14 @@ public sealed class MapFace
     public int Line;                    // where it was written, for anything that goes wrong later
 }
 
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class MapBrush
 {
     public readonly List<MapFace> Faces = new();
     public int Line;
 }
 
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class MapEntity
 {
     public readonly Dictionary<string, string> Keys = new(StringComparer.OrdinalIgnoreCase);
@@ -74,7 +78,7 @@ public sealed class MapEntity
             ? v : fallback;
 }
 
-public sealed class MapFile
+internal sealed class MapFile
 {
     public readonly List<MapEntity> Entities = new();
 

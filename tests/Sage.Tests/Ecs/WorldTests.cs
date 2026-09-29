@@ -50,14 +50,16 @@ public class WorldTests
     }
 
     [Fact]
-    public void Get_ReturnsRef_MissingComponentThrowsInDevBuilds()
+    public void Get_ReturnsRef_MissingComponentThrowsInEveryBuild()
     {
         using var world = new World("test");
         var e = world.Create();
         world.Get<Transform>(e).LocalPosition = new Vector3(4, 5, 6);
         Assert.Equal(new Vector3(4, 5, 6), world.Get<Transform>(e).LocalPosition);
 
-        Assert.Throws<InvalidOperationException>(() => world.Get<Health>(e));
+        // Shipping included since #31 (no shared dummy); the code is the same in every configuration.
+        var ex = Assert.Throws<InvalidOperationException>(() => world.Get<Health>(e));
+        Assert.Contains("use TryGet or Has", ex.Message);
     }
 
     [Fact]

@@ -22,7 +22,7 @@ namespace Sage.Simulation;
 // #18) — and MapLoader applies exactly those, through the same PrefabKeys. Each key is typed (integer,
 // float, choices for an enum or a flag, color1 for a colour) and described from the field's [Property]:
 // its tooltip, unit and range, and the record type a RecordId names.
-public static class FgdExport
+internal static class FgdExport
 {
     public static void RegisterCommand(Engine engine)
     {

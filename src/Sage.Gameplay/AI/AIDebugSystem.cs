@@ -11,7 +11,7 @@ namespace Sage.Gameplay;
 // Late phase: what each agent knows (16 §3.4). The cone is what it can see, the line is what it is
 // chasing, and the colour is how close it thinks it is to swinging.
 [System("sage.ai.debug", Phase.Late)]
-public sealed class AIDebugSystem : ISystem
+internal sealed class AIDebugSystem : ISystem
 {
     private readonly Query<Transform, AIState> _agents;
     private readonly DebugDraw _debug;

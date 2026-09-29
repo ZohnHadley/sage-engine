@@ -246,7 +246,7 @@ public static class Factions
 // the effect system, so a game without factions has nothing here to call. Before the rules, so they
 // see the standing already moved, and while the victim still exists to ask its faction.
 [System("sage.factions.deaths", Phase.Gameplay, After = new[] { "sage.effects.tick" }, Before = new[] { "sage.effects.deaths" })]
-public sealed class FactionDeathSystem : ISystem
+internal sealed class FactionDeathSystem : ISystem
 {
     private readonly EventReader<Died> _died;
 

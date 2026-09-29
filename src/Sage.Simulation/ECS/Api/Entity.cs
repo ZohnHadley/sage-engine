@@ -102,13 +102,11 @@ public readonly struct Entity : IEquatable<Entity>
     public int ChildCount => Raw.ChildCount;
     public EntityChildren ChildEntities => new(Raw.ChildEntities);
 
-    // Prefer World.SetParent / ClearParent, which check both entities belong to the world.
-    public void AddChild(Entity child) => Raw.AddChild(child.Raw);
-    public bool RemoveChild(Entity child) => Raw.RemoveChild(child.Raw);
-
-    // Destroys the entity now. Prefer World.Destroy (which checks it is alive), or
-    // world.Commands.Destroy inside a query loop.
-    public void DeleteEntity() => Raw.DeleteEntity();
+    // World.SetParent / ClearParent and World.Destroy (which check the entities belong to the world and
+    // are alive) are the public way; these unchecked ones are what they call (issue #31).
+    internal void AddChild(Entity child) => Raw.AddChild(child.Raw);
+    internal bool RemoveChild(Entity child) => Raw.RemoveChild(child.Raw);
+    internal void DeleteEntity() => Raw.DeleteEntity();
 
     // ---- Identity ---------------------------------------------------------------------------------
 

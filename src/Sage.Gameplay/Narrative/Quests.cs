@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Gameplay;
 
@@ -27,6 +28,7 @@ namespace Sage.Gameplay;
 // (QuestHappening) — which the journal remembers, one number per objective (Journal.Entry.Progress).
 // The engine's are `kill`, `have`, `reach` and `talk` (QuestObjectives.cs).
 [Vocabulary("quest_objective", Key = "kind", Default = "kill")]
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public abstract class QuestObjective
 {
     [Property(Min = 1, Tooltip = "How many it takes")]
@@ -47,6 +49,7 @@ public abstract class QuestObjective
     public abstract string Describe(World world, int count);
 }
 
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public sealed class QuestObjectiveAttribute : VocabularyEntryAttribute<QuestObjective>
 {
     public QuestObjectiveAttribute(string id) : base(id) { }
@@ -54,6 +57,7 @@ public sealed class QuestObjectiveAttribute : VocabularyEntryAttribute<QuestObje
 
 // Something the quests plugin heard of: `Kind` says what (the engine's are below; a game sends its own
 // with Quests.Notice), `Subject` is what it happened to and `Actor` who did it.
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public readonly record struct QuestHappening(string Kind, Entity Subject, Entity Actor)
 {
     public const string Killed = "killed";     // Subject died; Actor killed it (Died)
@@ -331,7 +335,7 @@ public static class Quests
 // system, so a game without quests has nothing here to call. Before the rules, while the victim still
 // exists to ask its faction and prefab.
 [System("sage.quests.deaths", Phase.Gameplay, After = new[] { "sage.effects.tick" }, Before = new[] { "sage.effects.deaths" })]
-public sealed class QuestDeathSystem : ISystem
+internal sealed class QuestDeathSystem : ISystem
 {
     private readonly EventReader<Died> _died;
 

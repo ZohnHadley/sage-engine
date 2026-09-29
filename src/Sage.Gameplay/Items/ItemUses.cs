@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Gameplay;
 
@@ -18,6 +19,7 @@ namespace Sage.Gameplay;
 // `world.UseItem(user, item)` does it (the `use_item` command, and later an inventory screen); a use
 // that refuses stops the rest, so a potion is not used up by a use that could not happen.
 [Vocabulary("item_use", Key = "use")]
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public interface IItemUse
 {
     // Whether it could happen now, and why not (R17): asked of every use before any runs.
@@ -31,12 +33,14 @@ public interface IItemUse
     bool Use(in ItemUse use, out string why);
 }
 
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public sealed class ItemUseAttribute : VocabularyEntryAttribute<IItemUse>
 {
     public ItemUseAttribute(string id) : base(id) { }
 }
 
 // One using: who, which item, and its record.
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public readonly ref struct ItemUse
 {
     public World World { get; init; }
@@ -92,7 +96,7 @@ public static class ItemUses
 
 // Used up: its `effects` are applied to the user, and one is gone from the stack.
 [ItemUse("consume", Plugin = "sage.gameplay.items")]
-public sealed class ConsumeUse : IItemUse
+internal sealed class ConsumeUse : IItemUse
 {
     [Property(Tooltip = "Effects applied to whoever uses it up")]
     public List<RecordRef<EffectRecord>> Effects = new();
@@ -107,7 +111,7 @@ public sealed class ConsumeUse : IItemUse
 
 // Words: said to the user, and an ability learned if it names one (a spellbook, a scroll of learning).
 [ItemUse("read", Plugin = "sage.gameplay.items")]
-public sealed class ReadUse : IItemUse
+internal sealed class ReadUse : IItemUse
 {
     [Property(Tooltip = "What it says")]
     public string Text = "";
@@ -131,7 +135,7 @@ public sealed class ReadUse : IItemUse
 // with no cooldown: the item is what paid (a wand, a scroll). The same delivery and payload as the
 // spell cast by hand (AbilityCasting.CastNow), so it lands the same way.
 [ItemUse("cast", Plugin = "sage.gameplay.items")]
-public sealed class CastUse : IItemUse
+internal sealed class CastUse : IItemUse
 {
     [Property(Tooltip = "The ability it casts")]
     public RecordRef<AbilityRecord> Ability;
@@ -149,7 +153,7 @@ public sealed class CastUse : IItemUse
     }
 }
 
-public static class AbilityCasting
+internal static class AbilityCasting
 {
     // Casts an ability now, from `caster`'s eye along where it looks: no wind-up, no cost, no cooldown
     // and no need to know it — a spell something else paid for (an item, a trap). Through the ability's

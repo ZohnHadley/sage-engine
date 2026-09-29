@@ -43,7 +43,7 @@ public sealed class RegistrationBuilder
 
 // The plugin id of declarations the engine itself owns: record types every game uses (prefabs,
 // placements) and state every world saves (the weather). Registered when the Engine is made.
-public static class RegistrationOwners
+internal static class RegistrationOwners
 {
     public const string Core = "sage.core";
 }

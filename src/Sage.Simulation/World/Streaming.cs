@@ -140,7 +140,7 @@ public sealed class StreamingModule : IModule
 }
 
 [System("sage.streaming.sectors", Phase.Late)]
-public sealed class StreamingSystem : ISystem
+internal sealed class StreamingSystem : ISystem
 {
     private readonly World _world;
     private readonly Terrain _terrain;

@@ -10,7 +10,7 @@ namespace Sage.Simulation;
 // Console commands over the engine's worlds (docs/design/03 §9): each a ConsoleCommand, registered on
 // the cvar registry. Not to be confused with EntityCommands (a world's deferred structural changes) or
 // PlayerCommand (one tick of a player's input), the other two "commands" (issue #25).
-public static class WorldConsoleCommands
+internal static class WorldConsoleCommands
 {
     public static void Register(CVarRegistry cvars, Engine engine)
     {

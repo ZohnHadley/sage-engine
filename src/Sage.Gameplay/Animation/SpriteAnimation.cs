@@ -42,7 +42,7 @@ public static class SpriteAnimationExtensions
 
 // Animation phase (Fixed): advances every playing clip and raises the events its frames carry.
 [System("sage.animation.sprites", Phase.Animation)]
-public sealed class SpriteAnimationSystem : ISystem
+internal sealed class SpriteAnimationSystem : ISystem
 {
     private const int MaxStepsPerTick = 64;   // a clip that somehow jumps a long way doesn't spin here
 

@@ -10,7 +10,7 @@ namespace Sage.Client;
 // The mixer decided what plays and how loud (`AudioMixer`, engine side, testable); this owns the part
 // that needs a sound card. Behind an interface, because 11 §3 wants the option of OpenAL Soft or FMOD
 // later for occlusion and reverb, and because a headless run needs a backend that does nothing.
-public interface IAudioBackend : IDisposable
+internal interface IAudioBackend : IDisposable
 {
     // Starts, updates and finishes voices to match the mixer. Called once a frame.
     void Apply(AudioMixer mixer);
@@ -21,7 +21,7 @@ public interface IAudioBackend : IDisposable
 // Nothing at all: a headless host, a test, or `snd_enabled 0`. The mixer still runs, so everything
 // downstream behaves identically — which is what makes "silent" a configuration rather than a branch
 // through the game's code.
-public sealed class NullAudioBackend : IAudioBackend
+internal sealed class NullAudioBackend : IAudioBackend
 {
     public int Playing => 0;
 
@@ -47,7 +47,7 @@ public sealed class NullAudioBackend : IAudioBackend
 // distance and direction sums in origin space (R6), and handing MonoGame a second listener would mean
 // two sets of numbers that can disagree. `Apply3D` becomes worth it with doppler and reverb, which is
 // the same day the backend is swapped.
-public sealed class MonoGameAudioBackend : IAudioBackend
+internal sealed class MonoGameAudioBackend : IAudioBackend
 {
     private readonly ContentService _content;
     private readonly Dictionary<int, SoundEffectInstance> _instances = new();

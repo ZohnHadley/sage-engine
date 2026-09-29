@@ -7,11 +7,11 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Sage.Client;
 
 // What the snapshot needs of a pooled list to empty it without knowing what is in it (see `Pool<T>`).
-public interface IPooledList { void Clear(); }
+internal interface IPooledList { void Clear(); }
 
 // A list that keeps its array between frames: Clear() keeps the capacity, so steady-state frames
 // allocate nothing (docs/design/06 §3.2, 02 §4.6). Elements are accessed by ref.
-public sealed class PooledList<T> : IPooledList
+internal sealed class PooledList<T> : IPooledList
 {
     private T[] _items;
 
@@ -34,7 +34,7 @@ public sealed class PooledList<T> : IPooledList
 }
 
 // One camera's view of the frame (06 §3.2), camera-relative: View has no translation (06 §3.3).
-public struct RenderView
+internal struct RenderView
 {
     public Matrix View;
     public Matrix Projection;
@@ -45,7 +45,7 @@ public struct RenderView
 }
 
 // Frame-tier lighting/fog/sky parameters (06 §3.9, 07 §3.4), copied from RenderEnvironment at extract.
-public struct EnvironmentParams
+internal struct EnvironmentParams
 {
     public Vector3 ClearColor;
     public Vector3 FogColor;
@@ -58,7 +58,7 @@ public struct EnvironmentParams
 }
 
 // One draw: a mesh part with a material at a camera-relative world matrix (06 §4).
-public struct RenderItem
+internal struct RenderItem
 {
     public int Mesh;           // Renderer mesh id (0 = the error mesh)
     public int Part;
@@ -70,7 +70,7 @@ public struct RenderItem
 
 // Everything the Render phase draws this frame (06 §3.1–3.2): Extract writes it, Render reads only it.
 // A world resource installed by ClientModule; pooled, cleared at the start of every Extract.
-public sealed class RenderSnapshot
+internal sealed class RenderSnapshot
 {
     public RenderView View;              // v1: one view (split screen, mirrors and shadow views later)
     public EnvironmentParams Environment;
@@ -130,7 +130,7 @@ public sealed class RenderSnapshot
 //   opaque / alpha-tested: [pass:4][layer:4][material:20][mesh:20][depth:16, front to back]
 //   transparent:           [pass:4][layer:4][depth:24, back to front][material:20][mesh:12]
 // Sorting by material first minimises state changes; depth last gives cheap early-z.
-public static class RenderSortKey
+internal static class RenderSortKey
 {
     public static ulong Make(RenderPass pass, int layer, int material, int mesh, float depth, float far)
     {

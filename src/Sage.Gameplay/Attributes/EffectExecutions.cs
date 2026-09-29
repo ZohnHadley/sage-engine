@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Gameplay;
 
@@ -21,17 +22,20 @@ namespace Sage.Gameplay;
 // destroying entities throws and another entity's effect list may be mid-walk: anything structural
 // is queued (`Defer`) and done by EffectExecutionSystem after the tick, in the same phase.
 [Vocabulary("effect_execution", Key = "execution")]
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public interface IEffectExecution
 {
     void Execute(in EffectExecution execution);
 }
 
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public sealed class EffectExecutionAttribute : VocabularyEntryAttribute<IEffectExecution>
 {
     public EffectExecutionAttribute(string id) : base(id) { }
 }
 
 // One running of an execution: on whom, from whom, which effect, how strongly.
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public readonly ref struct EffectExecution
 {
     public World World { get; init; }
@@ -86,14 +90,14 @@ public static class EffectExecutions
 }
 
 // The work executions put off until after the effect tick.
-public sealed class EffectExecutionQueue
+internal sealed class EffectExecutionQueue
 {
     public readonly List<Action<World>> Pending = new();
 }
 
 // Gameplay phase, after effects tick: does what executions deferred.
 [System("sage.effects.executions", Phase.Gameplay, After = new[] { "sage.effects.tick" })]
-public sealed class EffectExecutionSystem : ISystem
+internal sealed class EffectExecutionSystem : ISystem
 {
     private readonly List<Action<World>> _doing = new();
 
@@ -116,7 +120,7 @@ public sealed class EffectExecutionSystem : ISystem
 // second across the ground and `lift` up, both scaled by the magnitude. Only a character is pushed —
 // a crate has no velocity of its own to change yet.
 [EffectExecution("knockback", Plugin = "sage.gameplay.attributes")]
-public sealed class KnockbackExecution : IEffectExecution
+internal sealed class KnockbackExecution : IEffectExecution
 {
     [Property(Unit = "m/s", Tooltip = "How hard it pushes across the ground")]
     public float Force = 6f;
@@ -136,7 +140,7 @@ public sealed class KnockbackExecution : IEffectExecution
 // A blink: the target moves by `offset` — metres right, up and forward of the way it faces — or, with
 // `toSource`, to that offset from the source (a pull). Not interpolated: it is there.
 [EffectExecution("teleport", Plugin = "sage.gameplay.attributes")]
-public sealed class TeleportExecution : IEffectExecution
+internal sealed class TeleportExecution : IEffectExecution
 {
     [Property(Unit = "m", Tooltip = "Where to, as right, up and forward of the one it is measured from")]
     public Vector3 Offset = new(0, 0, 5);
@@ -162,7 +166,7 @@ public sealed class TeleportExecution : IEffectExecution
 
 // Something appears: `count` of `prefab`, `distance` in front of the target, fanned out.
 [EffectExecution("summon", Plugin = "sage.gameplay.attributes")]
-public sealed class SummonExecution : IEffectExecution
+internal sealed class SummonExecution : IEffectExecution
 {
     [Property(Tooltip = "What appears")]
     public RecordRef<PrefabRecord> Prefab;
@@ -193,7 +197,7 @@ public sealed class SummonExecution : IEffectExecution
 // Removes running effects from the target: the ones listed in `effects`, and any that grant one of
 // `tags` (a cleanse: "everything that burns"). Lists nothing, removes nothing.
 [EffectExecution("dispel", Plugin = "sage.gameplay.attributes")]
-public sealed class DispelExecution : IEffectExecution
+internal sealed class DispelExecution : IEffectExecution
 {
     [Property(Tooltip = "Effects to remove")]
     public List<RecordRef<EffectRecord>> Effects = new();

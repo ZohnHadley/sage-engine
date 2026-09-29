@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Simulation;
 
@@ -21,6 +22,7 @@ namespace Sage.Simulation;
 // Not here yet: the game's rules and conventions. Phase 3's `gameplay_conventions` record (#26) is the
 // place for those; a scene will name one when it exists (a `conventions` field), not before.
 [Record("scene", Plugin = RegistrationOwners.Core)]
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed class SceneRecord
 {
     // Brush levels to load with the scene (15 §3, F16). A `.map` places its own contents, so this is the
@@ -46,6 +48,7 @@ public sealed class SceneRecord
 }
 
 // A scene's defaults for the world around it. Time of day joins the weather when there is a clock.
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed class SceneEnvironment
 {
     [Property(Tooltip = "The weather the scene starts in; left out, the world's own (clear)")]
@@ -60,7 +63,7 @@ public sealed class SceneEnvironment
 public struct FromScene : ITag { }
 
 // Which scene a world is in and what that scene put there. A resource every world has.
-public sealed class ActiveScene
+internal sealed class ActiveScene
 {
     public RecordId Id { get; internal set; }
 
@@ -72,6 +75,7 @@ public sealed class ActiveScene
 }
 
 // The engine's scene service (Engine.Scenes).
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed class Scenes
 {
     private readonly Engine _engine;
@@ -331,6 +335,7 @@ public sealed class Scenes
     }
 }
 
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public static class SceneWorldExtensions
 {
     // Where the world's scene starts the player (the rules' respawn point), or null without one.

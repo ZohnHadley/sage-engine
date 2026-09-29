@@ -15,7 +15,7 @@ namespace Sage.Client;
 // It runs in **FrameUpdate**: sounds start at display rate, not tick rate, because a sound started a
 // tick late is inaudible and a sound started twice is not.
 [System("sage.client.audio", Phase.FrameUpdate)]
-public sealed class AudioSystem : ISystem
+internal sealed class AudioSystem : ISystem
 {
     private readonly AudioMixer _mixer;
     private readonly IAudioBackend _backend;

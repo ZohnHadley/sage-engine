@@ -388,7 +388,7 @@ public static class Items
 // solid thing it reaches, and if that is something to take, it is taken. Everything else becomes an
 // interaction the game reacts to — the entity I/O version of this arrives with 04.
 [System("sage.items.use", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
-public sealed class InteractionSystem : ISystem
+internal sealed class InteractionSystem : ISystem
 {
     private readonly Query<Transform, PawnIntent, CharacterController> _users;
     private readonly RecordStore _records;

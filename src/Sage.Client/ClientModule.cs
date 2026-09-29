@@ -369,7 +369,7 @@ public sealed class ClientModule : IModule
 // FrameUpdate: gives the watcher its once-a-frame look on the main thread. A system rather than a
 // host-loop call so that a world without a client (a headless test) simply never has one.
 [System("sage.client.asset_reload", Phase.FrameUpdate, Condition = RunCondition.DevOnly)]
-public sealed class AssetReloadSystem : ISystem
+internal sealed class AssetReloadSystem : ISystem
 {
     private readonly AssetHotReload _watcher;
     private readonly CVar<bool> _enabled;
