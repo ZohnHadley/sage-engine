@@ -115,6 +115,18 @@ public sealed class Engine : IDisposable
         var world = new World(name, this);
         _worlds.Add(world);
         Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active)");
+
+        // Cameras are the engine's, like scenes (issue #76): every world resolves its camera entities
+        // into CameraViews, whatever plugins it has. Added before any plugin's systems, which is what
+        // puts the director ahead of the FrameUpdate systems that read ActiveCamera (CameraDirector).
+        Registrations.Owner = RegistrationOwners.Core;
+        try
+        {
+            world.Resources.Add(new CameraViews());
+            world.AddSystem(new CameraDirector(world));
+        }
+        finally { Registrations.Owner = "host"; }
+
         Modules.NotifyWorldCreated(world);   // modules install their resources and systems
 
         // The game's rules, now that every module has furnished the world (16 §3.1, issue #13): the game

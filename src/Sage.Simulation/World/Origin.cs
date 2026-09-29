@@ -112,6 +112,14 @@ public static class OriginExtensions
         // The camera too: a rig rewrites it from the pawn next frame, but the *editor* camera holds its
         // own position and would otherwise be left a sector behind whatever it was looking at.
         if (world.Resources.TryGet<ActiveCamera>(out var camera) && camera != null) camera.Position += offset;
+        // A rig's pose is display-rate state it rewrites next frame, but until then it is a position in
+        // the old frame, and so are the views the director resolved from it (issue #76).
+        foreach (var (poses, _) in world.Query<CameraPose>().Chunks)
+        {
+            var span = poses.Span;
+            for (int i = 0; i < span.Length; i++) span[i].Position += offset;
+        }
+        if (world.Resources.TryGet<CameraViews>(out var views) && views != null) views.Rebase(offset);
 
         // Last, with the world consistent: anything holding a position of its own (the editor's free
         // camera, a game's cached waypoint) moves here.

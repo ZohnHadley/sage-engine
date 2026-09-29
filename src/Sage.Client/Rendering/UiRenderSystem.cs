@@ -57,7 +57,10 @@ internal sealed class UiRenderSystem : ISystem
         // centre of the screen, so not drawing it is a handicap rather than a style. With a screen
         // open there is nothing to aim at, and a cross floating over an inventory looks like a bug.
         bool screenOpen = ctx.World.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen;
-        if (_crosshair.Value && _camera.DrivenByRig && !screenOpen)
+#pragma warning disable CS0618   // obsolete for games (issue #76); the crosshair follows the rig until #78/#81
+        bool driven = _camera.DrivenByRig;
+#pragma warning restore CS0618
+        if (_crosshair.Value && driven && !screenOpen)
         {
             const float Arm = 6f, Thickness = 2f;
             float x = viewport.Width * 0.5f, y = viewport.Height * 0.5f;

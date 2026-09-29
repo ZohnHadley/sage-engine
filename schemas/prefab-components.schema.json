@@ -44,6 +44,22 @@
         }
       ]
     },
+    "camera": {
+      "description": "The component sage:camera (Camera), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:camera"
+        }
+      ]
+    },
+    "camera_pose": {
+      "description": "The component sage:camera_pose (CameraPose), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:camera_pose"
+        }
+      ]
+    },
     "character_controller": {
       "description": "The component sage:character_controller (CharacterController), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -297,6 +313,22 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:audio_source"
+        }
+      ]
+    },
+    "sage:camera": {
+      "description": "Component sage:camera (Camera).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:camera"
+        }
+      ]
+    },
+    "sage:camera_pose": {
+      "description": "Component sage:camera_pose (CameraPose).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:camera_pose"
         }
       ]
     },
@@ -977,6 +1009,128 @@
       },
       "additionalProperties": false,
       "description": "Component sage:audio_source (AudioSource)."
+    },
+    "sage:camera": {
+      "type": "object",
+      "properties": {
+        "projection": {
+          "description": "Perspective (3D) or Orthographic (2D, top-down, isometric) (CameraProjection, default \"Perspective\")",
+          "default": "Perspective",
+          "type": "string",
+          "enum": [
+            "Perspective",
+            "Orthographic"
+          ]
+        },
+        "fovY": {
+          "description": "Vertical field of view. Unit: deg. Range: 1 to 179. Category: Perspective. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 1,
+          "maximum": 179
+        },
+        "orthoHeight": {
+          "description": "How much world the viewport shows, top to bottom. Unit: m. At least 0. Category: Orthographic. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "near": {
+          "description": "Near clip plane. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "far": {
+          "description": "Far clip plane. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "priority": {
+          "description": "Of the enabled cameras drawing to one target, the highest wins. (int, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "enabled": {
+          "description": "Off: never chosen, whatever its priority. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "viewport": {
+          "description": "The part of the target it draws to, 0..1 from the top-left; empty = all of it. Category: Output. (CameraViewport)",
+          "type": "object",
+          "properties": {
+            "x": {
+              "description": "Left edge, 0..1 of the target's width. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "description": "Top edge, 0..1 of the target's height. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "width": {
+              "description": "0..1 of the target's width; 0 = all of it. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "height": {
+              "description": "0..1 of the target's height; 0 = all of it. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "target": {
+          "description": "The render target it draws to, by name; empty = the screen. Category: Output. (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:camera (Camera)."
+    },
+    "sage:camera_pose": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "rotation": {
+          "description": "(Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:camera_pose (CameraPose)."
     },
     "sage:character_controller": {
       "type": "object",
