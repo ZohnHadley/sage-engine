@@ -615,8 +615,8 @@ toggle (#79).
 - **The 1P/3P toggle.** The `ToggleView` action (registered by the character plugin in `Init`; bound to
   V and the right stick's button in the engine's `gameplay` input map) is read from the followed pawn's
   `PawnIntent` in the Commands phase by `sage.camera.toggle_view` — after the controller and after a
-  scripted camera's input lock (#80), so a cut that holds the player's buttons holds this one — which
-  turns the player camera's two rigs' `Enabled`
+  scripted camera's input lock (#80), so a cut that holds the player's buttons holds this one
+  (test: ALockingScriptedCameraHoldsTheToggle) — which turns the player camera's two rigs' `Enabled`
   flags over (`ToggleViewSystem.Toggle(world)` from code). **Why two components, not a mode:** each rig is
   whole on its own (a chase camera is a `ThirdPersonRig` alone), the third-person settings survive the
   switch because nothing is removed, and flipping two booleans is no structural change, so the next frame
