@@ -30,6 +30,8 @@ public sealed class Placement
     public string Name = "";
     [Property(Tooltip = "What `at` is measured from; left out, the document's or scene's own `relativeTo`")]
     public PlacementFrame? RelativeTo;
+    [Property(Tooltip = "Entity I/O wires from this entity's outputs to other entities' inputs")]
+    public List<Connection> Outputs = new();
 }
 
 // What a placement's `at` is measured from (issue #29).
@@ -87,6 +89,7 @@ public static class PlacementExtensions
             if (entity.IsNull) continue;
 
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
+            PlacementWires.Attach(world, entity, placement);
             world.Add(entity, new FromPlacements { Document = document });
             spawned++;
         }
@@ -165,6 +168,7 @@ public static class PlacementExtensions
                 // + 0: a yaw of -0 is 0, and a file should not say "-0".
                 Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI + 0f,
                 Name = entity.Name ?? "",
+                Outputs = PlacementWires.Read(entity),
             });
         }
 
@@ -182,5 +186,63 @@ public static class PlacementExtensions
                 removed++;
             }
         return removed;
+    }
+}
+
+// A placement's `outputs` (issue #80): the entity I/O wiring a `.map` writes as `On…` keys, written in a
+// scene or a placements document, so a game with no maps — or no C# — can wire a trigger to a camera.
+// Each placed entity gets its own copies (a record is shared; what a wire resolved and how often it fired
+// are one entity's). Targets are found by name when the wire fires (EntityIO's late binding), so a wire
+// may name anything placed before or after it, or spawned later; the content check below says at load
+// when an input does not exist, as a map's does.
+internal static class PlacementWires
+{
+    public static void Attach(World world, Entity entity, Placement placement)
+    {
+        var outputs = placement.Outputs;
+        if (outputs == null || outputs.Count == 0) return;
+
+        int usable = 0;
+        foreach (var wire in outputs) if (Usable(wire)) usable++;
+        if (usable == 0) return;
+
+        var wires = new Connection[usable];
+        int n = 0;
+        foreach (var wire in outputs) if (Usable(wire)) wires[n++] = wire.Copy();
+        world.Add(entity, new IOConnections { Wires = wires });
+    }
+
+    // The editor's way back: an entity's wires as a placement writes them.
+    public static List<Connection> Read(Entity entity)
+    {
+        var list = new List<Connection>();
+        if (!entity.TryGetComponent<IOConnections>(out var io) || io.Wires == null) return list;
+        foreach (var wire in io.Wires) list.Add(wire.Copy());
+        return list;
+    }
+
+    // What the load check already reported is skipped at spawn rather than said again.
+    private static bool Usable(Connection? wire) =>
+        wire != null && wire.Output.Length > 0 && wire.Target.Length > 0 && wire.Input.Length > 0;
+
+    // Content load: every wire names an output, a target and an input that exists (errors), and an output
+    // some plugin fires (a warning: a game's own C# may fire outputs it never declared).
+    public static void Check(Engine engine, Placement placement, string path, RecordCheck check)
+    {
+        var outputs = placement.Outputs;
+        if (outputs == null) return;
+        for (int i = 0; i < outputs.Count; i++)
+        {
+            var wire = outputs[i];
+            string at = $"{path}.Outputs[{i}]";
+            if (wire == null) { check.Error(at, "an empty wire"); continue; }
+            if (wire.Output.Length == 0) check.Error(at, "a wire needs an \"output\" (the one of this entity's that sends it)");
+            if (wire.Target.Length == 0) check.Error(at, "a wire needs a \"target\" (an entity's name, or !self / !activator / !caller)");
+            if (wire.Input.Length == 0) check.Error(at, "a wire needs an \"input\"");
+            else if (!engine.Inputs.Has(wire.Input))
+                check.Error(at, $"'{wire.Input}' is not an input (see io_list; is the plugin that registers it on?)");
+            if (wire.Output.Length > 0 && !engine.Outputs.Has(wire.Output))
+                check.Warn(at, $"no plugin declares the output '{wire.Output}' (see io_list), so nothing may ever fire it");
+        }
     }
 }

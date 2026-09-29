@@ -199,6 +199,7 @@ public sealed class Scenes
             var entity = world.Spawn(placement.Prefab, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), placement.Yaw);
             if (entity.IsNull) continue;   // `Spawn` said why; one bad line costs that line
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
+            PlacementWires.Attach(world, entity, placement);
             entity.AddTag<FromScene>();
 
             // A stable identity, so a save can find this *same* thing next run (09 §3.5, F27). Derived
@@ -254,6 +255,7 @@ public sealed class Scenes
         var entity = world.Spawn(start.Prefab, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), start.Yaw);
         if (entity.IsNull) return entity;
         if (!string.IsNullOrEmpty(start.Name)) entity.Name = start.Name;
+        PlacementWires.Attach(world, entity, start);
         world.Add(entity, new Persistent { Id = PlayerId(state.Id) });
         state.Player = entity;
         return entity;
@@ -300,18 +302,23 @@ public sealed class Scenes
 
     // ---- Content checks -----------------------------------------------------------------------------
 
-    private static void Check(SceneRecord scene, RecordCheck check)
+    private void Check(SceneRecord scene, RecordCheck check)
     {
         if (scene.Player != null) CheckPlacements(new[] { scene.Player }, "Player", check, single: true);
         CheckPlacements(scene.Place, "Place", check);
     }
 
-    // A placement that names no prefab would place nothing and say so only at run time.
-    private static void CheckPlacements(IReadOnlyList<Placement> placements, string field, RecordCheck check, bool single = false)
+    // A placement that names no prefab would place nothing and say so only at run time; a wire to an
+    // input nobody registered would do nothing, and says so here (issue #80).
+    private void CheckPlacements(IReadOnlyList<Placement> placements, string field, RecordCheck check, bool single = false)
     {
         for (int i = 0; i < placements.Count; i++)
+        {
+            string path = single ? field : $"{field}[{i}]";
             if (placements[i].Prefab.Id.IsEmpty)
-                check.Error(single ? field : $"{field}[{i}]", "a placement needs a \"prefab\"");
+                check.Error(path, "a placement needs a \"prefab\"");
+            PlacementWires.Check(_engine, placements[i], path, check);
+        }
     }
 
     // ---- Console ------------------------------------------------------------------------------------
