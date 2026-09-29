@@ -468,16 +468,11 @@ public class CameraRigAllocationTests
         for (int i = 0; i < 5; i++) { CameraRigTests.Step(world); Profiler.EndFrame(); }   // warm up, and the spawn
 
         var views = world.Resources.Get<CameraViews>();
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 200; i++)
-        {
-            world.RunFrame(1f / 60f, i / 200f);
-            Profiler.EndFrame();
-        }
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        int frame = 0;
+        var allocated = AllocationProbe.Measure(200, () => { world.RunFrame(1f / 60f, frame++ / 200f); Profiler.EndFrame(); });
         Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
         Assert.False(views.Main.FromActiveCamera);
-        Assert.Equal(0, allocated);
+        Assert.True(allocated.Bytes == 0, allocated.Text);
     }
 
     // And over the shoulder, with the probe sweeping every frame against a wall that keeps it pulled in.
@@ -491,15 +486,10 @@ public class CameraRigAllocationTests
         world.Spawn(new RecordId("sceneonly", "wall"), new Vector3(eye.X, eye.Y - 2f, eye.Z + 1.5f));
         for (int i = 0; i < 5; i++) { CameraRigTests.Step(world); Profiler.EndFrame(); }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 200; i++)
-        {
-            world.RunFrame(1f / 60f, i / 200f);
-            Profiler.EndFrame();
-        }
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        int frame = 0;
+        var allocated = AllocationProbe.Measure(200, () => { world.RunFrame(1f / 60f, frame++ / 200f); Profiler.EndFrame(); });
         Assert.Equal(CameraRigKind.ThirdPerson, world.MainViewRig());
         Assert.True(CameraRigTests.Boom(app) < ThirdPersonRig.DefaultDistance, "the probe is not finding the wall");
-        Assert.Equal(0, allocated);
+        Assert.True(allocated.Bytes == 0, allocated.Text);
     }
 }

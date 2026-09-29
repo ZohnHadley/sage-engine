@@ -30,12 +30,16 @@ public static class Profiler
         public int LastCalls { get; internal set; }
         internal long Ticks;
         internal int Calls;
+        internal long AllocatedBytes;        // on this thread, inside the scope, while TrackAllocations is on; never reset
     }
 
-    private sealed class Tables
+    internal sealed class Tables
     {
         public readonly Dictionary<string, Entry> Entries = new(StringComparer.Ordinal);
         public readonly List<Entry> Ordered = new();
+        public bool TrackAllocations;
+        public int Depth;                    // open tracked scopes
+        public long OutermostBytes;          // allocated inside outermost tracked scopes (no double counting)
     }
 
     [ThreadStatic] private static Tables? _tables;
@@ -47,6 +51,8 @@ public static class Profiler
     {
         private readonly Entry? _entry;
         private readonly long _start;
+        private readonly Tables? _tracking;   // set only while this thread tracks allocations
+        private readonly long _startBytes;
 
         internal Scope(Entry entry)
         {
@@ -54,11 +60,28 @@ public static class Profiler
             _start = Stopwatch.GetTimestamp();
         }
 
+        private Scope(Entry entry, Tables tracking)
+        {
+            _entry = entry;
+            _tracking = tracking;
+            tracking.Depth++;
+            _startBytes = GC.GetAllocatedBytesForCurrentThread();
+            _start = Stopwatch.GetTimestamp();
+        }
+
+        internal static Scope Tracked(Entry entry, Tables tracking) => new(entry, tracking);
+
         public void Dispose()
         {
             if (_entry == null) return;
             _entry.Ticks += Stopwatch.GetTimestamp() - _start;
             _entry.Calls++;
+            if (_tracking != null)
+            {
+                long bytes = GC.GetAllocatedBytesForCurrentThread() - _startBytes;
+                _entry.AllocatedBytes += bytes;
+                if (--_tracking.Depth == 0) _tracking.OutermostBytes += bytes;
+            }
         }
     }
 
@@ -72,8 +95,21 @@ public static class Profiler
             tables.Entries.Add(name, entry);
             tables.Ordered.Add(entry);
         }
-        return new Scope(entry);
+        return tables.TrackAllocations ? Scope.Tracked(entry, tables) : new Scope(entry);
     }
+
+    // **Allocation tracking, for tests** (this thread only): while on, every scope also adds up what was
+    // allocated on this thread inside it (Entry.AllocatedBytes, never reset by EndFrame), so a failing
+    // zero-allocation test can name the phase or system that allocated (tests: AllocationProbe). Off, it
+    // costs Begin one bool read. GC.GetAllocatedBytesForCurrentThread allocates nothing itself.
+    internal static bool TrackAllocations
+    {
+        get => Current.TrackAllocations;
+        set { var t = Current; t.TrackAllocations = value; t.Depth = 0; }
+    }
+
+    // What the outermost tracked scopes on this thread allocated in all, so far.
+    internal static long TrackedOutermostBytes => Current.OutermostBytes;
 
     // Call once per frame, on the thread that ran it: publishes this frame's totals and resets the
     // accumulators.

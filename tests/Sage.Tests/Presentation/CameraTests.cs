@@ -524,14 +524,9 @@ public class CameraAllocationTests
         for (int i = 0; i < 5; i++) { world.RunFixed(1f / 60f); world.RunFrame(1f / 60f, 0.5f); Profiler.EndFrame(); }   // warm up
 
         var views = world.Resources.Get<CameraViews>();
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 200; i++)
-        {
-            world.RunFrame(1f / 60f, i / 200f);
-            Profiler.EndFrame();
-        }
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        int frame = 0;
+        var allocated = AllocationProbe.Measure(200, () => { world.RunFrame(1f / 60f, frame++ / 200f); Profiler.EndFrame(); });
         Assert.Equal(3, views.Count);
-        Assert.Equal(0, allocated);
+        Assert.True(allocated.Bytes == 0, allocated.Text);
     }
 }

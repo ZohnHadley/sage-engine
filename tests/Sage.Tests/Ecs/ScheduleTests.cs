@@ -239,9 +239,33 @@ public class ScheduleTests
         world.AddSystem(new MoveX(world), Phase.FrameUpdate);
         for (int i = 0; i < 3; i++) { world.RunFixed(0.01f); world.RunFrame(0.01f, 0.5f); Profiler.EndFrame(); }   // warm up
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 100; i++) { world.RunFixed(0.01f); world.RunFrame(0.01f, 0.5f); Profiler.EndFrame(); }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        AllocationProbe.AssertNone(100, () => { world.RunFixed(0.01f); world.RunFrame(0.01f, 0.5f); Profiler.EndFrame(); });
+    }
+
+    // A failing zero-allocation test names what allocated (AllocationProbe), in the run that failed.
+    [Fact]
+    public void AnAllocationProbe_NamesTheSystemThatAllocated()
+    {
+        using var world = new World("probed");
+        for (int i = 0; i < 10; i++) world.Create();
+        world.AddSystem(new MoveX(world), Phase.Gameplay);
+        world.AddSystem(new Allocates(), Phase.Late);
+        world.RunFixed(0.01f);
+        Profiler.EndFrame();
+
+        var report = AllocationProbe.Measure(10, () => { world.RunFixed(0.01f); Profiler.EndFrame(); });
+        Assert.True(report.Bytes > 0);
+        Assert.Contains("Fixed.Late/Allocates", report.Text);
+        Assert.DoesNotContain("MoveX", report.Text);
+        Assert.False(Profiler.TrackAllocations);   // off again afterwards
+
+        Assert.Equal(0, AllocationProbe.Measure(10, () => { }).Bytes);
+    }
+
+    private sealed class Allocates : ISystem
+    {
+        public object? Last;
+        public void Run(in SystemContext ctx) => Last = new byte[64];
     }
 
     [Fact]
