@@ -515,4 +515,36 @@ public class VocabularyTests
                  })
             Assert.NotEmpty(validator.Validate(JsonNode.Parse(bad)));
     }
+
+    // Tags were one ulong: 64 for a whole game. 256 now, and a tag past 64 behaves like any other.
+    [Fact]
+    public void TagsGoPast64()
+    {
+        var tags = string.Join(",\n", Enumerable.Range(0, 100).Select(i => $"{{ \"type\": \"tag\", \"id\": \"t{i:000}\" }}"));
+        string records = $$"""
+            [{{tags}},
+             { "type": "attribute", "id": "health", "start": 50, "min": 0, "max": 100 },
+             { "type": "effect", "id": "mark", "duration": "Infinite", "grantTags": ["t099"] },
+             { "type": "effect", "id": "needs_mark", "requireTags": ["t099"], "modifiers": [ { "attribute": "health", "op": "Add", "value": 5 } ] }]
+            """;
+        using var app = HeadlessApp.Gameplay().File("data/tags.json", records).Boot("tags");
+        var world = app.World;
+        var entity = world.Create(Transform.At(Vector3.Zero), "marked");
+        world.AddAttributes(entity);
+
+        Assert.True(world.Resources.Get<GameplayRegistries>().TagCount >= 100);
+        Assert.False(Effects.Apply(world, entity, Id("needs_mark")));
+        Effects.Apply(world, entity, Id("mark"));
+        Tick(world);
+        Assert.True(world.HasTag(entity, Id("t099")));
+        Assert.True(Effects.Apply(world, entity, Id("needs_mark")));
+
+        world.AddTag(entity, Id("t080"));
+        Tick(world);
+        Assert.True(world.HasTag(entity, Id("t080")));             // owned, kept through the tick
+        Effects.Remove(world, entity, Id("mark"));
+        Tick(world);
+        Assert.False(world.HasTag(entity, Id("t099")));            // granted, gone with the effect
+        Assert.True(world.HasTag(entity, Id("t080")));
+    }
 }

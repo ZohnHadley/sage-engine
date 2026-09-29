@@ -300,7 +300,7 @@ public sealed class EffectSystem : ISystem
     private void Recompute(World world, Entity entity, ref Attributes attributes, ref ActiveEffects active)
     {
         var list = active.Effects;
-        ulong granted = 0;
+        var granted = default(TagSet);
 
         for (int attribute = 0; attribute < _registries.AttributeCount; attribute++)
         {
@@ -320,13 +320,12 @@ public sealed class EffectSystem : ISystem
                 if (_records.TryGet(running.Record, out EffectRecord record))
                     foreach (var tag in record.GrantTags)
                     {
-                        int index = _registries.Tag(tag);
-                        if (index >= 0) granted |= 1UL << index;
+                        granted.Add(_registries.Tag(tag));
                     }
 
         if (!world.Has<GameplayTags>(entity)) return;   // set up by AddAttributes; never added here
         ref var tags = ref world.Get<GameplayTags>(entity);
-        tags.Bits = (tags.Bits & ~tags.Granted) | granted;   // keep tags gameplay set directly
+        tags.Bits = tags.Bits.Replace(tags.Granted, granted);   // keep tags gameplay set directly
         tags.Granted = granted;
     }
 

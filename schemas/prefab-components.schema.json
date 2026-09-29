@@ -1214,16 +1214,12 @@
       "type": "object",
       "properties": {
         "bits": {
-          "description": "(ulong, default 0)",
-          "default": 0,
-          "type": "integer",
-          "minimum": 0
+          "description": "(TagSet)",
+          "type": "object"
         },
         "granted": {
-          "description": "Not saved. (ulong, default 0)",
-          "default": 0,
-          "type": "integer",
-          "minimum": 0
+          "description": "Not saved. (TagSet)",
+          "type": "object"
         }
       },
       "additionalProperties": false,
