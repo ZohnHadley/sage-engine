@@ -46,7 +46,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 737 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 738 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -59,11 +59,21 @@ You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) or newer (pinn
 newer runtime only when .NET 8 isn't installed. From the repo root:
 
 ```bash
-dotnet run --project src/Sage.Host -c Debug
+dotnet run --project src/Sage.Host -c Debug -- -game games/Sandbox
 ```
 
-No arguments needed: a development build walks up from the executable looking for `Sage.sln` and
-loads `games/Sandbox`. `-c Development` is the same thing optimised, and noticeably smoother.
+`-game` names the game folder; without it the host stops and lists the games it can see, rather than
+guessing (it used to load the Sandbox). `-c Development` is the same thing optimised, and noticeably
+smoother. A game built with `Sage.Sdk` passes `-game` itself: `dotnet run --project games/Hello`.
+
+To make a game of your own, outside this repository, pack the SDK and start from a template
+([MAKING_A_GAME §2](docs/MAKING_A_GAME.md#2-the-shape-of-a-game)):
+
+```bash
+tools/pack_sdk.sh ~/sage-feed --build
+dotnet new install ~/sage-feed/Sage.Templates.0.1.0.nupkg
+dotnet new sage-game -n MyGame -o ~/games/MyGame --feed ~/sage-feed && cd ~/games/MyGame && dotnet run
+```
 
 You should get a hilly field, some creatures, some crates falling through a trigger, a creature that
 notices you and comes over to hit you, and a firebug that stands off and throws bolts of fire at you. The HUD shows your health, what is in your hands, what
@@ -212,8 +222,12 @@ and every pull request:
   `sage validate` on each game, and regenerates the JSON Schemas with `sage schema` and fails if the
   committed `schemas/` differs. Then it runs the real executable for a few seconds on Hello and the Sandbox under a
   virtual display ([`tools/smoke_run.sh`](tools/smoke_run.sh)), and fails on a crash, a bad exit or any
-  warning outside the categories it expects.
-- **Windows** builds the whole solution, shaders included, and runs the tests.
+  warning outside the categories it expects. Last, it packs `Sage.Sdk`, `Sage.Player` and the templates
+  into a local feed ([`tools/pack_sdk.sh`](tools/pack_sdk.sh)) and makes a game from each template in a
+  folder outside the checkout: built against the packages alone, validated, shown to get the Sage
+  analyzers, and started with `dotnet run` under the virtual display, walking.
+- **Windows** builds the whole solution, shaders included, and runs the tests; then builds a template
+  game with a shader of its own against the packed SDK, which is where `mgfxc` runs for a game.
 
 Warnings are errors (`Directory.Build.props`), and package versions live in one place
 (`Directory.Packages.props`). `main` is
@@ -245,6 +259,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `games/Sandbox` | The test game's **simulation**: its module, scene records, placeholder art and tools. References only the base engine (`Sage.Core` … `Sage.Gameplay`), so it is testable headlessly |
 | `games/Sandbox.Client` | The same game's **client half**: the HUD, and the prefab part that needs a renderer |
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
+| `sdk/` | `Sage.Sdk`, the MSBuild SDK a game builds with (`<Project Sdk="Sage.Sdk/0.1.0">`), and the packing of it, of `Sage.Player` (the host and `sage`, per configuration) and of the `dotnet new` templates (`sage-game`, `sage-game-data`, `sage-mod-data`) |
 | `tests/Sage.Tests` | xUnit, headless, in folders by subject (`Core`, `Ecs`, `Gameplay`, `Maps`, `UI`…) |
 | `tests/Sage.Testing` | The harness tests boot through — `HeadlessApp`, `MountFixture`, `EventProbe`, `CaptureSink` — for the engine's tests and a game's |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |
