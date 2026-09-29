@@ -45,6 +45,7 @@
             "placements",
             "prefab",
             "quest",
+            "rpg_conventions",
             "scene",
             "sound",
             "sprite_sheet",
@@ -367,6 +368,21 @@
           },
           "then": {
             "$ref": "quest.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "rpg_conventions"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "rpg_conventions.schema.json"
           }
         },
         {

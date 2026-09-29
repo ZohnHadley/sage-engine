@@ -267,6 +267,18 @@ public sealed class ModuleManager
         if (!File.Exists(full))
             throw new FileNotFoundException($"Module assembly not found: {full}. Build the solution, or fix \"modules.add\" in game.json.");
         var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(full);
+        var found = ModulesIn(assembly, "`modules.add`");
+        if (found.Count == 0)
+            Log.Warn(LogCat.Modules, $"{assembly.GetName().Name} has no public IModule class; nothing was added");
+        else
+            Log.Info(LogCat.Modules, $"Module assembly {assembly.GetName().Name} {assembly.GetName().Version} → {string.Join(", ", found.Select(m => m.Name))}");
+        return found;
+    }
+
+    // One of every public IModule in an assembly. An IGameModule is left out: a game has one, in the
+    // assembly game.json names in "assembly".
+    private static List<IModule> ModulesIn(Assembly assembly, string from)
+    {
         var found = assembly.GetExportedTypes()
             .Where(t => typeof(IModule).IsAssignableFrom(t) && !typeof(IGameModule).IsAssignableFrom(t)
                         && t is { IsAbstract: false, IsInterface: false })
@@ -274,12 +286,58 @@ public sealed class ModuleManager
             .ToList();
         foreach (var game in assembly.GetExportedTypes().Where(t => typeof(IGameModule).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false }))
             Log.Warn(LogCat.Modules, $"{assembly.GetName().Name}: {game.Name} is an IGameModule, and a game has one, in the assembly game.json names in \"assembly\"; " +
-                                     "from `modules.add` it is ignored. Make it an IModule, or move it.");
-        if (found.Count == 0)
-            Log.Warn(LogCat.Modules, $"{assembly.GetName().Name} has no public IModule class; nothing was added");
-        else
-            Log.Info(LogCat.Modules, $"Module assembly {assembly.GetName().Name} {assembly.GetName().Version} → {string.Join(", ", found.Select(m => m.Name))}");
+                                     $"from {from} it is ignored. Make it an IModule, or move it.");
         return found;
+    }
+
+    // ---- Kits ---------------------------------------------------------------------------------------
+
+    // The assembly a kit's plugin id names (issue #27): each dot-separated part capitalised, so
+    // "sage.kits.rpg" is Sage.Kits.Rpg. Its client half, when it has one, is that name plus ".Client".
+    public static string KitAssemblyName(string kit) =>
+        string.Join(".", kit.Split('.').Select(part => part.Length == 0 ? part : char.ToUpperInvariant(part[0]) + part[1..]));
+
+    // A kit a game.json names in "kits" (issue #27): its assembly's modules, one of which must be the
+    // plugin the id names. A kit is found the way a game's own assemblies are, by path — beside the
+    // game's assembly or its `modules.add` ones, or beside the host — or is already part of the app
+    // (a tool or a test that references it). `client`: its client half too, when there is one; a host
+    // without a window leaves it out, as it leaves out `modules.add`.
+    public static IReadOnlyList<IModule> LoadKit(string kit, IReadOnlyList<string> folders, bool client)
+    {
+        string name = KitAssemblyName(kit);
+        var assembly = FindAssembly(name, folders)
+            ?? throw new FileNotFoundException($"game.json names the kit '{kit}', and there is no {name}.dll beside the game or the host " +
+                                               $"(looked in {string.Join(", ", folders.Distinct())}). Reference the kit from the game's project and build it.");
+        var modules = ModulesIn(assembly, $"the kit {kit}");
+        if (!modules.Any(m => PluginInfo.Of(m).Id.Equals(kit, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"{name} has no plugin '{kit}' (its modules: " +
+                $"{(modules.Count == 0 ? "none" : string.Join(", ", modules.Select(m => PluginInfo.Of(m).Id)))}), so it is not the kit game.json names.");
+
+        if (client)
+        {
+            if (FindAssembly(name + ".Client", folders) is { } half)
+                modules.AddRange(ModulesIn(half, $"the kit {kit}"));
+            else
+                Log.Info(LogCat.Modules, $"The kit {kit} has no client half ({name}.Client.dll)");
+        }
+        Log.Info(LogCat.Modules, $"Kit {kit} ({name} {assembly.GetName().Version}) → {string.Join(", ", modules.Select(m => m.Name))}");
+        return modules;
+    }
+
+    // Already loaded, part of the app, or a file in one of the folders — in that order, so a kit the
+    // process already has is never loaded a second time from somewhere else.
+    private static Assembly? FindAssembly(string name, IReadOnlyList<string> folders)
+    {
+        var loaded = AssemblyLoadContext.Default.Assemblies.FirstOrDefault(a => a.GetName().Name == name);
+        if (loaded != null) return loaded;
+        try { return Assembly.Load(new AssemblyName(name)); }
+        catch (FileNotFoundException) { }   // not one of the app's own: look for the file
+        foreach (string folder in folders)
+        {
+            string path = Path.Combine(folder, name + ".dll");
+            if (File.Exists(path)) return AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.GetFullPath(path));
+        }
+        return null;
     }
 
     public static IGameModule LoadGame(string assemblyPath)

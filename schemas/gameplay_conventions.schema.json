@@ -175,10 +175,6 @@
           "description": "The button that uses what is in front of you. (string)",
           "type": "string"
         },
-        "cast": {
-          "description": "The button that casts the readied spell. (string)",
-          "type": "string"
-        },
         "jump": {
           "description": "The button that jumps. (string)",
           "type": "string"
@@ -189,6 +185,25 @@
         },
         "crouch": {
           "description": "The button held to crouch. (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "animations": {
+      "description": "(AnimationConventions)",
+      "type": "object",
+      "properties": {
+        "attack": {
+          "description": "The clip a swing plays when its attack names none. (string)",
+          "type": "string"
+        },
+        "hit": {
+          "description": "The frame event in a swing's clip that lands the blow; without one the attack's windup time does. (string)",
+          "type": "string"
+        },
+        "idle": {
+          "description": "The clip a fighter goes back to when a swing is over. (string)",
           "type": "string"
         }
       },

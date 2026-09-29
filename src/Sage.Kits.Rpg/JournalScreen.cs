@@ -1,12 +1,13 @@
 #nullable enable
 
-namespace Sage.Gameplay;
+namespace Sage.Kits.Rpg;
 
 // What you are on (docs/design/13 §3, 16 §3.5, F24).
 //
-// One row per quest, with the stage's line as its detail and its objectives counted underneath — a
-// journal is a list with reasons, which is the shape every screen here already has. Finished quests
-// stay, greyed: a journal you cannot look back through is a to-do list.
+// In the RPG kit (issue #27); the quests themselves are the base's. One row per quest, with the
+// stage's line as its detail and its objectives counted underneath — a journal is a list with
+// reasons, which is the shape every screen here already has. Finished quests stay, greyed: a journal
+// you cannot look back through is a to-do list.
 public sealed class JournalScreen : Screen
 {
     public override float Width => 620f;

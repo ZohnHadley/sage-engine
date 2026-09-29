@@ -43,7 +43,7 @@ public class ItemTests
 
     private static (Engine Engine, World World) NewWorld()
     {
-        var engine = HeadlessApp.Gameplay().File("data/items.json", Records).Build().Engine;
+        var engine = HeadlessApp.Gameplay().WithHands().File("data/items.json", Records).Build().Engine;
 
         var world = engine.CreateWorld("items");
         var ground = world.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
@@ -135,7 +135,7 @@ public class ItemTests
             Assert.True(world.Equip(attacker, Sword));
             Assert.Equal(24f, Swing(), 2);                      // the sword's own attack record
 
-            world.Unequip(attacker, EquipSlot.MainHand);
+            world.Unequip(attacker, Hands.Main);
             Assert.Equal(6f, Swing(), 2);                       // and back to what it was born with
         }
     }
@@ -157,7 +157,7 @@ public class ItemTests
             Assert.False(world.Drop(carrier, Shield).IsNull);
             Tick(world, 2);
             Assert.Equal(0f, world.Attribute(carrier, Armor), 3);
-            Assert.True(world.Get<Equipment>(carrier).OffHand.IsEmpty);
+            Assert.True(world.Get<Equipment>(carrier).In(Hands.Off).IsEmpty);
         }
     }
 

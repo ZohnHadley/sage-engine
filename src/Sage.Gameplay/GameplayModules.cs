@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Sage.Physics3D;   // CharacterModule, in the list below and nowhere else (issue #30)
 
@@ -202,19 +203,31 @@ public sealed class ItemsModule : IModule
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CombatModule) };
 
+    // Where things are worn (issue #27): none in the base. A kit or a game registers its own in Init
+    // (the RPG kit's two hands), and items are checked against them as content loads.
+    public EquipSlots Slots { get; } = new();
+
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
         _actions.Register("Use", ActionKind.Button);
+        ctx.Provide(Slots);
+        _records.AddCheck<ItemRecord>((item, check) =>
+        {
+            if (item.Slot.Length == 0 || Slots.Find(item.Slot) != null) return;
+            check.Error(nameof(ItemRecord.Slot), $"no equipment slot '{item.Slot}'" + (Slots.Names.Count == 0
+                ? " (this game registers none: a kit or the game's module registers them in Init, EquipSlots.Register)"
+                : Spelling.Suggest(item.Slot, Slots.Names)));
+        });
         ctx.Engine.Outputs.Declare("OnUse", "Something used this entity (the Use action).");
 
         _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
             "How far the Use action reaches, in metres.", 0.5f, 10f);
 
-        // There is no inventory screen yet — 13 is a later phase — so these are how you handle
-        // things: `give` puts one in your pack, `equip` puts it in your hand, and the combat log
-        // shows the difference the moment you swing.
+        // The console's way to handle things: `give` puts one in your pack, `equip` puts it in your
+        // hand, and the combat log shows the difference the moment you swing. A bag screen, and the
+        // `inv` command that prints its panel, are a kit's (Sage.Kits.Rpg, issue #27).
         ctx.Engine.CVars.RegisterCommand("give", CVarFlags.Cheat, "give <item> [count]: put an item in the local player's inventory.", a =>
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "give <item> [count]"); return; }
@@ -226,12 +239,6 @@ public sealed class ItemsModule : IModule
                     Log.Info(LogCat.Console, $"{World.Describe(entity)} receives {count}x {item.Name}");
             });
         });
-
-        // Prints the inventory *panel* (13 §3): the same rows a screen will draw, so the console and
-        // the screen cannot disagree about what you are carrying, and a `*` is what is in your hands.
-        ctx.Engine.CVars.RegisterCommand("inv", CVarFlags.None, "What the local player is carrying and wearing.", _ =>
-            ctx.Engine.ForEachPlayer((world, entity) =>
-                GameplayPanels.Inventory(world, entity).Log(LogCat.Console)));
 
         ctx.Engine.CVars.RegisterCommand("equip", CVarFlags.Cheat, "equip <item>: wield or wear something the local player carries.", a =>
         {
@@ -246,10 +253,19 @@ public sealed class ItemsModule : IModule
                     : $"{World.Describe(entity)} cannot equip {item.Name}: {why}"));
         });
 
-        ctx.Engine.CVars.RegisterCommand("unequip", CVarFlags.Cheat, "unequip [main|off]: put away what the local player is holding.", a =>
+        ctx.Engine.CVars.RegisterCommand("unequip", CVarFlags.Cheat, "unequip [slot]: put away what the local player wears in a slot, or everything.", a =>
         {
-            var slot = a.Count > 0 && a[0].StartsWith("off", StringComparison.OrdinalIgnoreCase) ? EquipSlot.OffHand : EquipSlot.MainHand;
-            ctx.Engine.ForEachPlayer((world, entity) => { world.Unequip(entity, slot); Log.Info(LogCat.Console, $"{World.Describe(entity)} puts away its {slot}"); });
+            string? slot = a.Count > 0 ? Slots.Find(a[0]) : null;
+            if (a.Count > 0 && slot == null)
+            {
+                Log.Warn(LogCat.Console, $"unequip: no equipment slot '{a[0]}' (slots: {string.Join(", ", Slots.Names)})");
+                return;
+            }
+            ctx.Engine.ForEachPlayer((world, entity) =>
+            {
+                foreach (string each in slot != null ? new[] { slot } : Slots.Names.ToArray()) world.Unequip(entity, each);
+                Log.Info(LogCat.Console, $"{World.Describe(entity)} puts away {(slot != null ? $"its {slot}" : "everything")}");
+            });
         });
 
         ctx.Engine.CVars.RegisterCommand("drop", CVarFlags.Cheat, "drop <item> [count]: put an item on the ground in front of the local player.", a =>
@@ -263,6 +279,9 @@ public sealed class ItemsModule : IModule
                     : $"{World.Describe(entity)} drops {count}x {item.Name}"));
         });
     }
+
+    // Items were checked against the slots as content loaded: one registered now would have missed that.
+    public void Start(ModuleContext ctx) => Slots.Seal.Seal("content was loaded");
 
     public void OnWorldCreated(World world)
     {
@@ -279,7 +298,6 @@ public sealed class ItemsModule : IModule
 public sealed class AbilitiesModule : IModule
 {
     private RecordStore? _records;
-    private ActionRegistry? _actions;
     private CVar<bool>? _debugCasts;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule) };
@@ -287,12 +305,8 @@ public sealed class AbilitiesModule : IModule
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
-        _actions = ctx.Engine.Actions;
-        // The player's own spells are data in the save (the Spellbook, a [SavedResource] of this
-        // plugin), and the records are made from it on load (F21's spellmaker, 09 §3.1).
-        Spellmaker.RegisterCommands(ctx.Engine);
-        _actions.Register("Cast", ActionKind.Button);
-
+        // Ability *use* is the base's: `world.Cast` from anything. A readied spell that a Cast button
+        // fires, the spellbook and the spellmaker are the RPG kit's (Sage.Kits.Rpg, issue #27).
         _debugCasts = ctx.Engine.CVars.Register("cast_debug", false, CVarFlags.DevOnly,
             "Draw every cast: where it reached and what it caught (needs r_debugdraw 1).");
 
@@ -316,29 +330,11 @@ public sealed class AbilitiesModule : IModule
                 Log.Info(LogCat.Console, $"{World.Describe(entity)} learns {ability.Name}");
             });
         });
-
-        // The spellbook panel, printed (13 §3). A `*` is the readied spell and a greyed row says why it
-        // cannot be cast right now — the same words a screen will show, from the same rules the cast
-        // system applies (R17).
-        ctx.Engine.CVars.RegisterCommand("spells", CVarFlags.None, "What the local player can cast, and what is ready.", _ =>
-            ctx.Engine.ForEachPlayer((world, entity) =>
-                GameplayPanels.Spellbook(world, entity).Log(LogCat.Console)));
-
-        ctx.Engine.CVars.RegisterCommand("ready", CVarFlags.None, "ready <ability>: make it the spell the Cast button fires.", a =>
-        {
-            if (a.Count == 0) { Log.Warn(LogCat.Console, "ready <ability>"); return; }
-            var ability = ctx.Engine.Records.Resolve("ability", a[0]);
-            if (ability.IsEmpty) return;
-            ctx.Engine.ForEachPlayer((world, entity) =>
-                Log.Info(LogCat.Console, world.Ready(entity, ability)
-                    ? $"{World.Describe(entity)} readies {ability.Name}"
-                    : $"{World.Describe(entity)} does not know {ability.Name}"));
-        });
     }
 
     public void OnWorldCreated(World world)
     {
-        world.AddSystem(new AbilitySystem(world, _records!, _actions!, _debugCasts!));
+        world.AddSystem(new AbilitySystem(world, _records!, _debugCasts!));
 
         // Flight resolves before effects tick too, so a spell that arrives this tick is felt this
         // tick — and after the cast system, so one thrown *this* tick starts moving next (16 §3.2).

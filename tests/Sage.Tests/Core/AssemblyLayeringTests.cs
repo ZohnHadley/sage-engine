@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using Sage.Generators;
@@ -40,6 +41,49 @@ public class AssemblyLayeringTests
             }
         }
         Assert.Contains("Sage.Core", EngineAssemblies.Simulation.GetReferencedAssemblies().Select(r => r.Name));
+    }
+
+    // The same for the two base assemblies the tests cannot reference, read from their built files: the
+    // client and the editor are base assemblies too (SageBaseAssembly), and neither may name a kit
+    // (SAGE0025). Built beside this configuration's tests by the solution build CI runs first.
+    [Theory]
+    [InlineData("Sage.Client")]
+    [InlineData("Sage.Editor")]
+    public void NeitherTheClientNorTheEditorReferencesAKit(string name)
+    {
+        string path = Path.Combine(TestEnv.FolderAbove("Sage.sln"), "src", name, "bin", BuildInfo.ConfigurationName, "net8.0", name + ".dll");
+        Assert.True(File.Exists(path), $"{path} is not built: build the solution (dotnet build Sage.sln) before the tests");
+
+        using var stream = File.OpenRead(path);
+        using var pe = new System.Reflection.PortableExecutable.PEReader(stream);
+        var metadata = System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pe);
+        foreach (var handle in metadata.AssemblyReferences)
+        {
+            string reference = metadata.GetString(metadata.GetAssemblyReference(handle).Name);
+            Assert.False(reference.StartsWith("Sage.Kits", StringComparison.Ordinal), $"{name} references the kit {reference} (SAGE0025)");
+        }
+    }
+
+    // A kit sits on the base and nothing sits on it (issue #27): Sage.Kits.Rpg references the base and
+    // no client, says it is simulation-only like the base, is not one of the base plugins, and its
+    // declarations belong to its own plugin — so they register only when a game loads the kit.
+    [Fact]
+    public void TheRpgKitIsBuiltOnTheBaseAndIsNotPartOfIt()
+    {
+        var kit = typeof(Sage.Kits.Rpg.RpgKitModule).Assembly;
+        var references = kit.GetReferencedAssemblies().Select(r => r.Name!).ToList();
+        Assert.Contains("Sage.Gameplay", references);
+        foreach (string above in new[] { "MonoGame.Framework", "Sage.Client", "Sage.Editor", "Sage.Host", "Sage.Cli", "Sage.Testing" })
+            Assert.DoesNotContain(above, references);
+        Assert.True(kit.GetCustomAttributes<AssemblyMetadataAttribute>().Any(m => m.Key == "SageSimulationOnly" && m.Value == "true"),
+                    "Sage.Kits.Rpg is not built with SageSimulationOnly=true");
+
+        Assert.DoesNotContain(kit, EngineAssemblies.Base);
+        Assert.DoesNotContain(BasePlugins.All(), m => m.GetType().Assembly == kit);
+
+        var generated = new GeneratedRegistrations();
+        generated.Include(kit);
+        Assert.Equal(new[] { Sage.Kits.Rpg.RpgKitModule.Id }, generated.Owners.Distinct());
     }
 
     // src/Directory.Build.props makes every engine project simulation-only unless it opts out, and says

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Sage.Gameplay;
+namespace Sage.Kits.Rpg;
 
 // Making your own spells (docs/design/16 §3.3, TODO F21). The Daggerfall feature: you buy effects,
 // choose how strong and how they are delivered, name the result, and it goes in your book for ever.
@@ -36,7 +36,7 @@ public sealed class SpellDraft
 // A world's book of composed spells: the drafts, and nothing else. It is a saved resource (09 §3.1)
 // rather than a component on the player because it is the *world's* magic — in a party game it is not
 // one character's, and the same book is what a spellmaker shop would list.
-[SavedResource("spellbook", Plugin = "sage.gameplay.abilities")]
+[SavedResource("spellbook", Plugin = RpgKitModule.Id)]
 public sealed class Spellbook : ISavedResource
 {
     public List<SpellDraft> Drafts { get; set; } = new();
@@ -54,9 +54,17 @@ public readonly record struct SpellResult(bool Ok, RecordId Id, float Cost, stri
 
 public static class Spellmaker
 {
-    // Where composed spells live. A namespace of their own, so nothing a player made can shadow or be
+    // Where composed spells live: rpg_conventions `spellNamespace`, "custom" unless a game says
+    // otherwise (issue #27). A namespace of their own, so nothing a player made can shadow or be
     // mistaken for content — and so `rec_list` shows at a glance which is which.
-    public const string Namespace = "custom";
+    public static string Namespace(RecordStore records) => RpgConventions.Of(records).SpellNamespace;
+
+    // The id a spell of this name is composed under.
+    public static RecordId IdOf(RecordStore records, string name) => new(Namespace(records), Slug(name));
+
+    // What a spell's price is paid in, for the words around it ("12 mana"): the game's cost attribute
+    // (gameplay_conventions `costAttribute`, issue #26), by name.
+    public static string CostName(RecordStore records) => GameplayConventions.Of(records).CostAttribute.Id.Name;
 
     // Prices a draft without making it, for a spellmaker screen that has to show a number before the
     // player commits. The formula is deliberately in one place and deliberately simple: each effect
@@ -116,7 +124,7 @@ public static class Spellmaker
             if (effect.Cost <= 0f) { problem = $"{id} is not an effect you can put in a spell"; return false; }
         }
 
-        var recordId = new RecordId(Namespace, Slug(name));
+        var recordId = IdOf(engine.Records, name);
         if (Book(world).Drafts.Any(d => Slug(d.Name) == recordId.Name))
         {
             problem = $"you already know a spell called \"{name}\"";
@@ -138,11 +146,11 @@ public static class Spellmaker
         var engine = world.Engine!;
         string name = draft.Name.Trim();
         var book = Book(world);
-        var recordId = new RecordId(Namespace, Slug(name));
+        var recordId = IdOf(engine.Records, name);
         float cost = Price(engine.Records, draft);
         Register(engine, recordId, draft, cost);
         book.Drafts.Add(draft);
-        Log.Info(LogCat.Gameplay, $"Composed {recordId} \"{name}\": {cost:F0} mana, {draft.Effects.Count} effect(s)");
+        Log.Info(LogCat.Gameplay, $"Composed {recordId} \"{name}\": {cost:F0} {CostName(engine.Records)}, {draft.Effects.Count} effect(s)");
         return new SpellResult(true, recordId, cost, "");
     }
 
@@ -160,21 +168,22 @@ public static class Spellmaker
         //
         // Two worlds that both composed "firebolt" would share the one `custom:firebolt` record, which
         // is inherent to one engine-wide namespace and waits for maps and sectors (09 §3.4) to matter.
+        string ns = Namespace(engine.Records);
         var wanted = new HashSet<RecordId>();
         foreach (var other in engine.Worlds)
             if (other.Resources.TryGet<Spellbook>(out var book) && book is not null)
                 foreach (var draft in book.Drafts)
-                    if (!string.IsNullOrWhiteSpace(draft.Name)) wanted.Add(new RecordId(Namespace, Slug(draft.Name)));
+                    if (!string.IsNullOrWhiteSpace(draft.Name)) wanted.Add(new RecordId(ns, Slug(draft.Name)));
 
         foreach (var (_, id, record) in engine.Records.RuntimeRecords.ToList())
-            if (record is AbilityRecord && id.Namespace == Namespace && !wanted.Contains(id))
+            if (record is AbilityRecord && id.Namespace == ns && !wanted.Contains(id))
                 engine.Records.RemoveRuntime<AbilityRecord>(id);
 
         int made = 0;
         foreach (var draft in Book(world).Drafts)
         {
             if (string.IsNullOrWhiteSpace(draft.Name)) continue;
-            Register(engine, new RecordId(Namespace, Slug(draft.Name)), draft, Price(engine.Records, draft));
+            Register(engine, new RecordId(ns, Slug(draft.Name)), draft, Price(engine.Records, draft));
             made++;
         }
         if (made > 0) Log.Info(LogCat.Gameplay, $"Restored {made} composed spell(s)");
@@ -191,7 +200,7 @@ public static class Spellmaker
 
         string slug = Slug(name);
         if (Book(world).Drafts.RemoveAll(d => Slug(d.Name) == slug) == 0) return false;
-        engine.Records.RemoveRuntime<AbilityRecord>(new RecordId(Namespace, slug));
+        engine.Records.RemoveRuntime<AbilityRecord>(new RecordId(Namespace(engine.Records), slug));
         return true;
     }
 
@@ -232,8 +241,8 @@ public static class Spellmaker
 
     // ---- the console spellmaker ---------------------------------------------------------------------
 
-    // The spellmaker screen does not exist yet (13), and a console is a perfectly good spellmaker: the
-    // composition rules are what needed building, and they are the same ones a screen will call.
+    // A console is a perfectly good spellmaker: the composition rules are what needed building, and
+    // they are the same ones SpellmakerScreen calls.
     //
     //   spell_make "cold snap" sage:burning target=projectile damage=20 type=sage:fire mag=2
     //
@@ -257,9 +266,9 @@ public static class Spellmaker
                 var book = Book(world);
                 foreach (var draft in book.Drafts)
                 {
-                    var id = new RecordId(Namespace, Slug(draft.Name));
+                    var id = IdOf(engine.Records, draft.Name);
                     float cost = Price(engine.Records, draft);
-                    Log.Info(LogCat.Console, $"  {draft.Name,-24} {id}  {cost:F0} mana  {draft.Targeting}" +
+                    Log.Info(LogCat.Console, $"  {draft.Name,-24} {id}  {cost:F0} {CostName(engine.Records)}  {draft.Targeting}" +
                                              (draft.Effects.Count > 0 ? $"  [{string.Join(", ", draft.Effects)}]" : ""));
                 }
                 if (book.Drafts.Count == 0) Log.Info(LogCat.Console, "you have composed nothing (try spell_effects)");
@@ -300,7 +309,7 @@ public static class Spellmaker
                 // share a draft object, or editing one would edit the other's spell.
                 // Two players in one world share its book, so the second one is *taught* the spell the
                 // first composed rather than told it already exists.
-                var known = new RecordId(Namespace, Slug(draft.Name));
+                var known = IdOf(engine.Records, draft.Name);
                 if (Book(world).Drafts.Any(d => Slug(d.Name) == known.Name))
                 {
                     world.Teach(entity, known);
@@ -311,7 +320,7 @@ public static class Spellmaker
                 var result = Compose(world, Copy(draft));
                 if (!result.Ok) { Log.Warn(LogCat.Console, $"spell_make: {result.Problem}"); return; }
                 world.Teach(entity, result.Id);
-                Log.Info(LogCat.Console, $"{World.Describe(entity)} learns \"{draft.Name}\" ({result.Id}), {result.Cost:F0} mana");
+                Log.Info(LogCat.Console, $"{World.Describe(entity)} learns \"{draft.Name}\" ({result.Id}), {result.Cost:F0} {CostName(engine.Records)}");
             });
         });
     }

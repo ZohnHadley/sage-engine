@@ -2,14 +2,15 @@
 using System;
 using System.Linq;
 
-namespace Sage.Gameplay;
+namespace Sage.Kits.Rpg;
 
 // The spellmaker, as a screen (docs/design/16 §3.3, 13 §3; TODO F21, F38).
 //
-// In the engine rather than in a game, unlike the spellbook and the bag: what a spellmaker *is* — you
+// In the RPG kit rather than in a game, unlike the spellbook and the bag: what a spellmaker *is* — you
 // name it, you choose what it does and how it is delivered, it costs what those add up to — is the
-// feature F21 built, not a decision each game makes. A game that wants a different one subclasses
-// `Screen` as the Sandbox does for its bag.
+// feature F21 built, not a decision each game makes (issue #27 moved it out of the base, which has no
+// spellmaker). A game that wants a different one subclasses `Screen` as the Sandbox does for its bag.
+// The kit's client half registers it as the "spellmaker" screen.
 //
 // Every row is the same shape as any other panel row, including the last one. **"Make it" is a row**,
 // greyed with the reason when the draft is not yet a spell — and the reason comes from
@@ -47,9 +48,10 @@ public sealed class SpellmakerScreen : Screen
         Draft.Name = _name.Text;
 
         float price = Spellmaker.Price(records, Draft);
+        string cost = Spellmaker.CostName(records);
         Panel.Begin(_name.IsEmpty
-            ? $"Make a spell — {price:F0} mana"
-            : $"Make a spell — \"{_name.Text}\", {price:F0} mana", subject);
+            ? $"Make a spell — {price:F0} {cost}"
+            : $"Make a spell — \"{_name.Text}\", {price:F0} {cost}", subject);
 
         // The two things that are not effects: how it reaches, and how hard. Enter cycles them, which
         // is why they are rows rather than a second control a list cannot hold.
@@ -64,7 +66,7 @@ public sealed class SpellmakerScreen : Screen
         }
 
         bool can = Spellmaker.CanCompose(world, Draft, out string problem);
-        Panel.Add(PanelRow.Of(Make, "— make it —", can ? $"{price:F0} mana" : "", 1, false, can, problem));
+        Panel.Add(PanelRow.Of(Make, "— make it —", can ? $"{price:F0} {cost}" : "", 1, false, can, problem));
     }
 
     public override bool Activate(World world, Entity subject, in PanelRow row)
@@ -92,7 +94,7 @@ public sealed class SpellmakerScreen : Screen
             if (!made.Ok) { world.Say(made.Problem, MessageKind.Bad); return false; }
 
             world.Teach(subject, made.Id);
-            world.Say($"You invent {Draft.Name} ({made.Cost:F0} mana)", MessageKind.Good);
+            world.Say($"You invent {Draft.Name} ({made.Cost:F0} {Spellmaker.CostName(world.Records())})", MessageKind.Good);
 
             // A fresh draft, and the name box empty: the spell that was being made now exists, and
             // composing the same one twice is refused anyway.

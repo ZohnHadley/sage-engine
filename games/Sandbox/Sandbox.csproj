@@ -17,6 +17,12 @@
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
+  <!-- The RPG kit it is built on (game.json "kits", issue #27). Compile-time only, like the base: the
+       host loads the kit's own copy, from beside itself. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="game.json" />
     <None Include="content\**\*" />

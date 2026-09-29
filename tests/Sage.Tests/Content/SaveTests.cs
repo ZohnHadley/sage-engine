@@ -67,7 +67,7 @@ public class SaveTests
             _userRoot = userRoot ?? TestEnv.NewTempDir();
             _keepRoot = userRoot != null;
 
-            var builder = HeadlessApp.Gameplay().File("data/save_test.json", Records);
+            var builder = HeadlessApp.Gameplay().WithHands().File("data/save_test.json", Records);
             if (extraRecords != null) builder.File("data/extra.json", extraRecords);
             Engine = builder.Build().Engine;
 
@@ -119,7 +119,7 @@ public class SaveTests
 
         // Ruin all of it, the way playing on would.
         fx.World.Take(hero, Id("bread"), 4);
-        fx.World.Unequip(hero, EquipSlot.MainHand);
+        fx.World.Unequip(hero, Hands.Main);
         fx.World.Get<Transform>(hero).LocalPosition = new Vector3(90, 0, 90);
         Tick(fx.World, 2);
 
@@ -129,7 +129,7 @@ public class SaveTests
         Assert.False(loaded.IsNull);
         Assert.Equal(where, fx.World.Get<Transform>(loaded).LocalPosition);
         Assert.Equal(4, fx.World.CountOf(loaded, Id("bread")));
-        Assert.Equal(Id("sword"), fx.World.Get<Equipment>(loaded).MainHand);
+        Assert.Equal(Id("sword"), fx.World.Get<Equipment>(loaded).In(Hands.Main));
         Assert.True(fx.World.Knows(loaded, Id("heal")));
 
         // The prefab's own work came back without being saved: a character's capsule and controller are

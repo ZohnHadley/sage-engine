@@ -43,6 +43,12 @@
   <!-- engine_content/ → Content/ (shaders compiled with dotnet-mgfxc, data and textures copied). -->
   <Import Project="..\..\build\Sage.EngineContent.targets" />
 
+  <!-- The kits, both halves, beside the executable for a game that names one (issue #27). -->
+  <PropertyGroup>
+    <SageKitClients>true</SageKitClients>
+  </PropertyGroup>
+  <Import Project="..\..\build\Sage.Kits.targets" />
+
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
   <ItemGroup>
     <Using Include="Sage.Core" />

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The RPG kit's client half (issue #27): the input actions that open its screens (Spellbook,
+    Spellmaker, Journal) and the screens themselves under the ids the client resolves them by
+    (ScreenRegistry: "dialogue", "journal", "spellmaker"). Plugin
+    `sage.kits.rpg.client`, loaded with `sage.kits.rpg` by a host with a window.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Sage.Kits.Rpg</RootNamespace>
+    <SageSimulationOnly>false</SageSimulationOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
+    <ProjectReference Include="..\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
+  </ItemGroup>
+
+  <!-- The layers below, for every file. -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Gameplay" />
+    <Using Include="Sage.Client" />
+  </ItemGroup>
+</Project>

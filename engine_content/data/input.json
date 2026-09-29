@@ -15,8 +15,9 @@
   },
   {
     // Active while a screen is open (13 §3, F38). Its own keys are read first and then everything
-    // else is swallowed, so nobody walks about behind an open inventory. `Inventory`/`Spellbook` are
-    // bound here as well as in gameplay, so the key that opened a screen also closes it.
+    // else is swallowed, so nobody walks about behind an open inventory. `Inventory` is bound here as
+    // well as in gameplay, so the key that opened a screen also closes it. A kit's screen keys (the
+    // RPG kit's Spellbook, Spellmaker, Journal) are bound by the game that uses the kit.
     "type": "input_map",
     "id": "ui",
     "context": "UI",
@@ -27,9 +28,6 @@
       "MenuAlternate": [ { "key": "Delete" }, { "gamepad": "X" } ],
       "MenuBack":      [ { "key": "Escape" }, { "gamepad": "B" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
-      "Spellbook":     [ { "key": "B" } ],
-      "Spellmaker":    [ { "key": "M" } ],
-      "Journal":       [ { "key": "J" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   },
@@ -47,9 +45,6 @@
       "Crouch":        [ { "key": "LeftControl" }, { "gamepad": "B" } ],
       "Menu":          [ { "key": "Escape" }, { "gamepad": "Start" }, { "gamepad": "Back" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
-      "Spellbook":     [ { "key": "B" } ],
-      "Spellmaker":    [ { "key": "M" } ],
-      "Journal":       [ { "key": "J" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   }

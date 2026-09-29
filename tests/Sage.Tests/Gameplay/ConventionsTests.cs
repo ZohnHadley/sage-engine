@@ -28,7 +28,8 @@ public class ConventionsTests
     [Fact]
     public void NoGameplayCodeNamesAnEngineRecordId()
     {
-        var folders = new[] { "src/Sage.Gameplay", "src/Sage.Physics3D", "games" }.Select(f => Path.Combine(Repository, f));
+        var folders = new[] { "src/Sage.Gameplay", "src/Sage.Physics3D", "src/Sage.Kits.Rpg", "src/Sage.Kits.Rpg.Client", "games" }
+            .Select(f => Path.Combine(Repository, f));
         var found = folders
             .SelectMany(f => Directory.EnumerateFiles(f, "*.cs", SearchOption.AllDirectories))
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
@@ -67,6 +68,10 @@ public class ConventionsTests
         Assert.Equal(new RecordId("sage", "hold_ground"), conventions.Schedules.HoldGround.Id);
         Assert.Equal("Attack", conventions.Actions.Attack);
         Assert.Equal("Jump", conventions.Actions.Jump);
+        // The sprite clips combat plays and listens for (issue #27), which were string constants.
+        Assert.Equal("attack", conventions.Animations.Attack);
+        Assert.Equal("hit", conventions.Animations.Hit);
+        Assert.Equal("idle", conventions.Animations.Idle);
 
         // The character controller, below gameplay, reads the same record through its own view.
         Assert.Equal(conventions.Movement.Id, CharacterConventions.Of(app.World).DefaultProfile);
@@ -145,5 +150,64 @@ public class ConventionsTests
             .File("data/game.json", Hp + """{ "type": "gameplay_conventions", "id": "default_conventions", "actions": { "attack": "Swing" } }""" + "\n]")
             .Boot("swing");
         Assert.Equal(0, registered.Records.ErrorCount);
+    }
+
+    // The sprite clips combat plays and the frame event that lands a blow were the strings "attack",
+    // "hit" and "idle" in code (issue #27). A game whose sheets say "wind", "strike" and "rest" says so
+    // in its conventions: the swing plays "wind", lands on "strike" long before its windup time would,
+    // and goes back to "rest".
+    [Fact]
+    public void AGameNamesTheSpriteClipsCombatPlays()
+    {
+        const string records = """
+            [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+             { "type": "effect", "id": "damage", "modifiers": [ { "attribute": "health", "op": "Add", "value": -1 } ] },
+             { "type": "damage_type", "id": "physical", "effect": "damage" },
+             { "type": "attack", "id": "sword", "damage": 20, "reach": 2.0, "radius": 0.3, "arcDegrees": 120,
+               "windupTime": 5, "recoverTime": 0.1, "cooldown": 0.5 },
+             { "type": "sprite_sheet", "id": "fighter", "texture": "textures/fighter.png", "directions": 1,
+               "frames": [ { "rect": [0, 0, 64, 96] }, { "rect": [64, 0, 64, 96] } ],
+               "animations": {
+                 "rest":  { "fps": 10, "loop": true,  "dirs": [[0, 1]] },
+                 "wind":  { "fps": 10, "loop": false, "dirs": [[0, 1]], "events": [ { "frame": 1, "name": "strike" } ] } } },
+             { "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "damageType": "physical",
+               "animations": { "attack": "wind", "hit": "strike", "idle": "rest" } }]
+            """;
+        // Sprite sheets are the client's records; a headless test registers the type itself.
+        using var app = HeadlessApp.Gameplay().OnRegistered(a => a.Records.Register<SpriteSheetRecord>())
+            .File("data/clips.json", records).Boot("clips");
+        Assert.Equal(0, app.Records.ErrorCount);
+        var world = app.World;
+        var physics = world.Resources.Get<IPhysicsWorld>();
+        var ground = world.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
+        world.Add(ground, Collider.Box(new Vector3(100, 1, 100)));
+        var sheet = app.Records.Get<SpriteSheetRecord>(new RecordId("sage", "fighter"));
+
+        Entity Fighter(Vector3 feet, string name, Vector3 lookAt)
+        {
+            var entity = world.Create(Transform.At(feet), name);
+            world.AddCharacter(entity, physics.Layers.Player);
+            world.AddAttributes(entity);
+            world.Add(entity, new SpriteRenderer { Sheet = new RecordId("sage", "fighter") });
+            world.Add(entity, new SpriteAnimator { Clip = sheet.ClipIndex("rest") });
+            world.Get<PawnIntent>(entity).Yaw = SageMath.YawTo(feet, lookAt);
+            return entity;
+        }
+
+        var attacker = Fighter(Vector3.Zero, "attacker", new Vector3(0, 0, -2));
+        world.Add(attacker, Melee.With(new RecordId("sage", "sword")));
+        var target = Fighter(new Vector3(0, 0, -1.2f), "target", Vector3.Zero);
+        world.RunFixed(1f / 60f);
+
+        world.Get<PawnIntent>(attacker).Pressed = default(ActionMask).With(app.Engine.Actions.Get("Attack"));
+        world.RunFixed(1f / 60f);
+        world.Get<PawnIntent>(attacker).Pressed = default;
+        Assert.Equal(sheet.ClipIndex("wind"), world.Get<SpriteAnimator>(attacker).Clip);
+
+        for (int i = 0; i < 20; i++) world.RunFixed(1f / 60f);   // a third of a second: the event, not the 5 s windup
+        Assert.Equal(80f, world.Attribute(target, new RecordId("sage", "health")), 3);
+
+        for (int i = 0; i < 12; i++) world.RunFixed(1f / 60f);   // past the recovery
+        Assert.Equal(sheet.ClipIndex("rest"), world.Get<SpriteAnimator>(attacker).Clip);
     }
 }

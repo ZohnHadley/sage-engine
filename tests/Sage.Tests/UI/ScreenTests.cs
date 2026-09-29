@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using Sage.Kits.Rpg;
 
 namespace Sage.Tests;
 
@@ -49,7 +50,7 @@ public class ScreenTests
         {
             // The test's own action, registered with everything else's: once content has loaded, the
             // bindings are built and a late action would have none.
-            Engine = HeadlessApp.Gameplay()
+            Engine = HeadlessApp.Gameplay().With(new RpgKitModule())
                 .OnRegistered(app => app.Engine.Actions.Register("TestSpellbook", ActionKind.Button))
                 .File("data/screen_test.json", Records)
                 .Build().Engine;
@@ -143,12 +144,12 @@ public class ScreenTests
         var screen = new SpellbookScreen();
         fx.Screens.Show(screen, fx.World, hero);
 
-        Assert.Equal(Id("spark"), fx.World.Get<Abilities>(hero).Selected);
+        Assert.Equal(Id("spark"), fx.World.Readied(hero));   // the first one learned, until one is readied
 
         fx.Screens.Move(1);
         Assert.True(fx.Screens.Activate(fx.World, hero));
 
-        Assert.Equal(Id("pillar"), fx.World.Get<Abilities>(hero).Selected);
+        Assert.Equal(Id("pillar"), fx.World.Readied(hero));
         // And the panel was re-asked, so the tick has moved with it.
         Assert.True(screen.Panel.TryFind(Id("pillar"), out var row));
         Assert.True(row.Selected);
@@ -170,12 +171,12 @@ public class ScreenTests
         int sword = IndexOf(screen, Id("sword"));
         fx.Screens.Move(sword);
         Assert.True(fx.Screens.Activate(fx.World, hero));
-        Assert.Equal(Id("sword"), fx.World.Get<Equipment>(hero).MainHand);
+        Assert.Equal(Id("sword"), fx.World.Get<Equipment>(hero).In(RpgKitModule.MainHand));
         Assert.True(screen.Panel.TryFind(Id("sword"), out var equipped));
         Assert.True(equipped.Selected);
 
         Assert.True(fx.Screens.Activate(fx.World, hero));                 // again: take it off
-        Assert.True(fx.World.Get<Equipment>(hero).MainHand.IsEmpty);
+        Assert.True(fx.World.Get<Equipment>(hero).In(RpgKitModule.MainHand).IsEmpty);
     }
 
     // Dropping the last row must not leave the highlight past the end of the list.
@@ -214,7 +215,7 @@ public class ScreenTests
         Assert.False(bread.Enabled);
 
         Assert.False(fx.Screens.Activate(fx.World, hero));
-        Assert.True(fx.World.Get<Equipment>(hero).MainHand.IsEmpty);
+        Assert.True(fx.World.Get<Equipment>(hero).In(RpgKitModule.MainHand).IsEmpty);
         Assert.Equal(3, fx.World.CountOf(hero, Id("bread")));
     }
 

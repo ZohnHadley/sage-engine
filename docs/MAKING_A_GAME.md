@@ -34,8 +34,13 @@ console, saves, hot reload, and a renderer. **It gives you no game.** What a gam
 | How it looks on screen | your **HUD** and screens, in your game's client half |
 | Art and sound | PNG, WAV, `.glb` — read at runtime, no build step |
 
+The engine assumes no genre. What a family of games shares beyond that is a **kit**: `Sage.Kits.Rpg`
+(the readied spell and its Cast button, the spellmaker, two hands to hold things in, the bag, spellbook,
+journal and conversation screens) is the one there is, and a game opts in with one line of `game.json`
+(§2, "Kits").
+
 The split that matters: **your simulation half references the base engine only** (`Sage.Core`, `Sage.Simulation`,
-`Sage.Physics3D`, `Sage.Gameplay`) — no MonoGame — so it can
+`Sage.Physics3D`, `Sage.Gameplay`), and any kit it is built on — no MonoGame — so it can
 be tested headlessly and could run on a server one day. Anything that needs a screen goes in a second
 project, your *client half*.
 
@@ -117,8 +122,52 @@ inherit none of that: add the target framework, the four references and the usin
   reaches them as a `Died` event, and dialogue treats a missing one as "standing 0" or "not on that quest"
   (test: EachNarrativePluginCanBeSwitchedOffAlone). Content for a plugin that is off — its record types —
   is skipped with a warning; its prefab parts are errors, so leave them out of that game's prefabs.
+- `kits` (optional) names the kits the game is built on, by plugin id — `["sage.kits.rpg"]`; see
+  "Kits" below. Left out, the game has none.
 - A key the engine does not know is an error, so a misspelt `"mount"` stops the game at once instead of
   quietly loading nothing.
+
+### Kits
+
+A **kit** is the shared rules and screens of a family of games, built on the base engine's public API
+and never part of it (issue #27): the base must not assume a genre, so a platformer does not carry a
+spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L.K.E.R.):
+
+| | `sage.kits.rpg` (`Sage.Kits.Rpg`, simulation) | `sage.kits.rpg.client` (`Sage.Kits.Rpg.Client`) |
+|---|---|---|
+| Casting | the **readied spell** — `world.Ready(e, id)`, `world.Readied(e)` — which the `Cast` button fires; `ready`, `spells` | |
+| Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects` | the `"spellmaker"` screen |
+| Things you carry | the two hands, `MainHand` and `OffHand`, as equipment slots; `inv` | |
+| Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook) | registers them as `"spellmaker"`, `"journal"`, `"dialogue"`; the `Spellbook`, `Spellmaker` and `Journal` actions |
+| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`) and `castAction` (`"Cast"`) | |
+
+To build on it, name it in `game.json` and reference it, compile-time only, like the base:
+
+```json
+"kits": ["sage.kits.rpg"]
+```
+
+```xml
+<!-- YourGame.csproj -->
+<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
+<!-- YourGame.Client.csproj: both halves, by name -->
+<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
+<ProjectReference Include="..\..\src\Sage.Kits.Rpg.Client\Sage.Kits.Rpg.Client.csproj" Private="false" />
+```
+
+The host finds a kit by its id: `sage.kits.rpg` is `Sage.Kits.Rpg.dll` (each part capitalised), looked
+for beside your game's assembly, its `modules.add` assemblies and the host itself — the kits ship
+beside `Sage.Host` and `sage`, built by `build/Sage.Kits.targets`. It is loaded before your assemblies,
+and a host with a window loads its client half, `Sage.Kits.Rpg.Client.dll`, too; `sage validate`, a
+server or a test loads the simulation half only. A kit that is not there stops the game with a message
+naming the file and where it looked (test: AKitThatIsNotThereIsAnErrorThatSaysWhere). `games/Sandbox`
+is built on the RPG kit; `games/Hello` is not, and runs on the base alone
+(test: HelloHasNoKitAndTheSandboxHasTheRpgKit).
+
+Which keys open the kit's screens is your game's: bind the kit's actions in your own `input_map`
+records (`games/Sandbox/content/data/input.json`) and the screens in your client module (§7). The kit
+has no content of its own, so its words have defaults, and a game that wants others adds one
+`rpg_conventions` record in its own namespace (test: AGameChoosesTheNamespaceItsComposedSpellsLiveIn).
 
 ### Running it
 
@@ -279,7 +328,8 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 The engine's gameplay code knows no record id of its own (issue #26). Which attribute kills you when it
 runs out, which tag says you are dead, what a swing does when nobody gave the fighter an attack, which
 schedule a creature idles with, which faction the player is in, what a spell made in the spellmaker
-costs and which buttons swing, use, cast and jump — all of it is one record,
+costs, which buttons swing, use and jump, and which sprite clips a swing plays (`animations`: the clip,
+the frame event that lands the blow, the clip it goes back to) — all of it is one record,
 `sage:default_conventions` (`engine_content/data/conventions.json`), and code reads that record. To
 change a word, patch it from your content:
 
@@ -296,7 +346,9 @@ module registered — `Actions.Register("Swing", ActionKind.Button)` in your mod
 `"actions": { "attack": "Swing" }` — and a name nobody registered is a load error
 (test: AConventionNamingAnActionNobodyRegisteredIsALoadError). Your C# reads the same record:
 `world.Conventions().Health`, never `new RecordId("sage", "health")`
-(test: NoGameplayCodeNamesAnEngineRecordId).
+(test: NoGameplayCodeNamesAnEngineRecordId). A sheet whose clips are called something else says so here
+(test: AGameNamesTheSpriteClipsCombatPlays). The button that fires the readied spell is the RPG kit's
+word, not the base's (`rpg_conventions`, §2 "Kits").
 
 ### Every prefab part the engine provides
 
@@ -714,9 +766,15 @@ to an action in its client module:
 ```csharp
 var screens = world.Resources.Get<ScreenStack>();
 screens.Bind(actions.Get("Inventory"), new InventoryScreen());
+// A kit's screen, by its id in the client's ScreenRegistry (ctx.Get<ScreenRegistry>() in Start):
+screens.Bind(actions.Get("Journal"), registry.Create("journal")!);
 ```
 
-While a screen is open it takes the input, so gameplay does not also react.
+While a screen is open it takes the input, so gameplay does not also react. The base client ships no
+screen of its own: when somebody with a `dialogue` is used it asks the `ScreenRegistry` for
+`"dialogue"`, which the RPG kit's client half registers, and with none registered nobody is talked to.
+A game registers its own screens there in its client module's `Init` (`registry.Register("map", () =>
+new MapScreen())`).
 
 ---
 

@@ -106,13 +106,16 @@ public sealed class CueRecord
 public struct Abilities : IComponent
 {
     public List<RecordId>? Known;
-    public RecordId Selected;     // the readied spell: what the Cast button fires (Daggerfall's)
+    // The readied one, for a game whose button fires one: Sage.Kits.Rpg's readied spell (issue #27).
+    // The base neither reads nor sets it; it is here, not in the kit, because saves carry it under
+    // `sage:abilities` (tests/Sage.Tests/Content/Saves).
+    public RecordId Selected;
     [Transient] public RecordId Casting;   // mid-wind-up; a load leaves you not casting
     [Transient] public float Timer;        // seconds into the wind-up
     [Transient] public RecordId Queued;    // asked for this tick, taken by the system
 
     public static Abilities With(params RecordId[] known) =>
-        new() { Known = new List<RecordId>(known), Selected = known.Length > 0 ? known[0] : default };
+        new() { Known = new List<RecordId>(known) };
 }
 
 // ---- events -------------------------------------------------------------------------------------
@@ -147,16 +150,6 @@ public static class AbilityExtensions
         ref var abilities = ref world.Get<Abilities>(entity);
         abilities.Known ??= new List<RecordId>();
         if (!abilities.Known.Contains(ability)) abilities.Known.Add(ability);
-        if (abilities.Selected.IsEmpty) abilities.Selected = ability;   // the first one learned is readied
-    }
-
-    // Readies a spell: what the Cast button fires and what a spellbook screen ticks (Daggerfall's
-    // readied spell). Refuses one it does not know, so a stale screen cannot ready nothing.
-    public static bool Ready(this World world, Entity entity, RecordId ability)
-    {
-        if (!world.Knows(entity, ability)) return false;
-        world.Get<Abilities>(entity).Selected = ability;
-        return true;
     }
 
     public static bool Knows(this World world, Entity entity, RecordId ability) =>
