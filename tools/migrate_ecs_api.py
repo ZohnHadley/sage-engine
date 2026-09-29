@@ -17,7 +17,9 @@ What it does (every rule is a plain regex over the text; see CS_RULES and PROJEC
   - Friflo's EntityName component -> the string Entity.Name:
     `e.Name = new EntityName(x)` -> `e.Name = x`,
     `e.TryGetComponent<EntityName>(out var n) ? n.value : x` -> `e.Name ?? x`,
-    `e.GetComponent<EntityName>().value` and `e.Name.value` -> `e.Name`;
+    `e.GetComponent<EntityName>().value` and `e.Name.value` -> `e.Name`,
+    `e.TryGetComponent(out EntityName n) && n.value` -> `e.Name is { } n && n`,
+    `world.Query<EntityName>()` -> `world.QueryAll()`;
   - an entity component's `.Type.Type` (Friflo's ComponentType) -> `.Type` (a System.Type);
   - the console registrars WorldCommands -> WorldConsoleCommands and ScaleCommands ->
     ScaleConsoleCommands (their files are renamed with `git mv` too);
@@ -26,8 +28,9 @@ What it does (every rule is a plain regex over the text; see CS_RULES and PROJEC
 
 What it leaves alone:
   - files that alias Friflo (`using F = Friflo.Engine.ECS;`): the hand-written implementation of the
-    Sage types in Sage.Simulation (World, ComponentSchema, the savers, the ECS schema), and the few
-    tests that inspect Friflo's schema itself;
+    Sage types in Sage.Simulation (World, ComponentSchema, the savers, the ECS schema);
+  - the guards, which name Friflo on purpose (LEAVE_ALONE: SAGE0050's analyzer and tests,
+    PublicApiTests, SageTypes);
   - bin/, obj/ and generated code.
 
 What it cannot do (the build points at each one):
@@ -46,6 +49,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIRS = ["src", "games", "tests"]
 SKIP_DIRS = {"bin", "obj", ".git"}
 IMPLEMENTATION_MARKER = "using F = Friflo.Engine.ECS;"
+# Files that name Friflo on purpose, in strings and test sources: the guards themselves.
+LEAVE_ALONE = {
+    "src/Sage.Generators/SageTypes.cs",
+    "src/Sage.Generators/EcsVocabularyAnalyzer.cs",
+    "tests/Sage.Tests/Core/AnalyzerTests.cs",
+    "tests/Sage.Tests/Core/PublicApiTests.cs",
+}
 
 CS_RULES = [
     # usings and fully qualified names of what Sage now owns
@@ -67,7 +77,12 @@ CS_RULES = [
     (r"\.TryGetComponent\(out EntityName (\w+)\)\s*\?\s*\1\.value\b", r".Name is { } \1 ? \1"),
     (r"\.GetComponent<EntityName>\(\)\.value\b", ".Name"),
     (r"\.Name\.value\b", ".Name"),
+    (r"\.TryGetComponent<EntityName>\(out var (\w+)\)\s*&&\s*\1\.value\b", r".Name is { } \1 && \1"),
+    (r"\.TryGetComponent\(out EntityName (\w+)\)\s*&&\s*\1\.value\b", r".Name is { } \1 && \1"),
+    # every named entity: every entity (a caller that asks for a name still filters on it)
+    (r"\.Query<EntityName>\(\)", ".QueryAll()"),
     (r"\.Name is \{ \} (\w+) \? \1 : ", ".Name ?? "),
+    (r"\.Name is \{ \} (\w+) && \1 == ", ".Name == "),
     # one of an entity's components: Friflo's ComponentType -> System.Type
     (r"\b(component|c|entry)\.Type\.Type\b", r"\1.Type"),
     # the console registrars (ConsoleCommand is the console's; EntityCommands the ECS's)
@@ -127,6 +142,8 @@ def main(argv):
         bom = raw.startswith(b"\xef\xbb\xbf")
         text = raw.decode("utf-8-sig")
         if is_cs and (IMPLEMENTATION_MARKER in text or path.endswith(".g.cs")):
+            continue
+        if os.path.relpath(path, ROOT).replace(os.sep, "/") in LEAVE_ALONE:
             continue
         new = migrate(text, CS_COMPILED if is_cs else PROJECT_COMPILED)
         if new != text:

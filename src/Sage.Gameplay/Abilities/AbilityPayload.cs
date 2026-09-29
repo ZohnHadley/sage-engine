@@ -14,11 +14,11 @@ namespace Sage.Gameplay;
 // whether they travelled.
 internal sealed class AbilityPayload
 {
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
     private readonly List<Entity> _targets = new();
     private readonly Entity[] _nearby = new Entity[64];
 
-    public AbilityPayload(World world) => _space = world.Resources.Get<PhysicsSpace>();
+    public AbilityPayload(World world) => _space = world.Resources.Get<IPhysicsWorld>();
 
     // Everything it caught, for the caller to draw or report.
     public IReadOnlyList<Entity> Targets => _targets;

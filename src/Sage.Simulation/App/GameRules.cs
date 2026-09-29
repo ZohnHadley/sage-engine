@@ -8,11 +8,13 @@ namespace Sage.Simulation;
 // its turn with the new world. In future multiplayer this becomes server-only, like UE's GameMode.
 public abstract class GameRules
 {
-    // Every module has installed its systems and resources; the world is ready to be populated.
-    public virtual void OnWorldStarted(World world) { }
+    // Every module has installed its systems and resources, and the start scene is placed (issue #29);
+    // the world is ready to be populated. By default: the player, from the scene's start.
+    public virtual void OnWorldStarted(World world) => SpawnPlayer(world);
 
-    // Where and how the local player enters the world.
-    public virtual Entity SpawnPlayer(World world) => default;
+    // Where and how the local player enters the world. By default, the scene's `player` placement
+    // (Scenes.SpawnPlayer): nothing when the world has no scene or the scene has no player.
+    public virtual Entity SpawnPlayer(World world) => world.Engine?.Scenes.SpawnPlayer(world) ?? default;
 
     // Something died (F20 calls this once combat exists).
     public virtual void OnEntityDied(World world, Entity victim, Entity killer) { }

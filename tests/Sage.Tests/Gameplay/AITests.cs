@@ -69,7 +69,9 @@ public class AITests
     // The AI records, plus the combat ones its swings go through (16 §3.2): a creature's claws are
     // an attack record like the player's, so both fight through MeleeCombatSystem.
     private const string AiRecords = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "invulnerable": "state.invulnerable", "damageType": "physical",
+           "aiProfile": "default_ai", "costAttribute": "mana", "schedules": { "idle": "idle", "chase": "chase", "meleeAttack": "melee_attack", "castSpell": "cast_spell", "holdGround": "hold_ground" } },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "attribute", "id": "armor", "start": 0, "min": 0, "max": 95 },
          { "type": "tag", "id": "state.dead" },
          { "type": "tag", "id": "state.invulnerable" },
@@ -117,7 +119,7 @@ public class AITests
     {
         var entity = world.Create(Transform.At(position), "creature");
         world.AddCharacter(entity, EnemyLayer);
-        world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+        world.Add(entity, new AIState { Schedule = Conventional.Idle });
         world.Add(entity, Melee.With(new RecordId("sage", "claws")));
         world.AddAttributes(entity);
         return entity;
@@ -129,7 +131,7 @@ public class AITests
     {
         var entity = world.Create(Transform.At(position), "caster");
         world.AddCharacter(entity, EnemyLayer);
-        world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+        world.Add(entity, new AIState { Schedule = Conventional.Idle });
         world.AddAttributes(entity);
         foreach (string spell in spells.Length > 0 ? spells : new[] { "bolt" })
             world.Teach(entity, new RecordId("sage", spell));
@@ -166,7 +168,7 @@ public class AITests
         Tick(world, 60);
 
         var state = world.Get<AIState>(creature);
-        Assert.Equal(AIThinkSystem.Schedules.Idle, state.Schedule);
+        Assert.Equal(Conventional.Idle, state.Schedule);
         Assert.True(((AICondition)state.Conditions).HasFlag(AICondition.NoEnemy));
         Assert.Equal(Vector2.Zero, world.Get<PawnIntent>(creature).Move);
     }
@@ -182,7 +184,7 @@ public class AITests
         Tick(world, 10);
         var state = world.Get<AIState>(creature);
         Assert.True(((AICondition)state.Conditions).HasFlag(AICondition.SeeEnemy));
-        Assert.Equal(AIThinkSystem.Schedules.Chase, state.Schedule);
+        Assert.Equal(Conventional.Chase, state.Schedule);
         Assert.Equal(player, state.Target);
 
         float before = Distance(world, creature, player);
@@ -206,7 +208,7 @@ public class AITests
         Tick(world, 30);
         Assert.False(((AICondition)world.Get<AIState>(creature).Conditions).HasFlag(AICondition.SeeEnemy),
             "a 200° cone leaves a blind spot behind it");
-        Assert.Equal(AIThinkSystem.Schedules.Idle, world.Get<AIState>(creature).Schedule);
+        Assert.Equal(Conventional.Idle, world.Get<AIState>(creature).Schedule);
 
         // Turn it round: same distance, same clear line of sight, now inside the cone.
         ref var intent = ref world.Get<PawnIntent>(creature);
@@ -237,7 +239,7 @@ public class AITests
 
         var state = world.Get<AIState>(creature);
         Assert.False(((AICondition)state.Conditions).HasFlag(AICondition.SeeEnemy));
-        Assert.Equal(AIThinkSystem.Schedules.Idle, state.Schedule);
+        Assert.Equal(Conventional.Idle, state.Schedule);
     }
 
     // What a creature does with what it saw a moment ago (16 §3.4, F23): it keeps chasing for
@@ -254,7 +256,7 @@ public class AITests
 
         var seen = world.Get<AIState>(creature);
         Assert.True(((AICondition)seen.Conditions).HasFlag(AICondition.SeeEnemy));
-        Assert.Equal(AIThinkSystem.Schedules.Chase, seen.Schedule);
+        Assert.Equal(Conventional.Chase, seen.Schedule);
 
         // Out of sight: far beyond the profile's sight range. (Straight up does *not* work — sight is
         // range and cone plus a ray, and a player 400 m overhead is still in the cone with nothing in
@@ -265,7 +267,7 @@ public class AITests
         var remembering = world.Get<AIState>(creature);
         Assert.True(((AICondition)remembering.Conditions).HasFlag(AICondition.RememberEnemy),
             "the creature forgot its target the instant it lost sight of it");
-        Assert.Equal(AIThinkSystem.Schedules.Chase, remembering.Schedule);
+        Assert.Equal(Conventional.Chase, remembering.Schedule);
         Assert.False(remembering.Target.IsNull);
 
         // Long enough for the default six seconds of memory to run out.
@@ -274,7 +276,7 @@ public class AITests
         var forgotten = world.Get<AIState>(creature);
         Assert.False(((AICondition)forgotten.Conditions).HasFlag(AICondition.RememberEnemy));
         Assert.True(forgotten.Target.IsNull, "a forgotten target is not still being chased");
-        Assert.Equal(AIThinkSystem.Schedules.Idle, forgotten.Schedule);
+        Assert.Equal(Conventional.Idle, forgotten.Schedule);
     }
 
     // The regression guard for review #48, now that the promise is checked rather than commented
@@ -314,9 +316,9 @@ public class AITests
         foreach (var ev in damage.All)
             if (ev.Hit.Attacker == creature && ev.Hit.Target == player) attacks++;
 
-        Assert.Equal(AIThinkSystem.Schedules.Attack, world.Get<AIState>(creature).Schedule);
+        Assert.Equal(Conventional.MeleeAttack, world.Get<AIState>(creature).Schedule);
         Assert.InRange(attacks, 2, 4);   // once per ~1 s cooldown, not every tick
-        Assert.True(world.Attribute(player, AttributeRecord.Health) <= 100f - attacks * 12f + 0.01f,
+        Assert.True(world.Attribute(player, Conventional.Health) <= 100f - attacks * 12f + 0.01f,
             "every swing that landed took health off the player");
     }
 
@@ -338,10 +340,10 @@ public class AITests
 
         // Casting, or holding its ground between casts -- never chasing (see the next test).
         var schedule = world.Get<AIState>(caster).Schedule;
-        Assert.True(schedule == AIThinkSystem.Schedules.Cast || schedule == AIThinkSystem.Schedules.Hold,
+        Assert.True(schedule == Conventional.CastSpell || schedule == Conventional.HoldGround,
             $"it should be fighting at range, not {schedule}");
         Assert.Contains(casts.All, c => c.Caster == caster);
-        Assert.True(world.Attribute(player, AttributeRecord.Health) < 100f, "its bolts should have hurt the player");
+        Assert.True(world.Attribute(player, Conventional.Health) < 100f, "its bolts should have hurt the player");
 
         // It stayed where it was: casting is chosen over closing, so it does not walk into reach it
         // has no use for. (Backing away to keep the distance is a ranged behaviour for later.)
@@ -367,9 +369,9 @@ public class AITests
         var state = world.Get<AIState>(caster);
         Assert.False(((AICondition)state.Conditions).HasFlag(AICondition.CanCastAtEnemy));
         Assert.True(state.Spell.IsEmpty);
-        Assert.NotEqual(AIThinkSystem.Schedules.Cast, state.Schedule);
+        Assert.NotEqual(Conventional.CastSpell, state.Schedule);
         Assert.DoesNotContain(refusals.All, r => r.Caster == caster);
-        Assert.Equal(100f, world.Attribute(player, AttributeRecord.Health));
+        Assert.Equal(100f, world.Attribute(player, Conventional.Health));
     }
 
     // Out of range is the same question: the spell's own `Range` is what the cast will be resolved
@@ -383,13 +385,13 @@ public class AITests
         var player = Player(world, new Vector3(0, 0.1f, -20));   // a 12 m bolt cannot reach
 
         Tick(world, 20);
-        Assert.Equal(AIThinkSystem.Schedules.Chase, world.Get<AIState>(caster).Schedule);
+        Assert.Equal(Conventional.Chase, world.Get<AIState>(caster).Schedule);
 
         Tick(world, 400);
         var reached = world.Get<AIState>(caster).Schedule;
-        Assert.True(reached == AIThinkSystem.Schedules.Cast || reached == AIThinkSystem.Schedules.Hold,
+        Assert.True(reached == Conventional.CastSpell || reached == Conventional.HoldGround,
             $"once in range it should be casting, not {reached}");
-        Assert.True(world.Attribute(player, AttributeRecord.Health) < 100f);
+        Assert.True(world.Attribute(player, Conventional.Health) < 100f);
     }
 
     // A creature that can swing swings when it is close: casting must not steal melee's job, or every
@@ -405,7 +407,7 @@ public class AITests
 
         Tick(world, 120);
 
-        Assert.Equal(AIThinkSystem.Schedules.Attack, world.Get<AIState>(creature).Schedule);
+        Assert.Equal(Conventional.MeleeAttack, world.Get<AIState>(creature).Schedule);
     }
 
     // A projectile leaves the caster's eye and a body is lower down, so the aim has a pitch. Without

@@ -15,7 +15,9 @@ public class QuestTests
     public QuestTests() { _ = TestEnv.UserRoot; }
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "damageType": "physical", "playerFaction": "player" },
+         { "type": "faction", "id": "player" },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "tag", "id": "state.dead" },
          { "type": "effect", "id": "damage", "duration": "Instant",
            "modifiers": [ { "attribute": "health", "op": "Add", "value": -1 } ] },

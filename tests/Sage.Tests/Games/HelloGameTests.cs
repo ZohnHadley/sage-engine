@@ -23,7 +23,9 @@ public class HelloGameTests
         fixture.Write("hello", "data/hello.json", Records);
         fixture.Mount("hello", "hello");
 
-        return HeadlessApp.Simulation().With(new HelloModule()).Mount(fixture).Build().Engine;
+        return HeadlessApp.Simulation().With(new HelloModule()).Mount(fixture)
+            .StartScene("hello:main")   // what its game.json says
+            .Build().Engine;
     }
 
     // The example's own records, copied here rather than read from `games/Hello/content`, so that the
@@ -36,6 +38,13 @@ public class HelloGameTests
             "name": "player",
             "tags": ["player_controlled"],
             "parts": { "character": { "layer": "player" }, "attributes": {} }
+          },
+          {
+            "type": "scene",
+            "id": "main",
+            "origin": [512, 0, 512],
+            "relativeTo": "Ground",
+            "player": { "prefab": "player", "at": [0, 2, 0] }
           }
         ]
         """;

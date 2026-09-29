@@ -54,8 +54,8 @@ public sealed class FactionRecord
     // What killing one of its members does to the player's standing with it, and with its allies.
     public float KillCost = 20f;
 
-    // The faction a player-controlled entity belongs to when it has no `Faction` component of its own.
-    public static readonly RecordId Player = new("sage", "player");
+    // The faction a player-controlled entity belongs to when it has no `Faction` component of its own
+    // is the game's to say: `playerFaction` in its gameplay_conventions (issue #26).
 }
 
 // Which faction an entity belongs to. Entities without one are nobody's ally and nobody's enemy — except
@@ -109,7 +109,7 @@ public static class Factions
     {
         if (a.IsEmpty || b.IsEmpty) return Stance.Neutral;
         if (a == b) return Stance.Ally;
-        if (!records.TryGet(a, out FactionRecord record)) return Stance.Neutral;
+        if (!TryGetFaction(records, a, out var record)) return Stance.Neutral;
 
         foreach (var relation in record.Relations)
             if (relation.Faction == b) return relation.Stance;
@@ -127,6 +127,7 @@ public static class Factions
 
         var records = world.Resources.Get<RecordStore>();
         RecordId mine = FactionOf(world, viewer), theirs = FactionOf(world, other);
+        RecordId player = world.Conventions().PlayerFaction;
 
         // A creature that belongs to nothing still knows an intruder when it sees one. This is the
         // engine's behaviour from before there were factions, kept so that content which says nothing
@@ -135,9 +136,9 @@ public static class Factions
             return other.Tags.Has<PlayerControlled>() && !viewer.Tags.Has<PlayerControlled>()
                 ? Stance.Hostile : Stance.Neutral;
 
-        if (theirs == FactionRecord.Player && !mine.Equals(FactionRecord.Player))
+        if (!player.IsEmpty && theirs == player && mine != player)
             return TowardPlayer(world, records, mine);
-        if (mine == FactionRecord.Player && theirs != FactionRecord.Player)
+        if (!player.IsEmpty && mine == player && theirs != player)
             return TowardPlayer(world, records, theirs);   // symmetric: how they feel is how you are treated
 
         return Between(records, mine, theirs);
@@ -147,7 +148,7 @@ public static class Factions
     // a decision. Between the thresholds it is neutral, which is where most of the world sits.
     private static Stance TowardPlayer(World world, RecordStore records, RecordId faction)
     {
-        if (!records.TryGet(faction, out FactionRecord record)) return Stance.Neutral;
+        if (!TryGetFaction(records, faction, out var record)) return Stance.Neutral;
         float standing = StandingWith(world, faction);
         return standing <= record.HostileBelow ? Stance.Hostile
              : standing >= record.FriendlyAbove ? Stance.Ally
@@ -167,22 +168,33 @@ public static class Factions
         return Toward(world, attacker, target) != Stance.Ally;
     }
 
+    // Nobody's, in a game without the factions plugin (issue #26): then who fights whom is the engine's
+    // pre-faction answer above — a creature is hostile to the player — whatever components say.
     public static RecordId FactionOf(World world, Entity entity)
     {
+        if (world.Records().TypeNameOf(typeof(FactionRecord)) == null) return default;
         if (world.TryGet<Faction>(entity, out var faction) && !faction.Id.IsEmpty) return faction.Id;
-        return entity.Tags.Has<PlayerControlled>() ? FactionRecord.Player : default;
+        return entity.Tags.Has<PlayerControlled>() ? world.Conventions().PlayerFaction : default;
+    }
+
+    // A faction record, when this game has factions at all: without the plugin the record type is not
+    // registered, and asking the store for one would be asking about a type it has never heard of.
+    public static bool TryGetFaction(RecordStore records, RecordId id, out FactionRecord record)
+    {
+        record = null!;
+        return !id.IsEmpty && records.TypeNameOf(typeof(FactionRecord)) != null && records.TryGet(id, out record);
     }
 
     // The player's standing with a faction: what they have earned, or what the record says they start
     // with. Reading it is what installs the starting value, so a HUD and a rule see the same number.
+    // Without the factions plugin there is no reputation to keep, and every standing is 0.
     public static float StandingWith(World world, RecordId faction)
     {
-        if (faction.IsEmpty) return 0f;
-        var reputation = world.Resources.Get<Reputation>();
+        if (faction.IsEmpty || !world.Resources.TryGet<Reputation>(out var reputation) || reputation == null) return 0f;
         float value = reputation.Of(faction);
         if (!float.IsNaN(value)) return value;
 
-        float start = world.Resources.Get<RecordStore>().TryGet(faction, out FactionRecord record) ? record.Standing : 0f;
+        float start = TryGetFaction(world.Resources.Get<RecordStore>(), faction, out var record) ? record.Standing : 0f;
         reputation.Set(faction, start);
         return start;
     }
@@ -191,11 +203,11 @@ public static class Factions
     // makes a reputation a web rather than a column of unrelated numbers.
     public static void Change(World world, RecordId faction, float amount)
     {
-        if (faction.IsEmpty || amount == 0f) return;
+        if (faction.IsEmpty || amount == 0f || !world.Resources.TryGet<Reputation>(out _)) return;
         Apply(world, faction, amount);
 
         var records = world.Resources.Get<RecordStore>();
-        if (!records.TryGet(faction, out FactionRecord record)) return;
+        if (!TryGetFaction(records, faction, out var record)) return;
         foreach (var relation in record.Relations)
         {
             if (relation.Stance == Stance.Neutral) continue;
@@ -216,15 +228,34 @@ public static class Factions
     }
 
     // The death seam's social half (16 §3.3): killing somebody is the commonest way to change what a
-    // faction thinks of you, and the only one the engine knows about on its own.
+    // faction thinks of you, and the only one the engine knows about on its own. FactionDeathSystem
+    // calls it for every `Died` (issue #26).
     public static void OnKilled(World world, Entity victim, Entity killer)
     {
         if (killer.IsNull || !world.IsAlive(killer) || !killer.Tags.Has<PlayerControlled>()) return;
 
         var faction = FactionOf(world, victim);
-        if (faction.IsEmpty || faction == FactionRecord.Player) return;
-        if (!world.Resources.Get<RecordStore>().TryGet(faction, out FactionRecord record)) return;
+        if (faction.IsEmpty || faction == world.Conventions().PlayerFaction) return;
+        if (!TryGetFaction(world.Resources.Get<RecordStore>(), faction, out var record)) return;
 
         Change(world, faction, -record.KillCost);
+    }
+}
+
+// What a death costs the killer's name (16 §3.5, issue #26): reads `Died` rather than being called by
+// the effect system, so a game without factions has nothing here to call. Before the rules, so they
+// see the standing already moved, and while the victim still exists to ask its faction.
+[System("sage.factions.deaths", Phase.Gameplay, After = new[] { "sage.effects.tick" }, Before = new[] { "sage.effects.deaths" })]
+public sealed class FactionDeathSystem : ISystem
+{
+    private readonly EventReader<Died> _died;
+
+    public FactionDeathSystem(World world) => _died = world.Events.Reader<Died>(this);
+
+    public void Run(in SystemContext ctx)
+    {
+        if (!_died.HasPending) return;
+        foreach (ref readonly var died in _died.Read())
+            Factions.OnKilled(ctx.World, died.Victim, died.Killer);
     }
 }

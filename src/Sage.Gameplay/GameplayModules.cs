@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Sage.Physics3D;   // CharacterModule, in the list below and nowhere else (issue #30)
 
 namespace Sage.Gameplay;
 
@@ -33,8 +34,10 @@ public static class GameplayModules
     // from it. Adding a module is adding a line here and nowhere else.
     public static IModule[] All() => new IModule[]
     {
-        new FactionsModule(),
         new AttributesModule(),
+        new FactionsModule(),
+        new QuestsModule(),
+        new DialogueModule(),
         new CharacterModule(),
         new AnimationModule(),
         new LightsModule(),
@@ -72,17 +75,29 @@ public sealed class AttributesModule : IModule
         _records = ctx.Engine.Records;
         _records.Reloaded += () => Registries.Rebuild(_records);
 
+        // The game's words (issue #26): the gameplay_conventions record is this plugin's, because
+        // everything that reads it depends on this one. Its action names must be actions somebody
+        // registered, and by the time content loads everybody has.
+        var actions = ctx.Engine.Actions;
+        _records.AddCheck<GameplayConventionsRecord>((conventions, check) => GameplayConventions.CheckActions(actions, conventions, check));
+
         // Saves write attribute values and tags by name, not by the index records loaded in.
         ctx.Engine.Saves.AddConverter((world, records) => new AttributeSetSaveConverter(world, records));
         ctx.Engine.Saves.AddConverter((world, records) => new GameplayTagsSaveConverter(world, records));
 
         // `god`: the player stops taking damage. It is a tag, so effects block themselves with it
-        // (16 §3.3) instead of every damage path checking a flag.
+        // (16 §3.3) instead of every damage path checking a flag — the game's own, from its conventions.
         ctx.Engine.CVars.RegisterCommand("god", CVarFlags.Cheat, "Toggle invulnerability for the local player.", _ =>
             ctx.Engine.ForEachPlayer((world, entity) =>
             {
-                bool on = !world.HasTag(entity, TagRecord.Invulnerable);
-                if (on) world.AddTag(entity, TagRecord.Invulnerable); else world.RemoveTag(entity, TagRecord.Invulnerable);
+                var invulnerable = world.Conventions().Invulnerable;
+                if (invulnerable.IsEmpty)
+                {
+                    Log.Warn(LogCat.Console, "god: this game's gameplay_conventions name no invulnerable tag");
+                    return;
+                }
+                bool on = !world.HasTag(entity, invulnerable);
+                if (on) world.AddTag(entity, invulnerable); else world.RemoveTag(entity, invulnerable);
                 Log.Info(LogCat.Console, $"god {(on ? "ON" : "off")} for {World.Describe(entity)}");
             }));
     }
@@ -92,7 +107,12 @@ public sealed class AttributesModule : IModule
         // As a world resource, not a module service: everything that reads it has a world in hand.
         world.Resources.Add(Registries);
         Registries.Rebuild(_records!);
+        // The character controller reads its default profile and its actions from the conventions
+        // too, through its own view of them (it sits below gameplay). Replace, not Add: this runs
+        // before CharacterModule, which installs the engine's view only when nobody has.
+        world.Resources.Replace<CharacterConventions>(new CharacterConventionsFromRecord(_records!));
         world.AddSystem(new EffectSystem(world, _records!));
+        world.AddSystem(new DeathRulesSystem(world));
     }
 }
 
@@ -128,19 +148,20 @@ public sealed class LightsModule : IModule
 // Hitting things (16 §3.2): one damage pipeline, `attack` records, and the melee both the player and
 // the AI drive by pressing the same button.
 [Plugin("sage.gameplay.combat", "0.1.0")]
+[RequiresPlugin("sage.gameplay.character")]   // by id: a character is whichever backend's (issue #30)
 public sealed class CombatModule : IModule
 {
     private RecordStore? _records;
     private ActionRegistry? _actions;
     private CVar<bool>? _combatDebug;
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CharacterModule) };
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule) };
 
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        _actions.Register("Attack", ActionKind.Button);
+        _actions.Register("Attack", ActionKind.Button);   // the engine's name; gameplay_conventions picks which one swings
 
         // Registered here, once, rather than in the systems: systems are per world (review #57).
         _combatDebug = ctx.Engine.CVars.Register("combat_debug", false, CVarFlags.DevOnly,
@@ -151,13 +172,16 @@ public sealed class CombatModule : IModule
         ctx.Engine.CVars.RegisterCommand("hurt", CVarFlags.Cheat, "hurt <amount> [damage type]: damage the local player.", a =>
         {
             float amount = a.Count > 0 && float.TryParse(a[0], out float parsed) ? parsed : 10f;
-            var type = a.Count > 1 ? ctx.Engine.Records.Resolve("damage_type", a[1]) : DamageTypeRecord.Physical;
+            // No type: the game's default (Combat.ApplyDamage reads it from the conventions).
+            var type = a.Count > 1 ? ctx.Engine.Records.Resolve("damage_type", a[1]) : default;
             ctx.Engine.ForEachPlayer((world, entity) =>
             {
                 float applied = Combat.ApplyDamage(world, new DamageInfo(default, entity, type, amount,
                     world.Get<Transform>(entity).LocalPosition, Vector3.UnitY));
-                Log.Info(LogCat.Console, $"{World.Describe(entity)} takes {applied:F0} {type.Name} damage: " +
-                                         $"health {world.Attribute(entity, AttributeRecord.Health):F0}");
+                var conventions = world.Conventions();
+                var named = type.IsEmpty ? conventions.DamageType.Id : type;
+                Log.Info(LogCat.Console, $"{World.Describe(entity)} takes {applied:F0} {named.Name} damage: " +
+                                         $"{conventions.Health.Name} {world.Attribute(entity, conventions.Health):F0}");
             });
         });
     }
@@ -251,13 +275,14 @@ public sealed class ItemsModule : IModule
 // effects, which Attributes already owns; what lives here is the gating — cost, cooldown, tags — and
 // choosing what it lands on.
 [Plugin("sage.gameplay.abilities", "0.1.0")]
+[RequiresPlugin("sage.gameplay.character")]
 public sealed class AbilitiesModule : IModule
 {
     private RecordStore? _records;
     private ActionRegistry? _actions;
     private CVar<bool>? _debugCasts;
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CharacterModule) };
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule) };
 
     public void Init(ModuleContext ctx)
     {
@@ -324,6 +349,7 @@ public sealed class AbilitiesModule : IModule
 // Creatures that decide for themselves (16 §3.4): HL1-style schedules of tasks, writing the same
 // `PawnIntent` the player's controller writes.
 [Plugin("sage.gameplay.ai", "0.1.0")]
+[RequiresPlugin("sage.gameplay.character")]
 public sealed class AIModule : IModule
 {
     private RecordStore? _records;
@@ -335,7 +361,7 @@ public sealed class AIModule : IModule
     private CVar<int>? _navNodes;
     private CVar<int>? _navPlans;
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(CharacterModule), typeof(CombatModule) };
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(CombatModule) };
 
     // Games add their own tasks to this before the first world is created (16 §3.4).
     public AITaskRegistry AITasks { get; } = new();
@@ -508,16 +534,20 @@ public sealed class NavDebugSystem : ISystem
 
 // Who fights whom, and what the world thinks of the player (16 §3.5, F24).
 //
-// First in the gameplay set, because combat, abilities and AI all ask it questions and a module may
-// only depend on one that is already there.
+// Optional: nothing calls into it. Combat, abilities and AI ask `Factions` who is an enemy, which
+// without this plugin is the engine's pre-faction answer (a creature is hostile to the player), and a
+// death reaches it as a `Died` event (issue #26). Dialogue and quests are their own plugins
+// (QuestsModule, DialogueModule). It depends on attributes for the conventions record, which names
+// the player's faction.
 [Plugin("sage.gameplay.factions", "0.1.0")]
 public sealed class FactionsModule : IModule
 {
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule) };
+
     public void Init(ModuleContext ctx)
     {
-        // Faction, dialogue and quest records, the saved Reputation and Journal, and the `faction` and
-        // `dialogue` prefab parts are this plugin's by their attributes (Plugin =
-        // "sage.gameplay.factions"); generated code registers them (issues #16, #17).
+        // The faction record, the saved Reputation and the `faction` prefab part are this plugin's by
+        // their attributes (Plugin = "sage.gameplay.factions"); generated code registers them (#16, #17).
 
         ctx.Engine.CVars.RegisterCommand("rep", CVarFlags.None,
             "What every faction thinks of you, and what that makes them.", _ =>
@@ -525,48 +555,16 @@ public sealed class FactionsModule : IModule
             foreach (var world in ctx.Engine.Worlds)
             {
                 if (!world.Resources.TryGet<Reputation>(out var reputation) || reputation == null) continue;
+                var player = world.Conventions().PlayerFaction;
                 foreach (var id in ctx.Engine.Records.Ids("faction"))
                 {
-                    if (!ctx.Engine.Records.TryGet(id, out FactionRecord record)) continue;
+                    if (id == player || !ctx.Engine.Records.TryGet(id, out FactionRecord record)) continue;
                     float standing = Factions.StandingWith(world, id);
                     string stance = standing <= record.HostileBelow ? "hostile"
                                   : standing >= record.FriendlyAbove ? "friendly" : "neutral";
                     Log.Info(LogCat.Console, $"  {id,-28} {standing,6:F1}  {stance}");
                 }
             }
-        });
-
-        ctx.Engine.CVars.RegisterCommand("quests", CVarFlags.None,
-            "What you are on, and how far.", _ =>
-        {
-            foreach (var world in ctx.Engine.Worlds)
-            {
-                if (!world.Resources.TryGet<Journal>(out var journal) || journal == null) continue;
-                if (journal.Entries.Count == 0) Log.Info(LogCat.Console, "  (nothing in the journal)");
-                foreach (var entry in journal.Entries)
-                    Log.Info(LogCat.Console, $"  {entry.Quest,-28} {(entry.Finished ? "done" : entry.Stage)}");
-            }
-        });
-
-        ctx.Engine.CVars.RegisterCommand("quest_start", CVarFlags.Cheat, "quest_start <quest>: put it in the journal.", a =>
-        {
-            if (a.Count == 0) { Log.Warn(LogCat.Console, "quest_start <quest>"); return; }
-            var id = ctx.Engine.Records.Resolve("quest", a[0]);
-            if (id.IsEmpty) return;
-            foreach (var world in ctx.Engine.Worlds)
-                if (world.Resources.TryGet<Journal>(out var journal) && journal != null)
-                    Log.Info(LogCat.Console, Quests.Start(world, id) ? $"started {id}" : $"already on {id}");
-        });
-
-        ctx.Engine.CVars.RegisterCommand("quest_stage", CVarFlags.Cheat,
-            "quest_stage <quest> <stage>: move a quest along by hand.", a =>
-        {
-            if (a.Count < 2) { Log.Warn(LogCat.Console, "quest_stage <quest> <stage>"); return; }
-            var id = ctx.Engine.Records.Resolve("quest", a[0]);
-            if (id.IsEmpty) return;
-            foreach (var world in ctx.Engine.Worlds)
-                if (world.Resources.TryGet<Journal>(out var journal) && journal != null)
-                    Log.Info(LogCat.Console, Quests.SetStage(world, id, a[1]) ? $"{id} -> {a[1]}" : $"{id} did not move");
         });
 
         ctx.Engine.CVars.RegisterCommand("rep_set", CVarFlags.Cheat,
@@ -588,13 +586,10 @@ public sealed class FactionsModule : IModule
         });
     }
 
-    // A world remembers what it thinks of the player, and a save carries it (09 §3.1). The conversation
-    // is not saved: a save taken mid-sentence resumes with the window closed, which is the honest
-    // behaviour — what the conversation *did* is already in the world.
+    // A world remembers what it thinks of the player, and a save carries it (09 §3.1).
     public void OnWorldCreated(World world)
     {
         world.Resources.Add(new Reputation());
-        world.Resources.Add(new Conversation());
-        world.Resources.Add(new Journal());
+        world.AddSystem(new FactionDeathSystem(world));
     }
 }

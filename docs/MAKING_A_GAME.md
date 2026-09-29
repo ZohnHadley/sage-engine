@@ -9,7 +9,7 @@ The design docs in [`docs/design/`](design/00-index.md) explain *why* each syste
 is. This explains how to use them.
 
 **There is a runnable example of everything in §2–§4**: [`games/Hello`](../games/Hello) is the smallest
-game this engine can run — four files and about fifty lines of code — and it is built by the solution and <!-- counts: files games/Hello, code games/Hello -->
+game this engine can run — four files and 45 lines of code — and it is built by the solution and <!-- counts: files games/Hello, code games/Hello -->
 exercised by the test suite, so it cannot quietly stop working. Read it alongside this, or start by
 copying it:
 
@@ -29,8 +29,8 @@ console, saves, hot reload, and a renderer. **It gives you no game.** What a gam
 |---|---|
 | What exists in your world | **records** — JSON files under your game's `content/data/` |
 | What things are made of | **prefabs** — records that list components and parts |
-| Where things are | a **scene** record, and/or `.map` levels drawn in TrenchBroom |
-| Rules that are yours | a small amount of **C#** in your game module |
+| Where things are | a **scene** record (the engine places it), and/or `.map` levels drawn in TrenchBroom |
+| Rules that are yours | a small amount of **C#** in your game module — or none: a game can be only `game.json` and records (§4) |
 | How it looks on screen | your **HUD** and screens, in your game's client half |
 | Art and sound | PNG, WAV, `.glb` — read at runtime, no build step |
 
@@ -112,6 +112,11 @@ inherit none of that: add the target framework, the four references and the usin
   plugin with its version and what it needs, and `plugins <id>` what that one registered.
 - `modules.disable` switches off engine modules by class name or plugin id. A game with no AI drops
   `AIModule` (or `sage.gameplay.ai`) and nothing else changes; a name that matches nothing is a warning.
+  Factions, quests and dialogue are three plugins (`sage.gameplay.factions`, `sage.gameplay.quests`,
+  `sage.gameplay.dialogue`) and any one of them can go on its own: nothing calls into them, a death
+  reaches them as a `Died` event, and dialogue treats a missing one as "standing 0" or "not on that quest"
+  (test: EachNarrativePluginCanBeSwitchedOffAlone). Content for a plugin that is off — its record types —
+  is skipped with a warning; its prefab parts are errors, so leave them out of that game's prefabs.
 - A key the engine does not know is an error, so a misspelt `"mount"` stops the game at once instead of
   quietly loading nothing.
 
@@ -170,10 +175,11 @@ Five things to know before you write many:
   it writes, every part by id and its options, the tags, and every record and asset they name — each
   error at its line, with the nearest real name when it looks like a typo. An asset path (a texture, a
   map, a mesh) that is in no mount is a warning in a dev build and an error under `sage validate` (§9).
-- **They hot reload.** Save the file and the running game picks it up; the Sandbox respawns its scene.
+- **They hot reload.** Save the file and the running game picks it up, and the engine places the scene
+  again — without doubling anything and without touching the player.
 
-A game can define **its own record types** — the Sandbox's `scene` is one. A plain class with public
-fields and an attribute, and that is all:
+A game can define **its own record types**. A plain class with public fields and an attribute, and that
+is all:
 
 ```csharp
 [Record("quest_board")]
@@ -249,7 +255,7 @@ result with the file each field came from.
 
 ### Every record type there is
 
-Twenty-five, and a game may use as few as it likes. Their fields are documented in the design doc named
+Twenty-six, and a game may use as few as it likes. Their fields are documented in the design doc named
 beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
@@ -266,6 +272,31 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `quest` — stages and objectives |
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
+| **Your game's words** (§3, below) | `gameplay_conventions` — which attribute is life, which tag is death, the default attack, damage type, profiles and AI schedules, the player's faction, what spells cost, the action names |
+
+### Your game's words: `gameplay_conventions`
+
+The engine's gameplay code knows no record id of its own (issue #26). Which attribute kills you when it
+runs out, which tag says you are dead, what a swing does when nobody gave the fighter an attack, which
+schedule a creature idles with, which faction the player is in, what a spell made in the spellmaker
+costs and which buttons swing, use, cast and jump — all of it is one record,
+`sage:default_conventions` (`engine_content/data/conventions.json`), and code reads that record. To
+change a word, patch it from your content:
+
+```json
+{ "type": "attribute", "id": "hp", "start": 30, "max": 30 },
+{ "type": "gameplay_conventions", "id": "sage:default_conventions", "patch": true, "health": "hp" }
+```
+
+`"hp"` resolves in *your* namespace, as every id in a patch does, so that is `yourgame:hp`, and from then
+on it is hp running out that kills (test: AGameRenamesHealthToHpByChangingOneRecord). A field set to `""`
+means your game has no such thing: no `health`, and nothing dies. Action names are the one exception to
+"data only": actions are registered in `Init`, before content loads, so a name here must be one some
+module registered — `Actions.Register("Swing", ActionKind.Button)` in your module, then
+`"actions": { "attack": "Swing" }` — and a name nobody registered is a load error
+(test: AConventionNamingAnActionNobodyRegisteredIsALoadError). Your C# reads the same record:
+`world.Conventions().Health`, never `new RecordId("sage", "health")`
+(test: NoGameplayCodeNamesAnEngineRecordId).
 
 ### Every prefab part the engine provides
 
@@ -274,7 +305,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 
 | Part | Gives the entity |
 |---|---|
-| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass` |
+| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end) |
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` |
 | `light` | a lamp — `colour`, `range` in metres, `intensity` (06 §3.9) |
@@ -357,7 +388,7 @@ with every id the content loaded — mods included when you mount them:
 
 ```bash
 dotnet build Sage.sln -c Development -p:SageSkipShaders=true
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello --out schemas   # this repository's
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas   # this repository's
 src/Sage.Cli/bin/Development/net8.0/sage schema games/YourGame --mounts mods/better_swords=swords --out schemas
 ```
 
@@ -399,9 +430,9 @@ public void OnWorldCreated(World world)
     world.AddSystem(new YourOwnSystem(world));    // its id and phase are on the class: see §6
 }
 
-// The game's rules for each world. The engine asks once every module has furnished the world, then
-// starts them.
-public GameRules CreateRules(World world) => new YourRules(this);
+// The game's rules for each world. The engine asks once every module has furnished the world, places
+// the start scene, then starts them.
+public GameRules CreateRules(World world) => new YourRules();
 ```
 
 A world resource your module installs goes in with `world.Resources.Add(...)`, which refuses a second
@@ -409,24 +440,26 @@ one of the same type; `Replace` is for swapping one on purpose, and disposes the
 
 **2. Rules.** `GameRules` is an abstract class with four hooks, and a game overrides the ones it cares
 about. Return yours from your game module's `CreateRules`, as above; without one the engine uses
-`DefaultGameRules`, which does nothing at all:
+`DefaultGameRules`. By default `OnWorldStarted` calls `SpawnPlayer`, and `SpawnPlayer` spawns the
+scene's `player` (step 4) — so a game only overrides them to do something else:
 
 ```csharp
 public sealed class YourRules : GameRules
 {
-    public override void OnWorldStarted(World world) => SpawnPlayer(world);
-
-    public override Entity SpawnPlayer(World world)
+    public override void OnWorldStarted(World world)
     {
-        // Two conversions, and both matter. `ToOrigin` turns absolute metres into the frame the
-        // simulation is using right now (R6: after travelling far enough, the world shifts under you),
-        // and the terrain height is what stops the player spawning inside the ground or above it.
-        var at = world.Origin().ToOrigin(new Vector3(512, 0, 512));
-        at.Y = world.Resources.Get<Terrain>().HeightAt(at.X, at.Z) + 1f;
-        return world.Spawn(new RecordId("yourgame", "player"), at);
+        base.OnWorldStarted(world);                        // the scene's player
+        world.Say("Welcome.", MessageKind.Good, 5f);
     }
 
-    public override void OnEntityDied(World world, Entity victim, Entity killer) { }
+    // Something's health ran out. The engine raises a `Died` event (a system of yours can read it too);
+    // factions and quests have already counted the kill when this is called.
+    public override void OnEntityDied(World world, Entity victim, Entity killer)
+    {
+        // Back to the start: where the scene puts the player, in the simulation's frame.
+        if (world.PlayerStart() is { } start) world.Teleport(victim, Transform.At(start));
+    }
+
     public override void OnLoaded(World world) { }          // after a save is loaded
 }
 ```
@@ -455,15 +488,49 @@ That tag is what makes the rest of the engine treat it as *the* player: **the fi
 puts the camera in its head automatically** (any entity with a character controller, view angles and
 that tag), the cheats act on it, and the HUD reads it. You do not write a camera.
 
-**4. A scene** — a record listing what stands where. The Sandbox's `scene` record has a `player`
-placement and a list of `place` entries, each a prefab id, a position and a yaw; its module reads the
-record and calls `world.Spawn` for each. A scene is a *game's* record rather than an engine one, which
-means you can define placement however suits your game; copying the Sandbox's is the quick way.
+**4. A scene** — the engine's `scene` record (issue #29): what stands where, where the player starts,
+the maps and placements documents to load, and the weather to start in. Name it in `game.json` and every
+world starts in it:
+
+```json
+// game.json
+"scene": "start"
+
+// content/data/scene.json
+{
+  "type": "scene",
+  "id": "start",
+  "origin": [512, 0, 512],                 // absolute metres the placements are measured from
+  "relativeTo": "Ground",                  // "World" (absolute, the default), "Origin", or "Ground":
+                                           // from the origin across, y above the terrain there
+  "player": { "prefab": "player", "at": [0, 1, 0] },
+  "place": [
+    { "prefab": "tree",  "at": [4, 0, -3] },
+    { "prefab": "crate", "at": [0, 0, 2], "yaw": 30, "name": "crate by the door",
+      "relativeTo": "Origin" }             // one placement can name its own frame
+  ],
+  "maps": ["tavern"],                      // brush levels (§5)
+  "placements": ["yard"],                  // documents the editor saves, same placement format
+  "environment": { "weather": "rain" }
+}
+```
+
+A placement is the same everywhere — `prefab`, `at`, `yaw`, `name` and an optional `relativeTo` — in a
+scene and in the editor's `placements` documents. The engine places the scene once every module has
+furnished the world and before the rules start; saving a record file places it again, sweeping only
+what the scene put there (its placements, its documents', its levels) and **keeping the player**;
+`scene_load <id>` swaps one scene for another and moves the player to the new start. Each placement gets a
+persistent id from the scene and its position in `place`, so saves find it again.
+
+**A game with no C# at all** is `game.json` and records: leave out `"assembly"`, pick the plugins, name a
+scene. `tests/games/scene-only` is one — a floor, three crates and a player — and CI boots it in the
+real host. What it cannot do without code is generate terrain (that is an `ITerrainGenerator`), so its
+ground is a prefab.
 
 Run it, and `ent_list` — or the entity outliner in the dev UI — shows what actually spawned.
 
-**That is the whole minimum**: a `.csproj`, a `game.json`, one module, one `GameRules`, one prefab
-record, and a terrain generator of about six lines. No client half is needed to *see* anything — the
+**That is the whole minimum**: a `.csproj`, a `game.json`, one module, one `GameRules`, a prefab and a
+scene record, and a terrain generator of about six lines. No client half is needed to *see* anything — the
 engine's own client module draws the world, the crosshair and the dev UI; your client half is for your
 HUD and your screens. This guide was checked by building exactly that and walking about in it.
 
@@ -478,7 +545,7 @@ Point TrenchBroom at an entity definition file generated from your own prefabs:
 dotnet run --project src/Sage.Host -c Development -- -game games/YourGame +fgd_export +quit 0
 ```
 
-Then name the level in a record and load it from your scene:
+Then name the level in a record and load it from your scene (`"maps": ["tavern"]`):
 
 ```json
 { "type": "map", "id": "tavern", "file": "maps/tavern.map", "at": [520, 0, 490], "onTerrain": true }
@@ -603,6 +670,21 @@ the world under. Outside a loop, `world.Get<T>(entity)`, `Add`, `Remove`, `Has`,
 Friflo.Engine.ECS, and it stays underneath: naming a Friflo type or namespace in your game is a build
 error (SAGE0050), so upgrading or replacing it never breaks a game (test: NamingFrifloOutsideTheEcsImplementationIsABuildError)
 (test: NoPublicTypeInTheBaseEngineExposesFriflo).
+
+**Asking physics something** goes through the world's `IPhysicsWorld`, never the Bepu space behind it,
+so the same code runs when a 2D backend arrives (issue #30):
+
+```csharp
+var physics = world.Resources.Get<IPhysicsWorld>();
+var mask = LayerMask.All.Except(physics.Layers.Enemy);             // layers by name, not by number
+var hit = physics.Raycast(eye, aim, 30f, mask, ignore: self);      // `ignore`: leave the asker out
+var swing = physics.Sweep(Collider.Sphere(0.3f), pose, aim, 2f, ignore: self);   // starts inside? Distance 0
+foreach (var touch in physics.TriggerEnter) { /* PostPhysics: who entered which trigger */ }
+```
+
+A sweep that starts inside something hits it at distance 0 (`StartsInside`), which is what a swing
+pressed against its target wants; contact begin/end is reported only for colliders with
+`ReportContacts` (the `body` part's `"contacts": true`).
 
 ---
 
@@ -819,9 +901,10 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
    error, where it used to be module order and a silent replacement. What still bites: a part your
    *client* half declares must be declared `Prefabs.Optional(name)` by your simulation half, or a
    headless run errors on every spawn of that prefab.
-9. **Hot reload sweeps what the scene spawned — including the player.** If you respawn your scene on
-   `RecordStore.Reloaded`, respawn the player too, or saving a JSON file leaves you with nothing to
-   control.
+9. **Hot reload used to sweep away the player** along with the scene, when each game wrote its own
+   respawn loop. Scenes are the engine's now (issue #29): a reload sweeps only what the scene placed and
+   keeps the player (test: HotReloadRespawnsTheSceneWithoutDuplicatingOrLosingThePlayer). If you place
+   things of your own on `RecordStore.Reloaded`, keep your hands off the player the same way.
 10. **`PawnIntent` is final after the `Commands` phase.** Write it later and your input acts a tick late;
     the phase contract will tell you.
 11. **`in_tap` presses for one frame**, so two in a row need a `wait` between them, and a HUD string
@@ -843,6 +926,11 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 16. **A misspelt field in content** — `"color"` for `colour`, `"name"` on an item whose field is `label`
     — used to be dropped, leaving the default in its place. Since issue #22 it is an error at its line
     with the nearest real name, in records, component data and part options alike (§3).
+17. **A game with no `gameplay_conventions`** — no engine content mounted, or a patch that set `health`
+    to `""` — has nothing that counts as life, so nothing dies, a fighter with no attack of its own
+    cannot swing, and a hit that names no damage type does nothing (it says so once). The engine's
+    content ships the record; a game that mounts its own content instead of the engine's must supply
+    one (§3, test: WithoutConventionsNothingIsLifeAndNothingBreaks).
 
 ---
 

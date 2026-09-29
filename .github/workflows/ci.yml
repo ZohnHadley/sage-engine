@@ -93,7 +93,7 @@ jobs:
 
       # `sage validate` (issue #22): each game's content, headless, with every check the load makes —
       # references by type, prefab bodies, asset paths, AI schedules — and missing assets as errors.
-      # Fails on any error; warnings (no-plugins' engine data for absent plugins) are printed only.
+      # Fails on any error; warnings (the test games' engine data for absent plugins) are printed only.
       - name: Validate the games' content (sage validate)
         run: |
           set -euo pipefail
@@ -101,6 +101,7 @@ jobs:
           "$sage" validate games/Hello
           "$sage" validate games/Sandbox
           "$sage" validate tests/games/no-plugins
+          "$sage" validate tests/games/scene-only
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -108,11 +109,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas' and commit the result"
             exit 1
           fi
 
@@ -129,6 +130,9 @@ jobs:
           # No plugins at all (issue #13). Records and Input are allowed because engine content still
           # ships every plugin's data in one folder, and says so when the plugin that reads it is absent.
           tools/smoke_run.sh "$host" tests/games/no-plugins 3 Shaders Audio Records Input
+          # No C# at all, and a scene (issue #29): game.json and records boot into placed prefabs and a
+          # player. Records for the same reason as above (it asks for the character plugin only).
+          tools/smoke_run.sh "$host" tests/games/scene-only 3 Shaders Audio Records Input
 
       - name: Upload test results
         if: always()

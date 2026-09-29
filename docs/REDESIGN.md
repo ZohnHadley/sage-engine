@@ -66,7 +66,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | Capability | FPS (HL1) | 3rd-person action (Lugaru) | Top-down / iso RPG | 2D platformer | RTS / battles (Warband) | Puzzle / card / UI-heavy | **Your game** (Daggerfall) | Sage today |
 |---|---|---|---|---|---|---|---|---|
 | App kernel, plugins, records, VFS, console, saves | ● | ● | ● | ● | ● | ● | ● | ✅ mostly; boot and plugins need redoing (§3.2–3.3) |
-| ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are Sandbox C#. Prefab overrides and nesting missing (F31) |
+| ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are the engine's (#29). Prefab overrides and nesting missing (F31) |
 | **Cameras as components**: perspective and ortho, rigs, several viewports | ● | ● | ● | ● | ● | ● | ● | ❌ one `ActiveCamera` resource, perspective only (`RenderSystems.cs:48`), one first-person rig (`CharacterController.cs:417`) |
 | 3D physics, queries, triggers | ● | ● | ● | ○ | ● | ○ | ● | ✅ Bepu |
 | 2D physics (bodies, tiles, one-way platforms, slopes) | | | ● | ● | | ○ | | ❌ |
@@ -260,11 +260,9 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   the registration ledger and seals, the declaration attributes and the metadata table. It references
   no package; Friflo's `Entity` is recognised by name in the metadata, and the ECS's entity converter
   for record JSON is added by the `Engine`.
-- **Physics is its own base plugin, `Sage.Physics3D` (Bepu)**, with the character controller and the
-  first-person rig (until the camera-rig work). The simulation reaches physics only through
-  **`IPhysicsWorld`** (the seed of #30: counts, trigger overlaps, `AddHull`, `Rebase`), which the space
-  is installed as too. `Sage.Gameplay` still references `Sage.Physics3D` (AI, combat, items and abilities
-  sweep the space) until #30. `PawnIntent`, `Pawn`, `PlayerControlled` and `Players.ForEachPlayer` are
+- **Physics is its own base plugin, `Sage.Physics3D` (Bepu)**, with character movement and the
+  first-person rig (until the camera-rig work). The simulation and gameplay reach physics only through
+  **`IPhysicsWorld`** (issue #30, below), which the space is installed as too. `PawnIntent`, `Pawn`, `PlayerControlled` and `Players.ForEachPlayer` are
   simulation (`Sage.Simulation/Input`), because streaming, maps, entity I/O and the controller all read them.
 - **No `Sage.Kits.Rpg` yet.** The client builds the dialogue screen itself, so the RPG screens
   (spellmaker, journal, dialogue, panels) wait in `Sage.Gameplay/Rpg/` for #27. What stops them from
@@ -272,7 +270,8 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   Gameplay, Client and Editor) that references a `Sage.Kits.*` assembly or uses its types is a build error.
 - **Plugin ids did not change** (`sage.physics3d`, `sage.streaming`, `sage.gameplay.*` — `game.json`
   names them), even where the plugin's assembly did: entity I/O (`sage.gameplay.io`) and maps are in
-  `Sage.Simulation`, the character (`sage.gameplay.character`) in `Sage.Physics3D`.
+  `Sage.Simulation`, the character (`sage.gameplay.character`) in `Sage.Physics3D` (its data in
+  `Sage.Simulation` since #30).
 - **The one list of base plugins is `BasePlugins.All()` in `Sage.Gameplay`** (it is the only assembly
   that can name them all); `SageAppOptions.AvailablePlugins` replaces `IncludeSimulationModules`, and the
   host, `sage`, `HeadlessApp` and the tests pass it. `SaveSystem.AddConverter` (attributes and tags by
@@ -284,7 +283,7 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   The `physics_layers` record (owned by `sage.physics3d`) stays in `Sage.Simulation` beside the other
   physics data, which is always included.
 - **Friflo builds its schema from every loaded assembly that references it**, the split ones included
-  (22 in Simulation, 1 in Physics3D, 15 in Gameplay) (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
+  (23 in Simulation and 15 in Gameplay since #30 moved `CharacterController`; none in Physics3D) (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
 - **`InternalsVisibleTo` goes only to `Sage.Tests`**, so what the next layer used became public: the record
   JSON helpers (`JsonMembers`, `RecordParseContext`, the vector converters), `Upgraders`,
   `Screen.Index`'s setter, `RegistrationLedger.Owner`'s setter, `MovementProfileRecord.Fallback` and the
@@ -294,6 +293,20 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   (`Private="false"`, so a game's `bin/` still holds only its own dll). The generators name engine types
   from one list, `src/Sage.Generators/SageTypes.cs` (test: EveryTypeTheGeneratorsNameExists). Every
   engine project is simulation-only (SAGE0024) unless it opts out (Client, Editor, Host).
+- *As built (issue #30, 2026-09-29): the physics facade.* **`IPhysicsWorld`** (`Sage.Simulation`) is the
+  whole of what gameplay asks of physics: bodies (static, kinematic, dynamic; hulls and meshes), the
+  named layers of `physics_layers`, raycast, shape cast and overlap (with an `ignore` entity), trigger
+  and opt-in contact events, and debug draw (docs/design/10 "As built (the facade)"). Combat, projectiles,
+  AI sight and steering, navigation probes, items, movers and entity I/O use it and nothing else;
+  `Sage.Gameplay` uses no Bepu type, and from `Sage.Physics3D` only `PhysicsModule` and `CharacterModule`,
+  in `BasePlugins` and `GameplayModules.All` (test: GameplayReachesPhysicsOnlyThroughTheFacade). **The
+  project reference stays** for those two lists, the one place the base names its 3D backend: dropping
+  it needs a composition root above both assemblies (`Sage.Sdk`, #32, or one plugin list per spatial
+  mode when `Sage.Physics2D` arrives). What a 2D backend shares moved to `Sage.Simulation`: the
+  character's data (`CharacterController`, `movement_profile`, `AddCharacter`), the `body` and
+  `character` parts under the same ids, options and plugins, and `phys_debug`'s system. A sweep that
+  starts inside something is a hit now rather than nothing, which was the "overlapped sweeps are
+  discarded" gap (test: ASwingHitsATargetPressedAgainstTheAttacker).
 - Not done here: `GameplayModules.cs`, `PrefabParts.cs` and `MapLevel.cs` moved whole rather than one
   file per module or type; the render, audio, input and UI view-models stay in `Sage.Simulation` rather
   than separate `Sage.UI`/`Sage.Audio` plugins (§0.5); `Sage.Sdk` is #32.
@@ -405,9 +418,9 @@ other (`ComponentSchema.cs:39`).
 
 ### 3.5 Own the ECS vocabulary
 
-Friflo is in every public signature today: `Entity`, `IComponent`, `ArchetypeQuery`, `CommandBuffer`,
+Friflo was in every public signature until #25: `Entity`, `IComponent`, `ArchetypeQuery`, `CommandBuffer`,
 `Tags`, plus a global `using Friflo.Engine.ECS` for games and a `Transform` alias hack
-(`games/Directory.Build.props:14-18`). That makes Friflo 3.6's API and schema behaviour part of every
+(`games/Directory.Build.props:14-18`). That made Friflo 3.6's API and schema behaviour part of every
 game's and every mod's contract.
 
 - `Sage.Simulation` exposes `Entity` (a Sage handle), `IComponent`, `Query<T1..Tn>` (a zero-cost
@@ -455,6 +468,32 @@ a script, `tools/migrate_ecs_api.py`, kept for code written against the old name
 
 ---
 
+*As built (issue #26, 2026-09-29): conventions and `Died`.* The last two hard rules above hold for
+gameplay. **`gameplay_conventions`** is a record type of `sage.gameplay.attributes`
+(`src/Sage.Gameplay/Conventions/GameplayConventions.cs`); the engine ships one well-known instance,
+`sage:default_conventions`, and a kit or game patches it. It names health, the dead and invulnerable
+tags, the default damage type, attack, movement and AI profiles, the player's faction, the attribute
+spellmaker spells cost, the AI's five built-in schedules and the action names, and code reads it with
+`world.Conventions()` — so a game renames health to hp in one record (test:
+AGameRenamesHealthToHpByChangingOneRecord). No `new RecordId("sage", …)` is left in `Sage.Gameplay`,
+`Sage.Physics3D` or the games, and a test keeps it that way (test: NoGameplayCodeNamesAnEngineRecordId).
+`EffectSystem` raises **`Died(Victim, Killer)`**; factions, quests and the game's rules
+(`DeathRulesSystem` → `GameRules.OnEntityDied`) read it. Differences from the plan:
+
+- **Two narrative plugins, not one `NarrativeModule`**: `sage.gameplay.quests` (quests, the `journal`)
+  and `sage.gameplay.dialogue` (dialogue, the `dialogue` part, `Conversation`), beside
+  `sage.gameplay.factions` (factions, `reputation`). The acceptance switches factions, quests and
+  dialogue off one at a time, which one module could not do (test: EachNarrativePluginCanBeSwitchedOffAlone).
+  Saved-resource, component and part ids are unchanged.
+- **Action names stay registered in code.** Actions are registered in `Init`, before content loads, so the
+  record picks among registered actions (defaulting to the engine's names) and an unregistered one is a
+  load error, rather than the record creating actions.
+- **The character controller reads its share through `CharacterConventions`** (`Sage.Simulation` since #30), because
+  it sits below the assembly that owns the record; gameplay installs one that reads it.
+- **Still constants below gameplay:** the simulation's own defaults — `sage:lit_default`, `sage:error`,
+  the sprite and particle materials, `sage:clear` weather and `sage:default` physics material — are
+  rendering and physics fallbacks rather than gameplay conventions, and wait for a scene or kit record.
+
 ## 4. Pillar plans
 
 ### 4.1 Gameplay layering and data-only games (serves all three)
@@ -464,10 +503,30 @@ a script, `tools/migrate_ecs_api.py`, kept for code written against the old name
   - `Sage.Kits.Rpg`: the spellmaker, readied `Selected` spell, journal and dialogue screens,
     `sage:mana` cost, and sprite clip names `attack`/`hit`/`idle`. The Kit exposes these as conventions
     in data.
-- Move dialogue and quest record registration out of `FactionsModule` (`GameplayModules.cs:544-554`).
+- Move dialogue and quest record registration out of `FactionsModule` (`GameplayModules.cs:544-554`). *Done (issue #26): `QuestsModule` and `DialogueModule`, see §3.1.*
   Split `GameplayModules.cs` (634 lines) and `MapLevel.cs` (757 lines, 11 types) into one file per module.
 - **Promote scene spawning into the engine.** `SceneRecord`, the spawn loop and respawn-on-reload are
   Sandbox C# today (`SandboxModule.cs:39,56-77,154`), and every game rewrites them.
+
+  *As built (issue #29, 2026-09-29).* **`SceneRecord` is the engine's** (`Sage.Simulation/Content/Scenes.cs`,
+  `Plugin = RegistrationOwners.Core` like `prefab` and `placements`, so a `"plugins": []` game has scenes):
+  in Simulation because a scene is records, prefabs, placements, maps and the origin, and needs no
+  physics or gameplay. A scene names `maps`, `placements` documents, an `origin` and a default
+  `relativeTo`, a `player` placement, `place` and `environment.weather`. **One placement format** for
+  scenes and the editor's `placements`: `prefab`, `at`, `yaw`, `name` and an optional `relativeTo`
+  (`World`, the default; `Origin`; `Ground`, y above the terrain), camel-cased; the Sandbox's relative
+  `at` became `"origin": [512, 0, 512], "relativeTo": "Ground"`. `game.json`'s `"scene"` picks the start
+  scene (a name that is not a scene is a load error); `Engine.CreateWorld` places it after every
+  module's `OnWorldCreated` and before the rules start, and `GameRules`' default `OnWorldStarted` and
+  `SpawnPlayer` spawn the scene's player. Hot reload sweeps only what the scene placed (tagged
+  `sage:from_scene`, its documents, its levels) and keeps the player (test:
+  HotReloadRespawnsTheSceneWithoutDuplicatingOrLosingThePlayer); a save's reload re-tags placed entities
+  by persistent id (test: AfterASaveLoadsAReloadStillDoesNotDuplicate); `scene_load <id>` swaps scenes
+  and moves the player (test: SceneLoadReplacesTheSceneAndMovesThePlayer). `tests/games/scene-only` has
+  no C# and boots into its scene (test: AGameWithNoCodeBootsIntoItsScene); CI validates and smoke-runs it,
+  and `sage schema` includes it. The Sandbox and Hello use it; `SceneRecord` left the Sandbox. Not done:
+  the scene's rules and conventions (a `conventions` slot waits for #26's `gameplay_conventions`
+  record), time of day (no clock yet), and a saved "which scene" (a load assumes the world's current one).
 - **Data-only games.** `LoadGame` must stop requiring exactly one `IGameModule`
   (`Modules.cs:206-207`). With a kit chosen in `game.json`, a terrain or level record and a
   `gameplay_conventions` record, a designer can make a playable game **with zero C#**. This is the

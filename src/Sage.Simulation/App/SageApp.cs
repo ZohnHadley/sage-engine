@@ -43,6 +43,10 @@ public sealed class SageAppOptions
     // `+command` launch arguments, run once the first world exists.
     public IReadOnlyList<string> LaunchCommands { get; init; } = Array.Empty<string>();
 
+    // The scene every world starts in, overriding game.json's `"scene"`: for a test, or a host with no
+    // manifest. Resolved like the manifest's, in the game's namespace (issue #29).
+    public string? StartScene { get; init; }
+
     // Whether `developer`, `log_file_level` and `log_queue_size` configure the process's log (issue
     // #11). The executable's app does; a test, a tool or a second app in the same process leaves the
     // log as the host set it (CoreCVars.OwnsProcessLog).
@@ -201,6 +205,7 @@ public sealed class SageApp : IDisposable
         VirtualFileSystem.RegisterCommands(CVars, Engine.Vfs);
         Engine.Records.RegisterCommands(CVars);
         Engine.Saves.RegisterCommands(CVars);
+        Engine.Scenes.RegisterCommands(CVars);   // scene_load (issue #29)
         // Entity and scale commands work on any world, so every host has them, not only the one with
         // a window: a server's console and a test can spawn and list entities too.
         WorldConsoleCommands.Register(CVars, Engine);
@@ -221,6 +226,27 @@ public sealed class SageApp : IDisposable
         Advance(AppStage.Configured, AppStage.ContentLoaded);
         Engine.Actions.Seal.Seal("content was loaded");
         Engine.Records.Load(Engine.Vfs);   // seals record types
+        ChooseStartScene();
+    }
+
+    // game.json's `"scene"` (or StartScene), which must name a scene record: a typo there is a load
+    // error like any other content mistake, not a world that quietly starts empty.
+    private void ChooseStartScene()
+    {
+        string? text = _options.StartScene ?? Game?.Scene;
+        if (string.IsNullOrWhiteSpace(text)) return;
+        string where = _options.StartScene != null ? "the start scene" : "game.json's \"scene\"";
+        RecordId id;
+        try { id = RecordId.Parse(text, Game?.Id ?? "sage"); }
+        catch (FormatException ex) { throw new InvalidDataException($"{where} '{text}': {ex.Message}", ex); }
+        if (!Engine.Records.Exists("scene", id))
+        {
+            var scenes = Engine.Records.Ids("scene").Select(i => i.ToString()).OrderBy(i => i, StringComparer.Ordinal).ToList();
+            throw new InvalidDataException($"{where} names '{id}', which is not a scene record " +
+                (scenes.Count == 0 ? "(there are none)" : $"(scenes: {string.Join(", ", scenes)})"));
+        }
+        Engine.Scenes.Start = id;
+        Log.Info(LogCat.World, $"Start scene: {id}");
     }
 
     public void Start()

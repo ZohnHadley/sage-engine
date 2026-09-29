@@ -78,7 +78,8 @@ public class AssemblyLayeringTests
     }
 
     // Friflo builds one schema for the process from the loaded assemblies that reference it. Split, the
-    // engine's components live in three of them, and each has to be found.
+    // engine's components live in two of them, and each has to be found. Sage.Physics3D declares none:
+    // its data (colliders, bodies, the character) is the simulation's, so a 2D backend shares it (#30).
     [Fact]
     public void TheEcsSchemaHasTheComponentsOfEveryBaseAssembly()
     {
@@ -86,10 +87,39 @@ public class AssemblyLayeringTests
         var components = EcsSchema.ComponentTypes();
 
         Assert.Contains(typeof(PawnIntent), components);            // Sage.Simulation
-        Assert.Contains(typeof(CharacterController), components);   // Sage.Physics3D
+        Assert.Contains(typeof(CharacterController), components);   // Sage.Simulation, since #30
         Assert.Contains(typeof(Sage.Gameplay.Attributes), components);   // Sage.Gameplay
-        foreach (var assembly in new[] { EngineAssemblies.Simulation, EngineAssemblies.Physics3D, EngineAssemblies.Gameplay })
+        foreach (var assembly in new[] { EngineAssemblies.Simulation, EngineAssemblies.Gameplay })
             Assert.Contains(components, t => t.Assembly == assembly);
+        Assert.DoesNotContain(components, t => t.Assembly == EngineAssemblies.Physics3D);
+    }
+
+    // Gameplay reaches physics only through IPhysicsWorld (issue #30), so a 2D backend can stand in for
+    // Bepu. Read from the compiled assembly's metadata, which records every type the code uses: no Bepu
+    // assembly at all, and from Sage.Physics3D only the two modules the composition lists name
+    // (BasePlugins, GameplayModules.All). Anything else from the backend is a regression.
+    [Fact]
+    public void GameplayReachesPhysicsOnlyThroughTheFacade()
+    {
+        var gameplay = EngineAssemblies.Gameplay;
+        var references = gameplay.GetReferencedAssemblies().Select(r => r.Name!).ToList();
+        Assert.DoesNotContain("BepuPhysics", references);
+        Assert.DoesNotContain("BepuUtilities", references);
+
+        using var stream = System.IO.File.OpenRead(gameplay.Location);
+        using var pe = new System.Reflection.PortableExecutable.PEReader(stream);
+        var metadata = System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pe);
+        var used = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var handle in metadata.TypeReferences)
+        {
+            var type = metadata.GetTypeReference(handle);
+            if (type.ResolutionScope.Kind != System.Reflection.Metadata.HandleKind.AssemblyReference) continue;
+            var assembly = metadata.GetAssemblyReference((System.Reflection.Metadata.AssemblyReferenceHandle)type.ResolutionScope);
+            string name = metadata.GetString(assembly.Name);
+            Assert.False(name.StartsWith("Bepu", StringComparison.Ordinal), $"Sage.Gameplay uses {metadata.GetString(type.Name)} from {name}");
+            if (name == "Sage.Physics3D") used.Add($"{metadata.GetString(type.Namespace)}.{metadata.GetString(type.Name)}");
+        }
+        Assert.Equal(new[] { "Sage.Physics3D.CharacterModule", "Sage.Physics3D.PhysicsModule" }, used);
     }
 
     // The generators find the engine by name (SageTypes). A name that no longer resolves makes a

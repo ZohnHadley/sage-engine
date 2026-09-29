@@ -5,8 +5,9 @@ using System.Numerics;
 
 namespace Sage.Simulation;
 
-// Physics data the simulation holds (docs/design/10 §3). Bepu owns the bodies; components hold
-// handles (R9). Everything here is System.Numerics, so it runs headless.
+// Physics data the simulation holds (docs/design/10 §3). The physics backend (IPhysicsWorld; Bepu in
+// Sage.Physics3D) owns the bodies; components hold handles (R9). Everything here is System.Numerics and
+// names no backend, so it runs headless and means the same to a 2D backend (REDESIGN §0.5).
 
 public enum ColliderShape { Box, Sphere, Capsule, Mesh }
 public enum BodyKind { Static, Kinematic, Dynamic }
@@ -17,7 +18,7 @@ public enum BodyKind { Static, Kinematic, Dynamic }
 //   Capsule X = radius, Y = length of the cylinder between the caps
 //   Mesh    a mesh the game registered with the space (terrain does this itself)
 //
-// A shape is centred on `Center`, an offset from the entity's own origin. Bepu poses a shape by its
+// A shape is centred on `Center`, an offset from the entity's own origin. A backend poses a shape by its
 // centre, so anything whose transform sits at its *feet* — a character, a tree — needs an offset of
 // half its height, or its collider ends up buried to the waist while the thing appears to stand on
 // the ground (review #44). Standing() does that for you.
@@ -34,6 +35,8 @@ public struct Collider : IComponent
     public byte Layer;        // index into the physics_layers record (0 = "default")
     [Property(Category = "Collision", Tooltip = "Reports overlaps and never blocks")]
     public bool IsTrigger;    // generates overlap events, never a collision response
+    [Property(Category = "Collision", Tooltip = "Reports contact begin and end events")]
+    public bool ReportContacts;   // opt-in: tracking every pair of a crowded world would cost every tick
 
     // The shortest cylinder a capsule may keep: two hemispheres and nothing between them is still a
     // capsule, but a negative length is not a shape.
@@ -77,8 +80,9 @@ public struct RigidBody : IComponent
     public static RigidBody Kinematic() => new() { Kind = BodyKind.Kinematic };
 }
 
-// The Bepu handle for an entity's collider, added and removed by the physics systems. Never authored
-// and never saved: it is rebuilt from Collider/RigidBody on load (09 §3.5).
+// The backend's handle for an entity's collider (a Bepu body or static handle in 3D), added and removed
+// by the physics systems. Never authored and never saved: it is rebuilt from Collider/RigidBody on load
+// (09 §3.5).
 [Transient]
 [Component("sage:physics_body")]
 public struct PhysicsBody : IComponent
@@ -221,8 +225,15 @@ public struct SweepHit
     public Vector3 Normal;
     public float Distance;      // along the sweep direction
     public bool Hit;
+    // The shape already overlapped this where the sweep started (IPhysicsWorld.Sweep): Distance is 0,
+    // Position is where the shape started and Normal is -direction, because an overlap has no surface.
+    public bool StartsInside;
 }
 
 // Trigger overlaps collected during the step, drained in PostPhysics (10 §3). Game events come with
 // the event bus (04); until then systems read these lists.
 public readonly record struct TriggerOverlap(Entity Trigger, Entity Other);
+
+// A solid contact between two colliders, at least one of which asked for them (Collider.ReportContacts).
+// Normal points from B toward A; Point is where they touch. An end event carries the entities only.
+public readonly record struct ContactEvent(Entity A, Entity B, Vector3 Point, Vector3 Normal);

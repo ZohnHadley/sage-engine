@@ -247,7 +247,10 @@ public sealed class SaveSystem
             }
 
             foreach (var world in _engine.Worlds)
+            {
+                _engine.Scenes.AfterLoad(world);   // what the scene placed is the scene's again (issue #29)
                 world.Resources.Get<GameRules>().OnLoaded(world);
+            }
 
             Log.Info(LogCat.Save, $"Loaded '{slot}': {total} entities");
             return true;

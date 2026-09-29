@@ -11,7 +11,7 @@ namespace Sage.Generators;
 // Writes each assembly's registration code from its declarations (docs/REDESIGN.md §3.4, issue #16).
 //
 //   [Record("item", Plugin = "sage.gameplay.items")] public sealed class ItemRecord { … }
-//   [SavedResource("journal", Plugin = "sage.gameplay.factions")] public sealed class Journal { … }
+//   [SavedResource("journal", Plugin = "sage.gameplay.quests")] public sealed class Journal { … }
 //
 // becomes, once per assembly, an IGeneratedRegistrations whose Register(plugin, builder) registers
 // exactly the declarations that plugin owns. The module manager calls it for each plugin just before

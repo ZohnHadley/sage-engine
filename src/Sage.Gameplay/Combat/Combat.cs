@@ -35,8 +35,6 @@ public sealed class DamageTypeRecord
     public RecordRef<EffectRecord> Effect;   // the effect applied to the victim, scaled by the damage
                               // (element tags and cue ids arrive with cues, F21: a field nothing
                               //  reads is a promise the engine isn't keeping, review #50)
-
-    public static readonly RecordId Physical = new("sage", "physical");
 }
 
 // One swing: how far it reaches, how forgiving it is, what it costs in time (16 §3.2). Weapons hand
@@ -45,7 +43,7 @@ public sealed class DamageTypeRecord
 public sealed class AttackRecord
 {
     public float Damage = 10f;
-    public RecordRef<DamageTypeRecord> DamageType; // empty = sage:physical
+    public RecordRef<DamageTypeRecord> DamageType; // empty = the game's default (gameplay_conventions)
     public float Reach = 2f;                // metres, from the attacker's eye
     public float Radius = 0.35f;            // the swing's thickness: how forgiving it is
     public float ArcDegrees = 120f;         // how far off-centre a target may be
@@ -60,8 +58,6 @@ public sealed class AttackRecord
     public RecordRef<SpriteSheetRecord> Viewmodel; // the sprite sheet a first-person wielder sees (13 §3):
                                             // rest, wind-up and strike, in that order
     public List<RecordRef<EffectRecord>> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
-
-    public static readonly RecordId Default = new("sage", "default_attack");
 }
 
 // A hit that landed, for anything that reacts to one: the death seam's "who killed me", the game's
@@ -86,7 +82,14 @@ public static class Combat
         if (!world.IsAlive(hit.Target) || hit.Amount <= 0f) return 0f;
 
         var records = world.Resources.Get<RecordStore>();
-        var typeId = hit.Type.IsEmpty ? DamageTypeRecord.Physical : hit.Type;
+        var conventions = GameplayConventions.Of(records);
+        var typeId = hit.Type.IsEmpty ? conventions.DamageType.Id : hit.Type;
+        if (typeId.IsEmpty)
+        {
+            Log.Once(LogCat.Gameplay, LogLevel.Error, "damage_type:none",
+                "A hit names no damage type and this game's gameplay_conventions name no default one, so it can't hurt anything");
+            return 0f;
+        }
         if (!records.TryGet(typeId, out DamageTypeRecord type))
         {
             Log.Once(LogCat.Gameplay, LogLevel.Error, $"damage_type:{typeId}", $"No damage_type record {typeId}");
@@ -99,12 +102,12 @@ public static class Combat
         }
 
         float amount = Mitigate(world, hit.Target, type, hit.Amount);
-        float before = world.Attribute(hit.Target, AttributeRecord.Health);
+        float before = world.Attribute(hit.Target, conventions.Health);
 
         // The health change is an effect like any other, so tags gate it and saves see it (16 §3.3).
         if (!Effects.Apply(world, hit.Target, type.Effect, hit.Attacker, amount)) return 0f;
 
-        float applied = MathF.Max(0f, before - world.Attribute(hit.Target, AttributeRecord.Health));
+        float applied = MathF.Max(0f, before - world.Attribute(hit.Target, conventions.Health));
         if (alsoApply != null)
             foreach (var effect in alsoApply) Effects.Apply(world, hit.Target, effect, hit.Attacker);
 
@@ -131,8 +134,8 @@ public enum MeleePhase { Ready, Windup, Recover }
 [Component("sage:melee")]
 public struct Melee : IComponent
 {
-    [RecordRef("attack"), Property(Tooltip = "What it swings now; empty = sage:default_attack")]
-    public RecordId Attack;     // what it swings now; empty = sage:default_attack
+    [RecordRef("attack"), Property(Tooltip = "What it swings now; empty = the game's default attack (gameplay_conventions)")]
+    public RecordId Attack;     // what it swings now; empty = the game's default (gameplay_conventions)
     [RecordRef("attack"), Property(Tooltip = "What it swings bare-handed, when a weapon comes off")]
     public RecordId Natural;    // and what it goes back to when a weapon comes off (16 §3.2, F19)
     [Transient] public MeleePhase Phase;   // mid-swing; a load starts you Ready rather than half-way
@@ -152,7 +155,7 @@ public sealed class MeleeCombatSystem : ISystem
 {
     private readonly Query<Transform, PawnIntent, CharacterController, Melee> _fighters;
     private readonly RecordStore _records;
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
     private readonly EventReader<AnimationEvent> _animation;
     private readonly List<AnimationEvent> _fired = new();   // the previous tick's animation events,
                                                             // drained once so Lands can ask per entity
@@ -168,15 +171,17 @@ public sealed class MeleeCombatSystem : ISystem
         _debugSwings = debugSwings;
         _fighters = world.Query<Transform, PawnIntent, CharacterController, Melee>();
         _records = records;
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
         _animation = world.Events.Reader<AnimationEvent>(this);
-        _attack = actions.Get("Attack");
+        _attack = actions.Get(world.Conventions().Actions.Attack);
     }
 
     public void Run(in SystemContext ctx)
     {
         var world = ctx.World;
         float dt = ctx.Tick.Dt;
+        var conventions = world.Conventions();
+        var dead = conventions.Dead;
 
         // Animation raises its events in a later phase, so what this drains is the previous tick's
         // (see Lands). The cursor makes that exact: every event once, none missed, whatever else ran.
@@ -192,7 +197,7 @@ public sealed class MeleeCombatSystem : ISystem
             for (int n = 0; n < m.Length; n++)
             {
                 var entity = entities.EntityAt(n);
-                var attack = AttackFor(ref m[n]);
+                var attack = AttackFor(ref m[n], conventions);
                 if (attack == null) continue;
 
                 if (m[n].Cooldown > 0f) m[n].Cooldown = MathF.Max(0f, m[n].Cooldown - dt);
@@ -200,7 +205,7 @@ public sealed class MeleeCombatSystem : ISystem
                 switch (m[n].Phase)
                 {
                     case MeleePhase.Ready:
-                        if (i[n].Pressed.Has(_attack) && m[n].Cooldown <= 0f && !world.HasTag(entity, TagRecord.Dead))
+                        if (i[n].Pressed.Has(_attack) && m[n].Cooldown <= 0f && !world.HasTag(entity, dead))
                         {
                             m[n].Phase = MeleePhase.Windup;
                             m[n].Timer = 0f;
@@ -217,7 +222,7 @@ public sealed class MeleeCombatSystem : ISystem
                         m[n].Timer += dt;
                         // Killed mid-swing: the blow dies with the fighter rather than landing from
                         // a corpse.
-                        if (world.HasTag(entity, TagRecord.Dead))
+                        if (world.HasTag(entity, dead))
                         {
                             m[n].Phase = MeleePhase.Ready;
                             m[n].Timer = 0f;
@@ -254,9 +259,10 @@ public sealed class MeleeCombatSystem : ISystem
         }
     }
 
-    private AttackRecord? AttackFor(ref Melee melee)
+    private AttackRecord? AttackFor(ref Melee melee, GameplayConventionsRecord conventions)
     {
-        var id = melee.Attack.IsEmpty ? AttackRecord.Default : melee.Attack;
+        var id = melee.Attack.IsEmpty ? conventions.Attack.Id : melee.Attack;
+        if (id.IsEmpty) return null;   // given no attack, and the game has no default: it cannot swing
         if (_records.TryGet(id, out AttackRecord record)) return record;
         Log.Once(LogCat.Gameplay, LogLevel.Error, $"attack:{id}", $"No attack record {id}: nothing can swing it");
         return null;
@@ -281,17 +287,17 @@ public sealed class MeleeCombatSystem : ISystem
     private DamageInfo Resolve(World world, Entity attacker, in Transform transform, in PawnIntent intent,
                                in CharacterController character, AttackRecord attack)
     {
-        var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile,
-                                      out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+        var profile = CharacterConventions.Of(world).ProfileOf(_records, character.Profile);
         Vector3 eye = CharacterController.EyeOf(transform.LocalPosition, in character, profile);
         Vector3 aim = Vector3.Transform(TransformMath.Forward, Quaternion.CreateFromYawPitchRoll(intent.Yaw, intent.Pitch, 0));
 
         // Every solid thing counts, including the attacker's own kind: a swing is physical, and who it
         // is *allowed* to hurt is a rules question (factions, F24), not a physics one. The sweep starts
-        // inside the attacker's own capsule, which the space reports as a zero-distance touch and
-        // ignores, and the self check below is the belt to that pair of braces.
+        // inside the attacker's own capsule, so the attacker is left out of it (`ignore`), and the self
+        // check below is the belt to that pair of braces. Something else the swing starts inside — a
+        // creature pressed up against you — is hit at distance 0 (issue #30: it used to be missed).
         var hit = _space.Sweep(Collider.Sphere(attack.Radius), new Pose { Position = eye, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                               aim, attack.Reach, LayerMask.All);
+                               aim, attack.Reach, LayerMask.All, ignore: attacker);
 
         var info = new DamageInfo(attacker, default, attack.DamageType, attack.Damage, eye + aim * attack.Reach, aim);
         if (Connects(world, attacker, in transform, in intent, attack, hit))

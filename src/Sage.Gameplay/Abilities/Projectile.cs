@@ -34,7 +34,7 @@ public sealed class ProjectileSystem : ISystem
 {
     private readonly Query<Transform, Projectile> _flying;
     private readonly RecordStore _records;
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
     private readonly AbilityPayload _payload;
     private readonly DebugDraw _debug;
     private readonly CVar<bool> _debugCasts;
@@ -49,7 +49,7 @@ public sealed class ProjectileSystem : ISystem
     {
         _flying = world.Query<Transform, Projectile>();
         _records = records;
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
         _payload = new AbilityPayload(world);
         _debug = world.Debug();
         _debugCasts = debugCasts;
@@ -78,12 +78,13 @@ public sealed class ProjectileSystem : ISystem
                 }
 
                 var direction = Vector3.Normalize(p[n].Velocity);
+                // Its own caster does not stop it: it starts inside them, so they are left out of the
+                // sweep. Anything else it starts inside (a creature at point-blank range) stops it
+                // where it is (issue #30; review #55 was the same gap from the other side).
                 var hit = _space.Sweep(Collider.Sphere(MathF.Max(p[n].Radius, 0.05f)),
                     new Pose { Position = from, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                    direction, step, LayerMask.All);
+                    direction, step, LayerMask.All, ignore: p[n].Caster);
 
-                // Its own caster does not stop it: it starts inside them, and a sweep that begins
-                // overlapping reports a zero-distance touch (10 §4, review #55).
                 bool stopped = hit.Hit && !hit.Entity.IsNull && hit.Entity != p[n].Caster;
 
                 Vector3 to = stopped ? from + direction * hit.Distance : from + direction * step;

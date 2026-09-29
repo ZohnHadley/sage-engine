@@ -199,7 +199,7 @@ public sealed class FactionPart : IPrefabPart
 
 // "dialogue": "sandbox:innkeeper" — somebody worth talking to (16 §3.5, F24). It also makes the entity
 // `Interactable`, because "you can talk to it" and "Use does something" are the same claim.
-[PrefabPart("dialogue", Plugin = "sage.gameplay.factions", Shorthand = nameof(Id))]
+[PrefabPart("dialogue", Plugin = "sage.gameplay.dialogue", Shorthand = nameof(Id))]
 public sealed class DialoguePart : IPrefabPart
 {
     [Property(Tooltip = "What it says when used")]

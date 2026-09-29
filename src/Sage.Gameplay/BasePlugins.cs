@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using Sage.Physics3D;   // PhysicsModule: this list is the one place gameplay names the backend (issue #30)
 
 namespace Sage.Gameplay;
 

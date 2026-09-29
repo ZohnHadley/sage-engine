@@ -60,8 +60,6 @@ public sealed class AIProfileRecord
     public float MeleeRange = 1.8f;      // how close it wants to be before swinging
     public float ThinkRate = 6f;         // times per second
     public float TurnSpeedDegrees = 360f;
-
-    public static readonly RecordId Default = new("sage", "default_ai");
 }
 
 // An ordered task list plus the conditions that interrupt it (16 §3.4). Each task is an object naming
@@ -99,7 +97,7 @@ public sealed class AIScheduleRecord
 [Component("sage:ai_state")]
 public struct AIState : IComponent
 {
-    [RecordRef("ai_profile"), Property(Category = "Brain", Tooltip = "Senses and reach; empty = sage:default_ai")]
+    [RecordRef("ai_profile"), Property(Category = "Brain", Tooltip = "Senses and reach; empty = the game's default (gameplay_conventions)")]
     public RecordId Profile;
     [RecordRef("ai_schedule"), Property(Category = "Brain", Tooltip = "The task list it runs")]
     public RecordId Schedule;
@@ -134,7 +132,7 @@ public ref struct AITaskContext
     // How this body moves (radius, step height, slope limit): what a path has to be walkable *by*, so
     // navigation reuses the numbers the character controller already obeys rather than inventing its own.
     public MovementProfileRecord Movement;
-    public PhysicsSpace Space;
+    public IPhysicsWorld Space;
     public ActionId Attack;     // the Attack action, so a task can swing the way a player does
     public float Dt;
     public float Param;

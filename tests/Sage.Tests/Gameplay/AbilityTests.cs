@@ -18,6 +18,7 @@ public class AbilityTests
 
     private const string Records = """
     [
+      { "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "invulnerable": "state.invulnerable", "costAttribute": "mana" },
       { "type": "attribute", "id": "health", "max": 100, "start": 100 },
       { "type": "attribute", "id": "mana",   "max": 50,  "start": 50, "spendEffect": "spend_mana" },
       { "type": "attribute", "id": "armour", "max": 95 },
@@ -79,7 +80,7 @@ public class AbilityTests
     private static Entity Caster(World world, Vector3 at, string name, params string[] known)
     {
         var e = world.Create(Transform.At(at), name);
-        world.AddCharacter(e, world.Resources.Get<PhysicsSpace>().Layers.Player);
+        world.AddCharacter(e, world.Resources.Get<IPhysicsWorld>().Layers.Player);
         world.AddAttributes(e);
         foreach (var ability in known) world.Teach(e, Id(ability));
         return e;
@@ -121,7 +122,7 @@ public class AbilityTests
         {
             var caster = Caster(world, new Vector3(0, 0.1f, 0), "caster", "fireball");
             var victim = Caster(world, new Vector3(0, 0.1f, -4), "victim");
-            world.AddTag(victim, TagRecord.Invulnerable);
+            world.AddTag(victim, Conventional.Invulnerable);
 
             world.Cast(caster, Id("fireball"));
             Tick(world, 2);

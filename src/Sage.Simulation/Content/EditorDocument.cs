@@ -61,6 +61,9 @@ public sealed class EditorDocument
         }
 
         Close(world);
+        // A scene may have loaded this document already (issue #29): opening it takes those over rather
+        // than placing a second copy of each.
+        world.ClearPlacements(id);
         Id = id;
         Path = FileFor(id);
         world.SpawnPlacements(id, record);
@@ -97,8 +100,11 @@ public sealed class EditorDocument
         {
             ["type"] = "placements",
             ["id"] = Id.Name,
-            ["place"] = record.Place,
         };
+        // The document's frame (issue #29), only when it has one: most documents are absolute metres.
+        if (record.Origin != default) file["origin"] = record.Origin;
+        if (record.RelativeTo != PlacementFrame.World) file["relativeTo"] = record.RelativeTo;
+        file["place"] = record.Place;
 
         try
         {
@@ -114,6 +120,8 @@ public sealed class EditorDocument
             {
                 WriteIndented = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                // A placement's own `relativeTo` is optional: left out, it is the document's.
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
             };
             string json = JsonSerializer.Serialize(new[] { file }, options);
 

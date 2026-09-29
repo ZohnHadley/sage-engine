@@ -25,8 +25,6 @@ public sealed class AttributeRecord
     // nothing subtracts an attribute directly — mana leaves the same way health does.
     [Property(Tooltip = "The effect that spends one unit of this attribute (mana, stamina)")]
     public RecordRef<EffectRecord> SpendEffect;
-
-    public static readonly RecordId Health = new("sage", "health");
 }
 
 // A gameplay tag. Names are hierarchical by convention: "state.dead", "element.fire".
@@ -34,9 +32,6 @@ public sealed class AttributeRecord
 public sealed class TagRecord
 {
     public string Description = "";
-
-    public static readonly RecordId Dead = new("sage", "state.dead");
-    public static readonly RecordId Invulnerable = new("sage", "state.invulnerable");
 }
 
 // Record ids → small indices, so components hold numbers instead of strings. Rebuilt when records

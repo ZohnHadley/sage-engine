@@ -12,7 +12,8 @@ namespace Sage.Core;
 //     "name": "Sandbox", "id": "sandbox",
 //     "assembly": "bin/{config}/net8.0/Sandbox.dll",   // {config} = the build's configuration name
 //     "mounts": ["content"],                           // relative to the game folder, mounted in order
-//     "modules": { "disable": [] }
+//     "modules": { "disable": [] },
+//     "scene": "main"                                  // the scene every world starts in (issue #29)
 //   }
 public sealed class GameManifest
 {
@@ -27,6 +28,10 @@ public sealed class GameManifest
     // "sage.gameplay.*" for a family. Plugins they require come too. Null (the key left out) means all of
     // them, as before; an empty list means none — a game with no physics and no gameplay (issue #12).
     public List<string>? Plugins { get; set; }
+
+    // The `scene` record every world starts in: "main" (this game's namespace) or "ns:main". Left out,
+    // worlds start empty and the game's rules place what they want (issue #29).
+    public string? Scene { get; set; }
 
     public sealed class ModuleSettings
     {

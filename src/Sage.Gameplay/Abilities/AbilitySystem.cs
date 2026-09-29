@@ -19,7 +19,7 @@ public sealed class AbilitySystem : ISystem
     private readonly Query<Transform, PawnIntent, Abilities> _casters;
     private readonly ActionId _cast;
     private readonly RecordStore _records;
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
     private readonly AbilityPayload _payload;
     private readonly DebugDraw _debug;
     private readonly CVar<bool> _debugCasts;
@@ -32,9 +32,9 @@ public sealed class AbilitySystem : ISystem
     public AbilitySystem(World world, RecordStore records, ActionRegistry actions, CVar<bool> debugCasts)
     {
         _casters = world.Query<Transform, PawnIntent, Abilities>();
-        _cast = actions.Get("Cast");
+        _cast = actions.Get(world.Conventions().Actions.Cast);
         _records = records;
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
         _payload = new AbilityPayload(world);
         _debug = world.Debug();
         _debugCasts = debugCasts;
@@ -128,8 +128,7 @@ public sealed class AbilitySystem : ISystem
     private Vector3 Origin(World world, Entity entity, in Transform transform)
     {
         if (!world.TryGet<CharacterController>(entity, out var character)) return transform.LocalPosition;
-        var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile,
-                                      out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+        var profile = CharacterConventions.Of(world).ProfileOf(_records, character.Profile);
         return CharacterController.EyeOf(transform.LocalPosition, in character, profile);
     }
 
@@ -164,12 +163,13 @@ public sealed class AbilitySystem : ISystem
             case AbilityTargeting.TouchArea:
             {
                 // `Width`, not `Radius`: how fat the bolt is on its way, not how wide it bursts.
-                // Sweeping with the burst radius makes a fireball start already overlapping its own
-                // caster, and an overlapping sweep reports nothing at all (10 §4, review #55) — so a
-                // three-metre burst reached exactly nothing.
+                // Sweeping with the burst radius made a fireball start already overlapping its own
+                // caster, and an overlapping sweep used to report nothing at all (review #55) — so a
+                // three-metre burst reached exactly nothing. The caster is left out now, and something
+                // else the bolt starts inside is struck at distance 0 (issue #30).
                 var hit = _space.Sweep(Collider.Sphere(MathF.Max(record.Width, 0.05f)),
                     new Pose { Position = cast.Point, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                    cast.Aim, record.Range, LayerMask.All);
+                    cast.Aim, record.Range, LayerMask.All, ignore: cast.Caster);
 
                 point = hit.Entity.IsNull || hit.Entity == cast.Caster
                     ? cast.Point + cast.Aim * record.Range

@@ -243,7 +243,7 @@ public class NavigationTests
             var beyond = new Vector3(100, 0, Terrain.SectorSize / 2 + 40);
 
             var path = new NavPath();
-            bool planned = nav.Plan(world, world.Resources.Get<PhysicsSpace>(), flat, beyond,
+            bool planned = nav.Plan(world, world.Resources.Get<IPhysicsWorld>(), flat, beyond,
                                     radius: 0.35f, stepHeight: 0.45f, maxSlopeDegrees: 50f,
                                     self: default, target: default, path: ref path);
 
@@ -256,7 +256,8 @@ public class NavigationTests
     // ---- through the real thing -----------------------------------------------------------------
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "aiProfile": "default_ai", "schedules": { "idle": "idle", "chase": "chase", "meleeAttack": "melee_attack" } },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "tag", "id": "state.dead" },
          { "type": "ai_profile", "id": "default_ai", "sightRange": 60, "meleeRange": 1.8, "thinkRate": 20 },
          { "type": "ai_schedule", "id": "idle", "tasks": [{ "task": "Wait", "seconds": 1.5 }], "interrupts": ["SeeEnemy"] },
@@ -289,8 +290,8 @@ public class NavigationTests
     private static Entity Creature(World world, Vector3 position)
     {
         var entity = world.Create(Transform.At(position), "creature");
-        world.AddCharacter(entity, 2);
-        world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+        world.AddCharacter(entity, world.Resources.Get<IPhysicsWorld>().Layers.Enemy);
+        world.Add(entity, new AIState { Schedule = Conventional.Idle });
         world.AddAttributes(entity);
         return entity;
     }
@@ -298,7 +299,7 @@ public class NavigationTests
     private static Entity Player(World world, Vector3 position)
     {
         var entity = world.Create(Transform.At(position), "player");
-        world.Add(entity, Collider.Standing(0.35f, 1.8f, 1));
+        world.Add(entity, Collider.Standing(0.35f, 1.8f, world.Resources.Get<IPhysicsWorld>().Layers.Player));
         world.Add(entity, RigidBody.Kinematic());
         world.AddAttributes(entity);
         entity.AddTag<PlayerControlled>();

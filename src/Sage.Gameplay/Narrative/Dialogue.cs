@@ -78,7 +78,7 @@ public sealed class DialogueNode
     public List<DialogueOption> Options = new();
 }
 
-[Record("dialogue", Plugin = "sage.gameplay.factions")]
+[Record("dialogue", Plugin = "sage.gameplay.dialogue")]
 public sealed class DialogueRecord
 {
     public string Label = "";
@@ -132,6 +132,8 @@ public static class DialogueRules
     // talking kind — all of which are content mistakes rather than crashes.
     public static bool Start(World world, Entity speaker, Entity listener)
     {
+        // No Conversation: a game without the dialogue plugin, where nobody has anything to say.
+        if (!world.Resources.TryGet<Conversation>(out var conversation) || conversation == null) return false;
         if (!world.TryGet<Dialogue>(speaker, out var dialogue) || dialogue.Record.IsEmpty) return false;
         var records = world.Resources.Get<RecordStore>();
         if (!records.TryGet(dialogue.Record, out DialogueRecord record))
@@ -149,7 +151,6 @@ public static class DialogueRules
             return false;
         }
 
-        var conversation = world.Resources.Get<Conversation>();
         conversation.Speaker = speaker;
         conversation.Listener = listener;
         conversation.Record = dialogue.Record;
@@ -160,14 +161,17 @@ public static class DialogueRules
 
     public static DialogueNode? Current(World world)
     {
-        var conversation = world.Resources.Get<Conversation>();
-        if (!conversation.Running) return null;
+        if (!world.Resources.TryGet<Conversation>(out var conversation) || conversation is not { Running: true }) return null;
         return world.Resources.Get<RecordStore>().TryGet(conversation.Record, out DialogueRecord record)
             ? record.Node(conversation.Node) : null;
     }
 
     // May this be said? The reason comes back in words, because the screen shows it and because a
     // refusal nobody can read is a bug report waiting to happen (R17).
+    //
+    // A requirement on a plugin the game does not have is answered the way that plugin's absence
+    // answers it (issue #26): every standing is 0 without factions, and nobody is on any quest
+    // without quests.
     public static bool CanPick(World world, Entity listener, DialogueOption option, out string why)
     {
         why = "";
@@ -201,7 +205,7 @@ public static class DialogueRules
         if (!requires.Quest.IsEmpty)
         {
             bool ok = true;
-            if (requires.NotStarted) ok = world.Resources.Get<Journal>().Of(requires.Quest) == null;
+            if (requires.NotStarted) ok = Quests.IsNotStarted(world, requires.Quest);
             else if (requires.Finished) ok = Quests.IsFinished(world, requires.Quest);
             else if (requires.Active) ok = Quests.IsActive(world, requires.Quest);
             if (ok && requires.Stage.Length > 0)
@@ -219,8 +223,7 @@ public static class DialogueRules
     // the option was refused, and nothing happened.
     public static bool Pick(World world, DialogueOption option)
     {
-        var conversation = world.Resources.Get<Conversation>();
-        if (!conversation.Running) return false;
+        if (!world.Resources.TryGet<Conversation>(out var conversation) || conversation is not { Running: true }) return false;
 
         var listener = conversation.Listener;
         if (!CanPick(world, listener, option, out _)) return false;

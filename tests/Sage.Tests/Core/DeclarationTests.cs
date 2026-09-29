@@ -34,16 +34,16 @@ public class DeclarationTests
             ["ability"] = "sage.gameplay.abilities", ["cue"] = "sage.gameplay.abilities",
             ["ai_profile"] = "sage.gameplay.ai", ["ai_schedule"] = "sage.gameplay.ai",
             ["attribute"] = "sage.gameplay.attributes", ["tag"] = "sage.gameplay.attributes",
-            ["effect"] = "sage.gameplay.attributes",
+            ["effect"] = "sage.gameplay.attributes", ["gameplay_conventions"] = "sage.gameplay.attributes",
             ["movement_profile"] = "sage.gameplay.character",
             ["attack"] = "sage.gameplay.combat", ["damage_type"] = "sage.gameplay.combat",
-            ["dialogue"] = "sage.gameplay.factions", ["faction"] = "sage.gameplay.factions",
-            ["quest"] = "sage.gameplay.factions",
+            ["dialogue"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
+            ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
             ["map"] = "sage.maps",
             ["physics_layers"] = "sage.physics3d",
             ["prefab"] = RegistrationOwners.Core, ["placements"] = RegistrationOwners.Core,
-            ["scene"] = "sandbox",
+            ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)
@@ -55,7 +55,7 @@ public class DeclarationTests
     public void APluginThatIsNotLoadedRegistersNothing()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Equal(new[] { "placements", "prefab" }, app.Records.TypeNames);
+        Assert.Equal(new[] { "placements", "prefab", "scene" }, app.Records.TypeNames);
     }
 
     // Plugin ids on declarations are strings, and one naming a plugin in another assembly (the client)

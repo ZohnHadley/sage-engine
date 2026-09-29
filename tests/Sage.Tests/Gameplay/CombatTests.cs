@@ -19,7 +19,8 @@ public class CombatTests
     private static readonly RecordId Invulnerable = new("sage", "state.invulnerable");
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "invulnerable": "state.invulnerable", "damageType": "physical" },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "attribute", "id": "armor",  "start": 0,   "min": 0, "max": 95 },
 
          { "type": "tag", "id": "state.dead" },
@@ -82,7 +83,7 @@ public class CombatTests
     private static Entity Fighter(World world, Vector3 feet, string name, Vector3 lookAt, bool armed = true)
     {
         var entity = world.Create(Transform.At(feet), name);
-        world.AddCharacter(entity, world.Resources.Get<PhysicsSpace>().Layers.Player);
+        world.AddCharacter(entity, world.Resources.Get<IPhysicsWorld>().Layers.Player);
         if (armed) world.Add(entity, Melee.With(Sword));
         world.AddAttributes(entity);
         world.Get<PawnIntent>(entity).Yaw = SageMath.YawTo(feet, lookAt);

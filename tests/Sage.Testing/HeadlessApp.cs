@@ -83,6 +83,7 @@ public sealed class HeadlessAppBuilder
     private MountFixture? _files;
     private string? _engineContent;
     private HostKind _host = HostKind.Game;
+    private string? _startScene;
 
     internal HeadlessAppBuilder(bool includeSimulation, GameManifest? game)
     {
@@ -126,6 +127,14 @@ public sealed class HeadlessAppBuilder
         return this;
     }
 
+    // The scene every world starts in (game.json's "scene", issue #29): "ns:name", or a bare name in the
+    // game's namespace.
+    public HeadlessAppBuilder StartScene(string scene)
+    {
+        _startScene = scene;
+        return this;
+    }
+
     public HeadlessAppBuilder InHost(HostKind host)
     {
         _host = host;
@@ -151,6 +160,7 @@ public sealed class HeadlessAppBuilder
             AvailablePlugins = _includeSimulation ? BasePlugins.All() : Array.Empty<IModule>(),
             Host = _host,
             HostModules = _modules.ToArray(),
+            StartScene = _startScene,
         });
         foreach (var fixture in _fixtures.Append(_files).OfType<MountFixture>())
             foreach (var mount in fixture.Mounts)

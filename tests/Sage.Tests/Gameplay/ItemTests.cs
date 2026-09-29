@@ -20,7 +20,8 @@ public class ItemTests
     private static readonly RecordId Health = new("sage", "health");
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "invulnerable": "state.invulnerable", "damageType": "physical" },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "attribute", "id": "armor",  "start": 0,   "min": 0, "max": 95 },
          { "type": "tag", "id": "state.dead" },
          { "type": "tag", "id": "state.invulnerable" },
@@ -53,7 +54,7 @@ public class ItemTests
     private static Entity Carrier(World world, Vector3 feet, string name, Vector3 lookAt, float capacity = 50f)
     {
         var entity = world.Create(Transform.At(feet), name);
-        world.AddCharacter(entity, world.Resources.Get<PhysicsSpace>().Layers.Player);
+        world.AddCharacter(entity, world.Resources.Get<IPhysicsWorld>().Layers.Player);
         world.Add(entity, Melee.With(new RecordId("sage", "fists")));
         world.AddInventory(entity, capacity);
         world.AddAttributes(entity);

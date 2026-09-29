@@ -15,7 +15,8 @@ using Assert = Xunit.Assert;
 // example that did not. The simulation half now references the base engine and nothing else, and the
 // compiler enforces it.
 //
-// What is checked here is the game's, not the engine's: its scene record, its rules, its respawn.
+// What is checked here is the game's, not the engine's: its rules and its respawn, on the scene the
+// engine places for it (issue #29; the engine's own scene tests are Content/SceneTests.cs).
 public class SandboxSimulationTests
 {
     public SandboxSimulationTests() { _ = TestEnv.UserRoot; }
@@ -34,7 +35,7 @@ public class SandboxSimulationTests
       { "type": "prefab", "id": "rock", "name": "rock",
         "parts": { "body": { "size": [1, 1, 1] }, "box_mesh": { "size": [1, 1, 1] } } },
 
-      { "type": "scene", "id": "main",
+      { "type": "scene", "id": "main", "origin": [512, 0, 512], "relativeTo": "Ground",
         "player": { "prefab": "hero", "at": [0, 1, 0] },
         "place": [ { "prefab": "rock", "at": [2, 0, 0] }, { "prefab": "rock", "at": [-2, 0, 0] } ] }
     ]
@@ -45,11 +46,12 @@ public class SandboxSimulationTests
         var app = HeadlessApp.Simulation()
             .With(new SandboxModule())   // the game, with no client half in sight
             .File("data/scene.json", Scene, ns: "sandbox")
+            .StartScene("sandbox:main")      // what the Sandbox's game.json says
             .Boot("sandbox");
         return (app.Engine, app.World);
     }
 
-    // The game's rules spawn the player when the world starts, from its own scene record.
+    // The game's rules spawn the player when the world starts, from its scene record.
     [Xunit.Fact]
     public void TheGamePlacesItsSceneAndItsPlayer()
     {
@@ -57,7 +59,7 @@ public class SandboxSimulationTests
         using (engine)
         {
             var placed = world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList();
-            Assert.Equal(3, placed.Count);   // two rocks and the player
+            Assert.Equal(2, placed.Count);   // two rocks; the player is the rules', not the scene's
 
             var player = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList();
             Assert.Single(player);
@@ -110,6 +112,7 @@ public class SandboxSimulationTests
         using (engine)
         {
             var before = world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList().ToList();
+            var player = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList()[0];
 
             engine.Records.Reload();
             world.RunFixed(1f / 60f);
@@ -121,9 +124,10 @@ public class SandboxSimulationTests
             // asks the handles whether they are still alive rather than comparing ids.
             Assert.True(before.All(e => !world.IsAlive(e)), "the scene should have been rebuilt, not kept");
 
-            // Including the player: it is placed by the rules, not the scene loop, but carries the
-            // same tag — so the sweep took it and something has to put it back (review #59).
+            // Except the player: it is the rules', not the scene's, so the sweep leaves it alone — the
+            // same entity, not a fresh one (review #59 put a new one back; issue #29 keeps it).
             Assert.Single(world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList());
+            Assert.True(world.IsAlive(player), "the player should have been kept across the reload");
         }
     }
 }

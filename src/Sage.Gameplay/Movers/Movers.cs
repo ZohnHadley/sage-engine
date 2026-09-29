@@ -41,13 +41,13 @@ internal sealed class MoverSystem : ISystem
 {
     private readonly World _world;
     private readonly Query<Mover, Transform> _movers;
-    private readonly PhysicsSpace? _space;
+    private readonly IPhysicsWorld? _space;
 
     public MoverSystem(World world)
     {
         _world = world;
         _movers = world.Query<Mover, Transform>();
-        world.Resources.TryGet<PhysicsSpace>(out _space);   // a world may have no physics at all
+        world.Resources.TryGet<IPhysicsWorld>(out _space);   // a world may have no physics at all
     }
 
     public void Run(in SystemContext ctx)
