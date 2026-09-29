@@ -39,10 +39,10 @@ internal sealed class DebugLineBatch : IDisposable
         return true;
     }
 
-    // `lines` holds pairs of vertices, already camera-relative. Returns the number of draw calls.
-    public int Draw(PooledList<VertexPositionColor> lines, in Matrix viewProjection, bool throughWalls)
+    // `lines` holds pairs of vertices, already relative to this view's camera. Returns the number of draw calls.
+    public int Draw(ReadOnlySpan<VertexPositionColor> lines, in Matrix viewProjection, bool throughWalls)
     {
-        if (_effect == null || lines.Count < 2) return 0;
+        if (_effect == null || lines.Length < 2) return 0;
 
         _viewProj?.SetValue(viewProjection);
         var previousDepth = _device.DepthStencilState;
@@ -55,11 +55,11 @@ internal sealed class DebugLineBatch : IDisposable
         _device.RasterizerState = RasterizerState.CullNone;
 
         int draws = 0;
-        int total = lines.Count - (lines.Count & 1);      // whole lines only
+        int total = lines.Length - (lines.Length & 1);    // whole lines only
         for (int offset = 0; offset < total; offset += MaxLinesPerDraw * 2)
         {
             int count = Math.Min(MaxLinesPerDraw * 2, total - offset);
-            for (int i = 0; i < count; i++) _vertices[i] = lines[offset + i];
+            lines.Slice(offset, count).CopyTo(_vertices);
 
             _buffer.SetData(_vertices, 0, count, SetDataOptions.Discard);
             _device.SetVertexBuffer(_buffer);

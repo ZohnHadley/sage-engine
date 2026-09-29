@@ -125,7 +125,7 @@
       "description": "(Dictionary<string, MaterialParam>)",
       "type": "object",
       "additionalProperties": {
-        "description": "A material parameter: a number, 1 to 16 numbers, or a texture path.",
+        "description": "A material parameter: a number, 1 to 16 numbers, a texture path, or rt:<name> for one of the renderer's render targets.",
         "anyOf": [
           {
             "type": "number"

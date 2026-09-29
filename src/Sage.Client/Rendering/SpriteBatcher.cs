@@ -21,6 +21,7 @@ internal struct SpriteInstance
     public BillboardMode Mode;
     public float Roll;            // radians about the view axis; 0 for anything that stands upright
     public ulong SortKey;
+    public int View;              // index into RenderSnapshot.Views: Center is relative to that camera
 }
 
 [StructLayout(LayoutKind.Sequential)]

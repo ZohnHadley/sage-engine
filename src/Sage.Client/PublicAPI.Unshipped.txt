@@ -1,1 +1,8 @@
 #nullable enable
+Sage.Client.Renderer.DeclareTarget(string! name, int width, int height) -> Microsoft.Xna.Framework.Graphics.RenderTarget2D!
+Sage.Client.Renderer.FindTarget(string! name) -> Microsoft.Xna.Framework.Graphics.RenderTarget2D?
+Sage.Client.Renderer.ReleaseTarget(string! name) -> bool
+Sage.Client.Renderer.ScreenWorld.get -> Sage.Simulation.World?
+Sage.Client.Renderer.ScreenWorld.set -> void
+Sage.Client.RenderStats.TargetViews -> int
+Sage.Client.RenderStats.Views -> int

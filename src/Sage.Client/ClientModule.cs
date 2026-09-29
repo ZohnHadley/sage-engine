@@ -288,7 +288,8 @@ public sealed class ClientModule : IModule
         // plugin (SageApp adds host modules after them), so what they furnish is there to look for.
         if (world.Resources.TryGet<MapLevels>(out _))
             world.AddSystem(new MapMeshSystem(world, _renderer!));
-        world.AddSystem(new CameraExtract(world, _renderer!));
+        // What the world is drawn from: its views (issue #77; ActiveCamera until camera components).
+        world.AddSystem(new CameraExtract(world, _renderer!, new ViewSource(world, _renderer!, _rendererCVars!.TestView)));
         world.AddSystem(new MeshExtract(world, _renderer!));
         world.AddSystem(new SpriteExtract(world, _renderer!, _records!));
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
@@ -317,7 +318,7 @@ public sealed class ClientModule : IModule
             world.AddSystem(new DialogueSystem(world, Screens));
         // Before the HUD is drawn, so a number never sits on top of the health bar.
         world.AddSystem(new FloatingTextSystem(world));
-        world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!));
+        world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!, _renderer!, _rendererCVars!.TestView));
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
         world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!));
