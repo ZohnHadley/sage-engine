@@ -44,6 +44,10 @@ public sealed class ClientModule : IModule
     // Screens by id, for the client to ask for and a kit or a game to fill (issue #27).
     public ScreenRegistry Screens { get; } = new();
 
+    // The renderer, from Start on (null before): for the host's own tools — the editor's viewport draws a
+    // render target it declares here (issue #81). A module asks for it with `ctx.Get<Renderer>()` instead.
+    public Renderer? Renderer => _renderer;
+
     public void Init(ModuleContext ctx)
     {
         _rendererCVars = new RendererCVars(ctx.Engine.CVars);   // here, not in the Renderer: see RendererCVars
@@ -152,9 +156,10 @@ public sealed class ClientModule : IModule
                 if (!world.Resources.TryGet<Particles>(out var particles) || particles == null) continue;
                 // Two metres in front of the eye, not *at* it: an audition you are standing inside
                 // tells you nothing about what it looks like.
-                var camera = world.Resources.Get<ActiveCamera>();
-                var ahead = System.Numerics.Vector3.Transform(TransformMath.Forward, camera.Rotation);
-                int thrown = particles.Emit(id, effect, camera.Position + ahead * 2f, ahead, count);
+                // From the screen's view (#81): the camera the player is looking through, whichever it is.
+                if (!world.TryGetMainView(out var eye)) continue;
+                var ahead = eye.Forward;
+                int thrown = particles.Emit(id, effect, eye.Position + ahead * 2f, ahead, count);
                 Log.Info(LogCat.Console, $"{thrown} particle(s) of {id}");
             }
         });

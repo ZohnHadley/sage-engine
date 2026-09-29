@@ -6,9 +6,10 @@ using ImGuiNET;
 namespace Sage.Editor;
 
 // The editor's free-fly camera (docs/design/15): WASD to fly, right-drag to look. It only moves a
-// position and yaw/pitch; the host publishes them as the world's ActiveCamera, and CameraExtract
-// builds the view and projection from that (06 §3.3). Editor/camera code may read devices directly
-// (08 §3.1); moving it onto Editor-context actions is 08 §14 step 4.
+// position and yaw/pitch; DevTools drives a camera entity with them (a `DebugCamera`, issue #81), which
+// the director resolves like any other camera and mirrors into ActiveCamera when it has the screen.
+// Editor/camera code may read devices directly (08 §3.1); moving it onto Editor-context actions is
+// 08 §14 step 4.
 internal class DevCamera
 {
     // Radians per pixel of mouse travel, times m_sensitivity. A plain per-pixel rate: look speed no
@@ -21,7 +22,7 @@ internal class DevCamera
         get { return _camPosition; }
         set { _camPosition = value; }
     }
-    // Orientation (yaw, then pitch), the same rotation that builds camForward; published as ActiveCamera.Rotation.
+    // Orientation (yaw, then pitch), the same rotation that builds camForward; the debug camera's pose.
     public Quaternion Rotation => Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0);
 
     private Vector3 camForward = Vector3.Forward;
@@ -32,6 +33,15 @@ internal class DevCamera
     private static readonly float PitchLimit = MathHelper.ToRadians(89f);
     private readonly InputDevices devices;
     private readonly InputActions actions;
+
+    // Whether it flies at all this frame: only while something shows it (the screen, or the editor
+    // viewport with the mouse or focus on it). Hidden, it stays where it was rather than following the
+    // player's WASD around (issue #81: DevTools decides, each frame).
+    public bool Active { get; set; } = true;
+
+    // The mouse is over the editor viewport's picture: a right-drag there turns the camera even though
+    // ImGui has the mouse (it does over any of its windows).
+    public bool MouseOverViewport { get; set; }
 
     public DevCamera(InputDevices devices, InputActions actions, Vector3 position, Vector3 rotationDegrees)
     {
@@ -61,9 +71,22 @@ internal class DevCamera
         RebuildForward();
     }
 
+    // Looks the way `rotation` does (its forward; roll is dropped): `cam_free` starts from the view that
+    // had the screen rather than from wherever the free camera was left.
+    public void LookAlong(Quaternion rotation)
+    {
+        var forward = Vector3.Transform(Vector3.Forward, rotation);
+        if (forward.LengthSquared() < 1e-8f) return;
+        forward.Normalize();
+        yaw = MathHelper.WrapAngle(MathF.Atan2(-forward.X, -forward.Z));
+        pitch = MathHelper.Clamp(MathF.Asin(Math.Clamp(forward.Y, -1f, 1f)), -PitchLimit, PitchLimit);
+        RebuildForward();
+    }
+
     public void Update(GameTime gameTime)
     {
         // Devices are polled centrally in Game1.Update (before this), so their state is current.
+        if (!Active) return;
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         Vector3 forward = Vector3.Normalize(camForward);
@@ -89,8 +112,8 @@ internal class DevCamera
 
     private void OnMouseDrag(MouseButton button, Point delta)
     {
-        if (button != MouseButton.RIGHT || ImGui.GetIO().WantCaptureMouse)
-            return;   // dragging inside an ImGui window (console, inspector) doesn't turn the camera
+        if (button != MouseButton.RIGHT || !Active || (ImGui.GetIO().WantCaptureMouse && !MouseOverViewport))
+            return;   // dragging inside an ImGui window (console, inspector) doesn't turn the camera; the viewport's picture does
 
         float rate = LookRadiansPerPixel * actions.MouseSensitivity;
         yaw = MathHelper.WrapAngle(yaw - delta.X * rate);

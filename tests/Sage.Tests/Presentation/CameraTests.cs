@@ -77,7 +77,7 @@ public class CameraTests
     }
 
     [Fact]
-    public void ActiveCameraMirrorsTheMainView_AndSaysSomethingDroveIt()
+    public void ActiveCameraMirrorsTheMainView()
     {
         using var app = App();
         var world = app.World;
@@ -95,35 +95,28 @@ public class CameraTests
         Assert.Equal(70f * MathF.PI / 180f, active.FovY, 5);
         Assert.Equal(main.FovY, active.FovY);
         Assert.Equal((0.5f, 300f), (active.Near, active.Far));
-#pragma warning disable CS0618   // the legacy flags are still what cam_free and the crosshair read
-        Assert.True(active.DrivenByRig);
-#pragma warning restore CS0618
     }
 
-    // With no camera entity the director must change nothing about ActiveCamera — the editor's free
-    // camera goes on driving it exactly as before — and the screen view is made
-    // from it, so a renderer that reads only CameraViews still draws what it did. "As before" is
-    // measured: the same frames in a world whose director is switched off.
+    // With no camera entity the director must change nothing about ActiveCamera — whatever drives it
+    // goes on driving it exactly as before — and the screen view is made from it, so a renderer that
+    // reads only CameraViews still draws what it did. "As before" is measured: the same frames in a
+    // world whose director is switched off.
     [Fact]
     public void WithNoCameraEntity_ActiveCameraIsLeftExactlyAsItWas()
     {
         using var app = App();
         using var without = App();
         Assert.True(without.World.Systems.Disable(CameraDirector.Id));
-#pragma warning disable CS0618
-        foreach (bool rigEnabled in new[] { true, false })
-        foreach (bool driven in new[] { true, false })
+        foreach (float fov in new[] { 1.1f, 0.7f })
         {
             foreach (var world in new[] { app.World, without.World })
             {
                 var camera = world.Resources.Get<ActiveCamera>();
                 camera.Position = new Vector3(7, 8, 9);
                 camera.Rotation = Quaternion.CreateFromYawPitchRoll(1f, 0.1f, 0f);
-                camera.FovY = 1.1f;
+                camera.FovY = fov;
                 camera.Near = 0.2f;
                 camera.Far = 500f;
-                camera.RigEnabled = rigEnabled;
-                camera.DrivenByRig = driven;
                 world.RunFrame(Frame, 0.5f);
             }
 
@@ -131,7 +124,6 @@ public class CameraTests
             var expected = without.World.Resources.Get<ActiveCamera>();
             Assert.Equal((expected.Position, expected.Rotation, expected.FovY, expected.Near, expected.Far),
                          (active.Position, active.Rotation, active.FovY, active.Near, active.Far));
-            Assert.Equal((expected.RigEnabled, expected.DrivenByRig), (active.RigEnabled, active.DrivenByRig));
             Assert.Equal(new Vector3(7, 8, 9), active.Position);
 
             var views = app.World.Resources.Get<CameraViews>();
@@ -143,61 +135,114 @@ public class CameraTests
             Assert.Equal(CameraProjection.Perspective, main.Projection);
             Assert.Equal(CameraViewport.Full, main.Viewport);
         }
-#pragma warning restore CS0618
     }
 
-    // cam_free: the editor camera flies over whatever camera entity had the screen, and gets it back.
+    // cam_free is not a special case any more (#81): the editor's free camera is a DebugCamera, which
+    // overrides the screen over every camera — a scripted cut at its high priority included — while it
+    // flies, and gives the screen back to the next camera down when it stops. ActiveCamera mirrors
+    // whichever has it.
     [Fact]
-    public void CamFree_GivesTheScreenToTheFreeCamera_AndLeavesActiveCameraToIt()
+    public void ADebugCameraOverridesTheScreen_OverEveryCamera_AndGivesItBack()
     {
         using var app = App();
         var world = app.World;
-        var e = CameraAt(world, new Vector3(1, 1, 1), Camera.Perspective());
-        var active = world.Resources.Get<ActiveCamera>();
-        world.RunFrame(Frame, 1f);
-#pragma warning disable CS0618
-        Assert.True(active.DrivenByRig);
-
-        active.RigEnabled = false;                 // what DevTools does for cam_free
-        active.Position = new Vector3(50, 0, 0);   // and where the free camera is
-        world.RunFrame(Frame, 1f);
         var views = world.Resources.Get<CameraViews>();
-        Assert.True(views.Main.FromActiveCamera);
-        Assert.Equal(new Vector3(50, 0, 0), active.Position);   // not overwritten
-        Assert.Equal(new Vector3(50, 0, 0), views.Main.Position);
-        Assert.False(active.DrivenByRig);          // so the free camera may write it next frame
+        var active = world.Resources.Get<ActiveCamera>();
+        var e = CameraAt(world, new Vector3(1, 1, 1), Camera.Perspective());
+        var cut = CameraAt(world, new Vector3(2, 2, 2), Camera.Perspective(priority: 100));
+        var free = DebugCamera.Spawn(world, "free camera");
+        var look = Quaternion.CreateFromYawPitchRoll(0.3f, 0f, 0f);
 
-        active.RigEnabled = true;
+        DebugCamera.Drive(world, free, new Vector3(50, 0, 0), look, overriding: true);
+        world.RunFrame(Frame, 1f);
+        Assert.Equal(free, views.Main.Entity);
+        Assert.False(views.Main.FromActiveCamera);
+        Assert.Equal(new Vector3(50, 0, 0), views.Main.Position);
+        Assert.Equal(new Vector3(50, 0, 0), active.Position);        // mirrored like any camera
+        Assert.Equal(CameraRigKind.None, world.MainViewRig());       // not a rig: no crosshair, no hands
+        Assert.Equal(1, views.Count);                                // one view per target: nothing else drawn
+
+        DebugCamera.Drive(world, free, new Vector3(50, 0, 0), look, overriding: false);
+        world.RunFrame(Frame, 1f);
+        Assert.Equal(cut, views.Main.Entity);                        // back to the next camera down
+        world.Get<Camera>(cut).Enabled = false;
         world.RunFrame(Frame, 1f);
         Assert.Equal(e, views.Main.Entity);
         Assert.Equal(new Vector3(1, 1, 1), active.Position);
-        Assert.True(active.DrivenByRig);
-#pragma warning restore CS0618
     }
 
-    // A camera entity that lets go of the screen (turned off, destroyed) gives it back: the flag the
-    // director set is cleared, so the editor's free camera drives again from where the camera was.
+    // Not overriding, the free camera draws only where no other camera does: over a world with no player
+    // it has the screen (the editor camera flying, as before #81), and any camera a game places — at any
+    // priority — takes it. The ActiveCamera fallback is below it, so it is the screen view, not ActiveCamera.
     [Fact]
-    public void WhenTheLastCameraEntityLetsGo_DrivenByRigIsCleared()
+    public void AnIdleDebugCamera_DrawsOnlyWhereNothingElseDoes()
+    {
+        using var app = App();
+        var world = app.World;
+        var views = world.Resources.Get<CameraViews>();
+        var free = DebugCamera.Spawn(world, "free camera");
+        DebugCamera.Drive(world, free, new Vector3(0, 3, 0), Quaternion.Identity, overriding: false);
+        world.RunFrame(Frame, 1f);
+        Assert.Equal(free, views.Main.Entity);
+        Assert.Equal(new Vector3(0, 3, 0), world.Resources.Get<ActiveCamera>().Position);
+
+        var low = CameraAt(world, new Vector3(9, 9, 9), Camera.Perspective(priority: -1_000_000));
+        world.RunFrame(Frame, 1f);
+        Assert.Equal(low, views.Main.Entity);
+
+        // A debug camera into a target of its own leaves the screen alone.
+        var viewport = DebugCamera.Spawn(world, "viewport", "editor");
+        DebugCamera.Drive(world, viewport, new Vector3(1, 2, 3), Quaternion.Identity, overriding: true);
+        world.RunFrame(Frame, 1f);
+        Assert.Equal(low, views.Main.Entity);
+        var into = views[views.IndexOf("editor")];
+        Assert.Equal((viewport, new Vector3(1, 2, 3)), (into.Entity, into.Position));
+    }
+
+    // A camera entity that lets go of the screen (turned off, destroyed) gives it back to ActiveCamera,
+    // which is left where the camera was rather than snapped anywhere.
+    [Fact]
+    public void WhenTheLastCameraEntityLetsGo_ActiveCameraStaysWhereItWas()
     {
         using var app = App();
         var world = app.World;
         var e = CameraAt(world, new Vector3(3, 2, 1), Camera.Perspective());
         var active = world.Resources.Get<ActiveCamera>();
-#pragma warning disable CS0618
         world.RunFrame(Frame, 1f);
-        Assert.True(active.DrivenByRig);
+        Assert.False(world.Resources.Get<CameraViews>().Main.FromActiveCamera);
 
         world.Get<Camera>(e).Enabled = false;
         world.RunFrame(Frame, 1f);
-        Assert.False(active.DrivenByRig);
         Assert.Equal(new Vector3(3, 2, 1), active.Position);   // left where the camera was
         Assert.True(world.Resources.Get<CameraViews>().Main.FromActiveCamera);
 
-        active.DrivenByRig = true;                 // somebody else's business now: left alone
+        active.Position = new Vector3(8, 8, 8);                // and whoever drives it now, drives it
         world.RunFrame(Frame, 1f);
-        Assert.True(active.DrivenByRig);
-#pragma warning restore CS0618
+        Assert.Equal(new Vector3(8, 8, 8), world.Resources.Get<CameraViews>().Main.Position);
+    }
+
+    // world.TryGetMainView: the screen's view once the director ran; ActiveCamera's without a director;
+    // nothing in a world with neither. What audio, weather, fx_play and ent_spawn place things by.
+    [Fact]
+    public void TryGetMainView_IsTheScreensView_ElseActiveCamera_ElseNothing()
+    {
+        using var app = App();
+        var world = app.World;
+        var e = CameraAt(world, new Vector3(4, 0, 0), Camera.Orthographic(height: 20f));
+        world.RunFrame(Frame, 1f);
+        Assert.True(world.TryGetMainView(out var view));
+        Assert.Equal((e, new Vector3(4, 0, 0), CameraProjection.Orthographic), (view.Entity, view.Position, view.Projection));
+
+        using var off = App();
+        Assert.True(off.World.Systems.Disable(CameraDirector.Id));
+        off.World.Resources.Get<ActiveCamera>().Position = new Vector3(0, 7, 0);
+        off.World.RunFrame(Frame, 1f);
+        Assert.True(off.World.TryGetMainView(out var fallback));
+        Assert.True(fallback.FromActiveCamera);
+        Assert.Equal(new Vector3(0, 7, 0), fallback.Position);
+
+        using var tool = new World("tool");
+        Assert.False(tool.TryGetMainView(out _));
     }
 
     // Without a rig a camera looks from its GlobalTransform interpolated to the frame; a rig's CameraPose

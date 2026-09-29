@@ -23,19 +23,17 @@ namespace Sage.Simulation;
 // Camera), so every view is usable as it stands.
 //
 // **ActiveCamera (decision D1).** ActiveCamera stays, as a mirror of the screen view that only the
-// director writes once a camera entity draws to the screen. Until one does, the director leaves it
-// **exactly** as it is — the editor's free camera (or a game's own code) drives it — and the screen view
-// is made from it (a null Entity), so a renderer that reads only CameraViews still draws. Since #78 a
-// player pawn always has a camera entity (PlayerCameraSystem), so in a game this is the case with no
-// player yet, or a world without the character plugin.
-//   - A camera entity on the screen: its view is mirrored into ActiveCamera (position, rotation, field
-//     of view, clip planes) and ActiveCamera.DrivenByRig is set, so the editor's free camera stands aside
-//     as it does for a rig, and fixed-tick readers never see the free camera's pose in between. When no
-//     camera entity has the screen any more, the director clears the flag it set (#79; before, it stayed
-//     set and the free camera never got the view back).
-//   - `cam_free` (ActiveCamera.RigEnabled false): the free camera wins the screen whatever the entities
-//     say; the director writes nothing to ActiveCamera and clears DrivenByRig (only if a camera entity
-//     had claimed the screen: with none, nothing had set it).
+// director writes once a camera entity draws to the screen: its position, rotation, field of view and
+// clip planes are copied every frame, so the code that reads it and fixed-tick readers see the view the
+// player sees. Until one does, the director leaves it **exactly** as it is — a game's own code may drive
+// it — and the screen view is made from it (a null Entity), so a renderer that reads only CameraViews
+// still draws. Since #78 a player pawn always has a camera entity (PlayerCameraSystem), so in a game this
+// is the case with no player yet, or a world without the character plugin.
+//
+// **No special cases (#81).** The editor's free camera (`cam_free`) is a camera entity too, a
+// `DebugCamera` at a priority above every other camera while it overrides the screen and below every
+// other otherwise; the director resolves it like any camera. `ActiveCamera.RigEnabled` and `DrivenByRig`
+// (the protocol with the free camera before #81) are neither read nor written any more.
 [Experimental("SAGE0123")]
 [System(Id, Phase.FrameUpdate)]
 public sealed class CameraDirector : ISystem
@@ -50,7 +48,6 @@ public sealed class CameraDirector : ISystem
     private readonly Query<Camera, CameraPose> _rigged;
     private readonly Query<Camera, GlobalTransform> _placed;
     private ActiveCamera? _active;
-    private bool _claimed;   // a camera entity had the screen last frame, so DrivenByRig is ours to clear
 
     public CameraDirector(World world)
     {
@@ -95,15 +92,7 @@ public sealed class CameraDirector : ISystem
         var active = _active;
         if (active != null)
         {
-#pragma warning disable CS0618   // ActiveCamera's rig flags: obsolete for games, still the protocol with cam_free until #81
-            if (!active.RigEnabled)
-            {
-                // cam_free: the editor camera flies, over whatever camera had the screen.
-                if (screen >= 0 || _claimed) active.DrivenByRig = false;
-                _claimed = false;
-                _views.SetScreen(FromActiveCamera(active));
-            }
-            else if (screen >= 0)
+            if (screen >= 0)
             {
                 ref readonly var main = ref _views[screen];
                 active.Position = main.Position;
@@ -111,19 +100,14 @@ public sealed class CameraDirector : ISystem
                 active.FovY = main.FovY;
                 active.Near = main.Near;
                 active.Far = main.Far;
-                active.DrivenByRig = true;
-                _claimed = true;
             }
             else
             {
                 // No camera entity: ActiveCamera as it is. If one had the screen until now (it was turned
-                // off, destroyed, or its rig let go), the flag it set is cleared, so the free camera may
-                // drive again — it is left where the camera last was, not snapped anywhere.
-                if (_claimed) active.DrivenByRig = false;
-                _claimed = false;
+                // off, destroyed, or its rig let go), ActiveCamera is left where that camera last was,
+                // not snapped anywhere.
                 _views.SetScreen(FromActiveCamera(active));
             }
-#pragma warning restore CS0618
         }
         _views.End();
     }
@@ -150,7 +134,8 @@ public sealed class CameraDirector : ISystem
         };
     }
 
-    private static CameraView FromActiveCamera(ActiveCamera active) => new()
+    // The screen view made from ActiveCamera, when no camera entity draws there (also TryGetMainView's).
+    internal static CameraView FromActiveCamera(ActiveCamera active) => new()
     {
         Entity = default,   // IsNull: made from ActiveCamera
         Target = "",

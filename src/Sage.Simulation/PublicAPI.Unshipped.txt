@@ -5,6 +5,8 @@ const Sage.Simulation.Camera.DefaultNear = 0.1 -> float
 const Sage.Simulation.Camera.DefaultOrthoHeight = 10 -> float
 const Sage.Simulation.CameraDirector.Id = "sage.camera.director" -> string!
 const Sage.Simulation.CameraMath.MaxFovY = 3.1241393 -> float
+const Sage.Simulation.DebugCamera.IdlePriority = -2147483647 -> int
+const Sage.Simulation.DebugCamera.OverridePriority = 2147483647 -> int
 const Sage.Simulation.FirstPersonRigSystem.Id = "sage.camera.first_person" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
 const Sage.Simulation.ThirdPersonRig.DefaultDistance = 3 -> float
@@ -98,6 +100,7 @@ Sage.Simulation.CameraViews.this[int index].get -> Sage.Simulation.CameraView
 Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> bool
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
+Sage.Simulation.DebugCamera
 Sage.Simulation.FirstPersonRig
 Sage.Simulation.FirstPersonRig.Enabled -> bool
 Sage.Simulation.FirstPersonRig.FirstPersonRig() -> void
@@ -111,6 +114,7 @@ Sage.Simulation.FirstPersonRigPart.ShowBody -> bool
 Sage.Simulation.FirstPersonRigSystem
 Sage.Simulation.FirstPersonRigSystem.FirstPersonRigSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 Sage.Simulation.FirstPersonRigSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.MainViewExtensions
 Sage.Simulation.PlayerCamera
 Sage.Simulation.PlayerCamera.PlayerCamera() -> void
 Sage.Simulation.PlayerCameraSystem
@@ -172,6 +176,9 @@ static Sage.Simulation.CameraRigs.RigOf(Sage.Simulation.World! world, Sage.Simul
 static Sage.Simulation.CameraViewport.Full.get -> Sage.Simulation.CameraViewport
 static Sage.Simulation.CameraViewport.operator !=(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
 static Sage.Simulation.CameraViewport.operator ==(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
+static Sage.Simulation.DebugCamera.Drive(Sage.Simulation.World! world, Sage.Simulation.Entity camera, System.Numerics.Vector3 position, System.Numerics.Quaternion rotation, bool overriding) -> void
+static Sage.Simulation.DebugCamera.Spawn(Sage.Simulation.World! world, string! name, string! target = "") -> Sage.Simulation.Entity
+static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.FirstPersonCameraSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
