@@ -18,7 +18,7 @@ dotnet build Sage.sln -c Development -p:SageSkipShaders=true   # then the regist
     -dump-registry ../../../../../user/registry.json)   # what check_docs reads; Windows: no xvfb-run
 python3 tools/check_docs.py --tests <count>             # docs against the registry dump; --fix rewrites counts
 src/Sage.Cli/bin/Debug/net8.0/sage validate games/Sandbox # content checks, headless; exits 1 on errors (--mounts dir[=ns] ...)
-src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello --out schemas   # JSON Schemas for VS Code;
+src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas   # JSON Schemas for VS Code;
                                                         # rerun after adding a field/component/part/record (CI diffs schemas/)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
 ```
