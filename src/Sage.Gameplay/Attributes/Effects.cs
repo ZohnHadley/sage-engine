@@ -40,6 +40,11 @@ public sealed class EffectRecord
     // has no price because no player composes with it. It lives on the effect rather than in the
     // spellmaker so that a mod adding an effect prices it in the same file it defines it in.
     public float Cost;
+
+    // What it does besides changing numbers (issue #28): knock back, teleport, summon, dispel, or a
+    // game's own `effect_execution`. Run whenever the effect is applied, and on each period of a
+    // periodic one (EffectExecutions).
+    public List<IEffectExecution> Executions = new();
 }
 
 // A running effect on an entity.
@@ -96,6 +101,7 @@ public static class Effects
         if (record.Duration == EffectDuration.Instant)
         {
             ApplyInstant(world, target, record, registries, 1, magnitude);
+            EffectExecutions.Run(world, target, source, effect, record, 1, magnitude);
             return true;
         }
 
@@ -113,6 +119,7 @@ public static class Effects
                 if (record.Stacking == EffectStacking.Stack)
                     existing.Stacks = Math.Min(existing.Stacks + 1, Math.Max(record.MaxStacks, 1));
                 list[i] = existing;
+                EffectExecutions.Run(world, target, source, effect, record, existing.Stacks, magnitude);
                 return true;
             }
         }
@@ -126,6 +133,7 @@ public static class Effects
             Stacks = 1,
             Magnitude = magnitude,
         });
+        EffectExecutions.Run(world, target, source, effect, record, 1, magnitude);
         return true;
     }
 
@@ -270,6 +278,7 @@ public sealed class EffectSystem : ISystem
                 {
                     running.PeriodTimer -= record.Period;
                     Effects.ApplyInstant(world, entity, record, _registries, running.Stacks, Magnitude(running));
+                    EffectExecutions.Run(world, entity, running.Source, running.Record, record, running.Stacks, Magnitude(running));
                 }
             }
 

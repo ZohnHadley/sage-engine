@@ -131,6 +131,27 @@
           "$ref": "ids.schema.json#/definitions/record:sound"
         }
       ]
+    },
+    "uses": {
+      "description": "(List<IItemUse>)",
+      "type": "array",
+      "items": {
+        "$ref": "vocabularies.schema.json#/definitions/item_use"
+      }
+    },
+    "uses+": {
+      "description": "Adds to \"uses\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "$ref": "vocabularies.schema.json#/definitions/item_use"
+      }
+    },
+    "uses-": {
+      "description": "Removes these from \"uses\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "$ref": "vocabularies.schema.json#/definitions/item_use"
+      }
     }
   },
   "additionalProperties": false

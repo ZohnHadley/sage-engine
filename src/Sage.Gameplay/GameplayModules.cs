@@ -112,6 +112,7 @@ public sealed class AttributesModule : IModule
         // before CharacterModule, which installs the engine's view only when nobody has.
         world.Resources.Replace<CharacterConventions>(new CharacterConventionsFromRecord(_records!));
         world.AddSystem(new EffectSystem(world, _records!));
+        world.AddSystem(new EffectExecutionSystem(world));   // summons and dispels, after the tick (issue #28)
         world.AddSystem(new DeathRulesSystem(world));
     }
 }
@@ -211,6 +212,7 @@ public sealed class ItemsModule : IModule
 
         _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
             "How far the Use action reaches, in metres.", 0.5f, 10f);
+        ItemUses.RegisterCommands(ctx.Engine);   // use_item (issue #28)
 
         // There is no inventory screen yet — 13 is a later phase — so these are how you handle
         // things: `give` puts one in your pack, `equip` puts it in your hand, and the combat log
@@ -292,6 +294,9 @@ public sealed class AbilitiesModule : IModule
         // plugin), and the records are made from it on load (F21's spellmaker, 09 §3.1).
         Spellmaker.RegisterCommands(ctx.Engine);
         _actions.Register("Cast", ActionKind.Button);
+        // An ability's `delivery` names a registered one (issue #28), checked when content loads.
+        var vocabularies = ctx.Engine.Vocabularies;
+        _records.AddCheck<AbilityRecord>((ability, check) => AbilityDeliveries.Check(vocabularies, ability, check));
 
         _debugCasts = ctx.Engine.CVars.Register("cast_debug", false, CVarFlags.DevOnly,
             "Draw every cast: where it reached and what it caught (needs r_debugdraw 1).");
@@ -370,9 +375,12 @@ public sealed class AIModule : IModule
     {
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
-        // Interrupt names are a fixed set, so a schedule's are checked as content loads (issue #22);
-        // task names are open (a game adds its own until the first world), so they are checked then.
-        _records.AddCheck<AIScheduleRecord>(CheckInterrupts);
+        // Condition and selector names are vocabularies (issue #28), sealed when content loads, so a
+        // schedule's interrupts and a profile's selector and rules are checked then (issue #22); task
+        // names are open until the first world, so they are checked then.
+        var vocabularies = ctx.Engine.Vocabularies;
+        _records.AddCheck<AIScheduleRecord>((schedule, check) => AIChecks.Schedule(vocabularies, schedule, check));
+        _records.AddCheck<AIProfileRecord>((profile, check) => AIChecks.Profile(vocabularies, profile, check));
         _aiDebug = ctx.Engine.CVars.Register("ai_debug", false, CVarFlags.DevOnly,
             "Draw what each creature can see and what it is chasing (needs r_debugdraw 1).");
 
@@ -406,17 +414,6 @@ public sealed class AIModule : IModule
     }
 
     public void Start(ModuleContext ctx) => ctx.Provide(AITasks);
-
-    private static void CheckInterrupts(AIScheduleRecord schedule, RecordCheck check)
-    {
-        var names = Enum.GetNames<AICondition>();
-        for (int i = 0; i < schedule.Interrupts.Count; i++)
-        {
-            string name = schedule.Interrupts[i];
-            if (!Enum.TryParse(name, true, out AICondition _) || int.TryParse(name, out _))
-                check.Error($"Interrupts[{i}]", $"no interrupt condition '{name}'" + Spelling.Suggest(name, names));
-        }
-    }
 
     // Every schedule's tasks against the tasks there are, once, when the first world has them all:
     // an unknown name or a misnamed argument is reported at its line, before any creature runs it.

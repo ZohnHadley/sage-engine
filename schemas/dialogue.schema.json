@@ -243,6 +243,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -423,6 +465,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -603,6 +687,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -801,6 +927,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -981,6 +1149,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -1161,6 +1371,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -1359,6 +1611,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -1539,6 +1833,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false
@@ -1719,6 +2055,48 @@
                 "refusal": {
                   "description": "(string)",
                   "type": "string"
+                },
+                "conditions": {
+                  "description": "(List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions+": {
+                  "description": "Adds to \"conditions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "conditions-": {
+                  "description": "Removes these from \"conditions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                "actions": {
+                  "description": "(List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions+": {
+                  "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "actions-": {
+                  "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
                 }
               },
               "additionalProperties": false

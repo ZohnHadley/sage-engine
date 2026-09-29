@@ -138,21 +138,21 @@
       "description": "(List<string>)",
       "type": "array",
       "items": {
-        "type": "string"
+        "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
       }
     },
     "interrupts+": {
       "description": "Adds to \"interrupts\": what a base or an earlier definition listed, then these.",
       "type": "array",
       "items": {
-        "type": "string"
+        "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
       }
     },
     "interrupts-": {
       "description": "Removes these from \"interrupts\" (as a base or an earlier definition listed it).",
       "type": "array",
       "items": {
-        "type": "string"
+        "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
       }
     }
   },

@@ -39,6 +39,12 @@ public sealed class AbilityRecord
     public RecordRef<EffectRecord> Cooldown;
 
     public AbilityTargeting Targeting = AbilityTargeting.Self;
+    // How it gets there, by name (issue #28): any registered `ability_delivery`, which wins over
+    // `targeting`; empty means the one `targeting` names (AbilityDeliveries).
+    [VocabularyRef("ability_delivery"), Property(Tooltip = "A registered delivery by name; empty = the one targeting names")]
+    public string Delivery = "";
+    internal IAbilityDelivery? DeliveryInstance;   // found once (AbilityDeliveries.Of)
+    internal string? DeliveryFor;
     public float Range = 8f;      // how far Touch and TouchArea reach
     public float Radius = 0f;     // the *burst*: how far from where it lands Area and TouchArea catch
     public float Width = 0.2f;    // how fat the thing that travels is, for what Touch can hit

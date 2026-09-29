@@ -60,6 +60,17 @@ public sealed class AIProfileRecord
     public float MeleeRange = 1.8f;      // how close it wants to be before swinging
     public float ThinkRate = 6f;         // times per second
     public float TurnSpeedDegrees = 360f;
+
+    // How it picks a schedule (issue #28): an `ai_schedule_selector` by id. Empty is `rules` when the
+    // profile has rules and `default` (the engine's choice, through the conventions' schedules) when not.
+    [VocabularyRef("ai_schedule_selector"), Property(Tooltip = "How it picks a schedule; empty = \"rules\" with rules, else \"default\"")]
+    public string Selector = "";
+    // The `rules` selector's: the first rule whose conditions hold names the schedule (AIScheduleRule).
+    public List<AIScheduleRule> Rules = new();
+
+    // The selector named, found once (AIScheduleSelectors.Of): a think must not look it up by name.
+    internal IAIScheduleSelector? SelectorInstance;
+    internal string? SelectorFor;
 }
 
 // An ordered task list plus the conditions that interrupt it (16 §3.4). Each task is an object naming
@@ -74,22 +85,24 @@ public sealed class AIProfileRecord
 public sealed class AIScheduleRecord
 {
     public List<AITaskStep> Tasks = new();
-    public List<string> Interrupts = new();   // AICondition names
+    [VocabularyRef("ai_condition")]
+    public List<string> Interrupts = new();   // AI condition names (issue #28: the engine's and the game's)
 
-    private ulong _mask = ulong.MaxValue;
+    private ulong _mask;
+    private List<string>? _maskFor;
     private AITaskStep[]? _steps;
 
     // As an array, made once: schedules are read every tick.
     public AITaskStep[] Steps() => _steps ??= Tasks.ToArray();
 
-    public ulong InterruptMask()
+    // The interrupts as condition bits, made again only when a reload replaced the list. An unknown
+    // name was a load error (AIChecks.Schedule), and means no bit here.
+    public ulong InterruptMask(AIConditions conditions)
     {
-        if (_mask != ulong.MaxValue) return _mask;
-        ulong mask = 0;
-        foreach (var name in Interrupts)
-            if (Enum.TryParse(name, true, out AICondition condition)) mask |= (ulong)condition;
-            else Log.Warn(LogCat.AI, $"ai_schedule: unknown interrupt condition '{name}'");
-        return _mask = mask;
+        if (ReferenceEquals(_maskFor, Interrupts)) return _mask;
+        _mask = conditions.MaskOf(Interrupts);
+        _maskFor = Interrupts;
+        return _mask;
     }
 }
 
