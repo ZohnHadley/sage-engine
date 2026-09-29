@@ -70,7 +70,7 @@ Materials are records (05 §3.5). They're hot-reloadable, mod-patchable, and can
   - `cull`: `Back`, `None`;
   - `depthWrite`, `depthTest`;
   - `sampler`: filter `Point`/`Linear`/`Anisotropic`, address `Wrap`/`Clamp`.
-- **Params:** name → value, where the value is a float, a 2–4 element array, or a texture path. **Every parameter an effect uses must get a value** from the material or its `base` chain, because GL ignores `.fx` default values. Missing ones are a validation error, and the engine's `lit_default`/`sprite_default` records supply sane values to inherit from.
+- **Params:** name → value, where the value is a float, a 2–4 element array, a texture path, or `rt:<name>`, one of the renderer's named render targets (06 §3.4a; a mirror, a minimap, a security camera's screen). **Every parameter an effect uses must get a value** from the material or its `base` chain, because GL ignores `.fx` default values. Missing ones are a validation error, and the engine's `lit_default`/`sprite_default` records supply sane values to inherit from.
 - **Per-object variation** (tint, flash-on-hit) uses `RenderItem.Tint`/`SpriteInstance.Tint` (06). Per-entity parameter blocks come later if needed.
 
 ### 3.4 Parameter binding

@@ -1,1 +1,2 @@
 #nullable enable
+Sage.Simulation.MaterialParam.RenderTarget -> string?
