@@ -91,8 +91,9 @@ Not every record comes from a file. A spell the player composed in the spellmake
 - **It is a cache, not a store of record.** The data behind such a record lives in the save (09
   "As built (saved resources)"), and the record is composed from it again on load. Nothing serializes
   a record.
-- Composed records take a **namespace of their own** (`custom:`), so nothing a player made can shadow
-  content, and `rec_list` shows at a glance which is which.
+- Composed records take a **namespace of their own** (`custom:`, or the RPG kit's `rpg_conventions`
+  `spellNamespace` since #27), so nothing a player made can shadow content, and `rec_list` shows at a
+  glance which is which.
 
 ### As built (prefabs, 2026-09-23 — F31)
 
