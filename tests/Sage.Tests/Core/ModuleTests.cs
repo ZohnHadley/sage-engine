@@ -191,6 +191,26 @@ public class ModuleTests
         Assert.Equal(Path.Combine(Path.GetFullPath(dir), "bin", BuildInfo.ConfigurationName, "net8.0", "Test.dll"), m.AssemblyPath);
     }
 
+    // Without -game no build falls back to a game any more (issue #32): it is an error that says what to
+    // pass and, inside this repository, which games there are. A packaged game's ./game still works.
+    [Fact]
+    public void GameManifest_Locate_WithoutAGameIsAnErrorThatListsTheGames()
+    {
+        string inRepo = Path.Combine(TestEnv.FolderAbove("Sage.sln"), "src", "Sage.Host", "bin");
+        var ex = Assert.Throws<FileNotFoundException>(() => GameManifest.Locate(null, inRepo));
+        Assert.Contains("pass -game <folder>", ex.Message);
+        Assert.Contains("games/Hello", ex.Message);
+        Assert.Contains("games/Sandbox", ex.Message);
+        Assert.Contains("tests/games/scene-only", ex.Message);
+
+        string exe = TestEnv.NewTempDir();
+        Assert.Throws<FileNotFoundException>(() => GameManifest.Locate("", exe));
+        Directory.CreateDirectory(Path.Combine(exe, "game"));
+        File.WriteAllText(Path.Combine(exe, "game", "game.json"), """{ "id": "packaged" }""");
+        Assert.Equal(Path.GetFullPath(Path.Combine(exe, "game")), GameManifest.Locate(null, exe));
+        Assert.Equal(Path.GetFullPath("elsewhere"), GameManifest.Locate("elsewhere", exe));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("""{ "name": "x" }""")]

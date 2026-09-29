@@ -50,6 +50,39 @@ public sealed class GameManifest
     private string Resolve(string path) =>
         Path.GetFullPath(Path.Combine(Directory, path.Replace("{config}", BuildInfo.ConfigurationName)));
 
+    // The game folder a host runs (issue #32): `-game <folder>`, else a `game` folder beside the executable
+    // (how a packaged game ships). Nothing else: a dev build used to load games/Sandbox when it found this
+    // repository above it, so a forgotten -game ran the wrong game without a word. Now it is an error that
+    // says what to pass, and lists the repository's games when there is one.
+    public static string Locate(string? gameOption, string executableDirectory)
+    {
+        if (!string.IsNullOrEmpty(gameOption))
+            return Path.GetFullPath(gameOption);
+        string beside = Path.Combine(executableDirectory, "game");
+        if (File.Exists(Path.Combine(beside, "game.json")))
+            return Path.GetFullPath(beside);
+
+        string message = "No game to run: pass -game <folder> (a folder with a game.json), or put the game in a " +
+                         $"'game' folder beside the executable ({Path.GetFullPath(executableDirectory)}). A game built " +
+                         "with Sage.Sdk passes -game itself: `dotnet run` in its folder.";
+        for (var dir = new DirectoryInfo(executableDirectory); dir != null; dir = dir.Parent)
+        {
+            if (!File.Exists(Path.Combine(dir.FullName, "Sage.sln"))) continue;
+            var games = new[] { "games", Path.Combine("tests", "games") }
+                .Select(folder => Path.Combine(dir.FullName, folder))
+                .Where(System.IO.Directory.Exists)
+                .SelectMany(System.IO.Directory.GetDirectories)
+                .Where(game => File.Exists(Path.Combine(game, "game.json")))
+                .Select(game => Path.GetRelativePath(dir.FullName, game).Replace('\\', '/'))
+                .OrderBy(game => game, StringComparer.Ordinal)
+                .ToList();
+            if (games.Count > 0)
+                message += $" Games in {dir.FullName}: {string.Join(", ", games)}.";
+            break;
+        }
+        throw new FileNotFoundException(message);
+    }
+
     public static GameManifest Load(string gameDirectory)
     {
         string path = Path.Combine(gameDirectory, "game.json");
