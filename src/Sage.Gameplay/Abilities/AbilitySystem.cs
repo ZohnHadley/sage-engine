@@ -134,46 +134,19 @@ public sealed class AbilitySystem : ISystem
         if (!world.IsAlive(cast.Caster)) return;
         if (!_records.TryGet(cast.Ability, out AbilityRecord record)) return;
 
-        Vector3 point = cast.Point;
-        Entity struck = default;
-
         // The spell leaving the caster, wherever it is going: a projectile launched here, or a burst
         // that happens in the same breath. Where it *lands* is the payload's own cues.
         foreach (var cue in record.CastCues) world.Events.Send(new CueTriggered(cue, cast.Caster, cast.Point));
 
-        switch (record.Targeting)
+        // Where it lands is the delivery's (issue #28); one that lands later — a projectile, which
+        // raises its `Cues` where it arrives — returns false and the payload waits for it.
+        if (AbilityDeliveries.Of(world, record) is not { } delivery) return;
+        var release = new AbilityRelease
         {
-            case AbilityTargeting.Self:
-                break;   // the payload knows what "on me" means
-
-            case AbilityTargeting.Projectile:
-                // Nothing lands now: the payload is delivered by ProjectileSystem when it arrives.
-                world.Launch(cast.Caster, cast.Ability, record, cast.Point + cast.Aim * 0.4f, cast.Aim);
-                return;   // its `Cues` are raised where it arrives, by the payload
-
-            case AbilityTargeting.Area:
-                break;   // the burst is on the caster; the payload gathers around `point`
-
-            case AbilityTargeting.Touch:
-            case AbilityTargeting.TouchArea:
-            {
-                // `Width`, not `Radius`: how fat the bolt is on its way, not how wide it bursts.
-                // Sweeping with the burst radius made a fireball start already overlapping its own
-                // caster, and an overlapping sweep used to report nothing at all (review #55) — so a
-                // three-metre burst reached exactly nothing. The caster is left out now, and something
-                // else the bolt starts inside is struck at distance 0 (issue #30).
-                var hit = _space.Sweep(Collider.Sphere(MathF.Max(record.Width, 0.05f)),
-                    new Pose { Position = cast.Point, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                    cast.Aim, record.Range, LayerMask.All, ignore: cast.Caster);
-
-                point = hit.Entity.IsNull || hit.Entity == cast.Caster
-                    ? cast.Point + cast.Aim * record.Range
-                    : cast.Point + cast.Aim * hit.Distance;
-
-                struck = hit.Entity;
-                break;
-            }
-        }
+            World = world, Caster = cast.Caster, Ability = cast.Ability, Record = record,
+            Origin = cast.Point, Aim = cast.Aim, Space = _space,
+        };
+        if (!delivery.Release(in release, out var point, out var struck)) return;
 
         _payload.Deliver(world, cast.Caster, cast.Ability, record, point, struck);
 

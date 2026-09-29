@@ -615,6 +615,36 @@ measured need.
 | Items have no "use" (`Items.cs:21-35`) | `[ItemUse]` registry (consume, read, cast) |
 | 64-tag and 64-action caps (`Attributes.cs:48`, `PlayerCommand.cs:26`) | bitset grows, or tags become interned ids |
 
+As built (issue #28): one mechanism serves every row. A vocabulary is an interface (or abstract class)
+marked `[Vocabulary("name", Key = …, Default = …)]`; an entry is a class carrying an attribute derived
+from `VocabularyEntryAttribute<T>` (`[AICondition("is_night")]`), and `VocabularyGenerator` registers
+it for its plugin just before that plugin's `Init`, like records and parts (SAGE0100–0104; SAGE0020
+covers `Vocabulary<T>.Register` by hand). `Engine.Vocabularies` holds the registries, sealed when
+content loads; a field of a vocabulary's type reads `"name"` or `{ "<key>": "name", …settings }` from
+JSON through the engine's converter, strictly (an unknown name or setting is a load error with the
+nearest one). `sage schema` writes `schemas/vocabularies.schema.json` (every registered id, and each
+entry's settings), a `[VocabularyRef]` string names ids from it, and the registry dump lists every
+entry with its owner. Every closed set became one, with today's behaviour as registered defaults and
+no content change (test: AnUnknownEntryIsALoadErrorThatSaysTheNearestName)
+(test: TheEnginesEntriesAreRegisteredByTheirPlugins):
+
+| Was | Is | Owner | Defaults |
+|---|---|---|---|
+| `AICondition` mask | `ai_condition` (`IAICondition.Sense`, asked every think); a game's take free bits of the 64 | `sage.gameplay.ai` | the eleven perceived ones, at their old bits |
+| `ChooseSchedule` | `ai_schedule_selector`, named by `ai_profile.selector`; `rules` reads the profile's `rules` | `sage.gameplay.ai` | `default` (the old code), `rules` |
+| `ObjectiveKind` | `quest_objective` (`QuestObjective`: measured or counted via `QuestHappening`) | `sage.gameplay.quests` | `kill`, `have`, `reach`, `talk` |
+| dialogue `requires`/`then` | `condition`/`action` lists on an option; the old fields are shorthand for them | `sage.gameplay.dialogue` (quest ones: `sage.gameplay.quests`) | `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest`; `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest` |
+| `AbilityTargeting` + payload | `ability_delivery` (release, then gather), named by `delivery`; `targeting` still names one | `sage.gameplay.abilities` | `self`, `touch`, `touch_area`, `area`, `projectile` |
+| effects only modify numbers | `effect_execution` list on an effect, run on each application and period | `sage.gameplay.attributes` | `knockback`, `teleport`, `summon`, `dispel` |
+| items have no use | `item_use` list on an item, `world.UseItem`, `use_item` | `sage.gameplay.items` | `consume`, `read`, `cast` |
+| 64 tags, 64 buttons | a 256-bit `TagSet`; a two-word `ActionMask` (128 buttons) | — | saves still write tags by name |
+
+(test: AGamesConditionPicksASchedulesThroughAProfilesRules) (test: ReachTalkAndAGamesObjectiveMoveAQuestAlong)
+(test: ADialogueOptionUsesAGamesConditionAndActionsByName) (test: AnAbilityNamesAGamesDelivery)
+(test: AnEffectRunsAGamesExecutionAndTheEnginesOwn) (test: AnItemIsUsedThroughItsUsesInOrder)
+(test: TagsGoPast64) (test: ActionMask_HoldsButtonsPast64). AI conditions stay a 64-bit mask, which a
+think reads without allocating; the conditions and actions are stage 2's seed, read by dialogue only so far.
+
 **Stage 2: one shared condition and action language in data.** Anything that decides or does
 something uses the same typed vocabulary, including dialogue, quests, triggers, items, AI and I/O:
 
@@ -871,7 +901,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
-| 3 — Carve the base | **In progress.** Done: the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25) and the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), each with an "As built" note; next #28, #31 and #32 |
+| 3 — Carve the base | **In progress.** Done: the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`) and open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses), each with an "As built" note; next #32, then #31 |
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|

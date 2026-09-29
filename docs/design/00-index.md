@@ -111,7 +111,7 @@ source: the self test plants a name and counts only a dump has, and fails if the
 | Fixed phases | `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late` | 03 |
 | Frame phases | `FrameUpdate → Extract → Render → Overlay` | 03, 06 |
 | `Transform` | Local position/rotation/scale, relative to the parent (or to the root's sector) | 03 |
-| `Attributes` / `GameplayTags` | Components: an entity's attribute values (health, mana, armour…) and its 64-tag bitset | 16 |
+| `Attributes` / `GameplayTags` | Components: an entity's attribute values (health, mana, armour…) and its tag bitset (256 tags since issue #28) | 16 |
 | `damage_type` / `attack` | Records: a kind of damage and the attribute that resists it; one swing's reach, arc, damage and timing | 16 |
 | `Combat.ApplyDamage` / `Damaged` | The one damage pipeline (resistance → an effect on health) and the game event it sends, which the death seam reads to name a killer | 16, 04 |
 | `GameEvents` / `EventReader<T>` | The world's event bus (`world.Events`) and a system's cursor into one queue of it: every event once, none missed | 04 |

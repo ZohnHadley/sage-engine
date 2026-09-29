@@ -73,6 +73,198 @@
       "description": "(float, default 360)",
       "default": 360,
       "type": "number"
+    },
+    "selector": {
+      "description": "How it picks a schedule; empty = \"rules\" with rules, else \"default\". (string, default \"\")",
+      "default": "",
+      "anyOf": [
+        {
+          "$ref": "vocabularies.schema.json#/definitions/ai_schedule_selector:id"
+        },
+        {
+          "const": ""
+        }
+      ]
+    },
+    "rules": {
+      "description": "(List<AIScheduleRule>)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "when": {
+            "description": "Conditions that must all hold. (List<string>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "when+": {
+            "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "when-": {
+            "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless": {
+            "description": "Conditions none of which may hold. (List<string>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless+": {
+            "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless-": {
+            "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "schedule": {
+            "description": "The schedule this rule runs. Names a ai_schedule record. (RecordRef<AIScheduleRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rules+": {
+      "description": "Adds to \"rules\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "when": {
+            "description": "Conditions that must all hold. (List<string>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "when+": {
+            "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "when-": {
+            "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless": {
+            "description": "Conditions none of which may hold. (List<string>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless+": {
+            "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless-": {
+            "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "schedule": {
+            "description": "The schedule this rule runs. Names a ai_schedule record. (RecordRef<AIScheduleRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rules-": {
+      "description": "Removes these from \"rules\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "when": {
+            "description": "Conditions that must all hold. (List<string>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "when+": {
+            "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "when-": {
+            "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless": {
+            "description": "Conditions none of which may hold. (List<string>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless+": {
+            "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "unless-": {
+            "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+            }
+          },
+          "schedule": {
+            "description": "The schedule this rule runs. Names a ai_schedule record. (RecordRef<AIScheduleRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false

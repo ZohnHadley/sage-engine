@@ -372,7 +372,7 @@ public class AnalyzerTests
     // Runs `analyzer` over `source`, compiled against the engine and Friflo with the given MSBuild
     // properties visible (as CompilerVisibleProperty makes them), and returns what it reported in source
     // order — failing if the source itself does not compile, so a test cannot pass on a typo.
-    private static ImmutableArray<Diagnostic> Analyze(string source, DiagnosticAnalyzer analyzer,
+    internal static ImmutableArray<Diagnostic> Analyze(string source, DiagnosticAnalyzer analyzer,
                                                       params (string Name, string Value)[] properties) =>
         AnalyzeWith(source, analyzer, Array.Empty<MetadataReference>(), properties);
 

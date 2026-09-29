@@ -669,6 +669,9 @@ public sealed class RecordStore
             return string.IsNullOrWhiteSpace(text) || text.Contains(':') ? node.DeepClone() : JsonValue.Create($"{ns}:{text.Trim()}");
         }
 
+        // A vocabulary entry (issue #28) is qualified as the type its key names.
+        if (node is JsonObject && PolymorphicTypes?.Invoke(type, node) is { } concrete) type = concrete;
+
         if (node is JsonArray array)
         {
             var element = ElementType(type);
@@ -707,6 +710,10 @@ public sealed class RecordStore
     }
 
     private readonly Dictionary<(Type, string), Func<string, JsonNode?, string, Type?>> _bodies = new();
+
+    // For a field typed as an interface or abstract class whose JSON says which concrete type it is (a
+    // vocabulary entry, issue #28): that type, or null. Set by the Engine over its Vocabularies.
+    public Func<Type, JsonNode?, Type?>? PolymorphicTypes { get; set; }
 
     // For a record field that maps a key to a body whose type the key decides — a prefab's
     // "components" and "parts" — how to find that type: `typeOf(key, body, fileNamespace)`, null when

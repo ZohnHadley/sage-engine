@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Sage.Gameplay;
 
@@ -15,20 +16,51 @@ namespace Sage.Gameplay;
 // console command does. The quest itself never decides to advance except by its objectives being met,
 // which is the one rule that keeps "what state is this quest in" answerable from the journal alone.
 
-public enum ObjectiveKind
+// What a stage asks for (issue #28: an open vocabulary, where it was `ObjectiveKind { Kill, Have }`).
+// Content names one by its `kind` — `kill` when it says none, as before — and a game declares more:
+//
+//   [QuestObjective("light_beacon", Plugin = "mygame")]
+//   public sealed class LightBeacon : QuestObjective { … Notice(…) for its own happening … }
+//
+// An objective either *measures* its progress from the world now (`have`: what is in the bag) or
+// *counts* happenings the quests plugin hears of — a kill, a conversation, where the player is standing
+// (QuestHappening) — which the journal remembers, one number per objective (Journal.Entry.Progress).
+// The engine's are `kill`, `have`, `reach` and `talk` (QuestObjectives.cs).
+[Vocabulary("quest_objective", Key = "kind", Default = "kill")]
+public abstract class QuestObjective
 {
-    Kill,       // members of a faction, or entities from a prefab
-    Have,       // an item, in the bag, right now
+    [Property(Min = 1, Tooltip = "How many it takes")]
+    public int Count = 1;
+    [Property(Tooltip = "What the journal calls it; empty = built from its fields")]
+    public string Text = "";
+
+    // Progress measured from the world now, or null when the journal's count is the progress.
+    public virtual int? Measure(World world, Entity player) => null;
+
+    // How much a happening counts toward this objective; 0 when it is none of its business.
+    public virtual int Notice(World world, in QuestHappening happened) => 0;
+
+    // True for an objective asked every tick with the player (`reach`): a happening nothing sends.
+    [JsonIgnore] public virtual bool Polls => false;
+
+    // What the journal says when the content wrote no `text`: "kill 3 wolves".
+    public abstract string Describe(World world, int count);
 }
 
-public sealed class QuestObjective
+public sealed class QuestObjectiveAttribute : VocabularyEntryAttribute<QuestObjective>
 {
-    public ObjectiveKind Kind = ObjectiveKind.Kill;
-    public RecordRef<FactionRecord> Faction; // Kill: whose
-    public RecordRef<PrefabRecord> Prefab; // Kill: or what, exactly
-    public RecordRef<ItemRecord> Item; // Have: which
-    public int Count = 1;
-    public string Text = "";        // what the journal calls it; empty = built from the fields
+    public QuestObjectiveAttribute(string id) : base(id) { }
+}
+
+// Something the quests plugin heard of: `Kind` says what (the engine's are below; a game sends its own
+// with Quests.Notice), `Subject` is what it happened to and `Actor` who did it.
+public readonly record struct QuestHappening(string Kind, Entity Subject, Entity Actor)
+{
+    public const string Killed = "killed";     // Subject died; Actor killed it (Died)
+    public const string Talked = "talked";     // Subject said Node to Actor (Spoke)
+    public const string Polled = "polled";     // every tick, Subject = Actor = the player
+
+    public string Node { get; init; } = "";
 }
 
 public sealed class QuestStage
@@ -187,25 +219,36 @@ public static class Quests
         if (stage == null || objective < 0 || objective >= stage.Objectives.Count) return 0;
 
         var wanted = stage.Objectives[objective];
-        if (wanted.Kind == ObjectiveKind.Have)
-            return carrier.IsNull ? 0 : world.CountOf(carrier, wanted.Item);
+        if (wanted.Measure(world, carrier) is int measured) return measured;
         return objective < entry.Progress.Count ? entry.Progress[objective] : 0;
     }
 
     // The death seam's other half (16 §3.3): a kill is the commonest objective in any game, and the only
     // one the engine can count without being told. QuestDeathSystem calls it for every `Died` (#26).
-    public static void OnKilled(World world, Entity victim, Entity killer)
+    public static void OnKilled(World world, Entity victim, Entity killer) =>
+        Notice(world, new QuestHappening(QuestHappening.Killed, victim, killer));
+
+    // Something happened that an objective may count (issue #28): every active stage's objectives are
+    // asked how much it counts, and a quest whose objectives are then all met moves on. The engine sends
+    // kills, conversations and the player's whereabouts; a game sends its own kinds.
+    public static void Notice(World world, in QuestHappening happened)
     {
-        if (killer.IsNull || !world.IsAlive(killer) || !killer.Tags.Has<PlayerControlled>()) return;
-
         if (JournalOf(world) is not { Entries.Count: > 0 } journal) return;
+        if (Count(world, journal, in happened, pollsOnly: false)) Check(world);
+    }
 
+    // The objectives that watch the player (`reach`), asked with where the player is (QuestWatchSystem).
+    public static void Poll(World world, Entity player)
+    {
+        if (player.IsNull || JournalOf(world) is not { Entries.Count: > 0 } journal) return;
+        var happened = new QuestHappening(QuestHappening.Polled, player, player);
+        if (Count(world, journal, in happened, pollsOnly: true)) Check(world);
+    }
+
+    private static bool Count(World world, Journal journal, in QuestHappening happened, bool pollsOnly)
+    {
         var records = world.Resources.Get<RecordStore>();
-        // The victim's own `Faction` component, not Factions.FactionOf: counting "wolves killed" is a
-        // fact about the wolf, and holds in a game without the factions plugin (issue #26).
-        RecordId faction = world.TryGet<Faction>(victim, out var member) ? member.Id : default;
-        RecordId prefab = world.TryGet<FromPrefab>(victim, out var from) ? from.Prefab : default;
-
+        bool counted = false;
         foreach (var entry in journal.Entries)
         {
             if (entry.Finished || !records.TryGet(entry.Quest, out QuestRecord record)) continue;
@@ -215,17 +258,18 @@ public static class Quests
             for (int i = 0; i < stage.Objectives.Count; i++)
             {
                 var objective = stage.Objectives[i];
-                if (objective.Kind != ObjectiveKind.Kill) continue;
-                if (!objective.Faction.IsEmpty && objective.Faction != faction) continue;
-                if (!objective.Prefab.IsEmpty && objective.Prefab != prefab) continue;
-                if (objective.Faction.IsEmpty && objective.Prefab.IsEmpty) continue;   // counts nothing
+                if (pollsOnly && !objective.Polls) continue;
+                int amount = objective.Notice(world, in happened);
+                if (amount <= 0) continue;
 
                 while (entry.Progress.Count <= i) entry.Progress.Add(0);
-                entry.Progress[i]++;
+                int wanted = Math.Max(objective.Count, 1);
+                if (entry.Progress[i] >= wanted) continue;   // done; standing in the circle adds nothing
+                entry.Progress[i] = Math.Min(entry.Progress[i] + amount, wanted);
+                counted = true;
             }
         }
-
-        Check(world);
+        return counted;
     }
 
     // Are this stage's objectives all met? If so, move on — which is the only way a quest advances by
@@ -262,17 +306,11 @@ public static class Quests
     }
 
     // What an objective says in a journal, when the content did not write the line itself.
-    public static string Describe(World world, QuestObjective objective, int progress)
-    {
-        if (objective.Text.Length > 0) return objective.Text;
-        int count = Math.Max(objective.Count, 1);
-        string what = objective.Kind == ObjectiveKind.Have
-            ? Label(world, objective.Item)
-            : !objective.Prefab.IsEmpty ? Label(world, objective.Prefab) : Label(world, objective.Faction);
-        return objective.Kind == ObjectiveKind.Have ? $"carry {count} {what}" : $"kill {count} {what}";
-    }
+    public static string Describe(World world, QuestObjective objective, int progress) =>
+        objective.Text.Length > 0 ? objective.Text : objective.Describe(world, Math.Max(objective.Count, 1));
 
-    private static string Label(World world, RecordId id)
+    // What content calls a record: its label when it has one (an item, a faction), else its name.
+    public static string Label(World world, RecordId id)
     {
         if (id.IsEmpty) return "something";
         var records = world.Resources.Get<RecordStore>();

@@ -87,6 +87,8 @@ def read_registry(path):
         'part': names('prefabParts', 'id'),
         'component': names('components', 'id'),
         'system': names('systems', 'id'),
+        # The open vocabularies (issue #28): their names and every registered entry's id.
+        'vocabulary': names('vocabularies') | {entry['id'] for v in dump.get('vocabularies', []) for entry in v.get('entries', [])},
         'source': '%s (%s build, game %s)' % (rel(path), dump.get('config', '?'), dump.get('game') or 'none'),
     }
 
@@ -211,7 +213,8 @@ def check_citations(problems, tests):
 
 def check_vocabulary(problems, code, literals, content_names):
     """A snake_case name that looks like a command or cvar has to exist in the registry, the code or content."""
-    vocabulary = literals | content_names | code['command'] | code['cvar'] | code['record'] | code['part']
+    vocabulary = literals | content_names | code['command'] | code['cvar'] | code['record'] | code['part'] \
+        | code.get('vocabulary', set())
     prefixes = {name.split('_')[0] for name in (code['command'] | code['cvar']) if '_' in name}
 
     checked = 0

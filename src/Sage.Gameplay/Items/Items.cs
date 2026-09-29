@@ -56,6 +56,7 @@ public sealed class ItemRecord
     public int Value;                       // gold; shops are later
     public int MaxStack = 1;                // > 1 for arrows, potions and the like
     public RecordRef<SoundRecord> Sound;     // picking it up (11 §3, F4)
+    public List<IItemUse> Uses = new();     // what using it does, in order (issue #28, ItemUses)
 
     public string Describe(RecordId id) => string.IsNullOrEmpty(Label) ? id.Name : Label;
 }

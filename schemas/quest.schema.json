@@ -72,150 +72,21 @@
             "description": "(List<QuestObjective>)",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "objectives+": {
             "description": "Adds to \"objectives\": what a base or an earlier definition listed, then these.",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "objectives-": {
             "description": "Removes these from \"objectives\" (as a base or an earlier definition listed it).",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "next": {
@@ -248,150 +119,21 @@
             "description": "(List<QuestObjective>)",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "objectives+": {
             "description": "Adds to \"objectives\": what a base or an earlier definition listed, then these.",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "objectives-": {
             "description": "Removes these from \"objectives\" (as a base or an earlier definition listed it).",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "next": {
@@ -424,150 +166,21 @@
             "description": "(List<QuestObjective>)",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "objectives+": {
             "description": "Adds to \"objectives\": what a base or an earlier definition listed, then these.",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "objectives-": {
             "description": "Removes these from \"objectives\" (as a base or an earlier definition listed it).",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "description": "(ObjectiveKind)",
-                  "type": "string",
-                  "enum": [
-                    "Kill",
-                    "Have"
-                  ]
-                },
-                "faction": {
-                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:faction"
-                    }
-                  ]
-                },
-                "prefab": {
-                  "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:prefab"
-                    }
-                  ]
-                },
-                "item": {
-                  "description": "Names a item record. (RecordRef<ItemRecord>)",
-                  "allOf": [
-                    {
-                      "$ref": "ids.schema.json#/definitions/record:item"
-                    }
-                  ]
-                },
-                "count": {
-                  "description": "(int)",
-                  "type": "integer"
-                },
-                "text": {
-                  "description": "(string)",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
+              "$ref": "vocabularies.schema.json#/definitions/quest_objective"
             }
           },
           "next": {

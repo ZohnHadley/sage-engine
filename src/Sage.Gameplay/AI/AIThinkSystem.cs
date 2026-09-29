@@ -20,6 +20,7 @@ public sealed class AIThinkSystem : ISystem
     private readonly AITaskRegistry _tasks;
     private readonly IPhysicsWorld _space;
     private readonly ActionId _attack;
+    private readonly AIConditions _conditions;   // condition names to bits, and the game's to sense (issue #28)
     private static readonly AIProfileRecord FallbackProfile = new();
 
     public AIThinkSystem(World world, RecordStore records, AITaskRegistry tasks, ActionRegistry actions)
@@ -32,6 +33,7 @@ public sealed class AIThinkSystem : ISystem
         _tasks = tasks;
         _space = world.Resources.Get<IPhysicsWorld>();
         _attack = actions.Get(world.Conventions().Actions.Attack);
+        _conditions = AIConditions.Of(world);
 
         // A creature's path and the place it last saw somebody are positions in origin space, and the
         // origin moves (R6). Nothing else shifts them, so this does — the rule is that *everything*
@@ -66,7 +68,8 @@ public sealed class AIThinkSystem : ISystem
                     float period = 1f / MathF.Max(profile.ThinkRate, 0.1f);
                     s[n].NextThink = time + period * (0.85f + 0.3f * ((entity.Id % 7) / 7f));   // staggered
                     Perceive(world, entity, ref t[n], ref s[n], profile, time);
-                    ChooseSchedule(ref s[n], conventions.Schedules);
+                    Sense(world, entity, ref t[n], ref s[n], profile, time);
+                    ChooseSchedule(world, entity, ref s[n], profile, conventions.Schedules);
                 }
 
                 RunTask(world, entity, ref t[n], ref s[n], ref i[n], profile, dt);
@@ -158,14 +161,14 @@ public sealed class AIThinkSystem : ISystem
                 // Only a cooldown is worth waiting for, and only for a spell that would reach from
                 // here. Anything else (no mana, a blocking tag) needs the agent to do something else.
                 if (why == CastRefusal.OnCooldown && record != null && distance <= record.Range * 0.9f
-                    && record.Targeting != AbilityTargeting.Self)
+                    && !AbilityDeliveries.OnCaster(world, record))
                     comingBack = true;
                 continue;
             }
             // A self-targeted spell is a buff, not an attack: casting one *at* an enemy is a decision
             // of its own, and a creature that healed itself instead of fighting would be worse than
             // one that does not try (16 §3.4, left for the ranged/support behaviours).
-            if (record.Targeting == AbilityTargeting.Self) continue;
+            if (AbilityDeliveries.OnCaster(world, record)) continue;
             // A little short of the full range: at the very edge a projectile's flight time runs out
             // just as it arrives, and a touch sweep grazes past.
             if (distance > record.Range * 0.9f) continue;
@@ -292,32 +295,44 @@ public sealed class AIThinkSystem : ISystem
         distance = d;
     }
 
-    // Which schedule fits what it knows. Code, like HL1's GetSchedule; utility scoring or a behaviour
-    // tree can replace this without touching the tasks (16 §3.4).
-    // `Has`, not `Enum.HasFlag`: the framework method takes its argument as a boxed `Enum`, and the
-    // JIT only sometimes sees through it. Measured with R18's scale test, the ten `HasFlag` calls a
-    // think used to cost about 23 bytes per creature per tick — the whole of what the AI allocated.
-    private static bool Has(ulong conditions, AICondition flag) => (conditions & (ulong)flag) != 0;
-
-    //
-    // The schedules themselves are the game's (gameplay_conventions `schedules`, issue #26): this picks
-    // *which situation* it is in, and the conventions say which record that situation runs.
-    private static void ChooseSchedule(ref AIState state, AIScheduleConventions schedules)
+    // The game's own conditions (issue #28), after the engine's perception: each is asked with what the
+    // creature knows so far, in bit order, and sets its bit when it holds. Nothing to do in a game that
+    // declares none, which is every game before #28.
+    private void Sense(World world, Entity entity, ref Transform transform, ref AIState state, AIProfileRecord profile, float time)
     {
-        ulong conditions = state.Conditions;
-        // Reach first, then magic, then closing the distance. A creature that can swing and is close
-        // enough swings — cheaper, and no mana — and one that cannot swing at all casts instead of
-        // walking into reach to do nothing, which is what a caster with no `Melee` used to do.
-        RecordId wanted =
-            Has(conditions, AICondition.Casting) ? schedules.CastSpell :
-            Has(conditions, AICondition.EnemyInMeleeRange) && Has(conditions, AICondition.CanMelee) ? schedules.MeleeAttack :
-            Has(conditions, AICondition.CanCastAtEnemy) ? schedules.CastSpell :
-            // Between casts, a creature that cannot swing holds where it is rather than charging: it
-            // is already in range, and its spell is seconds away. Charging is what it did before this
-            // line existed, and it walked a pure caster into melee reach to stand there empty-handed.
-            Has(conditions, AICondition.SpellComingBack) && !Has(conditions, AICondition.CanMelee) ? schedules.HoldGround :
-            Has(conditions, AICondition.SeeEnemy) || Has(conditions, AICondition.RememberEnemy) ? schedules.Chase :
-            schedules.Idle;
+        var sensed = _conditions.Sensed;
+        if (sensed.Length == 0) return;
+        var perception = new AIPerception
+        {
+            World = world,
+            Entity = entity,
+            Transform = ref transform,
+            State = ref state,
+            Profile = profile,
+            Time = time,
+            Conditions = state.Conditions,
+        };
+        foreach (var sensor in sensed)
+            if (sensor.Condition.Sense(in perception)) perception.Conditions |= sensor.Bit;
+        state.Conditions = perception.Conditions;
+    }
+
+    // Which schedule fits what it knows: the profile's selector decides (issue #28), and the engine's
+    // own choice — HL1's GetSchedule, in code — is the `default` one (DefaultScheduleSelector). Utility
+    // scoring or a behaviour tree is another selector, and nothing about the tasks changes (16 §3.4).
+    private void ChooseSchedule(World world, Entity entity, ref AIState state, AIProfileRecord profile, AIScheduleConventions schedules)
+    {
+        var choice = new AIScheduleChoice
+        {
+            World = world,
+            Entity = entity,
+            Conditions = state.Conditions,
+            Current = state.Schedule,
+            Profile = profile,
+            Schedules = schedules,
+            Names = _conditions,
+        };
+        RecordId wanted = AIScheduleSelectors.Of(world, profile).Choose(in choice);
 
         if (state.Schedule == wanted) return;
         state.Schedule = wanted;
@@ -337,7 +352,7 @@ public sealed class AIThinkSystem : ISystem
         }
 
         var steps = schedule.Steps();
-        if ((state.Conditions & schedule.InterruptMask()) != 0 && state.TaskIndex > 0)
+        if ((state.Conditions & schedule.InterruptMask(_conditions)) != 0 && state.TaskIndex > 0)
         {
             state.TaskIndex = steps.Length;   // interrupted: let the next think choose again
         }

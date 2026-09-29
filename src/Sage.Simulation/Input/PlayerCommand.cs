@@ -23,7 +23,8 @@ public sealed record ActionInfo(ActionId Id, string Name, ActionKind Kind);
 
 public sealed class ActionRegistry
 {
-    public const int MaxButtons = 64;
+    // Two words of an ActionMask (issue #28: it was one, and a game with its own verbs ran out).
+    public const int MaxButtons = 128;
 
     private readonly List<ActionInfo> _actions = new();
     private readonly Dictionary<string, ActionInfo> _byName = new(StringComparer.OrdinalIgnoreCase);
@@ -69,12 +70,27 @@ public sealed class ActionRegistry
     public ActionInfo this[ActionId id] => _actions[id.Index];
 }
 
-// Button actions as bits (08 §3.4).
-public readonly record struct ActionMask(ulong Bits)
+// Button actions as bits (08 §3.4): the first 64 in `Bits`, the next 64 in `High` (issue #28). Two
+// words rather than an array, so a command and a pawn's intent stay plain values that copy for free.
+public readonly record struct ActionMask(ulong Bits, ulong High = 0)
 {
-    public bool Has(ActionId action) => action.Bit >= 0 && (Bits & (1UL << action.Bit)) != 0;
-    public ActionMask With(ActionId action) => action.Bit >= 0 ? new ActionMask(Bits | (1UL << action.Bit)) : this;
-    public bool IsEmpty => Bits == 0;
+    public bool Has(ActionId action) => action.Bit switch
+    {
+        < 0 or >= ActionRegistry.MaxButtons => false,
+        < 64 => (Bits & (1UL << action.Bit)) != 0,
+        _ => (High & (1UL << (action.Bit - 64))) != 0,
+    };
+
+    public ActionMask With(ActionId action) => action.Bit switch
+    {
+        < 0 or >= ActionRegistry.MaxButtons => this,
+        < 64 => new ActionMask(Bits | (1UL << action.Bit), High),
+        _ => new ActionMask(Bits, High | (1UL << (action.Bit - 64))),
+    };
+
+    public ActionMask Union(ActionMask other) => new(Bits | other.Bits, High | other.High);
+
+    public bool IsEmpty => Bits == 0 && High == 0;
 }
 
 // One tick's worth of player intent (08 §3.4).
@@ -123,7 +139,7 @@ public sealed class CommandLatch
 {
     public static readonly float PitchLimit = 89f * MathF.PI / 180f;
 
-    private ulong _held, _pressed, _released;
+    private ActionMask _held, _pressed, _released;
     private Vector2 _move;
 
     public float ViewYaw { get; private set; }
@@ -132,9 +148,9 @@ public sealed class CommandLatch
     // Once per frame, with this frame's resolved action state.
     public void AddFrame(ActionMask held, ActionMask pressed, ActionMask released, Vector2 move)
     {
-        _held = held.Bits;
-        _pressed |= pressed.Bits;
-        _released |= released.Bits;
+        _held = held;
+        _pressed = _pressed.Union(pressed);
+        _released = _released.Union(released);
         _move = move.LengthSquared() > 1f ? Vector2.Normalize(move) : move;
     }
 
@@ -161,12 +177,12 @@ public sealed class CommandLatch
             Move = _move,
             ViewYaw = ViewYaw,
             ViewPitch = ViewPitch,
-            Held = new ActionMask(_held),
-            Pressed = new ActionMask(_pressed),
-            Released = new ActionMask(_released),
+            Held = _held,
+            Pressed = _pressed,
+            Released = _released,
         };
-        _pressed = 0;
-        _released = 0;
+        _pressed = default;
+        _released = default;
         return command;
     }
 

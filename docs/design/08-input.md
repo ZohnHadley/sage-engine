@@ -73,7 +73,7 @@ public struct PlayerCommand                  // Sage.Simulation (simulation data
 - **Sampling:** at the start of each fixed tick (01 §5.2), before the `Commands` phase.
 - **Look runs at frame rate:** every *frame*, right after the devices are polled and **before** any ticks run (01 §5.2), the `Look` axis is added to the local controller's view angles. Each command sampled that frame therefore carries up-to-date angles, and the camera rig reads the same angles in `FrameUpdate`, so aiming is smooth at any refresh rate with no frame of lag.
 - **Latching:** a tap shorter than one tick (at a high frame rate) is not lost. `Pressed`/`Released` accumulate across all frames since the last tick. If no tick runs in a frame, they keep accumulating.
-- **`ActionMask`:** a 64-bit mask. Action ids are assigned at boot from the registered actions (engine + framework + game). There's a limit of 64 button actions, logged at boot if exceeded.
+- **`ActionMask`:** a 64-bit mask. Action ids are assigned at boot from the registered actions (engine + framework + game). There's a limit of 64 button actions, logged at boot if exceeded. *As built (issue #28):* two words, 128 button actions; registering the 129th throws (test: ActionMask_HoldsButtonsPast64).
 - **Consumption:** in `Commands`, the `PlayerController` (16) turns the command into pawn intent (move, look, jump, use). AI controllers produce the same intent without a `PlayerCommand`.
 
 ### 3.5 Text input
