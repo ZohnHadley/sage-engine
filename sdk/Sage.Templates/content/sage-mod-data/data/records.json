@@ -1,0 +1,7 @@
+[
+  // A new thing, in this mod's namespace: `mymod:crate`, placeable like any prefab.
+  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } }
+
+  // Changing a record of the game or the engine is a patch: only the fields named change, e.g.
+  //   { "type": "gameplay_conventions", "id": "sage:default_conventions", "patch": true, "health": "hp" }
+]

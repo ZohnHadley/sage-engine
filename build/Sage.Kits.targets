@@ -16,7 +16,7 @@
     <ProjectReference Include="@(SageKit)" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 
-  <Target Name="SageCopyKits" AfterTargets="CopyFilesToOutputDirectory">
+  <Target Name="SageResolveKitFiles">
     <MSBuild Projects="@(SageKit)" Targets="GetTargetPath" Properties="Configuration=$(Configuration)">
       <Output TaskParameter="TargetOutputs" ItemName="_SageKitAssembly" />
     </MSBuild>
@@ -25,6 +25,16 @@
       <_SageKitFile Include="@(_SageKitAssembly->'%(RootDir)%(Directory)%(Filename).pdb')"
                     Condition="Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
     </ItemGroup>
+  </Target>
+
+  <Target Name="SageCopyKits" AfterTargets="CopyFilesToOutputDirectory" DependsOnTargets="SageResolveKitFiles">
     <Copy SourceFiles="@(_SageKitFile)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- And into `dotnet publish`'s folder (issue #32), which is built from its own list, not from bin/. -->
+  <Target Name="SagePublishKits" AfterTargets="ComputeResolvedFilesToPublishList" DependsOnTargets="SageResolveKitFiles">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_SageKitFile)" RelativePath="%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
   </Target>
 </Project>

@@ -1,0 +1,57 @@
+<Project>
+  <!--
+    Sage.Sdk (issue #32, REDESIGN §4.8): what a game project needs to build against the engine, in or
+    out of this repository.
+
+        <Project Sdk="Sage.Sdk/0.1.0">          a game anywhere: the SDK and the engine come from NuGet
+        </Project>
+
+    It carries the target framework (net8.0, RollForward=Major), the Debug/Development/Shipping
+    configurations, nullable and implicit usings plus the engine's namespaces, the engine references
+    (compile-time only: at run time the host's own copies are used), the Sage analyzers and generators,
+    compilation of the game's own .fx shaders, a check that game.json loads what the build writes, and
+    `dotnet run` launching the Player host with -game. Sdk.targets has the second half.
+
+    Two ways to be imported, one set of files:
+      - from a package (Sage.Sdk.nupkg, tools/pack_sdk.sh): the pack writes Sage.Sdk.Package.props beside
+        this file, which says so and names the version. The engine comes from the Sage.Player package of
+        the same version: its host folder per configuration is what the game compiles against and what
+        `dotnet run` starts.
+      - from this repository's source tree (games/Hello): no Sage.Sdk.Package.props, so the engine is
+        src/ by ProjectReference and the host is src/Sage.Host's build output. MSBuild resolves a
+        `Sdk="..."` attribute only from the .NET SDK or NuGet, so an in-repo game imports the two files
+        by path instead, which is exactly what the attribute does:
+            <Import Project="..\..\sdk\Sage.Sdk\Sdk\Sdk.props" />  ...  <Import Project="...\Sdk.targets" />
+  -->
+  <PropertyGroup>
+    <UsingSageSdk>true</UsingSageSdk>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Sage.Sdk.Package.props" Condition="Exists('$(MSBuildThisFileDirectory)Sage.Sdk.Package.props')" />
+
+  <PropertyGroup Condition="'$(SageSdkFromPackage)' != 'true'">
+    <SageRepositoryRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..'))</SageRepositoryRoot>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <!-- Debug, Development, Shipping (Release an alias of Shipping): the engine's file, copied into the
+       package by the pack. -->
+  <Import Project="$(MSBuildThisFileDirectory)Sage.Configurations.props" Condition="'$(SageSdkFromPackage)' == 'true'" />
+  <Import Project="$(SageRepositoryRoot)build\Sage.Configurations.props" Condition="'$(SageSdkFromPackage)' != 'true'" />
+
+  <!-- Defaults a project can override. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <OutputType>Library</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- A game's bin/ holds its own dll and nothing else: the host has the engine and its packages. -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- bin/<config>/Game.dll, with no target framework in the path, so game.json's "assembly" does not
+         change when the framework does. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

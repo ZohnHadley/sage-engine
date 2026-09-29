@@ -825,6 +825,32 @@ because it edits the live play world (`DevTools.cs:84-87`).
   Games build **out of tree**. This also fixes a bug: `Release` is an alias of `Shipping`, so `{config}`
   resolves to `bin/Shipping`, and the solution maps the games' Release to Debug
   (`GameManifest.cs:41`, `Sage.sln:238-267`). `dotnet publish` will probably not find the game DLL.
+
+  *As built (issue #32, 2026-09-29).* **`Sage.Sdk`** is `sdk/Sage.Sdk/Sdk/Sdk.props` and `Sdk.targets` over
+  `Microsoft.NET.Sdk`: net8.0 with RollForward=Major, the three configurations (build/'s file), nullable,
+  implicit usings and the engine's namespaces, the engine compile-time only, the Sage generators and
+  analyzers (SAGE0050 included), the game's own `.fx` compiled with `mgfxc` beside the source (so it is in
+  a mount), `bin/<config>/Name.dll` with no target framework in the path, and `dotnet run` starting the
+  host with `-game <project folder>` (`dotnet msbuild -t:SageValidate` runs `sage validate`). One set of
+  files, two resolutions: packed (`tools/pack_sdk.sh`), the SDK restores **`Sage.Player`** of its own
+  version, the host and the `sage` CLI per configuration, which is both what `dotnet run` starts and what
+  the game compiles against; imported by path from the source tree (`games/Hello`, the in-repository
+  proof), it references `src/` and runs `src/Sage.Host`'s build. `game.json` is **not** generated from
+  csproj properties: it stays the one hand-written manifest the host, `sage validate` and `sage schema`
+  read, and the SDK checks after each build that its `assembly` and `modules.add` paths are what was
+  built, including its own dll (SAGE0110, SAGE0111; SAGE0112 is a missing host or engine, SAGE0113 shaders
+  without `mgfxc`). A kit (#27) is `<SageKit Include="sage.kits.rpg" />`: its assembly (and its client half
+  in a client project) compile-time only, its namespace as a global using, and SAGE0114 when `game.json`'s
+  `"kits"` does not name it; `dotnet publish` of the host and the CLI now carries the kits too. The host no longer loads `games/Sandbox` without `-game`: it runs `./game` beside
+  the executable or stops with an error that lists the repository's games
+  (test: GameManifest_Locate_WithoutAGameIsAnErrorThatListsTheGames). Templates: `sage-game` (a client
+  half in the game folder, so `dotnet run` there starts the game, and the simulation half under
+  `Simulation/`), `sage-game-data` (no C#, the engine's scene) and `sage-mod-data` (a stub until data
+  mods). CI packs all three packages into a local feed and, outside the checkout, builds a game from
+  each template, validates it (the mod against the game), checks SAGE0050 fires, and `dotnet run`s it
+  under Xvfb, walking; Windows builds one with a shader of its own. Not yet: a public feed (§6 decision
+  7), `sage` as a dotnet tool, `sage-game-client`/`sage-mod-code`, the Release→Shipping `{config}` fix
+  below (a packed Player has no Release host, so the SDK says to use Shipping), and the Sandbox on the SDK.
 - **`dotnet new` templates:** `sage-game`, `sage-game-client`, `sage-mod-data` and `sage-mod-code`.
 - **`sage` CLI:**
   - `new`, `run`, `validate`, `schema`, `package`;
@@ -901,7 +927,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
-| 3 — Carve the base | **In progress.** Done: the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`) and open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses), each with an "As built" note; next #32, then #31 |
+| 3 — Carve the base | **In progress.** Done: the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), each with an "As built" note; next #31 |
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|

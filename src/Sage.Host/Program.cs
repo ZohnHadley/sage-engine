@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -13,12 +14,13 @@ using Sage.Host;
 Thread.CurrentThread.Name = "main";
 
 var launch = LaunchArgs.Parse(args);
-string gameDir = ResolveGameDirectory(launch);
 
 GameManifest manifest;
 try
 {
-    manifest = GameManifest.Load(gameDir);
+    // -game <folder>, else ./game beside the executable; without either it is an error that says so
+    // (GameManifest.Locate): no build falls back to games/Sandbox any more (issue #32).
+    manifest = GameManifest.Load(GameManifest.Locate(launch.Options.GetValueOrDefault("game"), AppContext.BaseDirectory));
 }
 catch (Exception ex) when (ex is FileNotFoundException or InvalidDataException or FormatException)
 {
@@ -106,15 +108,3 @@ finally
     Log.Shutdown();
 }
 return exitCode;
-
-// -game <folder>, else the Sandbox game in dev builds (found from the repo root), else ./game next to the exe.
-static string ResolveGameDirectory(LaunchArgs launch)
-{
-    if (launch.Options.TryGetValue("game", out var dir) && !string.IsNullOrEmpty(dir))
-        return Path.GetFullPath(dir);
-    if (BuildInfo.IsDevBuild)
-        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
-            if (File.Exists(Path.Combine(d.FullName, "Sage.sln")))
-                return Path.Combine(d.FullName, "games", "Sandbox");
-    return Path.Combine(AppContext.BaseDirectory, "game");
-}

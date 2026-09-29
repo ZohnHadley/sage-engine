@@ -21,6 +21,12 @@ src/Sage.Cli/bin/Debug/net8.0/sage validate games/Sandbox # content checks, head
 src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas   # JSON Schemas for VS Code;
                                                         # rerun after adding a field/component/part/record (CI diffs schemas/)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
+dotnet run --project games/Hello -c Development         # a Sage.Sdk game runs itself (host -game <folder>);
+                                                        # the host never guesses a game without -game
+tools/pack_sdk.sh /tmp/feed                             # Sage.Sdk + Sage.Player + templates -> local feed (after
+                                                        # building all three configs); then, outside the repo:
+dotnet new install /tmp/feed/Sage.Templates.0.1.0.nupkg && dotnet new sage-game -o /tmp/g --feed /tmp/feed
+tools/smoke_run.sh --dotnet-run /tmp/g 3 Shaders Audio  # `dotnet run` a template game under Xvfb
 ```
 
 ## Rules of the house
@@ -35,6 +41,8 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
   a registration written in `Start`, `OnWorldCreated`, `CreateRules` or a system is a build error
   (SAGE0020; every SAGE id is in `docs/MAKING_A_GAME.md` §10a). A simulation project sets
   `<SageSimulationOnly>true</SageSimulationOnly>`, which makes a MonoGame type a build error.
+  Games build with `Sage.Sdk` (`sdk/Sage.Sdk`; `games/Hello` imports it by path, the Sandbox still
+  uses `games/Directory.Build.props`); a game adds a kit with `<SageKit Include="sage.kits.rpg" />`; its build diagnostics are SAGE0110–0114.
   Every component and tag has a stable id, `[Component("ns:name")]` / `[Tag(...)]` (a build error
   without one); prefabs and saves use the id, never the C# name. Rename a saved field only with a
   `Version` bump and an `[Upgrade]` method; `tests/Sage.Tests/Content/Saves` holds golden saves that must load.

@@ -10,11 +10,11 @@ is. This explains how to use them.
 
 **There is a runnable example of everything in §2–§4**: [`games/Hello`](../games/Hello) is the smallest
 game this engine can run — four files and 45 lines of code — and it is built by the solution and <!-- counts: files games/Hello, code games/Hello -->
-exercised by the test suite, so it cannot quietly stop working. Read it alongside this, or start by
-copying it:
+exercised by the test suite, so it cannot quietly stop working. Read it alongside this, or start a
+game of your own from the `sage-game` template (§2):
 
 ```bash
-dotnet run --project src/Sage.Host -c Development -- -game games/Hello
+dotnet run --project games/Hello -c Development    # Sage.Sdk's `dotnet run`: the host with -game games/Hello
 ```
 
 ---
@@ -48,43 +48,96 @@ project, your *client half*.
 
 ## 2. The shape of a game
 
-Copy the Sandbox's layout; it is the worked example this guide refers to throughout.
+A game is a folder with a `game.json`, its content, and (usually) C# built with **`Sage.Sdk`**, the
+engine's MSBuild SDK (issue #32). It lives anywhere: nothing of it has to be inside this repository.
+Start from a template:
+
+```bash
+tools/pack_sdk.sh ~/sage-feed --build                        # once, in this repository: SDK, Player, templates
+dotnet new install ~/sage-feed/Sage.Templates.0.1.0.nupkg    # once per machine
+dotnet new sage-game -n YourGame -o ~/games/YourGame --feed ~/sage-feed
+cd ~/games/YourGame
+dotnet run                                                   # builds both halves, starts the host on this folder
+```
+
+There is no public feed yet (REDESIGN §6 decision 7), so `pack_sdk.sh` packs one on your machine:
+`Sage.Sdk`, `Sage.Player` (the host and the `sage` CLI, built in Debug, Development and Shipping) and
+`Sage.Templates`. `--feed` writes a `nuget.config` that names it; leave it out if the folder is already
+a package source (`dotnet nuget add source ~/sage-feed -n sage`). `--build` builds what it packs; on
+Linux that is without shaders (`mgfxc` needs Wine), so that Player boots and runs a game but draws
+nothing — pack on Windows, or after a Windows build, to see one.
+
+The templates:
+
+| Template | What you get |
+|---|---|
+| `sage-game` | A simulation half and a client half, `game.json`, a scene with a player on generated hills, and a HUD that shows what the rules say |
+| `sage-game-data` | No C# at all: `game.json` and records; the engine places the scene and spawns the player (like `tests/games/scene-only`) |
+| `sage-mod-data` | A stub data mod: `mod.json` and a record. Mods are not loaded yet (REDESIGN Stage B, 4j); check one against a game with `sage validate <game> --mounts <mod>=<id>` |
+
+`sage-game` makes this:
 
 ```
-games/YourGame/                 the simulation half
-    YourGame.csproj             references the base engine only
+YourGame/                       the game folder, and the client half
+    YourGame.Client.csproj      <Project Sdk="Sage.Sdk/0.1.0">: the engine, Sage.Client and MonoGame
+    YourGameClientModule.cs     HUD, screens, anything with a screen
     game.json                   the manifest the host reads
-    YourGameModule.cs           your IGameModule
     content/
         data/*.json             records: prefabs, items, materials, scene…
-        textures/*.png
-        audio/*.wav
-        models/*.glb
-        maps/*.map
-games/YourGame.Client/          the client half (optional but usual)
-    YourGame.Client.csproj      references the base engine, Sage.Client, YourGame
-    YourGameClientModule.cs     HUD, screens, anything with a screen
+        textures/*.png  audio/*.wav  models/*.glb  maps/*.map  shaders/*.fx
+    .config/dotnet-tools.json   mgfxc, for the game's own shaders
+    Simulation/                 the simulation half
+        YourGame.csproj         <SageSimulationOnly>true</SageSimulationOnly>: the base engine only
+        YourGameModule.cs       your IGameModule
 ```
 
-Both projects are plain libraries:
+The simulation half references the base engine only, so a MonoGame type there is a build error
+(SAGE0024) and its rules can be tested headlessly. The client half is the project in the game folder, so
+`dotnet run` there starts the game; a dedicated server would leave it out.
+
+**What the SDK gives a project.** `<Project Sdk="Sage.Sdk/0.1.0">` and a `RootNamespace` are all a
+project needs:
+
+- `net8.0` (rolling forward to a newer runtime), nullable, implicit usings, and the engine's namespaces
+  as global usings: `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D`, `Sage.Gameplay`, and `Sage.Client`
+  in a client half. The ECS is in there: `Entity`, `IComponent`, `ITag`, `Tags`, `Query<…>` and
+  `EntityCommands` are `Sage.Simulation`'s (§6).
+- The Debug, Development and Shipping configurations (`Release` is Shipping, writing to `bin/Release`).
+- The engine, **compile-time only**: the assemblies of the `Sage.Player` package's host for your
+  configuration, so a game compiles against exactly what runs it, and nothing of the engine is copied
+  into your `bin/`, which holds your dll and nothing else. Add other references as usual.
+- The Sage generators and analyzers, so `[Record]`, `[System]`, `[PrefabPart]` and friends register
+  themselves and every SAGE diagnostic (§10a) applies, SAGE0050 included.
+- `bin/<config>/YourGame.dll`, with no target framework in the path, and a check after each build that
+  `game.json` loads what was built: every `assembly` and `modules.add` path must exist, and the project's
+  own dll must be one of them (SAGE0110, SAGE0111; the message says what to write), and every kit the
+  project references (`<SageKit Include="sage.kits.rpg" />`, "Kits" below) is in `"kits"` (SAGE0114).
+- Every `.fx` in the project compiled with `mgfxc` to an `.mgfxo` beside it — so it is in a mounted
+  folder, and a material names it as `shaders/name.mgfxo` — on Windows; `-p:SageSkipShaders=true` skips it.
+- `dotnet run`: the Player host of that configuration with `-game <this folder>`; anything after `--` is
+  passed on (`dotnet run -- +sv_cheats 1 +god 1`). `dotnet msbuild -t:SageValidate` runs `sage validate` on
+  the folder (§9) with the CLI of that configuration.
+
+Switches, in the `.csproj`: `<SageKit Include="…" />` (a kit, below), `SageSimulationOnly`, `SageStrictSaves` (§10a), `SageDataOnly` (no C#, no
+engine references: `sage-game-data`), `SageSkipShaders`, and `SageGameDirectory` (the folder `dotnet run`
+passes, by default the project's own when it has a `game.json`).
+
+**In this repository** `games/Hello` is built with the SDK too, as the proof that it works. MSBuild can
+only resolve `Sdk="…"` from the .NET SDK or a NuGet feed, so an in-repository game imports the SDK's two
+files by path, which is what the attribute does:
 
 ```xml
-<PropertyGroup>
-  <OutputType>Library</OutputType>
-  <RootNamespace>YourGame</RootNamespace>
-  <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-</PropertyGroup>
+<Project>
+  <Import Project="..\..\sdk\Sage.Sdk\Sdk\Sdk.props" />
+  <PropertyGroup> … </PropertyGroup>
+  <Import Project="..\..\sdk\Sage.Sdk\Sdk\Sdk.targets" />
+</Project>
 ```
 
-That is *all* a project under `games/` needs, because `games/Directory.Build.props` gives every one of
-them the rest: `net8.0`, nullable, the Debug/Development/Shipping configurations, the four base engine
-assemblies referenced **compile-time only** (`Private="false"`, so the host's copies are used at run
-time and your `bin/` holds only your dll), and global usings — `Sage.Core`, `Sage.Simulation`,
-`Sage.Physics3D` and `Sage.Gameplay`. The ECS is in there: `Entity`, `IComponent`, `ITag`, `Tags`,
-`Query<…>` and `EntityCommands` are `Sage.Simulation`'s (§6). A client half adds
-`<ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />` and
-`<Using Include="Sage.Client" />` (see `games/Sandbox.Client`). Put your game somewhere else and you
-inherit none of that: add the target framework, the four references and the usings yourself.
+From its source tree (`sdk/Sage.Sdk/Sdk`) the SDK references the engine projects in `src/` instead of a
+package, and `dotnet run --project games/Hello -c Development` uses `src/Sage.Host`'s build. The Sandbox
+and its client half still take the same settings from `games/Directory.Build.props`, which the SDK
+replaces for a game that uses it.
 
 ### `game.json`
 
@@ -92,23 +145,25 @@ inherit none of that: add the target framework, the four references and the usin
 {
   "name": "Your Game",
   "id": "yourgame",
-  "assembly": "bin/{config}/net8.0/YourGame.dll",
+  "assembly": "Simulation/bin/{config}/YourGame.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
+  "scene": "main",
   "modules": {
     "disable": [],
-    "add": ["../YourGame.Client/bin/{config}/net8.0/YourGame.Client.dll"]
+    "add": ["bin/{config}/YourGame.Client.dll"]
   }
 }
 ```
 
 - **`id` is your record namespace.** Everything your game defines is `yourgame:something`, and that is
   how mods and the engine tell your records from `sage:`'s.
-- `{config}` is replaced with the build's configuration name (Debug, Development, Shipping, or Release),
-  so one manifest works for all of them.
+- `{config}` is replaced with the host's configuration name (Debug, Development, Shipping, or Release),
+  so one manifest works for all of them. Paths are relative to the game folder.
 - `mounts` are folders layered over the engine's own content, **later wins** — which is how a game (or a
   mod) replaces an engine texture without touching it.
 - `assembly` is optional: a game made only of data and engine plugins leaves it out.
+- `scene` is the scene record every world starts in (§4).
 - `plugins` (optional) picks which of the engine's plugins the game uses, by id — `"sage.physics3d"`, or
   `"sage.gameplay.*"` for a family — and whatever they require comes with them, so
   `["sage.gameplay.items"]` also brings attributes, combat, characters and physics. Left out, the game gets
@@ -141,19 +196,26 @@ spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L
 | Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook) | registers them as `"spellmaker"`, `"journal"`, `"dialogue"`; the `Spellbook`, `Spellmaker` and `Journal` actions |
 | Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`) and `castAction` (`"Cast"`) | |
 
-To build on it, name it in `game.json` and reference it, compile-time only, like the base:
+To build on it, name it in `game.json` and reference it, compile-time only, like the base. With
+`Sage.Sdk` that is one item in each project that uses it; in a client half it brings the kit's client
+half too, and the kit's namespace becomes a global using:
 
 ```json
 "kits": ["sage.kits.rpg"]
 ```
 
 ```xml
-<!-- YourGame.csproj -->
-<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
-<!-- YourGame.Client.csproj: both halves, by name -->
-<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
-<ProjectReference Include="..\..\src\Sage.Kits.Rpg.Client\Sage.Kits.Rpg.Client.csproj" Private="false" />
+<!-- Simulation/YourGame.csproj and YourGame.Client.csproj -->
+<ItemGroup>
+  <SageKit Include="sage.kits.rpg" />
+</ItemGroup>
 ```
+
+The build checks that `game.json` names every kit the project in the game folder is built on
+(SAGE0114): a kit that is referenced but not named compiles and is then never loaded. A project
+without the SDK (the Sandbox, for now) references the kit's projects by path instead —
+`<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />`, and
+`Sage.Kits.Rpg.Client` too in a client half.
 
 The host finds a kit by its id: `sage.kits.rpg` is `Sage.Kits.Rpg.dll` (each part capitalised), looked
 for beside your game's assembly, its `modules.add` assemblies and the host itself — the kits ship
@@ -171,17 +233,17 @@ has no content of its own, so its words have defaults, and a game that wants oth
 
 ### Running it
 
-```bash
-dotnet run --project src/Sage.Host -c Development -- -game games/YourGame
-```
-
-In a **dev build with no `-game`**, the host walks up from the executable looking for `Sage.sln` and
-loads `games/Sandbox`. In a shipping build it looks for a `game` folder next to the executable. Console
-commands can be run at startup with `+`:
+`dotnet run` in the game folder, or the host by hand with the folder:
 
 ```bash
 dotnet run --project src/Sage.Host -c Development -- -game games/YourGame +sv_cheats 1 +god 1
 ```
+
+Console commands can be run at startup with `+`. **Without `-game` the host does not guess**: it runs
+a `game` folder beside the executable (how a packaged game ships) or stops with an error that says what
+to pass — and, in this repository, lists its games (test: GameManifest_Locate_WithoutAGameIsAnErrorThatListsTheGames).
+Until issue #32 a dev build loaded `games/Sandbox` instead, so a forgotten `-game` ran the wrong game
+without a word.
 
 ---
 
@@ -1073,8 +1135,8 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 ## 10a. Build errors: the SAGE diagnostics
 
 The generators and analyzers in `src/Sage.Generators` run in every engine and game project (the
-`Directory.Build.props` in `src/` and `games/`), and every diagnostic they report is an error. One line
-each, with the fix:
+`Directory.Build.props` in `src/` and `games/`, and `Sage.Sdk` for a game built with it), and every
+diagnostic they report is an error. One line each, with the fix:
 
 | Id | What | Fix |
 |---|---|---|
@@ -1101,13 +1163,18 @@ each, with the fix:
 | SAGE0103 | A vocabulary entry with an empty id | Name it |
 | SAGE0104 | An entry attribute whose type is not marked `[Vocabulary("name")]`, so content could not name it | Mark the interface (or abstract class) |
 | SAGE0050 | A `Friflo.*` type or namespace named anywhere but `Sage.Simulation`, which implements the ECS over it | Use Sage's `Entity`, `IComponent`, `ITag`, `Tags`, `Query<…>`, `EntityCommands` (§6) |
+| SAGE0110 | *Sage.Sdk, after a build:* `game.json` names an `assembly` or `modules.add` path that the build did not write | Point it at `bin/{config}/Name.dll` (relative to the game folder; no target framework in the path) |
+| SAGE0111 | *Sage.Sdk, after a build:* `game.json` does not load the project's own dll | Name it as `assembly` (the simulation half) or in `modules.add` (a client half); the message has the path |
+| SAGE0112 | *Sage.Sdk:* no host, engine or `sage` CLI for this configuration (the `Sage.Player` package has Debug, Development and Shipping; in this repository, the host is not built) | Build with `-c Shipping` rather than `Release`, or build `src/Sage.Host` / `src/Sage.Cli` in that configuration |
+| SAGE0113 | *Sage.Sdk:* the project has `.fx` shaders but no local `mgfxc` (no `.config/dotnet-tools.json` above it) | `dotnet new tool-manifest && dotnet tool install dotnet-mgfxc --version 3.8.5.1`, or `-p:SageSkipShaders=true` |
+| SAGE0114 | *Sage.Sdk, after a build:* a `<SageKit>` the project is built on that `game.json`'s `"kits"` does not name, so the host would not load it | Add its id to `"kits"` |
 
 An attribute on the wrong kind of type — `[Record]` on a struct, `[Component]` on a class — is the
 compiler's own CS0592, because each declaration attribute names what it may go on.
 
 Three are switched on per project, in its `.csproj` (and a fourth, `SageEcsImplementation`, is the
-engine's own: `Sage.Simulation` sets it to name Friflo, and a game cannot, since `games/` does not make
-it visible to the analyzers (test: TheEcsImplementationMayNameFriflo)):
+engine's own: `Sage.Simulation` sets it to name Friflo, and a game cannot, since neither `games/` nor
+`Sage.Sdk` makes it visible to the analyzers (test: TheEcsImplementationMayNameFriflo)):
 
 - `<SageSimulationOnly>true</SageSimulationOnly>` — the project is simulation: it runs headless and
   names no MonoGame type (SAGE0024). Every engine project under `src/` is simulation-only unless it

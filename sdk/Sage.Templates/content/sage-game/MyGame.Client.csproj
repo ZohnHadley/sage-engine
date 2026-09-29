@@ -1,0 +1,22 @@
+<Project Sdk="Sage.Sdk/0.1.0">
+  <!--
+    MyGame's client half, and the game folder: game.json and content/ are here, so `dotnet run` here
+    starts the Player host with -game on this folder. Everything that needs a screen goes in this project
+    (a HUD, screens, parts that build meshes); the rules go in the simulation half, Simulation/, which
+    references only the base engine, so it can be tested headlessly.
+
+    Sage.Sdk supplies the rest: net8.0, the Debug/Development/Shipping configurations, the engine
+    (compile-time only; the host has its own copies), the usings, the Sage analyzers, shaders, and a
+    check that game.json loads what this builds (docs/MAKING_A_GAME.md §2 in the engine's repository).
+  -->
+  <PropertyGroup>
+    <RootNamespace>MyGame</RootNamespace>
+    <!-- The simulation half is a project of its own. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Simulation/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Built with this one; loaded by game.json's "assembly", so not copied here. -->
+    <ProjectReference Include="Simulation/MyGame.csproj" Private="false" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+{
+  // The manifest the host reads (-game <this folder>). `id` is the game's record namespace: everything in
+  // content/data is `mygame:something`.
+  "name": "MyGame",
+  "id": "mygame",
+  // Both halves, where Sage.Sdk builds them: bin/<configuration>/Name.dll, {config} being the host's
+  // configuration. The build checks these paths (SAGE0110, SAGE0111).
+  "assembly": "Simulation/bin/{config}/MyGame.dll",
+  "mounts": ["content"],
+  "modsDirectory": "mods",
+  // The scene every world starts in: content/data/scene.json's `mygame:main`.
+  "scene": "main",
+  "modules": { "disable": [], "add": ["bin/{config}/MyGame.Client.dll"] }
+}

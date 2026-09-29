@@ -1,0 +1,8 @@
+<Project Sdk="Sage.Sdk/0.1.0">
+  <!-- MyGame's simulation half: the rules, the world, the records' C#. The base engine only — a MonoGame
+       type here is a build error (SAGE0024) — so it runs headless and could run on a server. -->
+  <PropertyGroup>
+    <RootNamespace>MyGame</RootNamespace>
+    <SageSimulationOnly>true</SageSimulationOnly>
+  </PropertyGroup>
+</Project>

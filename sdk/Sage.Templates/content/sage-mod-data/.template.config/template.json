@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Sage",
+  "classifications": ["Game", "Sage", "Mod"],
+  "identity": "Sage.Templates.ModData",
+  "name": "Sage data mod (stub)",
+  "description": "A data mod for a Sage game: mod.json and records. A stub: the engine does not load mods yet (REDESIGN Stage B, 4j); check one with sage validate <game> --mounts <this folder>.",
+  "shortName": "sage-mod-data",
+  "sourceName": "MyMod",
+  "preferNameDirectory": true,
+  "tags": { "language": "JSON", "type": "item" },
+  "symbols": {
+    "game": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "mygame",
+      "replaces": "targetgame",
+      "description": "The id of the game this mod is for (its game.json's \"id\")."
+    }
+  }
+}

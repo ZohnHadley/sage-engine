@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Packs the `dotnet new` templates (issue #32): sage-game (a simulation half and a client half),
+    sage-game-data (no C#: game.json and records, the engine's scene) and sage-mod-data (a stub data mod).
+    Install with `dotnet new install <feed>/Sage.Templates.<version>.nupkg`, or straight from
+    sdk/Sage.Templates/content/<name> while working on one. Every project in them names
+    Sage.Sdk/<this version>; packing checks that.
+  -->
+  <PropertyGroup>
+    <PackageId>Sage.Templates</PackageId>
+    <PackageType>Template</PackageType>
+    <Description>dotnet new templates for Sage games and mods: sage-game, sage-game-data, sage-mod-data.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**" Pack="true" PackagePath="content/" />
+    <_SageTemplateProject Include="content\**\*.csproj" Exclude="content\**\bin\**;content\**\obj\**" />
+  </ItemGroup>
+
+  <Target Name="SageCheckTemplateVersions" BeforeTargets="_GetPackageFiles">
+    <Error Condition="!$([System.IO.File]::ReadAllText('%(_SageTemplateProject.FullPath)').Contains('Sdk=&quot;Sage.Sdk/$(SageVersion)&quot;'))"
+           Text="%(_SageTemplateProject.Identity) does not name Sage.Sdk/$(SageVersion) (build/Sage.Version.props)" />
+  </Target>
+</Project>

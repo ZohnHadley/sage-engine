@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    The version the SDK, the Player and the templates are packed as (issue #32; tools/pack_sdk.sh). A game
+    names it in `<Project Sdk="Sage.Sdk/0.1.0">`, so the templates spell it out too: the templates' pack
+    fails if one of them names another.
+  -->
+  <PropertyGroup>
+    <SageVersion>0.1.0</SageVersion>
+  </PropertyGroup>
+</Project>
