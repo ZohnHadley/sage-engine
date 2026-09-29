@@ -12,7 +12,7 @@ namespace Sage.Simulation;
 // the view angles the command carried (06 §3.3, 16 §3.2). While this drives the camera it says so
 // (ActiveCamera.DrivenByRig) and the editor's free camera stands aside; cam_free clears
 // ActiveCamera.RigEnabled and this system gives the camera back.
-[System("sage.character.camera", Phase.FrameUpdate)]
+[System("sage.character.camera", Phase.FrameUpdate)]   // before the CameraDirector, which orders itself after this
 public sealed class FirstPersonCameraSystem : ISystem
 {
     private readonly Query<GlobalTransform, CharacterController, PawnIntent> _pawns;
@@ -26,6 +26,9 @@ public sealed class FirstPersonCameraSystem : ISystem
         _records = records;
     }
 
+    // The legacy rig: it writes ActiveCamera and its rig flags directly, which are obsolete for games
+    // (issue #76) and stay its protocol with cam_free until it becomes a camera-entity rig (#78).
+#pragma warning disable CS0618
     public void Run(in SystemContext ctx)
     {
         if (!_camera.RigEnabled)   // cam_free: the editor camera is flying instead
@@ -47,4 +50,5 @@ public sealed class FirstPersonCameraSystem : ISystem
             return;
         }
     }
+#pragma warning restore CS0618
 }

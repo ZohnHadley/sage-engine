@@ -117,7 +117,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - `MeshExtract`: `GlobalTransform` interpolated with alpha, camera-relative matrices, frustum culling per mesh part (bounding sphere), and sort keys (§3.5).
   - The Render phase clears to the environment's colour (the v1 sky), sorts, and draws opaque → alpha-tested → transparent in key order. Materials switch only when the material id changes.
 - **Deviations and gaps:**
-  - **Camera:** there's no `Camera` component yet. `CameraExtract` reads the world's `ActiveCamera` resource (position, rotation, fov, near 0.1, far 1000). A camera rig fills it when one is driving: `FirstPersonCameraSystem` (`src/Sage.Physics3D/Character/CharacterController.cs`, FrameUpdate) puts it in the local pawn's head and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when no rig did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the rig hands the camera back when it's set again (16 §3.2).
+  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), but the renderer still draws one view: `CameraExtract` reads the world's `ActiveCamera` resource, which the `CameraDirector` keeps as a mirror of the screen view, until the multi-view renderer (#77) reads `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. With no camera entity a legacy rig fills it when one is driving: `FirstPersonCameraSystem` (`src/Sage.Simulation/Physics/FirstPersonCameraSystem.cs`, FrameUpdate) puts it in the local pawn's head and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when no rig did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the rig hands the camera back when it's set again (16 §3.2).
   - **Snapshot:** one view (`RenderSnapshot.View`), not a list.
   - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
   - **Tint:** always 1 (no per-entity tint component yet).
@@ -187,7 +187,8 @@ public struct SpriteInstance { public Vector3 Center; public Vector2 Size; publi
 // Components (simulation data, in Sage.Simulation; no MonoGame types)
 public struct MeshRenderer   { public AssetPath Mesh; public MeshHandle Handle; public RecordId Material; public byte Layer; }
 public struct SpriteRenderer { public RecordId Sheet; public RecordId Material; public Vector2 Size; public BillboardMode Mode; public byte Layer; }
-public struct Camera         { public float FovY; public float Near; public float Far; public bool Active; }   // not built: ActiveCamera is a resource, not a component (§3.11)
+public struct Camera         { public CameraProjection Projection; public float FovY; public float OrthoHeight; public float Near, Far;
+                               public int Priority; public bool Enabled; public CameraViewport Viewport; public string Target; }   // built (#76, below)
 public struct PointLight     { public Vector3 Colour; public float Range; public float Intensity; }            // built (§3.9)
 
 // One light as the renderer wants it, camera-relative. `LightRules.Nearest` fills the four a draw carries.
@@ -212,12 +213,12 @@ public sealed class DebugDraw
 
 Positions passed to `DebugDraw` are in origin space (the same space as `GlobalTransform`). `Material`/`Mesh`/`Texture` above are plain `int` ids — `MaterialCache`'s and the `Renderer`'s own compact indices — not wrapper structs. `RenderItem`, `SpriteInstance` and `Renderer` are client types and may use MonoGame types. The components (`MeshRenderer`, `SpriteRenderer`, `Camera`, `PointLight`) and `DebugDraw` live in `Sage.Simulation`, so they use `System.Numerics` and the Sage types, not MonoGame types.
 
-**Still design-only** (everything above this line is shipped): `RenderView` as a list (`Views`, for split screen, mirrors, shadow views — v1 has one `RenderSnapshot.View`); `LightSet` as a per-view struct (the sun and ambient live in the snapshot's `EnvironmentParams`, and `RenderSnapshot.Lights` is a flat `PooledList<LightSample>`, §3.9); the `Camera` component (the camera is the `ActiveCamera` resource today, §3.11); `Renderer.UpdateMesh` (only `CreateMesh`/`CreateBox`/`DestroyMesh` exist); `SpriteInstance.FlipU` as a field (the flip is folded into `Uv` at extract instead); per-object tint beyond the always-1 `RenderItem.Tint`/`SpriteInstance.Tint`.
+**Still design-only** (everything above this line is shipped): `RenderView` as a list (`Views`, for split screen, mirrors, shadow views — v1 has one `RenderSnapshot.View`); `LightSet` as a per-view struct (the sun and ambient live in the snapshot's `EnvironmentParams`, and `RenderSnapshot.Lights` is a flat `PooledList<LightSample>`, §3.9); `Renderer.UpdateMesh` (only `CreateMesh`/`CreateBox`/`DestroyMesh` exist); `SpriteInstance.FlipU` as a field (the flip is folded into `Uv` at extract instead); per-object tint beyond the always-1 `RenderItem.Tint`/`SpriteInstance.Tint`.
 
 ## 5. Data flow (one frame)
 
 ```
-FrameUpdate: camera rigs follow the pawn at display rate; sprite animators advance (12)
+FrameUpdate: camera rigs write CameraPose at display rate, then CameraDirector → CameraViews (+ ActiveCamera); sprite animators advance (12)
 Extract:     snapshot.Clear()
              CameraExtract    → Views (camera-relative)
              MeshExtract      → Items   (interpolate GlobalTransform with alpha, frustum cull, sort key)
@@ -431,6 +432,63 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
   flicker through entity I/O, and any culling of the light list beyond what `LightRules` does per
   object — a hundred lamps is a hundred structs, and the work that matters is per *draw*. When that
   stops being true the answer is a grid, not a longer loop.
+
+### As built (camera components, 2026-09-29 — #76)
+Phase 4a's first piece (REDESIGN §5): cameras become entities, so rigs, several views, render targets and
+the editor camera (#77–#81) have something to be. Nothing a game draws changes yet: the renderer still
+reads `ActiveCamera`.
+
+- **Code:** `src/Sage.Simulation/Camera/` — `Camera.cs` (`Camera`, `CameraPose`, `CameraProjection`,
+  `CameraViewport`), `CameraViews.cs` (`CameraView`, `CameraViews`), `CameraDirector.cs`, `CameraMath.cs`,
+  `CameraPart.cs` (the `camera` prefab part); installed in `Engine.CreateWorld`. Tests:
+  `tests/Sage.Tests/Presentation/CameraTests.cs`. All of it is `[Experimental("SAGE0123")]`.
+- **A camera is a `Camera` component** (`sage:camera`): `Projection` (`Perspective`/`Orthographic`),
+  `FovY` in **degrees** (content writes it), `OrthoHeight` in metres of world top to bottom, `Near`/`Far`,
+  `Priority`, `Enabled`, a normalised `Viewport` (0..1 from the target's top-left; empty = all of it)
+  and a `Target` (a render target's name; empty = the screen). The `camera` part takes the same fields
+  and starts from working defaults (enabled, 45°, the whole screen), which a zeroed struct does not have.
+- **Where it looks from:** a rig's `CameraPose` (transient) when the entity has one, otherwise its
+  `GlobalTransform` interpolated to the frame — so a fixed or scripted camera is just an entity you place
+  and move. (test: ThePoseIsTheRigsWhenThereIsOne_ElseTheInterpolatedTransform)
+- **Rigs (decision D2)** will live on camera entities that follow a pawn (#78, #79) and write `CameraPose`
+  in FrameUpdate, declared `Before = new[] { CameraDirector.Id }`; the director reads them the same frame.
+  (test: ARigOrderedBeforeTheDirectorIsSeenTheSameFrame)
+- **The director** (`sage.camera.director`, FrameUpdate, owned by the engine and in every world an
+  `Engine` makes, `"plugins": []` included) picks, per target, the enabled camera with the highest
+  priority — a tie goes to the lower entity id — and writes the result into the `CameraViews` resource.
+  (test: TheHigherPriorityCameraWins_AndDisablingItFallsBackToTheOther) Out-of-range values resolve to
+  the defaults, so every view makes a matrix. (test: NonsenseResolvesToTheDefaults)
+- **`CameraViews` is the renderer's contract (#77):** one `CameraView` per target (entity, target,
+  viewport, position, rotation, projection, `FovY` in **radians**, `OrthoHeight`, near, far, priority);
+  off-screen targets first by name and the screen **last**, so drawing in list order renders a target
+  before the screen that shows it; `Main`/`MainIndex` is the screen view (-1 when there is none); pooled,
+  and a frame allocates nothing. (test: ViewsAreOnePerTarget_OffScreenFirstByName_TheScreenLast)
+  (test: ResolvingCamerasEveryFrameAllocatesNothing)
+- **`ActiveCamera` stays, as a mirror (decision D1).** Once a camera entity draws to the screen, the
+  director copies its view into `ActiveCamera` and sets `DrivenByRig`, so everything that reads it — audio,
+  weather, particles, the HUD, `CameraExtract` — follows. (test: ActiveCameraMirrorsTheMainView_AndSaysSomethingDroveIt)
+  With **no** camera entity the director leaves it exactly as it was and makes the screen view from it,
+  measured against a world whose director is switched off. (test: WithNoCameraEntity_ActiveCameraIsLeftExactlyAsItWas)
+  `cam_free` still wins the screen over any camera entity. (test: CamFree_GivesTheScreenToTheFreeCamera_AndLeavesActiveCameraToIt)
+  `ActiveCamera.RigEnabled` and `DrivenByRig` are `[Obsolete]` for games; the engine still uses them,
+  under scoped pragmas, until the first-person rig (#78) and the editor camera (#81) are camera entities.
+- **Order, and a deviation from the issue.** The issue asked for the director *last* in FrameUpdate.
+  It runs after the legacy first-person rig (`After = "?sage.character.camera"`) and otherwise first —
+  the engine adds it before any plugin's systems — because the FrameUpdate systems that read
+  `ActiveCamera` (audio, weather, particles, a game's HUD) would otherwise see last frame's mirror. It is
+  last among the camera *writers*: anything that moves a camera in FrameUpdate orders itself before it.
+- **`CameraMath`** builds the matrices in System.Numerics with the renderer's conventions (right-handed,
+  looking down -Z, depth 0..1): `View`, `ViewRelative` (camera-relative, 06 §3.3), `Perspective`,
+  `Orthographic` (the width follows the aspect: a wider window shows more world) and `Aspect` for a
+  viewport of a target. (test: PerspectiveMatchesTheTextbookMatrix)
+  (test: OrthographicMatchesTheTextbookMatrix_WidthFollowsTheAspect)
+- **Origin rebasing** moves rig poses and the resolved views with everything else.
+  (test: RebasingMovesRigPosesAndViews)
+- **Not yet:** drawing more than one view, and render targets (#77); rigs as camera entities, the
+  first-person one moved over (#78), third-person (#79); scripted cuts from entity I/O (#80); the editor
+  camera as an entity (#81). One view per target means split screen is two targets for now. Pixel-perfect
+  ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work, not this. `ActiveCamera` has no
+  projection kind, so a screen camera that is orthographic still draws in perspective until #77.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

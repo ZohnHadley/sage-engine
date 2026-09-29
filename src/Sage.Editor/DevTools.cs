@@ -152,8 +152,12 @@ public sealed class DevTools : IDisposable
     public void Update(GameTime time, ActiveCamera camera)
     {
         _camera.Update(time);
+        // ActiveCamera's rig flags are obsolete for games (issue #76); they stay cam_free's protocol
+        // until the editor camera is a camera entity (#81).
+#pragma warning disable CS0618
         camera.RigEnabled = !_camFree.Value;
         if (camera.DrivenByRig) return;
+#pragma warning restore CS0618
 
         camera.Position = _camera.Position.ToNumerics();
         camera.Rotation = _camera.Rotation.ToNumerics();
