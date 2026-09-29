@@ -384,6 +384,35 @@ Creatures walk round things instead of into them.
 - **`Died` replaces the direct calls** (§3.3 above), and **factions, quests and dialogue are three plugins** (`sage.gameplay.factions`, `sage.gameplay.quests`, `sage.gameplay.dialogue`). Saved-resource and component ids did not change (`journal`, `reputation`, `sage:dialogue`, `sage:faction`), so saves load as before. Nothing calls into any of the three: `Factions` answers "no faction" when its records are not registered (a creature is then hostile to the player, the pre-faction rule), every standing is 0 without `Reputation`, `Quests` answers "not on it" without a `Journal`, `DialogueRules.Start` says no without a `Conversation`, and quests count a kill by the victim's own `Faction` component. The issue asked for one `NarrativeModule`; it is two, because its acceptance switches quests and dialogue off separately.
 - **Not done:** a switched-off plugin's prefab parts are still errors in content that uses them (records of its types are skipped with a warning); making them optional like the client's parts would need the generated registrations to name a plugin's parts without registering them.
 
+### As built (open vocabularies, issue #28, 2026-09-29)
+- **Every closed list is a registry a plugin adds to** (REDESIGN §4.3 stage 1, whose "As built" has the
+  table; MAKING_A_GAME §3 and §6 say how to use and extend them). Entries are declared with an attribute
+  and registered for their plugin by `VocabularyGenerator`; content names them, and a name nobody
+  registered is a load error at its line (test: AnUnknownEntryIsALoadErrorThatSaysTheNearestName).
+- **AI** (§3.4): conditions are `ai_condition` entries — the engine's eleven keep their `AICondition`
+  bits and are set by its perception; a game's are sensed every think after it (`IAICondition.Sense`) —
+  and `GetSchedule` is `ai_profile.selector`: `default` is the old code, `rules` picks by the profile's
+  `rules` first (test: AGamesConditionPicksASchedulesThroughAProfilesRules)
+  (test: AGamesSelectorIsNamedByTheProfile).
+- **Quests** (§"As built (quests)"): objectives are `quest_objective` entries, `kill` when `kind` is left
+  out; `reach` and `talk` are new, counted from `QuestWatchSystem` (`sage.quests.watch`: the player's
+  position, and `Spoke`), and a game counts its own happenings with `Quests.Notice`
+  (test: ReachTalkAndAGamesObjectiveMoveAQuestAlong).
+- **Dialogue** (§"As built (dialogue)"): an option's `conditions` and `actions` are `condition` and
+  `action` entries; `requires` and `then` are shorthand for the engine's own, asked and done first
+  (test: ADialogueOptionUsesAGamesConditionAndActionsByName).
+- **Abilities** (§3.3): `delivery` names an `ability_delivery` — where a cast lands (`Release`) and who
+  its payload reaches (`Gather`) — and `targeting` names one of the five the enum had
+  (test: AnAbilityNamesAGamesDelivery). `AbilityCasting.CastNow` casts one at once and for free, which
+  is how an item's `cast` use goes off.
+- **Effects** list `executions` (`knockback`, `teleport`, `summon`, `dispel`), run on each application
+  and each period; structural work waits for `EffectExecutionSystem` (`sage.effects.executions`)
+  (test: AnEffectRunsAGamesExecutionAndTheEnginesOwn) (test: KnockbackPushesACharacterAwayFromTheSource).
+- **Items** list `uses` (`consume`, `read`, `cast`), run in order by `world.UseItem` and the `use_item`
+  command (test: AnItemIsUsedThroughItsUsesInOrder) (test: ReadingTeachesAndAWandCastsForFree).
+- **Caps:** `GameplayTags` holds a 256-bit `TagSet` (it was one ulong) and `ActionMask` two words, 128
+  buttons; saves still write tags by name (test: TagsGoPast64) (test: ActionMask_HoldsButtonsPast64).
+
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
 - **Ids are indices.** `attribute` and `tag` records become small indices (`GameplayRegistries`), so components hold numbers, not strings: attribute values are parallel arrays, tags a 64-bit set. More than 64 tags is reported rather than silently truncated.
