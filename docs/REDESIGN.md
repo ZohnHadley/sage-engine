@@ -839,7 +839,9 @@ because it edits the live play world (`DevTools.cs:84-87`).
   csproj properties: it stays the one hand-written manifest the host, `sage validate` and `sage schema`
   read, and the SDK checks after each build that its `assembly` and `modules.add` paths are what was
   built, including its own dll (SAGE0110, SAGE0111; SAGE0112 is a missing host or engine, SAGE0113 shaders
-  without `mgfxc`). The host no longer loads `games/Sandbox` without `-game`: it runs `./game` beside
+  without `mgfxc`). A kit (#27) is `<SageKit Include="sage.kits.rpg" />`: its assembly (and its client half
+  in a client project) compile-time only, its namespace as a global using, and SAGE0114 when `game.json`'s
+  `"kits"` does not name it; `dotnet publish` of the host and the CLI now carries the kits too. The host no longer loads `games/Sandbox` without `-game`: it runs `./game` beside
   the executable or stops with an error that lists the repository's games
   (test: GameManifest_Locate_WithoutAGameIsAnErrorThatListsTheGames). Templates: `sage-game` (a client
   half in the game folder, so `dotnet run` there starts the game, and the simulation half under

@@ -88,8 +88,8 @@
   </ItemGroup>
 
   <!-- Kits (issue #27): the assembly is the id with each part capitalised (sage.kits.rpg is
-       Sage.Kits.Rpg), and its client half is that plus .Client. From source, src/<assembly>; from the
-       package, the Player's host folder, where the host keeps its kits. -->
+       Sage.Kits.Rpg), and its client half is that plus .Client, in the same namespace (one using). From
+       source, src/<assembly>; from the package, the Player's host folder, where the host keeps its kits. -->
   <ItemGroup>
     <SageKit Update="@(SageKit)">
       <SageKitName>$([System.Text.RegularExpressions.Regex]::Replace('%(Identity)', '^sage\.kits\.', ''))</SageKitName>
@@ -99,7 +99,6 @@
     </SageKit>
     <_SageKitClient Include="@(SageKit)" Exclude="@(SageKit->WithMetadataValue('Client', 'false'))" Condition="'$(SageSimulationOnly)' != 'true'" />
     <Using Include="@(SageKit->'%(SageAssembly)')" />
-    <Using Include="@(_SageKitClient->'%(SageAssembly).Client')" />
   </ItemGroup>
   <ItemGroup Condition="'$(SageSdkFromPackage)' != 'true'">
     <ProjectReference Include="@(SageKit->'$(SageRepositoryRoot)src\%(SageAssembly)\%(SageAssembly).csproj')" Private="false" />

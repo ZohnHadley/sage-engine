@@ -110,14 +110,15 @@ project needs:
   themselves and every SAGE diagnostic (§10a) applies, SAGE0050 included.
 - `bin/<config>/YourGame.dll`, with no target framework in the path, and a check after each build that
   `game.json` loads what was built: every `assembly` and `modules.add` path must exist, and the project's
-  own dll must be one of them (SAGE0110, SAGE0111; the message says what to write).
+  own dll must be one of them (SAGE0110, SAGE0111; the message says what to write), and every kit the
+  project references (`<SageKit Include="sage.kits.rpg" />`, "Kits" below) is in `"kits"` (SAGE0114).
 - Every `.fx` in the project compiled with `mgfxc` to an `.mgfxo` beside it — so it is in a mounted
   folder, and a material names it as `shaders/name.mgfxo` — on Windows; `-p:SageSkipShaders=true` skips it.
 - `dotnet run`: the Player host of that configuration with `-game <this folder>`; anything after `--` is
   passed on (`dotnet run -- +sv_cheats 1 +god 1`). `dotnet msbuild -t:SageValidate` runs `sage validate` on
   the folder (§9) with the CLI of that configuration.
 
-Switches, in the `.csproj`: `SageSimulationOnly`, `SageStrictSaves` (§10a), `SageDataOnly` (no C#, no
+Switches, in the `.csproj`: `<SageKit Include="…" />` (a kit, below), `SageSimulationOnly`, `SageStrictSaves` (§10a), `SageDataOnly` (no C#, no
 engine references: `sage-game-data`), `SageSkipShaders`, and `SageGameDirectory` (the folder `dotnet run`
 passes, by default the project's own when it has a `game.json`).
 
@@ -195,19 +196,26 @@ spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L
 | Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook) | registers them as `"spellmaker"`, `"journal"`, `"dialogue"`; the `Spellbook`, `Spellmaker` and `Journal` actions |
 | Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`) and `castAction` (`"Cast"`) | |
 
-To build on it, name it in `game.json` and reference it, compile-time only, like the base:
+To build on it, name it in `game.json` and reference it, compile-time only, like the base. With
+`Sage.Sdk` that is one item in each project that uses it; in a client half it brings the kit's client
+half too, and the kit's namespace becomes a global using:
 
 ```json
 "kits": ["sage.kits.rpg"]
 ```
 
 ```xml
-<!-- YourGame.csproj -->
-<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
-<!-- YourGame.Client.csproj: both halves, by name -->
-<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
-<ProjectReference Include="..\..\src\Sage.Kits.Rpg.Client\Sage.Kits.Rpg.Client.csproj" Private="false" />
+<!-- Simulation/YourGame.csproj and YourGame.Client.csproj -->
+<ItemGroup>
+  <SageKit Include="sage.kits.rpg" />
+</ItemGroup>
 ```
+
+The build checks that `game.json` names every kit the project in the game folder is built on
+(SAGE0114): a kit that is referenced but not named compiles and is then never loaded. A project
+without the SDK (the Sandbox, for now) references the kit's projects by path instead —
+`<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />`, and
+`Sage.Kits.Rpg.Client` too in a client half.
 
 The host finds a kit by its id: `sage.kits.rpg` is `Sage.Kits.Rpg.dll` (each part capitalised), looked
 for beside your game's assembly, its `modules.add` assemblies and the host itself — the kits ship
@@ -1159,6 +1167,7 @@ diagnostic they report is an error. One line each, with the fix:
 | SAGE0111 | *Sage.Sdk, after a build:* `game.json` does not load the project's own dll | Name it as `assembly` (the simulation half) or in `modules.add` (a client half); the message has the path |
 | SAGE0112 | *Sage.Sdk:* no host, engine or `sage` CLI for this configuration (the `Sage.Player` package has Debug, Development and Shipping; in this repository, the host is not built) | Build with `-c Shipping` rather than `Release`, or build `src/Sage.Host` / `src/Sage.Cli` in that configuration |
 | SAGE0113 | *Sage.Sdk:* the project has `.fx` shaders but no local `mgfxc` (no `.config/dotnet-tools.json` above it) | `dotnet new tool-manifest && dotnet tool install dotnet-mgfxc --version 3.8.5.1`, or `-p:SageSkipShaders=true` |
+| SAGE0114 | *Sage.Sdk, after a build:* a `<SageKit>` the project is built on that `game.json`'s `"kits"` does not name, so the host would not load it | Add its id to `"kits"` |
 
 An attribute on the wrong kind of type — `[Record]` on a struct, `[Component]` on a class — is the
 compiler's own CS0592, because each declaration attribute names what it may go on.

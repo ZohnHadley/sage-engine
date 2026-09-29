@@ -42,7 +42,7 @@ tools/smoke_run.sh --dotnet-run /tmp/g 3 Shaders Audio  # `dotnet run` a templat
   (SAGE0020; every SAGE id is in `docs/MAKING_A_GAME.md` §10a). A simulation project sets
   `<SageSimulationOnly>true</SageSimulationOnly>`, which makes a MonoGame type a build error.
   Games build with `Sage.Sdk` (`sdk/Sage.Sdk`; `games/Hello` imports it by path, the Sandbox still
-  uses `games/Directory.Build.props`); its build diagnostics are SAGE0110–0113.
+  uses `games/Directory.Build.props`); a game adds a kit with `<SageKit Include="sage.kits.rpg" />`; its build diagnostics are SAGE0110–0114.
   Every component and tag has a stable id, `[Component("ns:name")]` / `[Tag(...)]` (a build error
   without one); prefabs and saves use the id, never the C# name. Rename a saved field only with a
   `Version` bump and an `[Upgrade]` method; `tests/Sage.Tests/Content/Saves` holds golden saves that must load.
