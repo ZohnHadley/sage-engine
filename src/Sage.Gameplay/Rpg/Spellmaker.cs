@@ -210,10 +210,10 @@ public static class Spellmaker
         engine.Records.AddRuntime(id, new AbilityRecord
         {
             Name = draft.Name.Trim(),
-            // v1: spells cost mana, the engine's own pool (`engine_content/data/gameplay.json`). A game
-            // whose magic runs on something else needs this to become a choice — a field on the draft,
-            // or a rule on `GameRules` — and nothing else here changes.
-            CostAttribute = Mana,
+            // What spells cost is the game's word (gameplay_conventions `costAttribute`, issue #26):
+            // mana in the engine's own conventions. A game whose magic runs on something else says so
+            // there; a price per draft would be a field on the draft, and nothing else here changes.
+            CostAttribute = GameplayConventions.Of(engine.Records).CostAttribute,
             Cost = cost,
             // `Cooldown` is deliberately left unset: a composed spell is gated by its cost, which is
             // the bargain Daggerfall's spellmaker struck. When a cooldown becomes something the player
@@ -229,8 +229,6 @@ public static class Spellmaker
             ProjectileSpeed = draft.ProjectileSpeed,
         });
     }
-
-    private static readonly RecordId Mana = new("sage", "mana");
 
     // ---- the console spellmaker ---------------------------------------------------------------------
 

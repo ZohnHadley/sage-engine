@@ -113,6 +113,11 @@ or the first time you name `Transform` the compiler cannot tell which one you me
   plugin with its version and what it needs, and `plugins <id>` what that one registered.
 - `modules.disable` switches off engine modules by class name or plugin id. A game with no AI drops
   `AIModule` (or `sage.gameplay.ai`) and nothing else changes; a name that matches nothing is a warning.
+  Factions, quests and dialogue are three plugins (`sage.gameplay.factions`, `sage.gameplay.quests`,
+  `sage.gameplay.dialogue`) and any one of them can go on its own: nothing calls into them, a death
+  reaches them as a `Died` event, and dialogue treats a missing one as "standing 0" or "not on that quest"
+  (test: EachNarrativePluginCanBeSwitchedOffAlone). Content for a plugin that is off — its record types —
+  is skipped with a warning; its prefab parts are errors, so leave them out of that game's prefabs.
 - A key the engine does not know is an error, so a misspelt `"mount"` stops the game at once instead of
   quietly loading nothing.
 
@@ -251,7 +256,7 @@ result with the file each field came from.
 
 ### Every record type there is
 
-Twenty-five, and a game may use as few as it likes. Their fields are documented in the design doc named
+Twenty-six, and a game may use as few as it likes. Their fields are documented in the design doc named
 beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
@@ -268,6 +273,31 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `quest` — stages and objectives |
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
+| **Your game's words** (§3, below) | `gameplay_conventions` — which attribute is life, which tag is death, the default attack, damage type, profiles and AI schedules, the player's faction, what spells cost, the action names |
+
+### Your game's words: `gameplay_conventions`
+
+The engine's gameplay code knows no record id of its own (issue #26). Which attribute kills you when it
+runs out, which tag says you are dead, what a swing does when nobody gave the fighter an attack, which
+schedule a creature idles with, which faction the player is in, what a spell made in the spellmaker
+costs and which buttons swing, use, cast and jump — all of it is one record,
+`sage:default_conventions` (`engine_content/data/conventions.json`), and code reads that record. To
+change a word, patch it from your content:
+
+```json
+{ "type": "attribute", "id": "hp", "start": 30, "max": 30 },
+{ "type": "gameplay_conventions", "id": "sage:default_conventions", "patch": true, "health": "hp" }
+```
+
+`"hp"` resolves in *your* namespace, as every id in a patch does, so that is `yourgame:hp`, and from then
+on it is hp running out that kills (test: AGameRenamesHealthToHpByChangingOneRecord). A field set to `""`
+means your game has no such thing: no `health`, and nothing dies. Action names are the one exception to
+"data only": actions are registered in `Init`, before content loads, so a name here must be one some
+module registered — `Actions.Register("Swing", ActionKind.Button)` in your module, then
+`"actions": { "attack": "Swing" }` — and a name nobody registered is a load error
+(test: AConventionNamingAnActionNobodyRegisteredIsALoadError). Your C# reads the same record:
+`world.Conventions().Health`, never `new RecordId("sage", "health")`
+(test: NoGameplayCodeNamesAnEngineRecordId).
 
 ### Every prefab part the engine provides
 
@@ -423,6 +453,8 @@ public sealed class YourRules : GameRules
         world.Say("Welcome.", MessageKind.Good, 5f);
     }
 
+    // Something's health ran out. The engine raises a `Died` event (a system of yours can read it too);
+    // factions and quests have already counted the kill when this is called.
     public override void OnEntityDied(World world, Entity victim, Entity killer)
     {
         // Back to the start: where the scene puts the player, in the simulation's frame.
@@ -844,6 +876,11 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 16. **A misspelt field in content** — `"color"` for `colour`, `"name"` on an item whose field is `label`
     — used to be dropped, leaving the default in its place. Since issue #22 it is an error at its line
     with the nearest real name, in records, component data and part options alike (§3).
+17. **A game with no `gameplay_conventions`** — no engine content mounted, or a patch that set `health`
+    to `""` — has nothing that counts as life, so nothing dies, a fighter with no attack of its own
+    cannot swing, and a hit that names no damage type does nothing (it says so once). The engine's
+    content ships the record; a game that mounts its own content instead of the engine's must supply
+    one (§3, test: WithoutConventionsNothingIsLifeAndNothingBreaks).
 
 ---
 

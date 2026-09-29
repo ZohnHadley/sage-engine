@@ -32,7 +32,7 @@ public sealed class AIThinkSystem : ISystem
         _records = records;
         _tasks = tasks;
         _space = world.Resources.Get<PhysicsSpace>();
-        _attack = actions.Get("Attack");
+        _attack = actions.Get(world.Conventions().Actions.Attack);
 
         // A creature's path and the place it last saw somebody are positions in origin space, and the
         // origin moves (R6). Nothing else shifts them, so this does — the rule is that *everything*
@@ -47,6 +47,7 @@ public sealed class AIThinkSystem : ISystem
         var world = ctx.World;
 
         Provoked(world, time);
+        var conventions = world.Conventions();
 
         foreach (var (transforms, states, intents, entities) in _agents.Chunks)
         {
@@ -56,7 +57,8 @@ public sealed class AIThinkSystem : ISystem
             for (int n = 0; n < t.Length; n++)
             {
                 var entity = entities.EntityAt(n);
-                var profile = _records.TryGet(s[n].Profile.IsEmpty ? AIProfileRecord.Default : s[n].Profile, out AIProfileRecord found)
+                var profileId = s[n].Profile.IsEmpty ? conventions.AiProfile.Id : s[n].Profile;
+                var profile = !profileId.IsEmpty && _records.TryGet(profileId, out AIProfileRecord found)
                     ? found : FallbackProfile;
 
                 // Think: perception and, if something changed, a new schedule.
@@ -65,7 +67,7 @@ public sealed class AIThinkSystem : ISystem
                     float period = 1f / MathF.Max(profile.ThinkRate, 0.1f);
                     s[n].NextThink = time + period * (0.85f + 0.3f * ((entity.Id % 7) / 7f));   // staggered
                     Perceive(world, entity, ref t[n], ref s[n], profile, time);
-                    ChooseSchedule(ref s[n]);
+                    ChooseSchedule(ref s[n], conventions.Schedules);
                 }
 
                 RunTask(world, entity, ref t[n], ref s[n], ref i[n], profile, dt);
@@ -281,7 +283,7 @@ public sealed class AIThinkSystem : ISystem
         if (candidate == self || candidate.IsNull || !world.IsAlive(candidate)) return;
         // Scenery and pickups are solid and near and none of a creature's business: a target is a body
         // with attributes that is still alive.
-        if (!world.Has<Attributes>(candidate) || world.HasTag(candidate, TagRecord.Dead)) return;
+        if (!world.Has<Attributes>(candidate) || world.HasTag(candidate, world.Conventions().Dead)) return;
         if (!Factions.AreEnemies(world, self, candidate)) return;
 
         float d = SageMath.DistanceXZ(position, at);
@@ -298,37 +300,31 @@ public sealed class AIThinkSystem : ISystem
     // think used to cost about 23 bytes per creature per tick — the whole of what the AI allocated.
     private static bool Has(ulong conditions, AICondition flag) => (conditions & (ulong)flag) != 0;
 
-    private static void ChooseSchedule(ref AIState state)
+    //
+    // The schedules themselves are the game's (gameplay_conventions `schedules`, issue #26): this picks
+    // *which situation* it is in, and the conventions say which record that situation runs.
+    private static void ChooseSchedule(ref AIState state, AIScheduleConventions schedules)
     {
         ulong conditions = state.Conditions;
         // Reach first, then magic, then closing the distance. A creature that can swing and is close
         // enough swings — cheaper, and no mana — and one that cannot swing at all casts instead of
         // walking into reach to do nothing, which is what a caster with no `Melee` used to do.
         RecordId wanted =
-            Has(conditions, AICondition.Casting) ? Schedules.Cast :
-            Has(conditions, AICondition.EnemyInMeleeRange) && Has(conditions, AICondition.CanMelee) ? Schedules.Attack :
-            Has(conditions, AICondition.CanCastAtEnemy) ? Schedules.Cast :
+            Has(conditions, AICondition.Casting) ? schedules.CastSpell :
+            Has(conditions, AICondition.EnemyInMeleeRange) && Has(conditions, AICondition.CanMelee) ? schedules.MeleeAttack :
+            Has(conditions, AICondition.CanCastAtEnemy) ? schedules.CastSpell :
             // Between casts, a creature that cannot swing holds where it is rather than charging: it
             // is already in range, and its spell is seconds away. Charging is what it did before this
             // line existed, and it walked a pure caster into melee reach to stand there empty-handed.
-            Has(conditions, AICondition.SpellComingBack) && !Has(conditions, AICondition.CanMelee) ? Schedules.Hold :
-            Has(conditions, AICondition.SeeEnemy) || Has(conditions, AICondition.RememberEnemy) ? Schedules.Chase :
-            Schedules.Idle;
+            Has(conditions, AICondition.SpellComingBack) && !Has(conditions, AICondition.CanMelee) ? schedules.HoldGround :
+            Has(conditions, AICondition.SeeEnemy) || Has(conditions, AICondition.RememberEnemy) ? schedules.Chase :
+            schedules.Idle;
 
         if (state.Schedule == wanted) return;
         state.Schedule = wanted;
         state.TaskIndex = 0;
         state.TaskTime = 0;
         state.TaskStarted = false;
-    }
-
-    public static class Schedules
-    {
-        public static readonly RecordId Idle = new("sage", "idle");
-        public static readonly RecordId Chase = new("sage", "chase");
-        public static readonly RecordId Attack = new("sage", "melee_attack");
-        public static readonly RecordId Cast = new("sage", "cast_spell");
-        public static readonly RecordId Hold = new("sage", "hold_ground");
     }
 
     // Runs the current task, advancing through the schedule as tasks succeed. An interrupt condition
@@ -383,8 +379,7 @@ public sealed class AIThinkSystem : ISystem
         // The body's own movement numbers, for anything that has to produce a walkable result (F23).
         var movement = MovementProfileRecord.Fallback;
         if (world.TryGet<CharacterController>(entity, out var character))
-            movement = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile,
-                                       out MovementProfileRecord walks) ? walks : MovementProfileRecord.Fallback;
+            movement = CharacterConventions.Of(world).ProfileOf(_records, character.Profile);
 
         var context = new AITaskContext
         {

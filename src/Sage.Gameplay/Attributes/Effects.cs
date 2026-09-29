@@ -190,9 +190,16 @@ public static class Effects
 
 }
 
+// Something's health ran out (16 §3.1, issue #26): the victim is tagged dead, and `Killer` is whoever
+// last hurt it this tick, or nobody (poison, a fall). **The** death seam: factions charge the killer
+// for it, quests count it and the game's rules decide what it means, each by reading this — the
+// effect system calls none of them, so a game without factions or quests is just a game where
+// nobody reads it for that.
+[GameEvent]
+public readonly record struct Died(Entity Victim, Entity Killer);
+
 // Gameplay phase: ticks the running effects, recomputes current attribute values and the tags the
-// effects grant, and tells the game's rules when something's health runs out (the seam combat, F20,
-// builds on).
+// effects grant, and raises `Died` when something's health runs out (the seam combat, F20, builds on).
 [System("sage.effects.tick", Phase.Gameplay)]
 public sealed class EffectSystem : ISystem
 {
@@ -217,8 +224,9 @@ public sealed class EffectSystem : ISystem
     {
         float dt = ctx.Tick.Dt;
         var world = ctx.World;
-        int health = _registries.Attribute(AttributeRecord.Health);
-        int deadTag = _registries.Tag(TagRecord.Dead);
+        var conventions = world.Conventions();
+        int health = conventions.Health.IsEmpty ? -1 : _registries.Attribute(conventions.Health);
+        int deadTag = conventions.Dead.IsEmpty ? -1 : _registries.Tag(conventions.Dead);
 
 
         // Whatever hurt anything since this system last ran, so a death can name its killer. Combat
@@ -341,8 +349,9 @@ public sealed class EffectSystem : ISystem
     private static bool IsDead(World world, Entity entity, int deadTag) =>
         world.TryGet<GameplayTags>(entity, out var tags) && tags.Has(deadTag);
 
-    // Health has run out: tag it dead once and tell the rules (16 §3.1). What death *means* — ragdoll,
-    // loot, respawn — is the game's business, so this runs outside the query loop.
+    // Health has run out: tag it dead once and say so (16 §3.1, issue #26). What death *means* —
+    // reputation, a quest's count, ragdoll, loot, respawn — belongs to whoever reads `Died`, so this
+    // runs outside the query loop and calls nobody.
     //
     // The killer comes from the Damaged events this system drained (16 §3.2), so nothing on the
     // damage path has to carry "who to blame" around; a death from drowning or poison has no killer.
@@ -350,12 +359,7 @@ public sealed class EffectSystem : ISystem
     {
         if (!world.IsAlive(entity) || IsDead(world, entity, deadTag)) return;
         if (world.Has<GameplayTags>(entity)) world.Get<GameplayTags>(entity).Add(deadTag);
-        var killer = LastAttackerOf(entity);
-        // What it costs your name, before the game's own rules get their say: killing somebody is the
-        // commonest way to change what a faction thinks of you (16 §3.5, F24).
-        Factions.OnKilled(world, entity, killer);
-        Quests.OnKilled(world, entity, killer);
-        world.Resources.Get<GameRules>().OnEntityDied(world, entity, killer);
+        world.Events.Send(new Died(entity, LastAttackerOf(entity)));
     }
 
     private Entity LastAttackerOf(Entity victim)
@@ -363,5 +367,26 @@ public sealed class EffectSystem : ISystem
         for (int i = _hits.Count - 1; i >= 0; i--)
             if (_hits[i].Hit.Target == victim && _hits[i].Applied > 0f) return _hits[i].Hit.Attacker;
         return default;
+    }
+}
+
+// The game's rules hear about a death (16 §3.1): `GameRules.OnEntityDied`, for every `Died`, in the
+// tick it happened. After everything else that reads `Died` in this phase (factions, quests), so the
+// rules see a world where the kill has already been counted — and may destroy or respawn the victim
+// without taking it from under them.
+[System("sage.effects.deaths", Phase.Gameplay, After = new[] { "sage.effects.tick" })]
+public sealed class DeathRulesSystem : ISystem
+{
+    private readonly EventReader<Died> _died;
+
+    public DeathRulesSystem(World world) => _died = world.Events.Reader<Died>(this);
+
+    public void Run(in SystemContext ctx)
+    {
+        if (!_died.HasPending) return;
+        var world = ctx.World;
+        var rules = world.Resources.Get<GameRules>();
+        foreach (ref readonly var died in _died.Read())
+            rules.OnEntityDied(world, died.Victim, died.Killer);
     }
 }

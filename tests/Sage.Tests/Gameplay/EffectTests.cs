@@ -20,7 +20,8 @@ public class EffectTests
     private static readonly RecordId Burning = new("sage", "state.burning");
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "invulnerable": "state.invulnerable" },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "attribute", "id": "armor",  "start": 10,  "min": 0, "max": 95 },
 
          { "type": "tag", "id": "state.dead" },

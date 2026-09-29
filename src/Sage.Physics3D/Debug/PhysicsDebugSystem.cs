@@ -85,8 +85,7 @@ public sealed class PhysicsDebugSystem : ISystem
             for (int n = 0; n < t.Length; n++)
             {
                 if (OutOfRange(t[n].LocalPosition)) continue;
-                var profile = _records.TryGet(c[n].Profile.IsEmpty ? MovementProfileRecord.Default : c[n].Profile,
-                                              out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+                var profile = CharacterConventions.Of(ctx.World).ProfileOf(_records, c[n].Profile);
                 float height = c[n].Height > 0f ? c[n].Height : profile.StandHeight;
                 Vector3 feet = t[n].LocalPosition;
                 _debug.Capsule(feet, profile.Radius, height, c[n].Grounded ? DebugColour.Green : DebugColour.Orange);

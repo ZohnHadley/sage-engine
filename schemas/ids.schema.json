@@ -131,9 +131,19 @@
         "beasts",
         "firebugs",
         "hermits",
+        "player",
+        "sage:player",
         "sandbox:beasts",
         "sandbox:firebugs",
         "sandbox:hermits"
+      ]
+    },
+    "record:gameplay_conventions": {
+      "description": "The id of a gameplay_conventions record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "default_conventions",
+        "sage:default_conventions"
       ]
     },
     "record:input_map": {
@@ -493,9 +503,19 @@
         "beasts",
         "firebugs",
         "hermits",
+        "player",
+        "sage:player",
         "sandbox:beasts",
         "sandbox:firebugs",
         "sandbox:hermits"
+      ]
+    },
+    "base:gameplay_conventions": {
+      "description": "Another gameplay_conventions record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "default_conventions",
+        "sage:default_conventions"
       ]
     },
     "base:input_map": {

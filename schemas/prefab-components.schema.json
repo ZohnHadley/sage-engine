@@ -762,7 +762,7 @@
       "type": "object",
       "properties": {
         "profile": {
-          "description": "Senses and reach; empty = sage:default_ai. Names a ai_profile record. Category: Brain. (RecordId)",
+          "description": "Senses and reach; empty = the game's default (gameplay_conventions) Names a ai_profile record. Category: Brain. (RecordId)",
           "allOf": [
             {
               "$ref": "ids.schema.json#/definitions/record:ai_profile"
@@ -982,7 +982,7 @@
       "type": "object",
       "properties": {
         "profile": {
-          "description": "How it moves; empty = sage:default_movement. Names a movement_profile record. (RecordId)",
+          "description": "How it moves; empty = the game's default (gameplay_conventions) Names a movement_profile record. (RecordId)",
           "allOf": [
             {
               "$ref": "ids.schema.json#/definitions/record:movement_profile"
@@ -1526,7 +1526,7 @@
       "type": "object",
       "properties": {
         "attack": {
-          "description": "What it swings now; empty = sage:default_attack. Names a attack record. (RecordId)",
+          "description": "What it swings now; empty = the game's default attack (gameplay_conventions) Names a attack record. (RecordId)",
           "allOf": [
             {
               "$ref": "ids.schema.json#/definitions/record:attack"
