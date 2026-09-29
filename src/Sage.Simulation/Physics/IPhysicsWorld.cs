@@ -5,23 +5,105 @@ using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
-// What the simulation asks of a world's physics without naming its engine (REDESIGN §3.1, issue #24;
-// the seed #30 grows into the full query and body API). The 3D plugin (Sage.Physics3D, Bepu) installs
-// its space under this interface too, so levels, origin rebasing, entity I/O and the scale commands
-// work with whichever physics a game loads, and a world with none simply has no resource.
+// What the simulation and gameplay ask of a world's physics without naming its engine (REDESIGN §0.5,
+// §3.1, issue #30). One interface for both spatial modes: the 3D plugin (Sage.Physics3D, Bepu)
+// implements it today and a 2D backend (Sage.Physics2D, phase 7a) will implement the same thing, so
+// combat, AI, navigation, abilities, items, movers, levels and entity I/O run on either.
+//
+// A world with a physics plugin has it as a resource (`world.Resources.Get<IPhysicsWorld>()`); a world
+// with none simply has no resource, and code that can live without physics uses TryGet.
+//
+// Everything here is in origin space (14), the same as GlobalTransform, and uses only Sage types: a
+// backend's own handles stay behind PhysicsBody.Handle, and its shapes behind Collider.
 public interface IPhysicsWorld
 {
-    int BodyCount { get; }
+    // ---- The world ------------------------------------------------------------------------------
+
+    int BodyCount { get; }                 // active (awake) bodies
     int StaticCount { get; }
     double LastStepMilliseconds { get; }
+    Vector3 Gravity { get; }
 
-    // Trigger volumes entered and left during the last step (read in PostPhysics).
-    ReadOnlySpan<TriggerOverlap> TriggerEnter { get; }
-    ReadOnlySpan<TriggerOverlap> TriggerExit { get; }
+    // Which layers collide, by name: the physics_layers record (10 §3). Engine and gameplay code name a
+    // layer through this (Layers.Enemy, Layers.TryIndexOf("pickup")), never by its index.
+    LayerMatrix Layers { get; }
+
+    // Moves everything by `offset` when the floating origin shifts (14).
+    void Rebase(Vector3 offset);
+
+    // ---- Bodies ---------------------------------------------------------------------------------
+    //
+    // Entities with a Collider (and optionally a RigidBody) get a body from the physics plugin's own
+    // systems; these are for the engine code that builds colliders itself (levels, terrain) and for
+    // whatever moves one by hand.
+
+    // A body for `collider` as `body` says (Static, Kinematic or Dynamic), with the entity at `pose`.
+    PhysicsBody AddBody(Entity entity, in Collider collider, in RigidBody body, in Pose pose);
+
+    // Removes a body or a static, and any shape that was built for it alone.
+    void RemoveBody(in PhysicsBody body);
 
     // A static collider from a convex point cloud (a brush). A default PhysicsBody means it failed.
     PhysicsBody AddHull(Entity entity, ReadOnlySpan<Vector3> points, Vector3 position, byte layer = 0, bool isTrigger = false);
 
-    // Moves everything by `offset` when the floating origin shifts (14).
-    void Rebase(Vector3 offset);
+    // A static collider from triangles (terrain), `indices` three per triangle.
+    PhysicsBody AddMesh(Entity entity, ReadOnlySpan<Vector3> vertices, ReadOnlySpan<int> indices, Vector3 position, byte layer = 0);
+
+    // Moves a static the engine built (a door, a lift) and refreshes its bounds.
+    void MoveStatic(in PhysicsBody body, Vector3 position);
+
+    // Where the body's shape is (its centre, not the entity's origin: see Collider.Center).
+    Pose PoseOf(in PhysicsBody body);
+
+    // Puts the body where the entity at `pose` has its collider.
+    void SetPose(in PhysicsBody body, in Collider collider, in Pose pose);
+
+    Vector3 VelocityOf(in PhysicsBody body);
+    void SetVelocity(in PhysicsBody body, Vector3 velocity);
+
+    bool IsDynamic(in PhysicsBody body);   // moved by physics: its pose is written back to the transform
+    bool IsAwake(in PhysicsBody body);
+
+    // ---- Queries --------------------------------------------------------------------------------
+    //
+    // Every query takes a LayerMask (default = every layer) and skips triggers unless asked: a trigger
+    // has no surface to stop a ray, a sweep or a sword (review #53). `ignore` leaves one entity out,
+    // usually the one asking (a swing starts inside its own attacker).
+
+    // The nearest hit along a ray, or Hit = false.
+    RayHit Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default,
+                   bool includeTriggers = false, Entity ignore = default);
+
+    // A shape cast: sweeps `shape`, placed as for an entity at `from`, and returns the first thing it
+    // touches. Something the shape already overlaps where it starts is a hit at distance 0 with
+    // StartsInside set (it has no normal, so Normal is -direction), and it wins over anything further
+    // along: a sword that starts inside its target hits it. `ignoreInitialOverlaps` turns that off for a
+    // caller that keeps its own distance from surfaces (the character controller's skin) and wants only
+    // what it is moving into.
+    SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default,
+                   bool includeTriggers = false, Entity ignore = default, bool ignoreInitialOverlaps = false);
+
+    // Entities whose bounds overlap a box, up to results.Length of them (truncated, never thrown). May
+    // report ones whose shapes don't quite touch (bounds, not shapes: 10 §4), which suits "what is
+    // around here".
+    int OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default,
+                   bool includeTriggers = false, Entity ignore = default);
+
+    // ---- Events (read in PostPhysics; valid until the next step) --------------------------------
+
+    // Trigger volumes entered and left during the last step.
+    ReadOnlySpan<TriggerOverlap> TriggerEnter { get; }
+    ReadOnlySpan<TriggerOverlap> TriggerExit { get; }
+
+    // Solid contacts that began and ended during the last step, for colliders that ask for them
+    // (Collider.ReportContacts; the `body` part's "contacts"). Nothing is tracked for the rest.
+    ReadOnlySpan<ContactEvent> ContactBegin { get; }
+    ReadOnlySpan<ContactEvent> ContactEnd { get; }
+
+    // ---- Debug draw (10 §9) ---------------------------------------------------------------------
+
+    // Draws what the backend actually simulates — shapes where it has them, bounds for brush hulls,
+    // triggers in magenta — within `range` of `around` on the ground plane. PhysicsDebugSystem calls it
+    // for `phys_debug 1`, so every backend draws the same way.
+    void DrawDebug(DebugDraw debug, Vector3 around, float range);
 }

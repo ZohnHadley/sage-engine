@@ -47,7 +47,7 @@ internal sealed class PhysicsSyncSystem : ISystem
             var pose = world.Has<GlobalTransform>(entity)
                 ? world.Get<GlobalTransform>(entity).Current
                 : Pose.FromLocal(world.Get<Transform>(entity));
-            world.Add(entity, _space.Add(entity, collider, body, pose));
+            world.Add(entity, _space.AddBody(entity, collider, body, pose));
         }
 
         // Kinematic bodies (and anything gameplay moved directly) follow their transform. v1 assumes
@@ -200,7 +200,8 @@ public sealed class PhysicsModule : IModule
     {
         _records = ctx.Engine.Records;
         // The `body` prefab part is this plugin's (BodyPart, [PrefabPart]): physics owns the rule that a
-        // capsule stands on its point while a box is centred on it (review #44, F31).
+        // capsule stands on its point while a box is centred on it (review #44, F31). It is declared in
+        // Sage.Simulation beside the other physics data, so a 2D backend owns the same part (issue #30).
 
         _debugDraw = ctx.Engine.CVars.Register("phys_debug", false, CVarFlags.DevOnly,
             "Draw colliders and character capsules (needs r_debugdraw 1).");
@@ -221,7 +222,7 @@ public sealed class PhysicsModule : IModule
     {
         var space = new PhysicsSpace();
         world.Resources.Add(space);          // disposed with the world
-        world.Resources.Add<IPhysicsWorld>(space);   // what the simulation reads (levels, origin, I/O)
+        world.Resources.Add<IPhysicsWorld>(space);   // what everything else reads (gameplay, levels, I/O)
         _spaces.Add(space);
         ApplyLayers(space);
 
@@ -229,12 +230,12 @@ public sealed class PhysicsModule : IModule
         world.AddSystem(new PhysicsSyncSystem(world, space));
         world.AddSystem(new PhysicsStepSystem(space));
         world.AddSystem(new PhysicsWriteBackSystem(world, space));
-        world.AddSystem(new PhysicsDebugSystem(world, _records!, _debugDraw!));   // 10 §9
+        world.AddSystem(new PhysicsDebugSystem(world, _records!, _debugDraw!));   // 10 §9, draws through IPhysicsWorld
 
         // A destroyed entity takes its body with it.
         world.EntityDestroyed += entity =>
         {
-            if (world.TryGet<PhysicsBody>(entity, out var body)) space.Remove(body);
+            if (world.TryGet<PhysicsBody>(entity, out var body)) space.RemoveBody(body);
         };
     }
 

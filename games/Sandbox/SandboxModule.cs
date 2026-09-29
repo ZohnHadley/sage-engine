@@ -148,11 +148,11 @@ public sealed class FaceCameraSystem : ISystem
 [System("sandbox.trigger_log", Phase.PostPhysics)]
 public sealed class TriggerLogSystem : ISystem
 {
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
 
     public TriggerLogSystem(World world)
     {
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
     }
 
     public void Run(in SystemContext ctx)

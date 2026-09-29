@@ -81,7 +81,7 @@ public class AbilityTests
     private static Entity Caster(World world, Vector3 at, string name, params string[] known)
     {
         var e = world.Create(Transform.At(at), name);
-        world.AddCharacter(e, world.Resources.Get<PhysicsSpace>().Layers.Player);
+        world.AddCharacter(e, world.Resources.Get<IPhysicsWorld>().Layers.Player);
         world.AddAttributes(e);
         foreach (var ability in known) world.Teach(e, Id(ability));
         return e;

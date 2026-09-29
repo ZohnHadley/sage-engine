@@ -1102,6 +1102,11 @@
           "description": "Reports overlaps and never blocks. Category: Collision. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "reportContacts": {
+          "description": "Reports contact begin and end events. Category: Collision. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

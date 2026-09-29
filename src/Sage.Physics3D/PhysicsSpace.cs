@@ -15,12 +15,15 @@ using BepuSimulation = BepuPhysics.Simulation;
 
 namespace Sage.Physics3D;
 
-// One BepuPhysics v2 simulation per World (docs/design/10 §3), as a world resource. Bepu owns the
-// bodies and statics; entities hold handles (PhysicsBody). Everything is in origin space, the same as
-// GlobalTransform; Rebase shifts it when the origin sector moves (14).
+// One BepuPhysics v2 simulation per World (docs/design/10 §3), as a world resource and as the world's
+// IPhysicsWorld (issue #30): everything outside this plugin — gameplay, levels, entity I/O — reaches it
+// through that interface and never sees a Bepu type. Bepu owns the bodies and statics; entities hold
+// handles (PhysicsBody). Everything is in origin space, the same as GlobalTransform; Rebase shifts it
+// when the origin sector moves (14).
 //
 // Threading: Bepu's narrow-phase callbacks run on worker threads. They only read the layer matrix and
-// write trigger overlaps into per-worker buffers, which are merged on the main thread in PostPhysics.
+// poses, and write trigger overlaps and reported contacts into per-worker buffers, which are merged on
+// the main thread at the end of the step.
 //
 // Stepping allocates about 40 bytes per tick inside Bepu itself (its stage profiler), with or without
 // the thread dispatcher. That is the only per-frame allocation left in the host (TODO #41).
@@ -57,6 +60,7 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         // Same result every run on this machine: the simulation is fixed-tick and will want
         // repeatable behaviour for replays and tests. Bepu has no rollback either way (10 §2).
         Simulation.Deterministic = true;
+        _data.Simulation = Simulation;
         Log.Info(LogCat.Physics, $"Physics space created (Bepu v2, gravity {Gravity.Y:F2} m/s², {_dispatcher.ThreadCount} worker threads)");
     }
 
@@ -70,10 +74,14 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
     public ReadOnlySpan<TriggerOverlap> TriggerEnter => _data.Entered;
     public ReadOnlySpan<TriggerOverlap> TriggerExit => _data.Exited;
 
+    // Contacts that began and ended this tick, for colliders with ReportContacts.
+    public ReadOnlySpan<ContactEvent> ContactBegin => _data.ContactBegin;
+    public ReadOnlySpan<ContactEvent> ContactEnd => _data.ContactEnd;
+
     // ---- Bodies -------------------------------------------------------------------------------
 
     // Adds an entity's collider to the simulation and returns its handle component.
-    internal PhysicsBody Add(Entity entity, in Collider collider, in RigidBody body, in Pose pose)
+    public PhysicsBody AddBody(Entity entity, in Collider collider, in RigidBody body, in Pose pose)
     {
         var shape = ShapeFor(collider, out BodyInertia inertia, body.Mass <= 0 ? 1f : body.Mass);
         var rigidPose = new RigidPose(collider.CenterAt(pose), pose.Rotation);
@@ -83,22 +91,22 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         {
             var description = BodyDescription.CreateDynamic(rigidPose, inertia, new CollidableDescription(shape, 0.1f), new BodyActivityDescription(0.01f));
             var handle = Simulation.Bodies.Add(description);
-            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution);
+            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts);
             return new PhysicsBody { Handle = handle.Value, IsStatic = false };
         }
         if (body.Kind == BodyKind.Kinematic)
         {
             var description = BodyDescription.CreateKinematic(rigidPose, new CollidableDescription(shape, 0.1f), new BodyActivityDescription(0.01f));
             var handle = Simulation.Bodies.Add(description);
-            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution);
+            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts);
             return new PhysicsBody { Handle = handle.Value, IsStatic = false };
         }
         var staticHandle = Simulation.Statics.Add(new StaticDescription(rigidPose, shape));
-        _data.RegisterStatic(staticHandle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution);
+        _data.RegisterStatic(staticHandle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts);
         return new PhysicsBody { Handle = staticHandle.Value, IsStatic = true };
     }
 
-    internal void Remove(in PhysicsBody body)
+    public void RemoveBody(in PhysicsBody body)
     {
         if (body.IsStatic)
         {
@@ -290,19 +298,27 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
     // ---- Queries ------------------------------------------------------------------------------
 
     // The nearest hit along a ray, or Hit = false. Triggers are invisible to queries unless asked for.
-    public RayHit Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default, bool includeTriggers = false)
+    public RayHit Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default, bool includeTriggers = false,
+                          Entity ignore = default)
     {
-        var handler = new NearestRayHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask, IncludeTriggers = includeTriggers, Origin = from, Direction = Vector3.Normalize(direction) };
+        var handler = new NearestRayHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask, IncludeTriggers = includeTriggers, Ignore = ignore, Origin = from, Direction = Vector3.Normalize(direction) };
         Simulation.RayCast(from, handler.Direction, maxDistance, ref handler, 0);
         return handler.Hit;
     }
 
-    // Sweeps a shape and returns the first thing it touches. Used by the character controller (F7).
-    public SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default, bool includeTriggers = false)
+    // Sweeps a shape and returns the first thing it touches (IPhysicsWorld.Sweep says what a start
+    // inside something means). Used by the character controller (F7), combat, abilities and projectiles.
+    public SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default, bool includeTriggers = false,
+                          Entity ignore = default, bool ignoreInitialOverlaps = false)
     {
-        var handler = new SweepHandler { Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask, IncludeTriggers = includeTriggers };
         var pose = new RigidPose(shape.CenterAt(from), from.Rotation);   // `from` is the entity, not the shape
-        var velocity = new BodyVelocity(Vector3.Normalize(direction) * maxDistance);
+        var unit = Vector3.Normalize(direction);
+        var handler = new SweepHandler
+        {
+            Data = _data, Mask = mask.Bits == 0 ? LayerMask.All : mask, IncludeTriggers = includeTriggers, Ignore = ignore,
+            ReportInitialOverlaps = !ignoreInitialOverlaps, Start = pose.Position, Direction = unit,
+        };
+        var velocity = new BodyVelocity(unit * maxDistance);
         switch (shape.Shape)
         {
             case ColliderShape.Sphere:
@@ -322,7 +338,8 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
 
     // Entities whose bounding boxes overlap a box (10 §4). Broad phase only in v1: it may report
     // entities whose shapes don't actually touch, which is fine for "what is around here" queries.
-    public int OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default, bool includeTriggers = false)
+    public int OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default, bool includeTriggers = false,
+                          Entity ignore = default)
     {
         _overlapResults.Clear();
         var enumerator = new OverlapEnumerator
@@ -330,6 +347,7 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
             Data = _data,
             Mask = mask.Bits == 0 ? LayerMask.All : mask,
             IncludeTriggers = includeTriggers,
+            Ignore = ignore,
             Results = _overlapResults,
             Limit = results.Length,
         };
@@ -345,7 +363,77 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         return n;
     }
 
-    public Entity EntityOf(CollidableReference collidable) => _data.EntityOf(collidable);
+    internal Entity EntityOf(CollidableReference collidable) => _data.EntityOf(collidable);
+
+    // ---- Debug draw ---------------------------------------------------------------------------
+
+    // What Bepu actually holds, where it holds it (IPhysicsWorld.DrawDebug, 10 §9): bodies and statics
+    // by their shapes, brush hulls by their bounds, triggers in magenta. Terrain meshes are left out —
+    // far too many lines to be useful.
+    public void DrawDebug(DebugDraw debug, Vector3 around, float range)
+    {
+        var bodies = Simulation.Bodies;
+        for (int s = 0; s < bodies.Sets.Length; s++)
+        {
+            ref var set = ref bodies.Sets[s];
+            if (!set.Allocated) continue;
+            for (int i = 0; i < set.Count; i++)
+            {
+                var handle = set.IndexToHandle[i];
+                var body = bodies[handle];
+                var reference = new CollidableReference(body.Kinematic ? CollidableMobility.Kinematic : CollidableMobility.Dynamic, handle);
+                DrawShape(debug, body.Collidable.Shape, body.Pose, _data.IsTrigger(reference), around, range);
+            }
+        }
+
+        for (int i = 0; i < Simulation.Statics.Count; i++)
+        {
+            ref var description = ref Simulation.Statics[i];
+            var reference = new CollidableReference(Simulation.Statics.IndexToHandle[i]);
+            DrawShape(debug, description.Shape, description.Pose, _data.IsTrigger(reference), around, range);
+        }
+    }
+
+    private void DrawShape(DebugDraw debug, TypedIndex shape, RigidPose pose, bool trigger, Vector3 around, float range)
+    {
+        uint colour = trigger ? DebugColour.Magenta : DebugColour.Cyan;
+        Vector3 at = pose.Position;
+        switch (shape.Type)
+        {
+            case Sphere.Id:
+                if (SageMath.DistanceXZ(at, around) > range) return;
+                debug.Sphere(at, Simulation.Shapes.GetShape<Sphere>(shape.Index).Radius, colour);
+                return;
+            case Capsule.Id:
+            {
+                if (SageMath.DistanceXZ(at, around) > range) return;
+                var capsule = Simulation.Shapes.GetShape<Capsule>(shape.Index);
+                float height = capsule.Length + 2f * capsule.Radius;
+                debug.Capsule(at - Vector3.UnitY * (height * 0.5f), capsule.Radius, height, colour);
+                return;
+            }
+            case Box.Id:
+            {
+                if (SageMath.DistanceXZ(at, around) > range) return;
+                var box = Simulation.Shapes.GetShape<Box>(shape.Index);
+                debug.Box(at, new Vector3(box.HalfWidth, box.HalfHeight, box.HalfLength), pose.Orientation, colour);
+                return;
+            }
+            case ConvexHull.Id:
+            {
+                // A brush can be larger than the draw range, so it is in range if any of it is.
+                Simulation.Shapes.GetShape<ConvexHull>(shape.Index).ComputeBounds(pose.Orientation, out var min, out var max);
+                min += at;
+                max += at;
+                var nearest = new Vector3(Math.Clamp(around.X, min.X, max.X), 0f, Math.Clamp(around.Z, min.Z, max.Z));
+                if (SageMath.DistanceXZ(nearest, around) > range) return;
+                debug.Box((min + max) * 0.5f, (max - min) * 0.5f, colour);
+                return;
+            }
+            default:
+                return;   // meshes (terrain) and anything else
+        }
+    }
 
     public void Dispose()
     {
@@ -397,8 +485,13 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
     private struct NarrowPhaseCallbacks : INarrowPhaseCallbacks
     {
         public PhysicsCallbackData Data;
+        private BepuSimulation _simulation;
 
-        public void Initialize(BepuSimulation simulation) { }
+        // Touching, for a contact event: a speculative contact (negative depth, up to the speculative
+        // margin away) is "about to", and a resting one hovers around zero.
+        private const float ContactSlop = 0.01f;
+
+        public void Initialize(BepuSimulation simulation) { _simulation = simulation; }
 
         public bool AllowContactGeneration(int workerIndex, CollidableReference a, CollidableReference b, ref float speculativeMargin) =>
             Data.ShouldCollide(a, b);
@@ -415,9 +508,32 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
                 pairMaterial = default;
                 return false;
             }
+            if (manifold.Count > 0 && Data.WantsContacts(pair)) ReportContact(workerIndex, pair, ref manifold);
             Data.MaterialFor(pair, out float friction, out float restitution);
             pairMaterial = new PairMaterialProperties(friction, 2f, new SpringSettings(30, restitution > 0 ? 0.4f : 1f));
             return true;
+        }
+
+        // The deepest contact of a pair that asked for them, in origin space (Bepu gives it relative to
+        // A, with the normal from B to A). Poses are only read here: nothing moves during collision
+        // detection.
+        private void ReportContact<TManifold>(int workerIndex, CollidablePair pair, ref TManifold manifold)
+            where TManifold : unmanaged, IContactManifold<TManifold>
+        {
+            int deepest = -1;
+            float depth = -ContactSlop;
+            for (int i = 0; i < manifold.Count; i++)
+            {
+                manifold.GetContact(i, out _, out _, out float d, out _);
+                if (d >= depth) { depth = d; deepest = i; }
+            }
+            if (deepest < 0) return;
+            manifold.GetContact(deepest, out var offset, out var normal, out _, out _);
+            var a = pair.A;
+            Vector3 origin = a.Mobility == CollidableMobility.Static
+                ? _simulation.Statics[a.StaticHandle].Pose.Position
+                : _simulation.Bodies[a.BodyHandle].Pose.Position;
+            Data.ReportContact(workerIndex, pair, origin + offset, normal);
         }
 
         public bool ConfigureContactManifold(int workerIndex, CollidablePair pair, int childIndexA, int childIndexB, ref ConvexContactManifold manifold) => true;
@@ -452,12 +568,13 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         public bool IncludeTriggers;
         public PhysicsCallbackData Data;
         public LayerMask Mask;
+        public Entity Ignore;
         public Vector3 Origin;
         public Vector3 Direction;
         public RayHit Hit;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask, IncludeTriggers);
+        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask, IncludeTriggers, Ignore);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool AllowTest(CollidableReference collidable, int childIndex) => true;
@@ -482,9 +599,13 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         public bool IncludeTriggers;
         public PhysicsCallbackData Data;
         public LayerMask Mask;
+        public Entity Ignore;
+        public bool ReportInitialOverlaps;
+        public Vector3 Start;       // the shape's centre where the sweep begins
+        public Vector3 Direction;   // unit
         public SweepHit Hit;
 
-        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask, IncludeTriggers);
+        public bool AllowTest(CollidableReference collidable) => Data.Allows(collidable, Mask, IncludeTriggers, Ignore);
         public bool AllowTest(CollidableReference collidable, int child) => true;
 
         public void OnHit(ref float maximumT, float t, in Vector3 hitLocation, in Vector3 hitNormal, CollidableReference collidable)
@@ -501,11 +622,27 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
             };
         }
 
-        // Already touching at the start: Bepu has no normal for it, and it happens constantly (a
-        // character rests a skin width above the floor). Deliberately ignored — recording it here once
-        // hid the real hits further along the sweep. Getting out of a surface needs a shape-overlap
-        // query and a depenetration pass (10 §4, not built).
-        public void OnHitAtZeroT(ref float maximumT, CollidableReference collidable) { }
+        // Already touching at the start: Bepu has no location or normal for it. It used to be dropped
+        // for everyone, which is right for the character controller (it rests a skin width above the
+        // floor, and recording this hid the real hits further along) and wrong for everything else: a
+        // swing that starts inside its target, or a bolt fired point-blank, reported nothing at all
+        // (issue #30). So it is a hit at distance 0 unless the caller asks otherwise, and being the
+        // nearest possible it wins; the caller that started inside itself says so with `ignore`.
+        // Getting *out* of a surface still needs a depenetration pass (10 §4, not built).
+        public void OnHitAtZeroT(ref float maximumT, CollidableReference collidable)
+        {
+            if (!ReportInitialOverlaps || (Hit.Hit && Hit.StartsInside)) return;
+            maximumT = 0f;
+            Hit = new SweepHit
+            {
+                Entity = Data.EntityOf(collidable),
+                Position = Start,
+                Normal = -Direction,
+                Distance = 0f,
+                Hit = true,
+                StartsInside = true,
+            };
+        }
     }
 
     private struct OverlapEnumerator : IBreakableForEach<CollidableReference>
@@ -513,12 +650,13 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         public bool IncludeTriggers;
         public PhysicsCallbackData Data;
         public LayerMask Mask;
+        public Entity Ignore;
         public List<Entity> Results;   // a list the space reuses: a Span can't live in a non-ref struct
         public int Limit;
 
         public bool LoopBody(CollidableReference collidable)
         {
-            if (!Data.Allows(collidable, Mask, IncludeTriggers)) return true;
+            if (!Data.Allows(collidable, Mask, IncludeTriggers, Ignore)) return true;
             var entity = Data.EntityOf(collidable);
             if (entity.IsNull) return true;
             Results.Add(entity);

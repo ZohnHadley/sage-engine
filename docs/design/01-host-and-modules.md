@@ -27,8 +27,8 @@ Not in scope: what the services do (02), how worlds run systems (03).
   |---|---|---|
   | `Sage.Core` (kernel: cvars, log, VFS, records, plugins, declarations) | .NET | Friflo, Bepu, MonoGame, anything below |
   | `Sage.Simulation` (engine, app, World/ECS, prefabs, saves, levels, streaming) | `Sage.Core`, Friflo | Bepu, MonoGame, anything below |
-  | `Sage.Physics3D` (Bepu space, character controller) | `Sage.Simulation`, Bepu | MonoGame, anything below |
-  | `Sage.Gameplay` (gameplay modules, simulation side; `Sage.Framework` in the first plan) | `Sage.Physics3D` and below | MonoGame, `Sage.Client`, `Sage.Editor`, any kit |
+  | `Sage.Physics3D` (Bepu space behind `IPhysicsWorld`, character movement) | `Sage.Simulation`, Bepu | MonoGame, anything below |
+  | `Sage.Gameplay` (gameplay modules, simulation side; `Sage.Framework` in the first plan) | `Sage.Simulation` and below; physics only through `IPhysicsWorld` (#30; the `Sage.Physics3D` reference is for the plugin lists) | Bepu, MonoGame, `Sage.Client`, `Sage.Editor`, any kit |
   | `Sage.Client` (render, audio, input, UI) | `Sage.Gameplay` and below, MonoGame | `Sage.Editor` |
   | `Sage.Framework.Client` (camera rigs, cue playback, HUD helpers) | `Sage.Framework`, `Sage.Client` | `Sage.Editor` |
   | `Sage.Editor` | everything | — |

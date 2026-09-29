@@ -125,8 +125,9 @@ source: the self test plants a name and counts only a dump has, and fails if the
 | Controller / `Pawn` / `PawnIntent` / `PlayerControlled` | A `Controller` (player or AI) possesses a `Pawn` (a component marking a possessable body); both write the same `PawnIntent` component (move, look, actions) that movement, combat and interaction only ever read; `PlayerControlled` tags the local player's pawn | 16 |
 | `movement_profile` | Record with speeds, acceleration, jump, gravity, slope and step limits | 10, 16 |
 | `SageMath` | The engine's one angles/directions convention, stated once so movement, AI, sprites and the camera can't disagree: +Y up, an entity's front is its local -Z, yaw 0 faces -Z, positive yaw turns counter-clockwise seen from above | 03, 10 |
-| `PhysicsSpace` | World resource: the Bepu simulation, its queries (raycast, sweep, overlap) and trigger overlaps | 10 |
-| `Collider` / `RigidBody` / `PhysicsBody` | The shape and layer, how it moves (static, kinematic, dynamic), and the Bepu handle the engine manages. `Collider.Standing` builds a capsule anchored at the entity's feet via `Collider.Center` | 10 |
+| `IPhysicsWorld` | World resource: the physics facade gameplay uses — bodies, named layers, raycast/sweep/overlap, trigger and contact events, debug draw — with no backend type in it (#30) | 10 |
+| `PhysicsSpace` | The 3D backend behind `IPhysicsWorld`: one Bepu simulation per world, in `Sage.Physics3D` | 10 |
+| `Collider` / `RigidBody` / `PhysicsBody` | The shape and layer, how it moves (static, kinematic, dynamic), and the backend's handle the engine manages. `Collider.Standing` builds a capsule anchored at the entity's feet via `Collider.Center` | 10 |
 | `LayerMask` | Which collision layers a query or a contact considers | 10 |
 | `World.AddCharacter` | Adds a `CharacterController` + `Pawn` + a `PawnIntent` seeded from the entity's facing + a standing capsule `Collider` + a kinematic `RigidBody`, so the sweep layer, collider layer and capsule height can't drift apart | 10, 16 |
 | `GlobalTransform` | Computed `Pose Current` + `Pose Previous` relative to the world's origin sector; interpolated by Extract | 03, 06 |

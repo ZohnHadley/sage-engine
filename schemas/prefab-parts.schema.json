@@ -282,6 +282,11 @@
           "default": false,
           "type": "boolean"
         },
+        "contacts": {
+          "description": "Reports contact begin and end events. Category: Physics. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
         "layer": {
           "description": "Physics layer by name; empty = default. Category: Physics. (string, default \"\")",
           "default": "",

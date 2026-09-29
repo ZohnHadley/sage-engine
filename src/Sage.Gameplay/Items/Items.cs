@@ -333,7 +333,7 @@ public sealed class InteractionSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController> _users;
     private readonly RecordStore _records;
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
     private readonly InteractionState _state;
     private readonly ActionId _use;
     private readonly CVar<float> _range;
@@ -345,7 +345,7 @@ public sealed class InteractionSystem : ISystem
     {
         _users = world.Query<Transform, PawnIntent, CharacterController>();
         _records = records;
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
         _state = world.Resources.Get<InteractionState>();
         _use = actions.Get(world.Conventions().Actions.Use);
         _range = range;

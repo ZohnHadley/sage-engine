@@ -19,7 +19,7 @@ public sealed class AIThinkSystem : ISystem
     private readonly EventReader<Damaged> _damage;
     private readonly RecordStore _records;
     private readonly AITaskRegistry _tasks;
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
     private readonly ActionId _attack;
     private static readonly AIProfileRecord FallbackProfile = new();
 
@@ -31,7 +31,7 @@ public sealed class AIThinkSystem : ISystem
         _damage = world.Events.Reader<Damaged>(this, Schedule.Fixed);
         _records = records;
         _tasks = tasks;
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
         _attack = actions.Get(world.Conventions().Actions.Attack);
 
         // A creature's path and the place it last saw somebody are positions in origin space, and the

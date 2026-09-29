@@ -133,7 +133,7 @@ public ref struct AITaskContext
     // How this body moves (radius, step height, slope limit): what a path has to be walkable *by*, so
     // navigation reuses the numbers the character controller already obeys rather than inventing its own.
     public MovementProfileRecord Movement;
-    public PhysicsSpace Space;
+    public IPhysicsWorld Space;
     public ActionId Attack;     // the Attack action, so a task can swing the way a player does
     public float Dt;
     public float Param;

@@ -156,7 +156,7 @@ public sealed class MeleeCombatSystem : ISystem
 {
     private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController, Melee> _fighters;
     private readonly RecordStore _records;
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
     private readonly EventReader<AnimationEvent> _animation;
     private readonly List<AnimationEvent> _fired = new();   // the previous tick's animation events,
                                                             // drained once so Lands can ask per entity
@@ -172,7 +172,7 @@ public sealed class MeleeCombatSystem : ISystem
         _debugSwings = debugSwings;
         _fighters = world.Query<Transform, PawnIntent, CharacterController, Melee>();
         _records = records;
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
         _animation = world.Events.Reader<AnimationEvent>(this);
         _attack = actions.Get(world.Conventions().Actions.Attack);
     }
@@ -294,10 +294,11 @@ public sealed class MeleeCombatSystem : ISystem
 
         // Every solid thing counts, including the attacker's own kind: a swing is physical, and who it
         // is *allowed* to hurt is a rules question (factions, F24), not a physics one. The sweep starts
-        // inside the attacker's own capsule, which the space reports as a zero-distance touch and
-        // ignores, and the self check below is the belt to that pair of braces.
+        // inside the attacker's own capsule, so the attacker is left out of it (`ignore`), and the self
+        // check below is the belt to that pair of braces. Something else the swing starts inside — a
+        // creature pressed up against you — is hit at distance 0 (issue #30: it used to be missed).
         var hit = _space.Sweep(Collider.Sphere(attack.Radius), new Pose { Position = eye, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                               aim, attack.Reach, LayerMask.All);
+                               aim, attack.Reach, LayerMask.All, ignore: attacker);
 
         var info = new DamageInfo(attacker, default, attack.DamageType, attack.Damage, eye + aim * attack.Reach, aim);
         if (Connects(world, attacker, in transform, in intent, attack, hit))

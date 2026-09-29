@@ -261,7 +261,7 @@ public class EntityIOTests
     {
         using var engine = NewEngineWithCounter();
         var world = engine.CreateWorld("io");
-        var space = world.Resources.Get<PhysicsSpace>();
+        var space = world.Resources.Get<IPhysicsWorld>();
 
         // A two-metre cube of trigger at the origin, built the way a `"trigger" "1"` brush entity is.
         var trigger = world.Create(Transform.At(Vector3.Zero), "trigger");
@@ -291,7 +291,7 @@ public class EntityIOTests
     {
         using var engine = NewEngineWithCounter();
         var world = engine.CreateWorld("io");
-        var space = world.Resources.Get<PhysicsSpace>();
+        var space = world.Resources.Get<IPhysicsWorld>();
 
         var trigger = world.Create(Transform.At(Vector3.Zero), "trigger");
         var corners = new[]
@@ -353,7 +353,7 @@ public class EntityIOTests
     {
         using var engine = NewEngine();
         var world = engine.CreateWorld("io");
-        var space = world.Resources.Get<PhysicsSpace>();
+        var space = world.Resources.Get<IPhysicsWorld>();
 
         // A metre cube of door at the origin, as a level would build it: a hull, and a mover to shift it.
         var door = world.Create(Transform.At(Vector3.Zero), "door");

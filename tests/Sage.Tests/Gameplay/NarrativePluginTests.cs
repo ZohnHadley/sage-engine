@@ -94,7 +94,7 @@ public class NarrativePluginTests
 
             var world = app.World;
             var died = new EventProbe<Died>(world);
-            var space = world.Resources.Get<PhysicsSpace>();
+            var space = world.Resources.Get<IPhysicsWorld>();
 
             var ground = world.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
             world.Add(ground, Collider.Box(new Vector3(100, 1, 100)));

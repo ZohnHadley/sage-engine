@@ -3,8 +3,10 @@
     Generic gameplay, the base plugins every genre can use (REDESIGN §0.5, §3.1, issue #24):
     attributes, effects, combat, items, abilities, AI, navigation, factions, dialogue and quest
     models, movers, sprite animation and lights; BasePlugins, the one list of the base's plugins.
-    The RPG kit's screens wait in Rpg/ until Sage.Kits.Rpg exists (#27). It references
-    Sage.Physics3D (characters sweep the space) until #30 puts physics behind IPhysicsWorld. No MonoGame.
+    The RPG kit's screens wait in Rpg/ until Sage.Kits.Rpg exists (#27). Gameplay code reaches physics
+    only through IPhysicsWorld (Sage.Simulation, issue #30); the reference to Sage.Physics3D is there
+    for BasePlugins and GameplayModules.All, the composition lists that name PhysicsModule and
+    CharacterModule, and AssemblyLayeringTests holds it to that. No MonoGame.
   -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -23,7 +25,6 @@
   <ItemGroup>
     <Using Include="Sage.Core" />
     <Using Include="Sage.Simulation" />
-    <Using Include="Sage.Physics3D" />
     <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
     <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>

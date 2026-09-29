@@ -1,12 +1,13 @@
 #nullable enable
 
-namespace Sage.Physics3D;
+namespace Sage.Simulation;
 
 // What a game means by "a character" when it says nothing (issue #26): the movement profile a
 // character with none of its own moves by, and the names of the actions the controller reads.
 //
 // The words belong to the game's `gameplay_conventions` record, which lives in Sage.Gameplay, above
-// this assembly. So this is the controller's view of them, one per world: CharacterModule installs
+// this assembly. It sits in Sage.Simulation beside CharacterController (issue #30), so gameplay reads
+// it without a physics backend and a 2D controller would read the same one. So this is the controller's view of them, one per world: CharacterModule installs
 // the engine's own (no default profile, so `MovementProfileRecord.Fallback`, and the actions it
 // registers), and gameplay replaces it with one that reads the record.
 public class CharacterConventions

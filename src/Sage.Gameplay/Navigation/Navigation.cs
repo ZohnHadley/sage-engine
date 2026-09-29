@@ -422,7 +422,7 @@ public sealed class Navigation
 
     // Plans a way from `from` to `to` for a body of `radius`, writing the corners into `path`. False
     // means "walk straight at it": either the budget is spent this tick, or there is no way through.
-    public bool Plan(World world, PhysicsSpace space, Vector3 from, Vector3 to, float radius,
+    public bool Plan(World world, IPhysicsWorld space, Vector3 from, Vector3 to, float radius,
                      float stepHeight, float maxSlopeDegrees, Entity self, Entity target, ref NavPath path)
     {
         if (!Enabled) return false;
@@ -451,7 +451,7 @@ public sealed class Navigation
     // Creatures and the player are left out on purpose. They move, they are what the path is usually
     // *for*, and a crowd that blocks its own way round a corner is worse than one that bumps: the
     // raycast steering in `MoveToTargetTask` is what keeps bodies apart.
-    private void Stamp(World world, PhysicsSpace space, float radius, float stepHeight,
+    private void Stamp(World world, IPhysicsWorld space, float radius, float stepHeight,
                        float maxSlopeDegrees, Entity self, Entity target)
     {
         var grid = Grid;
