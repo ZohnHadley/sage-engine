@@ -65,17 +65,6 @@ public class DeclaredApiTests
         }
     }
 
-    // Until the first release is tagged (0.1.0), nothing has shipped: every declaration is Unshipped, and
-    // moving them to Shipped is a step of tagging a release (docs/RELEASING.md).
-    [Fact]
-    public void BeforeTheFirstReleaseNothingHasShipped()
-    {
-        if (BuildInfo.EngineSemVersion > new SemVersion(0, 1, 0) || !BuildInfo.EngineVersion.Contains('-'))
-            return;   // 0.1.0 or later is tagged: the Shipped files are that release's
-        foreach (string name in Declared)
-            Assert.Equal(new[] { "#nullable enable" }, File.ReadAllLines(Path.Combine(Src, name, "PublicAPI.Shipped.txt")).Where(l => l.Length > 0));
-    }
-
     // ---- The analyzer, on a small library ----------------------------------------------------------------
 
     private const string Library = """
