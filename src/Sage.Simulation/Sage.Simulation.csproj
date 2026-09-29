@@ -29,6 +29,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sage.Tests" />
+    <!-- The one internal the client uses: RenderViewPlan (issue #77), the planning half of multi-view
+         drawing, kept here so the headless tests can reach it. -->
+    <InternalsVisibleTo Include="Sage.Client" />
   </ItemGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
@@ -37,6 +40,6 @@
   </ItemGroup>
   <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): scenes and placements (SAGE0121) and brush maps (SAGE0122) are declared here, and an assembly uses its own experimental types freely. -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0121;SAGE0122</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0121;SAGE0122;SAGE0123</NoWarn>
   </PropertyGroup>
 </Project>
