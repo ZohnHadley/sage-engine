@@ -264,7 +264,7 @@ public class DeclarationTests
 
     // Runs the generator over `source`, compiled against the engine, and returns what it wrote and
     // reported — plus any compile error in what it wrote, which would otherwise pass unnoticed.
-    private static (string Output, ImmutableArray<Diagnostic> Diagnostics) Generate(string source, IIncrementalGenerator? generator = null)
+    internal static (string Output, ImmutableArray<Diagnostic> Diagnostics) Generate(string source, IIncrementalGenerator? generator = null)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)

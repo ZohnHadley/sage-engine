@@ -26,3 +26,8 @@ SAGE0050 | Sage.Architecture | Error | A Friflo type, member or namespace named 
 SAGE0040 | Sage.Declarations | Error | A [Property] range on a field that is not a number or a vector, or Min above Max
 SAGE0041 | Sage.Declarations | Error | A [RecordRef] on a field that is not a RecordId
 SAGE0042 | Sage.Declarations | Error | An [AssetKind] on a field that is not an AssetPath
+SAGE0100 | Sage.Declarations | Error | A vocabulary entry whose plugin cannot be inferred
+SAGE0101 | Sage.Declarations | Error | A vocabulary entry that cannot be one (abstract, private, no public parameterless constructor, wrong type)
+SAGE0102 | Sage.Declarations | Error | Two entries of one vocabulary with one id in an assembly
+SAGE0103 | Sage.Declarations | Error | A vocabulary entry with an empty id
+SAGE0104 | Sage.Declarations | Error | A vocabulary entry attribute whose entry type is not marked [Vocabulary]

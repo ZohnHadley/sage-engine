@@ -10,8 +10,8 @@ namespace Sage.Simulation;
 
 // Everything an app registered, as JSON (docs/REDESIGN.md §4.8 "Registry dump", issue #18): every
 // console command, cvar, record type, component, tag, saved resource, prefab part, system, entity input
-// and output and input action, each with the plugin that registered it (the ledger, issue #12) and, for
-// the declarations, their fields from the metadata table.
+// and output, input action and vocabulary entry (issue #28), each with the plugin that registered it
+// (the ledger, issue #12) and, for the declarations, their fields from the metadata table.
 //
 //   Sage.Host -game games/Sandbox -dump-registry build/registry.json    the host: boots, writes, quits
 //   RegistryDump.Write(app.Engine, path)                                a test or a tool, headless
@@ -128,6 +128,19 @@ public static class RegistryDump
         root["inputActions"] = Array(engine.Actions.All.Select(a => new JsonObject
         {
             ["name"] = a.Name, ["kind"] = a.Kind.ToString(), ["owner"] = ledger.OwnerOf("input action", a.Name),
+        }));
+
+        // The open vocabularies (issue #28): each with its JSON key, and every entry with the plugin
+        // that registered it and the fields content may write.
+        root["vocabularies"] = Array(engine.Vocabularies.All.Select(v => new JsonObject
+        {
+            ["name"] = v.Name, ["key"] = v.Key, ["default"] = v.Default, ["entryType"] = v.EntryType.FullName,
+            ["entries"] = Array(v.Entries.Select(e =>
+            {
+                var o = new JsonObject { ["id"] = e.Id, ["owner"] = e.Owner };
+                Describe(o, Metadata.Of(e.Type), json);
+                return (JsonNode)o;
+            })),
         }));
 
         // Relaxed escaping: help text with a § or an apostrophe should read as written.

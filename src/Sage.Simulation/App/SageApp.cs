@@ -225,6 +225,7 @@ public sealed class SageApp : IDisposable
     {
         Advance(AppStage.Configured, AppStage.ContentLoaded);
         Engine.Actions.Seal.Seal("content was loaded");
+        Engine.Vocabularies.Seal("content was loaded");   // records name their entries (issue #28)
         Engine.Records.Load(Engine.Vfs);   // seals record types
         ChooseStartScene();
     }

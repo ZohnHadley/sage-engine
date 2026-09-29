@@ -35,6 +35,10 @@ public sealed class RegistrationBuilder
     public void Record<T>() where T : class, new() => _engine.Records.Register<T>();
     public void SavedResource<T>() where T : class, new() => _engine.Saves.RegisterResource<T>();
     public void PrefabPart<T>() where T : class, IPrefabPart, new() => _engine.Prefabs.Register<T>();
+
+    // An entry of an open vocabulary (issue #28): `[QuestObjective("reach")] class ReachObjective`.
+    public void Vocabulary<TEntry, T>(string id) where TEntry : class where T : class, TEntry, new() =>
+        _engine.Vocabularies.Of<TEntry>().Register<T>(id);
 }
 
 // The plugin id of declarations the engine itself owns: record types every game uses (prefabs,

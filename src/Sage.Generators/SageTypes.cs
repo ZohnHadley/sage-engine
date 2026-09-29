@@ -38,6 +38,10 @@ public static class SageTypes
     public const string RecordRefMetadata = Core + ".RecordRef`1";   // as metadata names it
     public const string CVarRegistry = Core + ".CVarRegistry";
     public const string RecordStore = Core + ".RecordStore";
+    // Open vocabularies (issue #28), by metadata name: the entry attribute's base and the registry.
+    public const string VocabularyAttribute = Core + ".VocabularyAttribute";
+    public const string VocabularyEntryAttribute = Core + ".VocabularyEntryAttribute`1";
+    public const string Vocabulary = Core + ".Vocabulary`1";
 
     // ---- Sage.Simulation ---------------------------------------------------------------------------
     public const string SystemAttribute = Simulation + ".SystemAttribute";
