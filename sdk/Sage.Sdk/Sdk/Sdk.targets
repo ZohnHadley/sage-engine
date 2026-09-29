@@ -15,6 +15,11 @@
       SageSkipShaders=true      do not compile .fx files (mgfxc needs Wine on Linux, MGFXC0001).
       SageGameDirectory         the game folder `dotnet run` passes as -game; default: this project's
                                 folder when it has a game.json.
+    Items:
+      <SageKit Include="sage.kits.rpg" />   a kit the game is built on (issue #27): references its
+                                assembly (and, in a client half, its client half; Client="false" for a
+                                kit without one) and its namespace, compile-time only. game.json must name
+                                it in "kits" too, which is what makes the host load it (SAGE0114).
     SDK diagnostics are SAGE0110-0119 (docs/MAKING_A_GAME.md §10a).
   -->
   <PropertyGroup>
@@ -82,6 +87,29 @@
     <Analyzer Include="$(MSBuildThisFileDirectory)..\analyzers\dotnet\cs\Sage.Generators.dll" />
   </ItemGroup>
 
+  <!-- Kits (issue #27): the assembly is the id with each part capitalised (sage.kits.rpg is
+       Sage.Kits.Rpg), and its client half is that plus .Client. From source, src/<assembly>; from the
+       package, the Player's host folder, where the host keeps its kits. -->
+  <ItemGroup>
+    <SageKit Update="@(SageKit)">
+      <SageKitName>$([System.Text.RegularExpressions.Regex]::Replace('%(Identity)', '^sage\.kits\.', ''))</SageKitName>
+    </SageKit>
+    <SageKit Update="@(SageKit)">
+      <SageAssembly>Sage.Kits.$([System.String]::Copy('%(SageKitName)').Substring(0, 1).ToUpperInvariant())$([System.String]::Copy('%(SageKitName)').Substring(1))</SageAssembly>
+    </SageKit>
+    <_SageKitClient Include="@(SageKit)" Exclude="@(SageKit->WithMetadataValue('Client', 'false'))" Condition="'$(SageSimulationOnly)' != 'true'" />
+    <Using Include="@(SageKit->'%(SageAssembly)')" />
+    <Using Include="@(_SageKitClient->'%(SageAssembly).Client')" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SageSdkFromPackage)' != 'true'">
+    <ProjectReference Include="@(SageKit->'$(SageRepositoryRoot)src\%(SageAssembly)\%(SageAssembly).csproj')" Private="false" />
+    <ProjectReference Include="@(_SageKitClient->'$(SageRepositoryRoot)src\%(SageAssembly).Client\%(SageAssembly).Client.csproj')" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SageSdkFromPackage)' == 'true' And '$(PkgSage_Player)' != ''">
+    <Reference Include="@(SageKit->'$(SageHostDirectory)%(SageAssembly).dll')" Private="false" />
+    <Reference Include="@(_SageKitClient->'$(SageHostDirectory)%(SageAssembly).Client.dll')" Private="false" />
+  </ItemGroup>
+
   <!-- Project switches the Sage analyzers read (issue #19): SageSimulationOnly (SAGE0024) and
        SageStrictSaves (SAGE0023). SAGE0050 is always on for a game: SageEcsImplementation is the engine's. -->
   <ItemGroup Condition="'$(SageGenerators)' != 'false'">
@@ -131,6 +159,9 @@
       <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Match($(_SageManifest), '"add"\s*:\s*\[[^\]]*\]'))</_SageNamedModules>
       <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedModules), '^"add"\s*:\s*\[|\]$', ''))</_SageNamedModules>
       <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedModules), '\s*"([^"]*)"\s*,?', '$1;'))</_SageNamedModules>
+      <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Match($(_SageManifest), '"kits"\s*:\s*\[[^\]]*\]'))</_SageNamedKits>
+      <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedKits), '^"kits"\s*:\s*\[|\]$', ''))</_SageNamedKits>
+      <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedKits), '\s*"([^"]*)"\s*,?', '$1;'))</_SageNamedKits>
       <_SageOwnPath>$([MSBuild]::MakeRelative('$(SageGameDirectory)\', '$(TargetPath)').Replace('\', '/'))</_SageOwnPath>
       <_SageOwnPath>$([System.Text.RegularExpressions.Regex]::Replace('$(_SageOwnPath)', '(^|/)$(Configuration)/', '$1{config}/'))</_SageOwnPath>
     </PropertyGroup>
@@ -141,9 +172,12 @@
         <Named>%(_SageNamed.Identity)</Named>
       </_SageLoaded>
       <_SageLoadsThis Include="@(_SageLoaded)" Condition="'%(FullPath)' == '$(TargetPath)'" />
+      <_SageUnnamedKit Include="@(SageKit)" Exclude="$([MSBuild]::Unescape($(_SageNamedKits)))" />
     </ItemGroup>
     <Error Code="SAGE0110" File="$(_SageManifestFile)" Condition="!Exists('%(_SageLoaded.FullPath)')"
            Text="game.json loads &quot;%(_SageLoaded.Named)&quot;, which this build did not write (no %(_SageLoaded.FullPath)). Sage.Sdk builds a game to bin/{config}/Name.dll, with no target framework in the path." />
+    <Error Code="SAGE0114" File="$(_SageManifestFile)" Condition="'@(_SageUnnamedKit)' != ''"
+           Text="This project is built on @(_SageUnnamedKit->'%(Identity)', ', ') (SageKit), but game.json's &quot;kits&quot; does not name it, so the host would not load it: add &quot;kits&quot;: [&quot;@(SageKit->'%(Identity)', '&quot;, &quot;')&quot;]." />
     <Error Code="SAGE0111" File="$(_SageManifestFile)" Condition="'$(SageDataOnly)' != 'true' And '@(_SageLoadsThis)' == ''"
            Text="game.json does not load this project's $(TargetFileName): name &quot;$(_SageOwnPath)&quot; as its &quot;assembly&quot; (the simulation half) or in &quot;modules&quot;: { &quot;add&quot; } (a client half)." />
   </Target>
