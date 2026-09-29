@@ -21,6 +21,7 @@ SAGE0021 | Sage.Declarations | Error | A [Record] type or [SavedResource] name t
 SAGE0022 | Sage.Declarations | Error | An [Upgrade] method nothing runs, or a saved resource's malformed or duplicate upgrader
 SAGE0023 | Sage.Saves | Error | Strict saves (SageStrictSaves): a public component field that is neither [Property] nor [Transient]
 SAGE0024 | Sage.Architecture | Error | A MonoGame type in a simulation-only assembly (SageSimulationOnly)
+SAGE0025 | Sage.Architecture | Error | A base assembly (SageBaseAssembly) that references a Sage.Kits.* assembly or uses its types
 SAGE0040 | Sage.Declarations | Error | A [Property] range on a field that is not a number or a vector, or Min above Max
 SAGE0041 | Sage.Declarations | Error | A [RecordRef] on a field that is not a RecordId
 SAGE0042 | Sage.Declarations | Error | An [AssetKind] on a field that is not an AssetPath

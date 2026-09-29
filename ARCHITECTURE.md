@@ -44,7 +44,7 @@ In short: **Unity's composition and editor, Source's framework, console culture 
 │                 Inventory · Interaction · (later) Narrative, │
 │                 Factions, Economy, Overworld, Navigation     │
 ├──────────────────────────────────────────────────────────────┤
-│ ENGINE  ┌─ Simulation (Sage.Engine, no MonoGame) ─────────┐  │
+│ ENGINE  ┌─ Simulation (Core+Simulation, no MonoGame) ─────┐  │
 │         │ Core services · World/ECS · Events · Assets/VFS │  │
 │         │ Records · Serialization · Physics · Streaming   │  │
 │         └─────────────────────────────────────────────────┘  │
@@ -64,7 +64,7 @@ Gregory's reference stack (survey §2.1) maps onto this directly. "Gameplay foun
 
 ### Dependency rules (enforced by csproj references; details in [01 §3.1](docs/design/01-host-and-modules.md))
 1. **Down only:** game → framework → engine. The engine never references framework or game types.
-2. **The simulation never references MonoGame or client code.** `Sage.Engine` and `Sage.Framework` use `System.Numerics` (D2). Rendering *reads* simulation state through Extract (§4.6); the simulation never calls rendering.
+2. **The simulation never references MonoGame or client code.** `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D` and `Sage.Gameplay` (the framework layer) use `System.Numerics` (D2), and the build says so (SAGE0024). Rendering *reads* simulation state through Extract (§4.6); the simulation never calls rendering.
 3. **Presentation → simulation only through `PlayerCommand` or command queues.** UI and camera code never write gameplay components directly ([04 §3.1](docs/design/04-events-and-messaging.md)).
 4. **Runtime never references tools or the editor.**
 
@@ -75,10 +75,13 @@ Gregory's reference stack (survey §2.1) maps onto this directly. "Gameplay foun
 ```
 sage-engine/
   src/
-    Sage.Engine/            simulation: core services, World/ECS, events, VFS/assets/records,
-                            serialization, physics, streaming          (no MonoGame)
+    Sage.Core/              kernel: cvars/console, log, diagnostics, VFS, records, plugins,
+                            declarations                               (no ECS, no MonoGame)
+    Sage.Simulation/        engine + app, World/ECS, events, prefabs, saves, levels,
+                            streaming, entity I/O, presentation data   (no MonoGame)
+    Sage.Physics3D/         Bepu physics, character controller          (no MonoGame)
+    Sage.Gameplay/          optional gameplay modules, simulation side  (no MonoGame)
     Sage.Client/            rendering, materials/shaders, input, audio, dev UI     (MonoGame)
-    Sage.Framework/         optional gameplay modules, simulation side             (no MonoGame)
     Sage.Framework.Client/  camera rigs, cue playback, HUD helpers
     Sage.Editor/            editor host + panels
     Sage.Host/              game host exe (boot + main loop)
@@ -220,7 +223,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 ## 7. From today's code to this structure
 
 **Today** (after step 6):
-- **Solution:** `Sage.sln` with `src/Sage.Engine` (no MonoGame), `src/Sage.Client`, `src/Sage.Editor`, `src/Sage.Host` (exe), `src/Sage.Cli` (`sage validate`, headless), `games/Sandbox` and `tests/Sage.Tests`.
+- **Solution:** `Sage.sln` with `src/Sage.Core`, `src/Sage.Simulation`, `src/Sage.Physics3D`, `src/Sage.Gameplay` (no MonoGame; one assembly, `Sage.Engine`, until issue #24), `src/Sage.Client`, `src/Sage.Editor`, `src/Sage.Host` (exe), `src/Sage.Cli` (`sage validate`, headless), `games/Sandbox` and `tests/Sage.Tests`.
 - **By step:**
   - step 2: logging, the console and build configurations;
   - step 3: `Engine` + `World` over Friflo.Engine.ECS, with no singletons;
@@ -249,7 +252,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 4. ~~**Fixed tick + schedules + phases**~~ **Done 2026-09-22** (R2, R4). `FixedStepClock` (Fiedler accumulator, clamped frame time, time scale), `sim_tickrate` 60 Hz, render interpolation via `GlobalTransform` (previous/current poses) + transform propagation through the hierarchy, `ISystem` in Fixed/Frame phases with `before`/`after` ordering, run conditions, pause, per-phase command flushing, profiler scopes + `stat frame` + `sys_list`/`sys_toggle`. The loop allocates nothing in steady state (tested). Deferred: `SectorCoord`/origin rebasing (R6), access declarations (event bus), `host_maxfps`. 56 tests.
 5. ~~**Modules + `game.json` + VFS + records**~~ **Done 2026-09-22** (R8, R11 v1). `IModule` (`Init` → `Start` → `OnWorldCreated` → `Shutdown`) with dependency sort and dependency-checked services; `game.json` (game id = record namespace, `{config}` in the assembly path, module disabling); the game assembly loads before the first `World`. VFS with priority folder mounts, shadowing and case-insensitive lookup; `RecordStore` with namespaced ids, per-field patch merge (`field+`/`field-`), `disabled`, `base` + `abstract`, validation (unknown fields, types, references), in-place hot reload; `vfs_*`, `rec_*`, `modules` commands. **`games/Sandbox` is now a real game module** (it was planned for step 4 in step 1's note): its scene is `spawn` records, and billboard facing is its own system. Deviations, all documented in 01 §4/§5.1 and 05 §3.6: `OnWorldCreated` is on every module, not only the game; `+launch` commands run after the main world exists; records use `System.Text.Json` reflection until the generator (09); models still come from MGCB `.xnb` files, now read through the VFS (`ContentService`), until R12. 89 tests.
 6. ~~**Extract + snapshot + materials** (R9); **input actions → `PlayerCommand`** (R3)~~ **Done 2026-09-22.**
-   - **Rendering:** `MeshRenderer` (Sage.Engine) → `CameraExtract`/`MeshExtract` → a pooled `RenderSnapshot` (camera-relative, interpolated, frustum-culled, sort keys) → the `Renderer`'s fixed passes.
+   - **Rendering:** `MeshRenderer` (Sage.Simulation) → `CameraExtract`/`MeshExtract` → a pooled `RenderSnapshot` (camera-relative, interpolated, frustum-culled, sort keys) → the `Renderer`'s fixed passes.
    - **Materials and shaders:** material records (`sage:lit_default`, `sage:error`, `base` inheritance, hot reload) drawn with our own `lit.fx`/`error.fx`. Shaders are compiled by `dotnet-mgfxc` from `engine_content/` at build time, and `BasicEffect` is gone.
    - **Input:** `InputDevices` (+ gamepad) → `InputActions` (input_map records, Editor/Console/UI/Gameplay contexts with consumption) → `CommandLatch` → a `PlayerCommand` per tick in the world's `PlayerInput`. The Sandbox hops on Jump, and `Menu` replaces the Escape check.
    - **Fixed:** #25, #37, #39, and a new #40 (listener edges were always false).
@@ -312,7 +315,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **98 console commands, 25 record types, 694 headless tests.** <!-- counts -->
+and audible: **98 console commands, 25 record types, 702 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight

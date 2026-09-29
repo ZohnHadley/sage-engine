@@ -47,7 +47,7 @@ Not in scope: the record merge rules (05), I/O semantics (04), streaming (14).
 A field with neither `[Saved]` nor `[Transient]` gets a **compile-time warning** from the generator, so nothing is left out of saves by accident.
 
 ### 3.2 The source generator (`Sage.Generators`)
-A Roslyn incremental generator, referenced as an analyzer by `Sage.Engine`, `Sage.Framework` and game assemblies. For each annotated type it emits:
+A Roslyn incremental generator, referenced as an analyzer by every engine assembly (`Sage.Core` … `Sage.Gameplay`) and game assembly. For each annotated type it emits:
 
 | Output | Used by |
 |---|---|
@@ -119,7 +119,7 @@ user://saves/<slot>/
 
 ### As built (saves v1, 2026-09-23 — F27)
 
-- **Code:** `src/Sage.Engine/Content/SaveSystem.cs` (slots, header, temp+rename), `SaveSerializer.cs`
+- **Code:** `src/Sage.Simulation/Content/SaveSystem.cs` (slots, header, temp+rename), `SaveSerializer.cs`
   (components in and out), `SaveJson.cs` (the dialect and its three world-aware converters),
   `SaveAttributes.cs` (`[Transient]`, `FromPrefab`). Tests in `tests/Sage.Tests/Content/SaveTests.cs`.
   Console: `save [slot]`, `load [slot]`, `saves`.

@@ -2,6 +2,8 @@
   <!-- Client layer: rendering, input, client-side assets. The only engine layer that uses MonoGame. -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
+    <SageSimulationOnly>false</SageSimulationOnly>
+    <SageBaseAssembly>true</SageBaseAssembly>
   </PropertyGroup>
 
   <ItemGroup>

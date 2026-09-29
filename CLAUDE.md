@@ -48,7 +48,9 @@ tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders 
 - **Tests are headless and parallel, and boot through `HeadlessApp`** (`tests/Sage.Testing`), never
   `new Engine(...)`. Tests that change process-wide state or measure time/allocation go in the
   `ProcessWideState` / `Measurements` collections (`tests/Sage.Tests/Core/TestSupport.cs`).
-  `Sage.Engine` has no MonoGame; tests cannot reference `Sage.Client` — the smoke run checks the client.
+  The base engine (`Sage.Core` ← `Sage.Simulation` ← `Sage.Physics3D` ← `Sage.Gameplay`, one namespace
+  each) has no MonoGame and never references a kit (SAGE0025); tests cannot reference `Sage.Client` —
+  the smoke run checks the client.
 - **Docs are checked.** An "As built" claim cites the test that proves it (the `test:` marker, see the README); quoted counts are verified.
   A new test changes the count: run `check_docs.py --fix`.
 - Traps worth knowing are in the handoffs' §5 (2026-09-27: `git clean -fdx` deletes new untracked files;

@@ -235,20 +235,85 @@ public class AnalyzerTests
         Assert.Empty(Analyze(UsesMonoGame, new SimulationOnlyAnalyzer()));
     }
 
+    // ---- SAGE0025: a base assembly never references a kit ----------------------------------------------
+
+    // A kit, built here: Sage.Kits.Rpg with a type, a static method and an extension method.
+    private static MetadataReference FakeKit()
+    {
+        var kit = CSharpCompilation.Create("Sage.Kits.Rpg",
+            new[] { CSharpSyntaxTree.ParseText("""
+                namespace Sage.Kits.Rpg
+                {
+                    public sealed class Spellbook { public int Pages; public static Spellbook Open() => new Spellbook(); }
+                    public static class SpellbookExtensions { public static int Count(this Spellbook book) => book.Pages; }
+                }
+                """) },
+            new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) },
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var image = new MemoryStream();
+        var emitted = kit.Emit(image);
+        Assert.True(emitted.Success, string.Join("; ", emitted.Diagnostics));
+        return MetadataReference.CreateFromImage(image.ToArray());
+    }
+
+    private const string UsesAKit = """
+        namespace Sage.Gameplay.Screens
+        {
+            using Sage.Kits.Rpg;
+            public sealed class Journal
+            {
+                public Spellbook? Book;
+                public int Pages() { var book = Spellbook.Open(); return book.Count(); }
+            }
+        }
+        """;
+
+    [Fact]
+    public void ABaseAssemblyThatUsesAKitIsABuildError()
+    {
+        var diagnostics = AnalyzeWith(UsesAKit, new KitReferenceAnalyzer(), new[] { FakeKit() }, ("SageBaseAssembly", "true"));
+        Assert.All(diagnostics, d => Assert.Equal("SAGE0025", d.Id));
+
+        // The reference, once for the project…
+        var reference = Assert.Single(diagnostics, d => d.Location == Location.None);
+        Assert.StartsWith("The project reference is from the kit Sage.Kits.Rpg, and this is a base assembly (SageBaseAssembly)", reference.GetMessage());
+        // …and every use: the field's type, the `var` and the type named for Open, and the extension method.
+        var uses = diagnostics.Where(d => d.Location != Location.None).Select(d => d.GetMessage().Split(' ')[0]).ToList();
+        Assert.Equal(new[] { "Spellbook", "Spellbook", "Spellbook", "Count" }, uses);
+    }
+
+    [Fact]
+    public void AKitOrAGameMayUseAKit()
+    {
+        Assert.Empty(AnalyzeWith(UsesAKit, new KitReferenceAnalyzer(), new[] { FakeKit() }));
+    }
+
+    [Fact]
+    public void ABaseAssemblyWithoutAKitHasNothingToReport()
+    {
+        Assert.Empty(Analyze(Components, new KitReferenceAnalyzer(), ("SageBaseAssembly", "true")));
+    }
+
     // ---- The harness ---------------------------------------------------------------------------------
 
     // Runs `analyzer` over `source`, compiled against the engine and Friflo with the given MSBuild
     // properties visible (as CompilerVisibleProperty makes them), and returns what it reported in source
     // order — failing if the source itself does not compile, so a test cannot pass on a typo.
     private static ImmutableArray<Diagnostic> Analyze(string source, DiagnosticAnalyzer analyzer,
-                                                      params (string Name, string Value)[] properties)
+                                                      params (string Name, string Value)[] properties) =>
+        AnalyzeWith(source, analyzer, Array.Empty<MetadataReference>(), properties);
+
+    // The same, with more references (an assembly emitted by the test, such as a fake kit).
+    private static ImmutableArray<Diagnostic> AnalyzeWith(string source, DiagnosticAnalyzer analyzer, MetadataReference[] extra,
+                                                          params (string Name, string Value)[] properties)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
             .Append(MetadataReference.CreateFromFile(typeof(Friflo.Engine.ECS.IComponent).Assembly.Location))
-            .GroupBy(r => r.FilePath).Select(g => g.First());
+            .GroupBy(r => r.FilePath).Select(g => g.First())
+            .Concat(extra);
         var compilation = CSharpCompilation.Create("Analyzed",
             new[] { CSharpSyntaxTree.ParseText(source, path: "Analyzed.cs") }, references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));

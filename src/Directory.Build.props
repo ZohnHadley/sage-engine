@@ -8,7 +8,15 @@
     <RollForward>Major</RollForward>
     <PublishReadyToRun>false</PublishReadyToRun>
     <TieredCompilation>false</TieredCompilation>
+    <!-- Every engine project is simulation-only (no MonoGame, SAGE0024) unless it says otherwise:
+         Sage.Client, Sage.Editor and Sage.Host do (issue #24). -->
+    <SageSimulationOnly Condition="'$(SageSimulationOnly)' == ''">true</SageSimulationOnly>
   </PropertyGroup>
+
+  <!-- Said in the assembly too, so a test can check every base assembly is what its project claims. -->
+  <ItemGroup Condition="'$(SageSimulationOnly)' == 'true'">
+    <AssemblyMetadata Include="SageSimulationOnly" Value="true" />
+  </ItemGroup>
 
   <!-- The declarations generator (issue #16): registration written from [Record] and
        [SavedResource], and the component id table from [Component] / [Tag]. A project opts out with
@@ -20,9 +28,11 @@
 
   <!-- Project switches the Sage analyzers read (issue #19): SageSimulationOnly=true makes a MonoGame
        type an error (SAGE0024); SageStrictSaves=true asks every public component field for a
-       [Property] or [Transient] decision (SAGE0023, off by default). -->
+       [Property] or [Transient] decision (SAGE0023, off by default); SageBaseAssembly=true (the base
+       engine's projects) makes a reference to a Sage.Kits.* assembly an error (SAGE0025, issue #24). -->
   <ItemGroup Condition="'$(SageGenerators)' != 'false'">
     <CompilerVisibleProperty Include="SageSimulationOnly" />
     <CompilerVisibleProperty Include="SageStrictSaves" />
+    <CompilerVisibleProperty Include="SageBaseAssembly" />
   </ItemGroup>
 </Project>

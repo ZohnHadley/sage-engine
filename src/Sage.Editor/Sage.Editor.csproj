@@ -2,6 +2,8 @@
   <!-- Editor/dev tools: ImGui panels, the free-fly dev camera, editor state. -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
+    <SageSimulationOnly>false</SageSimulationOnly>
+    <SageBaseAssembly>true</SageBaseAssembly>
   </PropertyGroup>
 
   <ItemGroup>

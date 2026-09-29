@@ -52,7 +52,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 - An `IAssetLoader<T>` is registered by a module for one or more extensions. It has two stages:
   1. **Decode:** worker thread, pure CPU (parse glTF, decode PNG, read WAV), producing a CPU-side payload.
   2. **Finalize:** main thread; e.g. create the `Texture2D`/`VertexBuffer`. Runs from a **budgeted upload queue** (`asset_upload_ms`, default 2 ms per frame) so streaming never hitches the frame.
-- **Simulation-side** loaders live in `Sage.Engine`: collision meshes, navmeshes, heightmap data, animation clips.
+- **Simulation-side** loaders live in `Sage.Simulation`: collision meshes, navmeshes, heightmap data, animation clips.
 - **Client-side** loaders live in `Sage.Client`: textures, GPU meshes, sprite sheets, effects, sounds.
 
   A headless run (tests, a future server) simply has no client loaders registered, and render-only `AssetPath`s in components are never resolved.
@@ -96,9 +96,9 @@ Not every record comes from a file. A spell the player composed in the spellmake
 
 ### As built (prefabs, 2026-09-23 — F31)
 
-- **Code:** `src/Sage.Engine/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabPartAttribute`,
+- **Code:** `src/Sage.Simulation/Content/Prefab.cs` (`PrefabRecord`, `IPrefabPart`, `PrefabPartAttribute`,
   `PrefabRegistry`, `world.Spawn`), `ComponentSchema.cs` (components and tags by stable id, issue #16),
-  `src/Sage.Engine/Gameplay/PrefabParts.cs` (the parts the engine's plugins declare). Tests in
+  `src/Sage.Gameplay/PrefabParts.cs` (the parts the engine's plugins declare). Tests in
   `tests/Sage.Tests/Gameplay/PrefabTests.cs` and `PrefabPartTests.cs`.
 - **A prefab is a record**, so `base` inheritance, per-field patching, load order, validation and hot
   reload all come from §3.5 for nothing. A `goblin_chief` can `base` a `goblin` and override one
@@ -207,7 +207,7 @@ public sealed class PickupPart : IPrefabPart
 ### As built (metadata, 2026-09-28 — issue #18)
 
 Every declaration — component, tag, record type, saved resource, prefab part, and the objects nested in
-their fields — has a row in a **metadata table** (`src/Sage.Engine/Core/Metadata.cs`), written per
+their fields — has a row in a **metadata table** (`src/Sage.Core/Declarations/Metadata.cs`), written per
 assembly by `src/Sage.Generators/MetadataGenerator.cs`:
 
 - **Shape.** `TypeMetadata` is the kind, the stable id, the CLR type and the fields; `FieldMetadata` is
@@ -251,7 +251,7 @@ Schemas from the metadata table and the loaded content, the repository commits t
 `.vscode/settings.json` maps them onto every `data/**/*.json` (as `jsonc`, for the comments). How to use
 it is MAKING_A_GAME §3, "Editing records in VS Code".
 
-- **Layout** (`src/Sage.Engine/Content/RecordSchemas.cs`, draft-07): `record.schema.json` is the root —
+- **Layout** (`src/Sage.Simulation/Content/RecordSchemas.cs`, draft-07): `record.schema.json` is the root —
   one record or an array of them, each sent by an `if`/`then` on its `"type"` to `<type>.schema.json`,
   one per record type, which has the type's fields plus `type`, `id`, `base`, `patch`, `abstract`,
   `disabled`, `$schema`, and `field+`/`field-` beside every list at any depth (the merge applies them
@@ -402,7 +402,7 @@ than as art.
 - **Hot reload** (`rec_hotreload`, `DevOnly`, default on when `developer` ≥ 1): a changed `.json` re-runs load + merge + validate for that record type, replaces entries **in place** (so `RecordRef`s stay valid), then raises `RecordsReloaded(RecordType)` (04).
 
 ### 3.6 As built (migration step 5)
-- **Code:** `src/Sage.Engine/Content/` (`VirtualFileSystem.cs`, `RecordId.cs`, `RecordStore.cs`, `RecordHotReload.cs`); tests in `tests/Sage.Tests/Content/ContentTests.cs`.
+- **Code:** `src/Sage.Core/Content/` (`VirtualFileSystem.cs`, `RecordId.cs`, `RecordStore.cs`, `RecordHotReload.cs`); tests in `tests/Sage.Tests/Content/ContentTests.cs`.
 - **VFS:** folder mounts only. Priority is mount order (`Mount(IMount)` has no priority argument). The host mounts engine content (`<exe>/Content`, namespace `sage`), then the game's `game.json` mounts (namespace = game id). `user://` is `UserPaths` (02), not a VFS root yet. `VirtualPath.Parse` rejects `.`, `..` and `:`.
 - **Records:** the rules above, deserialized with `System.Text.Json` reflection (fields and properties, case-insensitive names, comments and trailing commas allowed, `[x,y,z]` vectors, enums as strings). The generated readers (09) replace it later with the same rules. Differences from the design:
   - errors name `file:line:column` (`sandbox:data/scene.json:385:5`) since 2026-09-28 (issue #22): the record, or the property a problem is in — the file that *set* that field, when a patch or a `base` did — or the element of a list. Positions are worked out only when there is an error to report; a clean load just keeps each file's bytes until it finishes (test: RecordErrors_SayFileLineAndColumn, test: AnErrorInAPatchedField_PointsAtThePatch, test: InvalidJson_SaysLineAndColumn);

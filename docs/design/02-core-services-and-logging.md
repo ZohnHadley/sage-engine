@@ -11,7 +11,7 @@ The services every other subsystem uses:
 - the **job layer**;
 - the **allocation (GC) rules**.
 
-All of it lives in `Sage.Engine` (no MonoGame). The console *window* and overlays are drawn by client code (13) but read from these services.
+All of it lives in `Sage.Core`, the kernel (no ECS, no MonoGame). The console *window* and overlays are drawn by client code (13) but read from these services.
 
 ## 2. Research basis
 - Log categories with per-category verbosity: Unreal `UE_LOG(Category, Verbosity)`, Source spew groups in `tier0` (survey §1.3, §2.2).
@@ -198,7 +198,7 @@ Built-in commands (engine): `help [name]`, `find <text>`, `cvarlist [prefix]`, `
 Launch arguments (`+name value`, `+command args`) and `config.cfg` run **after every cvar and command is registered**, so `+stat fps` works from the command line (01 §5.1).
 
 ### 4.3 Time
-*Built in migration step 4 (`Sage.Engine/Core/Time.cs`), as record structs `TickTime(Tick, Dt, SimTime)` and `FrameTime(Frame, Dt, Alpha, RealTime)`.*
+*Built in migration step 4 (`Sage.Core/Time.cs`), as record structs `TickTime(Tick, Dt, SimTime)` and `FrameTime(Frame, Dt, Alpha, RealTime)`.*
 ```csharp
 public readonly struct TickTime  { public long Tick; public float Dt; public double SimTime; }   // Fixed schedule
 public readonly struct FrameTime { public long Frame; public float Dt; public float Alpha; public double RealTime; }
@@ -206,7 +206,7 @@ public readonly struct FrameTime { public long Frame; public float Dt; public fl
 Systems receive these through their run context (03), never through `DateTime.Now` or MonoGame's `GameTime`. That's what makes headless tests and time scaling work.
 
 ### 4.4 Profiler
-*Built in migration step 4 (`Sage.Engine/Core/Diagnostics/Profiler.cs`). `World` wraps every phase (`Fixed.Gameplay`) and system (`Fixed.Gameplay/FaceCameraSystem`); the host adds `Frame.ImGui`. Per-frame totals and a ~20-frame moving average; enabled in dev builds, off in Shipping. Chrome-trace dump and Tracy are still later.*
+*Built in migration step 4 (`Sage.Core/Diagnostics/Profiler.cs`). `World` wraps every phase (`Fixed.Gameplay`) and system (`Fixed.Gameplay/FaceCameraSystem`); the host adds `Frame.ImGui`. Per-frame totals and a ~20-frame moving average; enabled in dev builds, off in Shipping. Chrome-trace dump and Tracy are still later.*
 
 *As built (per-thread tables, 2026-09-27, issue #11):* the tables are per thread. A world is ticked on one thread and the game's is the main thread, where `stat` and `sys_list` read, so the game sees what it always did; a world ticked on another thread — a test running in parallel, later a server or an editor play world — gets tables of its own instead of writing into a shared `Dictionary`, which corrupted it and allocated on the other world's behalf (test: AFullWorldStillAllocatesNothingPerTick, which caught it once tests ran in parallel). `Enabled` is one setting for the process.
 ```csharp

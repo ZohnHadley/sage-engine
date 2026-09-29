@@ -70,7 +70,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Later:** utility scoring for schedule choice, behaviour trees if schedules get unwieldy, squads/formations (Warband), daily routines (Daggerfall townsfolk).
 
 ### As built (F7, 2026-09-22)
-- **One module per feature** (`src/Sage.Engine/Gameplay/GameplayModules.cs`, R15). Until 2026-09-23 this was a single `GameplayModule` holding nine record types, three cvars, seven console commands, six input actions and nine systems; adding anything meant editing four places, none of them near the code they were about. Each feature now owns its own:
+- **One module per feature** (`src/Sage.Gameplay/GameplayModules.cs`, R15). Until 2026-09-23 this was a single `GameplayModule` holding nine record types, three cvars, seven console commands, six input actions and nine systems; adding anything meant editing four places, none of them near the code they were about. Each feature now owns its own:
 
   | Module | Owns | Depends on |
   |---|---|---|
@@ -86,11 +86,11 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   | `EntityIOModule` | entity inputs, `io_trace`/`io_maxdispatch`, `ent_fire`/`io_list`, `TriggerOutputSystem`, `EntityIOSystem` (04 §3.4, F17) | — |
   | `MoverModule` | the `mover` part, `MoverSystem` (F17) | Physics, EntityIO |
 
-  These are **logical** modules inside `Sage.Engine`, not assemblies (01 §3.1). `engine.Modules.AddGameplay()` adds them all, because "gameplay" is the unit a game wants; the host adds them one at a time so `game.json` can disable a single feature. Dependencies set `OnWorldCreated` order — combat needs attributes to exist before it can damage one — but **not** system order within a phase, which stays `before:`/`after:` and works across module boundaries. The `body` part moved to `PhysicsModule`, which owns where a shape sits.
+  These are **logical** modules inside `Sage.Gameplay`, not assemblies of their own (01 §3.1). `engine.Modules.AddGameplay()` adds them all, because "gameplay" is the unit a game wants; the host adds them one at a time so `game.json` can disable a single feature. Dependencies set `OnWorldCreated` order — combat needs attributes to exist before it can damage one — but **not** system order within a phase, which stays `before:`/`after:` and works across module boundaries. The `body` part moved to `PhysicsModule`, which owns where a shape sits.
 - **Controller → intent → movement** works as designed: `PlayerControlSystem` (Commands) copies the tick's `PlayerCommand` into `PawnIntent` on `PlayerControlled` pawns, and `CharacterMovementSystem` reads only the intent (10 "The character controller"). An AI controller writing the same component gets the same movement for free.
 - **First-person camera** (`FirstPersonCameraSystem`, FrameUpdate) puts `ActiveCamera` in the pawn's head from the interpolated pose and the command's view angles, at display rate. It sets `ActiveCamera.DrivenByRig`, and the editor's free camera steps aside unless `cam_free 1` clears `ActiveCamera.RigEnabled` (the flag was called `OwnedByRig` until 2026-09-22).
 ### As built (GameRules and the first creature, 2026-09-22)
-- **`GameRules`** (`src/Sage.Engine/Gameplay/GameRules.cs`) is a world resource a game subclasses and installs in its module's `OnWorldCreated`. `Engine.CreateWorld` calls `OnWorldStarted` **after every module has seen the new world**, so the rules can populate a world that is fully set up; a world without a game's rules gets `DefaultGameRules`. `SpawnPlayer` and `OnLoaded` are there for combat (F20) and saves (09) to call; `OnEntityDied` is already called by `EffectSystem` when an entity's health runs out (§3.3). The default is installed by `Engine.CreateWorld` itself, after every module has had its turn — inside a gameplay module the "has the game installed its own?" check could never be false (review #47). *Since 2026-09-27 (issue #13)* a game returns its rules from **`IGameModule.CreateRules(World)`**, which `Engine.CreateWorld` calls after every module's `OnWorldCreated` and before `OnWorldStarted`, and logs which rules a world got; rules a module installs in `OnWorldCreated` still work, and `CreateRules` wins over them with a warning (test: AGamesRulesComeFromCreateRulesAndAreStarted).
+- **`GameRules`** (`src/Sage.Simulation/App/GameRules.cs`) is a world resource a game subclasses and installs in its module's `OnWorldCreated`. `Engine.CreateWorld` calls `OnWorldStarted` **after every module has seen the new world**, so the rules can populate a world that is fully set up; a world without a game's rules gets `DefaultGameRules`. `SpawnPlayer` and `OnLoaded` are there for combat (F20) and saves (09) to call; `OnEntityDied` is already called by `EffectSystem` when an entity's health runs out (§3.3). The default is installed by `Engine.CreateWorld` itself, after every module has had its turn — inside a gameplay module the "has the game installed its own?" check could never be false (review #47). *Since 2026-09-27 (issue #13)* a game returns its rules from **`IGameModule.CreateRules(World)`**, which `Engine.CreateWorld` calls after every module's `OnWorldCreated` and before `OnWorldStarted`, and logs which rules a world got; rules a module installs in `OnWorldCreated` still work, and `CreateRules` wins over them with a warning (test: AGamesRulesComeFromCreateRulesAndAreStarted).
 - **AI** (`AI.cs`, `AIThinkSystem.cs`) is the HL1 shape of §3.4:
   - **conditions** (`SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`, and from F21 `CanMelee`, `CanCastAtEnemy`, `SpellComingBack`, `Casting`);
   - **schedules as records** (`ai_schedule`: an ordered task list plus the conditions that interrupt it), parsed once per record;
@@ -104,7 +104,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **The creature walks with the player's controller.** Its tasks write `PawnIntent`, exactly like `PlayerControlSystem`, so chasing uses the same capsule, slopes and step-ups. That is the payoff of the controller/pawn split.
 
 ### As built (combat, 2026-09-22)
-- **Code:** `src/Sage.Engine/Gameplay/Combat.cs` — the `damage_type` and `attack` records, `DamageInfo` (the request), `Damaged` (the event), `Combat.ApplyDamage`, the `Melee` component and `MeleeCombatSystem`.
+- **Code:** `src/Sage.Gameplay/Combat/Combat.cs` — the `damage_type` and `attack` records, `DamageInfo` (the request), `Damaged` (the event), `Combat.ApplyDamage`, the `Melee` component and `MeleeCombatSystem`.
 - **One pipeline, one place.** Every hit goes `Combat.ApplyDamage` → the damage type's resistance attribute → **an effect on health** → a `Damaged` event. Nothing anywhere subtracts health directly, so the `god` tag, stacking, damage over time and saves keep working through the single path F18 built. Damage is an effect *with a magnitude*: the record says `health -1`, the hit says how many (GAS's set-by-caller). A weapon or spell that also poisons passes its own effects to ride along, and they are blocked with the damage rather than separately.
 - **Resistances are attributes**, read as a percentage of the damage stopped (`armor`, `fire_resist`), clamped so arithmetic never produces immunity — the attribute record's own `max` is the ceiling. A `damage_type` with no `resist` ignores armour entirely.
 - **Both fighters press the same button.** `PlayerControlSystem` copies the Attack action into `PawnIntent`; the AI's `MeleeAttack` task sets the same bit. `MeleeCombatSystem` is the only thing that swings, so a creature and a player with the same `attack` record fight identically — and an AI can miss.
@@ -114,7 +114,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Death names its killer.** `EffectSystem` holds its own reader on `Damaged` (04 §3.2) and finds who last hurt the victim, so `GameRules.OnEntityDied` gets a killer without every damage path carrying one; poison and drowning simply have none. Because it is a cursor and not a shared list, a hit dealt in a later phase is credited on the next pass instead of being missed.
 - **`hurt <amount> [type]`** (cheat) runs the whole pipeline against the local player, which is how resistances and the death seam get tested by hand, and **`combat_debug`** (with `r_debugdraw 1`) draws every swing: the reach as an arrow, the sweep's end as a sphere, green when it found something and red when it did not, left on screen for half a second because a miss is the hard thing to debug.
 ### As built (items and interaction, 2026-09-23)
-- **Code:** `src/Sage.Engine/Gameplay/Items.cs` — the `item` record, `Inventory`, `Equipment`, `Pickup`, the `Interactable` tag, the `Used` event, `InteractionState` and `InteractionSystem`, plus the `World` extensions (`AddInventory`, `Give`, `Take`, `Equip`, `Unequip`, `Drop`, `SpawnPickup`, `MakePickup`).
+- **Code:** `src/Sage.Gameplay/Items/Items.cs` — the `item` record, `Inventory`, `Equipment`, `Pickup`, the `Interactable` tag, the `Used` event, `InteractionState` and `InteractionSystem`, plus the `World` extensions (`AddInventory`, `Give`, `Take`, `Equip`, `Unequip`, `Drop`, `SpawnPickup`, `MakePickup`).
 - **An item is a record, not an entity.** An inventory is a list of ids and counts, which is what makes stacking, saving and modding cheap (05 §3.5, 09). An item only becomes an entity while it is lying in the world — a `Pickup` with a billboard and a small static body — and stops being one the moment someone takes it.
 - **Equipping is the seam combat left open.** A weapon's `attack` record goes into the wielder's `Melee`, so a player and a creature holding the same thing fight identically and `MeleeCombatSystem` never learns that swords exist (§3.2). `Melee.Natural` is what the wielder goes back to bare-handed. Anything else an item does — a shield's armour, a cursed ring — is an **effect applied while it is worn** and removed when it comes off, so items, spells and potions all change you through the one path F18 built (§3.3).
 - **Use means look-at-and-press, or just be near it.** The ray from the eye wins if it finds something; otherwise the nearest usable thing within `g_interact_range` (2.5 m) and inside a 140° cone in front does. A ray alone would mean staring at your own boots to pick up a sword lying in the grass.
@@ -124,7 +124,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 
 ### As built (abilities, 2026-09-23 — F21 v1)
 
-- **Code:** `src/Sage.Engine/Gameplay/Abilities.cs` (the `ability` and `cue` records, the `Abilities`
+- **Code:** `src/Sage.Gameplay/Abilities/Abilities.cs` (the `ability` and `cue` records, the `Abilities`
   component, the `AbilityCast`/`CastRefused`/`CueTriggered` events) and `AbilitySystem.cs`. Tests in
   `tests/Sage.Tests/Gameplay/AbilityTests.cs`; the Sandbox's fireball is in its `scene.json`.
 - **Almost none of it is new machinery.** An ability is a cost, a cooldown, a way of choosing targets
@@ -163,7 +163,7 @@ and a pressed button make, and `AbilitySystem` applies the rules — so a creatu
 a cooldown, can be blocked by a tag and can miss, all without the AI knowing any of it.
 
 - **Code:** `CastSpellTask` and the `cast_spell` / `hold_ground` schedules, `ChooseSpell` in
-  `AIThinkSystem`, and `AbilityRules` (`src/Sage.Engine/Gameplay/AbilityRules.cs`).
+  `AIThinkSystem`, and `AbilityRules` (`src/Sage.Gameplay/Abilities/AbilityRules.cs`).
 - **One set of rules, asked twice.** The gates came out of `AbilitySystem` into `AbilityRules` so that
   *deciding to cast* and *being allowed to cast* cannot answer differently. Written twice they drift,
   and the visible symptom is a creature that walks into range and winds up a spell it cannot pay for,
@@ -194,7 +194,7 @@ Composing spells cost the engine almost nothing, which is the whole argument for
 already "a cost, targeting and a list of effects", so making one is *filling in an `ability` record*,
 and the cast system cannot tell a composed spell from one in a content file.
 
-- **Code:** `src/Sage.Engine/Gameplay/Spellmaker.cs` — `SpellDraft` (what the player chose),
+- **Code:** `src/Sage.Gameplay/Rpg/Spellmaker.cs` — `SpellDraft` (what the player chose),
   `Spellbook` (a `[SavedResource]` world resource: the drafts, nothing else), and `Spellmaker`
   (`Price`, `Compose`, `Restore`, `Forget`).
 - **The draft is the data; the record is derived from it.** The save holds the choices (09
@@ -237,7 +237,7 @@ and the cast system cannot tell a composed spell from one in a content file.
 ### As built (quests and the journal, 2026-09-24 — F24)
 Something to do, and something that notices you did it.
 
-- **Code:** `src/Sage.Engine/Gameplay/Quests.cs` (`quest` records, the saved `Journal`, the `Quests`
+- **Code:** `src/Sage.Gameplay/Narrative/Quests.cs` (`quest` records, the saved `Journal`, the `Quests`
   rules and `QuestChanged`) and `JournalScreen.cs`. Tests: `tests/Sage.Tests/Gameplay/QuestTests.cs`.
 - **A quest watches; it never moves anybody.** A stage is a line of text and a list of things that must
   be true. The things it watches for are things the game already does — somebody died, something is in
@@ -266,7 +266,7 @@ Something to do, and something that notices you did it.
 ### As built (dialogue, 2026-09-24 — F24)
 Talking to somebody, as data.
 
-- **Code:** `src/Sage.Engine/Gameplay/Dialogue.cs` (`dialogue` records, the `Dialogue` component, the
+- **Code:** `src/Sage.Gameplay/Narrative/Dialogue.cs` (`dialogue` records, the `Dialogue` component, the
   `Conversation` resource, `DialogueRules`) and `DialogueScreen.cs`; the client half is one system,
   `src/Sage.Client/UI/DialogueSystem.cs`. Tests: `tests/Sage.Tests/Gameplay/DialogueTests.cs`.
 - **A conversation is a record, not a script.** Nodes hold a line and the things you may say back; an
@@ -297,7 +297,7 @@ Talking to somebody, as data.
 ### As built (factions and reputation, 2026-09-24 — F24)
 The question three systems were guessing at.
 
-- **Code:** `src/Sage.Engine/Gameplay/Factions.cs` (`faction` records, the `Faction` component, the saved
+- **Code:** `src/Sage.Gameplay/Factions/Factions.cs` (`faction` records, the `Faction` component, the saved
   `Reputation` resource, the `Factions` rules and `ReputationChanged`), plus the three places that now
   ask it: `AIThinkSystem.FindNearestEnemy`, `AbilityPayload`, `MeleeCombatSystem`. Tests:
   `tests/Sage.Tests/Gameplay/FactionTests.cs`.
@@ -330,7 +330,7 @@ The question three systems were guessing at.
 ### As built (navigation, 2026-09-24 — F23)
 Creatures walk round things instead of into them.
 
-- **Code:** `src/Sage.Engine/Gameplay/Navigation.cs` (`NavGrid`, `NavPath`, `Navigation`), the changed
+- **Code:** `src/Sage.Gameplay/Navigation/Navigation.cs` (`NavGrid`, `NavPath`, `Navigation`), the changed
   `MoveToTargetTask` and target memory in `AI.cs`/`AIThinkSystem.cs`. Tests:
   `tests/Sage.Tests/Gameplay/NavigationTests.cs`.
 - **A local grid, built when it is needed and thrown away.** Not a navmesh and nothing precomputed: when
@@ -375,7 +375,7 @@ Creatures walk round things instead of into them.
   differently (mud, water, roads).
 
 ### As built (attributes, tags and effects, 2026-09-22)
-- **Code:** `src/Sage.Engine/Gameplay/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
+- **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
 - **Ids are indices.** `attribute` and `tag` records become small indices (`GameplayRegistries`), so components hold numbers, not strings: attribute values are parallel arrays, tags a 64-bit set. More than 64 tags is reported rather than silently truncated.
 - **Effects are the only thing that changes attributes.** Instant effects change the base value (damage, healing); timed and infinite ones are recomputed into the current value every tick, in order: adds, then multiplies, then overrides. `period` re-applies the modifiers on a timer (damage over time), `stacking` is Separate/Refresh/Stack with a cap, and `grantTags` holds tags while the effect runs.
 - **Tags gate application**: `requireTags` and `blockTags` decide whether an effect lands. The `god` cheat is exactly that — it gives the player `state.invulnerable`, and damage effects block themselves on it, instead of every damage path checking a flag.

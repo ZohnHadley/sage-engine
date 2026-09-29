@@ -61,11 +61,11 @@ EveryFaceFacesOutOfTheBrush, EveryBrushBecomesOneStaticHull)
 
 | Piece | Where | What it does |
 |---|---|---|
-| `MapFile` | `src/Sage.Engine/World/MapFile.cs` | The text: entities, keys, brushes, faces. Standard, **Valve 220** and Quake 2/3 dialects; `//` comments and faces split across lines; every error names the line |
-| `BrushGeometry` | `src/Sage.Engine/World/BrushGeometry.cs` | Planes → convex polygons (clip, weld, triangulate), texture coordinates for both dialects, and `MapSpace`: 32 units to the metre, Z-up to Y-up, north to −Z |
-| `MapRecord` / `MapLevel` / `MapLoader` | `src/Sage.Engine/World/MapLevel.cs` | The record that names a `.map`, the loaded level, and loading it: brushes built, hulls into physics (`PrePhysics`), entities spawned |
+| `MapFile` | `src/Sage.Simulation/Levels/MapFile.cs` | The text: entities, keys, brushes, faces. Standard, **Valve 220** and Quake 2/3 dialects; `//` comments and faces split across lines; every error names the line |
+| `BrushGeometry` | `src/Sage.Simulation/Levels/BrushGeometry.cs` | Planes → convex polygons (clip, weld, triangulate), texture coordinates for both dialects, and `MapSpace`: 32 units to the metre, Z-up to Y-up, north to −Z |
+| `MapRecord` / `MapLevel` / `MapLoader` | `src/Sage.Simulation/Levels/MapLevel.cs` | The record that names a `.map`, the loaded level, and loading it: brushes built, hulls into physics (`PrePhysics`), entities spawned |
 | `MapMeshSystem` | `src/Sage.Client/Rendering/MapMesh.cs` | **One mesh per texture** (not per brush), built in `FrameUpdate`, disposed when the level unloads |
-| `FgdExport` | `src/Sage.Engine/World/FgdExport.cs` | `fgd_export` writes TrenchBroom an entity definition file from the prefab records |
+| `FgdExport` | `src/Sage.Simulation/Levels/FgdExport.cs` | `fgd_export` writes TrenchBroom an entity definition file from the prefab records |
 
 - **The split is terrain's** (14 §3), deliberately: the simulation owns the parsed geometry in metres,
   physics and the client each build from it once and set a flag. So a headless server has the level's
@@ -170,8 +170,8 @@ a game.
 
 | Piece | Where | What it does |
 |---|---|---|
-| `Placement` / `PlacementsRecord` | `src/Sage.Engine/Content/Placements.cs` | The document's content, and spawning it into a world, reading it back, clearing it |
-| `EditorDocument` | `src/Sage.Engine/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable |
+| `Placement` / `PlacementsRecord` | `src/Sage.Simulation/Content/Placements.cs` | The document's content, and spawning it into a world, reading it back, clearing it |
+| `EditorDocument` | `src/Sage.Simulation/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable |
 | `EntityOutlinerWindow` / `EntityInspectorWindow` | `src/Sage.Editor/Screens/` | List and select; edit a component by boxing it, changing a field and writing it back |
 | `DevTools` | `src/Sage.Editor/DevTools.cs` | Everything a developer sees, in one class the host holds behind `SAGE_DEV` |
 

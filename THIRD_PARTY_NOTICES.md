@@ -8,8 +8,8 @@ licences were read from each package's metadata (NuGet `nuspec`), not assumed; u
 
 | Package | Version | Licence | Used by |
 |---|---|---|---|
-| [BepuPhysics](https://github.com/bepu/bepuphysics2) (+ BepuUtilities) | 2.4.0 | Apache-2.0 | `Sage.Engine` — physics |
-| [Friflo.Engine.ECS](https://github.com/friflo/Friflo.Engine.ECS) | 3.6.0 | MIT | `Sage.Engine` — ECS storage |
+| [BepuPhysics](https://github.com/bepu/bepuphysics2) (+ BepuUtilities) | 2.4.0 | Apache-2.0 | `Sage.Physics3D` — physics |
+| [Friflo.Engine.ECS](https://github.com/friflo/Friflo.Engine.ECS) | 3.6.0 | MIT | `Sage.Simulation` — ECS storage |
 | ↳ Friflo.Json.Burst, Friflo.Json.Fliox, Friflo.Json.Fliox.Annotation (dependencies of the above) | 1.0.4 | **LGPL-3.0-only** | pulled in by Friflo.Engine.ECS |
 | [MonoGame.Framework.DesktopGL](https://github.com/MonoGame/MonoGame) | 3.8.5.1 | MS-PL | `Sage.Client`, `Sage.Host` — window, graphics, input, audio |
 | ↳ MonoGame.Library.SDL | 2.32.10.2 | zlib (SDL) | native windowing and input |
