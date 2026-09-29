@@ -1,1 +1,100 @@
 #nullable enable
+const Sage.Simulation.Camera.DefaultFar = 1000 -> float
+const Sage.Simulation.Camera.DefaultFovY = 45 -> float
+const Sage.Simulation.Camera.DefaultNear = 0.1 -> float
+const Sage.Simulation.Camera.DefaultOrthoHeight = 10 -> float
+const Sage.Simulation.CameraDirector.Id = "sage.camera.director" -> string!
+const Sage.Simulation.CameraMath.MaxFovY = 3.1241393 -> float
+override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
+override Sage.Simulation.CameraViewport.GetHashCode() -> int
+override Sage.Simulation.CameraViewport.ToString() -> string!
+Sage.Simulation.Camera
+Sage.Simulation.Camera.Camera() -> void
+Sage.Simulation.Camera.Enabled -> bool
+Sage.Simulation.Camera.Far -> float
+Sage.Simulation.Camera.FovY -> float
+Sage.Simulation.Camera.IsScreen.get -> bool
+Sage.Simulation.Camera.Near -> float
+Sage.Simulation.Camera.OrthoHeight -> float
+Sage.Simulation.Camera.Priority -> int
+Sage.Simulation.Camera.Projection -> Sage.Simulation.CameraProjection
+Sage.Simulation.Camera.Target -> string!
+Sage.Simulation.Camera.Viewport -> Sage.Simulation.CameraViewport
+Sage.Simulation.CameraDirector
+Sage.Simulation.CameraDirector.CameraDirector(Sage.Simulation.World! world) -> void
+Sage.Simulation.CameraDirector.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.CameraMath
+Sage.Simulation.CameraPart
+Sage.Simulation.CameraPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.CameraPart.CameraPart() -> void
+Sage.Simulation.CameraPart.Enabled -> bool
+Sage.Simulation.CameraPart.Far -> float
+Sage.Simulation.CameraPart.FovY -> float
+Sage.Simulation.CameraPart.Near -> float
+Sage.Simulation.CameraPart.OrthoHeight -> float
+Sage.Simulation.CameraPart.Priority -> int
+Sage.Simulation.CameraPart.Projection -> Sage.Simulation.CameraProjection
+Sage.Simulation.CameraPart.Target -> string!
+Sage.Simulation.CameraPart.Viewport -> Sage.Simulation.CameraViewport
+Sage.Simulation.CameraPose
+Sage.Simulation.CameraPose.CameraPose() -> void
+Sage.Simulation.CameraPose.CameraPose(System.Numerics.Vector3 position, System.Numerics.Quaternion rotation) -> void
+Sage.Simulation.CameraPose.Position -> System.Numerics.Vector3
+Sage.Simulation.CameraPose.Rotation -> System.Numerics.Quaternion
+Sage.Simulation.CameraProjection
+Sage.Simulation.CameraProjection.Orthographic = 1 -> Sage.Simulation.CameraProjection
+Sage.Simulation.CameraProjection.Perspective = 0 -> Sage.Simulation.CameraProjection
+Sage.Simulation.CameraView
+Sage.Simulation.CameraView.CameraView() -> void
+Sage.Simulation.CameraView.Entity -> Sage.Simulation.Entity
+Sage.Simulation.CameraView.Far -> float
+Sage.Simulation.CameraView.Forward.get -> System.Numerics.Vector3
+Sage.Simulation.CameraView.FovY -> float
+Sage.Simulation.CameraView.FromActiveCamera.get -> bool
+Sage.Simulation.CameraView.IsScreen.get -> bool
+Sage.Simulation.CameraView.Near -> float
+Sage.Simulation.CameraView.OrthoHeight -> float
+Sage.Simulation.CameraView.Position -> System.Numerics.Vector3
+Sage.Simulation.CameraView.Priority -> int
+Sage.Simulation.CameraView.Projection -> Sage.Simulation.CameraProjection
+Sage.Simulation.CameraView.ProjectionMatrix(float aspect) -> System.Numerics.Matrix4x4
+Sage.Simulation.CameraView.Rotation -> System.Numerics.Quaternion
+Sage.Simulation.CameraView.Target -> string!
+Sage.Simulation.CameraView.Up.get -> System.Numerics.Vector3
+Sage.Simulation.CameraView.View.get -> System.Numerics.Matrix4x4
+Sage.Simulation.CameraView.Viewport -> Sage.Simulation.CameraViewport
+Sage.Simulation.CameraView.ViewRelative.get -> System.Numerics.Matrix4x4
+Sage.Simulation.CameraViewport
+Sage.Simulation.CameraViewport.CameraViewport() -> void
+Sage.Simulation.CameraViewport.CameraViewport(float x, float y, float width, float height) -> void
+Sage.Simulation.CameraViewport.Equals(Sage.Simulation.CameraViewport other) -> bool
+Sage.Simulation.CameraViewport.Height -> float
+Sage.Simulation.CameraViewport.IsEmpty.get -> bool
+Sage.Simulation.CameraViewport.Resolved() -> Sage.Simulation.CameraViewport
+Sage.Simulation.CameraViewport.Width -> float
+Sage.Simulation.CameraViewport.X -> float
+Sage.Simulation.CameraViewport.Y -> float
+Sage.Simulation.CameraViews
+Sage.Simulation.CameraViews.CameraViews() -> void
+Sage.Simulation.CameraViews.Count.get -> int
+Sage.Simulation.CameraViews.HasMain.get -> bool
+Sage.Simulation.CameraViews.IndexOf(string! target) -> int
+Sage.Simulation.CameraViews.Main.get -> Sage.Simulation.CameraView
+Sage.Simulation.CameraViews.MainIndex.get -> int
+Sage.Simulation.CameraViews.this[int index].get -> Sage.Simulation.CameraView
+Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> bool
+Sage.Simulation.CameraViews.Version.get -> long
+Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
+static Sage.Simulation.Camera.Orthographic(float height = 10, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
+static Sage.Simulation.Camera.Perspective(float fovYDegrees = 45, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
+static Sage.Simulation.CameraMath.Aspect(int targetWidth, int targetHeight, in Sage.Simulation.CameraViewport viewport) -> float
+static Sage.Simulation.CameraMath.Forward(System.Numerics.Quaternion rotation) -> System.Numerics.Vector3
+static Sage.Simulation.CameraMath.Orthographic(float height, float aspect, float near, float far) -> System.Numerics.Matrix4x4
+static Sage.Simulation.CameraMath.Perspective(float fovY, float aspect, float near, float far) -> System.Numerics.Matrix4x4
+static Sage.Simulation.CameraMath.Projection(in Sage.Simulation.CameraView view, float aspect) -> System.Numerics.Matrix4x4
+static Sage.Simulation.CameraMath.Up(System.Numerics.Quaternion rotation) -> System.Numerics.Vector3
+static Sage.Simulation.CameraMath.View(System.Numerics.Vector3 position, System.Numerics.Quaternion rotation) -> System.Numerics.Matrix4x4
+static Sage.Simulation.CameraMath.ViewRelative(System.Numerics.Quaternion rotation) -> System.Numerics.Matrix4x4
+static Sage.Simulation.CameraViewport.Full.get -> Sage.Simulation.CameraViewport
+static Sage.Simulation.CameraViewport.operator !=(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
+static Sage.Simulation.CameraViewport.operator ==(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool

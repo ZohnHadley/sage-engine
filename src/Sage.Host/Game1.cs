@@ -242,7 +242,9 @@ public class Game1 : Game
 #if SAGE_DEV
         dev.Update(gameTime, activeCamera);
 #else
+#pragma warning disable CS0618   // obsolete for games (issue #76); the host's cam_free switch until #81
         activeCamera.RigEnabled = true;
+#pragma warning restore CS0618
 #endif
         if (recHotReload.Value) recordHotReload?.Poll();
 

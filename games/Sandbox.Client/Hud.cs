@@ -92,7 +92,9 @@ public sealed class SandboxHud : ISystem
     private void DrawViewmodel(World world, Entity player)
     {
         // Not while the editor camera is flying: hands belong to the body the rig is sitting in.
+#pragma warning disable CS0618   // obsolete (engine issue #76): the viewmodel follows the rig until #78/#81
         if (!_camera.DrivenByRig) return;
+#pragma warning restore CS0618
         if (!world.TryGet<Melee>(player, out var melee)) return;
         var attackId = melee.Attack.IsEmpty ? world.Conventions().Attack.Id : melee.Attack;
         if (attackId.IsEmpty) return;

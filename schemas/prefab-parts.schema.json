@@ -51,6 +51,14 @@
         }
       ]
     },
+    "camera": {
+      "description": "Prefab part 'camera' (CameraPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/camera"
+        }
+      ]
+    },
     "character": {
       "description": "Prefab part 'character' (CharacterPart).",
       "allOf": [
@@ -325,6 +333,93 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'box_mesh' (BoxMeshPart)."
+    },
+    "camera": {
+      "type": "object",
+      "properties": {
+        "projection": {
+          "description": "Perspective (3D) or Orthographic (2D, top-down, isometric) (CameraProjection, default \"Perspective\")",
+          "default": "Perspective",
+          "type": "string",
+          "enum": [
+            "Perspective",
+            "Orthographic"
+          ]
+        },
+        "fovY": {
+          "description": "Vertical field of view. Unit: deg. Range: 1 to 179. Category: Perspective. (float, default 45)",
+          "default": 45,
+          "type": "number",
+          "minimum": 1,
+          "maximum": 179
+        },
+        "orthoHeight": {
+          "description": "How much world the viewport shows, top to bottom. Unit: m. At least 0. Category: Orthographic. (float, default 10)",
+          "default": 10,
+          "type": "number",
+          "minimum": 0
+        },
+        "near": {
+          "description": "Near clip plane. Unit: m. At least 0. (float, default 0.1)",
+          "default": 0.1,
+          "type": "number",
+          "minimum": 0
+        },
+        "far": {
+          "description": "Far clip plane. Unit: m. At least 0. (float, default 1000)",
+          "default": 1000,
+          "type": "number",
+          "minimum": 0
+        },
+        "priority": {
+          "description": "Of the enabled cameras drawing to one target, the highest wins. (int, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "enabled": {
+          "description": "Off: never chosen, whatever its priority. (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "viewport": {
+          "description": "The part of the target it draws to, 0..1 from the top-left; empty = all of it. Category: Output. (CameraViewport)",
+          "type": "object",
+          "properties": {
+            "x": {
+              "description": "Left edge, 0..1 of the target's width. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "description": "Top edge, 0..1 of the target's height. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "width": {
+              "description": "0..1 of the target's width; 0 = all of it. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "height": {
+              "description": "0..1 of the target's height; 0 = all of it. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "target": {
+          "description": "The render target it draws to, by name; empty = the screen. Category: Output. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'camera' (CameraPart)."
     },
     "character": {
       "type": "object",
