@@ -82,6 +82,7 @@ internal sealed class CameraExtract : ISystem
         view.FullTarget = x == 0 && y == 0 && w == size.X && h == size.Y;
         view.Target = request.Target;
         view.Order = request.Order;
+        view.Hidden = request.Hidden.IsNull ? 0 : request.Hidden.Id;
 
         Vector3 forward = Vector3.Transform(Vector3.Forward, request.Rotation);
         Vector3 up = Vector3.Transform(Vector3.Up, request.Rotation);
@@ -126,8 +127,9 @@ internal sealed class MeshExtract : ISystem
         if (views == 0) return;
         float alpha = ctx.Frame.Alpha;
         var materials = _renderer.Materials;
+        bool hiding = AnyHidden(s);
 
-        foreach (var (globals, renderers, _) in _meshes.Chunks)
+        foreach (var (globals, renderers, entities) in _meshes.Chunks)
         {
             var g = globals.Span;
             var r = renderers.Span;
@@ -143,10 +145,12 @@ internal sealed class MeshExtract : ISystem
 
                 // Interpolated once; made camera-relative once per view (issue #77).
                 Matrix pose = g[n].Interpolated(alpha).ToMatrix();   // System.Numerics → MonoGame (implicit)
+                int id = hiding ? entities.EntityAt(n).Id : 0;
 
                 for (int v = 0; v < views; v++)
                 {
                     ref var view = ref s.Views[v];
+                    if (hiding && view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
                     Vector3 cullOffset = view.CameraPosition - s.CullOrigins[v];   // non-zero only while r_freezecull holds an old frustum
                     var frustum = s.Frustum(v);
                     Matrix world = pose;
@@ -177,6 +181,13 @@ internal sealed class MeshExtract : ISystem
                 }
             }
         }
+    }
+
+    // Whether any view leaves an entity out: only then is each entity's id worth looking up.
+    internal static bool AnyHidden(RenderSnapshot s)
+    {
+        for (int v = 0; v < s.Views.Count; v++) if (s.Views[v].Hidden != 0) return true;
+        return false;
     }
 
     private static float MaxScale(in Matrix m) =>
@@ -356,6 +367,7 @@ internal sealed class SpriteExtract : ISystem
                 Vector3 position = pose.Position;   // System.Numerics → MonoGame (implicit)
                 var entity = entities.EntityAt(n);
                 bool animated = entity.TryGetComponent(out SpriteAnimator animator);
+                int id = entity.Id;
 
                 Vector2 size = sr.Size == Vector2.Zero ? sheet.Size : sr.Size;
                 Vector2 scale = new(pose.Scale.X, pose.Scale.Y);
@@ -371,6 +383,7 @@ internal sealed class SpriteExtract : ISystem
                 for (int v = 0; v < views; v++)
                 {
                     ref var view = ref s.Views[v];
+                    if (view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
                     Vector3 camera = view.CameraPosition;
 
                     // Bounding sphere around the quad, for culling: the pivot may be at the feet, so the

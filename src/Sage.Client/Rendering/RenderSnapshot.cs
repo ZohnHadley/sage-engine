@@ -51,7 +51,8 @@ internal struct RenderView
     public int Target;               // RenderViewPlan.Screen (the back buffer) or a Renderer target id
     public Rectangle Viewport;       // pixels in the target
     public bool FullTarget;          // the viewport is the whole target: its clear is the target's
-    public int Order;                // within a target, lower draws first (06 §3.4 "Views")
+    public int Order;                // within a target, lower draws first (06 §3.4a)
+    public int Hidden;               // id of an entity this view does not draw (0: none; ViewSource.HiddenFor)
 
     // Written during extract: lights and debug lines are added by one system each, a view at a time,
     // so each view's are contiguous.
