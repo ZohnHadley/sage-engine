@@ -322,7 +322,7 @@ public sealed class CombatLogSystem : ISystem
             var hit = ev.Hit;
             Log.Info(LogCat.Gameplay, $"{World.Describe(hit.Attacker)} hits {World.Describe(hit.Target)} " +
                                       $"for {ev.Applied:F0} ({hit.Amount:F0} before armour): " +
-                                      $"health {world.Attribute(hit.Target, AttributeRecord.Health):F0}");
+                                      $"health {world.Attribute(hit.Target, world.Conventions().Health):F0}");
 
             // And on screen, from the player's point of view: what hit me, or what I hit (13 §3).
             bool mine = IsPlayer(world, hit.Attacker);
@@ -364,11 +364,12 @@ public sealed class SandboxRules : GameRules
             : $"{World.Describe(victim)} was killed by {World.Describe(killer)}");
         if (victim.Tags.Has<PlayerControlled>()) world.Say("You died", MessageKind.Bad, 4f);
         else world.Say($"{(victim.TryGetComponent(out EntityName n) ? n.value : "Something")} dies", MessageKind.Good, 4f);
-        if (!world.HasTag(victim, new RecordId("sage", "state.dead"))) return;
+        var dead = world.Conventions().Dead;   // the engine's words, as this game's content left them
+        if (!world.HasTag(victim, dead)) return;
 
         if (world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList().Contains(victim))
         {
-            world.RemoveTag(victim, new RecordId("sage", "state.dead"));
+            world.RemoveTag(victim, dead);
             world.AddAttributes(victim);                       // back to full health
             world.Teleport(victim, Transform.At(_game.PlayerStart(world)));
             Log.Info(LogCat.Gameplay, "The player respawns at the start");

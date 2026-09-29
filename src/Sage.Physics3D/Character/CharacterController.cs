@@ -30,8 +30,6 @@ public sealed class MovementProfileRecord
     public float GroundSnap = 0.35f;        // how far it sticks to the ground when walking downhill
     public float EyeOffset = -0.18f;        // eye height relative to the top of the capsule
 
-    public static readonly RecordId Default = new("sage", "default_movement");
-
     // The values above, for when the record is missing: one shared instance, so the controller and the
     // camera can never disagree about a default (review #43).
     public static readonly MovementProfileRecord Fallback = new();
@@ -43,7 +41,7 @@ public sealed class MovementProfileRecord
 [Component("sage:character_controller")]
 public struct CharacterController : IComponent
 {
-    [RecordRef("movement_profile"), Property(Tooltip = "How it moves; empty = sage:default_movement")]
+    [RecordRef("movement_profile"), Property(Tooltip = "How it moves; empty = the game's default (gameplay_conventions)")]
     public RecordId Profile;
     [Property(Min = 0, Max = 31, Tooltip = "Its own physics layer, which its sweeps ignore")]
     public byte Layer;              // its own layer, excluded from its sweeps ("player" or "enemy")
@@ -81,8 +79,7 @@ public static class CharacterExtensions
     public static void AddCharacter(this World world, Entity entity, byte layer, RecordId profileId = default)
     {
         var records = world.Resources.Get<RecordStore>();
-        var id = profileId.IsEmpty ? MovementProfileRecord.Default : profileId;
-        var profile = records.TryGet(id, out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+        var profile = CharacterConventions.Of(world).ProfileOf(records, profileId);
 
         // A character sweeps against everything *except its own layer* (see `CharacterMovementSystem`),
         // which is what lets creatures on one layer pass through each other. That makes the **default**
@@ -122,15 +119,17 @@ public sealed class CharacterMovementSystem : ISystem
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
     private readonly ActionId _jump, _crouch, _run;
+    private readonly CharacterConventions _conventions;
 
     public CharacterMovementSystem(World world, RecordStore records, ActionRegistry actions)
     {
         _characters = world.Query<Transform, CharacterController, PawnIntent>();
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
-        _jump = actions.Get("Jump");
-        _crouch = actions.Get("Crouch");
-        _run = actions.Get("Run");
+        _conventions = CharacterConventions.Of(world);
+        _jump = actions.Get(_conventions.JumpAction);
+        _crouch = actions.Get(_conventions.CrouchAction);
+        _run = actions.Get(_conventions.RunAction);
     }
 
     public void Run(in SystemContext ctx)
@@ -148,8 +147,7 @@ public sealed class CharacterMovementSystem : ISystem
 
     private void Move(ref Transform transform, ref CharacterController character, in PawnIntent intent, float dt)
     {
-        var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile, out MovementProfileRecord found)
-            ? found : DefaultProfile;
+        var profile = _conventions.ProfileOf(_records, character.Profile);
         var mask = LayerMask.All.Except(character.Layer);
         if (character.Height <= 0) character.Height = profile.StandHeight;
 
@@ -227,8 +225,6 @@ public sealed class CharacterMovementSystem : ISystem
         GroundCheck(ref position, ref character, profile, cosSlope, mask, wasGrounded);
         transform.LocalPosition = position;
     }
-
-    private static readonly MovementProfileRecord DefaultProfile = new();
 
     // Accelerates the horizontal velocity toward `target`, with friction when there's no input.
     private static void Accelerate(ref CharacterController character, Vector3 target, float acceleration, float friction, float dt)
@@ -447,9 +443,8 @@ public sealed class FirstPersonCameraSystem : ISystem
         {
             if (globals.Length == 0) continue;
             ref readonly var character = ref characters.Span[0];   // one local player
-            var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile, out MovementProfileRecord found)
-                ? found : null;
-            float eye = character.Height + (profile ?? MovementProfileRecord.Fallback).EyeOffset;
+            var profile = CharacterConventions.Of(ctx.World).ProfileOf(_records, character.Profile);
+            float eye = character.Height + profile.EyeOffset;
             _camera.Position = globals.Span[0].Interpolated(alpha).Position + Vector3.UnitY * eye;
             _camera.Rotation = Quaternion.CreateFromYawPitchRoll(intents.Span[0].Yaw, intents.Span[0].Pitch, 0);
             _camera.DrivenByRig = true;

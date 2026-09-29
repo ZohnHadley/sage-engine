@@ -44,7 +44,7 @@ public sealed class QuestStage
     public bool Done;
 }
 
-[Record("quest", Plugin = "sage.gameplay.factions")]
+[Record("quest", Plugin = "sage.gameplay.quests")]
 public sealed class QuestRecord
 {
     public string Label = "";
@@ -62,7 +62,7 @@ public sealed class QuestRecord
 
 // What the player is on, and how far. Saved, because a quest you have half done is the thing a save is
 // most obviously *for* (09 §3.1).
-[SavedResource("journal", Plugin = "sage.gameplay.factions")]
+[SavedResource("journal", Plugin = "sage.gameplay.quests")]
 public sealed class Journal
 {
     public sealed class Entry
@@ -95,6 +95,7 @@ public static class Quests
     // conversation does when the player asks about it again, and the answer is "you are already on it".
     public static bool Start(World world, RecordId quest)
     {
+        if (JournalOf(world) is not { } journal) return false;   // a game without quests (issue #26)
         var records = world.Resources.Get<RecordStore>();
         if (!records.TryGet(quest, out QuestRecord record))
         {
@@ -102,7 +103,6 @@ public static class Quests
             return false;
         }
 
-        var journal = world.Resources.Get<Journal>();
         if (journal.Of(quest) != null) return false;
 
         var stage = record.Stage(record.Start);
@@ -123,7 +123,7 @@ public static class Quests
     // finishes the errand. An unknown stage finishes the quest rather than leaving it pointing nowhere.
     public static bool SetStage(World world, RecordId quest, string stage)
     {
-        var entry = world.Resources.Get<Journal>().Of(quest);
+        var entry = JournalOf(world)?.Of(quest);
         if (entry == null || entry.Finished) return false;
         if (!world.Resources.Get<RecordStore>().TryGet(quest, out QuestRecord record)) return false;
 
@@ -149,7 +149,7 @@ public static class Quests
     // does not know what "telling somebody" is, and should not have to.
     public static bool Finish(World world, RecordId quest)
     {
-        var entry = world.Resources.Get<Journal>().Of(quest);
+        var entry = JournalOf(world)?.Of(quest);
         if (entry == null || entry.Finished) return false;
         entry.Finished = true;
         world.Events.Send(new QuestChanged(quest, entry.Stage, true));
@@ -162,19 +162,27 @@ public static class Quests
 
     public static bool IsActive(World world, RecordId quest)
     {
-        var entry = world.Resources.Get<Journal>().Of(quest);
+        var entry = JournalOf(world)?.Of(quest);
         return entry != null && !entry.Finished;
     }
 
-    public static bool IsFinished(World world, RecordId quest) => world.Resources.Get<Journal>().Of(quest)?.Finished == true;
+    public static bool IsFinished(World world, RecordId quest) => JournalOf(world)?.Of(quest)?.Finished == true;
 
-    public static string StageOf(World world, RecordId quest) => world.Resources.Get<Journal>().Of(quest)?.Stage ?? "";
+    // Never started: not in the journal, or no journal at all.
+    public static bool IsNotStarted(World world, RecordId quest) => JournalOf(world)?.Of(quest) == null;
+
+    public static string StageOf(World world, RecordId quest) => JournalOf(world)?.Of(quest)?.Stage ?? "";
+
+    // The world's journal, or null in a game without the quests plugin: then nobody is on anything,
+    // and asking is not an error (dialogue asks, issue #26).
+    public static Journal? JournalOf(World world) =>
+        world.Resources.TryGet<Journal>(out var journal) ? journal : null;
 
     // How far along one objective is: what has been counted, or what is in the bag. The journal shows
     // this and so does a test, which is why it is a question rather than a field.
     public static int Progress(World world, Entity carrier, RecordId quest, int objective)
     {
-        var entry = world.Resources.Get<Journal>().Of(quest);
+        var entry = JournalOf(world)?.Of(quest);
         if (entry == null || !world.Resources.Get<RecordStore>().TryGet(quest, out QuestRecord record)) return 0;
         var stage = record.Stage(entry.Stage);
         if (stage == null || objective < 0 || objective >= stage.Objectives.Count) return 0;
@@ -186,16 +194,17 @@ public static class Quests
     }
 
     // The death seam's other half (16 §3.3): a kill is the commonest objective in any game, and the only
-    // one the engine can count without being told.
+    // one the engine can count without being told. QuestDeathSystem calls it for every `Died` (#26).
     public static void OnKilled(World world, Entity victim, Entity killer)
     {
         if (killer.IsNull || !world.IsAlive(killer) || !killer.Tags.Has<PlayerControlled>()) return;
 
-        var journal = world.Resources.Get<Journal>();
-        if (journal.Entries.Count == 0) return;
+        if (JournalOf(world) is not { Entries.Count: > 0 } journal) return;
 
         var records = world.Resources.Get<RecordStore>();
-        var faction = Factions.FactionOf(world, victim);
+        // The victim's own `Faction` component, not Factions.FactionOf: counting "wolves killed" is a
+        // fact about the wolf, and holds in a game without the factions plugin (issue #26).
+        RecordId faction = world.TryGet<Faction>(victim, out var member) ? member.Id : default;
         RecordId prefab = world.TryGet<FromPrefab>(victim, out var from) ? from.Prefab : default;
 
         foreach (var entry in journal.Entries)
@@ -224,7 +233,7 @@ public static class Quests
     // itself, and the reason the journal alone answers "where am I in this".
     public static void Check(World world, RecordId quest = default)
     {
-        var journal = world.Resources.Get<Journal>();
+        if (JournalOf(world) is not { } journal) return;
         var records = world.Resources.Get<RecordStore>();
         var carrier = PlayerOf(world);
 
@@ -268,8 +277,8 @@ public static class Quests
     {
         if (id.IsEmpty) return "something";
         var records = world.Resources.Get<RecordStore>();
-        if (records.TryGet(id, out ItemRecord item) && item.Label.Length > 0) return item.Label;
-        if (records.TryGet(id, out FactionRecord faction) && faction.Label.Length > 0) return faction.Label;
+        if (records.TypeNameOf(typeof(ItemRecord)) != null && records.TryGet(id, out ItemRecord item) && item.Label.Length > 0) return item.Label;
+        if (Factions.TryGetFaction(records, id, out var faction) && faction.Label.Length > 0) return faction.Label;
         return id.Name;
     }
 
@@ -278,5 +287,23 @@ public static class Quests
         foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities)
             return entity;
         return default;
+    }
+}
+
+// Kills a quest counts (16 §3.5, issue #26): reads `Died` rather than being called by the effect
+// system, so a game without quests has nothing here to call. Before the rules, while the victim still
+// exists to ask its faction and prefab.
+[System("sage.quests.deaths", Phase.Gameplay, After = new[] { "sage.effects.tick" }, Before = new[] { "sage.effects.deaths" })]
+public sealed class QuestDeathSystem : ISystem
+{
+    private readonly EventReader<Died> _died;
+
+    public QuestDeathSystem(World world) => _died = world.Events.Reader<Died>(this);
+
+    public void Run(in SystemContext ctx)
+    {
+        if (!_died.HasPending) return;
+        foreach (ref readonly var died in _died.Read())
+            Quests.OnKilled(ctx.World, died.Victim, died.Killer);
     }
 }

@@ -1,0 +1,6 @@
+[
+  // The player's own faction (docs/design/16 §3.5), named by gameplay_conventions `playerFaction`: what a
+  // player-controlled entity belongs to when it was given no faction. Its opinions of others are not
+  // used — how a faction treats the player is that faction's standing, not this record's table.
+  { "type": "faction", "id": "player", "label": "you" }
+]

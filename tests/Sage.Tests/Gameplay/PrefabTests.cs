@@ -21,6 +21,7 @@ public class PrefabTests
 
     private const string Records = """
     [
+      { "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "damageType": "physical" },
       { "type": "attribute", "id": "health", "max": 100, "start": 100 },
       { "type": "damage_type", "id": "physical", "resist": "armour" },
       { "type": "attribute", "id": "armour", "max": 95 },

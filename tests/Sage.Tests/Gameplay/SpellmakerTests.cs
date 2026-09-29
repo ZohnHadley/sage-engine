@@ -21,6 +21,7 @@ public class SpellmakerTests
 
     private const string Records = """
     [
+      { "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "damageType": "physical", "costAttribute": "mana" },
       { "type": "attribute", "id": "health", "max": 100, "start": 100 },
       { "type": "attribute", "id": "mana",   "max": 50,  "start": 50, "spendEffect": "spend_mana" },
       { "type": "damage_type", "id": "physical" },

@@ -160,7 +160,7 @@ public class PrefabPartTests
         {
             ["abilities"] = "sage.gameplay.abilities", ["attributes"] = "sage.gameplay.attributes",
             ["body"] = "sage.physics3d", ["character"] = "sage.gameplay.character",
-            ["dialogue"] = "sage.gameplay.factions", ["effects"] = "sage.gameplay.attributes",
+            ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
             ["faction"] = "sage.gameplay.factions", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
             ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
             ["pickup"] = "sage.gameplay.items", ["sprite"] = "sage.gameplay.animation",

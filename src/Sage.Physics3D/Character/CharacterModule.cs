@@ -39,6 +39,9 @@ public sealed class CharacterModule : IModule
         // the first-person rig drives ActiveCamera. The client may have installed the camera already.
         world.Resources.GetOrAdd(() => new PlayerInput());
         world.Resources.GetOrAdd(() => new ActiveCamera());
+        // The game's words for a character (issue #26): gameplay installs one that reads its
+        // conventions record before this runs; without gameplay, the engine's own.
+        world.Resources.GetOrAdd(() => new CharacterConventions());
 
         world.AddSystem(new PlayerControlSystem(world));
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!));

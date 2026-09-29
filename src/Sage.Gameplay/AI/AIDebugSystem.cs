@@ -54,8 +54,8 @@ public sealed class AIDebugSystem : ISystem
             for (int n = 0; n < t.Length; n++)
             {
                 if (OutOfRange(t[n].LocalPosition)) continue;
-                var profile = _records.TryGet(s[n].Profile.IsEmpty ? AIProfileRecord.Default : s[n].Profile,
-                                              out AIProfileRecord found) ? found : Fallback;
+                var profileId = s[n].Profile.IsEmpty ? world.Conventions().AiProfile.Id : s[n].Profile;
+                var profile = !profileId.IsEmpty && _records.TryGet(profileId, out AIProfileRecord found) ? found : Fallback;
                 Vector3 eye = t[n].LocalPosition + Vector3.UnitY * 1.4f;
                 float yaw = SageMath.YawOf(t[n].LocalRotation);
                 ulong conditions = s[n].Conditions;   // bits, not Enum.HasFlag: it boxes (R18)
