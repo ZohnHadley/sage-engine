@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // The gameplay framework, one module per feature (docs/design/01 §3.1, 16, TODO R15).
 //

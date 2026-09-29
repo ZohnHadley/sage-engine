@@ -5,7 +5,7 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // The engine's frame- and object-tier parameters of one Effect (07 §3.4), looked up once. Effects
 // are shared by every material that uses them; FrameStamp says whether this frame's frame-tier

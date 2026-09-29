@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Reflection;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 public enum BuildConfig { Debug, Development, Shipping }
 

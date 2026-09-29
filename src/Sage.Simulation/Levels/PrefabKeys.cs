@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json.Nodes;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Per-entity values in a map (docs/design/15 §3, issue #18). A `.map` entity is a prefab placed by
 // classname; these are the keys a mapper may set on it to change one field of one part or component for

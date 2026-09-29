@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // One record file's bytes, kept through a load so an error can say *where*: "game:data/items.json:12:9"
 // rather than "game:data/items.json[3]" (issue #22). Positions are worked out only when there is

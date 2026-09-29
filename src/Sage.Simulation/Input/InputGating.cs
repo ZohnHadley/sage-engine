@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // When the game may act on what a device says, and what a press *is* (docs/design/08 §3.1, review #60).
 //

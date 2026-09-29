@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace sage_engine.Testing;
+namespace Sage.Testing;
 
 // The base engine's assemblies (REDESIGN §3.1, issue #24), for a test that reads every declaration the
 // engine makes: one that looked only at typeof(Engine).Assembly would quietly check a quarter of them.

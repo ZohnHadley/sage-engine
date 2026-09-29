@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What stands where (docs/design/15 §3, TODO F28/F31).
 //

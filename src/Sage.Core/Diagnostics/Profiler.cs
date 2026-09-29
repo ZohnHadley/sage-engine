@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Named timing scopes (docs/design/02 §4.4):
 //   using var _ = Profiler.Begin("AI.Think");

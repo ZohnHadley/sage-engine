@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Point lights (docs/design/06 §3.9, 07 §3.5; TODO F2's last leftover).
 //

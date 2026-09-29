@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // What an ability *does*, at a point (docs/design/16 §3.3, TODO F21).
 //

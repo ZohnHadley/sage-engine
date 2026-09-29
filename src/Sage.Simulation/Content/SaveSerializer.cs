@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Components to JSON and back (docs/design/09 §3.3, TODO F27, issue #20).
 //

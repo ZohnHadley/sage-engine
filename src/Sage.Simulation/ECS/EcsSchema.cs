@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Friflo builds its component schema (by scanning loaded assemblies) the first time an EntityStore
 // is used, and prints "Assemblies loaded: ..." straight to stdout. We trigger that once, capture the

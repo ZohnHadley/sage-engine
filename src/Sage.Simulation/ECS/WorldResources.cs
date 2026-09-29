@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Per-world singletons (docs/design/03 §3.4): GameRules, the physics space, the origin sector,
 // event queues... the equivalent of Overwatch's singleton components. No static singletons.

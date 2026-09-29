@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What kind of host an app runs in. A module's Kind says where it belongs: Runtime modules load in
 // every host, Editor modules only in the editor, Tool modules only in tools (issue #12).

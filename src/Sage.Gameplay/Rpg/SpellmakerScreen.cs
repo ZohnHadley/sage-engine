@@ -3,7 +3,7 @@ using System;
 using System.Linq;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // The spellmaker, as a screen (docs/design/16 §3.3, 13 §3; TODO F21, F38).
 //

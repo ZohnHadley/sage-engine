@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Sage.Generators;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -21,7 +21,8 @@ public class AnalyzerTests
     // ---- SAGE0020: registering after the Register stage ----------------------------------------------
 
     private const string Usings = """
-        using sage_engine;
+        using Sage.Core;
+        using Sage.Simulation;
         using Friflo.Engine.ECS;
         """;
 
@@ -183,13 +184,13 @@ public class AnalyzerTests
     {
         var source = Components.Replace("public float Value;", "[Property] public float Value;") + """
 
-            namespace sage_engine { [System.AttributeUsage(System.AttributeTargets.Field)] public sealed class PropertyAttribute : System.Attribute { } }
+            namespace Sage.Core { [System.AttributeUsage(System.AttributeTargets.Field)] public sealed class PropertyAttribute : System.Attribute { } }
             """;
         Assert.Empty(Analyze(source, new StrictSavesAnalyzer(), ("SageStrictSaves", "true")));
 
         var undecided = Components + """
 
-            namespace sage_engine { public sealed class PropertyAttribute : System.Attribute { } }
+            namespace Sage.Core { public sealed class PropertyAttribute : System.Attribute { } }
             """;
         var d = Assert.Single(Analyze(undecided, new StrictSavesAnalyzer(), ("SageStrictSaves", "true")));
         Assert.Contains("mark it [Property] to save it or [Transient] to leave it out of saves", d.GetMessage());
@@ -245,7 +246,7 @@ public class AnalyzerTests
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
-            .Append(MetadataReference.CreateFromFile(typeof(Engine).Assembly.Location))
+            .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
             .Append(MetadataReference.CreateFromFile(typeof(Friflo.Engine.ECS.IComponent).Assembly.Location))
             .GroupBy(r => r.FilePath).Select(g => g.First());
         var compilation = CSharpCompilation.Create("Analyzed",

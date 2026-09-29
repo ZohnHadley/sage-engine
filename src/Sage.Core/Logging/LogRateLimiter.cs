@@ -3,7 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Spam control for Log.Once / Log.Every (docs/design/02 §4).
 internal static class LogRateLimiter

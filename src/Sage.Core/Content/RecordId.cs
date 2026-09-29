@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // `namespace:name` (docs/design/05 §3.5): "sage:lit_default", "sandbox:bunny". A bare name in a
 // record file gets the namespace of the mount that defines it.

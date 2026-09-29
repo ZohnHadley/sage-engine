@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Heightmap terrain (docs/design/14 §3). v1 is one sector with no LOD (TODO F13): a game supplies an
 // ITerrainGenerator, the engine keeps the heightfield (gameplay samples it to stand on the ground),

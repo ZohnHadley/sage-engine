@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Physics3D;
 
 // Physics drawn into the world (docs/design/06 §3.2, 10 §9): one bool test when its cvar is off.
 

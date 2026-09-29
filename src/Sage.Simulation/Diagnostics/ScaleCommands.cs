@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Filling a world up, and writing down what it costs (docs/design/02 §4.6, 14; TODO R18).
 //

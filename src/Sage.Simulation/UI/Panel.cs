@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What a screen is made of, as data (docs/design/13 §3, TODO F38, R17).
 //
@@ -111,14 +111,14 @@ public sealed class Panel
     {
         if (Problem.Length > 0)
         {
-            sage_engine.Log.Info(category, Problem);
+            Sage.Core.Log.Info(category, Problem);
             return;
         }
 
-        sage_engine.Log.Info(category, Title);
+        Sage.Core.Log.Info(category, Title);
         if (_rows.Count == 0)
         {
-            sage_engine.Log.Info(category, "  (nothing)");
+            Sage.Core.Log.Info(category, "  (nothing)");
             return;
         }
 
@@ -127,7 +127,7 @@ public sealed class Panel
             string mark = row.Selected ? "*" : " ";
             string count = row.Count > 1 ? $" ×{row.Count}" : "";
             string why = row.Enabled ? "" : $"   — {row.Reason}";
-            sage_engine.Log.Info(category, $" {mark} {row.Name,-24}{count,-5} {row.Detail,-16}{why}");
+            Sage.Core.Log.Info(category, $" {mark} {row.Name,-24}{count,-5} {row.Detail,-16}{why}");
         }
     }
 }

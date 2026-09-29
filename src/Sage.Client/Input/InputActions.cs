@@ -5,7 +5,7 @@ using System.Linq;
 using System.Numerics;
 using Microsoft.Xna.Framework.Input;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Actions and input contexts (docs/design/08 §3.2–3.3). Bindings come from `input_map` records; each
 // frame the contexts are evaluated top-down (Editor → Console → UI → Gameplay) and an input a

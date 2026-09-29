@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Controllers and pawns (docs/design/16 §3.1). A player and an AI drive a body the same way: they
 // write PawnIntent, and movement, combat and interaction only ever read that. It is the seed of the

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Input as data (docs/design/08). The simulation side: actions are registered here by modules in
 // Init, the client evaluates bindings and fills a CommandLatch every frame, and the host hands one

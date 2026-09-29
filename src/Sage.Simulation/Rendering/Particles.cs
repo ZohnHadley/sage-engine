@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Sparks, embers, smoke and blood (docs/design/06 §3.12, TODO F39).
 //

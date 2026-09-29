@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // The other half of the TrenchBroom bridge (docs/design/15 §3, TODO F16).
 //

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Making your own spells (docs/design/16 §3.3, TODO F21). The Daggerfall feature: you buy effects,
 // choose how strong and how they are delivered, name the result, and it goes in your book for ever.

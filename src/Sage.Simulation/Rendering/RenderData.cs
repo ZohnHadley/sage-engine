@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Simulation-side rendering data (docs/design/06 §4, 07 §4). No MonoGame types: the client's Extract
 // phase reads these and builds the RenderSnapshot.

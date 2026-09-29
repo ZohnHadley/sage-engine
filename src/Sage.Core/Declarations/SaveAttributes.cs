@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // The saving contract (docs/design/09 §3.1, TODO F27).
 //

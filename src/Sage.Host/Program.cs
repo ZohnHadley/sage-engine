@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using sage_engine;
+using Sage.Host;
 
 // Boot sequence (docs/design/01-host-and-modules.md §5.1, REDESIGN §3.2):
 //   args → game.json → logging + crash reporter → SageApp.Create (cvars, VFS mounts, modules; the game

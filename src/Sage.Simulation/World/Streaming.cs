@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Streaming rings, and the origin that follows them (docs/design/14 §3; TODO F14, R6).
 //

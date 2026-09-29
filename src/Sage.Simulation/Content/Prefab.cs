@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // A thing you can place (docs/design/05 §3.5, 09 §3.4, TODO F31). Before this the engine had no
 // opinion about it, so the Sandbox invented `spawn` records and the Daggerfall importer had to

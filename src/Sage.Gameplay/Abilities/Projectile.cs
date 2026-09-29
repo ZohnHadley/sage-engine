@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Something an ability threw, on its way (docs/design/16 §3.3, TODO F21). Before this a fireball
 // arrived the instant it was cast, which is fine for a test and wrong for a game: you cannot dodge

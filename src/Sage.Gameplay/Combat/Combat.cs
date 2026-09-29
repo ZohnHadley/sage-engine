@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Combat (docs/design/16 §3.2, TODO F20). One pipeline for every hit, whoever threw it:
 //

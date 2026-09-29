@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Physics3D;
 
 // The physics plugins' prefab parts (F31, 05 §3.5, issue #17); the rest are in Sage.Gameplay's
 // PrefabParts.cs, which says what a part is for.

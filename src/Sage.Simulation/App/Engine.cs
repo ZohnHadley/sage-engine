@@ -2,10 +2,10 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Process-wide core services (docs/design/01-host-and-modules.md §4, glossary). Created by the host
-// and passed in; never a static singleton. Lives in Sage.Engine, so it holds no MonoGame types:
+// and passed in; never a static singleton. Lives in Sage.Simulation, so it holds no MonoGame types:
 // client services (renderer, input devices, audio) are provided by client modules (ModuleContext).
 //
 // Today: cvars, the VFS, records, input actions, modules and the worlds. AssetServer, JobSystem and EngineSignals

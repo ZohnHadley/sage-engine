@@ -1,7 +1,7 @@
 #nullable enable
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // What you are on (docs/design/13 §3, 16 §3.5, F24).
 //

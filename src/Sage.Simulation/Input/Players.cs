@@ -2,7 +2,7 @@
 using System;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 public static class Players
 {

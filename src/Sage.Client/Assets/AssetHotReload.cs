@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Dev hot reload for assets (docs/design/05 §3.6, TODO F32): watches every folder mount for the file
 // types the client loads and reloads the ones that change. Records have had this since R11; this is

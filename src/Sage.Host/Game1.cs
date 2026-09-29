@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
-namespace sage_engine;
+namespace Sage.Host;
 
 // The host's MonoGame Game: today it is both game and editor (docs/design/01 §10). It owns the
 // client-side services as plain instances (no singletons). The app — engine, modules, the game — is a

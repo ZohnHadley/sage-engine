@@ -2,7 +2,7 @@
 using System;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Numbers that pop up (docs/design/13 §3, 06 §3.12, TODO F39).
 //

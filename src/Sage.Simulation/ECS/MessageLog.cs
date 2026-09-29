@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Short-lived messages for the player (docs/design/13 §3): "you picked up a sword", "the skeleton
 // hits you for 12", "you died". A world resource, so any system can push one without knowing whether

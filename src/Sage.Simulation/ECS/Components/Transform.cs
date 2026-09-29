@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Local position/rotation/scale (docs/design/03 §3.6). Relative to the parent, or — for root
 // entities — to the entity's sector once SectorCoord/GlobalTransform arrive (migration step 4).

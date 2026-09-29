@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // game.json, like Source's gameinfo.txt (docs/design/01 §3.3):
 //   {

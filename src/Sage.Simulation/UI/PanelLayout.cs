@@ -2,7 +2,7 @@
 using System;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Where a screen's parts are, in pixels (docs/design/13 §3, TODO F38).
 //

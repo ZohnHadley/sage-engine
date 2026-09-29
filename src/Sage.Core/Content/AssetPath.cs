@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // An interned VirtualPath (docs/design/05 §3.2): a small id that says *which* asset without loading
 // it, cheap to store in components and to compare. 0 = none. The intern table only grows (a few

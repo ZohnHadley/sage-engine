@@ -2,7 +2,7 @@
 using System;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Angles and directions, in one place (docs/design/03 §3.2). Input, movement, AI, sprites and the
 // editor camera each used to carry their own copy of these helpers, and the copies disagreed: the

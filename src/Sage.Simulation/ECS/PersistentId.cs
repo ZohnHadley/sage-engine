@@ -2,7 +2,7 @@
 using System;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Stable identity for placed or saved entities (docs/design/03 §3.3, 09). Runtime handles
 // (Friflo `Entity`) are only valid for one world and one session; maps, saves and quests use this.

@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What the simulation asks of a world's physics without naming its engine (REDESIGN §3.1, issue #24;
 // the seed #30 grows into the full query and body API). The 3D plugin (Sage.Physics3D, Bepu) installs

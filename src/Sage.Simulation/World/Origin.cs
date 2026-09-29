@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Large-world coordinates (docs/design/03 §3.6, 14 §3; TODO R6).
 //

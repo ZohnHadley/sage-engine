@@ -3,7 +3,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // What a record check (RecordStore.AddCheck) is given: the record's type and id, where its fields are
 // written, and the same checks the load runs on the record's own fields, for the parts of it only the

@@ -10,8 +10,10 @@ using BepuPhysics.Constraints;
 using BepuUtilities;
 using BepuUtilities.Memory;
 using Friflo.Engine.ECS;
+// Inside namespace Sage.Physics3D, `Simulation` would name the Sage.Simulation namespace first.
+using BepuSimulation = BepuPhysics.Simulation;
 
-namespace sage_engine;
+namespace Sage.Physics3D;
 
 // One BepuPhysics v2 simulation per World (docs/design/10 §3), as a world resource. Bepu owns the
 // bodies and statics; entities hold handles (PhysicsBody). Everything is in origin space, the same as
@@ -41,14 +43,14 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
     // door jumps by its own half-width the first time it opens.
     private readonly Dictionary<int, Vector3> _hullOffsets = new();
 
-    internal Simulation Simulation { get; }
+    internal BepuSimulation Simulation { get; }
 
     public PhysicsSpace(Vector3? gravity = null)
     {
         Gravity = gravity ?? new Vector3(0, -9.81f, 0);
         _data = new PhysicsCallbackData(Math.Max(1, Environment.ProcessorCount));
         _dispatcher = new ThreadDispatcher(Math.Max(1, Environment.ProcessorCount - 1));
-        Simulation = Simulation.Create(_pool,
+        Simulation = BepuSimulation.Create(_pool,
             new NarrowPhaseCallbacks { Data = _data },
             new PoseIntegratorCallbacks(Gravity),
             new SolveDescription(velocityIterationCount: 8, substepCount: 1));
@@ -396,7 +398,7 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
     {
         public PhysicsCallbackData Data;
 
-        public void Initialize(Simulation simulation) { }
+        public void Initialize(BepuSimulation simulation) { }
 
         public bool AllowContactGeneration(int workerIndex, CollidableReference a, CollidableReference b, ref float speculativeMargin) =>
             Data.ShouldCollide(a, b);
@@ -434,7 +436,7 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         public bool AllowSubstepsForUnconstrainedBodies => false;
         public bool IntegrateVelocityForKinematics => false;
 
-        public void Initialize(Simulation simulation) { }
+        public void Initialize(BepuSimulation simulation) { }
 
         public void PrepareForIntegration(float dt) => Vector3Wide.Broadcast(_gravity * dt, out _gravityDt);
 

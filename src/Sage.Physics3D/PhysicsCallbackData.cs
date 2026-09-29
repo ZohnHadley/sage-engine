@@ -5,7 +5,7 @@ using BepuPhysics.Collidables;
 using BepuPhysics.CollisionDetection;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Physics3D;
 
 // What Bepu's callbacks are allowed to touch (docs/design/10 §3). Reads (layers, entity mapping,
 // materials) happen on worker threads during the step and are only written between steps from the

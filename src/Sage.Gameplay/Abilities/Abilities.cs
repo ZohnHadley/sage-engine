@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Abilities and magic (docs/design/16 §3.3, TODO F21). A Daggerfall-like lives or dies on its spells,
 // and the point of this one is that **it adds almost no new gameplay machinery**: an ability is a

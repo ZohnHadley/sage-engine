@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Client;
 // Extract (docs/design/06 §3.1, §5): the only code that reads simulation components for rendering.
 // It writes the world's RenderSnapshot; Render then draws only from the snapshot.
 

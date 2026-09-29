@@ -3,7 +3,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // An entity handle is not data (09 §3.1). A prefab has nothing to point at when it is written, and
 // a handle means nothing outside the world that issued it, so reading one gives the null entity and

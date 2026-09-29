@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Effects (docs/design/16 §3.3, TODO F18): the one way attributes and tags change. Damage, healing,
 // poison, a strength buff, a cooldown and "you are stunned" are all effect records, so every system

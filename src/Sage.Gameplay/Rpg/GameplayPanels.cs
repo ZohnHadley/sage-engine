@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // The panels the engine's own features can fill (docs/design/13 §3, TODO F38).
 //

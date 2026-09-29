@@ -7,7 +7,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <!-- Same as the engine: run on the newest installed runtime when .NET 8 itself isn't installed. -->
     <RollForward>Major</RollForward>
-    <RootNamespace>sage_engine.Tests</RootNamespace>
+    <RootNamespace>Sage.Tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
@@ -23,7 +23,13 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
-    <Using Include="sage_engine.Testing" />
+    <Using Include="Sage.Testing" />
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 #nullable enable
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Schedules and phases (docs/design/03 §3.5, glossary). Fixed phases run once per simulation tick
 // (sim_tickrate, default 60 Hz); Frame phases once per rendered frame. Structural changes recorded

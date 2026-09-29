@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 public enum ExecSource
 {

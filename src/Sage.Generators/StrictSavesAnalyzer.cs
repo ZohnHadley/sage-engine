@@ -16,12 +16,11 @@ namespace Sage.Generators;
 //
 // Off by default; a project opts in with <SageStrictSaves>true</SageStrictSaves> (surfaced to the
 // compiler by src/ and games/ Directory.Build.props). [Property] is found by its metadata name,
-// sage_engine.PropertyAttribute (issue #18); in an engine that does not have it yet only [Transient]
+// Sage.Core.PropertyAttribute (issue #18); in an engine that does not have it yet only [Transient]
 // is a decision, and the message says so.
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class StrictSavesAnalyzer : DiagnosticAnalyzer
 {
-    private const string Ns = "sage_engine";
     internal const string Property = "SageStrictSaves";
 
     internal static readonly DiagnosticDescriptor Undecided = new(
@@ -39,10 +38,10 @@ public sealed class StrictSavesAnalyzer : DiagnosticAnalyzer
         {
             if (!BuildProperty.IsTrue(start.Options, Property)) return;
             var c = start.Compilation;
-            var component = c.GetTypeByMetadataName(Ns + ".ComponentAttribute");
-            var transient = c.GetTypeByMetadataName(Ns + ".TransientAttribute");
+            var component = c.GetTypeByMetadataName(SageTypes.ComponentAttribute);
+            var transient = c.GetTypeByMetadataName(SageTypes.TransientAttribute);
             if (component == null || transient == null) return;
-            var property = c.GetTypeByMetadataName(Ns + ".PropertyAttribute");
+            var property = c.GetTypeByMetadataName(SageTypes.PropertyAttribute);
             string fix = property != null
                 ? "mark it [Property] to save it or [Transient] to leave it out of saves"
                 : "mark it [Transient] to leave it out of saves ([Property], which saves it, is not in this engine yet: issue #18)";

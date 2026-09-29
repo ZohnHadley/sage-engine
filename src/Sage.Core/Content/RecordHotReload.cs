@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Dev hot reload for record files (docs/design/05 §3.5): watches `data/` in every folder mount.
 // FileSystemWatcher events arrive on thread-pool threads; they only set a flag. The host calls Poll()

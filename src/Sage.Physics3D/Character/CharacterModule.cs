@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Physics3D;
 
 // A body that walks (10 §3, 16 §3.1): the capsule the engine moves, the intent its controller writes,
 // and the first-person rig that sits in its head.

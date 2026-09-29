@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Which sounds play, how loud, and which one is dropped when there are too many (docs/design/11 §3,
 // TODO F4).

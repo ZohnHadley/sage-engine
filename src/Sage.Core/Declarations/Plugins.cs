@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // A module's identity as a plugin (REDESIGN §3.3, issue #12): a stable string id and a version, so a
 // game, another plugin or later a mod can name it without compiling against the assembly it lives in.

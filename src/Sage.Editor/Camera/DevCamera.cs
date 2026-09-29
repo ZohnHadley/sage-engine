@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using ImGuiNET;
 
-namespace sage_engine;
+namespace Sage.Editor;
 
 // The editor's free-fly camera (docs/design/15): WASD to fly, right-drag to look. It only moves a
 // position and yaw/pitch; the host publishes them as the world's ActiveCamera, and CameraExtract

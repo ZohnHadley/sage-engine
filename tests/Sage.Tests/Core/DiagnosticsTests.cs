@@ -2,9 +2,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -13,7 +12,7 @@ public class DiagnosticsTests
 {
     public DiagnosticsTests() { _ = TestEnv.UserRoot; }
 
-    private static bool EnsurePositive(int value) => sage_engine.Assert.Ensure(value > 0, "value must be positive");
+    private static bool EnsurePositive(int value) => Sage.Core.Assert.Ensure(value > 0, "value must be positive");
 
     [Fact]
     public void Ensure_ReturnsCondition_AndLogsOncePerCallSite()
@@ -33,7 +32,7 @@ public class DiagnosticsTests
     [Fact]
     public void Check_ThrowsFatal_AndWritesCrashReport()
     {
-        var ex = Assert.Throws<SageFatalException>(() => sage_engine.Assert.Check(false, "invariant broken"));
+        var ex = Assert.Throws<SageFatalException>(() => Sage.Core.Assert.Check(false, "invariant broken"));
         Assert.True(ex.Reported);
         Assert.NotNull(CrashReporter.LastReportPath);
         string report = File.ReadAllText(CrashReporter.LastReportPath!);

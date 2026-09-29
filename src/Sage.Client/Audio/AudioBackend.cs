@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework.Audio;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Making the noise (docs/design/11 §3, TODO F4).
 //

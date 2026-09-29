@@ -7,9 +7,8 @@ using Friflo.Engine.ECS;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sage.Generators;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -151,7 +150,8 @@ public class ComponentIdTests
     public void TheGeneratorWritesTheAssemblysIdTable()
     {
         var (output, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             using Friflo.Engine.ECS;
             using System.Text.Json.Nodes;
             [Component("game:health", Version = 2, FormerNames = new[] { "Health" })]
@@ -160,7 +160,7 @@ public class ComponentIdTests
             """);
 
         Assert.Empty(diagnostics);
-        Assert.Contains("[assembly: global::sage_engine.GeneratedComponentsAttribute(typeof(global::Sage.Generated.SageComponents_Components))]", output);
+        Assert.Contains("[assembly: global::Sage.Core.GeneratedComponentsAttribute(typeof(global::Sage.Generated.SageComponents_Components))]", output);
         Assert.Contains("new(typeof(global::Health), \"game:health\", 2, new string[] { \"Health\" }, false),", output);
         Assert.Contains("new(typeof(global::Hostile), \"game:hostile\", 1, global::System.Array.Empty<string>(), true),", output);
     }
@@ -181,7 +181,8 @@ public class ComponentIdTests
     public void AHalfDeclaredComponentIsABuildError(string declaration, string id, string message)
     {
         var (_, diagnostics) = Generate($$"""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             using Friflo.Engine.ECS;
             using System.Text.Json.Nodes;
             {{declaration}}
@@ -196,7 +197,8 @@ public class ComponentIdTests
     public void TwoComponentsWithOneIdAreABuildError()
     {
         var (_, diagnostics) = Generate("""
-            using sage_engine;
+            using Sage.Core;
+            using Sage.Simulation;
             using Friflo.Engine.ECS;
             [Component("game:health")] public struct Health : IComponent { }
             [Component("game:health")] public struct Hitpoints : IComponent { }
@@ -214,7 +216,7 @@ public class ComponentIdTests
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
-            .Append(MetadataReference.CreateFromFile(typeof(Engine).Assembly.Location))
+            .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
             .Append(MetadataReference.CreateFromFile(typeof(IComponent).Assembly.Location))
             .GroupBy(r => r.FilePath).Select(g => g.First());
         var compilation = CSharpCompilation.Create("Components",

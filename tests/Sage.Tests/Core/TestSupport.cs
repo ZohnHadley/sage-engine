@@ -1,7 +1,6 @@
 #nullable enable
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 // Tests that change process-wide state on purpose — the default log level, per-category levels, the
 // log's rate limiter, the crash reporter's sections — and would change it under a test running beside

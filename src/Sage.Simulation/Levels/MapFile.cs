@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // TrenchBroom `.map` files: the text a level is written in (docs/design/15 §3, TODO F16).
 //

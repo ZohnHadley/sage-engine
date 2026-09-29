@@ -21,7 +21,6 @@ namespace Sage.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DeclarationAnalyzer : DiagnosticAnalyzer
 {
-    private const string Ns = "sage_engine";
     private const string JsonObject = "System.Text.Json.Nodes.JsonObject";
 
     internal static readonly DiagnosticDescriptor BadName = new(
@@ -43,11 +42,11 @@ public sealed class DeclarationAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(start =>
         {
             var c = start.Compilation;
-            var record = c.GetTypeByMetadataName(Ns + ".RecordAttribute");
-            var resource = c.GetTypeByMetadataName(Ns + ".SavedResourceAttribute");
-            var component = c.GetTypeByMetadataName(Ns + ".ComponentAttribute");
-            var tag = c.GetTypeByMetadataName(Ns + ".TagAttribute");
-            var upgrade = c.GetTypeByMetadataName(Ns + ".UpgradeAttribute");
+            var record = c.GetTypeByMetadataName(SageTypes.RecordAttribute);
+            var resource = c.GetTypeByMetadataName(SageTypes.SavedResourceAttribute);
+            var component = c.GetTypeByMetadataName(SageTypes.ComponentAttribute);
+            var tag = c.GetTypeByMetadataName(SageTypes.TagAttribute);
+            var upgrade = c.GetTypeByMetadataName(SageTypes.UpgradeAttribute);
             if (record == null && resource == null && upgrade == null) return;
             start.RegisterSymbolAction(
                 symbol => Check(symbol, record, resource, component, tag, upgrade),
@@ -78,7 +77,7 @@ public sealed class DeclarationAnalyzer : DiagnosticAnalyzer
 
         if (upgrade == null) return;
         // An undeclared IComponent / ITag is SAGE0004 already; its upgraders are not the problem.
-        declaredComponent |= type.AllInterfaces.Any(i => i.ToDisplayString() is "Friflo.Engine.ECS.IComponent" or "Friflo.Engine.ECS.ITag");
+        declaredComponent |= type.AllInterfaces.Any(i => i.ToDisplayString() is SageTypes.IComponent or SageTypes.ITag);
         var seen = new Dictionary<int, IMethodSymbol>();
         foreach (var method in type.GetMembers().OfType<IMethodSymbol>())
         {

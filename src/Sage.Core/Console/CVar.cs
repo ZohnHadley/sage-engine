@@ -2,7 +2,7 @@
 using System;
 using System.Globalization;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 [Flags]
 public enum CVarFlags

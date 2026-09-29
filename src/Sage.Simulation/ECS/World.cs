@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // One simulation (docs/design/03-world-and-ecs.md): entities, components, queries, resources.
 // A thin wrapper over a Friflo.Engine.ECS EntityStore (decision D4, spike in 03 §3.1):

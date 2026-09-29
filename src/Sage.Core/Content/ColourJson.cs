@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // A colour in a record (issue #22), as a person writes one:
 //

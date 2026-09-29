@@ -1,12 +1,12 @@
 using System.Numerics;
 
-namespace Sandbox;   // sage_engine and Friflo.Engine.ECS come from games/Directory.Build.props
+namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/Directory.Build.props
 
 // The Sandbox game's *simulation* (docs/design/01 §4, §3.1): the dogfooding game that grows into the
 // Daggerfall-like vertical slice (TODO milestone). It places its scene from prefabs (F31), runs the
 // game's own rules, and makes things hop on the Jump action (PlayerCommand, 08 §3.4).
 //
-// It references `Sage.Engine` and nothing else, so all of this is testable headlessly (R15); the HUD
+// It references the base engine and nothing else, so all of this is testable headlessly (R15); the HUD
 // and anything else needing a screen live in `Sandbox.Client`.
 [Plugin("sandbox", "0.1.0")]
 [RequiresPlugin("sage.streaming", ">=0.1")]            // its hills

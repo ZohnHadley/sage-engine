@@ -1,5 +1,5 @@
 #nullable enable
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Where a world's records live. Beside `world.Messages()` and `world.Debug()`, and public for the same
 // reason: a game's own systems and screens ask the record store as often as the engine's do, and two

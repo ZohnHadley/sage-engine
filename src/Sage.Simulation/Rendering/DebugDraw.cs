@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Immediate-mode debug geometry (docs/design/06 §3.2, TODO F5). Simulation code says "draw a line
 // there" and forgets about it; the client turns the queue into a line list once a frame.

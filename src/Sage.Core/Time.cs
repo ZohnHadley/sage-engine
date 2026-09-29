@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Time as systems see it (docs/design/02 §4.3). Systems read these from their SystemContext, never
 // DateTime.Now or MonoGame's GameTime; that's what makes headless tests and time scaling work.

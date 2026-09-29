@@ -1,7 +1,7 @@
 #nullable enable
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Computes GlobalTransform.Current from Transform through the hierarchy (docs/design/03 §3.6).
 // Run by World at the end of PostPhysics and Late, and at the start of each tick it copies

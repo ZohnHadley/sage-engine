@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // What a value with its own JSON converter looks like, as a JSON Schema: put on the converter (or on
 // the type it reads) so that a schema can describe a colour's "#RRGGBB", which the metadata sees only

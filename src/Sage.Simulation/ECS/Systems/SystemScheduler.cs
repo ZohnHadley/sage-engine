@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 public sealed class SystemInfo
 {

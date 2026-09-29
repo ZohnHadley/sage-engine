@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 public sealed class LogOptions
 {

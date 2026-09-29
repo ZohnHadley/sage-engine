@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // The pieces strict loading is made of (REDESIGN §4.2, issue #22), shared by records, prefab
 // components and prefab part options so all three say the same thing about the same mistake.

@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Stable ids for components and tags (docs/REDESIGN.md §3.4, issue #16).
 //

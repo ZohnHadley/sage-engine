@@ -2,7 +2,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Interpolated string handlers (docs/design/02 §4). When the category/level is disabled, the
 // handler's constructor sets shouldAppend = false and C# skips every Append call, so a disabled

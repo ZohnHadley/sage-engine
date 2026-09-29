@@ -3,7 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using MonoGame.ImGuiNet;
 
-namespace sage_engine;
+namespace Sage.Editor;
 
 // Everything the host draws for a developer, in one place (docs/design/15 §3, TODO F28).
 //

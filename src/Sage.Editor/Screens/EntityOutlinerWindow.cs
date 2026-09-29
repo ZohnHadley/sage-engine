@@ -6,7 +6,7 @@ using System.Reflection;
 using Friflo.Engine.ECS;
 using ImGuiNET;
 
-namespace sage_engine;
+namespace Sage.Editor;
 
 // Entity outliner + read-only inspector for one World. Right-click an entity to delete it.
 // Uses reflection and per-entity label strings, so it allocates about 130 bytes per listed entity

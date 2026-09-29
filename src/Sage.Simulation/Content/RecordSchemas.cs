@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // JSON Schemas for record files (REDESIGN §3.4 item 3, §4.2; issue #21): what makes VS Code underline
 // `"rnage"` in a prefab's `point_light` and show "Where the light fades to nothing. Unit: m." over

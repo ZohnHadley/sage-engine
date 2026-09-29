@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // A system's identity, declared on its type (REDESIGN §3.3–3.4, issue #17):
 //

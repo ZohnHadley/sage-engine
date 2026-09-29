@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Gameplay phase, before effects tick: turns a queued cast into effects on whatever it reaches
 // (docs/design/16 §3.3, TODO F21). Ordered like melee for the same reason — a spell cast this tick is

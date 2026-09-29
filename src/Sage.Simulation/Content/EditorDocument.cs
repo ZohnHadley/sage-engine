@@ -5,7 +5,7 @@ using System.IO;
 using System.Text.Json;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What the editor has open (docs/design/15 §3, TODO F28).
 //

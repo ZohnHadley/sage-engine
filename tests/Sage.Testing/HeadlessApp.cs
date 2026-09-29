@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace sage_engine.Testing;
+namespace Sage.Testing;
 
 // A headless app for a test (docs/REDESIGN.md §3.2, issue #14): a SageApp with no client, booted
 // through the same stages the game executable walks, so a test runs the configuration that ships

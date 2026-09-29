@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Physics3D;
 
 // The physics tick (docs/design/10 §3):
 //   PrePhysics   new colliders get bodies; kinematic and teleported transforms are pushed into Bepu

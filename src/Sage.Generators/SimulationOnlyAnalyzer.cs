@@ -10,8 +10,8 @@ namespace Sage.Generators;
 // issue #19).
 //
 // The simulation — the engine and a game's rules — must run headless, so it never touches MonoGame.
-// Sage.Engine enforces that by not referencing MonoGame at all; a game's simulation project did it by
-// habit (Sandbox.csproj references only Sage.Engine), and one package reference would have undone it
+// The base engine enforces that by not referencing MonoGame at all; a game's simulation project did it by
+// habit (Sandbox.csproj references only the base engine), and one package reference would have undone it
 // without a word. A project declares itself simulation-only with
 //
 //   <SageSimulationOnly>true</SageSimulationOnly>

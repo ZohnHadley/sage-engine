@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Work a system puts off until its query loop has finished (docs/design/03 §3.5, TODO R14).
 //

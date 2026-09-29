@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json.Nodes;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // What an [Upgrade] method uses to rewrite an old saved shape (issue #20, REDESIGN §4.5). Field names
 // in a save are the C# member names (`LocalPosition`), and the save dialect reads them ignoring case,

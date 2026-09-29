@@ -3,7 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // The device layer (docs/design/08 §3.1): keyboard, mouse and gamepad, polled once per frame by the
 // host before anything reads them. Edges (pressed/released this frame) stay valid until the next

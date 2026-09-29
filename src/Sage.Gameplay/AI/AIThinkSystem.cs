@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // AI phase (docs/design/16 §3.4): perceive, choose a schedule, run the current task.
 //

@@ -6,7 +6,7 @@ using Color = Microsoft.Xna.Framework.Color;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 using Vector4 = Microsoft.Xna.Framework.Vector4;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Making the sparks fly (docs/design/06 §3.12, TODO F39).
 //

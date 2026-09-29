@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 public enum LogLevel { Trace, Debug, Info, Warn, Error, Fatal }
 

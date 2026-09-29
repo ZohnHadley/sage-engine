@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What a prefab-spawned entity came from (F31), so a save can rebuild it: loading is
 // `Spawn(prefab)` and then the saved components over the top, which restores the *parts* a prefab

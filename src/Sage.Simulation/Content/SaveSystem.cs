@@ -9,7 +9,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Save and load (docs/design/09 §3.5–3.6, TODO F27). What closes the vertical slice: walk somewhere,
 // fight something, pick something up, cast a spell, save, come back to it.

@@ -3,9 +3,8 @@ using System;
 using System.IO;
 using System.Linq;
 using Friflo.Engine.ECS;
-using sage_engine;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 

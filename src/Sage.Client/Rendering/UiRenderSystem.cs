@@ -3,7 +3,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Overlay phase (docs/design/13 §3): draws whatever was queued into UiDraw this frame, plus the
 // crosshair, and clears the queue. One SpriteBatch, one pass, after the world and before the dev UI.

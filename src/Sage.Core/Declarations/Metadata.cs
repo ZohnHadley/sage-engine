@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // The metadata table (docs/REDESIGN.md §3.4 item 2, issue #18): for every declaration — component,
 // tag, record type, saved resource, prefab part — its id and its fields, with each field's type, default,

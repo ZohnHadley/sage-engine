@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 public enum ModuleKind { Runtime, Editor, Tool }
 

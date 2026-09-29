@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using ImGuiNET;
 
-namespace sage_engine;
+namespace Sage.Editor;
 
 // The developer console (docs/design/02 §4.2, 01 §3.2), drawn with ImGui. Opened with `~`.
 // Available in dev builds always, and in Shipping only when con_enable is 1. The Shipping console is

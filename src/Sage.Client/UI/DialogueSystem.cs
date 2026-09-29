@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Opening the window when somebody is talked to (docs/design/16 §3.5, 13 §3, F24).
 //

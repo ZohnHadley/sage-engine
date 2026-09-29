@@ -1,4 +1,4 @@
-namespace sage_engine;
+namespace Sage.Host;
 
 // Main-loop cvars (docs/design/01 §5.2 and §9).
 internal sealed class HostCVars

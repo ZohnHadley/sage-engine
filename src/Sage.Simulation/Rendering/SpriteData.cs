@@ -5,7 +5,7 @@ using System.Linq;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Billboard sprites (docs/design/06 §3.8, 12): the Daggerfall-style creatures, NPCs and trees.
 // Simulation-side data only; the client picks the direction and frame at extract.

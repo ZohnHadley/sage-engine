@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Declares a prefab part (issue #17): a class implementing IPrefabPart whose fields are the part's
 // options. Here, in the kernel, because the metadata table reads it without knowing prefabs.

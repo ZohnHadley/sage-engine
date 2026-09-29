@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Crash reports (docs/design/02-core-services-and-logging.md §4.1). Written on Log.Fatal,
 // Assert.Check failures and unhandled exceptions to <user>/logs/crash-YYYYMMDD-HHMMSS.txt.

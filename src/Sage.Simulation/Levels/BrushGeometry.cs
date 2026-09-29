@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Brushes into geometry (docs/design/15 §3, TODO F16).
 //

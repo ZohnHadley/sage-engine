@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using sage_engine;
 
 // `sage <verb> ...` (src/Sage.Cli/Sage.Cli.csproj).
 //

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Attributes and tags (docs/design/16 §3.3, TODO F18), the data every gameplay system reads: health,
 // mana, resistances, and the states an entity is in. Effects (Effects.cs) are the only thing that

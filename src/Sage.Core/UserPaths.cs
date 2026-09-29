@@ -2,7 +2,7 @@
 using System;
 using System.IO;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // The writable per-user root (docs/design/05-assets-and-vfs.md §3.1, "user://"): config, logs,
 // crash reports, later saves. Read-only content mounts are never written to.

@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // All cvars and console commands (docs/design/02-core-services-and-logging.md §4.2). One registry
 // per process, created by the host and passed in (it moves onto the Engine object in migration step 3).

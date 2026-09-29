@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What a sound *is*, as data (docs/design/11 §3, TODO F4).
 //

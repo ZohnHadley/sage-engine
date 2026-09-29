@@ -1,7 +1,7 @@
 #nullable enable
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // World resource every World has: where the active camera is, in origin space. The host (or the
 // camera rig that owns the view) updates it every frame; gameplay reads it (e.g. "face the player's

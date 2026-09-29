@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What the engine knows about one module as a plugin.
 public sealed record PluginInfo(string Id, SemVersion Version, ModuleKind Kind, IReadOnlyList<(string Id, VersionRange Range)> Requires)

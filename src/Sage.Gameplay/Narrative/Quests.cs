@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Something to do, and something that notices you did it (docs/design/16 §3.5, TODO F24).
 //

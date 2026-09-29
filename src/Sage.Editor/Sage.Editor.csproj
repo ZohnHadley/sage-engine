@@ -12,4 +12,15 @@
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
     <ProjectReference Include="..\..\third_party\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
   </ItemGroup>
+
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <Using Include="Sage.Client" />
+    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
+    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
+  </ItemGroup>
 </Project>

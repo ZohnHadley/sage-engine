@@ -3,7 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // A world's systems, and the two things a plugin may do to one it did not add (REDESIGN §3.3, issue
 // #17): replace it, or turn it off. Both take the stable id, so a mod swaps `sage.ai.think` without

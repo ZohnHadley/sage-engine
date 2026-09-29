@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // The engine's own cvars and console commands (docs/design/01 §3.2, 02 §4.2 and §9).
 // There is no separate "dev mode": build configurations decide what exists; these cvars switch

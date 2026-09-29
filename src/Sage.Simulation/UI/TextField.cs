@@ -2,7 +2,7 @@
 using System;
 using System.Text;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // A line of text a player types (docs/design/13 §3, TODO F38).
 //

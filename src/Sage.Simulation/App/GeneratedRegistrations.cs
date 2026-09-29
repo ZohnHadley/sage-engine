@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What Sage.Generators writes into each assembly that declares things (issue #16): for a plugin id,
 // register every declaration that plugin owns. Not written by hand.

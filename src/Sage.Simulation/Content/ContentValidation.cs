@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // `sage validate <game>` (REDESIGN §4.2, issue #22): boots a game headlessly far enough to run every
 // content check — every mount's records, references by type, prefab bodies, asset paths, AI schedules

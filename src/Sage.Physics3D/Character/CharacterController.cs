@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Physics3D;
 
 // The kinematic character controller (docs/design/10 §3, TODO F7): a capsule moved by sweeps, not a
 // dynamic body, because a rigid body makes bad stairs and worse netcode. Deterministic and headless:

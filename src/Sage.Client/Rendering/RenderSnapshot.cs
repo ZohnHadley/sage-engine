@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // What the snapshot needs of a pooled list to empty it without knowing what is in it (see `Pool<T>`).
 public interface IPooledList { void Clear(); }

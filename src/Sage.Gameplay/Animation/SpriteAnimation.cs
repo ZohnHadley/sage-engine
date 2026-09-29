@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Sprite animation (docs/design/12 §3): the simulation owns animation time. `SpriteAnimationSystem`
 // advances it in the Animation phase, at the tick rate, so animation is deterministic and the same

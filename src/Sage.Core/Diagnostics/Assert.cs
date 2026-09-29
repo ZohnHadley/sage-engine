@@ -3,15 +3,15 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // Asserts (docs/design/02-core-services-and-logging.md §4).
 //   Assert.Dev(cond, msg)     dev builds only (compiled out of Shipping); logs + breaks into the debugger
 //   Assert.Ensure(cond, msg)  all builds; logs once per call site, returns cond so the caller can recover
 //   Assert.Check(cond, msg)   all builds; fatal: log, crash report, SageFatalException
 //
-// Note for test code using xUnit: inside `namespace sage_engine...`, `Assert` resolves to this class.
-// Add `using Assert = Xunit.Assert;` after the file's namespace declaration.
+// Note for test code using xUnit: with `Sage.Core` imported, `Assert` names this class as well as
+// xUnit's. Add `using Assert = Xunit.Assert;` to the file.
 public static class Assert
 {
     private static readonly ConcurrentDictionary<(string, int), byte> EnsuredSites = new();

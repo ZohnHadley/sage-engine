@@ -1,7 +1,7 @@
 #nullable enable
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // What a hit looks like when it pops up (16 §3.2, F39). A rule rather than a constant, because a game
 // wants its own: `damage_type` records carry the colour, and what the engine ships is a sensible default

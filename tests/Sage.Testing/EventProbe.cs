@@ -1,8 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
-using sage_engine;
 
-namespace sage_engine.Testing;
+namespace Sage.Testing;
 
 // A test's view of an event queue (04 §3.2). A production reader drains as it goes and forgets;
 // a test usually wants "did this happen at all, over these forty ticks", so this remembers.

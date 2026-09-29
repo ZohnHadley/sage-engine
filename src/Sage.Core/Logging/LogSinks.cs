@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // A log output (docs/design/02 §3.4). Sinks are called by the log writer thread, or by whichever
 // thread calls Log.Flush, always one at a time: implementations don't need their own locking.

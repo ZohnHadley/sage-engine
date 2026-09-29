@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // A reference to a record of one type (REDESIGN §4.2, issue #22): `RecordRef<SoundRecord> Sound` is a
 // sound, and the load says so when it names an item, or nothing at all. A plain RecordId only has to

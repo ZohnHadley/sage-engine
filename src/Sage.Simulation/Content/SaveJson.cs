@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // The JSON dialect saves are written in (docs/design/09 §3.3, TODO F27): the record pipeline's, plus
 // three things it cannot do and one it does wrongly for this purpose.

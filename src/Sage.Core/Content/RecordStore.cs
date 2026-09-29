@@ -10,7 +10,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // The one data-record pipeline for every definition (docs/design/05 §3.5): items, spells, materials,
 // input maps, spawns... Record files are `data/**/*.json` in any mount, each an array of records

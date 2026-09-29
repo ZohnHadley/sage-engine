@@ -5,7 +5,7 @@ using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Models, at runtime (docs/design/05 §3.4, TODO R12).
 //

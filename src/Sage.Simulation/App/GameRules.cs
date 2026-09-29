@@ -1,7 +1,7 @@
 #nullable enable
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Game flow lives in one place (docs/design/16 §3.1, readiness rule 5): spawning the player, deaths,
 // time of day, what happens after a save is loaded. A game subclasses this and installs it as a world

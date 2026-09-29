@@ -3,7 +3,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // The attributes plugin's part of the save dialect (SaveJson), added with SaveSystem.AddConverter in
 // AttributesModule.Init: attribute values and gameplay tags written by name, never by index.

@@ -2,7 +2,7 @@
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Position + rotation + scale. Stored instead of a matrix because rendering interpolates poses
 // (lerp position/scale, slerp rotation); interpolating matrices component-wise distorts rotations

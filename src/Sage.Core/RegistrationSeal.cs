@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // A registry that closes at a point in the app's boot (REDESIGN §3.3, issue #12).
 //

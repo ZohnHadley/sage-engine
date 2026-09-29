@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Entity I/O (docs/design/04 §3.4, TODO F17).
 //

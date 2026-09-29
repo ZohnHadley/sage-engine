@@ -1,7 +1,7 @@
 #nullable enable
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // When a cast is allowed (docs/design/16 §3.3, TODO F21).
 //

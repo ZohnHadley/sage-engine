@@ -5,7 +5,7 @@ using System.Numerics;
 using Friflo.Engine.ECS;
 using Color = Microsoft.Xna.Framework.Color;
 
-namespace sage_engine;
+namespace Sage.Client;
 
 // Drawing screens and reading their input (docs/design/13 §3, TODO F38; decision D8 = our own).
 //

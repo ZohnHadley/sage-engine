@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // Geometry that moves when something tells it to (docs/design/15 §3, 04 §3.4, TODO F17).
 //

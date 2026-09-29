@@ -6,7 +6,7 @@ using System.Numerics;
 using System.Reflection;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Console commands over the engine's worlds (docs/design/03 §9).
 public static class WorldCommands

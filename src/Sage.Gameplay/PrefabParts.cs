@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // The prefab parts the engine's own plugins declare (F31, 05 §3.5, issue #17). A part exists only
 // where the setup is *not* one component: `Collider`, `RigidBody`, `SpriteRenderer`, `AIState` and

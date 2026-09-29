@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Everything an app registered, as JSON (docs/REDESIGN.md §4.8 "Registry dump", issue #18): every
 // console command, cvar, record type, component, tag, saved resource, prefab part, system, entity input

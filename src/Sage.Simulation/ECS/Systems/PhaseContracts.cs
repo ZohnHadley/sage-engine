@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // What a phase *guarantees*, checked instead of described (docs/design/03 §3.5, TODO R16).
 //

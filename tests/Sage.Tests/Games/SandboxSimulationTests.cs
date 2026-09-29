@@ -2,10 +2,9 @@
 using System.Linq;
 using System.Numerics;
 using Friflo.Engine.ECS;
-using sage_engine;
 using Sandbox;
 
-namespace sage_engine.Tests;
+namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
@@ -14,7 +13,7 @@ using Assert = Xunit.Assert;
 // This file could not exist before the split. `games/Sandbox` mixed its rules and spawning with a HUD
 // that needs `Color`, `Rectangle` and `Texture2D`, so none of the game's own logic could be tested
 // without MonoGame — and the engine was telling games to keep simulation testable while shipping an
-// example that did not. The simulation half now references `Sage.Engine` and nothing else, and the
+// example that did not. The simulation half now references the base engine and nothing else, and the
 // compiler enforces it.
 //
 // What is checked here is the game's, not the engine's: its scene record, its rules, its respawn.

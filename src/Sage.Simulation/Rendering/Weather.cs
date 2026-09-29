@@ -2,7 +2,7 @@
 using System;
 using System.Numerics;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Rain, snow, and the light going out of the day (docs/design/06 §3.13, TODO F40).
 //

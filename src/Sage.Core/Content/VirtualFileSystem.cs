@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace sage_engine;
+namespace Sage.Core;
 
 // A path inside the VFS (docs/design/05 §3.1): forward slashes, lower case, no leading slash, no "..".
 // It is the identity of an asset and what mods shadow.

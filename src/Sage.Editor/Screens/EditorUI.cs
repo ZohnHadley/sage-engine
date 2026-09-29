@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 
-namespace sage_engine;
+namespace Sage.Editor;
 
 // The menu bar (docs/design/15 §3, TODO F28). One instance, owned by the host (no singleton).
 //

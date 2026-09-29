@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace sage_engine;
+namespace Sage.Client;
 public class MouseListener
 {
     // Cached once to avoid Enum.GetValues allocating/boxing on every frame.

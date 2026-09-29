@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Typed game events (docs/design/04 §3.2): the way one system tells another that something happened
 // in the simulation — `Damaged`, `Died`, `ItemPickedUp`. Before this, every feature grew its own

@@ -18,4 +18,8 @@
     <ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />
     <ProjectReference Include="..\Sandbox\Sandbox.csproj" Private="false" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Sage.Client" />
+  </ItemGroup>
 </Project>

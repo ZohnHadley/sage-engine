@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // Components and tags by stable id (docs/design/09 §3.1, REDESIGN §3.4, issue #16). Prefabs name a
 // component in JSON, saves are keyed by it, the console prints it and the editor's inspector shows it.

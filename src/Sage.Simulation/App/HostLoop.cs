@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // The main loop's simulation half (docs/design/01 §5.2, REDESIGN §3.2, issue #10): a fixed-timestep
 // accumulator that runs whole ticks for **every** world the engine has, then one frame for each.

@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // The base engine's plugins, in the order a host installs them (REDESIGN §0.5, §3.1, issue #24):
 // physics before anything that sweeps it, streaming and maps, then every gameplay feature

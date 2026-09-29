@@ -3,7 +3,7 @@ using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Gameplay;
 
 // What the simulation looks like, drawn into the world (docs/design/06 §3.2, 10 §9, 16 §11). These
 // systems cost one bool test each when their cvar is off; with it on they are the difference between

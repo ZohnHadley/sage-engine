@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS;
 
-namespace sage_engine;
+namespace Sage.Simulation;
 
 // A screen, and the stack of open ones (docs/design/13 §3, TODO F38; decision D8 = our own).
 //
