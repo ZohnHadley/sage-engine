@@ -78,7 +78,7 @@ public class ScaleTests
         public Entity Player()
         {
             var entity = World.Create(Transform.At(new Vector3(0, 0.1f, 0)), "player");
-            World.AddCharacter(entity, layer: 1);
+            World.AddCharacter(entity, World.Resources.Get<IPhysicsWorld>().Layers.Player);
             World.AddAttributes(entity);
             entity.AddTag<PlayerControlled>();
             return entity;

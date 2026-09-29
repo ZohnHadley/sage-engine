@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
+using Sage.Physics3D;   // CharacterModule, in the list below and nowhere else (issue #30)
 
 namespace Sage.Gameplay;
 
@@ -129,13 +130,14 @@ public sealed class LightsModule : IModule
 // Hitting things (16 §3.2): one damage pipeline, `attack` records, and the melee both the player and
 // the AI drive by pressing the same button.
 [Plugin("sage.gameplay.combat", "0.1.0")]
+[RequiresPlugin("sage.gameplay.character")]   // by id: a character is whichever backend's (issue #30)
 public sealed class CombatModule : IModule
 {
     private RecordStore? _records;
     private ActionRegistry? _actions;
     private CVar<bool>? _combatDebug;
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CharacterModule) };
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule) };
 
     public void Init(ModuleContext ctx)
     {
@@ -252,13 +254,14 @@ public sealed class ItemsModule : IModule
 // effects, which Attributes already owns; what lives here is the gating — cost, cooldown, tags — and
 // choosing what it lands on.
 [Plugin("sage.gameplay.abilities", "0.1.0")]
+[RequiresPlugin("sage.gameplay.character")]
 public sealed class AbilitiesModule : IModule
 {
     private RecordStore? _records;
     private ActionRegistry? _actions;
     private CVar<bool>? _debugCasts;
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CharacterModule) };
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule) };
 
     public void Init(ModuleContext ctx)
     {
@@ -325,6 +328,7 @@ public sealed class AbilitiesModule : IModule
 // Creatures that decide for themselves (16 §3.4): HL1-style schedules of tasks, writing the same
 // `PawnIntent` the player's controller writes.
 [Plugin("sage.gameplay.ai", "0.1.0")]
+[RequiresPlugin("sage.gameplay.character")]
 public sealed class AIModule : IModule
 {
     private RecordStore? _records;
@@ -336,7 +340,7 @@ public sealed class AIModule : IModule
     private CVar<int>? _navNodes;
     private CVar<int>? _navPlans;
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(CharacterModule), typeof(CombatModule) };
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(CombatModule) };
 
     // Games add their own tasks to this before the first world is created (16 §3.4).
     public AITaskRegistry AITasks { get; } = new();

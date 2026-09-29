@@ -3,10 +3,15 @@ using System.Collections.Generic;
 using System.Numerics;
 using Friflo.Engine.ECS;
 
-namespace Sage.Physics3D;
+namespace Sage.Simulation;
 
 // The physics plugins' prefab parts (F31, 05 §3.5, issue #17); the rest are in Sage.Gameplay's
 // PrefabParts.cs, which says what a part is for.
+//
+// They live in the simulation, not in a backend, and read only IPhysicsWorld (issue #30): "body" and
+// "character" mean the same thing to the 3D plugin and to a future 2D one, so a prefab written for one
+// profile keeps its part ids and option names on the other (REDESIGN §0.5). Each is still owned by the
+// plugin that gives it meaning (Plugin = ...), so it registers only when that plugin is loaded.
 
 // ---- physics -------------------------------------------------------------------------------------
 
@@ -25,7 +30,7 @@ public sealed class CharacterPart : IPrefabPart
 
     public void Apply(in PrefabPartContext ctx)
     {
-        var layers = ctx.World.Resources.Get<PhysicsSpace>().Layers;
+        var layers = ctx.World.Resources.Get<IPhysicsWorld>().Layers;
         byte layer = layers.Default;
         if (!string.IsNullOrEmpty(Layer) && !layers.TryIndexOf(Layer, out layer))
             ctx.Warn($"no physics layer '{Layer}'; using '{layers.Name(layer)}'");
@@ -58,13 +63,15 @@ public sealed class BodyPart : IPrefabPart
     public float Mass;                 // > 0 = a dynamic body that falls; 0 = static
     [Property(Category = "Physics", Tooltip = "Reports overlaps and never blocks")]
     public bool Trigger;
+    [Property(Category = "Physics", Tooltip = "Reports contact begin and end events")]
+    public bool Contacts;
     [Property(Category = "Physics", Tooltip = "Physics layer by name; empty = default")]
     public string Layer = "";
 
     public void Apply(in PrefabPartContext ctx)
     {
         byte layer = 0;
-        var layers = ctx.World.Resources.Get<PhysicsSpace>().Layers;
+        var layers = ctx.World.Resources.Get<IPhysicsWorld>().Layers;
         if (!string.IsNullOrEmpty(Layer) && !layers.TryIndexOf(Layer, out layer))
             ctx.Warn($"no physics layer '{Layer}'");
 
@@ -86,6 +93,7 @@ public sealed class BodyPart : IPrefabPart
         }
 
         collider.IsTrigger = Trigger;
+        collider.ReportContacts = Contacts;
         ctx.World.Add(ctx.Entity, collider);
         ctx.World.Add(ctx.Entity, Mass > 0f ? RigidBody.Dynamic(Mass) : new RigidBody { Kind = BodyKind.Static });
     }

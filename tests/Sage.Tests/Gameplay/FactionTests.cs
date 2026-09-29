@@ -54,7 +54,7 @@ public class FactionTests
     private static Entity Creature(World world, Vector3 at, string faction, string name = "creature")
     {
         var entity = world.Create(Transform.At(at), name);
-        world.AddCharacter(entity, 2);
+        world.AddCharacter(entity, world.Resources.Get<IPhysicsWorld>().Layers.Enemy);
         world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
         world.Add(entity, Melee.With(Id("claws")));
         world.AddAttributes(entity);
@@ -65,7 +65,7 @@ public class FactionTests
     private static Entity Player(World world, Vector3 at)
     {
         var entity = world.Create(Transform.At(at), "player");
-        world.Add(entity, Collider.Standing(0.35f, 1.8f, 1));
+        world.Add(entity, Collider.Standing(0.35f, 1.8f, world.Resources.Get<IPhysicsWorld>().Layers.Player));
         world.Add(entity, RigidBody.Kinematic());
         world.AddAttributes(entity);
         entity.AddTag<PlayerControlled>();

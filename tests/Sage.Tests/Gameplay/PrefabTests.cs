@@ -86,7 +86,7 @@ public class PrefabTests
             // and the intent faces the way it was placed, not -Z on the first tick (review #43)
             Assert.Equal(90f, world.Get<PawnIntent>(goblin).Yaw * 180f / MathF.PI, 2);
             Assert.True(world.Has<Collider>(goblin));
-            Assert.Equal(world.Resources.Get<PhysicsSpace>().Layers.Enemy, world.Get<Collider>(goblin).Layer);
+            Assert.Equal(world.Resources.Get<IPhysicsWorld>().Layers.Enemy, world.Get<Collider>(goblin).Layer);
 
             // attributes and the attack it swings
             Assert.Equal(100f, world.Attribute(goblin, new RecordId("sage", "health")));
