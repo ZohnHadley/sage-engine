@@ -4,7 +4,8 @@
 #   tools/pack_sdk.sh [feed-dir] [--build]
 #
 # Writes Sage.Sdk.<v>.nupkg, Sage.Player.<v>.nupkg and Sage.Templates.<v>.nupkg into feed-dir (default:
-# artifacts/feed; <v> is build/Sage.Version.props). The Player is the host and the `sage` CLI as they are
+# artifacts/feed). <v> is the engine's version from git tags (build/Sage.Version.props, MinVer, issue #31):
+# 0.1.0 on the commit tagged v0.1.0, 0.1.0-alpha.0.N before it. The templates name it for the SDK. The Player is the host and the `sage` CLI as they are
 # built in bin/Debug, bin/Development and bin/Shipping, so build the solution in all three first (CI does),
 # or pass --build to build what it needs here (with -p:SageSkipShaders=true off Windows, since mgfxc needs
 # Wine there: that Player boots and runs games but draws nothing).
@@ -42,7 +43,8 @@ fi
 # A new build of a package with the same version must not be shadowed by the copy NuGet already
 # extracted: clear this version from the global packages folder.
 packages=$(dotnet nuget locals global-packages --list | sed 's/^[^:]*: *//')
-version=$(sed -n 's:.*<SageVersion>\(.*\)</SageVersion>.*:\1:p' "$repo/build/Sage.Version.props")
+version=$(dotnet msbuild "$repo/sdk/Sage.Sdk/Sage.Sdk.csproj" -restore -nologo -t:SageVersion -getProperty:SageVersion | tr -d '\r' | tail -n 1)
+[ -n "$version" ] || { echo "pack_sdk.sh: could not work out the version (build/Sage.Version.props)" >&2; exit 1; }
 for id in sage.sdk sage.player; do
     rm -rf "${packages:?}/$id/$version"
 done

@@ -6,6 +6,7 @@ namespace MyGame;
 //
 // It stands on terrain and puts a player in the world, so it names the plugins those come from.
 [Plugin("mygame", "0.1.0")]
+[RequiresPlugin("sage", ">=0.1")]   // the engine versions this game is made for: "^0.1" pins the 0.1 series
 [RequiresPlugin("sage.streaming", ">=0.1")]
 [RequiresPlugin("sage.gameplay.character", ">=0.1")]
 public sealed class MyGameModule : IGameModule

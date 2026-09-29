@@ -2,6 +2,7 @@
   <!-- Shared settings for every Sage engine project under src/. -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
   <Import Project="..\build\Sage.Configurations.props" />
+  <Import Project="..\build\Sage.Version.props" />
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>

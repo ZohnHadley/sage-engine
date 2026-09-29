@@ -15,6 +15,7 @@ namespace Sage.Kits.Rpg;
 // BasePlugins.All(). Its client half, Sage.Kits.Rpg.Client (`sage.kits.rpg.client`), comes with it in
 // a host with a window.
 [Plugin(Id, "0.1.0")]
+[RequiresPlugin("sage", ">=0.1")]   // the engine versions it is built for (issue #31)
 public sealed class RpgKitModule : IModule
 {
     public const string Id = "sage.kits.rpg";

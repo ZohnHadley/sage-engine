@@ -27,6 +27,14 @@ public static class BuildInfo
         typeof(BuildInfo).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == "SageBuildConfiguration")?.Value ?? Config.ToString();
 
-    public static string EngineVersion =>
-        typeof(BuildInfo).Assembly.GetName().Version?.ToString() ?? "0.0.0";
+    // The engine's SemVer, from git tags (build/Sage.Version.props, issue #31): 0.1.0 on the commit tagged
+    // v0.1.0, 0.1.0-alpha.0.37+1a2b3c4 on the 37th commit before any tag. The assembly's informational
+    // version, which MinVer writes; "0.0.0" only for an assembly built without it.
+    public static readonly string EngineVersion =
+        typeof(BuildInfo).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
+
+    // The same, as the major.minor.patch that plugin, kit and game ranges are checked against
+    // (`[RequiresPlugin("sage", "^0.1")]`, game.json's "sage"). A pre-release counts as the version it
+    // leads to: 0.1.0-alpha.0.37 satisfies ">=0.1.0", so a build between tags loads what the tag will.
+    public static readonly SemVersion EngineSemVersion = SemVersion.Parse(EngineVersion, "the engine's version");
 }

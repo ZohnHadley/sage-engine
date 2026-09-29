@@ -10,6 +10,13 @@
   "preferNameDirectory": true,
   "tags": { "language": "C#", "type": "project" },
   "symbols": {
+    "sdkVersion": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "SAGE_PACKED_VERSION",
+      "replaces": "SAGE_SDK_VERSION",
+      "description": "The Sage.Sdk version the projects name (Sage.Sdk/version in each Sdk attribute). The pack sets the default to the version packed (build/Sage.Version.props, from git tags); pass it when installing the template straight from its folder."
+    },
     "feed": {
       "type": "parameter",
       "datatype": "string",

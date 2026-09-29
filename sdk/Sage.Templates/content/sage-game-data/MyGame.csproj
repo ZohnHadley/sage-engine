@@ -1,4 +1,4 @@
-<Project Sdk="Sage.Sdk/0.1.0">
+<Project Sdk="Sage.Sdk/SAGE_SDK_VERSION">
   <!--
     MyGame has no C#: game.json and the records in content/data are the whole game (the engine places the
     scene game.json names and spawns its player). This project is here so that `dotnet run` starts the

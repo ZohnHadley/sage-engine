@@ -120,6 +120,10 @@ public sealed class CoreCVars
 
         r.RegisterCommand("echo", CVarFlags.None, "echo <text>: print text.", a => Log.Info(LogCat.Console, a.Rest));
 
+        // The engine's SemVer, from git tags (issue #31): what a plugin's or game's "sage" range is checked against.
+        r.RegisterCommand("version", CVarFlags.None, "version: the engine's version (SemVer, from git tags) and build configuration.", _ =>
+            Log.Info(LogCat.Console, $"Sage {BuildInfo.EngineVersion} ({BuildInfo.Config})"));
+
         r.RegisterCommand("wait", CVarFlags.None,
             "wait [seconds]: pause a script here and run the rest later (no argument = next frame).", a =>
         {

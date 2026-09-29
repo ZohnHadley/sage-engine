@@ -11,6 +11,7 @@ namespace Sage.Kits.Rpg;
 //
 // Loaded with `sage.kits.rpg` by a host with a window (game.json "kits"; SageAppOptions.LoadKitClients).
 [Plugin("sage.kits.rpg.client", "0.1.0")]
+[RequiresPlugin("sage", ">=0.1")]   // the engine versions it is built for (issue #31)
 public sealed class RpgKitClientModule : IModule
 {
     // The ids a game asks the ScreenRegistry for. "dialogue" is the client's own (ScreenRegistry.Dialogue).
