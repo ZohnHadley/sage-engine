@@ -1013,6 +1013,18 @@ world with no camera entity behaves as before. Rigs will be camera entities that
 `CameraPose` before the director (D2: #78, #79). Ortho is in from the start (§0.5). The API is experimental
 (SAGE0123). Details and deviations: docs/design/06 "As built (camera components)".
 
+*As built, 4a (issue #77, 2026-09-29): several views and render targets.* The render snapshot holds a
+pooled list of value-type views, each with its own frustum, target, viewport and ranges of items and
+sprites; extract runs per view, and the renderer draws views into render targets first, then the screen's,
+then the UI once. The views are the world's `CameraViews` (a world without it draws `ActiveCamera`). The
+renderer owns a pool of **named render targets** of fixed size (`Renderer.DeclareTarget`, or 512×512 for a
+target only content names), and materials sample one as `rt:<name>` (D3). **One world draws to the
+screen** (`Renderer.ScreenWorld`, the host's main world unless set): the others draw only into targets,
+where before every world cleared the back buffer and the last one won. The planning half (view order,
+per-view ranges) is `RenderViewPlan`, tested headless; `r_testview` shows a split screen and a target on
+Linux CI's smoke run. The public `RenderContext` and the pass registry stay in 4h (§4.7). Details:
+docs/design/06 §3.4a.
+
 *As built, 4a (issue #80, 2026-09-29): scripted cuts from I/O.* The exit criterion's "a scripted camera
 cut from I/O": entity inputs `CameraOn [hold]` / `CameraOff` and outputs `OnCameraOn` / `OnCameraOff` on
 any camera, owned by the engine (`sage.core`) so a data-only game has them; the `sage:scripted_camera`

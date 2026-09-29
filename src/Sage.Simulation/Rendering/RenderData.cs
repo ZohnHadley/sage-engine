@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -56,20 +57,27 @@ public sealed class SamplerDesc
     public SamplerAddress Address = SamplerAddress.Wrap;
 }
 
-// A material parameter value (07 §3.3): a number, a 2–4 number array, or a texture path.
+// A material parameter value (07 §3.3): a number, a 2–4 number array, a texture path, or `rt:<name>`,
+// one of the renderer's named render targets (issue #77, decision D3: a mirror, a security camera's
+// screen, a minimap). A render target is not an asset, so it is not a path and no mount is asked for it.
 [JsonConverter(typeof(MaterialParamJsonConverter))]
 public sealed class MaterialParam
 {
+    internal const string RenderTargetPrefix = "rt:";
+
     public float[]? Values;
     [AssetKind("texture")] public AssetPath Texture;
+    [Experimental("SAGE0123")] public string? RenderTarget;
 
     public bool IsTexture => !Texture.IsEmpty;
-    public override string ToString() => IsTexture ? Texture.ToString() : $"[{string.Join(", ", Values ?? Array.Empty<float>())}]";
+    public override string ToString() =>
+        RenderTarget != null ? RenderTargetPrefix + RenderTarget
+        : IsTexture ? Texture.ToString() : $"[{string.Join(", ", Values ?? Array.Empty<float>())}]";
 }
 
 [SchemaShape("""
     {
-      "description": "A material parameter: a number, 1 to 16 numbers, or a texture path.",
+      "description": "A material parameter: a number, 1 to 16 numbers, a texture path, or rt:<name> for one of the renderer's render targets.",
       "anyOf": [
         { "type": "number" },
         { "type": "array", "items": { "type": "number" }, "minItems": 1, "maxItems": 16 },
@@ -86,7 +94,14 @@ internal sealed class MaterialParamJsonConverter : JsonConverter<MaterialParam>
             case JsonTokenType.Number:
                 return new MaterialParam { Values = new[] { reader.GetSingle() } };
             case JsonTokenType.String:
-                try { return new MaterialParam { Texture = AssetPath.Intern(reader.GetString()!) }; }
+                string text = reader.GetString()!;
+                if (text.StartsWith(MaterialParam.RenderTargetPrefix, StringComparison.Ordinal))
+                {
+                    string name = text[MaterialParam.RenderTargetPrefix.Length..];
+                    if (name.Length == 0) throw new JsonException("'rt:' needs a render target name, as in \"rt:minimap\"");
+                    return new MaterialParam { RenderTarget = name };
+                }
+                try { return new MaterialParam { Texture = AssetPath.Intern(text) }; }
                 catch (ArgumentException ex) { throw new JsonException(ex.Message); }
             case JsonTokenType.StartArray:
                 var values = new List<float>(4);
@@ -104,6 +119,7 @@ internal sealed class MaterialParamJsonConverter : JsonConverter<MaterialParam>
 
     public override void Write(Utf8JsonWriter writer, MaterialParam value, JsonSerializerOptions options)
     {
+        if (value.RenderTarget != null) { writer.WriteStringValue(MaterialParam.RenderTargetPrefix + value.RenderTarget); return; }
         if (value.IsTexture) { writer.WriteStringValue(value.Texture.ToString()); return; }
         writer.WriteStartArray();
         foreach (var v in value.Values ?? Array.Empty<float>()) writer.WriteNumberValue(v);

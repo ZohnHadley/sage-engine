@@ -657,9 +657,13 @@ Place it like anything else; it looks down its -Z from where it stands. Of the e
 to the screen the highest `priority` wins, and one drawing to the screen takes over from the
 first-person rig until you disable it (`"enabled": false`, or `Camera.Enabled` from code). `target`
 names a render target instead of the screen, `viewport` a part of it (0..1 from the top-left), and
-`fovY` is in degrees. Games that name these types in C# opt in to SAGE0123 (§10b). Drawing more than one
-view, and render targets, arrive with the multi-view renderer (#77); until then only the screen's view is
-drawn.
+`fovY` is in degrees. Games that name these types in C# opt in to SAGE0123 (§10b).
+
+Every view is drawn (issue #77): a camera whose `target` is `"minimap"` draws into a render target of that
+name, 512×512 unless code declares another size (`Renderer.DeclareTarget("minimap", 256, 256)`), and a
+material shows it with `"params": { "Albedo": "rt:minimap" }` — a mirror, a security monitor, a map on a
+table; code puts it on the HUD with `Renderer.FindTarget` and `UiDraw.Image`. Render targets draw before
+the screen, so the screen sees this frame's picture.
 
 **A scripted cut** (issue #80) is the engine's `sage:scripted_camera` prefab — a camera that starts off,
 with priority 100, which holds the player still while it is on — placed and named, and wired from
@@ -1274,7 +1278,7 @@ names their types needs the opt-in.
 | SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
-| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; scripted cameras (#80): `ScriptedCamera`, `ScriptedCameraPart` | Phase 4a is still building on it: rigs (#78, #79), the multi-view renderer and render targets (#77) and the editor camera (#81); blends wait for 4b's tweens |
+| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart` | Phase 4a is still building on it: rigs (#78, #79) and the editor camera (#81); blends wait for 4b's tweens |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 

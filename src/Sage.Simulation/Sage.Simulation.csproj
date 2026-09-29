@@ -29,6 +29,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sage.Tests" />
+    <!-- The one internal the client uses: RenderViewPlan (issue #77), the planning half of multi-view
+         drawing, kept here so the headless tests can reach it. -->
+    <InternalsVisibleTo Include="Sage.Client" />
   </ItemGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->

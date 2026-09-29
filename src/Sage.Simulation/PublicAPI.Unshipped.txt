@@ -110,3 +110,4 @@ static Sage.Simulation.CameraMath.ViewRelative(System.Numerics.Quaternion rotati
 static Sage.Simulation.CameraViewport.Full.get -> Sage.Simulation.CameraViewport
 static Sage.Simulation.CameraViewport.operator !=(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
 static Sage.Simulation.CameraViewport.operator ==(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
+Sage.Simulation.MaterialParam.RenderTarget -> string?

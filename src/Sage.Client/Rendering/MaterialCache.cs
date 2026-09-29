@@ -85,6 +85,7 @@ internal sealed class MaterialRuntime
     public required SamplerState Sampler;
     public required float Fog;
     public EffectParameter? Albedo;   // the material's "Albedo" texture param, overridden per sprite sheet
+    public ulong SampledTargets;      // bit n: a param samples render target n (`rt:<name>`); not drawn into it
     public bool IsError;
     public int Drawn;        // items drawn with it in frame DrawnFrame (mat_list)
     public long DrawnFrame = -1;
@@ -114,10 +115,13 @@ internal sealed class MaterialCache : IDisposable
     private static readonly RasterizerState WireNone = new() { CullMode = CullMode.None, FillMode = FillMode.WireFrame };
     private static readonly DepthStencilState WriteNoTest = new() { DepthBufferEnable = true, DepthBufferFunction = CompareFunction.Always, DepthBufferWriteEnable = true };
 
-    public MaterialCache(GraphicsDevice device, ContentService content, RecordStore records)
+    private readonly RenderTargetPool _targets;
+
+    public MaterialCache(GraphicsDevice device, ContentService content, RecordStore records, RenderTargetPool targets)
     {
         _content = content;
         _records = records;
+        _targets = targets;
         // Missing textures: a magenta/black checker (05 §8), impossible to mistake for real content.
         _missingTexture = new Texture2D(device, 2, 2);
         _missingTexture.SetData(new[] { Color.Magenta, Color.Black, Color.Black, Color.Magenta });
@@ -212,6 +216,7 @@ internal sealed class MaterialCache : IDisposable
         // Every parameter the effect uses needs a value: GL ignores .fx defaults (07 §3.3).
         var values = new List<(EffectParameter, MaterialParam, Texture2D?)>();
         var missing = new List<string>();
+        ulong sampled = 0;
         foreach (var p in effect.Parameters)
         {
             if (EffectBinding.EngineParams.Contains(p.Name)) continue;
@@ -219,7 +224,15 @@ internal sealed class MaterialCache : IDisposable
             string? problem = Check(p, value);
             if (problem != null) { Log.Error(LogCat.Shaders, $"Material {id}: param {p.Name}: {problem}"); return null; }
             Texture2D? texture = null;
-            if (value.IsTexture)
+            if (value.RenderTarget != null)
+            {
+                // `rt:<name>` (issue #77, D3): the target's texture, made now if nothing has drawn it yet.
+                // A target remade later (a new size) invalidates the cache, so this is rebuilt.
+                int target = _targets.Id(value.RenderTarget);
+                texture = _targets.Texture(target);
+                if (target < 64) sampled |= 1UL << target;
+            }
+            else if (value.IsTexture)
             {
                 texture = _content.LoadTexture(value.Texture);
                 if (texture == null) Log.Warn(LogCat.Shaders, $"Material {id}: texture {value.Texture} missing; using the checker placeholder");
@@ -264,15 +277,17 @@ internal sealed class MaterialCache : IDisposable
             },
             Fog = record.Fog ? 1f : 0f,
             Albedo = effect.Parameters["Albedo"],
+            SampledTargets = sampled,
         };
     }
 
     private static string? Check(EffectParameter p, MaterialParam value)
     {
+        bool texture = value.IsTexture || value.RenderTarget != null;
         if (p.ParameterType == EffectParameterType.Texture2D || p.ParameterType == EffectParameterType.Texture)
-            return value.IsTexture ? null : "needs a texture path";
+            return texture ? null : "needs a texture path or rt:<name>";
         if (p.ParameterType != EffectParameterType.Single) return $"type {p.ParameterType} isn't supported in materials";
-        if (value.IsTexture) return "needs numbers, not a texture";
+        if (texture) return "needs numbers, not a texture";
         int expected = p.RowCount * p.ColumnCount;
         return value.Values!.Length == expected ? null : $"needs {expected} number(s), got {value.Values.Length}";
     }
