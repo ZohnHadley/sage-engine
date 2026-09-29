@@ -50,6 +50,8 @@ public sealed class RegistrationStageAnalyzer : DiagnosticAnalyzer
             "prefab parts are sealed when the first world exists, and prefabs may have spawned without it"),
         (Ns + ".SaveSystem", "RegisterResource", "a saved resource",
             "a save written or read before it has left the resource out"),
+        (Ns + ".SaveSystem", "AddConverter", "a save converter",
+            "a save written or read before it has used the default shape, which does not load back"),
         (Ns + ".ModuleManager", "Add", "a module",
             "modules are sealed once Init has run, so it would never run Init"),
     };

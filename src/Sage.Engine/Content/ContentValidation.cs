@@ -30,6 +30,10 @@ public sealed class ValidateOptions
     // manifest's assembly is then not loaded again from disk, as HeadlessApp.ForGame does.
     public IGameModule? GameModule { get; init; }
 
+    // The plugins the game may choose from (SageAppOptions.AvailablePlugins): `sage` passes the base
+    // engine's, BasePlugins.All().
+    public IReadOnlyList<IModule> AvailablePlugins { get; init; } = Array.Empty<IModule>();
+
     // Called with the booted engine once its content has loaded, before the game starts: what
     // `sage schema` reads record types, declarations and the loaded ids from (issue #21). What it
     // throws is reported like any other failure of the run.
@@ -84,6 +88,7 @@ public static class ContentValidation
             Game = manifest,
             EngineContentDirectory = options.EngineContentDirectory,
             Host = HostKind.Server,
+            AvailablePlugins = options.AvailablePlugins,
             HostModules = options.GameModule != null ? new IModule[] { options.GameModule } : Array.Empty<IModule>(),
         });
         foreach (var (directory, ns) in options.Mounts)

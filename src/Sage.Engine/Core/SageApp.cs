@@ -23,10 +23,11 @@ public sealed class SageAppOptions
     // `Content/` folder beside its executable; a test passes the repository's `engine_content/`.
     public string? EngineContentDirectory { get; init; }
 
-    // The engine's simulation modules — physics, streaming, maps and gameplay (SimulationModules). On
-    // by default, because a game without them is the exception; a game can still disable any one of
-    // them by name in game.json.
-    public bool IncludeSimulationModules { get; init; } = true;
+    // The plugins a game may switch on in game.json (`plugins`; all of them when it names none) and
+    // off (`modules.disable`), in install order. A host passes the base engine's, BasePlugins.All()
+    // (Sage.Gameplay), which this assembly cannot name: the simulation does not know the gameplay built
+    // on it. Empty: a bare engine (a test, a tool).
+    public IReadOnlyList<IModule> AvailablePlugins { get; init; } = Array.Empty<IModule>();
 
     // The host this app runs in; decides which module kinds load.
     public HostKind Host { get; init; } = HostKind.Game;
@@ -81,22 +82,6 @@ public sealed class SageApp : IDisposable
     public GameManifest? Game => _options.Game;
     public AppStage Stage { get; private set; } = AppStage.Created;
 
-    // The engine's simulation modules, in the order a host installs them: physics before anything that
-    // sweeps it, streaming and maps, then every gameplay feature (GameplayModules.All, R15). **The**
-    // list — the host, a headless server and the tests all take it from here, so none can ship a set
-    // the others don't (ModuleSetTests; the LightsModule bug of 2026-09-25).
-    public static IModule[] SimulationModules()
-    {
-        var modules = new List<IModule>
-        {
-            new PhysicsModule(),
-            new StreamingModule(),   // terrain rings and origin rebasing (R6, F14)
-            new MapModule(),         // brush levels imported from TrenchBroom (15 §3, F16)
-        };
-        modules.AddRange(GameplayModules.All());
-        return modules.ToArray();
-    }
-
     // Creates the engine, mounts content and adds every module; nothing runs yet. Throws when a
     // module or the game assembly can't be loaded — a host reports that and stops.
     public static SageApp Create(SageAppOptions options)
@@ -145,8 +130,7 @@ public sealed class SageApp : IDisposable
                 Engine.Modules.Add(module);
         }
 
-        if (_options.IncludeSimulationModules)
-            foreach (var module in ChooseSimulationModules(Game?.Plugins)) Add(module);
+        foreach (var module in ChoosePlugins(_options.AvailablePlugins, Game?.Plugins)) Add(module);
         foreach (var module in _options.HostModules) Add(module);
 
         if (Game is { } game)
@@ -173,13 +157,12 @@ public sealed class SageApp : IDisposable
         _ => true,
     };
 
-    // The simulation plugins a game.json asks for, plus everything they require (by type or by id), in
-    // SimulationModules' order. Null means all of them. A pattern that matches nothing is an error that
+    // The plugins a game.json asks for, plus everything they require (by type or by id), in
+    // AvailablePlugins' order. Null means all of them. A pattern that matches nothing is an error that
     // lists what there is — a misspelt plugin would otherwise be a game quietly missing a system.
-    private static IEnumerable<IModule> ChooseSimulationModules(IReadOnlyList<string>? wanted)
+    private static IEnumerable<IModule> ChoosePlugins(IReadOnlyList<IModule> all, IReadOnlyList<string>? wanted)
     {
-        var all = SimulationModules();
-        if (wanted == null) return all;
+        if (wanted == null || all.Count == 0) return all;   // a bare engine has none to choose from
 
         var infos = all.ToDictionary(m => m, PluginInfo.Of);
         var chosen = new HashSet<IModule>();

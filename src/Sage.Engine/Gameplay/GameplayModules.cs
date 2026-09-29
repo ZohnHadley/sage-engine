@@ -55,18 +55,6 @@ public static class GameplayModules
     {
         foreach (var module in All()) modules.Add(module);
     }
-
-    // Every cheat that acts on "the player" means the same thing by it (16 §3.1).
-    //
-    // The list is materialised first because these are console commands and console commands do
-    // structural things: `drop` destroys an entity and creates a pickup, which inside a live query
-    // throws (03 §3.2). It did, the moment saves gave a reason to drop something.
-    internal static void ForEachPlayer(Engine engine, Action<World, Entity> act)
-    {
-        foreach (var world in engine.Worlds)
-            foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList())
-                act(world, entity);
-    }
 }
 
 // Attributes, tags and effects (16 §3.3): the one path by which a number on an entity changes.
@@ -85,10 +73,14 @@ public sealed class AttributesModule : IModule
         _records = ctx.Engine.Records;
         _records.Reloaded += () => Registries.Rebuild(_records);
 
+        // Saves write attribute values and tags by name, not by the index records loaded in.
+        ctx.Engine.Saves.AddConverter((world, records) => new AttributeSetSaveConverter(world, records));
+        ctx.Engine.Saves.AddConverter((world, records) => new GameplayTagsSaveConverter(world, records));
+
         // `god`: the player stops taking damage. It is a tag, so effects block themselves with it
         // (16 §3.3) instead of every damage path checking a flag.
         ctx.Engine.CVars.RegisterCommand("god", CVarFlags.Cheat, "Toggle invulnerability for the local player.", _ =>
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
             {
                 bool on = !world.HasTag(entity, TagRecord.Invulnerable);
                 if (on) world.AddTag(entity, TagRecord.Invulnerable); else world.RemoveTag(entity, TagRecord.Invulnerable);
@@ -102,48 +94,6 @@ public sealed class AttributesModule : IModule
         world.Resources.Add(Registries);
         Registries.Rebuild(_records!);
         world.AddSystem(new EffectSystem(world, _records!));
-    }
-}
-
-// A body that walks (10 §3, 16 §3.1): the capsule the engine moves, the intent its controller writes,
-// and the first-person rig that sits in its head.
-[Plugin("sage.gameplay.character", "0.1.0")]
-public sealed class CharacterModule : IModule
-{
-    private RecordStore? _records;
-    private ActionRegistry? _actions;
-
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(PhysicsModule) };   // characters sweep the space
-
-    public void Init(ModuleContext ctx)
-    {
-        _records = ctx.Engine.Records;
-        _actions = ctx.Engine.Actions;
-
-        // Gameplay actions (08 §3.2): the simulation defines them, so a headless server has the same
-        // ids and a PlayerCommand means the same thing on both sides.
-        _actions.Register("Move", ActionKind.Axis2D);
-        _actions.Register("Jump", ActionKind.Button);
-        _actions.Register("Run", ActionKind.Button);
-        _actions.Register("Crouch", ActionKind.Button);
-    }
-
-    public void OnWorldCreated(World world)
-    {
-        // What the Commands phase promises everything downstream: by the end of it, a pawn's intent
-        // is what this tick will act on. Both controllers write it there and CharacterMovementSystem
-        // consumes it in PrePhysics, so anything writing it later is acting a tick late — which is
-        // exactly review #48, found by reading code rather than by the engine saying so (03 §3.5).
-        world.Contracts.FinalAfter<PawnIntent>(Phase.Commands);
-
-        // A player to command and to look through (issue #13): the host samples into PlayerInput and
-        // the first-person rig drives ActiveCamera. The client may have installed the camera already.
-        world.Resources.GetOrAdd(() => new PlayerInput());
-        world.Resources.GetOrAdd(() => new ActiveCamera());
-
-        world.AddSystem(new PlayerControlSystem(world));
-        world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!));
-        world.AddSystem(new FirstPersonCameraSystem(world, _records!));
     }
 }
 
@@ -203,7 +153,7 @@ public sealed class CombatModule : IModule
         {
             float amount = a.Count > 0 && float.TryParse(a[0], out float parsed) ? parsed : 10f;
             var type = a.Count > 1 ? ctx.Engine.Records.Resolve("damage_type", a[1]) : DamageTypeRecord.Physical;
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
             {
                 float applied = Combat.ApplyDamage(world, new DamageInfo(default, entity, type, amount,
                     world.Get<Transform>(entity).LocalPosition, Vector3.UnitY));
@@ -247,7 +197,7 @@ public sealed class ItemsModule : IModule
             if (a.Count == 0) { Log.Warn(LogCat.Console, "give <item> [count]"); return; }
             var item = ctx.Engine.Records.Resolve("item", a[0]);
             int count = a.Count > 1 && int.TryParse(a[1], out int parsed) ? parsed : 1;
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
             {
                 if (world.Give(entity, item, count))
                     Log.Info(LogCat.Console, $"{World.Describe(entity)} receives {count}x {item.Name}");
@@ -257,7 +207,7 @@ public sealed class ItemsModule : IModule
         // Prints the inventory *panel* (13 §3): the same rows a screen will draw, so the console and
         // the screen cannot disagree about what you are carrying, and a `*` is what is in your hands.
         ctx.Engine.CVars.RegisterCommand("inv", CVarFlags.None, "What the local player is carrying and wearing.", _ =>
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
                 GameplayPanels.Inventory(world, entity).Log(LogCat.Console)));
 
         ctx.Engine.CVars.RegisterCommand("equip", CVarFlags.Cheat, "equip <item>: wield or wear something the local player carries.", a =>
@@ -267,7 +217,7 @@ public sealed class ItemsModule : IModule
             if (item.IsEmpty) return;   // Resolve has already said there is no such item
             // Asks before doing (R17), so the refusal says *why* and `Equip` does not log a second
             // copy of it.
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
                 Log.Info(LogCat.Console, world.CanEquip(entity, item, out string why) && world.Equip(entity, item)
                     ? $"{World.Describe(entity)} equips {item.Name}"
                     : $"{World.Describe(entity)} cannot equip {item.Name}: {why}"));
@@ -276,7 +226,7 @@ public sealed class ItemsModule : IModule
         ctx.Engine.CVars.RegisterCommand("unequip", CVarFlags.Cheat, "unequip [main|off]: put away what the local player is holding.", a =>
         {
             var slot = a.Count > 0 && a[0].StartsWith("off", StringComparison.OrdinalIgnoreCase) ? EquipSlot.OffHand : EquipSlot.MainHand;
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) => { world.Unequip(entity, slot); Log.Info(LogCat.Console, $"{World.Describe(entity)} puts away its {slot}"); });
+            ctx.Engine.ForEachPlayer((world, entity) => { world.Unequip(entity, slot); Log.Info(LogCat.Console, $"{World.Describe(entity)} puts away its {slot}"); });
         });
 
         ctx.Engine.CVars.RegisterCommand("drop", CVarFlags.Cheat, "drop <item> [count]: put an item on the ground in front of the local player.", a =>
@@ -284,7 +234,7 @@ public sealed class ItemsModule : IModule
             if (a.Count == 0) { Log.Warn(LogCat.Console, "drop <item> [count]"); return; }
             var item = ctx.Engine.Records.Resolve("item", a[0]);
             int count = a.Count > 1 && int.TryParse(a[1], out int parsed) ? parsed : 1;
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
                 Log.Info(LogCat.Console, world.Drop(entity, item, count).IsNull
                     ? $"{World.Describe(entity)} has no {item.Name} to drop"
                     : $"{World.Describe(entity)} drops {count}x {item.Name}"));
@@ -326,7 +276,7 @@ public sealed class AbilitiesModule : IModule
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "cast <ability>"); return; }
             var ability = ctx.Engine.Records.Resolve("ability", a[0]);
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
                 Log.Info(LogCat.Console, world.Cast(entity, ability)
                     ? $"{World.Describe(entity)} casts {ability.Name}"
                     : $"{World.Describe(entity)} knows no magic at all"));
@@ -336,7 +286,7 @@ public sealed class AbilitiesModule : IModule
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "learn <ability>"); return; }
             var ability = ctx.Engine.Records.Resolve("ability", a[0]);
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
             {
                 world.Teach(entity, ability);
                 Log.Info(LogCat.Console, $"{World.Describe(entity)} learns {ability.Name}");
@@ -347,7 +297,7 @@ public sealed class AbilitiesModule : IModule
         // cannot be cast right now — the same words a screen will show, from the same rules the cast
         // system applies (R17).
         ctx.Engine.CVars.RegisterCommand("spells", CVarFlags.None, "What the local player can cast, and what is ready.", _ =>
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
                 GameplayPanels.Spellbook(world, entity).Log(LogCat.Console)));
 
         ctx.Engine.CVars.RegisterCommand("ready", CVarFlags.None, "ready <ability>: make it the spell the Cast button fires.", a =>
@@ -355,7 +305,7 @@ public sealed class AbilitiesModule : IModule
             if (a.Count == 0) { Log.Warn(LogCat.Console, "ready <ability>"); return; }
             var ability = ctx.Engine.Records.Resolve("ability", a[0]);
             if (ability.IsEmpty) return;
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, entity) =>
+            ctx.Engine.ForEachPlayer((world, entity) =>
                 Log.Info(LogCat.Console, world.Ready(entity, ability)
                     ? $"{World.Describe(entity)} readies {ability.Name}"
                     : $"{World.Describe(entity)} does not know {ability.Name}"));

@@ -102,6 +102,7 @@ sealed class Options
     public ValidateOptions For(string game, Action<Engine>? inspect = null) => new()
     {
         GameDirectory = game, EngineContentDirectory = EngineContent, Mounts = Mounts, Inspect = inspect,
+        AvailablePlugins = BasePlugins.All(),
     };
 
     public static Options? Parse(string[] args, bool allowOut)

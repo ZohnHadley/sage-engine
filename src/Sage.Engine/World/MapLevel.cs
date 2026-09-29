@@ -152,6 +152,13 @@ public sealed class MapLevels
     // Raised after a level is added or removed, so the halves that build from it can drop what they made.
     public event Action<MapLevel>? Unloaded;
 
+    // Raised for each brush entity a level spawns, with where the mapper drew it, before its collision
+    // is built: a plugin whose part needs the drawn position (a mover's "shut") takes it here. The
+    // prefab parts that built the entity ran before the map placed it.
+    public event Action<World, Entity, Vector3>? SolidSpawned;
+
+    internal void RaiseSolidSpawned(World world, Entity entity, Vector3 at) => SolidSpawned?.Invoke(world, entity, at);
+
     public void Add(MapLevel level) => Loaded.Add(level);
 
     public bool Remove(MapLevel level)
@@ -468,14 +475,14 @@ public static class MapLoader
         MapEntityIO.Attach(world, entity, MapEntityIO.Read(solid.Source, engine, where));
 
         // A mover has to know where "shut" is, and only now does anybody: the prefab part that added it
-        // ran before the map had put the entity where the mapper drew it.
-        if (entity.HasComponent<Mover>()) entity.GetComponent<Mover>().Closed = at;
+        // ran before the map had put the entity where the mapper drew it (MoverModule subscribes).
+        if (world.Resources.TryGet<MapLevels>(out var levels) && levels != null) levels.RaiseSolidSpawned(world, entity, at);
 
         // One hull for the whole entity, from every corner of every brush it owns. A door drawn as one
         // box is exact; an L-shaped one drawn as a single entity collides as the convex hull of both
         // arms, which is solid across the inside of the L. Draw that as two entities — and it is worth
         // knowing rather than guessing at, which is why it is written here and in 15 §10a.
-        var body = world.Resources.Get<PhysicsSpace>()
+        var body = world.Resources.Get<IPhysicsWorld>()
                         .AddHull(entity, solid.Hull, at, level.Layer, solid.IsTrigger);
         if (!body.IsStatic && body.Handle == 0) Log.Warn(LogCat.Level, $"{where}: '{className}' has no collision");
         else world.Add(entity, body);
@@ -604,7 +611,7 @@ public sealed class MapModule : IModule
             string className = a.Count > 0 ? a[0] : "info_player_start";
             int moved = 0;
 
-            GameplayModules.ForEachPlayer(ctx.Engine, (world, player) =>
+            ctx.Engine.ForEachPlayer((world, player) =>
             {
                 if (!MapLoader.TryFindPoint(world, className, out var at, out float yaw)) return;
 
@@ -705,7 +712,7 @@ internal sealed class MapCollisionSystem : ISystem
     public void Run(in SystemContext ctx)
     {
         var levels = _world.Resources.Get<MapLevels>();
-        var space = _world.Resources.Get<PhysicsSpace>();
+        var space = _world.Resources.Get<IPhysicsWorld>();
 
         for (int i = 0; i < levels.Loaded.Count; i++)
         {
@@ -719,7 +726,7 @@ internal sealed class MapCollisionSystem : ISystem
         }
     }
 
-    private void Build(MapLevel level, PhysicsSpace space)
+    private void Build(MapLevel level, IPhysicsWorld space)
     {
         int built = 0;
         foreach (var brush in level.Brushes)

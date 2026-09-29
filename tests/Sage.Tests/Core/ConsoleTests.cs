@@ -187,7 +187,7 @@ public class ConsoleTests
         try
         {
             LogCat.DefaultLevel = LogLevel.Warn;   // what "the host" chose
-            using var app = SageApp.Create(new SageAppOptions { IncludeSimulationModules = false });
+            using var app = SageApp.Create(new SageAppOptions());
             Assert.False(app.Engine.Core.OwnsProcessLog);
             Assert.Equal(LogLevel.Warn, LogCat.DefaultLevel);
 
@@ -195,7 +195,7 @@ public class ConsoleTests
             app.Engine.Core.Developer.Value = 0;
             Assert.Equal(LogLevel.Warn, LogCat.DefaultLevel);
 
-            using var host = SageApp.Create(new SageAppOptions { IncludeSimulationModules = false, OwnsProcessLog = true });
+            using var host = SageApp.Create(new SageAppOptions { OwnsProcessLog = true });
             Assert.True(host.Engine.Core.OwnsProcessLog);
             Assert.NotEqual(LogLevel.Warn, LogCat.DefaultLevel);   // the owner applies its developer defaults
         }

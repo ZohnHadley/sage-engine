@@ -221,6 +221,7 @@ public sealed class PhysicsModule : IModule
     {
         var space = new PhysicsSpace();
         world.Resources.Add(space);          // disposed with the world
+        world.Resources.Add<IPhysicsWorld>(space);   // what the simulation reads (levels, origin, I/O)
         _spaces.Add(space);
         ApplyLayers(space);
 

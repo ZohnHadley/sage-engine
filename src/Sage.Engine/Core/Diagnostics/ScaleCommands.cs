@@ -90,7 +90,7 @@ public static class ScaleCommands
             Log.Info(LogCat.Console, $"  terrain   {terrain.Sectors.Count} sector(s), {world.Origin()}, " +
                                      $"{world.Origin().Rebases} rebase(s)");
 
-        if (world.Resources.TryGet<PhysicsSpace>(out var space) && space != null)
+        if (world.Resources.TryGet<IPhysicsWorld>(out var space) && space != null)
             Log.Info(LogCat.Console, $"  physics   {space.BodyCount} bodies, {space.StaticCount} statics, " +
                                      $"step {space.LastStepMilliseconds:F2} ms");
     }

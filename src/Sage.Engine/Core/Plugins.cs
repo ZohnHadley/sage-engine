@@ -44,31 +44,6 @@ public sealed class RequiresPluginAttribute : Attribute
     public string Range { get; }
 }
 
-// What the engine knows about one module as a plugin.
-public sealed record PluginInfo(string Id, SemVersion Version, ModuleKind Kind, IReadOnlyList<(string Id, VersionRange Range)> Requires)
-{
-    public static PluginInfo Of(IModule module)
-    {
-        var type = module.GetType();
-        var plugin = type.GetCustomAttribute<PluginAttribute>();
-        var requires = type.GetCustomAttributes<RequiresPluginAttribute>()
-            .Select(r => (r.Id, VersionRange.Parse(r.Range, $"{type.Name}'s [RequiresPlugin(\"{r.Id}\")]")))
-            .ToList();
-        return new PluginInfo(
-            plugin?.Id ?? module.Name,
-            plugin != null ? SemVersion.Parse(plugin.Version, $"{type.Name}'s [Plugin]") : SemVersion.Zero,
-            module.Kind,
-            requires);
-    }
-
-    // `sage.gameplay.*` matches `sage.gameplay` and everything under it; anything else must match exactly.
-    public bool Matches(string pattern) =>
-        pattern.EndsWith(".*", StringComparison.Ordinal)
-            ? Id.Equals(pattern[..^2], StringComparison.OrdinalIgnoreCase)
-              || Id.StartsWith(pattern[..^1], StringComparison.OrdinalIgnoreCase)
-            : Id.Equals(pattern, StringComparison.OrdinalIgnoreCase);
-}
-
 // major.minor.patch. A missing minor or patch is 0 ("1.2" is 1.2.0). Pre-release and build suffixes
 // are accepted and ignored for ordering, which is all the loader needs today.
 public readonly record struct SemVersion(int Major, int Minor, int Patch) : IComparable<SemVersion>
@@ -171,7 +146,7 @@ public sealed class RegistrationLedger
     private readonly Dictionary<(string Kind, string Name), string> _owners = new();
 
     // The plugin whose code is running now; set by ModuleManager around each module's lifecycle calls.
-    public string Owner { get; internal set; } = "host";
+    public string Owner { get; set; } = "host";
 
     public void Record(string kind, string name) => _owners[(kind, name.ToLowerInvariant())] = Owner;
 

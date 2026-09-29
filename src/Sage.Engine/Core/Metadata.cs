@@ -375,7 +375,8 @@ public static class Metadata
         if (type == typeof(Quaternion)) return ValueKind.Quaternion;
         if (type == typeof(RecordId)) return ValueKind.RecordId;
         if (type == typeof(AssetPath)) return ValueKind.AssetPath;
-        if (type == typeof(Friflo.Engine.ECS.Entity)) return ValueKind.Entity;
+        // By name: the kernel does not reference the ECS (as MetadataGenerator reads it).
+        if (type.FullName == "Friflo.Engine.ECS.Entity") return ValueKind.Entity;
         if (TypedTarget(type) != null) return ValueKind.RecordId;   // RecordRef<T> (issue #22)
         if (typeof(JsonNode).IsAssignableFrom(type) || type == typeof(System.Text.Json.JsonElement)) return ValueKind.Json;
         if (type.IsArray && type.GetArrayRank() == 1)

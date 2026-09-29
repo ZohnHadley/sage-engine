@@ -34,6 +34,7 @@ public class SchemaTests
             {
                 GameDirectory = Path.Combine(Repo, "games", game),
                 EngineContentDirectory = Path.Combine(Repo, "engine_content"),
+                AvailablePlugins = BasePlugins.All(),
                 GameModule = module,
                 Mounts = mounts,
                 Inspect = catalog.Add,

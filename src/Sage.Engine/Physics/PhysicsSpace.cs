@@ -22,7 +22,7 @@ namespace sage_engine;
 //
 // Stepping allocates about 40 bytes per tick inside Bepu itself (its stage profiler), with or without
 // the thread dispatcher. That is the only per-frame allocation left in the host (TODO #41).
-public sealed class PhysicsSpace : IDisposable
+public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
 {
     private readonly BufferPool _pool = new();
     private readonly ThreadDispatcher _dispatcher;

@@ -254,7 +254,7 @@ public static class Spellmaker
         });
 
         engine.CVars.RegisterCommand("spell_list", CVarFlags.None, "The spells you have composed.", _ =>
-            GameplayModules.ForEachPlayer(engine, (world, _) =>
+            engine.ForEachPlayer((world, _) =>
             {
                 var book = Book(world);
                 foreach (var draft in book.Drafts)
@@ -270,7 +270,7 @@ public static class Spellmaker
         engine.CVars.RegisterCommand("spell_forget", CVarFlags.Cheat, "spell_forget <name>: unmake a composed spell.", a =>
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "spell_forget <name>"); return; }
-            GameplayModules.ForEachPlayer(engine, (world, _) =>
+            engine.ForEachPlayer((world, _) =>
                 Log.Info(LogCat.Console, Forget(world, a[0]) ? $"\"{a[0]}\" is gone" : $"no spell called \"{a[0]}\""));
         });
 
@@ -296,7 +296,7 @@ public static class Spellmaker
                 if (!Set(engine, draft, key, value)) Log.Warn(LogCat.Console, $"spell_make: don't know '{key}'");
             }
 
-            GameplayModules.ForEachPlayer(engine, (world, entity) =>
+            engine.ForEachPlayer((world, entity) =>
             {
                 // Composed per player world, and each gets its own copy: two players' books must not
                 // share a draft object, or editing one would edit the other's spell.

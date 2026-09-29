@@ -30,14 +30,6 @@ namespace sage_engine;
 //
 // v1 deserializes with System.Text.Json reflection; the compile-time generated readers/validators
 // (docs/design/09) replace that later with the same rules.
-// Where a world's records live. Beside `world.Messages()` and `world.Debug()`, and public for the same
-// reason: a game's own systems and screens ask the record store as often as the engine's do, and two
-// spellings of "where the records live" is how they end up pointing at different stores.
-public static class RecordWorldExtensions
-{
-    public static RecordStore Records(this World world) => world.Resources.Get<RecordStore>();
-}
-
 public sealed class RecordStore
 {
     // "$schema" is the editor's (a JSON Schema for autocomplete, REDESIGN §4.2), not the record's.
@@ -95,7 +87,8 @@ public sealed class RecordStore
             // Explicit, because the load asks it for types' contracts (GetTypeInfo) and the .NET 8
             // runtime will not supply a default one (the save bug CI's comment describes).
             TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
-            Converters = { new Vector2JsonConverter(), new Vector3JsonConverter(), new QuaternionJsonConverter(), new EntityJsonConverter(), new JsonStringEnumConverter() },
+            Converters = { new Vector2JsonConverter(), new Vector3JsonConverter(), new QuaternionJsonConverter(), new JsonStringEnumConverter() },
+            // The ECS's Entity converter (EntityJsonConverter) is inserted by the Engine, which owns the ECS.
         };
     }
 

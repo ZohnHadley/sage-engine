@@ -34,7 +34,7 @@ public sealed class MovementProfileRecord
 
     // The values above, for when the record is missing: one shared instance, so the controller and the
     // camera can never disagree about a default (review #43).
-    internal static readonly MovementProfileRecord Fallback = new();
+    public static readonly MovementProfileRecord Fallback = new();
 }
 
 // A character the engine moves. The entity's Transform is its feet position, and its Collider is a

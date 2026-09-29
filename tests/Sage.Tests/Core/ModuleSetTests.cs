@@ -104,7 +104,7 @@ public class ModuleSetTests
         var manifest = GameManifest.Load(SandboxDirectory);
         manifest.Modules.Add.Clear();
         manifest.Assembly = "";
-        using var host = SageApp.Create(new SageAppOptions { Game = manifest, HostModules = new IModule[] { new SandboxModule() } });
+        using var host = SageApp.Create(new SageAppOptions { AvailablePlugins = BasePlugins.All(), Game = manifest, HostModules = new IModule[] { new SandboxModule() } });
 
         var hostIds = host.Engine.Modules.Modules.Select(m => host.Engine.Modules.Plugin(m).Id).ToArray();
         Assert.Equal(hostIds, headless.PluginIds);

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Friflo.Engine.ECS;
 
 namespace sage_engine;
@@ -86,6 +87,13 @@ public sealed class SaveSystem
             () => new T());
     }
 
+    // Converters a plugin adds to the save dialect (SaveJson), made per save and per load because they
+    // need the world: gameplay's attributes and tags are written by name, not by index. Registered in
+    // Init (SAGE0020), in the order plugins initialise; they come after the engine's own entity converter.
+    private readonly List<Func<World, RecordStore, JsonConverter>> _converters = new();
+
+    public void AddConverter(Func<World, RecordStore, JsonConverter> make) => _converters.Add(make);
+
     // The registered saved resources, by name: for the registry dump and tools (issue #18).
     public IEnumerable<(string Name, Type Type, int Version)> Resources =>
         _resources.Values.OrderBy(r => r.Name, StringComparer.Ordinal).Select(r => (r.Name, r.Type, r.Version));
@@ -156,7 +164,7 @@ public sealed class SaveSystem
 
     private (string Json, int Count) WriteWorld(World world)
     {
-        var json = SaveJson.For(world, _engine.Records);
+        var json = SaveJson.For(world, _engine.Records, _converters);
         var entities = new JsonArray();
 
         foreach (var entity in world.Query<Persistent>().Entities)
@@ -304,7 +312,7 @@ public sealed class SaveSystem
         world.FlushCommands();
 
         // Pass two: the state.
-        var dialect = SaveJson.For(world, _engine.Records);
+        var dialect = SaveJson.For(world, _engine.Records, _converters);
         foreach (var (entity, saved) in rebuilt)
         {
             if (saved["components"] is JsonObject components)

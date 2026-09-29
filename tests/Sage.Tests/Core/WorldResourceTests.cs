@@ -69,7 +69,7 @@ public class WorldResourceTests
     }
 
     private static SageApp AppWith(IModule game) =>
-        SageApp.Create(new SageAppOptions { IncludeSimulationModules = false, HostModules = new[] { game } });
+        SageApp.Create(new SageAppOptions { HostModules = new[] { game } });
 
     [Fact]
     public void AGamesRulesComeFromCreateRulesAndAreStarted()
@@ -96,7 +96,7 @@ public class WorldResourceTests
     [Fact]
     public void WithNoRulesAWorldGetsTheDefaults()
     {
-        using var app = SageApp.Create(new SageAppOptions { IncludeSimulationModules = false });
+        using var app = SageApp.Create(new SageAppOptions());
         Assert.IsType<DefaultGameRules>(app.Boot().Resources.Get<GameRules>());
     }
 }

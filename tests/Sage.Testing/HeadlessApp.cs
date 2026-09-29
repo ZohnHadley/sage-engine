@@ -20,7 +20,7 @@ namespace sage_engine.Testing;
 // Start from:
 //   Bare()        no modules at all; add what the test is about with With
 //   Gameplay()    physics and every gameplay feature: what most gameplay tests want
-//   Simulation()  every simulation plugin the engine ships (SageApp.SimulationModules)
+//   Simulation()  every simulation plugin the engine ships (BasePlugins.All)
 //   ForGame(...)  a game's game.json: its plugins, mounts and disables, as the host resolves them
 public sealed class HeadlessApp : IDisposable
 {
@@ -148,7 +148,7 @@ public sealed class HeadlessAppBuilder
         {
             Game = _game,
             EngineContentDirectory = _engineContent,
-            IncludeSimulationModules = _includeSimulation,
+            AvailablePlugins = _includeSimulation ? BasePlugins.All() : Array.Empty<IModule>(),
             Host = _host,
             HostModules = _modules.ToArray(),
         });

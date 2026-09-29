@@ -128,7 +128,18 @@ public sealed class MoverModule : IModule
         // (MoverPart below), which this plugin declares.
     }
 
-    public void OnWorldCreated(World world) => world.AddSystem(new MoverSystem(world));
+    public void OnWorldCreated(World world)
+    {
+        world.AddSystem(new MoverSystem(world));
+
+        // A mover drawn in a map is shut where the mapper drew it; only the level knows where that is
+        // (MapModule is installed before this plugin, so its MapLevels is already there).
+        if (world.Resources.TryGet<MapLevels>(out var levels) && levels != null)
+            levels.SolidSpawned += static (_, entity, at) =>
+            {
+                if (entity.HasComponent<Mover>()) entity.GetComponent<Mover>().Closed = at;
+            };
+    }
 
     private static void Set(World world, Entity entity, sbyte direction)
     {

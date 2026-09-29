@@ -336,12 +336,12 @@ internal sealed class EntityIOSystem : ISystem
 internal sealed class TriggerOutputSystem : ISystem
 {
     private readonly World _world;
-    private readonly PhysicsSpace _space;
+    private readonly IPhysicsWorld _space;
 
     public TriggerOutputSystem(World world)
     {
         _world = world;
-        _space = world.Resources.Get<PhysicsSpace>();
+        _space = world.Resources.Get<IPhysicsWorld>();
     }
 
     public void Run(in SystemContext ctx)

@@ -20,6 +20,9 @@ public sealed class Engine : IDisposable
         Core = core;
         Vfs = vfs ?? new VirtualFileSystem();
         Records = records ?? new RecordStore();
+        // Entity handles in record JSON read as the null entity (EntityJsonConverter): the record store
+        // is the kernel's and knows no ECS, so the engine adds it, where the store's own list had it.
+        Records.Json.Converters.Insert(3, new EntityJsonConverter());
         Components = new ComponentSchema(Records.Json);
         Saves = new SaveSystem(this);
         // Every registry records who registered what (issue #12).

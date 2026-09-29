@@ -67,7 +67,7 @@ public class DeclarationTests
     {
         var generated = new GeneratedRegistrations();
         generated.Include(typeof(Engine).Assembly);
-        var known = SageApp.SimulationModules().Select(m => PluginInfo.Of(m).Id)
+        var known = BasePlugins.All().Select(m => PluginInfo.Of(m).Id)
             .Append(RegistrationOwners.Core).Append("sage.client").ToHashSet();
         Assert.All(generated.Owners, owner => Assert.Contains(owner, known));
     }

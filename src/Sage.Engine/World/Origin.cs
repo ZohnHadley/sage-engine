@@ -104,7 +104,7 @@ public static class OriginExtensions
             global.Previous.Position += offset;
         }
 
-        if (world.Resources.TryGet<PhysicsSpace>(out var space)) space!.Rebase(offset);
+        if (world.Resources.TryGet<IPhysicsWorld>(out var space)) space!.Rebase(offset);
 
         // Debug shapes drawn with a duration (a cast's arc, a swing's sweep) outlive the tick that
         // queued them, and they hold positions in the old frame. Dropping them costs a second of

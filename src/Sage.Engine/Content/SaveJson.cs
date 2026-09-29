@@ -12,8 +12,9 @@ namespace sage_engine;
 // The JSON dialect saves are written in (docs/design/09 §3.3, TODO F27): the record pipeline's, plus
 // three things it cannot do and one it does wrongly for this purpose.
 //
-// It is built per save and per load because all three converters need the **world** — an entity id, an
-// attribute name and a tag name only mean anything against one.
+// It is built per save and per load because its converters need the **world** — an entity id, an
+// attribute name and a tag name only mean anything against one. The entity converter is here; a
+// plugin adds its own with SaveSystem.AddConverter (attributes and tags by name: AttributesModule).
 //
 // Doing it with converters rather than field-by-field reflection is what makes nesting work.
 // `ActiveEffect.Source` is an `Entity` inside a `List<ActiveEffect>` inside a component; a rule that
@@ -22,7 +23,16 @@ namespace sage_engine;
 // here, and it is the first thing this file replaces).
 internal static class SaveJson
 {
-    public static JsonSerializerOptions For(World world, RecordStore records) => new()
+    public static JsonSerializerOptions For(World world, RecordStore records,
+                                            IReadOnlyList<Func<World, RecordStore, JsonConverter>> extra)
+    {
+        var options = Base(world);
+        // Plugins' own converters (SaveSystem.AddConverter): gameplay's attributes and tags by name.
+        foreach (var make in extra) options.Converters.Add(make(world, records));
+        return options;
+    }
+
+    private static JsonSerializerOptions Base(World world) => new()
     {
         PropertyNameCaseInsensitive = true,
         IncludeFields = true,               // components are public fields
@@ -42,8 +52,6 @@ internal static class SaveJson
             new QuaternionJsonConverter(),
             new JsonStringEnumConverter(),
             new EntitySaveConverter(world),
-            new AttributeSetSaveConverter(world, records),
-            new GameplayTagsSaveConverter(world, records),
         },
         TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { DropTransient } },
     };
@@ -88,100 +96,5 @@ internal sealed class EntitySaveConverter : JsonConverter<Entity>
             return;
         }
         writer.WriteStringValue(persistent.Id.ToString());
-    }
-}
-
-// Attribute values by **name**, not by index. `AttributeSet` keeps parallel arrays indexed by the
-// order attribute records happened to load in (16 §3.3); add one record and every saved number means
-// a different attribute. Only the *base* values are written — the current ones are recomputed from
-// base plus whatever effects are running, every tick.
-internal sealed class AttributeSetSaveConverter : JsonConverter<AttributeSet>
-{
-    private readonly World _world;
-    private readonly RecordStore _records;
-
-    public AttributeSetSaveConverter(World world, RecordStore records)
-    {
-        _world = world;
-        _records = records;
-    }
-
-    private GameplayRegistries Registries => _world.Resources.Get<GameplayRegistries>();
-
-    public override AttributeSet Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        var set = new AttributeSet();
-        if (reader.TokenType == JsonTokenType.Null) return set;
-        var registries = Registries;
-
-        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-        {
-            if (reader.TokenType != JsonTokenType.PropertyName) continue;
-            string name = reader.GetString() ?? "";
-            reader.Read();
-            float value = reader.TokenType == JsonTokenType.Number ? reader.GetSingle() : 0f;
-
-            int index = registries.Attribute(RecordId.Parse(name, "sage"));
-            // An attribute the game no longer has: its value goes, the rest of the entity loads.
-            if (index >= 0) set.SetBase(index, value);
-        }
-        return set;
-    }
-
-    public override void Write(Utf8JsonWriter writer, AttributeSet value, JsonSerializerOptions options)
-    {
-        var registries = Registries;
-        writer.WriteStartObject();
-        for (int i = 0; i < registries.AttributeCount; i++)
-        {
-            if (!value.Has(i)) continue;
-            writer.WriteNumber(registries.AttributeId(i).ToString(), value.BaseOf(i));
-        }
-        writer.WriteEndObject();
-    }
-}
-
-// Tags by name, for the same reason: `GameplayTags.Bits` is a bitset over indices assigned in record
-// order. Only the tags the entity *owns* are written — the ones granted by effects come back when the
-// effects do, and writing them would strip real tags the moment effects were re-evaluated.
-internal sealed class GameplayTagsSaveConverter : JsonConverter<GameplayTags>
-{
-    private readonly World _world;
-    private readonly RecordStore _records;
-
-    public GameplayTagsSaveConverter(World world, RecordStore records)
-    {
-        _world = world;
-        _records = records;
-    }
-
-    private GameplayRegistries Registries => _world.Resources.Get<GameplayRegistries>();
-
-    public override GameplayTags Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        var tags = new GameplayTags();
-        if (reader.TokenType != JsonTokenType.StartArray) return tags;
-        var registries = Registries;
-
-        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
-        {
-            if (reader.TokenType != JsonTokenType.String) continue;
-            int index = registries.Tag(RecordId.Parse(reader.GetString() ?? "", "sage"));
-            if (index >= 0) tags.Add(index);
-        }
-        return tags;
-    }
-
-    public override void Write(Utf8JsonWriter writer, GameplayTags value, JsonSerializerOptions options)
-    {
-        var registries = Registries;
-        writer.WriteStartArray();
-        for (int i = 0; i < registries.TagCount; i++)
-        {
-            // Owned, not granted: `Granted` is rebuilt from ActiveEffects.
-            if (!value.Has(i) || (value.Granted & (1UL << i)) != 0) continue;
-            writer.WriteStringValue(registries.TagId(i).ToString());
-        }
-        writer.WriteEndArray();
     }
 }

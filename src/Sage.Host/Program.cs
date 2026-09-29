@@ -58,6 +58,7 @@ try
     {
         Game = manifest,
         EngineContentDirectory = Path.Combine(AppContext.BaseDirectory, "Content"),
+        AvailablePlugins = BasePlugins.All(),
         HostModules = new IModule[] { new ClientModule() },
         ConfigFile = UserPaths.ConfigFile,
         LaunchCommands = launch.Commands,
