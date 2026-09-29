@@ -251,6 +251,7 @@
         "fence",
         "fireball_bolt",
         "firebug",
+        "floor",
         "gate",
         "hello:player",
         "hermit",
@@ -272,6 +273,9 @@
         "sandbox:sword_pickup",
         "sandbox:tree",
         "sandbox:watcher",
+        "sceneonly:crate",
+        "sceneonly:floor",
+        "sceneonly:player",
         "sword_pickup",
         "tree",
         "watcher"
@@ -289,8 +293,13 @@
       "description": "The id of a scene record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "hello:main",
         "main",
-        "sandbox:main"
+        "sandbox:main",
+        "sceneonly:shed",
+        "sceneonly:yard",
+        "shed",
+        "yard"
       ]
     },
     "record:sound": {
@@ -605,6 +614,7 @@
         "fence",
         "fireball_bolt",
         "firebug",
+        "floor",
         "gate",
         "hello:player",
         "hermit",
@@ -627,6 +637,9 @@
         "sandbox:sword_pickup",
         "sandbox:tree",
         "sandbox:watcher",
+        "sceneonly:crate",
+        "sceneonly:floor",
+        "sceneonly:player",
         "sword_pickup",
         "tree",
         "watcher"
@@ -644,8 +657,13 @@
       "description": "Another scene record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "hello:main",
         "main",
-        "sandbox:main"
+        "sandbox:main",
+        "sceneonly:shed",
+        "sceneonly:yard",
+        "shed",
+        "yard"
       ]
     },
     "base:sound": {
@@ -724,11 +742,11 @@
         "from_scene",
         "interactable",
         "player_controlled",
+        "sage:from_scene",
         "sage:interactable",
         "sage:player_controlled",
         "sage:streaming_source",
         "sandbox:faces_camera",
-        "sandbox:from_scene",
         "streaming_source"
       ]
     }

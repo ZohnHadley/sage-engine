@@ -6,6 +6,8 @@
   "assembly": "bin/{config}/net8.0/Sandbox.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
+  // The scene every world starts in (issue #29): content/data/scene.json's `sandbox:main`.
+  "scene": "main",
   // The client half (R15): the simulation is Sandbox.dll, anything needing a screen is here. A
   // dedicated server would leave this out.
   "modules": { "disable": [], "add": ["../Sandbox.Client/bin/{config}/net8.0/Sandbox.Client.dll"] }

@@ -44,143 +44,6 @@
       "description": "true (in a patch): remove the record.",
       "type": "boolean"
     },
-    "player": {
-      "description": "Where the local player starts. (ScenePlacement)",
-      "type": "object",
-      "properties": {
-        "prefab": {
-          "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
-          "allOf": [
-            {
-              "$ref": "ids.schema.json#/definitions/record:prefab"
-            }
-          ]
-        },
-        "at": {
-          "description": "Relative to the scene centre; y is height above the ground. Unit: m. (Vector3)",
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "yaw": {
-          "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
-          "type": "number"
-        },
-        "name": {
-          "description": "Optional, so ent_list can tell two copies apart. (string)",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "place": {
-      "description": "Everything else the scene places. (List<ScenePlacement>)",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "prefab": {
-            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
-            "allOf": [
-              {
-                "$ref": "ids.schema.json#/definitions/record:prefab"
-              }
-            ]
-          },
-          "at": {
-            "description": "Relative to the scene centre; y is height above the ground. Unit: m. (Vector3)",
-            "type": "array",
-            "items": {
-              "type": "number"
-            },
-            "minItems": 3,
-            "maxItems": 3
-          },
-          "yaw": {
-            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
-            "type": "number"
-          },
-          "name": {
-            "description": "Optional, so ent_list can tell two copies apart. (string)",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "place+": {
-      "description": "Adds to \"place\": what a base or an earlier definition listed, then these.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "prefab": {
-            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
-            "allOf": [
-              {
-                "$ref": "ids.schema.json#/definitions/record:prefab"
-              }
-            ]
-          },
-          "at": {
-            "description": "Relative to the scene centre; y is height above the ground. Unit: m. (Vector3)",
-            "type": "array",
-            "items": {
-              "type": "number"
-            },
-            "minItems": 3,
-            "maxItems": 3
-          },
-          "yaw": {
-            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
-            "type": "number"
-          },
-          "name": {
-            "description": "Optional, so ent_list can tell two copies apart. (string)",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "place-": {
-      "description": "Removes these from \"place\" (as a base or an earlier definition listed it).",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "prefab": {
-            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
-            "allOf": [
-              {
-                "$ref": "ids.schema.json#/definitions/record:prefab"
-              }
-            ]
-          },
-          "at": {
-            "description": "Relative to the scene centre; y is height above the ground. Unit: m. (Vector3)",
-            "type": "array",
-            "items": {
-              "type": "number"
-            },
-            "minItems": 3,
-            "maxItems": 3
-          },
-          "yaw": {
-            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
-            "type": "number"
-          },
-          "name": {
-            "description": "Optional, so ent_list can tell two copies apart. (string)",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      }
-    },
     "maps": {
       "description": "Brush levels to load with the scene. Names a map record. (List<RecordRef<MapRecord>>)",
       "type": "array",
@@ -201,6 +64,267 @@
       "items": {
         "$ref": "ids.schema.json#/definitions/record:map"
       }
+    },
+    "placements": {
+      "description": "Placements documents (what the editor saves) to load with the scene. Names a placements record. (List<RecordRef<PlacementsRecord>>)",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:placements"
+      }
+    },
+    "placements+": {
+      "description": "Adds to \"placements\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:placements"
+      }
+    },
+    "placements-": {
+      "description": "Removes these from \"placements\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:placements"
+      }
+    },
+    "origin": {
+      "description": "Absolute metres that `Origin` and `Ground` placements are measured from. Unit: m. (Vector3, default [0,0,0])",
+      "default": [
+        0,
+        0,
+        0
+      ],
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "relativeTo": {
+      "description": "What a placement's `at` is measured from when it does not say. (PlacementFrame, default \"World\")",
+      "default": "World",
+      "type": "string",
+      "enum": [
+        "World",
+        "Origin",
+        "Ground"
+      ]
+    },
+    "player": {
+      "description": "Where the local player starts, and as what; kept across hot reloads. (Placement)",
+      "type": "object",
+      "properties": {
+        "prefab": {
+          "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:prefab"
+            }
+          ]
+        },
+        "at": {
+          "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "yaw": {
+          "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
+          "type": "number"
+        },
+        "name": {
+          "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+          "type": "string"
+        },
+        "relativeTo": {
+          "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "World",
+                "Origin",
+                "Ground"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "place": {
+      "description": "Everything else the scene places. (List<Placement>)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "prefab": {
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:prefab"
+              }
+            ]
+          },
+          "at": {
+            "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "yaw": {
+            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
+            "type": "number"
+          },
+          "name": {
+            "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "relativeTo": {
+            "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "World",
+                  "Origin",
+                  "Ground"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "place+": {
+      "description": "Adds to \"place\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "prefab": {
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:prefab"
+              }
+            ]
+          },
+          "at": {
+            "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "yaw": {
+            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
+            "type": "number"
+          },
+          "name": {
+            "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "relativeTo": {
+            "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "World",
+                  "Origin",
+                  "Ground"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "place-": {
+      "description": "Removes these from \"place\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "prefab": {
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:prefab"
+              }
+            ]
+          },
+          "at": {
+            "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "yaw": {
+            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
+            "type": "number"
+          },
+          "name": {
+            "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "relativeTo": {
+            "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "World",
+                  "Origin",
+                  "Ground"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "environment": {
+      "description": "What the world is like when the scene starts. (SceneEnvironment)",
+      "type": "object",
+      "properties": {
+        "weather": {
+          "description": "The weather the scene starts in; left out, the world's own (clear) Names a weather record. (RecordRef<WeatherRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:weather"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

@@ -14,5 +14,18 @@
       "character": { "layer": "player" },
       "attributes": {}
     }
+  },
+
+  // Where it starts. A scene is the engine's (issue #29): game.json's "scene" names this one, and every
+  // world starts in it. The player stands 2 m above the ground in the middle of the first sector: "at" is
+  // measured from "origin", and "relativeTo": "Ground" makes its y a height above the terrain there —
+  // which is the conversion the old C# made by hand, both halves of it (the world's frame, R6, and the
+  // ground under the feet). A scene can also place prefabs ("place"), load maps and set the weather.
+  {
+    "type": "scene",
+    "id": "main",
+    "origin": [512, 0, 512],
+    "relativeTo": "Ground",
+    "player": { "prefab": "player", "at": [0, 2, 0] }
   }
 ]
