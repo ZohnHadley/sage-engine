@@ -1,0 +1,12 @@
+{
+  // A game with no C# at all that boots into a scene (issue #29, REDESIGN §4.1): no assembly, only this
+  // manifest and the records in content/data. The engine places the scene game.json names, spawns its
+  // player, and respawns it all on a hot reload without losing the player. CI validates it and runs it
+  // in the real host (tools/smoke_run.sh); tests/Sage.Tests/Content/SceneTests.cs boots it headlessly.
+  "name": "Scene only",
+  "id": "sceneonly",
+  // A player to walk about as (physics comes with it); no terrain, so the floor is a prefab.
+  "plugins": ["sage.gameplay.character"],
+  "mounts": ["content"],
+  "scene": "yard"
+}

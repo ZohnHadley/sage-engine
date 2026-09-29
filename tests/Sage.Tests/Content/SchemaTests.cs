@@ -21,17 +21,20 @@ public class SchemaTests
 
     private static SchemaValidator Validator() => new(Committed);
 
-    // What `sage schema games/Sandbox games/Hello` writes, less the client halves' parts: the tests
-    // cannot load Sage.Client (it is MonoGame), so its `audio` and `particles` and the Sandbox's
+    // What `sage schema games/Sandbox games/Hello tests/games/scene-only` writes, less the client halves'
+    // parts: the tests cannot load Sage.Client (it is MonoGame), so its `audio` and `particles` and the Sandbox's
     // `box_mesh` are named but not described here.
     private static SortedDictionary<string, string> Generate(params (string Directory, string Namespace)[] mounts)
     {
         var catalog = new SchemaCatalog();
-        foreach (var (game, module) in new (string, IGameModule)[] { ("Sandbox", new Sandbox.SandboxModule()), ("Hello", new Hello.HelloModule()) })
+        // The data-only test game too (issue #29): its prefab ids are in the enums its own scene is checked against.
+        foreach (var (game, module) in new (string, IGameModule?)[] { ("games/Sandbox", new Sandbox.SandboxModule()),
+                                                                      ("games/Hello", new Hello.HelloModule()),
+                                                                      ("tests/games/scene-only", null) })
         {
             var report = ContentValidation.Run(new ValidateOptions
             {
-                GameDirectory = Path.Combine(Repo, "games", game),
+                GameDirectory = Path.Combine(Repo, game),
                 EngineContentDirectory = Path.Combine(Repo, "engine_content"),
                 AvailablePlugins = BasePlugins.All(),
                 GameModule = module,
@@ -211,7 +214,7 @@ public class SchemaTests
             string disk = File.ReadAllText(Path.Combine(Committed, name));
             if (name != RecordSchemas.Parts)
             {
-                Assert.True(disk == text, $"schemas/{name} is stale: run `sage schema games/Sandbox games/Hello --out schemas` (README)");
+                Assert.True(disk == text, $"schemas/{name} is stale: run `sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas` (README)");
                 continue;
             }
             // The parts file differs only by the client parts this process cannot read.

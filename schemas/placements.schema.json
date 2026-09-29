@@ -44,14 +44,38 @@
       "description": "true (in a patch): remove the record.",
       "type": "boolean"
     },
+    "origin": {
+      "description": "Absolute metres that `Origin` and `Ground` placements are measured from. Unit: m. (Vector3, default [0,0,0])",
+      "default": [
+        0,
+        0,
+        0
+      ],
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "relativeTo": {
+      "description": "What a placement's `at` is measured from when it does not say. (PlacementFrame, default \"World\")",
+      "default": "World",
+      "type": "string",
+      "enum": [
+        "World",
+        "Origin",
+        "Ground"
+      ]
+    },
     "place": {
-      "description": "(List<Placement>)",
+      "description": "What stands where. (List<Placement>)",
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
           "prefab": {
-            "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
             "allOf": [
               {
                 "$ref": "ids.schema.json#/definitions/record:prefab"
@@ -59,7 +83,7 @@
             ]
           },
           "at": {
-            "description": "(Vector3)",
+            "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
             "type": "array",
             "items": {
               "type": "number"
@@ -68,12 +92,28 @@
             "maxItems": 3
           },
           "yaw": {
-            "description": "(float)",
+            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
             "type": "number"
           },
           "name": {
-            "description": "(string)",
+            "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
             "type": "string"
+          },
+          "relativeTo": {
+            "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "World",
+                  "Origin",
+                  "Ground"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -86,7 +126,7 @@
         "type": "object",
         "properties": {
           "prefab": {
-            "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
             "allOf": [
               {
                 "$ref": "ids.schema.json#/definitions/record:prefab"
@@ -94,7 +134,7 @@
             ]
           },
           "at": {
-            "description": "(Vector3)",
+            "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
             "type": "array",
             "items": {
               "type": "number"
@@ -103,12 +143,28 @@
             "maxItems": 3
           },
           "yaw": {
-            "description": "(float)",
+            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
             "type": "number"
           },
           "name": {
-            "description": "(string)",
+            "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
             "type": "string"
+          },
+          "relativeTo": {
+            "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "World",
+                  "Origin",
+                  "Ground"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -121,7 +177,7 @@
         "type": "object",
         "properties": {
           "prefab": {
-            "description": "Names a prefab record. (RecordRef<PrefabRecord>)",
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
             "allOf": [
               {
                 "$ref": "ids.schema.json#/definitions/record:prefab"
@@ -129,7 +185,7 @@
             ]
           },
           "at": {
-            "description": "(Vector3)",
+            "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
             "type": "array",
             "items": {
               "type": "number"
@@ -138,12 +194,28 @@
             "maxItems": 3
           },
           "yaw": {
-            "description": "(float)",
+            "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
             "type": "number"
           },
           "name": {
-            "description": "(string)",
+            "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
             "type": "string"
+          },
+          "relativeTo": {
+            "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "World",
+                  "Origin",
+                  "Ground"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
