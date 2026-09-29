@@ -1,0 +1,2050 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sage prefab components",
+  "description": "A prefab's \"components\": component data by id. A bare name is this file's namespace, then sage.",
+  "type": "object",
+  "properties": {
+    "abilities": {
+      "description": "The component sage:abilities (Abilities), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:abilities"
+        }
+      ]
+    },
+    "active_effects": {
+      "description": "The component sage:active_effects (ActiveEffects), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:active_effects"
+        }
+      ]
+    },
+    "ai_state": {
+      "description": "The component sage:ai_state (AIState), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ai_state"
+        }
+      ]
+    },
+    "attributes": {
+      "description": "The component sage:attributes (Attributes), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:attributes"
+        }
+      ]
+    },
+    "audio_source": {
+      "description": "The component sage:audio_source (AudioSource), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:audio_source"
+        }
+      ]
+    },
+    "character_controller": {
+      "description": "The component sage:character_controller (CharacterController), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:character_controller"
+        }
+      ]
+    },
+    "collider": {
+      "description": "The component sage:collider (Collider), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:collider"
+        }
+      ]
+    },
+    "dialogue": {
+      "description": "The component sage:dialogue (Dialogue), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:dialogue"
+        }
+      ]
+    },
+    "equipment": {
+      "description": "The component sage:equipment (Equipment), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:equipment"
+        }
+      ]
+    },
+    "faction": {
+      "description": "The component sage:faction (Faction), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:faction"
+        }
+      ]
+    },
+    "from_map": {
+      "description": "The component sage:from_map (FromMap), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:from_map"
+        }
+      ]
+    },
+    "from_placements": {
+      "description": "The component sage:from_placements (FromPlacements), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:from_placements"
+        }
+      ]
+    },
+    "from_prefab": {
+      "description": "The component sage:from_prefab (FromPrefab), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:from_prefab"
+        }
+      ]
+    },
+    "gameplay_tags": {
+      "description": "The component sage:gameplay_tags (GameplayTags), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:gameplay_tags"
+        }
+      ]
+    },
+    "global_transform": {
+      "description": "The component sage:global_transform (GlobalTransform), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:global_transform"
+        }
+      ]
+    },
+    "hop": {
+      "description": "The component sandbox:hop (Hop), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sandbox:hop"
+        }
+      ]
+    },
+    "inventory": {
+      "description": "The component sage:inventory (Inventory), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:inventory"
+        }
+      ]
+    },
+    "io_connections": {
+      "description": "The component sage:io_connections (IOConnections), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:io_connections"
+        }
+      ]
+    },
+    "map_geometry": {
+      "description": "The component sage:map_geometry (MapGeometry), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:map_geometry"
+        }
+      ]
+    },
+    "map_solid": {
+      "description": "The component sage:map_solid (MapSolid), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:map_solid"
+        }
+      ]
+    },
+    "melee": {
+      "description": "The component sage:melee (Melee), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:melee"
+        }
+      ]
+    },
+    "mesh_renderer": {
+      "description": "The component sage:mesh_renderer (MeshRenderer), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:mesh_renderer"
+        }
+      ]
+    },
+    "mover": {
+      "description": "The component sage:mover (Mover), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:mover"
+        }
+      ]
+    },
+    "particle_emitter": {
+      "description": "The component sage:particle_emitter (ParticleEmitter), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:particle_emitter"
+        }
+      ]
+    },
+    "pawn": {
+      "description": "The component sage:pawn (Pawn), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:pawn"
+        }
+      ]
+    },
+    "pawn_intent": {
+      "description": "The component sage:pawn_intent (PawnIntent), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:pawn_intent"
+        }
+      ]
+    },
+    "persistent": {
+      "description": "The component sage:persistent (Persistent), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:persistent"
+        }
+      ]
+    },
+    "physics_body": {
+      "description": "The component sage:physics_body (PhysicsBody), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:physics_body"
+        }
+      ]
+    },
+    "pickup": {
+      "description": "The component sage:pickup (Pickup), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:pickup"
+        }
+      ]
+    },
+    "point_light": {
+      "description": "The component sage:point_light (PointLight), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:point_light"
+        }
+      ]
+    },
+    "projectile": {
+      "description": "The component sage:projectile (Projectile), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:projectile"
+        }
+      ]
+    },
+    "rigid_body": {
+      "description": "The component sage:rigid_body (RigidBody), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:rigid_body"
+        }
+      ]
+    },
+    "sage:abilities": {
+      "description": "Component sage:abilities (Abilities).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:abilities"
+        }
+      ]
+    },
+    "sage:active_effects": {
+      "description": "Component sage:active_effects (ActiveEffects).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:active_effects"
+        }
+      ]
+    },
+    "sage:ai_state": {
+      "description": "Component sage:ai_state (AIState).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ai_state"
+        }
+      ]
+    },
+    "sage:attributes": {
+      "description": "Component sage:attributes (Attributes).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:attributes"
+        }
+      ]
+    },
+    "sage:audio_source": {
+      "description": "Component sage:audio_source (AudioSource).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:audio_source"
+        }
+      ]
+    },
+    "sage:character_controller": {
+      "description": "Component sage:character_controller (CharacterController).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:character_controller"
+        }
+      ]
+    },
+    "sage:collider": {
+      "description": "Component sage:collider (Collider).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:collider"
+        }
+      ]
+    },
+    "sage:dialogue": {
+      "description": "Component sage:dialogue (Dialogue).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:dialogue"
+        }
+      ]
+    },
+    "sage:equipment": {
+      "description": "Component sage:equipment (Equipment).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:equipment"
+        }
+      ]
+    },
+    "sage:faction": {
+      "description": "Component sage:faction (Faction).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:faction"
+        }
+      ]
+    },
+    "sage:from_map": {
+      "description": "Component sage:from_map (FromMap).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:from_map"
+        }
+      ]
+    },
+    "sage:from_placements": {
+      "description": "Component sage:from_placements (FromPlacements).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:from_placements"
+        }
+      ]
+    },
+    "sage:from_prefab": {
+      "description": "Component sage:from_prefab (FromPrefab).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:from_prefab"
+        }
+      ]
+    },
+    "sage:gameplay_tags": {
+      "description": "Component sage:gameplay_tags (GameplayTags).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:gameplay_tags"
+        }
+      ]
+    },
+    "sage:global_transform": {
+      "description": "Component sage:global_transform (GlobalTransform).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:global_transform"
+        }
+      ]
+    },
+    "sage:inventory": {
+      "description": "Component sage:inventory (Inventory).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:inventory"
+        }
+      ]
+    },
+    "sage:io_connections": {
+      "description": "Component sage:io_connections (IOConnections).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:io_connections"
+        }
+      ]
+    },
+    "sage:map_geometry": {
+      "description": "Component sage:map_geometry (MapGeometry).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:map_geometry"
+        }
+      ]
+    },
+    "sage:map_solid": {
+      "description": "Component sage:map_solid (MapSolid).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:map_solid"
+        }
+      ]
+    },
+    "sage:melee": {
+      "description": "Component sage:melee (Melee).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:melee"
+        }
+      ]
+    },
+    "sage:mesh_renderer": {
+      "description": "Component sage:mesh_renderer (MeshRenderer).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:mesh_renderer"
+        }
+      ]
+    },
+    "sage:mover": {
+      "description": "Component sage:mover (Mover).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:mover"
+        }
+      ]
+    },
+    "sage:particle_emitter": {
+      "description": "Component sage:particle_emitter (ParticleEmitter).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:particle_emitter"
+        }
+      ]
+    },
+    "sage:pawn": {
+      "description": "Component sage:pawn (Pawn).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:pawn"
+        }
+      ]
+    },
+    "sage:pawn_intent": {
+      "description": "Component sage:pawn_intent (PawnIntent).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:pawn_intent"
+        }
+      ]
+    },
+    "sage:persistent": {
+      "description": "Component sage:persistent (Persistent).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:persistent"
+        }
+      ]
+    },
+    "sage:physics_body": {
+      "description": "Component sage:physics_body (PhysicsBody).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:physics_body"
+        }
+      ]
+    },
+    "sage:pickup": {
+      "description": "Component sage:pickup (Pickup).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:pickup"
+        }
+      ]
+    },
+    "sage:point_light": {
+      "description": "Component sage:point_light (PointLight).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:point_light"
+        }
+      ]
+    },
+    "sage:projectile": {
+      "description": "Component sage:projectile (Projectile).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:projectile"
+        }
+      ]
+    },
+    "sage:rigid_body": {
+      "description": "Component sage:rigid_body (RigidBody).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:rigid_body"
+        }
+      ]
+    },
+    "sage:sector_owned": {
+      "description": "Component sage:sector_owned (SectorOwned).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:sector_owned"
+        }
+      ]
+    },
+    "sage:sprite_animator": {
+      "description": "Component sage:sprite_animator (SpriteAnimator).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:sprite_animator"
+        }
+      ]
+    },
+    "sage:sprite_renderer": {
+      "description": "Component sage:sprite_renderer (SpriteRenderer).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:sprite_renderer"
+        }
+      ]
+    },
+    "sage:transform": {
+      "description": "Component sage:transform (Transform).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:transform"
+        }
+      ]
+    },
+    "sandbox:hop": {
+      "description": "Component sandbox:hop (Hop).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sandbox:hop"
+        }
+      ]
+    },
+    "sector_owned": {
+      "description": "The component sage:sector_owned (SectorOwned), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:sector_owned"
+        }
+      ]
+    },
+    "sprite_animator": {
+      "description": "The component sage:sprite_animator (SpriteAnimator), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:sprite_animator"
+        }
+      ]
+    },
+    "sprite_renderer": {
+      "description": "The component sage:sprite_renderer (SpriteRenderer), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:sprite_renderer"
+        }
+      ]
+    },
+    "transform": {
+      "description": "The component sage:transform (Transform), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:transform"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "sage:abilities": {
+      "type": "object",
+      "properties": {
+        "known": {
+          "description": "(List<RecordId>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        },
+        "known+": {
+          "description": "Adds to \"known\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        },
+        "known-": {
+          "description": "Removes these from \"known\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        },
+        "selected": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "casting": {
+          "description": "Not saved. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "timer": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "queued": {
+          "description": "Not saved. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:abilities (Abilities)."
+    },
+    "sage:active_effects": {
+      "type": "object",
+      "properties": {
+        "effects": {
+          "description": "(List<ActiveEffect>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "record": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "source": {
+                "description": "(Entity)"
+              },
+              "remaining": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "periodTimer": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "stacks": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "magnitude": {
+                "description": "(float)",
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "effects+": {
+          "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "record": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "source": {
+                "description": "(Entity)"
+              },
+              "remaining": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "periodTimer": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "stacks": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "magnitude": {
+                "description": "(float)",
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "effects-": {
+          "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "record": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "source": {
+                "description": "(Entity)"
+              },
+              "remaining": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "periodTimer": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "stacks": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "magnitude": {
+                "description": "(float)",
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:active_effects (ActiveEffects)."
+    },
+    "sage:ai_state": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "description": "Senses and reach; empty = sage:default_ai. Names a ai_profile record. Category: Brain. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:ai_profile"
+            }
+          ]
+        },
+        "schedule": {
+          "description": "The task list it runs. Names a ai_schedule record. Category: Brain. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+            }
+          ]
+        },
+        "taskIndex": {
+          "description": "Which task of the schedule it is on. At least 0. Category: Running. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "conditions": {
+          "description": "Not saved. (ulong, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "spell": {
+          "description": "Not saved. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "target": {
+          "description": "(Entity)"
+        },
+        "nextThink": {
+          "description": "Simulation time of its next think. Unit: s. Category: Running. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "taskTime": {
+          "description": "How long the current task has been running. Unit: s. At least 0. Category: Running. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "taskStarted": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "path": {
+          "description": "Not saved. (NavPath)",
+          "type": "object",
+          "properties": {
+            "c0": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "c1": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "c2": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "c3": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "c4": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "c5": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "count": {
+              "description": "(byte)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "step": {
+              "description": "(byte)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "replanIn": {
+              "description": "(float)",
+              "type": "number"
+            },
+            "plannedFor": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "noWayThrough": {
+              "description": "(bool)",
+              "type": "boolean"
+            },
+            "checkIn": {
+              "description": "(float)",
+              "type": "number"
+            },
+            "lineBlocked": {
+              "description": "(bool)",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "lastSeen": {
+          "description": "Not saved. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "forgetAt": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:ai_state (AIState)."
+    },
+    "sage:attributes": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "description": "(AttributeSet)",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:attributes (Attributes)."
+    },
+    "sage:audio_source": {
+      "type": "object",
+      "properties": {
+        "sound": {
+          "description": "Names a sound record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:sound"
+            }
+          ]
+        },
+        "loop": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "volume": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "voice": {
+          "description": "Not saved. (int, default 0)",
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:audio_source (AudioSource)."
+    },
+    "sage:character_controller": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "description": "How it moves; empty = sage:default_movement. Names a movement_profile record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:movement_profile"
+            }
+          ]
+        },
+        "layer": {
+          "description": "Its own physics layer, which its sweeps ignore. Range: 0 to 31. (byte, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31
+        },
+        "velocity": {
+          "description": "Current velocity. Unit: m/s. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "height": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "groundNormal": {
+          "description": "Not saved. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "grounded": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "onSteep": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "crouching": {
+          "description": "Crouched: the capsule is the profile's crouch height. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:character_controller (CharacterController)."
+    },
+    "sage:collider": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "description": "Box, Sphere, Capsule or Mesh. Category: Shape. (ColliderShape, default \"Box\")",
+          "default": "Box",
+          "type": "string",
+          "enum": [
+            "Box",
+            "Sphere",
+            "Capsule",
+            "Mesh"
+          ]
+        },
+        "size": {
+          "description": "Box: full extents. Sphere: X is the radius. Capsule: X radius, Y cylinder length. Unit: m. At least 0. Category: Shape. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "center": {
+          "description": "Offset from the entity's origin to the shape's centre. Unit: m. Category: Shape. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "layer": {
+          "description": "Index into the physics_layers record (0 = default) Range: 0 to 31. Category: Collision. (byte, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31
+        },
+        "isTrigger": {
+          "description": "Reports overlaps and never blocks. Category: Collision. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:collider (Collider)."
+    },
+    "sage:dialogue": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:dialogue (Dialogue)."
+    },
+    "sage:equipment": {
+      "type": "object",
+      "properties": {
+        "mainHand": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "offHand": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:equipment (Equipment)."
+    },
+    "sage:faction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:faction (Faction)."
+    },
+    "sage:from_map": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:from_map (FromMap)."
+    },
+    "sage:from_placements": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:from_placements (FromPlacements)."
+    },
+    "sage:from_prefab": {
+      "type": "object",
+      "properties": {
+        "prefab": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:from_prefab (FromPrefab)."
+    },
+    "sage:gameplay_tags": {
+      "type": "object",
+      "properties": {
+        "bits": {
+          "description": "(ulong, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "granted": {
+          "description": "Not saved. (ulong, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:gameplay_tags (GameplayTags)."
+    },
+    "sage:global_transform": {
+      "type": "object",
+      "properties": {
+        "current": {
+          "description": "(Pose)",
+          "type": "object",
+          "properties": {
+            "position": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "rotation": {
+              "description": "(Quaternion)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            "scale": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "additionalProperties": false
+        },
+        "previous": {
+          "description": "(Pose)",
+          "type": "object",
+          "properties": {
+            "position": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "rotation": {
+              "description": "(Quaternion)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            "scale": {
+              "description": "(Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:global_transform (GlobalTransform)."
+    },
+    "sage:inventory": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "description": "What it carries. (List<ItemStack>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "items+": {
+          "description": "Adds to \"items\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "items-": {
+          "description": "Removes these from \"items\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "capacity": {
+          "description": "How much it can carry; 0 = no limit. Unit: kg. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:inventory (Inventory)."
+    },
+    "sage:io_connections": {
+      "type": "object",
+      "properties": {
+        "wires": {
+          "description": "(Connection[])",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "target": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "input": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "parameter": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "delay": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "times": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "wires+": {
+          "description": "Adds to \"wires\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "target": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "input": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "parameter": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "delay": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "times": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "wires-": {
+          "description": "Removes these from \"wires\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "target": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "input": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "parameter": {
+                "description": "(string)",
+                "type": "string"
+              },
+              "delay": {
+                "description": "(float)",
+                "type": "number"
+              },
+              "times": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:io_connections (IOConnections)."
+    },
+    "sage:map_geometry": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:map_geometry (MapGeometry)."
+    },
+    "sage:map_solid": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "index": {
+          "description": "(int, default 0)",
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:map_solid (MapSolid)."
+    },
+    "sage:melee": {
+      "type": "object",
+      "properties": {
+        "attack": {
+          "description": "What it swings now; empty = sage:default_attack. Names a attack record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:attack"
+            }
+          ]
+        },
+        "natural": {
+          "description": "What it swings bare-handed, when a weapon comes off. Names a attack record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:attack"
+            }
+          ]
+        },
+        "phase": {
+          "description": "Not saved. (MeleePhase, default \"Ready\")",
+          "default": "Ready",
+          "type": "string",
+          "enum": [
+            "Ready",
+            "Windup",
+            "Recover"
+          ]
+        },
+        "timer": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "cooldown": {
+          "description": "Time until the next swing may start. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "swung": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:melee (Melee)."
+    },
+    "sage:mesh_renderer": {
+      "type": "object",
+      "properties": {
+        "mesh": {
+          "description": "A mesh path. (AssetPath)",
+          "type": "string"
+        },
+        "handle": {
+          "description": "(MeshHandle)",
+          "type": "object"
+        },
+        "material": {
+          "description": "Names a material record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "layer": {
+          "description": "(byte, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:mesh_renderer (MeshRenderer)."
+    },
+    "sage:mover": {
+      "type": "object",
+      "properties": {
+        "openOffset": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "seconds": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "position": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "direction": {
+          "description": "(sbyte, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "closed": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "closeAfter": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "holdRemaining": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:mover (Mover)."
+    },
+    "sage:particle_emitter": {
+      "type": "object",
+      "properties": {
+        "effect": {
+          "description": "Names a particle record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:particle"
+            }
+          ]
+        },
+        "enabled": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "pending": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:particle_emitter (ParticleEmitter)."
+    },
+    "sage:pawn": {
+      "type": "object",
+      "description": "Component sage:pawn (Pawn)."
+    },
+    "sage:pawn_intent": {
+      "type": "object",
+      "properties": {
+        "move": {
+          "description": "Not saved. (Vector2, default [0,0])",
+          "default": [
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "yaw": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "pitch": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "held": {
+          "description": "Not saved. (ActionMask)",
+          "type": "object"
+        },
+        "pressed": {
+          "description": "Not saved. (ActionMask)",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:pawn_intent (PawnIntent)."
+    },
+    "sage:persistent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "(PersistentId)",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:persistent (Persistent)."
+    },
+    "sage:physics_body": {
+      "type": "object",
+      "properties": {
+        "handle": {
+          "description": "(int, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "isStatic": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:physics_body (PhysicsBody)."
+    },
+    "sage:pickup": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "count": {
+          "description": "(int, default 0)",
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:pickup (Pickup)."
+    },
+    "sage:point_light": {
+      "type": "object",
+      "properties": {
+        "colour": {
+          "description": "Linear RGB; 1 1 1 is white. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "range": {
+          "description": "Where the light fades to nothing. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "intensity": {
+          "description": "Multiplies the colour; 1 is a lamp. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:point_light (PointLight)."
+    },
+    "sage:projectile": {
+      "type": "object",
+      "properties": {
+        "ability": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "caster": {
+          "description": "(Entity)"
+        },
+        "velocity": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "life": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "radius": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:projectile (Projectile)."
+    },
+    "sage:rigid_body": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "description": "Static never moves, Kinematic is moved by gameplay, Dynamic by physics. (BodyKind, default \"Static\")",
+          "default": "Static",
+          "type": "string",
+          "enum": [
+            "Static",
+            "Kinematic",
+            "Dynamic"
+          ]
+        },
+        "mass": {
+          "description": "Dynamic bodies only; 0 becomes 1. Unit: kg. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "friction": {
+          "description": "0 slides like ice; 0 means the default, 0.7. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "restitution": {
+          "description": "Bounciness: 0 stops dead, 1 bounces back as fast. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:rigid_body (RigidBody)."
+    },
+    "sage:sector_owned": {
+      "type": "object",
+      "properties": {
+        "sector": {
+          "description": "(SectorCoord)",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:sector_owned (SectorOwned)."
+    },
+    "sage:sprite_animator": {
+      "type": "object",
+      "properties": {
+        "clip": {
+          "description": "(int, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "time": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "speed": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "playing": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:sprite_animator (SpriteAnimator)."
+    },
+    "sage:sprite_renderer": {
+      "type": "object",
+      "properties": {
+        "sheet": {
+          "description": "Names a sprite_sheet record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:sprite_sheet"
+            }
+          ]
+        },
+        "material": {
+          "description": "Names a material record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "size": {
+          "description": "(Vector2, default [0,0])",
+          "default": [
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "mode": {
+          "description": "(BillboardMode, default \"Cylindrical\")",
+          "default": "Cylindrical",
+          "type": "string",
+          "enum": [
+            "Cylindrical",
+            "Spherical"
+          ]
+        },
+        "layer": {
+          "description": "(byte, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:sprite_renderer (SpriteRenderer)."
+    },
+    "sage:transform": {
+      "type": "object",
+      "properties": {
+        "localPosition": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "localRotation": {
+          "description": "(Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "localScale": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:transform (Transform)."
+    },
+    "sandbox:hop": {
+      "type": "object",
+      "properties": {
+        "baseY": {
+          "description": "The ground it lands back on. Unit: m. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "velocity": {
+          "description": "Upward speed; set by a hop, pulled down by gravity. Unit: m/s. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sandbox:hop (Hop)."
+    }
+  }
+}

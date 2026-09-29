@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Generated JSON Schemas (sage schema, issue #21) are compared byte for byte with what the tool writes,
+# which is `\n` everywhere: keep them so on a Windows checkout too.
+schemas/*.json text eol=lf

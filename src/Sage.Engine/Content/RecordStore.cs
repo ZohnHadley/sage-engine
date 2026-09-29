@@ -177,6 +177,11 @@ public sealed class RecordStore
     public IEnumerable<RecordId> Ids(string type) =>
         _records.Keys.Where(k => k.Type == type).Select(k => k.Id).OrderBy(i => i.ToString(), StringComparer.Ordinal);
 
+    // The templates of a type: records marked "abstract", loaded but never built, so Ids leaves them
+    // out. What "base" may also name (a JSON Schema's enum of bases, issue #21).
+    public IEnumerable<RecordId> AbstractIds(string type) =>
+        _raw.Where(kv => kv.Key.Item1 == type && kv.Value.Abstract).Select(kv => kv.Key.Item2).OrderBy(i => i.ToString(), StringComparer.Ordinal);
+
     public bool Exists(RecordId id) => _records.Keys.Any(k => k.Id == id);
 
     public bool Exists(string type, RecordId id) => _records.ContainsKey((type, id));

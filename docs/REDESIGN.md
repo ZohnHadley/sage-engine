@@ -343,6 +343,12 @@ What the generator emits:
    The `RecordRef<T>` check waits on #22. Every id is listed in MAKING_A_GAME §10a
    (test: RegisteringACvarInStartIsABuildError).
 
+   As built (issue #21), item 3: the schemas are written from the metadata table at run time rather
+   than by the generator, because the id enums need the loaded content anyway: `sage schema` writes
+   `schemas/record.schema.json` (discriminating on `"type"`), one schema per record type, the prefab
+   components and parts, and `ids.schema.json`; 05 "As built (JSON Schemas)" has the details
+   (test: EveryShippedDataFile_ValidatesAgainstTheCommittedSchemas).
+
 The ids are **namespaced strings**, so two mods each defining `Health` no longer silently overwrite each
 other (`ComponentSchema.cs:39`).
 
@@ -398,6 +404,10 @@ game's and every mod's contract.
 - **JSON Schema everywhere.** Every data file gets a `$schema`. The SDK and template write
   `.vscode/settings.json` mappings, so VS Code gives autocomplete, hover docs and red squiggles *before*
   the game runs. `sage schema` also emits the id enums from loaded content, including mods.
+  As built (issue #21): the mapping, not a `$schema` per file (an array file has nowhere to put one);
+  the repository's `.vscode/settings.json` maps the committed `schemas/` onto `**/data/**/*.json` as
+  JSON with comments (test: AMisspeltComponentFieldInASandboxPrefab_FailsTheSchema). The SDK template
+  writing its own waits on `Sage.Sdk` (Phase 3).
 - **Strict loading by default.**
   - Unknown fields in components and part options are an error (`UnmappedMemberHandling.Disallow`).
     Today `"light": {"color": …}` is silently ignored (`PrefabParts.cs:22-35,77-82`).
@@ -690,13 +700,13 @@ what the base therefore needs first:
 
 Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues/2) · Phase 1 [#9](https://github.com/ZohnHadley/sage-engine/issues/9) · Phase 2 [#15](https://github.com/ZohnHadley/sage-engine/issues/15) · Phase 3 [#23](https://github.com/ZohnHadley/sage-engine/issues/23). Each has its work split into sub-issues.
 
-**Status (2026-09-28; details in [`history/handoff-2026-09-28.md`](history/handoff-2026-09-28.md)):**
+**Status (2026-09-29; details in [`history/handoff-2026-09-28.md`](history/handoff-2026-09-28.md)):**
 
 | Phase | State |
 |---|---|
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
-| 2 — Declarations | **All but #21.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22). Left: JSON Schemas for VS Code (#21) |
+| 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
 | 3 — Carve the base | Not started |
 
 | Phase | Theme | Main work | Exit criterion |

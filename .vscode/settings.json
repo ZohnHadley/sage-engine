@@ -1,0 +1,20 @@
+{
+  // Record files (data/**/*.json) against the generated JSON Schemas (issue #21): autocomplete for
+  // fields, component and part ids and the ids content defines, a tooltip with each field's unit and
+  // range on hover, and a red underline under a misspelt field before the game runs. The schemas are
+  // generated into schemas/ by `sage schema games/Sandbox games/Hello --out schemas` (README); CI
+  // fails when they are stale. MAKING_A_GAME.md, "Editing records in VS Code", has the details.
+  //
+  // Record files have // comments, which plain JSON calls an error: open them (and game.json) as
+  // JSON with comments. The schemas apply either way.
+  "files.associations": {
+    "**/data/**/*.json": "jsonc",
+    "**/game.json": "jsonc"
+  },
+  "json.schemas": [
+    {
+      "fileMatch": ["**/data/**/*.json", "!**/bin/**", "!**/obj/**"],
+      "url": "./schemas/record.schema.json"
+    }
+  ]
+}

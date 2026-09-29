@@ -158,6 +158,21 @@ public interface IAITask
 public readonly record struct AITaskStep(string Task, string? Argument = null, float Value = 0f);
 
 // `{ "task": "Wait", "seconds": 1.5 }` or `"FaceTarget"`; "Wait:1.5" is refused with the object to write.
+[SchemaShape("""
+    {
+      "description": "A task: its name (\"FaceTarget\"), or { \"task\": \"Wait\", \"seconds\": 1.5 } for one that takes a number.",
+      "anyOf": [
+        { "type": "string", "pattern": "^[^:]+$" },
+        {
+          "type": "object",
+          "properties": { "task": { "type": "string", "minLength": 1, "description": "The task's name, such as \"Wait\"." } },
+          "required": ["task"],
+          "additionalProperties": { "type": "number" },
+          "maxProperties": 2
+        }
+      ]
+    }
+    """)]
 internal sealed class AITaskStepJsonConverter : JsonConverter<AITaskStep>
 {
     public override AITaskStep Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
