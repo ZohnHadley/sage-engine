@@ -114,7 +114,10 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   (tests: AnOutputReachesTheInputItIsWiredTo, AMoverOpensSaysSoAndShutsItselfAgain,
   AThingWiredToOnUseCountsAsSomethingYouCanUse)
 - **Connections come off map keys**, written the way Hammer writes them: a key named after an output
-  holds `target,input[,parameter,delay,times]`. Nothing else is read as a wire — in particular Quake's
+  holds `target,input[,parameter,delay,times]`. A scene or placements document writes the same five
+  fields by name in a placement's `outputs` (issue #80), checked at content load the same way (an unknown
+  input is an error at the file and line) and bound by name when they fire.
+  (test: AScenePlacementsOutputsAreWiredAndChecked) Nothing else is read as a wire — in particular Quake's
   bare `target`/`targetname` pair is *not*, because it says which entity but never which input, and
   guessing the input per classname is the untyped string resolution this replaces.
 - **Checked at load, resolved after.** An unknown input is an error naming the map file and line, and
@@ -135,7 +138,13 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   simulated against each other at all, which would have made "walk into a trigger" true only of falling
   crates. It works, and there is now a test for each of the two body kinds so that it keeps working.
   (tests: WalkingIntoATriggerVolumeFiresOnStartTouch, ATriggerVolumeSeesTheKinematicThingsToo)
-- **Not built:** `@group` targets, an editor link view, and the per-entity I/O history.
+- **Cameras (issue #80):** `CameraOn [hold seconds]` / `CameraOff` on any camera entity, firing
+  `OnCameraOn` / `OnCameraOff` on a change; registered by the engine (`sage.core`) rather than by this
+  plugin, like the camera itself. A cut delivered in tick N shows in the first frame after tick N. See
+  06 "As built (scripted cameras from entity I/O)". (test: TheCutLandsOnTheFrameAfterTheTickThatDeliveredIt)
+- **Not built:** `@group` targets, an editor link view, and the per-entity I/O history. An output fired
+  outside the dispatch (a trigger's, in PostPhysics) measures its delay from the previous tick's clock,
+  one tick short of one fired from inside it.
 
 ### 3.5 Engine signals in detail
 `EngineSignals` (on `Engine`, 01) holds plain C# events, raised on the main thread at the start of a frame (never inside a tick):
