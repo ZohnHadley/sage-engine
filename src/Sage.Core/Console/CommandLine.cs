@@ -53,7 +53,7 @@ public sealed class ConsoleCommand
 // Console line syntax, as in Quake/Source:
 //   statements separated by ';'   tokens separated by whitespace   "double quotes" group
 //   // starts a comment (outside quotes)
-public static class CommandLine
+internal static class CommandLine
 {
     public static List<string> SplitStatements(string text)
     {

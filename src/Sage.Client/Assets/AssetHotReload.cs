@@ -18,7 +18,7 @@ namespace Sage.Client;
 //
 // Unlike records, assets reload *individually*: a texture is a GPU object with holders, and there is
 // no reason to drop the other four hundred because one changed.
-public sealed class AssetHotReload : IDisposable
+internal sealed class AssetHotReload : IDisposable
 {
     // Everything the runtime loader can actually decode, checked against the decoders compiled into
     // MonoGame 3.8.x DesktopGL (StbImageSharp: jpeg, png, bmp, gif, psd, hdr, tga) and confirmed by

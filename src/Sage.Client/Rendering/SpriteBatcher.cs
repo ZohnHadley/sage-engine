@@ -9,7 +9,7 @@ namespace Sage.Client;
 // One billboard quad in the snapshot (docs/design/06 §3.2). Positions are camera-relative; the quad
 // corners are expanded by the batcher, from the view's right/up (Spherical) or world up
 // (Cylindrical), so nothing in the simulation knows about the camera.
-public struct SpriteInstance
+internal struct SpriteInstance
 {
     public Vector3 Center;        // the entity position (where the pivot sits), camera-relative
     public Vector2 Size;          // metres

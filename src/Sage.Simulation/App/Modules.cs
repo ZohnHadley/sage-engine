@@ -183,8 +183,22 @@ public sealed class ModuleManager
     // Dependencies come two ways: by C# type (IModule.Dependencies, for modules in assemblies that
     // reference each other) and by plugin id with a version range ([RequiresPlugin], for ones that
     // don't). A missing plugin or a version outside the range is fatal, and says which and why.
-    internal static List<IModule> Sort(IReadOnlyList<IModule> modules, IReadOnlyDictionary<IModule, PluginInfo> plugins)
+    //
+    // The id `sage` is the engine itself (issue #31): `[RequiresPlugin("sage", "^0.1")]` is the engine
+    // versions a plugin, kit or game module was built for, checked against BuildInfo.EngineSemVersion
+    // (a pre-release counts as the version it leads to). No plugin may take that id.
+    internal static List<IModule> Sort(IReadOnlyList<IModule> modules, IReadOnlyDictionary<IModule, PluginInfo> plugins) =>
+        Sort(modules, plugins, BuildInfo.EngineSemVersion, BuildInfo.EngineVersion);
+
+    internal const string EngineId = "sage";
+
+    internal static List<IModule> Sort(IReadOnlyList<IModule> modules, IReadOnlyDictionary<IModule, PluginInfo> plugins,
+                                       SemVersion engine, string engineText)
     {
+        foreach (var m in modules)
+            if (plugins[m].Id.Equals(EngineId, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"{m.GetType().Name} is [Plugin(\"{EngineId}\")], and that id is the engine's own " +
+                                                    "(what [RequiresPlugin(\"sage\", range)] checks): give the plugin an id of its own.");
         var byType = modules.ToDictionary(m => m.GetType());
         var byId = modules.ToDictionary(m => plugins[m].Id, StringComparer.OrdinalIgnoreCase);
         var result = new List<IModule>();
@@ -209,6 +223,14 @@ public sealed class ModuleManager
             }
             foreach (var (id, range) in plugins[m].Requires)
             {
+                if (id.Equals(EngineId, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!range.Contains(engine))
+                        throw new InvalidOperationException($"{plugins[m].Id} {plugins[m].Version} ({m.GetType().Assembly.GetName().Name}) needs Sage {range}, " +
+                            $"but this is Sage {engineText}. Use an engine in that range, or a build of {plugins[m].Id} made for this one " +
+                            "(its [RequiresPlugin(\"sage\", ...)] says which engines it was built for).");
+                    continue;
+                }
                 if (!byId.TryGetValue(id, out var d))
                     throw new InvalidOperationException($"{plugins[m].Id} requires plugin {id} {range}, which isn't loaded " +
                         "(not in game.json's \"plugins\", or disabled?).");

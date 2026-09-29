@@ -321,7 +321,7 @@ public sealed class World : IDisposable
     public void Teleport(Entity e, in Transform t);               // move a root without interpolating the jump
 
     // Components
-    public ref T Get<T>(Entity e) where T : struct, IComponent;   // missing: Ensure; throws in dev builds, dummy in Shipping
+    public ref T Get<T>(Entity e) where T : struct, IComponent;   // missing: Ensure, then throws (every build, since #31)
     public bool TryGet<T>(Entity e, out T value) where T : struct, IComponent;
     public bool Has<T>(Entity e) where T : struct, IComponent;
     public bool Add<T>(Entity e, in T component) where T : struct, IComponent;   // false (+ Ensure) if already present
@@ -407,7 +407,7 @@ World creation: resources installed by modules (physics space, origin, event que
 None of its own. Prefabs, maps and saves use the serializer (09); prefab definitions are records (05).
 
 ## 8. Errors and fallbacks
-- `Get<T>` on a missing component: `Assert.Ensure` fails (logged once per call site with the entity's name and `PersistentId`). It then throws in `Development`/`Debug`, and returns a zeroed dummy in `Shipping` rather than crashing the game.
+- `Get<T>` on a missing component: `Assert.Ensure` fails (logged once per call site with the entity's name and `PersistentId`), then it throws, in every configuration. Until issue #31 `Shipping` returned a shared zeroed dummy rather than crash the game, but a write through it went nowhere and the next caller read the last one's leftovers (REDESIGN §3.5); code that may meet an entity without the component asks with `TryGet` or `Has` (test: Get_ReturnsRef_MissingComponentThrowsInEveryBuild).
 - Using a stale `EntityRef`: `IsAlive` is false. `Get` behaves like the missing-component case.
 - Structural change inside a query without a command buffer: Friflo throws immediately (all builds).
 - Adding a component type twice: `Ensure` failure; `Add` returns false and the existing data is kept.
@@ -456,7 +456,7 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
 
 ## 13. Open questions
 - ~~Does Friflo's own JSON serializer satisfy E7?~~ **Decided by the spike:** `GetComponent<T>` returns `ref T`, so our generated serializers (09) read and write components directly; Friflo's serializer is unused.
-- Should `Get<T>` in `Shipping` throw instead of returning a dummy? Current choice: don't crash players' games over a gameplay bug. It's logged loudly instead.
+- ~~Should `Get<T>` in `Shipping` throw instead of returning a dummy?~~ Decided in #31: it throws in every build (above).
 
 ## 14. Build steps
 1. ✓ Friflo spike against E1–E9, with a written verdict (§3.1; ARCHITECTURE D4; TODO R5).

@@ -10,7 +10,7 @@ namespace Sage.Gameplay;
 // entity id so a crowd doesn't think on the same tick. The current task runs every tick, because it
 // writes PawnIntent and the character controller consumes that every tick.
 [System("sage.ai.think", Phase.Commands, After = new[] { "sage.character.player_control" })]
-public sealed class AIThinkSystem : ISystem
+internal sealed class AIThinkSystem : ISystem
 {
     private readonly Query<Transform, AIState, PawnIntent> _agents;
     private readonly Query<Transform> _players;

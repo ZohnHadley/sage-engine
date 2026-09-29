@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    Packs Sage.Sdk, the MSBuild SDK (issue #32): <Project Sdk="Sage.Sdk/0.1.0">. What goes in:
+    Packs Sage.Sdk, the MSBuild SDK (issue #32): <Project Sdk="Sage.Sdk/<version>">. What goes in:
       Sdk/Sdk.props, Sdk/Sdk.targets     the SDK itself (the same files games/Hello imports by path)
       Sdk/Sage.Configurations.props      build/'s copy: Debug, Development, Shipping
-      Sdk/Sage.Sdk.Package.props         written here: "from a package", and the version, which is also
-                                         the version of Sage.Player the SDK restores
+      Sdk/Sage.Sdk.Package.props         written here: "from a package", and the version (from git tags,
+                                         build/Sage.Version.props), which is also the version of
+                                         Sage.Player the SDK restores
       analyzers/dotnet/cs/               the Sage generators and analyzers (src/Sage.Generators)
     Pack with tools/pack_sdk.sh, which builds src/Sage.Generators first.
   -->
@@ -22,7 +23,7 @@
     <None Include="$(SageGeneratorsDll)" Pack="true" PackagePath="analyzers/dotnet/cs/" />
   </ItemGroup>
 
-  <Target Name="SageWritePackageProps" BeforeTargets="_GetPackageFiles">
+  <Target Name="SageWritePackageProps" BeforeTargets="_GetPackageFiles" DependsOnTargets="SageVersion">
     <Error Condition="!Exists('$(SageGeneratorsDll)')" Text="Build src/Sage.Generators ($(SageGeneratorsConfiguration)) before packing: $(SageGeneratorsDll)" />
     <PropertyGroup>
       <_SagePackageProps>$(IntermediateOutputPath)Sage.Sdk.Package.props</_SagePackageProps>

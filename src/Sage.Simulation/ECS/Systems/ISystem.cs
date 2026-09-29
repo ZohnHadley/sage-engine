@@ -23,7 +23,7 @@ public enum RunCondition
     DevOnly,        // dev builds only (not run in Shipping)
 }
 
-public static class PhaseInfo
+internal static class PhaseInfo
 {
     public const Phase FirstFrame = Phase.FrameUpdate;
     public const int Count = (int)Phase.Overlay + 1;

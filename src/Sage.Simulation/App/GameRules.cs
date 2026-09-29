@@ -24,4 +24,4 @@ public abstract class GameRules
 }
 
 // What a world gets when a game doesn't supply rules of its own.
-public sealed class DefaultGameRules : GameRules { }
+internal sealed class DefaultGameRules : GameRules { }

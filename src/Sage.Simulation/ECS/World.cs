@@ -140,17 +140,17 @@ public sealed class World : IDisposable
 
     // ---- Components -----------------------------------------------------------------------------
 
-    // Missing component: Ensure fails (logged once per call site); dev builds throw, Shipping returns
-    // a zeroed dummy rather than crashing the player's game (03 §8).
+    // The component, by reference, to read or write. A missing one throws in every build: Shipping used
+    // to hand back a shared zeroed dummy, so a write went nowhere and the next caller read the last
+    // one's leftovers (REDESIGN §3.5, issue #31). Code that can meet an entity without it asks first:
+    // TryGet (a copy) or Has.
     public ref T Get<T>(Entity entity) where T : struct, IComponent
     {
         if (IsAlive(entity) && entity.HasComponent<T>())
             return ref entity.GetComponent<T>();
         Assert.Ensure(false, $"{Describe(entity)} has no {typeof(T).Name}");
-        if (BuildInfo.IsDevBuild)
-            throw new InvalidOperationException($"{Describe(entity)} has no {typeof(T).Name} (world '{Name}')");
-        Dummy<T>.Value = default;
-        return ref Dummy<T>.Value;
+        throw new InvalidOperationException($"{Describe(entity)} has no {typeof(T).Name} (world '{Name}'); " +
+                                            $"use TryGet or Has where it may be missing");
     }
 
     public bool TryGet<T>(Entity entity, out T value) where T : struct, IComponent
@@ -450,6 +450,4 @@ public sealed class World : IDisposable
         Resources.DisposeAll();
         Log.Debug(LogCat.World, $"World '{Name}' destroyed");
     }
-
-    private static class Dummy<T> where T : struct { public static T Value; }
 }

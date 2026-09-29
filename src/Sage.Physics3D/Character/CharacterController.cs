@@ -11,7 +11,7 @@ namespace Sage.Physics3D;
 // PrePhysics, before the bodies are synced (10 §3): turns intent into movement, resolves it against
 // the world with sweeps, and leaves the result in Transform.
 [System("sage.character.move", Phase.PrePhysics, Before = new[] { "sage.physics.sync" })]
-public sealed class CharacterMovementSystem : ISystem
+internal sealed class CharacterMovementSystem : ISystem
 {
     private const float Skin = 0.02f;         // never move fully into a surface
     private const float GroundOffset = 0.06f; // horizontal sweeps start this far above the feet

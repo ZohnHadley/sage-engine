@@ -51,4 +51,9 @@
          game.json that names the kit); the scene-only and no-plugins games never do. -->
     <ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
   </ItemGroup>
+  <!-- The tests exercise the experimental API too (issue #31, docs/MAKING_A_GAME.md §10b): the open
+       vocabularies (SAGE0120), scenes and placements (SAGE0121) and brush maps (SAGE0122). -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122</NoWarn>
+  </PropertyGroup>
 </Project>

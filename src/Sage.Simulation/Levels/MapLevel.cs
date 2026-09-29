@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Simulation;
 
@@ -24,6 +25,7 @@ namespace Sage.Simulation;
 // A level to load, and how to read it. Pointing at a `.map` from a record rather than hard-coding a path
 // means a mod can replace a level exactly as it replaces a texture (17 §3).
 [Record("map", Plugin = "sage.maps")]
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class MapRecord
 {
     [AssetKind("map")] public AssetPath File;                          // e.g. "maps/hut.map"
@@ -52,6 +54,7 @@ public sealed class MapRecord
 
 // One loaded level: geometry in metres relative to the map's own origin, and the entities that were
 // standing in it.
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class MapLevel
 {
     public required RecordId Record { get; init; }
@@ -121,6 +124,7 @@ public sealed class MapLevel
 }
 
 // One brush entity: its brushes, where its own origin is, and what it became once spawned.
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class SolidEntity
 {
     public required MapEntity Source { get; init; }
@@ -144,6 +148,7 @@ public sealed class SolidEntity
 
 // Every level a world has loaded. A world can hold several — a village is a level per building long
 // before it is one big map.
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class MapLevels
 {
     public readonly List<MapLevel> Loaded = new();
@@ -173,7 +178,7 @@ public sealed class MapLevels
     }
 }
 
-public static class MapLoader
+internal static class MapLoader
 {
     // Reads a `.map` record into a world: parse, build the brushes, place the point entities. Returns
     // null and logs when it cannot, because a level that fails to load must not take the game with it —

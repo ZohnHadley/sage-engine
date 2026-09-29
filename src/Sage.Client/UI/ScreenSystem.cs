@@ -18,7 +18,7 @@ namespace Sage.Client;
 // it. The first screenshot of this feature had an interaction prompt and a fist painted across the
 // spellbook, which is the sort of thing only a screenshot tells you.
 [System("sage.client.screens", Phase.Overlay, Before = new[] { "sage.client.ui" })]
-public sealed class ScreenSystem : ISystem
+internal sealed class ScreenSystem : ISystem
 {
     private readonly ScreenStack _stack;
     private readonly UiDraw _ui;

@@ -8,6 +8,8 @@
   "version": "0.1.0",
   "game": "targetgame",
   "gameVersion": ">=0.1",
+  // The engine versions the mod was made for, as game.json's "sage" is (issue #31).
+  "sage": ">=0.1",
   "dependencies": [],
   "loadAfter": []
 }

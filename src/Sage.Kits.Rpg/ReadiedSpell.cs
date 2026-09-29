@@ -37,7 +37,7 @@ public static class ReadiedSpell
 // base's AbilitySystem takes it from there — the same queue `world.Cast` fills, so the gates, the
 // wind-up and the refusals are the ones every other cast gets.
 [System("rpg.readied_spell", Phase.Gameplay, Before = new[] { "sage.abilities.cast" })]
-public sealed class ReadiedSpellSystem : ISystem
+internal sealed class ReadiedSpellSystem : ISystem
 {
     private readonly Query<PawnIntent, Abilities> _casters;
     private readonly ActionRegistry _actions;

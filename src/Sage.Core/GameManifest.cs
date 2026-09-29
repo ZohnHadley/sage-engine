@@ -14,7 +14,8 @@ namespace Sage.Core;
 //     "mounts": ["content"],                           // relative to the game folder, mounted in order
 //     "modules": { "disable": [] },
 //     "kits": ["sage.kits.rpg"],                       // kits the game is built on (issue #27)
-//     "scene": "main"                                  // the scene every world starts in (issue #29)
+//     "scene": "main",                                 // the scene every world starts in (issue #29)
+//     "sage": "^0.1"                                   // the engine versions it was made for (issue #31)
 //   }
 public sealed class GameManifest
 {
@@ -40,6 +41,11 @@ public sealed class GameManifest
     // The `scene` record every world starts in: "main" (this game's namespace) or "ns:main". Left out,
     // worlds start empty and the game's rules place what they want (issue #29).
     public string? Scene { get; set; }
+
+    // The engine versions this game was made for, as a range: "^0.1", ">=0.1 <0.3" (VersionRange; issue
+    // #31). Checked when the manifest loads, against BuildInfo.EngineSemVersion, so a game run on an engine
+    // it was not made for stops with that rather than with whatever broke first. Left out, any engine.
+    public string? Sage { get; set; }
 
     public sealed class ModuleSettings
     {
@@ -118,6 +124,19 @@ public sealed class GameManifest
             throw new InvalidDataException($"{path}: \"id\" is required.");
         RecordId.Parse(manifest.Id, manifest.Id);   // the id is the game's record namespace: same rules
         manifest.Directory = Path.GetFullPath(gameDirectory);
+        manifest.CheckEngine(BuildInfo.EngineSemVersion, BuildInfo.EngineVersion, path);
         return manifest;
+    }
+
+    // "sage", against the engine running it; the engine's version is a parameter for the tests.
+    internal void CheckEngine(SemVersion engine, string engineText, string path)
+    {
+        if (string.IsNullOrWhiteSpace(Sage)) return;
+        VersionRange range;
+        try { range = VersionRange.Parse(Sage, $"{path}: \"sage\""); }
+        catch (FormatException ex) { throw new InvalidDataException(ex.Message, ex); }
+        if (!range.Contains(engine))
+            throw new InvalidDataException($"{path}: this game was made for Sage {range} (\"sage\"), but this is Sage {engineText}. " +
+                                           "Run it with an engine in that range, or update the game and its \"sage\" range.");
     }
 }

@@ -30,7 +30,7 @@ public struct Projectile : IComponent
 // between the two points. That is the classic bullet-through-paper bug and it is invisible until
 // something moves quickly.
 [System("sage.abilities.projectiles", Phase.Gameplay, After = new[] { "sage.abilities.cast" }, Before = new[] { "sage.effects.tick" })]
-public sealed class ProjectileSystem : ISystem
+internal sealed class ProjectileSystem : ISystem
 {
     private readonly Query<Transform, Projectile> _flying;
     private readonly RecordStore _records;

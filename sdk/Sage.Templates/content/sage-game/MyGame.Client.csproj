@@ -1,4 +1,4 @@
-<Project Sdk="Sage.Sdk/0.1.0">
+<Project Sdk="Sage.Sdk/SAGE_SDK_VERSION">
   <!--
     MyGame's client half, and the game folder: game.json and content/ are here, so `dotnet run` here
     starts the Player host with -game on this folder. Everything that needs a screen goes in this project

@@ -463,7 +463,7 @@ public sealed class AIModule : IModule
 // copying four numbers once a tick is cheaper than four subscriptions per world that have to be undone
 // when the world goes.
 [System("sage.ai.nav_debug", Phase.Late)]
-public sealed class NavDebugSystem : ISystem
+internal sealed class NavDebugSystem : ISystem
 {
     private readonly Navigation _nav;
     private readonly DebugDraw _draw;

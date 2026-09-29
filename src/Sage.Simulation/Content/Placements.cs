@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Simulation;
 
@@ -16,6 +17,7 @@ namespace Sage.Simulation;
 // It is deliberately small. A placement is not a prefab with extras: per-entity overrides are F31's
 // remaining work and want the serializer's field metadata (09 §3.2), so this is the part that can be
 // written honestly today.
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed class Placement
 {
     [Property(Tooltip = "What to place")]
@@ -31,6 +33,7 @@ public sealed class Placement
 }
 
 // What a placement's `at` is measured from (issue #29).
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public enum PlacementFrame
 {
     World,    // absolute metres
@@ -39,6 +42,7 @@ public enum PlacementFrame
 }
 
 [Record("placements", Plugin = RegistrationOwners.Core)]
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed class PlacementsRecord
 {
     [Property(Unit = "m", Tooltip = "Absolute metres that `Origin` and `Ground` placements are measured from")]
@@ -57,6 +61,7 @@ public struct FromPlacements : IComponent
     public RecordId Document;
 }
 
+[Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public static class PlacementExtensions
 {
     // Spawns a document's placements. Returns how many arrived; a prefab that does not exist is logged

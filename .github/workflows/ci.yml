@@ -7,6 +7,7 @@
 #            seconds on each game under Xvfb (tools/smoke_run.sh); then the SDK, the Player and the templates
 #            packed into a local feed and a game made from each template outside the checkout: built against
 #            the packages alone, validated, and run with `dotnet run` under Xvfb (issue #32)
+#            Both jobs' builds check each engine assembly's declared public API (PublicAPI.*.txt, issue #31).
 #   windows  the whole solution in all three configurations, shaders included, and the tests; then the
 #            packed templates build a game with a shader of its own, which is where mgfxc runs
 #
@@ -40,7 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # The whole history and its tags: the engine's version comes from them (MinVer, build/Sage.Version.props,
+      # issue #31), and a shallow clone would version every build 0.1.0-alpha.0.0.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -65,6 +70,22 @@ jobs:
 
       - name: Test (Development)
         run: dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Development --no-build --logger "trx;LogFileName=Development.trx" --results-directory TestResults
+
+      # Public API discipline (issue #31): the engine assemblies games and kits compile against declare their
+      # public API in PublicAPI.Shipped.txt / Unshipped.txt, and the build above (every configuration, here
+      # and on Windows) fails when code and files disagree. This shows it: a public type added to Sage.Core
+      # without declaring it must be RS0016. (docs/RELEASING.md says how to update the files.)
+      - name: An undeclared public API change is a build error (RS0016)
+        run: |
+          set -euo pipefail
+          probe=src/Sage.Core/UndeclaredApiProbe.cs
+          echo 'namespace Sage.Core; public sealed class UndeclaredApiProbe { public void Probe() { } }' > "$probe"
+          if dotnet build src/Sage.Core/Sage.Core.csproj -c Debug --no-dependencies -p:SageSkipShaders=true > "$RUNNER_TEMP/rs0016.log" 2>&1; then
+            rm "$probe"; echo "::error::a public type added without PublicAPI.Unshipped.txt built: the public API analyzer did not run"; exit 1
+          fi
+          rm "$probe"
+          grep -q "error RS0016" "$RUNNER_TEMP/rs0016.log" || { cat "$RUNNER_TEMP/rs0016.log"; exit 1; }
+          dotnet build src/Sage.Core/Sage.Core.csproj -c Debug --no-dependencies -p:SageSkipShaders=true > /dev/null
 
       # A virtual display, for the two steps that run the real executable.
       - name: Install Xvfb
@@ -184,7 +205,11 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
+      # The whole history and its tags: the engine's version comes from them (MinVer, build/Sage.Version.props,
+      # issue #31), and a shallow clone would version every build 0.1.0-alpha.0.0.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:

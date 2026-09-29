@@ -3,8 +3,13 @@
     Packs the `dotnet new` templates (issue #32): sage-game (a simulation half and a client half),
     sage-game-data (no C#: game.json and records, the engine's scene) and sage-mod-data (a stub data mod).
     Install with `dotnet new install <feed>/Sage.Templates.<version>.nupkg`, or straight from
-    sdk/Sage.Templates/content/<name> while working on one. Every project in them names
-    Sage.Sdk/<this version>; packing checks that.
+    sdk/Sage.Templates/content/<name> while working on one (then give its sdkVersion parameter a version
+    the feed has, since the default is filled in only by the pack).
+
+    Every project in them names Sage.Sdk/SAGE_SDK_VERSION, which `dotnet new` replaces with the template's
+    sdkVersion parameter; the pack stamps that parameter's default with the version being packed (issue #31:
+    one version, from git tags, build/Sage.Version.props), so a game made from these templates builds
+    against the SDK and Player packed with them.
   -->
   <PropertyGroup>
     <PackageId>Sage.Templates</PackageId>
@@ -13,12 +18,49 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**" Pack="true" PackagePath="content/" />
+    <_SageTemplateJson Include="content\*\.template.config\template.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**;@(_SageTemplateJson)" Pack="true" PackagePath="content/" />
     <_SageTemplateProject Include="content\**\*.csproj" Exclude="content\**\bin\**;content\**\obj\**" />
   </ItemGroup>
 
-  <Target Name="SageCheckTemplateVersions" BeforeTargets="_GetPackageFiles">
-    <Error Condition="!$([System.IO.File]::ReadAllText('%(_SageTemplateProject.FullPath)').Contains('Sdk=&quot;Sage.Sdk/$(SageVersion)&quot;'))"
-           Text="%(_SageTemplateProject.Identity) does not name Sage.Sdk/$(SageVersion) (build/Sage.Version.props)" />
+  <!-- A copy with one token replaced. A task rather than WriteLinesToFile, which would split the text at
+       semicolons and, off Windows, turn the JSON's backslashes into slashes. -->
+  <UsingTask TaskName="SageStampFile" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Source ParameterType="System.String" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+      <Token ParameterType="System.String" Required="true" />
+      <Value ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        string text = System.IO.File.ReadAllText(Source).Replace(Token, Value);
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(Destination)));
+        if (!System.IO.File.Exists(Destination) || System.IO.File.ReadAllText(Destination) != text)
+            System.IO.File.WriteAllText(Destination, text);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="SageStampTemplates" BeforeTargets="_GetPackageFiles" DependsOnTargets="SageVersion">
+    <Error Condition="!$([System.IO.File]::ReadAllText('%(_SageTemplateProject.FullPath)').Contains('Sdk=&quot;Sage.Sdk/SAGE_SDK_VERSION&quot;'))"
+           Text="%(_SageTemplateProject.Identity) does not name Sage.Sdk/SAGE_SDK_VERSION (the pack's version goes there; build/Sage.Version.props)" />
+    <ItemGroup>
+      <_SageStampedTemplate Include="@(_SageTemplateJson)">
+        <Template>$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName($([System.IO.Path]::GetDirectoryName('%(FullPath)'))))))</Template>
+      </_SageStampedTemplate>
+      <_SageStampedTemplate>
+        <Stamped>$(IntermediateOutputPath)templates\%(Template)\template.json</Stamped>
+      </_SageStampedTemplate>
+    </ItemGroup>
+    <Error Condition="!$([System.IO.File]::ReadAllText('%(_SageStampedTemplate.FullPath)').Contains('SAGE_PACKED_VERSION')) And $([System.IO.File]::ReadAllText('%(_SageStampedTemplate.FullPath)').Contains('SAGE_SDK_VERSION'))"
+           Text="%(_SageStampedTemplate.Identity): the sdkVersion parameter's default must be SAGE_PACKED_VERSION, which the pack replaces" />
+    <SageStampFile Source="%(_SageStampedTemplate.FullPath)" Destination="%(_SageStampedTemplate.Stamped)" Token="SAGE_PACKED_VERSION" Value="$(SageVersion)" />
+    <ItemGroup>
+      <None Include="%(_SageStampedTemplate.Stamped)" Pack="true" PackagePath="content/%(_SageStampedTemplate.Template)/.template.config/" />
+      <FileWrites Include="%(_SageStampedTemplate.Stamped)" />
+    </ItemGroup>
   </Target>
 </Project>

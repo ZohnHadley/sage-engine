@@ -21,13 +21,13 @@ namespace Sage.Simulation;
 // offers them (FgdExport) and the importer that reads them (MapLoader) cannot disagree: both call For.
 // Only fields a mapper can type are offered — numbers, flags, text, choices, vectors and record ids —
 // and never a [Transient] one, which a spawn would not keep.
-public sealed record PrefabKey(string Key, string Section, bool IsPart, TypeMetadata Owner, FieldMetadata Field, JsonNode? Written)
+internal sealed record PrefabKey(string Key, string Section, bool IsPart, TypeMetadata Owner, FieldMetadata Field, JsonNode? Written)
 {
     // The value the prefab gives it, or the field's own default when the prefab does not say.
     public string DefaultText => Written != null ? PrefabKeys.ToMapText(Field, Written) : PrefabKeys.ToMapText(Field, Owner.DefaultOf(Field));
 }
 
-public static class PrefabKeys
+internal static class PrefabKeys
 {
     public static IReadOnlyList<PrefabKey> For(Engine engine, RecordId id, PrefabRecord prefab)
     {

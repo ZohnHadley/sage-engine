@@ -4,6 +4,7 @@
     out of this repository.
 
         <Project Sdk="Sage.Sdk/0.1.0">          a game anywhere: the SDK and the engine come from NuGet
+                                                (the version is the engine's, from git tags: docs/RELEASING.md)
         </Project>
 
     It carries the target framework (net8.0, RollForward=Major), the Debug/Development/Shipping

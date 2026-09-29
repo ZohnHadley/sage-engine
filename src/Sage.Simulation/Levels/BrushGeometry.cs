@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Simulation;
 
@@ -19,6 +20,7 @@ namespace Sage.Simulation;
 
 // How map units become engine units (14 §3). Quake's axes are Z-up and its unit is about an inch; ours
 // are Y-up metres.
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public readonly struct MapSpace
 {
     // 32 units to the metre is Quake's own scale: a 56-unit player is 1.75 m, a 128-unit corridor is
@@ -67,6 +69,7 @@ public sealed class LevelFace
 }
 
 // One built brush: its faces, and the points physics needs to make a convex hull of it.
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public sealed class LevelBrush
 {
     public required LevelFace[] Faces { get; init; }
@@ -77,6 +80,7 @@ public sealed class LevelBrush
     public Vector3 Centre => (Min + Max) * 0.5f;
 }
 
+[Experimental("SAGE0122", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // brush maps from TrenchBroom (.map): replaced by the level editor (#61)
 public static class BrushGeometry
 {
     // Half the size of the world a brush can be built in, in map units. The starting polygon for a face

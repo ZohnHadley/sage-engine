@@ -152,7 +152,7 @@ public struct Melee : IComponent
 // and creatures alike (16 §3.1 — the payoff of the controller/pawn split is that combat never asks
 // which one it is dealing with).
 [System("sage.combat.melee", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
-public sealed class MeleeCombatSystem : ISystem
+internal sealed class MeleeCombatSystem : ISystem
 {
     private readonly Query<Transform, PawnIntent, CharacterController, Melee> _fighters;
     private readonly RecordStore _records;

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Gameplay;
 
@@ -31,6 +32,7 @@ namespace Sage.Gameplay;
 // A condition an AI can know. The engine's own are set by its perception (`IsSensed` false) and never
 // asked; a game's are asked every think, so keep `Sense` cheap and allocation-free.
 [Vocabulary("ai_condition")]
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public interface IAICondition
 {
     bool Sense(in AIPerception perception);
@@ -38,6 +40,7 @@ public interface IAICondition
     bool IsSensed => true;
 }
 
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public sealed class AIConditionAttribute : VocabularyEntryAttribute<IAICondition>
 {
     public AIConditionAttribute(string id) : base(id) { }
@@ -55,13 +58,14 @@ public sealed class AIConditionAttribute : VocabularyEntryAttribute<IAICondition
 [AICondition(nameof(AICondition.SpellComingBack), Plugin = "sage.gameplay.ai")]
 [AICondition(nameof(AICondition.Casting), Plugin = "sage.gameplay.ai")]
 [AICondition(nameof(AICondition.RememberEnemy), Plugin = "sage.gameplay.ai")]
-public sealed class PerceivedCondition : IAICondition
+internal sealed class PerceivedCondition : IAICondition
 {
     public bool Sense(in AIPerception perception) => false;
     public bool IsSensed => false;
 }
 
 // What a sensed condition may look at: the creature, what it perceived this think, and its world.
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public ref struct AIPerception
 {
     public World World;
@@ -155,17 +159,20 @@ public sealed class AIConditions
 
 // Picks the schedule a creature runs from what it knows. Named by its profile's `selector`.
 [Vocabulary("ai_schedule_selector")]
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public interface IAIScheduleSelector
 {
     // The schedule to run now; the one it is running (`choice.Current`) to carry on, or empty for none.
     RecordId Choose(in AIScheduleChoice choice);
 }
 
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public sealed class AIScheduleSelectorAttribute : VocabularyEntryAttribute<IAIScheduleSelector>
 {
     public AIScheduleSelectorAttribute(string id) : base(id) { }
 }
 
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public ref struct AIScheduleChoice
 {
     public World World;
@@ -204,7 +211,7 @@ public sealed class AIScheduleRule
 // The engine's choice (16 §3.4), as it was in AIThinkSystem: which situation the creature is in, and
 // the conventions say which record that situation runs (issue #26).
 [AIScheduleSelector("default", Plugin = "sage.gameplay.ai")]
-public sealed class DefaultScheduleSelector : IAIScheduleSelector
+internal sealed class DefaultScheduleSelector : IAIScheduleSelector
 {
     public RecordId Choose(in AIScheduleChoice choice) => Situation(in choice);
 
@@ -229,7 +236,7 @@ public sealed class DefaultScheduleSelector : IAIScheduleSelector
 
 // The profile's own rules, in order, then the engine's choice.
 [AIScheduleSelector("rules", Plugin = "sage.gameplay.ai")]
-public sealed class RulesScheduleSelector : IAIScheduleSelector
+internal sealed class RulesScheduleSelector : IAIScheduleSelector
 {
     public RecordId Choose(in AIScheduleChoice choice)
     {
@@ -268,7 +275,7 @@ public static class AIScheduleSelectors
 
 // Load checks for the names AI records use (AIModule adds them): a condition or selector nobody
 // registered is reported at its line, with the nearest one that is.
-public static class AIChecks
+internal static class AIChecks
 {
     public static void Schedule(Vocabularies vocabularies, AIScheduleRecord schedule, RecordCheck check)
     {

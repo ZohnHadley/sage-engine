@@ -533,7 +533,7 @@ internal sealed class CastSpellTask : IAITask
 // Was the AI's private copy of the angle helpers, which is how the conventions drifted (review #43).
 // Everything here now lives in SageMath, which games can use too: IAITask is public, so a game's own
 // task needs the same maths the engine's tasks use.
-public static class AIMath
+internal static class AIMath
 {
     public static float YawTo(Vector3 self, Vector3 target) => SageMath.YawTo(self, target);
 

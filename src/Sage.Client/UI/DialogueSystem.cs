@@ -12,7 +12,7 @@ namespace Sage.Client;
 // which a kit fills (Sage.Kits.Rpg.Client). With none registered, nobody is talked to — a conversation
 // nobody can see would only take the player's input away.
 [System("sage.client.dialogue", Phase.FrameUpdate)]
-public sealed class DialogueSystem : ISystem
+internal sealed class DialogueSystem : ISystem
 {
     private readonly EventReader<Used> _used;
     private readonly ScreenStack _screens;

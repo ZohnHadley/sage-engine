@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Numerics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Gameplay;
 
@@ -18,6 +19,7 @@ namespace Sage.Gameplay;
 //   [AbilityDelivery("chain", Plugin = "mygame")] public sealed class Chain : IAbilityDelivery { … }
 //   { "type": "ability", "id": "arc", "delivery": "chain", "effects": ["shock"] }
 [Vocabulary("ability_delivery")]
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public interface IAbilityDelivery
 {
     // True when it lands on the caster: a buff, which an AI never casts *at* an enemy.
@@ -28,12 +30,14 @@ public interface IAbilityDelivery
     void Gather(ref AbilityLanding landing) => landing.AddDefault();
 }
 
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public sealed class AbilityDeliveryAttribute : VocabularyEntryAttribute<IAbilityDelivery>
 {
     public AbilityDeliveryAttribute(string id) : base(id) { }
 }
 
 // A cast going off: who, what, from where and which way.
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public readonly ref struct AbilityRelease
 {
     public World World { get; init; }
@@ -46,6 +50,7 @@ public readonly ref struct AbilityRelease
 }
 
 // A payload landing at `Point`: a delivery adds who it reaches.
+[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
 public ref struct AbilityLanding
 {
     internal AbilityPayload Payload;
@@ -87,7 +92,7 @@ public ref struct AbilityLanding
 // On the caster. "On me" is not a burst of radius zero and not a touch that happened to hit the caster:
 // it is its own answer, which is what stops a self-targeted spell quietly skipping the damage pipeline.
 [AbilityDelivery("self", Plugin = "sage.gameplay.abilities")]
-public sealed class SelfDelivery : IAbilityDelivery
+internal sealed class SelfDelivery : IAbilityDelivery
 {
     public bool OnCaster => true;
 
@@ -105,7 +110,7 @@ public sealed class SelfDelivery : IAbilityDelivery
 // it touched, at once (touch_area).
 [AbilityDelivery("touch", Plugin = "sage.gameplay.abilities")]
 [AbilityDelivery("touch_area", Plugin = "sage.gameplay.abilities")]
-public sealed class TouchDelivery : IAbilityDelivery
+internal sealed class TouchDelivery : IAbilityDelivery
 {
     public bool Release(in AbilityRelease cast, out Vector3 point, out Entity struck)
     {
@@ -129,7 +134,7 @@ public sealed class TouchDelivery : IAbilityDelivery
 
 // Everything within `radius` of the caster, the caster included.
 [AbilityDelivery("area", Plugin = "sage.gameplay.abilities")]
-public sealed class AreaDelivery : IAbilityDelivery
+internal sealed class AreaDelivery : IAbilityDelivery
 {
     public bool Release(in AbilityRelease cast, out Vector3 point, out Entity struck)
     {
@@ -148,7 +153,7 @@ public sealed class AreaDelivery : IAbilityDelivery
 // A thing that flies (the ability's `projectile` prefab), and delivers the payload where it arrives
 // (ProjectileSystem): nothing lands now, and the landing cues are raised on arrival.
 [AbilityDelivery("projectile", Plugin = "sage.gameplay.abilities")]
-public sealed class ProjectileDelivery : IAbilityDelivery
+internal sealed class ProjectileDelivery : IAbilityDelivery
 {
     public bool Release(in AbilityRelease cast, out Vector3 point, out Entity struck)
     {

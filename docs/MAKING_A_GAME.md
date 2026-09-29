@@ -9,7 +9,7 @@ The design docs in [`docs/design/`](design/00-index.md) explain *why* each syste
 is. This explains how to use them.
 
 **There is a runnable example of everything in §2–§4**: [`games/Hello`](../games/Hello) is the smallest
-game this engine can run — four files and 45 lines of code — and it is built by the solution and <!-- counts: files games/Hello, code games/Hello -->
+game this engine can run — four files and 46 lines of code — and it is built by the solution and <!-- counts: files games/Hello, code games/Hello -->
 exercised by the test suite, so it cannot quietly stop working. Read it alongside this, or start a
 game of your own from the `sage-game` template (§2):
 
@@ -54,7 +54,7 @@ Start from a template:
 
 ```bash
 tools/pack_sdk.sh ~/sage-feed --build                        # once, in this repository: SDK, Player, templates
-dotnet new install ~/sage-feed/Sage.Templates.0.1.0.nupkg    # once per machine
+dotnet new install ~/sage-feed/Sage.Templates.*.nupkg        # once per machine (the version is the engine's)
 dotnet new sage-game -n YourGame -o ~/games/YourGame --feed ~/sage-feed
 cd ~/games/YourGame
 dotnet run                                                   # builds both halves, starts the host on this folder
@@ -65,7 +65,9 @@ There is no public feed yet (REDESIGN §6 decision 7), so `pack_sdk.sh` packs on
 `Sage.Templates`. `--feed` writes a `nuget.config` that names it; leave it out if the folder is already
 a package source (`dotnet nuget add source ~/sage-feed -n sage`). `--build` builds what it packs; on
 Linux that is without shaders (`mgfxc` needs Wine), so that Player boots and runs a game but draws
-nothing — pack on Windows, or after a Windows build, to see one.
+nothing — pack on Windows, or after a Windows build, to see one. The three packages carry the engine's
+version, from git tags (`0.1.0-alpha.0.N` until 0.1.0 is tagged; [RELEASING.md](RELEASING.md)), and the
+templates name that `Sage.Sdk/<version>` in the projects they make.
 
 The templates:
 
@@ -79,7 +81,7 @@ The templates:
 
 ```
 YourGame/                       the game folder, and the client half
-    YourGame.Client.csproj      <Project Sdk="Sage.Sdk/0.1.0">: the engine, Sage.Client and MonoGame
+    YourGame.Client.csproj      <Project Sdk="Sage.Sdk/<version>">: the engine, Sage.Client and MonoGame
     YourGameClientModule.cs     HUD, screens, anything with a screen
     game.json                   the manifest the host reads
     content/
@@ -95,7 +97,7 @@ The simulation half references the base engine only, so a MonoGame type there is
 (SAGE0024) and its rules can be tested headlessly. The client half is the project in the game folder, so
 `dotnet run` there starts the game; a dedicated server would leave it out.
 
-**What the SDK gives a project.** `<Project Sdk="Sage.Sdk/0.1.0">` and a `RootNamespace` are all a
+**What the SDK gives a project.** `<Project Sdk="Sage.Sdk/<version>">` and a `RootNamespace` are all a
 project needs:
 
 - `net8.0` (rolling forward to a newer runtime), nullable, implicit usings, and the engine's namespaces
@@ -149,6 +151,7 @@ replaces for a game that uses it.
   "mounts": ["content"],
   "modsDirectory": "mods",
   "scene": "main",
+  "sage": "^0.1",
   "modules": {
     "disable": [],
     "add": ["bin/{config}/YourGame.Client.dll"]
@@ -179,6 +182,10 @@ replaces for a game that uses it.
   is skipped with a warning; its prefab parts are errors, so leave them out of that game's prefabs.
 - `kits` (optional) names the kits the game is built on, by plugin id — `["sage.kits.rpg"]`; see
   "Kits" below. Left out, the game has none.
+- `sage` (optional) is the engine versions the game was made for, as a range (`"^0.1"`, `">=0.1 <0.3"`):
+  on an engine outside it the game stops at load with both versions in the message, instead of with
+  whatever broke first. `[RequiresPlugin("sage", "^0.1")]` on a module says the same for a plugin or kit
+  (§4, [RELEASING.md](RELEASING.md) §3); `version` in the console prints the engine's.
 - A key the engine does not know is an error, so a misspelt `"mount"` stops the game at once instead of
   quietly loading nothing.
 
@@ -564,6 +571,7 @@ to control and look through is `sage.gameplay.character`'s, so a game that uses 
 
 ```csharp
 [Plugin("yourgame", "0.1.0")]
+[RequiresPlugin("sage", "^0.1")]                  // the engine versions it is made for: `sage` is the engine
 [RequiresPlugin("sage.streaming", ">=0.1")]
 [RequiresPlugin("sage.gameplay.character", ">=0.1")]
 public sealed class YourGameModule : IGameModule
@@ -1195,6 +1203,29 @@ Registering in `Init` is not an error, of course (test: RegisteringInInitIsNotAn
 yet at build time: a `RecordRef<T>` whose `T` no plugin registers. `RecordRef<T>` exists since issue
 #22 and content loading checks every reference by type; an analyzer for the declaration itself is a
 follow-up.
+
+## 10b. Experimental API
+
+Some of the public API is marked `[Experimental("SAGE01xx")]`: it is new or about to change, and naming
+it outside the assembly that declares it is an error until the project says it accepts that, with the id
+in its `.csproj` (docs/RELEASING.md §2):
+
+```xml
+<PropertyGroup>
+  <NoWarn>$(NoWarn);SAGE0120</NoWarn>
+</PropertyGroup>
+```
+
+Content is not affected: a record, prefab or scene that uses these areas loads as before; only C# that
+names their types needs the opt-in.
+
+| Id | Area | Why it may change |
+|---|---|---|
+| SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
+| SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
+| SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
+
+SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
 ---
 

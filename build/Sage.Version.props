@@ -1,10 +1,47 @@
 <Project>
   <!--
-    The version the SDK, the Player and the templates are packed as (issue #32; tools/pack_sdk.sh). A game
-    names it in `<Project Sdk="Sage.Sdk/0.1.0">`, so the templates spell it out too: the templates' pack
-    fails if one of them names another.
+    The engine's version, from git tags (issue #31; docs/RELEASING.md). One source of truth: a tag
+    `v<major>.<minor>.<patch>` on a commit is that release, and every engine assembly, the Sage.Sdk,
+    Sage.Player and Sage.Templates packages and BuildInfo.EngineVersion read the same number from it.
+    MinVer (an MSBuild-only package that runs `git describe`-like logic in the build) works it out:
+
+      on a tagged commit v0.1.0          0.1.0
+      N commits after it                 0.1.1-alpha.0.N   (the next patch, pre-release)
+      before any tag                     0.1.0-alpha.0.N   (MinVerMinimumMajorMinor: the first release)
+      no git at all (a source zip)       0.1.0-alpha.0     (MinVer warns and uses the minimum)
+
+    The assembly's informational version, which BuildInfo.EngineVersion reads, adds the commit:
+    0.1.0-alpha.0.37+1a2b3c4 (SourceRevisionId, from the .NET SDK's source control information).
+    The height N counts the commits git has: a shallow clone (actions/checkout's default depth of 1)
+    sees neither tags nor history, so CI checks out with fetch-depth: 0.
+
+    Imported by src/Directory.Build.props (the engine) and sdk/Directory.Build.props (the packages).
+    Not by games: a game's version is its own.
   -->
   <PropertyGroup>
-    <SageVersion>0.1.0</SageVersion>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
+    <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>
+    <MinVerVerbosity Condition="'$(MinVerVerbosity)' == ''">minimal</MinVerVerbosity>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- A short commit id after the `+`, not all forty characters. -->
+  <Target Name="SageShortSourceRevision" AfterTargets="InitializeSourceControlInformation" Condition="'$(SourceRevisionId.Length)' &gt; 7">
+    <PropertyGroup>
+      <SourceRevisionId>$(SourceRevisionId.Substring(0, 7))</SourceRevisionId>
+    </PropertyGroup>
+  </Target>
+
+  <!-- $(SageVersion) is the package version; it exists once MinVer has run, so targets that need it
+       depend on this one. `dotnet msbuild -t:SageVersion -getProperty:SageVersion` prints it
+       (tools/pack_sdk.sh). -->
+  <Target Name="SageVersion" DependsOnTargets="MinVer">
+    <PropertyGroup>
+      <SageVersion>$(MinVerVersion)</SageVersion>
+    </PropertyGroup>
+  </Target>
 </Project>

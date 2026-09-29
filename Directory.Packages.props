@@ -16,6 +16,10 @@
          .NET 8 SDK; the engine builds with a newer one (global.json), which loads older generators. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
+    <!-- The engine's version from git tags (build/Sage.Version.props, issue #31) and the public API
+         files every engine assembly keeps (PublicAPI.Shipped.txt / Unshipped.txt, issue #31). -->
+    <PackageVersion Include="MinVer" Version="6.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
     <!-- Tests -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

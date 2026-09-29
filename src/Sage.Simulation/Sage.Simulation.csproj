@@ -35,4 +35,8 @@
   <ItemGroup>
     <Using Include="Sage.Core" />
   </ItemGroup>
+  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): scenes and placements (SAGE0121) and brush maps (SAGE0122) are declared here, and an assembly uses its own experimental types freely. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0121;SAGE0122</NoWarn>
+  </PropertyGroup>
 </Project>

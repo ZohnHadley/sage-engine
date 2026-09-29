@@ -208,7 +208,7 @@ public readonly record struct Died(Entity Victim, Entity Killer);
 // Gameplay phase: ticks the running effects, recomputes current attribute values and the tags the
 // effects grant, and raises `Died` when something's health runs out (the seam combat, F20, builds on).
 [System("sage.effects.tick", Phase.Gameplay)]
-public sealed class EffectSystem : ISystem
+internal sealed class EffectSystem : ISystem
 {
     private readonly Query<Attributes, ActiveEffects> _affected;
     private readonly RecordStore _records;
@@ -382,7 +382,7 @@ public sealed class EffectSystem : ISystem
 // rules see a world where the kill has already been counted — and may destroy or respawn the victim
 // without taking it from under them.
 [System("sage.effects.deaths", Phase.Gameplay, After = new[] { "sage.effects.tick" })]
-public sealed class DeathRulesSystem : ISystem
+internal sealed class DeathRulesSystem : ISystem
 {
     private readonly EventReader<Died> _died;
 
