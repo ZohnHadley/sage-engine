@@ -19,7 +19,8 @@ public sealed class SandboxClientModule : IModule
     private ContentService? _content;
     private RecordStore? _records;
 
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule) };
+    // The kit's client half registers the screens this binds (issue #27).
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule), typeof(RpgKitClientModule) };
 
     // `box_mesh` (BoxMeshPart, below) is declared, so Init has nothing to register (issue #17).
     public void Init(ModuleContext ctx) { }
@@ -29,9 +30,11 @@ public sealed class SandboxClientModule : IModule
         _records = ctx.Engine.Records;
         _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
         _actions = ctx.Engine.Actions;
+        _screens = ctx.Get<ScreenRegistry>();
     }
 
     private ActionRegistry? _actions;
+    private ScreenRegistry? _screens;
 
     public void OnWorldCreated(World world)
     {
@@ -43,10 +46,11 @@ public sealed class SandboxClientModule : IModule
         var screens = world.Resources.Get<ScreenStack>();
         screens.Bind(_actions!.Get("Inventory"), new InventoryScreen());
         screens.Bind(_actions!.Get("Spellbook"), new SpellbookScreen());
-        // The spellmaker is the engine's own screen (16 §3.3): what a spellmaker is belongs to the
-        // feature, not to this game. Binding it to a key is still the game's call.
-        screens.Bind(_actions!.Get("Spellmaker"), new SpellmakerScreen());
-        screens.Bind(_actions!.Get("Journal"), new JournalScreen());
+        // The spellmaker and the journal are the RPG kit's screens (16 §3.3, issue #27): what a
+        // spellmaker is belongs to the feature, not to this game, and the kit registers them by id.
+        // Binding them to a key is still the game's call.
+        screens.Bind(_actions!.Get("Spellmaker"), _screens!.Create(RpgKitClientModule.Spellmaker)!);
+        screens.Bind(_actions!.Get("Journal"), _screens!.Create(RpgKitClientModule.Journal)!);
     }
 }
 

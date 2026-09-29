@@ -5,7 +5,7 @@ namespace Sandbox;
 // This file is the evidence for how F38 was split. A screen is *which panel* and *what Enter does*;
 // the list, the selection, the scrolling, the box and the greying-out are the engine's (`Screen`,
 // `PanelView`), and what each row says and whether it can be used came from the simulation
-// (`GameplayPanels`). So a screen is a dozen lines, and the next one — a merchant, a quest log — is
+// (the RPG kit's `GameplayPanels`, issue #27). So a screen is a dozen lines, and the next one — a merchant, a quest log — is
 // a dozen more.
 
 // Your spells: what you know, what each costs, and which one the Cast button fires.

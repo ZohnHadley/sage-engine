@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using Sage.Kits.Rpg;
 
 namespace Sage.Tests;
 
@@ -50,7 +51,7 @@ public class SpellmakerTests
             _userRoot = userRoot ?? TestEnv.NewTempDir();
             _keepRoot = userRoot != null;
 
-            var builder = HeadlessApp.Gameplay().File("data/spell_test.json", Records);
+            var builder = HeadlessApp.Gameplay().With(new RpgKitModule()).File("data/spell_test.json", Records);
             if (extraRecords != null) builder.File("data/extra.json", extraRecords);
             Engine = builder.Build().Engine;
 

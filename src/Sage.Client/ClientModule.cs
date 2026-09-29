@@ -41,6 +41,9 @@ public sealed class ClientModule : IModule
     private InputDevices? _devices;
     private ActionRegistry? _actionIds;
 
+    // Screens by id, for the client to ask for and a kit or a game to fill (issue #27).
+    public ScreenRegistry Screens { get; } = new();
+
     public void Init(ModuleContext ctx)
     {
         _rendererCVars = new RendererCVars(ctx.Engine.CVars);   // here, not in the Renderer: see RendererCVars
@@ -57,17 +60,18 @@ public sealed class ClientModule : IModule
         actions.Register("ToggleConsole", ActionKind.Button);
 
         // Screens (13 §3, F38). Navigation is the client's business because screens are: a headless
-        // server has no use for "the highlighted row moved down". What *opens* them is here too, so a
-        // game only says which screen a key opens.
+        // server has no use for "the highlighted row moved down". The bag opens with Inventory; the
+        // actions that open a kit's screens are the kit's (Sage.Kits.Rpg.Client: Spellbook,
+        // Spellmaker, Journal), so a game only says which screen a key opens.
         actions.Register("MenuUp", ActionKind.Button);
         actions.Register("MenuDown", ActionKind.Button);
         actions.Register("MenuConfirm", ActionKind.Button);
         actions.Register("MenuAlternate", ActionKind.Button);
         actions.Register("MenuBack", ActionKind.Button);
         actions.Register("Inventory", ActionKind.Button);
-        actions.Register("Spellbook", ActionKind.Button);
-        actions.Register("Spellmaker", ActionKind.Button);
-        actions.Register("Journal", ActionKind.Button);
+        // Which screen is which, by id (issue #27). In Init, so a module that depends on this one can
+        // register its screens in its own Init.
+        ctx.Provide(Screens);
 
         // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
         // registered in Start does not exist yet when the saved value is read — the line is dropped
@@ -246,6 +250,7 @@ public sealed class ClientModule : IModule
 
     public void Start(ModuleContext ctx)
     {
+        Screens.Seal.Seal("the client started");
         var host = _host = ctx.Get<ClientHost>();
         _records = ctx.Engine.Records;
         _content = new ContentService(host, ctx.Engine.Vfs);
@@ -309,7 +314,7 @@ public sealed class ClientModule : IModule
         // Talking to somebody opens a window, which is the client's business (16 §3.5, F24) — in a game
         // with the dialogue plugin.
         if (world.Resources.TryGet<Conversation>(out _))
-            world.AddSystem(new DialogueSystem(world));
+            world.AddSystem(new DialogueSystem(world, Screens));
         // Before the HUD is drawn, so a number never sits on top of the health bar.
         world.AddSystem(new FloatingTextSystem(world));
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!));

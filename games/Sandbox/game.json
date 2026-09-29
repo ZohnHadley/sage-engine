@@ -6,6 +6,10 @@
   "assembly": "bin/{config}/net8.0/Sandbox.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
+  // Built on the RPG kit (issue #27): the readied spell, the spellmaker, the bag and spellbook panels,
+  // the journal and conversation screens. Not part of the base engine, so a game names it; the host
+  // finds Sage.Kits.Rpg.dll (and, with a window, Sage.Kits.Rpg.Client.dll) beside itself.
+  "kits": ["sage.kits.rpg"],
   // The scene every world starts in (issue #29): content/data/scene.json's `sandbox:main`.
   "scene": "main",
   // The client half (R15): the simulation is Sandbox.dll, anything needing a screen is here. A

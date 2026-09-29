@@ -2,9 +2,11 @@
 using System;
 using System.Collections.Generic;
 
-namespace Sage.Gameplay;
+namespace Sage.Kits.Rpg;
 
-// The panels the engine's own features can fill (docs/design/13 §3, TODO F38).
+// The panels an RPG's screens are made of (docs/design/13 §3, TODO F38): the bag and the spellbook,
+// and the spellmaker's two lists. In the RPG kit (issue #27): the base's items and abilities are the
+// data, and a list with a readied spell and a tick for what is in your hands is this family's view of it.
 //
 // Each builder lives with the feature that owns the data — a spellbook is abilities' business, a bag
 // is items' — and every one of them answers the same three questions a screen asks: what is in the
@@ -31,13 +33,14 @@ public static class GameplayPanels
         }
 
         panel.Begin("Spells", who);
+        var readied = ReadiedSpell.Of(in abilities);
         foreach (var id in abilities.Known)
         {
             if (!records.TryGet(id, out AbilityRecord record))
             {
                 // An ability whose record went away with a mod, or a composed spell that was forgotten
                 // (F21). It stays in the book because the book is the player's, and it says so.
-                panel.Add(PanelRow.Of(id, id.Name, "", 1, abilities.Selected == id, false, "no longer exists"));
+                panel.Add(PanelRow.Of(id, id.Name, "", 1, readied == id, false, "no longer exists"));
                 continue;
             }
 
@@ -47,7 +50,7 @@ public static class GameplayPanels
                 record.Name.Length > 0 ? record.Name : id.Name,
                 record.Cost > 0f ? $"{record.Cost:F0} {record.CostAttribute.Name}" : "free",
                 1,
-                abilities.Selected == id,
+                readied == id,
                 can,
                 can ? "" : AbilityRules.Explain(why)));
         }
@@ -82,7 +85,7 @@ public static class GameplayPanels
         {
             if (stack.Count <= 0) continue;
             records.TryGet(stack.Item, out ItemRecord record);
-            bool equipped = record != null && record.Slot != EquipSlot.None
+            bool equipped = record != null && record.Slot.Length > 0
                          && equipment.In(record.Slot) == stack.Item && ticked.Add(stack.Item);
             bool can = Items.CanEquip(world, who, stack.Item, out string why);
 
@@ -122,11 +125,12 @@ public static class GameplayPanels
         var panel = (into ?? new Panel()).Begin("Spells you invented");
         var records = world.Records();
 
+        string cost = Spellmaker.CostName(records);
         foreach (var draft in Spellmaker.Book(world).Drafts)
         {
-            var id = new RecordId(Spellmaker.Namespace, Spellmaker.Slug(draft.Name));
+            var id = Spellmaker.IdOf(records, draft.Name);
             bool exists = records.Exists(id);
-            panel.Add(PanelRow.Of(id, draft.Name, $"{Spellmaker.Price(records, draft):F0} mana", 1,
+            panel.Add(PanelRow.Of(id, draft.Name, $"{Spellmaker.Price(records, draft):F0} {cost}", 1,
                                   false, exists, exists ? "" : "not composed yet"));
         }
         return panel;

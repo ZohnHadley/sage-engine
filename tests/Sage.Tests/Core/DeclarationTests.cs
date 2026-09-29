@@ -44,6 +44,7 @@ public class DeclarationTests
             ["physics_layers"] = "sage.physics3d",
             ["prefab"] = RegistrationOwners.Core, ["placements"] = RegistrationOwners.Core,
             ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
+            ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)

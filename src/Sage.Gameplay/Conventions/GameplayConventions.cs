@@ -51,8 +51,14 @@ public sealed class GameplayConventionsRecord
     // The schedules the AI's built-in choice picks between (16 §3.4).
     public AIScheduleConventions Schedules = new();
 
-    // The input actions gameplay reads, by name (08 §3.2).
+    // The input actions gameplay reads, by name (08 §3.2). There is no cast button here: the base casts
+    // what it is asked to (world.Cast); a button that fires a readied spell is a kit's model
+    // (Sage.Kits.Rpg's `rpg_conventions`, issue #27).
     public ActionConventions Actions = new();
+
+    // The sprite clips and frame events combat plays and listens for, by name (12 §3, issue #27): the
+    // Daggerfall sheet's words until skeletal animation events replace them.
+    public AnimationConventions Animations = new();
 
     // The one well-known instance: what the engine reads, and what a game patches. The only
     // engine-namespace record id gameplay code names (NoGameplayCodeNamesAnEngineRecordId).
@@ -82,8 +88,6 @@ public sealed class ActionConventions
     public string Attack = "Attack";
     [Property(Tooltip = "The button that uses what is in front of you")]
     public string Use = "Use";
-    [Property(Tooltip = "The button that casts the readied spell")]
-    public string Cast = "Cast";
     [Property(Tooltip = "The button that jumps")]
     public string Jump = "Jump";
     [Property(Tooltip = "The button held to run")]
@@ -93,9 +97,18 @@ public sealed class ActionConventions
 
     internal (string Field, string Name)[] All() => new[]
     {
-        (nameof(Attack), Attack), (nameof(Use), Use), (nameof(Cast), Cast),
-        (nameof(Jump), Jump), (nameof(Run), Run), (nameof(Crouch), Crouch),
+        (nameof(Attack), Attack), (nameof(Use), Use), (nameof(Jump), Jump), (nameof(Run), Run), (nameof(Crouch), Crouch),
     };
+}
+
+public sealed class AnimationConventions
+{
+    [Property(Tooltip = "The clip a swing plays when its attack names none")]
+    public string Attack = "attack";
+    [Property(Tooltip = "The frame event in a swing's clip that lands the blow; without one the attack's windup time does")]
+    public string Hit = "hit";
+    [Property(Tooltip = "The clip a fighter goes back to when a swing is over")]
+    public string Idle = "idle";
 }
 
 public static class GameplayConventions

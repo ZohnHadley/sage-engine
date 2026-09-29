@@ -71,14 +71,9 @@
       "maxItems": 2
     },
     "slot": {
-      "description": "(EquipSlot, default \"None\")",
-      "default": "None",
-      "type": "string",
-      "enum": [
-        "None",
-        "MainHand",
-        "OffHand"
-      ]
+      "description": "(string, default \"\")",
+      "default": "",
+      "type": "string"
     },
     "attack": {
       "description": "Names a attack record. (RecordRef<AttackRecord>)",

@@ -88,8 +88,8 @@
       "type": "number"
     },
     "animation": {
-      "description": "(string, default \"attack\")",
-      "default": "attack",
+      "description": "(string, default \"\")",
+      "default": "",
       "type": "string"
     },
     "swingCue": {

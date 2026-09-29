@@ -79,8 +79,8 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   | `AnimationModule` | the `sprite` part, `SpriteAnimationSystem` | — |
   | `LightsModule` | the `light` part (06 §3.9) | — |
   | `CombatModule` | `damage_type`/`attack`, `combat_debug`, `hurt`, Attack, the `melee` part, `MeleeCombatSystem` | Attributes, Character |
-  | `ItemsModule` | `item`, `g_interact_range`, `give`/`inv`/`equip`/`unequip`/`drop`, Use, the `inventory` and `pickup` parts, `InteractionState`, `InteractionSystem` | Attributes, Combat |
-  | `AbilitiesModule` | `ability`/`cue` records, the `Spellbook` saved resource, `cast_debug`, the `Cast` action, the `abilities` prefab part, `AbilitySystem`, `ProjectileSystem` | Attributes, Character |
+  | `ItemsModule` | `item`, `EquipSlots` (none of its own, #27), `g_interact_range`, `give`/`equip`/`unequip`/`drop`, Use, the `inventory` and `pickup` parts, `InteractionState`, `InteractionSystem` | Attributes, Combat |
+  | `AbilitiesModule` | `ability`/`cue` records, `cast_debug`, `cast`/`learn`, the `abilities` prefab part, `AbilitySystem`, `ProjectileSystem` (the spellbook, the Cast button and `spells`/`ready` are the RPG kit's since #27) | Attributes, Character |
   | `AIModule` | `ai_profile`/`ai_schedule`, `ai_debug`, `AITasks`, `AIThinkSystem`, `AIDebugSystem` | Character, Combat |
   | `FactionsModule` | `faction` records, the `Reputation` saved resource, `rep`/`rep_set`, the `faction` part, `FactionDeathSystem` | Attributes |
   | `QuestsModule` | `quest` records, the `Journal` saved resource, `quests`/`quest_start`/`quest_stage`, `QuestDeathSystem` (issue #26) | — |
@@ -112,7 +112,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Both fighters press the same button.** `PlayerControlSystem` copies the Attack action into `PawnIntent`; the AI's `MeleeAttack` task sets the same bit. `MeleeCombatSystem` is the only thing that swings, so a creature and a player with the same `attack` record fight identically — and an AI can miss.
 - **A swing is a physics query** (10 §4): a sphere swept along the attacker's aim from eye height, first solid thing it touches, then an arc check so a target at the edge of your vision doesn't count. Triggers are invisible to it (review #53). It hits whatever is solid, including the attacker's own kind: who a hit is *allowed* to hurt is a rules question (factions, F24), not a physics one.
 - **An attack knows how it looks in your hands.** `attack.viewmodel` names the sprite sheet a first-person wielder sees (13 §3), which is why equipping a sword changes both what your swing does and what you watch it do, from one record.
-- **Timing comes from the art when there is art.** A swing is windup → hit → recovery → cooldown, all from the `attack` record; if the attacker's clip has a `hit` frame event (12 §3) that lands the blow instead, so a creature's claws connect on the frame that shows them connecting.
+- **Timing comes from the art when there is art.** A swing is windup → hit → recovery → cooldown, all from the `attack` record; if the attacker's clip has a `hit` frame event (12 §3) that lands the blow instead, so a creature's claws connect on the frame that shows them connecting. The clip names — the swing's clip when its attack names none, the `hit` event, the `idle` it returns to — are `gameplay_conventions` `animations` since #27 (test: AGameNamesTheSpriteClipsCombatPlays).
 - **Death names its killer.** `EffectSystem` holds its own reader on `Damaged` (04 §3.2) and finds who last hurt the victim, so `GameRules.OnEntityDied` gets a killer without every damage path carrying one; poison and drowning simply have none. Because it is a cursor and not a shared list, a hit dealt in a later phase is credited on the next pass instead of being missed.
 - **`hurt <amount> [type]`** (cheat) runs the whole pipeline against the local player, which is how resistances and the death seam get tested by hand, and **`combat_debug`** (with `r_debugdraw 1`) draws every swing: the reach as an arrow, the sweep's end as a sphere, green when it found something and red when it did not, left on screen for half a second because a miss is the hard thing to debug.
 ### As built (items and interaction, 2026-09-23)
@@ -121,7 +121,8 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **Equipping is the seam combat left open.** A weapon's `attack` record goes into the wielder's `Melee`, so a player and a creature holding the same thing fight identically and `MeleeCombatSystem` never learns that swords exist (§3.2). `Melee.Natural` is what the wielder goes back to bare-handed. Anything else an item does — a shield's armour, a cursed ring — is an **effect applied while it is worn** and removed when it comes off, so items, spells and potions all change you through the one path F18 built (§3.3).
 - **Use means look-at-and-press, or just be near it.** The ray from the eye wins if it finds something; otherwise the nearest usable thing within `g_interact_range` (2.5 m) and inside a 140° cone in front does. A ray alone would mean staring at your own boots to pick up a sword lying in the grass.
 - **Weight, not slots.** `Inventory.Capacity` is kilograms (0 = unlimited) and `Give` refuses what won't fit rather than silently dropping it, so a caller moving items between containers can trust the answer before it destroys anything.
-- **Cheats:** `give <item> [count]`, `inv`, `equip <item>`, `unequip [main|off]`, `drop <item> [count]`. Ids may be typed bare (`give practice_sword`), which `RecordStore.Resolve` looks up across namespaces — game code always names records in full.
+- **Slots by name (issue #27).** `ItemRecord.Slot` is a slot's name and `Equipment` a list of `{ Slot, Item }` (`sage:equipment` version 2; its upgrader turns the old `MainHand`/`OffHand` fields into slots of those names). Which slots exist is `EquipSlots`, which `ItemsModule` provides and seals at `Start`: the base registers none, the RPG kit its two hands, a game whatever else it wears, and an item naming a slot nobody registered is a load error (test: TheKitHasTwoHandsAndTheBaseNone).
+- **Cheats:** `give <item> [count]`, `equip <item>`, `unequip [slot]`, `drop <item> [count]`, and the RPG kit's `inv`. Ids may be typed bare (`give practice_sword`), which `RecordStore.Resolve` looks up across namespaces — game code always names records in full.
 - **Not yet:** containers and looting corpses, an inventory screen (13), item conditions and repair, enchantments, gold and trade, stacks that split on drop, and the entity-I/O side of interaction (a door that opens, 04).
 
 ### As built (abilities, 2026-09-23 — F21 v1)
@@ -197,16 +198,16 @@ Composing spells cost the engine almost nothing, which is the whole argument for
 already "a cost, targeting and a list of effects", so making one is *filling in an `ability` record*,
 and the cast system cannot tell a composed spell from one in a content file.
 
-- **Code:** `src/Sage.Gameplay/Rpg/Spellmaker.cs` — `SpellDraft` (what the player chose),
+- **Code:** `src/Sage.Kits.Rpg/Spellmaker.cs` (the RPG kit's since #27) — `SpellDraft` (what the player chose),
   `Spellbook` (a `[SavedResource]` world resource: the drafts, nothing else), and `Spellmaker`
   (`Price`, `Compose`, `Restore`, `Forget`).
 - **The draft is the data; the record is derived from it.** The save holds the choices (09
   "As built (saved resources)") and loading composes the records again, so a rebalanced effect changes
   a player's old spell rather than being frozen into it — and no `AbilityRecord` is ever serialized.
   Proved by a test that triples an effect's cost between two runs of the game.
-- **Records made at run time** live in their own layer of the `RecordStore` (05 "As built"), under the
-  `custom` namespace of their own, and survive a content hot reload — nothing on disk could rebuild a
-  player's spell.
+- **Records made at run time** live in their own layer of the `RecordStore` (05 "As built"), under a
+  namespace of their own — `custom`, or the game's `rpg_conventions` `spellNamespace` since #27 — and
+  survive a content hot reload — nothing on disk could rebuild a player's spell.
 - **Effects are priced by the effect record** (`EffectRecord.Cost`), so a mod prices what it adds in
   the file that adds it. **Cost 0 means "not for sale"**: `spend_mana` and cooldowns are effects the
   game applies itself, and without that rule "a spell that drains your own mana" is composable.
@@ -217,14 +218,15 @@ and the cast system cannot tell a composed spell from one in a content file.
   already used, an id already taken), because composing is the one place a player's idea meets the rules.
 - **No cooldown yet:** a composed spell is gated by cost, which is the bargain Daggerfall's spellmaker
   struck. When a cooldown becomes a choice it is a field on the draft and a term in the price.
-- **v1 assumes mana:** a composed spell draws on `sage:mana`, the engine's own pool. A game whose magic
-  runs on something else needs that to become a choice (a field on the draft, or a rule on `GameRules`).
+- **What a spell costs is the game's word:** a composed spell draws on the `gameplay_conventions`
+  `costAttribute` (mana in the engine's conventions, #26), and its price is worded with that
+  attribute's name (#27).
 - **Console:** `spell_effects` (what can be built with, and what each costs), `spell_make <name>
   <effect|key=value>...`, `spell_list`, `spell_forget <name>`.
 - **And a screen** (`SpellmakerScreen`, 2026-09-23 with F38): name it, cycle its delivery and power,
   choose effects, and press Enter on a **"make it" row** that is greyed with the reason when the draft
   is not yet a spell — the reason coming from `Spellmaker.CanCompose`, which `Compose` itself applies
-  (R17), so the button and the attempt cannot disagree. It lives in the engine rather than in a game,
+  (R17), so the button and the attempt cannot disagree. It lives in the RPG kit rather than in a game,
   because what a spellmaker *is* belongs to this feature; binding it to a key is the game's call.
 - **Forgetting** removes the draft and the record, and an entity that still knows the id is refused
   with `NotKnown` — the same thing that happens to any ability whose record went away with a mod.
@@ -241,7 +243,8 @@ and the cast system cannot tell a composed spell from one in a content file.
 Something to do, and something that notices you did it.
 
 - **Code:** `src/Sage.Gameplay/Narrative/Quests.cs` (`quest` records, the saved `Journal`, the `Quests`
-  rules and `QuestChanged`) and `JournalScreen.cs`. Tests: `tests/Sage.Tests/Gameplay/QuestTests.cs`.
+  rules and `QuestChanged`) and the RPG kit's `src/Sage.Kits.Rpg/JournalScreen.cs` (#27). Tests:
+  `tests/Sage.Tests/Gameplay/QuestTests.cs`.
 - **A quest watches; it never moves anybody.** A stage is a line of text and a list of things that must
   be true. The things it watches for are things the game already does — somebody died, something is in
   your bag — so a quest adds no machinery to the rest of the engine, only a place to write down what
@@ -270,8 +273,9 @@ Something to do, and something that notices you did it.
 Talking to somebody, as data.
 
 - **Code:** `src/Sage.Gameplay/Narrative/Dialogue.cs` (`dialogue` records, the `Dialogue` component, the
-  `Conversation` resource, `DialogueRules`) and `DialogueScreen.cs`; the client half is one system,
-  `src/Sage.Client/UI/DialogueSystem.cs`. Tests: `tests/Sage.Tests/Gameplay/DialogueTests.cs`.
+  `Conversation` resource, `DialogueRules`) and the RPG kit's `src/Sage.Kits.Rpg/DialogueScreen.cs`;
+  the client half is one system, `src/Sage.Client/UI/DialogueSystem.cs`, which asks the client's
+  `ScreenRegistry` for `"dialogue"` (13 "As built (screens by id)", #27). Tests: `tests/Sage.Tests/Gameplay/DialogueTests.cs`.
 - **A conversation is a record, not a script.** Nodes hold a line and the things you may say back; an
   option leads to another node and may *do* something on the way. Everything it can do — give an item,
   take one, apply an effect, move a reputation — is machinery that already existed, which is the whole
