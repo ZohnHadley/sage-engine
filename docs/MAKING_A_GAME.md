@@ -645,6 +645,22 @@ That tag is what makes the rest of the engine treat it as *the* player: **the fi
 puts the camera in its head automatically** (any entity with a character controller, view angles and
 that tag), the cheats act on it, and the HUD reads it. You do not write a camera.
 
+A camera of your own — a fixed security camera, a top-down or 2D view, a scripted shot — is an entity
+with a `camera` part (issue #76; its options are the `sage:camera` component's fields):
+
+```json
+{ "type": "prefab", "id": "overhead",
+  "parts": { "camera": { "projection": "Orthographic", "orthoHeight": 30, "priority": 10 } } }
+```
+
+Place it like anything else; it looks down its -Z from where it stands. Of the enabled cameras drawing
+to the screen the highest `priority` wins, and one drawing to the screen takes over from the
+first-person rig until you disable it (`"enabled": false`, or `Camera.Enabled` from code). `target`
+names a render target instead of the screen, `viewport` a part of it (0..1 from the top-left), and
+`fovY` is in degrees. Games that name these types in C# opt in to SAGE0123 (§10b). Drawing more than one
+view, and render targets, arrive with the multi-view renderer (#77); until then only the screen's view is
+drawn.
+
 **4. A scene** — the engine's `scene` record (issue #29): what stands where, where the player starts,
 the maps and placements documents to load, and the weather to start in. Name it in `game.json` and every
 world starts in it:
@@ -1224,6 +1240,7 @@ names their types needs the opt-in.
 | SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
+| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart` | Phase 4a is still building on it: rigs (#78, #79), the multi-view renderer and render targets (#77), scripted cuts (#80) and the editor camera (#81) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 

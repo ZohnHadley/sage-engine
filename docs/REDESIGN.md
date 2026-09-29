@@ -1004,6 +1004,15 @@ test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *acti
 Order: 4a → 4b and 4c → 4d → the rest in parallel. 4a–4c unblock everything, and 4d is the longest
 single item.
 
+*As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
+#75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,
+priority, enabled, a normalised viewport and a render target), `CameraPose` for rigs, and the engine's
+`CameraDirector`, which resolves one view per target into the `CameraViews` resource that the multi-view
+renderer (#77) will draw. `ActiveCamera` stays as the director's mirror of the screen view (D1), and a
+world with no camera entity behaves as before. Rigs will be camera entities that follow a pawn and write
+`CameraPose` before the director (D2: #78, #79). Ortho is in from the start (§0.5). The API is experimental
+(SAGE0123). Details and deviations: docs/design/06 "As built (camera components)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |
