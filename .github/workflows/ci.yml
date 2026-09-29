@@ -153,7 +153,7 @@ jobs:
           tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
           # Several views a frame (issue #77): a split screen, then a top-down view into a render target the
           # HUD shows. Without shaders nothing is drawn but the clears, so this proves the path, not the picture.
-          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testview 1\n+wait 1\n+r_testview 2\n+r_stats' \
+          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testview 1\n+wait 1\n+r_testview 2\n+wait 1\n+r_stats' \
             tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
           # No plugins at all (issue #13). Records and Input are allowed because engine content still
           # ships every plugin's data in one folder, and says so when the plugin that reads it is absent.
