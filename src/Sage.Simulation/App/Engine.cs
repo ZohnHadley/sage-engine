@@ -51,6 +51,7 @@ public sealed class Engine : IDisposable
         try { Generated.Register(RegistrationOwners.Core, new RegistrationBuilder(this)); }
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
+        Scenes = new Scenes(this);
     }
 
     // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).
@@ -79,6 +80,9 @@ public sealed class Engine : IDisposable
 
     // Save and load (09 §3.5, F27).
     public SaveSystem Saves { get; }
+
+    // What each world starts with, and hot reload of it (issue #29).
+    public Scenes Scenes { get; }
 
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }
@@ -124,6 +128,10 @@ public sealed class Engine : IDisposable
             world.Resources.Add<GameRules>(rules);
         }
         Log.Info(LogCat.World, $"World '{name}': rules {rules.GetType().Name}");
+
+        // The start scene (issue #29), placed before the rules start: they find the world populated,
+        // and their SpawnPlayer finds the scene's player start.
+        Scenes.Enter(world);
 
         // Now that every module has had its turn, the game's rules may populate the world (16 §3.1).
         rules.OnWorldStarted(world);

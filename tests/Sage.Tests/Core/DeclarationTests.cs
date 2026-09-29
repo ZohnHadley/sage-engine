@@ -43,7 +43,7 @@ public class DeclarationTests
             ["map"] = "sage.maps",
             ["physics_layers"] = "sage.physics3d",
             ["prefab"] = RegistrationOwners.Core, ["placements"] = RegistrationOwners.Core,
-            ["scene"] = "sandbox",
+            ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)
@@ -55,7 +55,7 @@ public class DeclarationTests
     public void APluginThatIsNotLoadedRegistersNothing()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Equal(new[] { "placements", "prefab" }, app.Records.TypeNames);
+        Assert.Equal(new[] { "placements", "prefab", "scene" }, app.Records.TypeNames);
     }
 
     // Plugin ids on declarations are strings, and one naming a plugin in another assembly (the client)

@@ -38,7 +38,7 @@ public class MetadataTests
         Assert.Equal((DeclarationKind.Component, "sage:point_light"), Kind(typeof(PointLight)));
         Assert.Equal((DeclarationKind.PrefabPart, "light"), Kind(typeof(LightPart)));
         Assert.Equal((DeclarationKind.Record, "attribute"), Kind(typeof(AttributeRecord)));
-        Assert.Equal((DeclarationKind.Record, "scene"), Kind(typeof(Sandbox.SceneRecord)));
+        Assert.Equal((DeclarationKind.Record, "scene"), Kind(typeof(SceneRecord)));   // the engine's since issue #29
         Assert.Equal((DeclarationKind.Tag, "sandbox:faces_camera"), Kind(typeof(Sandbox.FacesCamera)));
         Assert.Contains(engine.Values, t => t.Kind == DeclarationKind.SavedResource);
 

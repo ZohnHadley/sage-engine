@@ -152,7 +152,10 @@ Not every record comes from a file. A spell the player composed in the spellmake
   §3.5's list-append doing exactly the job it was designed for. The Sandbox declares two parts of
   its own, `box_mesh` (it needs the renderer, which is client-side) and `hop`.
 - **Not done here:** placement/map files and overrides per placed entity (F27 §3.4), "revert to
-  prefab" in the editor (15), and nested prefabs. A `scene` record is a game's own until then.
+  prefab" in the editor (15), and nested prefabs. ~~A `scene` record is a game's own until then.~~
+  Since issue #29 `scene` is the engine's (REDESIGN §4.1 "As built"): `game.json`'s `"scene"` names the
+  one every world starts in, the engine places it and respawns it on reload keeping the player, and its
+  placements are the same format as the editor's `placements` (test: AGameWithNoCodeBootsIntoItsScene).
 
 ### As built (declared parts, 2026-09-28 — issue #17)
 

@@ -66,7 +66,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | Capability | FPS (HL1) | 3rd-person action (Lugaru) | Top-down / iso RPG | 2D platformer | RTS / battles (Warband) | Puzzle / card / UI-heavy | **Your game** (Daggerfall) | Sage today |
 |---|---|---|---|---|---|---|---|---|
 | App kernel, plugins, records, VFS, console, saves | ● | ● | ● | ● | ● | ● | ● | ✅ mostly; boot and plugins need redoing (§3.2–3.3) |
-| ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are Sandbox C#. Prefab overrides and nesting missing (F31) |
+| ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are the engine's (#29). Prefab overrides and nesting missing (F31) |
 | **Cameras as components**: perspective and ortho, rigs, several viewports | ● | ● | ● | ● | ● | ● | ● | ❌ one `ActiveCamera` resource, perspective only (`RenderSystems.cs:48`), one first-person rig (`CharacterController.cs:417`) |
 | 3D physics, queries, triggers | ● | ● | ● | ○ | ● | ○ | ● | ✅ Bepu |
 | 2D physics (bodies, tiles, one-way platforms, slopes) | | | ● | ● | | ○ | | ❌ |
@@ -469,6 +469,26 @@ AGameRenamesHealthToHpByChangingOneRecord). No `new RecordId("sage", …)` is le
   Split `GameplayModules.cs` (634 lines) and `MapLevel.cs` (757 lines, 11 types) into one file per module.
 - **Promote scene spawning into the engine.** `SceneRecord`, the spawn loop and respawn-on-reload are
   Sandbox C# today (`SandboxModule.cs:39,56-77,154`), and every game rewrites them.
+
+  *As built (issue #29, 2026-09-29).* **`SceneRecord` is the engine's** (`Sage.Simulation/Content/Scenes.cs`,
+  `Plugin = RegistrationOwners.Core` like `prefab` and `placements`, so a `"plugins": []` game has scenes):
+  in Simulation because a scene is records, prefabs, placements, maps and the origin, and needs no
+  physics or gameplay. A scene names `maps`, `placements` documents, an `origin` and a default
+  `relativeTo`, a `player` placement, `place` and `environment.weather`. **One placement format** for
+  scenes and the editor's `placements`: `prefab`, `at`, `yaw`, `name` and an optional `relativeTo`
+  (`World`, the default; `Origin`; `Ground`, y above the terrain), camel-cased; the Sandbox's relative
+  `at` became `"origin": [512, 0, 512], "relativeTo": "Ground"`. `game.json`'s `"scene"` picks the start
+  scene (a name that is not a scene is a load error); `Engine.CreateWorld` places it after every
+  module's `OnWorldCreated` and before the rules start, and `GameRules`' default `OnWorldStarted` and
+  `SpawnPlayer` spawn the scene's player. Hot reload sweeps only what the scene placed (tagged
+  `sage:from_scene`, its documents, its levels) and keeps the player (test:
+  HotReloadRespawnsTheSceneWithoutDuplicatingOrLosingThePlayer); a save's reload re-tags placed entities
+  by persistent id (test: AfterASaveLoadsAReloadStillDoesNotDuplicate); `scene_load <id>` swaps scenes
+  and moves the player (test: SceneLoadReplacesTheSceneAndMovesThePlayer). `tests/games/scene-only` has
+  no C# and boots into its scene (test: AGameWithNoCodeBootsIntoItsScene); CI validates and smoke-runs it,
+  and `sage schema` includes it. The Sandbox and Hello use it; `SceneRecord` left the Sandbox. Not done:
+  the scene's rules and conventions (a `conventions` slot waits for #26's `gameplay_conventions`
+  record), time of day (no clock yet), and a saved "which scene" (a load assumes the world's current one).
 - **Data-only games.** `LoadGame` must stop requiring exactly one `IGameModule`
   (`Modules.cs:206-207`). With a kit chosen in `game.json`, a terrain or level record and a
   `gameplay_conventions` record, a designer can make a playable game **with zero C#**. This is the

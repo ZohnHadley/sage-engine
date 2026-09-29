@@ -4,12 +4,13 @@ namespace Hello;
 
 // The smallest game this engine can run (docs/MAKING_A_GAME.md).
 //
-// Everything a game must supply is here, and there is not much of it: a module that furnishes a world,
-// rules that put a player in it, and a terrain generator so there is something to stand on. What it
+// Everything a game must supply in C# is here, and there is not much of it: a module that furnishes a
+// world, rules that greet the player the scene put in it, and a terrain generator so there is something
+// to stand on. (A game with no ground of its own to generate needs no C# at all: tests/games/scene-only.) What it
 // deliberately does *not* have is a client half — the engine's own client draws the world, so a game
 // only needs one when it wants a HUD or screens of its own (games/Sandbox.Client is that).
 //
-// Read it top to bottom; it is about sixty lines and every one of them is a decision a game makes.
+// Read it top to bottom; it is about fifty lines and every one of them is a decision a game makes.
 //
 // It stands on terrain and puts a player in the world, so it names the plugins those come from: a game
 // that leaves one out of game.json's `plugins` hears so at boot, not as a crash in OnWorldCreated.
@@ -44,15 +45,15 @@ public sealed class HelloModule : IGameModule
 }
 
 // What this game does, which is the smallest thing a game can do: put a player in the world and say
-// hello. A real game overrides more of these — `OnEntityDied` to decide what dying means, `OnLoaded` to
-// put things back after a save.
+// hello. *Where* the player goes is data — the scene game.json names (content/data/hello.json) — so the
+// engine's default rules spawn it, and these only add the greeting. A real game overrides more of these:
+// `OnEntityDied` to decide what dying means, `OnLoaded` to put things back after a save.
 public sealed class HelloRules : GameRules
 {
-    private static readonly RecordId Player = new("hello", "player");
-
     public override void OnWorldStarted(World world)
     {
-        SpawnPlayer(world);
+        // The default: the scene's `player`, standing on the ground at its start.
+        base.OnWorldStarted(world);
 
         // `Say` puts a line in the world's message log, which every world has — and **nothing draws it
         // here**, because drawing is a client's job and this game has no client half. That is the split
@@ -60,16 +61,6 @@ public sealed class HelloRules : GameRules
         // Write a HUD (13 §3, and games/Sandbox.Client/Hud.cs) and these appear on screen.
         world.Say("Hello. Look around with the mouse, walk with WASD.", MessageKind.Good, 8f);
         Log.Info(LogCat.Gameplay, "Hello: a player is standing on the hills at 512, 512.");
-    }
-
-    public override Entity SpawnPlayer(World world)
-    {
-        // Two conversions, and both matter. The first turns absolute metres into the frame the
-        // simulation is using at this moment — the world shifts under you once you have travelled far
-        // enough (R6) — and the second puts the player's feet on the ground rather than inside it.
-        var at = world.Origin().ToOrigin(new Vector3(512f, 0f, 512f));
-        at.Y = world.Resources.Get<Terrain>().HeightAt(at.X, at.Z) + 2f;
-        return world.Spawn(Player, at);
     }
 }
 

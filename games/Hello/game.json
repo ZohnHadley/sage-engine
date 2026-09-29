@@ -6,6 +6,9 @@
   "assembly": "bin/{config}/net8.0/Hello.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
+  // The scene every world starts in: `hello:main`, in content/data/hello.json. It says where the player
+  // starts, so the rules below have nothing to work out.
+  "scene": "main",
   // No client half: the engine's own client draws the world, the crosshair and the dev UI. A game adds
   // one when it wants a HUD or screens of its own — see games/Sandbox.Client.
   "modules": { "disable": [], "add": [] }
