@@ -60,6 +60,9 @@ public static class SageTypes
     public const string IComponent = Simulation + ".IComponent";
     public const string ITag = Simulation + ".ITag";
 
+    // ---- what games must not name (SAGE0050) ---------------------------------------------------------
+    public const string FrifloNamespace = "Friflo";
+
     // The text after the namespace: what a message calls a type.
     public static string ShortName(string fullName)
     {

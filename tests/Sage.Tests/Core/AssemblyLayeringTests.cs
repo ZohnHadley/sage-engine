@@ -97,7 +97,8 @@ public class AssemblyLayeringTests
     [Fact]
     public void EveryTypeTheGeneratorsNameExists()
     {
-        var where = EngineAssemblies.Base.ToList();
+        // The base, and Friflo (the storage Sage's IComponent extends; SAGE0050 names its namespace).
+        var where = EngineAssemblies.Base.Append(typeof(IComponent).GetInterfaces().Single().Assembly).ToList();
         var names = typeof(SageTypes).GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(f => f.IsLiteral && f.FieldType == typeof(string))
             .Select(f => (f.Name, Value: (string)f.GetRawConstantValue()!))
@@ -107,9 +108,9 @@ public class AssemblyLayeringTests
         foreach (var (field, value) in names)
         {
             if (value.Contains('<')) continue;   // RecordRef<T> as Roslyn displays it; RecordRefMetadata resolves it
-            if (field is nameof(SageTypes.Core) or nameof(SageTypes.Simulation))
+            if (field is nameof(SageTypes.Core) or nameof(SageTypes.Simulation) or nameof(SageTypes.FrifloNamespace))
             {
-                Assert.Contains(where.SelectMany(a => a.GetTypes()), t => t.Namespace == value);
+                Assert.Contains(where.SelectMany(a => a.GetTypes()), t => t.Namespace == value || t.Namespace?.StartsWith(value + ".") == true);
                 continue;
             }
             Assert.True(where.Any(a => a.GetType(value) != null), $"SageTypes.{field} = \"{value}\" names no type in the base assemblies");

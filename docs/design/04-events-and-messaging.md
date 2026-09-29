@@ -196,7 +196,7 @@ AI       ─ reads perception events, sends intents
 Animation
 EntityIO ─ dispatch due I/O inputs (may send events / queue structural changes)
 Late
-   └ at every phase end: CommandBuffer flush → structural notifications (internal now; Added/Removed queued)
+   └ at every phase end: EntityCommands flush → structural notifications (internal now; Added/Removed queued)
 Frame schedule (presentation): readers with their own cursors turn events into sounds, particles, UI
 ```
 
@@ -225,7 +225,7 @@ I/O connections are part of map/prefab entity data (09):
 - **Cvars:** `ev_maxage` and `ev_trace <EventType|*>` (DevOnly; logs sends at `Trace`) are **built**;
   `io_trace` (log every I/O dispatch at `Info`) comes with entity I/O.
 - **Commands:**
-  - `ev_stats` (queue sizes, readers, oldest event age) is **built**, in `WorldCommands`;
+  - `ev_stats` (queue sizes, readers, oldest event age) is **built**, in `WorldConsoleCommands`;
   - `ent_fire <name> <input> [param]` (fire an input from the console, like Source's `ent_fire`)
     comes with entity I/O.
 - **Editor:** I/O links drawn between entities (red = unresolved). Per-entity "recent I/O" in the inspector.

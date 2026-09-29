@@ -289,8 +289,8 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   JSON helpers (`JsonMembers`, `RecordParseContext`, the vector converters), `Upgraders`,
   `Screen.Index`'s setter, `RegistrationLedger.Owner`'s setter, `MovementProfileRecord.Fallback` and the
   client's keyboard and mouse listeners. #31's public-API pass decides which stay.
-- Each project imports the layers below as **global usings in its csproj** (with the `Transform`
-  alias), and games take the four base references and usings from `games/Directory.Build.props`
+- Each project imports the layers below as **global usings in its csproj** (the `Transform` alias
+  went with #25, §3.5), and games take the four base references and usings from `games/Directory.Build.props`
   (`Private="false"`, so a game's `bin/` still holds only its own dll). The generators name engine types
   from one list, `src/Sage.Generators/SageTypes.cs` (test: EveryTypeTheGeneratorsNameExists). Every
   engine project is simulation-only (SAGE0024) unless it opts out (Client, Editor, Host).
@@ -419,6 +419,31 @@ game's and every mod's contract.
 - In Shipping, `World.Get<T>` on a missing component must not return a shared static dummy
   (`World.cs:143-144`). Use `TryGet`/`ref` with a dev assert, and fail loudly in all configurations for
   writes.
+
+*As built (issue #25, 2026-09-29).* `Sage.Simulation/ECS/Api` has `Entity`, `IComponent`, `ITag`,
+`Tags`, `Query` and `Query<T1..T5>` (with `Chunks`, `Chunk<T>`, `ChunkEntities`, `Entities`) and
+`EntityCommands`, each a struct (or, for the buffer, a class) over Friflo's that forwards to it; `World`
+and `SystemContext` speak only these, and `ComponentSchema` answers in `System.Type`. The migration was
+a script, `tools/migrate_ecs_api.py`, kept for code written against the old names. Where it differs:
+
+- **Friflo is still a compile-time reference of every game.** Sage's `IComponent` and `ITag` *extend*
+  Friflo's, because Friflo's schema scan looks for its own interface and its generic calls are
+  constrained on it; anything else would put a boxing or reflective bridge in every component access.
+  A derived interface needs its base to compile, so the package flows to games as before. "Private"
+  is enforced instead as *nobody names it*: no `Friflo.*` type in a public signature of Core,
+  Simulation, Physics3D, Gameplay or Client (test: NoPublicTypeInTheBaseEngineExposesFriflo)
+  (test: NoPublicTypeInTheClientExposesFriflo) — the two marker interfaces' base aside — and
+  **SAGE0050** for a Friflo type or namespace written outside `Sage.Simulation` (which sets
+  `SageEcsImplementation`) (test: NamingFrifloOutsideTheEcsImplementationIsABuildError).
+- **`Commands` stays the property name** (`world.Commands`, `ctx.Commands`); its type is
+  `EntityCommands`. The console's registrars became `WorldConsoleCommands` and `ScaleConsoleCommands`;
+  `ConsoleCommand` (Core) and `PlayerCommand` were already named.
+- **`EntityName` is gone from the API**: `entity.Name` is a string (Friflo's component underneath).
+- **Unchanged:** component ids, the save format and golden saves, prefabs, the registry dump, the JSON
+  Schemas, and the ECS schema (45 components and 7 tags for the Sandbox). The scale run
+  (`scale_spawn 2000 tree`) is within noise of before (numbers in 03 §3.1a).
+- **Not done here:** the Shipping dummy in `World.Get<T>` (the last bullet above) is unchanged, a
+  separate behaviour change for #31's API pass.
 
 ### 3.6 Public API discipline
 

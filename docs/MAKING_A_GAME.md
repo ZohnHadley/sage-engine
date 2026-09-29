@@ -75,12 +75,11 @@ That is *all* a project under `games/` needs, because `games/Directory.Build.pro
 them the rest: `net8.0`, nullable, the Debug/Development/Shipping configurations, the four base engine
 assemblies referenced **compile-time only** (`Private="false"`, so the host's copies are used at run
 time and your `bin/` holds only your dll), and global usings — `Sage.Core`, `Sage.Simulation`,
-`Sage.Physics3D`, `Sage.Gameplay`, `Friflo.Engine.ECS`, and an alias making `Transform` mean **Sage's**
-rather than Friflo's, which ships a `Transform` of its own. A client half adds
+`Sage.Physics3D` and `Sage.Gameplay`. The ECS is in there: `Entity`, `IComponent`, `ITag`, `Tags`,
+`Query<…>` and `EntityCommands` are `Sage.Simulation`'s (§6). A client half adds
 `<ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />` and
 `<Using Include="Sage.Client" />` (see `games/Sandbox.Client`). Put your game somewhere else and you
-inherit none of that: add the target framework, the four references, the usings and the alias yourself,
-or the first time you name `Transform` the compiler cannot tell which one you mean.
+inherit none of that: add the target framework, the four references and the usings yourself.
 
 ### `game.json`
 
@@ -569,6 +568,42 @@ public void OnWorldCreated(World world) => world.AddSystem(new TideSystem(world)
   every system's id, its plugin and who replaced or disabled it.
 - A test's probe or a tool's one-off can stay undeclared: `world.AddSystem(probe, Phase.Late)`.
 
+**The ECS is Sage's vocabulary** (issue #25). Components are structs implementing `IComponent` and
+tags implement `ITag`, each with a stable id (§3); an `Entity` is a handle that reports `IsNull` once
+its entity is gone; a system makes its `Query<…>` once, in its constructor, and walks it chunk by chunk:
+
+```csharp
+[System("yourgame.regen", Phase.Gameplay)]
+public sealed class RegenSystem : ISystem
+{
+    private readonly Query<Health> _wounded;
+    public RegenSystem(World world) =>
+        _wounded = world.Query<Health>().WithoutAllTags(Tags.Get<Asleep>());   // Asleep: your [Tag] struct
+
+    public void Run(in SystemContext ctx)
+    {
+        foreach (var (healths, entities) in _wounded.Chunks)      // no allocations
+        {
+            var h = healths.Span;
+            for (int n = 0; n < h.Length; n++)
+            {
+                h[n].Value += ctx.Tick.Dt;
+                if (h[n].Value > 200) ctx.Commands.Destroy(entities.EntityAt(n));   // deferred
+            }
+        }
+    }
+}
+```
+
+Adding or removing a component or tag, or destroying an entity, while a query is being walked throws;
+record it on `ctx.Commands` (an `EntityCommands`) and the world applies it at the end of the phase.
+`query.Entities` walks entity by entity, and `.Entities.ToEntityList()` takes a copy you may change
+the world under. Outside a loop, `world.Get<T>(entity)`, `Add`, `Remove`, `Has`, `TryGet` and
+`Destroy` do it directly, and `entity.Name` is the entity's name. The storage underneath is
+Friflo.Engine.ECS, and it stays underneath: naming a Friflo type or namespace in your game is a build
+error (SAGE0050), so upgrading or replacing it never breaks a game (test: NamingFrifloOutsideTheEcsImplementationIsABuildError)
+(test: NoPublicTypeInTheBaseEngineExposesFriflo).
+
 ---
 
 ## 7. The HUD, and screens
@@ -836,11 +871,14 @@ each, with the fix:
 | SAGE0023 | *Strict saves only:* a public component field that is neither `[Property]` nor `[Transient]` | Decide: `[Property]` saves it, `[Transient]` leaves it out |
 | SAGE0024 | *Simulation-only projects:* a `Microsoft.Xna.Framework` (MonoGame) type | Move the code to the client half |
 | SAGE0025 | *Base engine assemblies:* a reference to a `Sage.Kits.*` assembly, or a use of one of its types or members | The base never depends on a kit: move the code into the kit, or give the base a hook the kit plugs into |
+| SAGE0050 | A `Friflo.*` type or namespace named anywhere but `Sage.Simulation`, which implements the ECS over it | Use Sage's `Entity`, `IComponent`, `ITag`, `Tags`, `Query<…>`, `EntityCommands` (§6) |
 
 An attribute on the wrong kind of type — `[Record]` on a struct, `[Component]` on a class — is the
 compiler's own CS0592, because each declaration attribute names what it may go on.
 
-Three are switched on per project, in its `.csproj`:
+Three are switched on per project, in its `.csproj` (and a fourth, `SageEcsImplementation`, is the
+engine's own: `Sage.Simulation` sets it to name Friflo, and a game cannot, since `games/` does not make
+it visible to the analyzers (test: TheEcsImplementationMayNameFriflo)):
 
 - `<SageSimulationOnly>true</SageSimulationOnly>` — the project is simulation: it runs headless and
   names no MonoGame type (SAGE0024). Every engine project under `src/` is simulation-only unless it

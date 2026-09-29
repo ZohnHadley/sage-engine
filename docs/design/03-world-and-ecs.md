@@ -35,7 +35,7 @@ Friflo.Engine.ECS already provides ids, archetype storage, queries, command buff
 | E8 | Several independent worlds in one process | Overworld/battle, editor edit/play, tests |
 | E9 | Works with class-free, struct components | Pooled, cache-friendly, easy to snapshot |
 
-- **If Friflo passes** (it did, see the verdict below): `World` wraps a Friflo `EntityStore` **thinly**. It owns lifetime, ids, spawning, resources and schedules, but **queries expose Friflo's own query types** rather than re-wrapping them, so we keep its performance.
+- **If Friflo passes** (it did, see the verdict below): `World` wraps a Friflo `EntityStore` **thinly**. It owns lifetime, ids, spawning, resources and schedules, but **queries expose Friflo's own query types** rather than re-wrapping them, so we keep its performance. *Superseded by issue #25 (§3.1a): the types are Sage's now, zero-cost structs over Friflo's, so the performance is kept and Friflo stays out of every public signature.*
 - **If Friflo had failed:** we would have kept the old approach, a `Dictionary<Type, …>` per entity, behind the same `World` API. Then we move to our own archetype storage only if profiling demands it.
 
 **Spike verdict (2026-09-22, Friflo.Engine.ECS 3.6.0, MIT): adopted.** Measured, not taken from the docs:
@@ -54,16 +54,66 @@ Friflo.Engine.ECS already provides ids, archetype storage, queries, command buff
 
 Two things the spike taught about Friflo that the engine now handles:
 - **Schema scan.** Friflo builds its component list once, the first time a store is used, from the assemblies loaded *at that moment*, and prints "Assemblies loaded: …" to stdout. `EcsSchema.EnsureInitialized` triggers it on the first `World` and redirects that line into the log. Rule: **every assembly defining component types must be loaded before the first `World` is created** (the host forces `Sage.Client`/`Sage.Editor` in; module loading does it for games and mods from migration step 5).
-- **Naming.** Friflo's `Entity`/`IComponent`/`EntityStore` replace Sage's old classes of the same names; our old `Entity` class and `IComponent` interface were deleted.
+- **Naming.** Friflo's `Entity`/`IComponent`/`EntityStore` replaced Sage's old classes of the same names; our old `Entity` class and `IComponent` interface were deleted. Since issue #25 the names are Sage's again, over Friflo (§3.1a).
+
+### 3.1a As built: Sage's own vocabulary over Friflo (issue #25, 2026-09-29)
+
+Friflo was in every public signature — `Entity`, `IComponent`, `ArchetypeQuery`, `CommandBuffer`,
+`Tags`, `EntityName` — and games had a global `using Friflo.Engine.ECS` plus a `Transform` alias to beat
+Friflo's own `Transform`. So Friflo 3.6's API was every game's contract (REDESIGN §3.5). Now
+`Sage.Simulation` owns the vocabulary, in `src/Sage.Simulation/ECS/Api`:
+
+| Sage | Over Friflo's | Notes |
+|---|---|---|
+| `Entity` | `Entity` | One-field struct; the component, tag and hierarchy calls forward. `Name` is a string (Friflo's `EntityName` component underneath); `Components` lists them for tools |
+| `IComponent`, `ITag` | `IComponent`, `ITag` | Sage's **extend** Friflo's (below) |
+| `Query`, `Query<T1..T5>` | `ArchetypeQuery…` | `Chunks` (`Chunk<T>.Span`, `ChunkEntities.EntityAt`), `Entities`, `Count`, `AllTags`/`AnyTags`/`WithoutAllTags`/`WithoutAnyTags`, `WithoutComponent<T>()` |
+| `Tags` | `Tags` | `Tags.Get<T…>()`, `Has`, `HasAll`, `HasAny`; enumerates tag types |
+| `EntityCommands` | `CommandBuffer` | `world.Commands` / `ctx.Commands`: `Add`, `Remove`, `AddTag`, `RemoveTag`, `SetParent`, `Destroy` |
+
+- **Zero cost.** Each type is a struct holding the Friflo value (or, for a query, the reference) and
+  forwarding to it, inlined; the chunk loop is the same loop. Measured with the scale run of
+  [scale-2026-09-24](../history/scale-2026-09-24.md) (Sandbox + `scale_spawn 2000 tree`, Development,
+  Linux, 4 CPUs), before and after built side by side and run interleaved, medians of five runs:
+
+  | | before | after |
+  |---|---|---|
+  | Fixed.TransformPropagation | 0.011 ms | 0.011 ms |
+  | Fixed.PrePhysics (CharacterMovementSystem) | 0.012 ms | 0.014 ms |
+  | Fixed.Gameplay | 0.015 ms | 0.015 ms |
+  | Fixed.Physics | 0.099 ms | 0.101 ms |
+  | Frame.Extract | 0.289 ms | 0.284 ms |
+  | `scale_spawn 2000 tree`, cold / warm | 19 / 11 ms | 18.5 / 10 ms |
+
+  Every difference is inside the run-to-run spread, and the allocation tests (a whole tick allocates
+  nothing) pass unchanged.
+- **Why Sage's `IComponent` extends Friflo's.** Friflo finds components by scanning loaded assemblies for
+  its own interface, and every generic call into it is constrained on it. A marker that did not extend
+  it would need a boxing or reflective bridge on every call. The cost: Friflo's assembly is a
+  compile-time reference of every game (a derived interface needs its base to compile), so "Friflo is
+  private" is enforced as *nobody names it*: no `Friflo.*` type in a public signature of the base
+  (test: NoPublicTypeInTheBaseEngineExposesFriflo) (test: NoPublicTypeInTheClientExposesFriflo), and
+  SAGE0050 for a Friflo type or namespace written anywhere but `Sage.Simulation`
+  (test: NamingFrifloOutsideTheEcsImplementationIsABuildError). The schema scan still finds the same 45
+  components and 7 tags for the Sandbox (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
+- **Inside `Sage.Simulation`**, the implementation (`World`, `ComponentSchema`, the save serializer,
+  `EcsSchema`) names Friflo as `F.` (`using F = Friflo.Engine.ECS;`). `ComponentSchema` answers in
+  `System.Type` (`TryComponent`, `TryResolveComponent`, `Add`, `Write`, `Read`, `AddTag`) rather than
+  Friflo's `ComponentType`/`TagType`.
+- **Three "commands", three names:** `EntityCommands` (this), `ConsoleCommand` (the console;
+  `WorldConsoleCommands` and `ScaleConsoleCommands` register them) and `PlayerCommand` (input).
+- **Unchanged:** component ids, saves (the golden saves load), prefabs, the registry dump, the JSON Schemas.
+- `tools/migrate_ecs_api.py` rewrites code written against the old names (idempotent; it is how the
+  engine and games were migrated).
 
 The rest of this doc is written against the `World` API.
 
 ### 3.2 Components
 - **Plain data**, preferably structs. No methods beyond small pure helpers, no references to services, no `Entity` object references. Use `EntityRef` for links to other entities.
 - One component type per entity (archetype storage enforces it; `World.Add` refuses a second one; review item #13).
-- **Tags** (Friflo `ITag` structs, stored in the archetype, not as components) are for rarely changing classification (`IsPlayer`, `Static`). State that flips often (stunned, burning, open/closed) is a **field**, because adding or removing a component moves the entity between archetypes (Mertens).
+- **Tags** (`ITag` structs, stored in the archetype, not as components) are for rarely changing classification (`IsPlayer`, `Static`). State that flips often (stunned, burning, open/closed) is a **field**, because adding or removing a component moves the entity between archetypes (Mertens).
 - Math helpers such as `LookAt`/`Billboard` live in the static `TransformMath` class (done in step 3). The component stays data (TODO R4).
-- **Names** use Friflo's built-in `EntityName` component (`World.Create("bunny")` adds it).
+- **Names** are `entity.Name`, a string (`World.Create("bunny")` sets it); underneath it is Friflo's built-in `EntityName` component.
 
 ### As built (component ids, issue #16, 2026-09-28)
 - **Every component and tag has a stable id**, `[Component("sage:ai_state")]` / `[Tag("sage:player_controlled")]`:
@@ -102,7 +152,7 @@ The rest of this doc is written against the `World` API.
 ### 3.3 Entity identity
 | Type | What | Lifetime |
 |---|---|---|
-| `EntityRef` | Runtime handle. **Realised as Friflo's `Entity` struct** (store + id + revision); code uses the type `Entity`. `IsNull` / `World.IsAlive` detect deleted entities | One world, one session |
+| `EntityRef` | Runtime handle. **Realised as Sage's `Entity` struct** over Friflo's (store + id + revision; issue #25); code uses the type `Entity`. `IsNull` / `World.IsAlive` detect deleted entities | One world, one session |
 | `PersistentId` | 128-bit id (GUID) stored in a `Persistent` component | Forever. Assigned when the entity is placed in a map, or when a runtime-spawned entity is marked persistent (dropped items, recruited NPCs). Entities without it are never saved (09 §3.5) |
 
 `World.Resolve(PersistentId)` maps back to an `EntityRef` through an index maintained by structural notifications.
@@ -194,7 +244,7 @@ everything queued *and empties the queue in one step*, so there is no clear to f
 run the same work twice. Work added while draining waits for the next drain, which is the difference
 between "runs later" and "runs forever". Melee hits, interactions and deaths all use it.
 
-It is not the `CommandBuffer`: that defers *component* changes and the world plays it back at the end
+It is not `EntityCommands`: that defers *structural* changes and the world plays them back at the end
 of every phase. This defers a system's own work, with its own data, to a point the system chooses.
 
 **`PhaseContracts`** (`src/Sage.Simulation/ECS/Systems/PhaseContracts.cs`). `before:`/`after:` fixes the
@@ -238,7 +288,7 @@ came to read +Z as "front" while everything else read -Z (review #43): don't.
 |---|---|---|
 | `Transform` | `Vector3 LocalPosition`, `Quaternion LocalRotation`, `Vector3 LocalScale` (relative to the parent, or to the entity's sector if it's a root) | gameplay, physics sync |
 | `SectorCoord` | `int X, Z`: a 1024 m sector of the world, keyed absolutely (14). **As built (2026-09-24, R6):** roots are relative to the world's **origin sector** rather than carrying a sector each — `Origin` holds it for the whole world and `world.Rebase` moves everything at once, which is cheaper than a per-entity sector and gives the same precision. A per-entity `SectorCoord` returns if entities ever need to exist outside the loaded rings | `Origin`, streaming |
-| `Parent` / `Children` | Friflo's built-in hierarchy (`Entity.Parent`, `Entity.ChildEntities`) | `World.SetParent` / `ClearParent` only |
+| `Parent` / `Children` | Friflo's built-in hierarchy, as `Entity.Parent` and `Entity.ChildEntities` | `World.SetParent` / `ClearParent` only |
 | `GlobalTransform` | `Pose Current`, `Pose Previous` (a `Pose` is position + rotation + scale), relative to the world's **origin sector** (today: the origin) | transform propagation only |
 
 - **Transform propagation** (built in step 4, `ECS/Systems/TransformPropagation.cs`) is run by `World` itself at the end of `PostPhysics` and `Late`, not registered as a user system. It walks roots → children and computes `GlobalTransform.Current` (relative to `world.Resources.Get<Origin>().Sector` once sectors exist). At the start of each tick, before `Commands`, `Current` is copied to `Previous`, so rendering can interpolate (06). This replaced the old stub `TransformSystem` (TODO #35).
@@ -261,8 +311,8 @@ public sealed class World : IDisposable
     public WorldResources Resources { get; }
     public int EntityCount { get; }
 
-    // Entities (Friflo `Entity` handles)
-    public Entity Create(string? name = null);                    // identity Transform + GlobalTransform (+ EntityName)
+    // Entities (Sage `Entity` handles, issue #25)
+    public Entity Create(string? name = null);                    // identity Transform + GlobalTransform (+ its Name)
     public Entity Create(in Transform transform, string? name = null);
     public void Destroy(Entity e);                                // immediate; inside a query loop use Commands
     public bool IsAlive(Entity e);                                // false for deleted/stale handles and other worlds' entities
@@ -281,12 +331,12 @@ public sealed class World : IDisposable
     public void SetParent(Entity child, Entity parent);
     public void ClearParent(Entity child);
 
-    // Queries: Friflo's own types, returned as-is. Cache them; iterate .Chunks in hot paths.
-    public ArchetypeQuery<T1> Query<T1>();   /* also <T1,T2> and <T1,T2,T3> */
-    public ArchetypeQuery QueryAll();
+    // Queries: Sage structs over Friflo's (§3.1a). Cache them; iterate .Chunks in hot paths.
+    public Query<T1> Query<T1>();   /* up to <T1,T2,T3,T4,T5> */
+    public Query QueryAll();
 
-    // Deferred structural changes (Friflo CommandBuffer, reused). Applied at the end of every phase.
-    public CommandBuffer Commands { get; }
+    // Deferred structural changes (over Friflo's CommandBuffer, reused). Applied at the end of every phase.
+    public EntityCommands Commands { get; }
     public void FlushCommands();
 
     // Structural notifications (04 §3.3), immediate, on the world's thread.
@@ -318,11 +368,11 @@ public readonly ref struct SystemContext
     public Phase Phase { get; }
     public TickTime Tick { get; }              // Fixed schedule (the last tick, in Frame phases)
     public FrameTime Frame { get; }            // Frame schedule: Dt, Alpha (interpolation), Frame, RealTime
-    public CommandBuffer Commands { get; }     // structural changes, applied at the end of the phase
+    public EntityCommands Commands { get; }    // structural changes, applied at the end of the phase
 }
 
-// CommandBuffer is Friflo's (CreateEntity, DeleteEntity(id), AddComponent<T>(id, c), RemoveComponent<T>(id),
-// AddChild, Playback). Prefab spawning (`Spawn(RecordId prefab, …)`) is added on top with records (05, step 5).
+// EntityCommands: Add<T>(e, c), Remove<T>(e), AddTag<T>(e), RemoveTag<T>(e), SetParent(child, parent),
+// Destroy(e). Prefab spawning (`Spawn(RecordId prefab, …)`) is added on top with records (05, step 5).
 ```
 
 Example system:
@@ -342,7 +392,7 @@ Note: making sprites face the camera (today's per-frame `Billboard` call in `Gam
 
 ## 5. Lifecycle
 ```
-Create ──► EntitySpawned ──► ComponentAdded (Transform, EntityName, …) ──► visible to queries
+Create ──► EntitySpawned ──► ComponentAdded (Transform, GlobalTransform, the name, …) ──► visible to queries
 Destroy ─► ComponentRemoved for each component ──► EntityDestroyed ──► slot freed; old handles report IsNull
 (Commands.* record instead; the same notifications fire at FlushCommands.)
 ```

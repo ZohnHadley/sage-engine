@@ -11,7 +11,7 @@
 
   <!-- Every game file sees the engine's namespaces, the ECS included: Entity, IComponent, ITag, Tags,
        Query<…> and EntityCommands are Sage.Simulation's (issue #25). A game never names Friflo, the
-       storage underneath. -->
+       storage underneath: that is SAGE0050. -->
   <ItemGroup>
     <Using Include="Sage.Core" />
     <Using Include="Sage.Simulation" />
@@ -38,7 +38,8 @@
 
   <!-- Project switches the Sage analyzers read (issue #19): SageSimulationOnly=true makes a MonoGame
        type an error (SAGE0024); SageStrictSaves=true asks every public component field for a
-       [Property] or [Transient] decision (SAGE0023, off by default). -->
+       [Property] or [Transient] decision (SAGE0023, off by default). SAGE0050 (naming Friflo) is always
+       on for a game: SageEcsImplementation is the engine's own switch. -->
   <ItemGroup Condition="'$(SageGenerators)' != 'false'">
     <CompilerVisibleProperty Include="SageSimulationOnly" />
     <CompilerVisibleProperty Include="SageStrictSaves" />

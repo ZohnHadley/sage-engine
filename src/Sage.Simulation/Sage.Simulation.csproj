@@ -9,13 +9,17 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <SageBaseAssembly>true</SageBaseAssembly>
+    <!-- The one project that may name Friflo (SAGE0050, issue #25): it implements Sage's ECS vocabulary
+         over it, in ECS/Api and World, behind `using F = Friflo.Engine.ECS;`. -->
+    <SageEcsImplementation>true</SageEcsImplementation>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- ECS storage (decision D4; spike results in docs/design/03 §3.1), under Sage's own types: Entity,
          IComponent, ITag, Tags, Query<…>, EntityCommands (ECS/Api, issue #25). Its compile assets still
          flow to every project above, because Sage's IComponent extends Friflo's (the schema scan and
-         the generic constraints need it) and a derived interface needs its base to compile. -->
+         the generic constraints need it) and a derived interface needs its base to compile; SAGE0050
+         is what keeps them from naming it. -->
     <PackageReference Include="Friflo.Engine.ECS" />
   </ItemGroup>
 

@@ -29,10 +29,13 @@
   <!-- Project switches the Sage analyzers read (issue #19): SageSimulationOnly=true makes a MonoGame
        type an error (SAGE0024); SageStrictSaves=true asks every public component field for a
        [Property] or [Transient] decision (SAGE0023, off by default); SageBaseAssembly=true (the base
-       engine's projects) makes a reference to a Sage.Kits.* assembly an error (SAGE0025, issue #24). -->
+       engine's projects) makes a reference to a Sage.Kits.* assembly an error (SAGE0025, issue #24);
+       SageEcsImplementation=true (Sage.Simulation only) lets a project name Friflo, which is otherwise
+       an error (SAGE0050, issue #25). -->
   <ItemGroup Condition="'$(SageGenerators)' != 'false'">
     <CompilerVisibleProperty Include="SageSimulationOnly" />
     <CompilerVisibleProperty Include="SageStrictSaves" />
     <CompilerVisibleProperty Include="SageBaseAssembly" />
+    <CompilerVisibleProperty Include="SageEcsImplementation" />
   </ItemGroup>
 </Project>

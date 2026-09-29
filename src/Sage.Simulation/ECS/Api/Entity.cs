@@ -20,8 +20,8 @@ namespace Sage.Simulation;
 // (an assembly implementing Sage's IComponent also references Friflo's, which is what the scan checks),
 // and the generic calls forward unchanged. The price is that Friflo's assembly is a compile-time
 // reference of every game (a derived interface needs its base), so "Friflo is private" means: no
-// `Friflo.*` type in any public signature of the base, and no `using Friflo` for games
-// (games/Directory.Build.props).
+// `Friflo.*` type in any public signature of the base (PublicApiTests), no `using Friflo` for games
+// (games/Directory.Build.props), and SAGE0050 for any Friflo name written outside Sage.Simulation.
 
 // A component: a struct of data on an entity. Declare it with a stable id:
 //     [Component("mygame:health")] public struct Health : IComponent { public float Value; }
