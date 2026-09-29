@@ -3,7 +3,7 @@
   // everything below is `hello:something`.
   "name": "Hello",
   "id": "hello",
-  "assembly": "bin/{config}/net8.0/Hello.dll",
+  "assembly": "bin/{config}/Hello.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",
   // The scene every world starts in: `hello:main`, in content/data/hello.json. It says where the player

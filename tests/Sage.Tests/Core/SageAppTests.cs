@@ -102,10 +102,10 @@ public class SageAppTests
     public void ADisabledModuleThatDoesNotExistIsReported()
     {
         // Hello's own assembly, so the manifest is valid; the point is the `disable` list.
-        string hello = Path.Combine(RepoRoot(), "games", "Hello").Replace('\\', '/');
+        string hello = typeof(Hello.HelloModule).Assembly.Location.Replace('\\', '/');
         string dir = TestEnv.NewTempDir();
         File.WriteAllText(Path.Combine(dir, "game.json"), $$"""
-            { "name": "Typo", "id": "typo", "assembly": "{{hello}}/bin/{config}/net8.0/Hello.dll", "mounts": [],
+            { "name": "Typo", "id": "typo", "assembly": "{{hello}}", "mounts": [],
               "modules": { "disable": ["LightModule", "AIModule"] } }
             """);
         var manifest = GameManifest.Load(dir);
@@ -253,10 +253,10 @@ public class SageAppTests
     [Fact]
     public void AGameModuleUnderModulesAddIsReported()
     {
-        string hello = Path.Combine(RepoRoot(), "games", "Hello").Replace('\\', '/');
+        string hello = typeof(Hello.HelloModule).Assembly.Location.Replace('\\', '/');
         string dir = TestEnv.NewTempDir();
         File.WriteAllText(Path.Combine(dir, "game.json"), $$"""
-            { "name": "Mixed up", "id": "mixedup", "modules": { "add": ["{{hello}}/bin/{config}/net8.0/Hello.dll"] } }
+            { "name": "Mixed up", "id": "mixedup", "modules": { "add": ["{{hello}}"] } }
             """);
 
         using var sink = new CaptureSink();

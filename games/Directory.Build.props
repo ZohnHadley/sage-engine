@@ -1,9 +1,13 @@
 <Project>
-  <!-- Shared settings for game projects under games/. -->
+  <!--
+    Shared settings for game projects under games/ that are not built with Sage.Sdk yet (the Sandbox and
+    its client half). A game on the SDK (games/Hello, issue #32) gets all of this from the SDK instead, so
+    everything below the repository-wide settings is skipped for it.
+  -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
-  <Import Project="..\build\Sage.Configurations.props" />
+  <Import Project="..\build\Sage.Configurations.props" Condition="'$(UsingSageSdk)' != 'true'" />
 
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(UsingSageSdk)' != 'true'">
     <TargetFramework>net8.0</TargetFramework>
     <RollForward>Major</RollForward>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -12,7 +16,7 @@
   <!-- Every game file sees the engine's namespaces, the ECS included: Entity, IComponent, ITag, Tags,
        Query<…> and EntityCommands are Sage.Simulation's (issue #25). A game never names Friflo, the
        storage underneath: that is SAGE0050. -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(UsingSageSdk)' != 'true'">
     <Using Include="Sage.Core" />
     <Using Include="Sage.Simulation" />
     <Using Include="Sage.Physics3D" />
@@ -22,7 +26,7 @@
   <!-- The base engine, compile-time only (Private=false): at run time the host's own copies are used,
        so a game's bin holds its own dll and nothing else. All four by name, because a transitive
        reference would be copied (issue #24). A game's client half adds Sage.Client itself. -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(UsingSageSdk)' != 'true'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Core\Sage.Core.csproj" Private="false" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Simulation\Sage.Simulation.csproj" Private="false" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Physics3D\Sage.Physics3D.csproj" Private="false" />
@@ -31,7 +35,7 @@
 
   <!-- The declarations generator (issue #16): a game's [Record] types register themselves, and its
        components and tags get their id table ([Component] / [Tag]). -->
-  <ItemGroup Condition="'$(SageGenerators)' != 'false'">
+  <ItemGroup Condition="'$(SageGenerators)' != 'false' And '$(UsingSageSdk)' != 'true'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Generators\Sage.Generators.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
@@ -40,7 +44,7 @@
        type an error (SAGE0024); SageStrictSaves=true asks every public component field for a
        [Property] or [Transient] decision (SAGE0023, off by default). SAGE0050 (naming Friflo) is always
        on for a game: SageEcsImplementation is the engine's own switch. -->
-  <ItemGroup Condition="'$(SageGenerators)' != 'false'">
+  <ItemGroup Condition="'$(SageGenerators)' != 'false' And '$(UsingSageSdk)' != 'true'">
     <CompilerVisibleProperty Include="SageSimulationOnly" />
     <CompilerVisibleProperty Include="SageStrictSaves" />
   </ItemGroup>

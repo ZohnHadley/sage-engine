@@ -1,24 +1,22 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project>
   <!--
     The smallest game this engine can run (docs/MAKING_A_GAME.md §4). It exists to be read and copied,
     and it is in the solution so that it cannot quietly stop working: an example nobody builds rots, and
     a rotted example is worse than none.
 
-    A plain library, like any game. Everything else a game project needs — net8.0, the three build
-    configurations, the engine references (compile-time only: at run time the host's own copies are
-    used), and the global usings including the `Transform` alias — comes from
-    games/Directory.Build.props, which is why this file is four lines long.
+    Built with Sage.Sdk (issue #32), like a game outside this repository: net8.0, the three build
+    configurations, the engine references (compile-time only), the global usings, the analyzers, the
+    game.json check and `dotnet run` all come from the SDK. Outside the repository the two imports are one
+    attribute, <Project Sdk="Sage.Sdk/0.1.0">; here the SDK comes from its source (sdk/Sage.Sdk), which
+    MSBuild can only import by path, and the engine from src/.
   -->
+  <Import Project="..\..\sdk\Sage.Sdk\Sdk\Sdk.props" />
+
   <PropertyGroup>
-    <OutputType>Library</OutputType>
     <RootNamespace>Hello</RootNamespace>
     <!-- The simulation half: a MonoGame type here is a build error (SAGE0024). -->
     <SageSimulationOnly>true</SageSimulationOnly>
-    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="game.json" />
-    <None Include="content\**\*" />
-  </ItemGroup>
+  <Import Project="..\..\sdk\Sage.Sdk\Sdk\Sdk.targets" />
 </Project>

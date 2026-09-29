@@ -1,0 +1,197 @@
+<Project>
+  <!--
+    Sage.Sdk, second half (issue #32): the engine references, the analyzers, shaders, the game.json check,
+    `dotnet run` and `SageValidate`. Sdk.props says how the package and the source tree differ.
+
+    Switches a game project sets:
+      SageSimulationOnly=true   the simulation half: the base engine only, and a MonoGame type is a build
+                                error (SAGE0024). Otherwise the project is a client half and gets
+                                Sage.Client and MonoGame as well.
+      SageDataOnly=true         a game with no C# (sage-game-data): no engine references, no compile
+                                items; the project exists so that `dotnet run` and SageValidate work.
+      SageStrictSaves=true      every public component field needs [Property] or [Transient] (SAGE0023).
+      SageGenerators=false      no Sage generators or analyzers (not recommended: [Record] and friends
+                                register nothing without them).
+      SageSkipShaders=true      do not compile .fx files (mgfxc needs Wine on Linux, MGFXC0001).
+      SageGameDirectory         the game folder `dotnet run` passes as -game; default: this project's
+                                folder when it has a game.json.
+    SDK diagnostics are SAGE0110-0119 (docs/MAKING_A_GAME.md §10a).
+  -->
+  <PropertyGroup>
+    <SageSimulationOnly Condition="'$(SageSimulationOnly)' == ''">false</SageSimulationOnly>
+    <SageEngineReferences Condition="'$(SageEngineReferences)' == '' And '$(SageDataOnly)' == 'true'">false</SageEngineReferences>
+    <EnableDefaultCompileItems Condition="'$(SageDataOnly)' == 'true'">false</EnableDefaultCompileItems>
+    <SageGameDirectory Condition="'$(SageGameDirectory)' == '' And Exists('$(MSBuildProjectDirectory)\game.json')">$(MSBuildProjectDirectory)</SageGameDirectory>
+    <SageGameDirectory Condition="'$(SageGameDirectory)' != ''">$([System.IO.Path]::GetFullPath('$(SageGameDirectory)').TrimEnd('\').TrimEnd('/'))</SageGameDirectory>
+
+    <!-- Where the host and the `sage` CLI are: the Player package's folder for this configuration, or
+         this repository's build output. The package's also holds the engine a game compiles against. -->
+    <SageHostDirectory Condition="'$(SageSdkFromPackage)' == 'true'">$(PkgSage_Player)\host\$(Configuration)\</SageHostDirectory>
+    <SageCliDirectory Condition="'$(SageSdkFromPackage)' == 'true'">$(SageHostDirectory)</SageCliDirectory>
+    <SageHostDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Host\bin\$(Configuration)\net8.0\</SageHostDirectory>
+    <SageCliDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Cli\bin\$(Configuration)\net8.0\</SageCliDirectory>
+    <!-- Run through `dotnet`, not the apphost: a NuGet package does not keep a file's executable bit. -->
+    <SageDotnet Condition="'$(SageDotnet)' == ''">$(DOTNET_HOST_PATH)</SageDotnet>
+    <SageDotnet Condition="'$(SageDotnet)' == ''">dotnet</SageDotnet>
+  </PropertyGroup>
+
+  <!-- The engine's namespaces, in every file. The ECS is Sage.Simulation's (Entity, IComponent, Query<…>);
+       naming Friflo, the storage underneath, is SAGE0050. -->
+  <ItemGroup Condition="'$(SageEngineReferences)' != 'false'">
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Physics3D" />
+    <Using Include="Sage.Gameplay" />
+    <Using Include="Sage.Client" Condition="'$(SageSimulationOnly)' != 'true'" />
+  </ItemGroup>
+
+  <!-- The engine from source (this repository), compile-time only (Private=false): at run time the host's
+       own copies are used, so a game's bin/ holds its own dll. Every assembly by name, because a
+       transitive reference would be copied (issue #24). -->
+  <ItemGroup Condition="'$(SageSdkFromPackage)' != 'true' And '$(SageEngineReferences)' != 'false'">
+    <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Core\Sage.Core.csproj" Private="false" />
+    <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Simulation\Sage.Simulation.csproj" Private="false" />
+    <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Physics3D\Sage.Physics3D.csproj" Private="false" />
+    <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Gameplay\Sage.Gameplay.csproj" Private="false" />
+    <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Client\Sage.Client.csproj" Private="false"
+                      Condition="'$(SageSimulationOnly)' != 'true'" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SageSdkFromPackage)' != 'true' And '$(SageGenerators)' != 'false' And '$(SageEngineReferences)' != 'false'">
+    <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Generators\Sage.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- The engine from the Sage.Player package of this SDK's version: restored like any package, never
+       copied (nothing of it reaches bin/), and the host folder of this configuration is referenced
+       directly, so the game compiles against exactly the assemblies that will run it. IsImplicitlyDefined
+       lets it through central package management. -->
+  <ItemGroup Condition="'$(SageSdkFromPackage)' == 'true'">
+    <PackageReference Include="Sage.Player" Version="$(SageVersion)" IsImplicitlyDefined="true"
+                      PrivateAssets="all" ExcludeAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SageSdkFromPackage)' == 'true' And '$(SageEngineReferences)' != 'false' And '$(PkgSage_Player)' != ''">
+    <Reference Include="$(SageHostDirectory)Sage.Core.dll" Private="false" />
+    <Reference Include="$(SageHostDirectory)Sage.Simulation.dll" Private="false" />
+    <Reference Include="$(SageHostDirectory)Sage.Physics3D.dll" Private="false" />
+    <Reference Include="$(SageHostDirectory)Sage.Gameplay.dll" Private="false" />
+    <Reference Include="$(SageHostDirectory)Friflo.*.dll;$(SageHostDirectory)Bepu*.dll" Private="false" />
+    <Reference Include="$(SageHostDirectory)Sage.Client.dll;$(SageHostDirectory)MonoGame.Framework.dll;$(SageHostDirectory)SharpGLTF.Core.dll;$(SageHostDirectory)NVorbis.dll"
+               Private="false" Condition="'$(SageSimulationOnly)' != 'true'" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SageSdkFromPackage)' == 'true' And '$(SageGenerators)' != 'false' And '$(SageEngineReferences)' != 'false'">
+    <Analyzer Include="$(MSBuildThisFileDirectory)..\analyzers\dotnet\cs\Sage.Generators.dll" />
+  </ItemGroup>
+
+  <!-- Project switches the Sage analyzers read (issue #19): SageSimulationOnly (SAGE0024) and
+       SageStrictSaves (SAGE0023). SAGE0050 is always on for a game: SageEcsImplementation is the engine's. -->
+  <ItemGroup Condition="'$(SageGenerators)' != 'false'">
+    <CompilerVisibleProperty Include="SageSimulationOnly" />
+    <CompilerVisibleProperty Include="SageStrictSaves" />
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <!-- `dotnet run`: the Player host with -game <this game>; whatever follows the double dash goes to the host too (+commands). -->
+  <PropertyGroup Condition="'$(SageGameDirectory)' != ''">
+    <RunCommand>$(SageDotnet)</RunCommand>
+    <RunArguments>"$(SageHostDirectory)Sage.Host.dll" -game "$(SageGameDirectory)"</RunArguments>
+    <RunWorkingDirectory>$(MSBuildProjectDirectory)</RunWorkingDirectory>
+  </PropertyGroup>
+
+  <Target Name="SageCheckHost" BeforeTargets="ComputeRunArguments;Run" Condition="'$(SageGameDirectory)' != ''">
+    <Error Code="SAGE0112" Condition="!Exists('$(SageHostDirectory)Sage.Host.dll') And '$(SageSdkFromPackage)' == 'true'"
+           Text="The Sage.Player package has no '$(Configuration)' host (it has Debug, Development and Shipping; build Release as -c Shipping). Looked in $(SageHostDirectory)" />
+    <Error Code="SAGE0112" Condition="!Exists('$(SageHostDirectory)Sage.Host.dll') And '$(SageSdkFromPackage)' != 'true'"
+           Text="The host is not built in $(Configuration): dotnet build src/Sage.Host -c $(Configuration) (looked for $(SageHostDirectory)Sage.Host.dll)" />
+  </Target>
+
+  <!-- The engine compiled against must exist, or every engine type is an unexplained CS0246. -->
+  <Target Name="SageCheckEngine" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(SageSdkFromPackage)' == 'true' And '$(SageEngineReferences)' != 'false'">
+    <Error Code="SAGE0112" Condition="!Exists('$(SageHostDirectory)Sage.Core.dll')"
+           Text="The Sage.Player $(SageVersion) package has no '$(Configuration)' engine to compile against (it has Debug, Development and Shipping; build Release as -c Shipping). Looked in '$(SageHostDirectory)'." />
+  </Target>
+
+  <!--
+    game.json has to load what this build writes (SAGE0110, SAGE0111). The manifest stays hand-written —
+    it is what the host, `sage validate` and `sage schema` read — and the SDK decides where the dll goes
+    (bin/<config>/Name.dll), so this checks the two agree: every "assembly" and "modules.add" path exists
+    after the build, with {config} as this configuration, and this project's own dll is one of them. The
+    manifest is read the way tools/smoke_run.sh reads it (comments dropped, keys matched), which is enough
+    for the two keys that hold paths.
+  -->
+  <Target Name="SageCheckGameManifest" AfterTargets="Build"
+          Condition="'$(SageGameDirectory)' != '' And '$(SageCheckGameManifest)' != 'false' And Exists('$(SageGameDirectory)\game.json')">
+    <PropertyGroup>
+      <_SageManifestFile>$(SageGameDirectory)\game.json</_SageManifestFile>
+      <_SageManifest>$([System.IO.File]::ReadAllText('$(_SageManifestFile)'))</_SageManifest>
+      <_SageManifest>$([System.Text.RegularExpressions.Regex]::Replace($(_SageManifest), '(?s)/\*.*?\*/|//[^\n]*', ''))</_SageManifest>
+      <_SageNamedAssembly>$([System.Text.RegularExpressions.Regex]::Match($(_SageManifest), '"assembly"\s*:\s*"[^"]*"'))</_SageNamedAssembly>
+      <_SageNamedAssembly>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedAssembly), '^"assembly"\s*:\s*"|"$', ''))</_SageNamedAssembly>
+      <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Match($(_SageManifest), '"add"\s*:\s*\[[^\]]*\]'))</_SageNamedModules>
+      <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedModules), '^"add"\s*:\s*\[|\]$', ''))</_SageNamedModules>
+      <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedModules), '\s*"([^"]*)"\s*,?', '$1;'))</_SageNamedModules>
+      <_SageOwnPath>$([MSBuild]::MakeRelative('$(SageGameDirectory)\', '$(TargetPath)').Replace('\', '/'))</_SageOwnPath>
+      <_SageOwnPath>$([System.Text.RegularExpressions.Regex]::Replace('$(_SageOwnPath)', '(^|/)$(Configuration)/', '$1{config}/'))</_SageOwnPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <_SageNamed Include="$(_SageNamedAssembly)" Condition="'$(_SageNamedAssembly)' != ''" />
+      <_SageNamed Include="$([MSBuild]::Unescape($(_SageNamedModules)))" />
+      <_SageLoaded Include="$([System.IO.Path]::Combine('$(SageGameDirectory)', '%(_SageNamed.Identity)').Replace('{config}', '$(Configuration)'))">
+        <Named>%(_SageNamed.Identity)</Named>
+      </_SageLoaded>
+      <_SageLoadsThis Include="@(_SageLoaded)" Condition="'%(FullPath)' == '$(TargetPath)'" />
+    </ItemGroup>
+    <Error Code="SAGE0110" File="$(_SageManifestFile)" Condition="!Exists('%(_SageLoaded.FullPath)')"
+           Text="game.json loads &quot;%(_SageLoaded.Named)&quot;, which this build did not write (no %(_SageLoaded.FullPath)). Sage.Sdk builds a game to bin/{config}/Name.dll, with no target framework in the path." />
+    <Error Code="SAGE0111" File="$(_SageManifestFile)" Condition="'$(SageDataOnly)' != 'true' And '@(_SageLoadsThis)' == ''"
+           Text="game.json does not load this project's $(TargetFileName): name &quot;$(_SageOwnPath)&quot; as its &quot;assembly&quot; (the simulation half) or in &quot;modules&quot;: { &quot;add&quot; } (a client half)." />
+  </Target>
+
+  <!--
+    The game's own shaders (07 §3.1): every .fx in the project is compiled with dotnet-mgfxc to an .mgfxo
+    beside it, so it lands in the content folder the game mounts and records name it as
+    "shaders/name.mgfxo" (and hot reload picks up a rebuild). A change to any .fx or .fxh recompiles them
+    all; `dotnet clean` deletes the outputs. mgfxc is a local dotnet tool, pinned in the game's
+    .config/dotnet-tools.json (the templates have one). SageSkipShaders=true skips it all.
+  -->
+  <PropertyGroup>
+    <SageShaderCompiler Condition="'$(SageShaderCompiler)' == ''">dotnet mgfxc</SageShaderCompiler>
+    <SageShaderProfile Condition="'$(SageShaderProfile)' == ''">OpenGL</SageShaderProfile>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(SageSkipShaders)' != 'true'">
+    <SageShader Include="**\*.fx" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <SageShaderInclude Include="**\*.fxh" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <Target Name="SageRestoreShaderTools" BeforeTargets="SageCompileGameShaders"
+          Condition="'$(SageSkipShaders)' != 'true' And '@(SageShader)' != '' And '$(SageShaderCompiler)' == 'dotnet mgfxc'">
+    <PropertyGroup>
+      <_SageToolManifest>$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildProjectDirectory)', '.config/dotnet-tools.json'))</_SageToolManifest>
+    </PropertyGroup>
+    <Error Code="SAGE0113" Condition="'$(_SageToolManifest)' == ''"
+           Text="This game has shaders (@(SageShader->'%(Filename)%(Extension)', ', ')) but no local mgfxc: run `dotnet new tool-manifest` and `dotnet tool install dotnet-mgfxc --version 3.8.5.1` in the game folder, or build with -p:SageSkipShaders=true." />
+    <Exec Command="dotnet tool restore" WorkingDirectory="$(MSBuildProjectDirectory)" StandardOutputImportance="low" />
+  </Target>
+
+  <Target Name="SageCompileGameShaders" BeforeTargets="CopyFilesToOutputDirectory"
+          Condition="'$(SageSkipShaders)' != 'true' And '@(SageShader)' != ''"
+          Inputs="@(SageShader);@(SageShaderInclude)"
+          Outputs="@(SageShader->'%(RootDir)%(Directory)%(Filename).mgfxo')">
+    <Exec Command="$(SageShaderCompiler) &quot;%(SageShader.FullPath)&quot; &quot;%(SageShader.RootDir)%(SageShader.Directory)%(SageShader.Filename).mgfxo&quot; /Profile:$(SageShaderProfile)"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+
+  <!-- The outputs are in the content folder, not bin/ or obj/, which is all `dotnet clean` deletes by itself. -->
+  <Target Name="SageCleanGameShaders" AfterTargets="Clean" Condition="'@(SageShader)' != ''">
+    <Delete Files="@(SageShader->'%(RootDir)%(Directory)%(Filename).mgfxo')" />
+  </Target>
+
+  <!-- `dotnet msbuild -t:SageValidate`: this game's content through `sage validate` (issue #22), with the
+       CLI of this configuration, so it loads the dll this configuration built. Build first. -->
+  <Target Name="SageValidate" Condition="'$(SageGameDirectory)' != ''">
+    <Error Code="SAGE0112" Condition="!Exists('$(SageCliDirectory)sage.dll')"
+           Text="No `sage` CLI for $(Configuration) in $(SageCliDirectory) (in this repository: dotnet build src/Sage.Cli -c $(Configuration))." />
+    <Exec Command="&quot;$(SageDotnet)&quot; &quot;$(SageCliDirectory)sage.dll&quot; validate &quot;$(SageGameDirectory)&quot;" />
+  </Target>
+</Project>
