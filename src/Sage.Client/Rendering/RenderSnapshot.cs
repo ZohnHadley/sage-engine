@@ -33,7 +33,12 @@ internal sealed class PooledList<T> : IPooledList
     public Span<T> AsSpan() => _items.AsSpan(0, Count);
 }
 
-// One camera's view of the frame (06 §3.2), camera-relative: View has no translation (06 §3.3).
+// One camera's view of the frame (06 §3.2), camera-relative: View has no translation (06 §3.3). A value
+// type, so a render thread (later) can be handed a copy.
+//
+// Several per frame (issue #77): the main view, a split-screen partner, a minimap or a mirror drawing
+// into a named render target. Extract writes one of each entity's items and sprites *per view*, tagged
+// with the view's index; the renderer groups them (`RenderViewPlan`) and fills the ranges below.
 internal struct RenderView
 {
     public Matrix View;
@@ -42,6 +47,21 @@ internal struct RenderView
     public Vector3 CameraPosition;   // origin space (what Extract subtracted)
     public Vector3 Forward;
     public float Near, Far;
+
+    public int Target;               // RenderViewPlan.Screen (the back buffer) or a Renderer target id
+    public Rectangle Viewport;       // pixels in the target
+    public bool FullTarget;          // the viewport is the whole target: its clear is the target's
+    public int Order;                // within a target, lower draws first (06 §3.4 "Views")
+
+    // Written during extract: lights and debug lines are added by one system each, a view at a time,
+    // so each view's are contiguous.
+    public int LightStart, LightCount;
+    public int DebugStart, DebugCount;   // vertices (pairs)
+    public int Culled;
+
+    // Written by the renderer when it plans the frame: this view's run in the sorted order arrays.
+    public int ItemStart, ItemCount;
+    public int SpriteStart, SpriteCount;
 }
 
 // Frame-tier lighting/fog/sky parameters (06 §3.9, 07 §3.4), copied from RenderEnvironment at extract.
@@ -66,13 +86,17 @@ internal struct RenderItem
     public Matrix World;       // camera-relative
     public Vector4 Tint;
     public ulong SortKey;
+    public int View;           // index into RenderSnapshot.Views
 }
 
 // Everything the Render phase draws this frame (06 §3.1–3.2): Extract writes it, Render reads only it.
 // A world resource installed by ClientModule; pooled, cleared at the start of every Extract.
 internal sealed class RenderSnapshot
 {
-    public RenderView View;              // v1: one view (split screen, mirrors and shadow views later)
+    // Every view this frame (issue #77; v1 had one). Written by CameraExtract; empty when the world
+    // has nothing to draw from. The screen's main view, if any, is `MainView`.
+    public readonly PooledList<RenderView> Views;
+    public int MainView = -1;
     public EnvironmentParams Environment;
     // Every list here is made by `Pool<T>`, which is also what puts it in `_pools` for `Clear()`.
     // Point lights were added as a plain `new(32)` and left out of `Clear()`, and the picture stayed
@@ -92,37 +116,67 @@ internal sealed class RenderSnapshot
     public readonly PooledList<SpriteInstance> Sprites;
     public readonly PooledList<VertexPositionColor> DebugLines;   // pairs of vertices (06 §3.2)
 
-    // Every point light in range this frame, camera-relative (06 §3.9). Four of these light any one
-    // draw; which four is `LightRules.Nearest`, asked per item because a wall and a lamp across the
-    // room want different answers.
+    // Every point light in range this frame, camera-relative (06 §3.9), per view (`RenderView.LightStart`).
+    // Four of these light any one draw; which four is `LightRules.Nearest`, asked per item because a
+    // wall and a lamp across the room want different answers.
     public readonly PooledList<LightSample> Lights;
 
     public RenderSnapshot()
     {
+        Views = Pool<RenderView>(4);
         Items = Pool<RenderItem>(256);
         Sprites = Pool<SpriteInstance>(256);
         DebugLines = Pool<VertexPositionColor>(512);
         Lights = Pool<LightSample>(32);
     }
 
-    public int Culled;                   // items rejected by frustum culling this frame
-    public bool HasView;
+    public int Culled;                   // items rejected by frustum culling this frame, every view
+    public bool HasView => Views.Count > 0;
 
-    internal ulong[] SortKeys = new ulong[256];
-    internal int[] Order = new int[256];
+    // The main view (`MainView`), for what is drawn once on the screen: floating numbers, the HUD.
+    public ref RenderView Main => ref Views[MainView];
+
+    // Planning scratch (Renderer.Plan): the keys and views copied out of the lists, and what
+    // RenderViewPlan makes of them. Grown with the scene, never shrunk (06 §3.2).
+    internal ulong[] ItemKeys = new ulong[256];       // in: Items[i].SortKey
+    internal int[] ItemViews = new int[256];          // in: Items[i].View
+    internal ulong[] SortKeys = new ulong[256];       // out: keys by view, then key
+    internal int[] Order = new int[256];              // out: item indices beside them
+    internal ulong[] SpriteInKeys = new ulong[256];
+    internal int[] SpriteInViews = new int[256];
     internal ulong[] SpriteKeys = new ulong[256];
     internal int[] SpriteOrder = new int[256];
+    internal int[] ViewTargets = new int[4];
+    internal int[] ViewOrders = new int[4];
+    internal int[] DrawOrder = new int[4];
+    internal int[] RangeStarts = new int[4];
+    internal int[] RangeCounts = new int[4];
 
-    // Culling frustum (camera-relative to CullOrigin). r_freezecull keeps the old one while the camera moves.
-    internal readonly BoundingFrustum Frustum = new(Matrix.Identity);
-    internal Vector3 CullOrigin;
-    internal bool CullValid;
+    // Culling state per view slot (camera-relative to CullOrigin). r_freezecull keeps each slot's old
+    // frustum while the camera moves. Slot i belongs to whichever view is i-th this frame, which is
+    // the same view from frame to frame as long as the set of cameras does not change.
+    private BoundingFrustum[] _frustums = Array.Empty<BoundingFrustum>();
+    internal Vector3[] CullOrigins = Array.Empty<Vector3>();
+    internal bool[] CullValid = Array.Empty<bool>();
+
+    internal BoundingFrustum Frustum(int view) => _frustums[view];
+
+    // Grows the per-view culling state to `views` slots. Allocates only when the view count grows.
+    internal void EnsureViewSlots(int views)
+    {
+        if (_frustums.Length >= views) return;
+        int old = _frustums.Length;
+        Array.Resize(ref _frustums, views);
+        Array.Resize(ref CullOrigins, views);
+        Array.Resize(ref CullValid, views);
+        for (int i = old; i < views; i++) _frustums[i] = new BoundingFrustum(Matrix.Identity);
+    }
 
     public void Clear()
     {
         foreach (var pool in _pools) pool.Clear();
         Culled = 0;
-        HasView = false;
+        MainView = -1;
     }
 }
 

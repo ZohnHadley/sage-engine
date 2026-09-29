@@ -25,6 +25,6 @@
   </ItemGroup>
   <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the client draws brush maps (SAGE0122, MapLevels). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0122</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0122;SAGE0123</NoWarn>
   </PropertyGroup>
 </Project>

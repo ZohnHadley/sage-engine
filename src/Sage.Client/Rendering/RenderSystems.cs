@@ -11,22 +11,27 @@ namespace Sage.Client;
 // Extract (docs/design/06 §3.1, §5): the only code that reads simulation components for rendering.
 // It writes the world's RenderSnapshot; Render then draws only from the snapshot.
 
-// Extract, first: clears the snapshot and extracts the view and environment from the world's
-// ActiveCamera and RenderEnvironment resources (the camera at display rate, not interpolated, 06 §3.3).
+// Extract, first: clears the snapshot and extracts the views and the environment: the views from the
+// world's ViewSource (ActiveCamera today, camera components later; the camera at display rate, not
+// interpolated, 06 §3.3), the environment from RenderEnvironment.
+//
+// A world that does not draw to the screen (`Renderer.ScreenWorld`) keeps only its views into
+// render targets: there is one screen, and one world's picture on it (issue #77).
 [System("sage.client.extract.camera", Phase.Extract)]
 internal sealed class CameraExtract : ISystem
 {
     private readonly Renderer _renderer;
     private readonly RenderSnapshot _snapshot;
-    private readonly ActiveCamera _camera;
     private readonly RenderEnvironment _environment;
+    private readonly ViewSource _source;
+    private readonly PooledList<ViewRequest> _requests = new(4);
 
-    public CameraExtract(World world, Renderer renderer)
+    public CameraExtract(World world, Renderer renderer, ViewSource source)
     {
         _renderer = renderer;
         _snapshot = world.Resources.Get<RenderSnapshot>();
-        _camera = world.Resources.Get<ActiveCamera>();
         _environment = world.Resources.Get<RenderEnvironment>();
+        _source = source;
     }
 
     public void Run(in SystemContext ctx)
@@ -34,26 +39,24 @@ internal sealed class CameraExtract : ISystem
         var s = _snapshot;
         s.Clear();
 
-        Quaternion rotation = _camera.Rotation;
-        Vector3 forward = Vector3.Transform(Vector3.Forward, rotation);
-        Vector3 up = Vector3.Transform(Vector3.Up, rotation);
-        float aspect = _renderer.Device.Viewport.AspectRatio;
-
-        ref var view = ref s.View;
-        view.CameraPosition = _camera.Position;
-        view.Forward = forward;
-        view.Near = _camera.Near;
-        view.Far = _camera.Far;
-        view.View = Matrix.CreateLookAt(Vector3.Zero, forward, up);   // camera-relative: no translation
-        view.Projection = Matrix.CreatePerspectiveFieldOfView(_camera.FovY, aspect, _camera.Near, _camera.Far);
-        view.ViewProj = view.View * view.Projection;
-        s.HasView = true;
-
-        if (!_renderer.FreezeCull || !s.CullValid)
+        _source.Collect(_requests);
+        bool screen = _renderer.IsScreenWorld(ctx.World);
+        s.EnsureViewSlots(_requests.Count);
+        for (int r = 0; r < _requests.Count; r++)
         {
-            s.Frustum.Matrix = view.ViewProj;
-            s.CullOrigin = view.CameraPosition;
-            s.CullValid = true;
+            ref readonly var request = ref _requests[r];
+            if (request.Target == RenderViewPlan.Screen && !screen) continue;
+            int index = s.Views.Count;
+            ref var view = ref s.Views.Add();
+            Build(request, _renderer.TargetSize(request.Target), ref view);
+            if (request.Main && request.Target == RenderViewPlan.Screen && s.MainView < 0) s.MainView = index;
+
+            if (!_renderer.FreezeCull || !s.CullValid[index])
+            {
+                s.Frustum(index).Matrix = view.ViewProj;
+                s.CullOrigins[index] = view.CameraPosition;
+                s.CullValid[index] = true;
+            }
         }
 
         var e = _environment;
@@ -66,6 +69,37 @@ internal sealed class CameraExtract : ISystem
         env.AmbientSky = e.AmbientSky;
         env.AmbientGround = e.AmbientGround;
         env.Time = (float)ctx.Frame.RealTime;
+    }
+
+    // A request in a target of `size` pixels → a camera-relative view. The aspect ratio is the
+    // viewport's own, so half a screen or a square minimap is not stretched to the window's shape.
+    internal static void Build(in ViewRequest request, Point size, ref RenderView view)
+    {
+        var rect = request.Rect;
+        int x = (int)MathF.Round(rect.X * size.X), y = (int)MathF.Round(rect.Y * size.Y);
+        int w = Math.Max(1, (int)MathF.Round(rect.Z * size.X)), h = Math.Max(1, (int)MathF.Round(rect.W * size.Y));
+        view.Viewport = new Rectangle(x, y, w, h);
+        view.FullTarget = x == 0 && y == 0 && w == size.X && h == size.Y;
+        view.Target = request.Target;
+        view.Order = request.Order;
+
+        Vector3 forward = Vector3.Transform(Vector3.Forward, request.Rotation);
+        Vector3 up = Vector3.Transform(Vector3.Up, request.Rotation);
+        float aspect = w / (float)h;
+        view.CameraPosition = request.Position;
+        view.Forward = forward;
+        view.Near = request.Near;
+        view.Far = request.Far;
+        view.View = Matrix.CreateLookAt(Vector3.Zero, forward, up);   // camera-relative: no translation
+        view.Projection = request.Orthographic
+            ? Matrix.CreateOrthographic(request.OrthoHeight * aspect, request.OrthoHeight, request.Near, request.Far)
+            : Matrix.CreatePerspectiveFieldOfView(request.FovY, aspect, request.Near, request.Far);
+        view.ViewProj = view.View * view.Projection;
+        view.LightStart = view.LightCount = 0;
+        view.DebugStart = view.DebugCount = 0;
+        view.Culled = 0;
+        view.ItemStart = view.ItemCount = 0;
+        view.SpriteStart = view.SpriteCount = 0;
     }
 }
 
@@ -88,9 +122,8 @@ internal sealed class MeshExtract : ISystem
     public void Run(in SystemContext ctx)
     {
         var s = _snapshot;
-        if (!s.HasView) return;
-        Vector3 camera = s.View.CameraPosition;
-        Vector3 cullOffset = camera - s.CullOrigin;   // non-zero only while r_freezecull holds an old frustum
+        int views = s.Views.Count;
+        if (views == 0) return;
         float alpha = ctx.Frame.Alpha;
         var materials = _renderer.Materials;
 
@@ -108,28 +141,39 @@ internal sealed class MeshExtract : ISystem
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
-                Matrix world = g[n].Interpolated(alpha).ToMatrix();   // System.Numerics → MonoGame (implicit)
-                world.Translation -= camera;
+                // Interpolated once; made camera-relative once per view (issue #77).
+                Matrix pose = g[n].Interpolated(alpha).ToMatrix();   // System.Numerics → MonoGame (implicit)
 
-                for (int p = 0; p < mesh.Parts.Length; p++)
+                for (int v = 0; v < views; v++)
                 {
-                    var part = mesh.Parts[p];
-                    Matrix partWorld = part.Bone * world;
-                    Vector3 center = Vector3.Transform(part.Bounds.Center, partWorld);
-                    float radius = part.Bounds.Radius * MaxScale(partWorld);
-                    if (!s.Frustum.Intersects(new BoundingSphere(center + cullOffset, radius)))
-                    {
-                        s.Culled++;
-                        continue;
-                    }
+                    ref var view = ref s.Views[v];
+                    Vector3 cullOffset = view.CameraPosition - s.CullOrigins[v];   // non-zero only while r_freezecull holds an old frustum
+                    var frustum = s.Frustum(v);
+                    Matrix world = pose;
+                    world.Translation -= view.CameraPosition;
 
-                    ref var item = ref s.Items.Add();
-                    item.Mesh = meshId;
-                    item.Part = p;
-                    item.Material = materialId;
-                    item.World = partWorld;
-                    item.Tint = Vector4.One;
-                    item.SortKey = RenderSortKey.Make(material.Pass, mr.Layer, materialId, meshId, Vector3.Dot(center, s.View.Forward), s.View.Far);
+                    for (int p = 0; p < mesh.Parts.Length; p++)
+                    {
+                        var part = mesh.Parts[p];
+                        Matrix partWorld = part.Bone * world;
+                        Vector3 center = Vector3.Transform(part.Bounds.Center, partWorld);
+                        float radius = part.Bounds.Radius * MaxScale(partWorld);
+                        if (!frustum.Intersects(new BoundingSphere(center + cullOffset, radius)))
+                        {
+                            s.Culled++;
+                            view.Culled++;
+                            continue;
+                        }
+
+                        ref var item = ref s.Items.Add();
+                        item.Mesh = meshId;
+                        item.Part = p;
+                        item.Material = materialId;
+                        item.World = partWorld;
+                        item.Tint = Vector4.One;
+                        item.SortKey = RenderSortKey.Make(material.Pass, mr.Layer, materialId, meshId, Vector3.Dot(center, view.Forward), view.Far);
+                        item.View = v;
+                    }
                 }
             }
         }
@@ -152,7 +196,7 @@ internal sealed class RenderSystem : ISystem
         _snapshot = world.Resources.Get<RenderSnapshot>();
     }
 
-    public void Run(in SystemContext ctx) => _renderer.Draw(_snapshot);
+    public void Run(in SystemContext ctx) => _renderer.Draw(_snapshot, _renderer.IsScreenWorld(ctx.World));
 }
 
 // Extract: one SpriteInstance per visible billboard (06 §3.8). It picks the direction group from the
@@ -187,19 +231,26 @@ internal sealed class LightExtract : ISystem
         // the quickest way to see what the lights are actually contributing.
         if (!snapshot.HasView || !_enabled.Value) return;
 
-        Vector3 camera = snapshot.View.CameraPosition;
         float alpha = ctx.Frame.Alpha;
+        // A view at a time, so each view's lights are one run of the list (RenderView.LightStart).
+        for (int v = 0; v < snapshot.Views.Count; v++)
+        {
+            ref var view = ref snapshot.Views[v];
+            Vector3 camera = view.CameraPosition;
+            view.LightStart = snapshot.Lights.Count;
 
-        foreach (var (globals, lights, _) in _lights.Chunks)
-            for (int n = 0; n < globals.Length; n++)
-            {
-                ref readonly var light = ref lights[n];
-                if (light.Range <= 0f || light.Intensity <= 0f) continue;
+            foreach (var (globals, lights, _) in _lights.Chunks)
+                for (int n = 0; n < globals.Length; n++)
+                {
+                    ref readonly var light = ref lights[n];
+                    if (light.Range <= 0f || light.Intensity <= 0f) continue;
 
-                var world = globals[n].Interpolated(alpha).Position;
-                var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
-                snapshot.Lights.Add() = new LightSample(at, light.Colour * light.Intensity, light.Range);
-            }
+                    var world = globals[n].Interpolated(alpha).Position;
+                    var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
+                    snapshot.Lights.Add() = new LightSample(at, light.Colour * light.Intensity, light.Range);
+                }
+            view.LightCount = snapshot.Lights.Count - view.LightStart;
+        }
     }
 }
 
@@ -226,17 +277,24 @@ internal sealed class DebugExtract : ISystem
         _lines.Clear();
         _debug.CopyTo(_lines);
 
+        // Every view gets its own camera-relative, near-clipped copy (one run each); the queue ages once.
         var s = _snapshot;
-        var camera = s.View.CameraPosition;
-        foreach (var line in _lines)
+        for (int v = 0; v < s.Views.Count; v++)
         {
-            var colour = new Color((byte)(line.Rgba >> 24), (byte)(line.Rgba >> 16), (byte)(line.Rgba >> 8), (byte)line.Rgba);
-            Vector3 a = line.A, b = line.B;   // System.Numerics → MonoGame (implicit)
-            a -= camera;
-            b -= camera;
-            if (!ClipToNear(s.View, ref a, ref b)) continue;
-            s.DebugLines.Add() = new VertexPositionColor(a, colour);
-            s.DebugLines.Add() = new VertexPositionColor(b, colour);
+            ref var view = ref s.Views[v];
+            var camera = view.CameraPosition;
+            view.DebugStart = s.DebugLines.Count;
+            foreach (var line in _lines)
+            {
+                var colour = new Color((byte)(line.Rgba >> 24), (byte)(line.Rgba >> 16), (byte)(line.Rgba >> 8), (byte)line.Rgba);
+                Vector3 a = line.A, b = line.B;   // System.Numerics → MonoGame (implicit)
+                a -= camera;
+                b -= camera;
+                if (!ClipToNear(view, ref a, ref b)) continue;
+                s.DebugLines.Add() = new VertexPositionColor(a, colour);
+                s.DebugLines.Add() = new VertexPositionColor(b, colour);
+            }
+            view.DebugCount = s.DebugLines.Count - view.DebugStart;
         }
         _debug.Advance((float)ctx.Frame.Dt);
     }
@@ -275,9 +333,8 @@ internal sealed class SpriteExtract : ISystem
     public void Run(in SystemContext ctx)
     {
         var s = _snapshot;
-        if (!s.HasView) return;
-        Vector3 camera = s.View.CameraPosition;
-        Vector3 cullOffset = camera - s.CullOrigin;
+        int views = s.Views.Count;
+        if (views == 0) return;
         float alpha = ctx.Frame.Alpha;
         var materials = _renderer.Materials;
 
@@ -297,49 +354,59 @@ internal sealed class SpriteExtract : ISystem
                 int texture = _renderer.ResolveTexture(sheet.Texture);
                 var pose = g[n].Interpolated(alpha);
                 Vector3 position = pose.Position;   // System.Numerics → MonoGame (implicit)
-
-                // Which way does it face the camera, and which frame is playing?
-                int direction = SpriteMath.DirectionIndex(pose.Position, camera.ToNumerics(), SageMath.YawOf(pose.Rotation), sheet.Directions, out bool flipU);
-                int frameIndex = 0;
                 var entity = entities.EntityAt(n);
-                if (entity.TryGetComponent(out SpriteAnimator animator) && sheet.Clip(animator.Clip) is { } clip)
-                    frameIndex = SpriteMath.FrameAt(clip, direction, animator.Time);
-                else if (sheet.Clip(0) is { } first)
-                    frameIndex = SpriteMath.FrameAt(first, direction, 0f);
-                if (frameIndex < 0 || frameIndex >= sheet.Frames.Count) continue;
+                bool animated = entity.TryGetComponent(out SpriteAnimator animator);
 
-                var frame = sheet.Frames[frameIndex];
                 Vector2 size = sr.Size == Vector2.Zero ? sheet.Size : sr.Size;
                 Vector2 scale = new(pose.Scale.X, pose.Scale.Y);
                 size *= scale;
-
-                // Bounding sphere around the quad, for culling: the pivot may be at the feet, so the
-                // sphere is centred half a height up and sized by the diagonal.
-                Vector3 center = position - camera;
                 float radius = 0.5f * MathF.Sqrt(size.X * size.X + size.Y * size.Y);
-                if (!s.Frustum.Intersects(new BoundingSphere(center + Vector3.Up * (size.Y * 0.5f) + cullOffset, radius)))
-                {
-                    s.Culled++;
-                    continue;
-                }
 
                 int materialId = materials.Resolve(!sr.Material.IsEmpty ? sr.Material
                     : !sheet.Material.IsEmpty ? sheet.Material : SpriteSheetRecord.DefaultMaterial);
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
-                ref var instance = ref s.Sprites.Add();
-                instance.Center = center;
-                instance.Size = size;
-                instance.Pivot = _renderer.Pivot(texture, frame);
-                instance.Uv = _renderer.Uv(texture, frame, flipU);
-                instance.Tint = Vector4.One;
-                instance.Material = materialId;
-                instance.Texture = texture;
-                instance.Mode = sr.Mode;
-                instance.Roll = 0f;                 // sprites stand upright; only particles turn (06 §3.12)
-                instance.SortKey = RenderSortKey.Make(material.Pass, sr.Layer, materialId, texture,
-                    Vector3.Dot(center, s.View.Forward), s.View.Far);
+                // Per view (issue #77): which way it faces depends on where *this* camera is.
+                for (int v = 0; v < views; v++)
+                {
+                    ref var view = ref s.Views[v];
+                    Vector3 camera = view.CameraPosition;
+
+                    // Bounding sphere around the quad, for culling: the pivot may be at the feet, so the
+                    // sphere is centred half a height up and sized by the diagonal.
+                    Vector3 center = position - camera;
+                    if (!s.Frustum(v).Intersects(new BoundingSphere(center + Vector3.Up * (size.Y * 0.5f) + (camera - s.CullOrigins[v]), radius)))
+                    {
+                        s.Culled++;
+                        view.Culled++;
+                        continue;
+                    }
+
+                    // Which way does it face the camera, and which frame is playing?
+                    int direction = SpriteMath.DirectionIndex(pose.Position, camera.ToNumerics(), SageMath.YawOf(pose.Rotation), sheet.Directions, out bool flipU);
+                    int frameIndex = 0;
+                    if (animated && sheet.Clip(animator.Clip) is { } clip)
+                        frameIndex = SpriteMath.FrameAt(clip, direction, animator.Time);
+                    else if (sheet.Clip(0) is { } first)
+                        frameIndex = SpriteMath.FrameAt(first, direction, 0f);
+                    if (frameIndex < 0 || frameIndex >= sheet.Frames.Count) continue;
+                    var frame = sheet.Frames[frameIndex];
+
+                    ref var instance = ref s.Sprites.Add();
+                    instance.Center = center;
+                    instance.Size = size;
+                    instance.Pivot = _renderer.Pivot(texture, frame);
+                    instance.Uv = _renderer.Uv(texture, frame, flipU);
+                    instance.Tint = Vector4.One;
+                    instance.Material = materialId;
+                    instance.Texture = texture;
+                    instance.Mode = sr.Mode;
+                    instance.Roll = 0f;                 // sprites stand upright; only particles turn (06 §3.12)
+                    instance.SortKey = RenderSortKey.Make(material.Pass, sr.Layer, materialId, texture,
+                        Vector3.Dot(center, view.Forward), view.Far);
+                    instance.View = v;
+                }
             }
         }
     }

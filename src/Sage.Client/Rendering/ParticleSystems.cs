@@ -167,40 +167,45 @@ internal sealed class ParticleExtract : ISystem
     {
         if (!_snapshot.HasView || _particles.Live == 0) return;
 
-        var view = _snapshot.View;
-        foreach (var group in _particles.Groups)
+        // A view at a time: every view sees every particle, camera-relative to itself (issue #77).
+        for (int v = 0; v < _snapshot.Views.Count; v++)
         {
-            if (group.Count == 0) continue;
-            int texture = _renderer.ResolveTexture(group.Record.Texture);
-            int material = _renderer.Materials.Resolve(group.Record.Material.IsEmpty
-                ? ParticleRecord.DefaultMaterial : group.Record.Material);
-            var runtime = _renderer.Materials.Get(material);
-            var pass = runtime?.Pass ?? RenderPass.Transparent;
-
-            for (int i = 0; i < group.Count; i++)
+            var view = _snapshot.Views[v];
+            foreach (var group in _particles.Groups)
             {
-                float size = group.SizeOf(i);
-                if (size <= 0.0001f) continue;
+                if (group.Count == 0) continue;
+                int texture = _renderer.ResolveTexture(group.Record.Texture);
+                int material = _renderer.Materials.Resolve(group.Record.Material.IsEmpty
+                    ? ParticleRecord.DefaultMaterial : group.Record.Material);
+                var runtime = _renderer.Materials.Get(material);
+                var pass = runtime?.Pass ?? RenderPass.Transparent;
 
-                var centre = group.Position[i] - view.CameraPosition.ToNumerics();
-                uint colour = group.ColourOf(i);
+                for (int i = 0; i < group.Count; i++)
+                {
+                    float size = group.SizeOf(i);
+                    if (size <= 0.0001f) continue;
 
-                // Every field, every time: `Add()` hands back last frame's slot as it was (06 §3.1).
-                ref var instance = ref _snapshot.Sprites.Add();
-                instance.Center = centre;
-                instance.Size = new Vector2(size, size);
-                instance.Pivot = new Vector2(0.5f, 0.5f);     // particles turn about their middle
-                instance.Uv = new Vector4(0f, 0f, 1f, 1f);    // one whole texture, no atlas in v1
-                instance.Tint = new Vector4(((colour >> 0) & 0xFF) / 255f,
-                                            ((colour >> 8) & 0xFF) / 255f,
-                                            ((colour >> 16) & 0xFF) / 255f,
-                                            ((colour >> 24) & 0xFF) / 255f);
-                instance.Material = material;
-                instance.Texture = texture;
-                instance.Mode = BillboardMode.Spherical;      // a spark has no up
-                instance.Roll = group.Rotation[i];            // and it may be turning (`spinDegrees`)
-                instance.SortKey = RenderSortKey.Make(pass, 0, material, texture,
-                                                      Vector3.Dot(centre, view.Forward.ToNumerics()), view.Far);
+                    var centre = group.Position[i] - view.CameraPosition.ToNumerics();
+                    uint colour = group.ColourOf(i);
+
+                    // Every field, every time: `Add()` hands back last frame's slot as it was (06 §3.1).
+                    ref var instance = ref _snapshot.Sprites.Add();
+                    instance.Center = centre;
+                    instance.Size = new Vector2(size, size);
+                    instance.Pivot = new Vector2(0.5f, 0.5f);     // particles turn about their middle
+                    instance.Uv = new Vector4(0f, 0f, 1f, 1f);    // one whole texture, no atlas in v1
+                    instance.Tint = new Vector4(((colour >> 0) & 0xFF) / 255f,
+                                                ((colour >> 8) & 0xFF) / 255f,
+                                                ((colour >> 16) & 0xFF) / 255f,
+                                                ((colour >> 24) & 0xFF) / 255f);
+                    instance.Material = material;
+                    instance.Texture = texture;
+                    instance.Mode = BillboardMode.Spherical;      // a spark has no up
+                    instance.Roll = group.Rotation[i];            // and it may be turning (`spinDegrees`)
+                    instance.SortKey = RenderSortKey.Make(pass, 0, material, texture,
+                                                          Vector3.Dot(centre, view.Forward.ToNumerics()), view.Far);
+                    instance.View = v;
+                }
             }
         }
     }
@@ -229,9 +234,10 @@ internal sealed class FloatingTextSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        if (_texts.Count == 0 || !_snapshot.HasView || !_ui.HasFont) return;
+        // The screen's main view: a number is drawn once, over the picture the player is looking at.
+        if (_texts.Count == 0 || _snapshot.MainView < 0 || !_ui.HasFont) return;
 
-        var view = _snapshot.View;
+        var view = _snapshot.Main;
         for (int i = 0; i < _texts.Count; i++)
         {
             var entry = _texts[i];
@@ -264,7 +270,8 @@ internal sealed class FloatingTextSystem : ISystem
         if (clip.W <= 0.001f) { screen = default; return false; }
 
         float x = clip.X / clip.W, y = clip.Y / clip.W;
-        screen = new Vector2((x * 0.5f + 0.5f) * _ui.Size.X, (1f - (y * 0.5f + 0.5f)) * _ui.Size.Y);
+        var rect = view.Viewport;   // the view's part of the screen (all of it, unless split)
+        screen = new Vector2(rect.X + (x * 0.5f + 0.5f) * rect.Width, rect.Y + (1f - (y * 0.5f + 0.5f)) * rect.Height);
         return true;
     }
 }

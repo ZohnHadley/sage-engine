@@ -69,6 +69,11 @@ public class Game1 : Game
         IsMouseVisible = true;
         IsFixedTimeStep = false;   // our own accumulator (FixedStepClock) instead of MonoGame's catch-up loop
         graphics.GraphicsProfile = GraphicsProfile.HiDef;   // 32-bit indices, large textures; instancing later (06 §3.7)
+        // The back buffer keeps what was drawn on it when a render target is bound and unbound
+        // (issue #77): with DiscardContents MonoGame clears it to purple on the way back, so a world
+        // that draws a minimap after the screen world has drawn the screen would wipe the picture.
+        graphics.PreparingDeviceSettings += (_, e) =>
+            e.GraphicsDeviceInformation.PresentationParameters.RenderTargetUsage = RenderTargetUsage.PreserveContents;
     }
 
     protected override void Initialize()
