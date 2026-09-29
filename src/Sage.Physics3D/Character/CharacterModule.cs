@@ -25,6 +25,10 @@ public sealed class CharacterModule : IModule
         _actions.Register("Jump", ActionKind.Button);
         _actions.Register("Run", ActionKind.Button);
         _actions.Register("Crouch", ActionKind.Button);
+        // The player's camera, first person to third and back (issue #79).
+#pragma warning disable SAGE0123
+        _actions.Register(ToggleViewSystem.Action, ActionKind.Button);
+#pragma warning restore SAGE0123
     }
 
     public void OnWorldCreated(World world)
@@ -47,11 +51,14 @@ public sealed class CharacterModule : IModule
         world.AddSystem(new PlayerControlSystem(world));
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!));
 
-        // The player's camera (issue #78, decision D2): a camera entity per player pawn, and the rig that
-        // puts it in the pawn's head. Cameras are experimental (SAGE0123); this plugin is their first user.
+        // The player's camera (issues #78, #79; decision D2): a camera entity per player pawn, the rigs
+        // that put it in the pawn's head or over its shoulder, and the button that switches between them.
+        // Cameras are experimental (SAGE0123); this plugin is their first user.
 #pragma warning disable SAGE0123
         world.AddSystem(new PlayerCameraSystem(world));
         world.AddSystem(new FirstPersonRigSystem(world, _records!));
+        world.AddSystem(new ThirdPersonRigSystem(world, _records!));
+        world.AddSystem(new ToggleViewSystem(world, _actions!));
 #pragma warning restore SAGE0123
     }
 }

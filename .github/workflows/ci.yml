@@ -155,6 +155,10 @@ jobs:
           # HUD shows. Without shaders nothing is drawn but the clears, so this proves the path, not the picture.
           SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testview 1\n+wait 1\n+r_testview 2\n+wait 1\n+r_stats' \
             tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
+          # Third person (issue #79): ToggleView puts the player's camera over the shoulder, probing the
+          # scenery every frame, and the renderer draws the body the first-person view hid.
+          SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_tap ToggleView\n+wait 5\n+in_tap ToggleView\n+wait 1' \
+            tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
           # No plugins at all (issue #13). Records and Input are allowed because engine content still
           # ships every plugin's data in one folder, and says so when the plugin that reads it is absent.
           tools/smoke_run.sh "$host" tests/games/no-plugins 3 Shaders Audio Records Input

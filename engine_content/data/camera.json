@@ -2,7 +2,9 @@
   // The player's camera (issue #78, docs/design/06 "As built (camera rigs)"). The character plugin's
   // PlayerCameraSystem spawns one of these for each player pawn and points its rig at it; it is saved
   // with the pawn. A camera entity (06 §3.11): what it sees is the `camera` part, where it looks from is
-  // the rig. Patch this record to change the player's view: "fovY" on the camera, say.
+  // the rigs: first person to start with, and third person over the shoulder, switched off until the
+  // ToggleView action (V) turns it on and the first-person one off (issue #79). Patch this record to
+  // change the player's view: "fovY" on the camera, "distance" on the third-person rig, which starts on.
   {
     "type": "prefab",
     "id": "player_camera",
@@ -10,7 +12,8 @@
     "tags": ["player_camera"],
     "parts": {
       "camera": {},
-      "first_person_rig": {}
+      "first_person_rig": {},
+      "third_person_rig": { "enabled": false, "distance": 3, "shoulderOffset": [0.45, 0.25, 0], "collision": ["default"] }
     }
   }
 ]

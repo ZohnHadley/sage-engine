@@ -645,8 +645,11 @@ That tag is what makes the rest of the engine treat it as *the* player: **it get
 automatically** (the character plugin spawns a camera entity from the engine's `sage:player_camera`
 prefab, with a first-person rig following the player, and saves it with the player), the cheats act on
 it, and the HUD reads it. You do not write a camera. To change the player's view, patch that prefab
-(`"camera": { "fovY": 70 }`); to ask whether the screen is looking out of the player's eyes (a crosshair,
-a viewmodel), `world.MainViewRig() == CameraRigKind.FirstPerson`.
+(`"camera": { "fovY": 70 }`, or `"third_person_rig": { "distance": 4 }`); to ask whether the screen is
+looking out of the player's eyes (a crosshair, a viewmodel), `world.MainViewRig() == CameraRigKind.FirstPerson`.
+The player's camera also has a third-person rig over the shoulder that keeps out of walls, switched with the
+`ToggleView` action (V, or the right stick's button); the choice is saved. The first-person view does not
+draw the player's own body, so give the player a body (a `sprite`, a mesh) and it shows in third person.
 
 A camera of your own — a fixed security camera, a top-down or 2D view, a scripted shot — is an entity
 with a `camera` part (issue #76; its options are the `sage:camera` component's fields):
@@ -1247,7 +1250,7 @@ names their types needs the opt-in.
 | SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
-| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; rigs (#78): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs` | Phase 4a is still building on it: rigs (#78, #79), the multi-view renderer and render targets (#77), scripted cuts (#80) and the editor camera (#81) |
+| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs` | Phase 4a is still building on it: rigs (#78, #79), the multi-view renderer and render targets (#77), scripted cuts (#80) and the editor camera (#81) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 

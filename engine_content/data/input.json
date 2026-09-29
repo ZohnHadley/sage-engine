@@ -1,7 +1,7 @@
 [
   // Engine input maps (docs/design/08 §3.2–3.3). Actions are registered by modules (ClientModule
   // registers the client's own: Console, editor and UI; GameplayModule registers the simulation's:
-  // Move, Jump, Run, Crouch, Attack, Use); games add maps for their own actions, and player rebinds
+  // Move, Jump, Run, Crouch, ToggleView, Attack, Use); games add maps for their own actions, and player rebinds
   // will be patches.
   {
     // Active while the console is open; consumes all other keyboard input.
@@ -43,6 +43,7 @@
       "Use":           [ { "key": "E" }, { "gamepad": "X" } ],
       "Run":           [ { "key": "LeftShift" }, { "gamepad": "LeftStickButton" } ],
       "Crouch":        [ { "key": "LeftControl" }, { "gamepad": "B" } ],
+      "ToggleView":    [ { "key": "V" }, { "gamepad": "RightStickButton" } ],
       "Menu":          [ { "key": "Escape" }, { "gamepad": "Start" }, { "gamepad": "Back" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]

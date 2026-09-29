@@ -175,6 +175,31 @@ public class CameraTests
 #pragma warning restore CS0618
     }
 
+    // A camera entity that lets go of the screen (turned off, destroyed) gives it back: the flag the
+    // director set is cleared, so the editor's free camera drives again from where the camera was.
+    [Fact]
+    public void WhenTheLastCameraEntityLetsGo_DrivenByRigIsCleared()
+    {
+        using var app = App();
+        var world = app.World;
+        var e = CameraAt(world, new Vector3(3, 2, 1), Camera.Perspective());
+        var active = world.Resources.Get<ActiveCamera>();
+#pragma warning disable CS0618
+        world.RunFrame(Frame, 1f);
+        Assert.True(active.DrivenByRig);
+
+        world.Get<Camera>(e).Enabled = false;
+        world.RunFrame(Frame, 1f);
+        Assert.False(active.DrivenByRig);
+        Assert.Equal(new Vector3(3, 2, 1), active.Position);   // left where the camera was
+        Assert.True(world.Resources.Get<CameraViews>().Main.FromActiveCamera);
+
+        active.DrivenByRig = true;                 // somebody else's business now: left alone
+        world.RunFrame(Frame, 1f);
+        Assert.True(active.DrivenByRig);
+#pragma warning restore CS0618
+    }
+
     // Without a rig a camera looks from its GlobalTransform interpolated to the frame; a rig's CameraPose
     // replaces that while it is there.
     [Fact]

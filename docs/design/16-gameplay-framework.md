@@ -75,7 +75,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   | Module | Owns | Depends on |
   |---|---|---|
   | `AttributesModule` | `attribute`/`tag`/`effect`/`gameplay_conventions` records, `GameplayRegistries`, `god`, the `attributes` and `effects` prefab parts, `EffectSystem`, `DeathRulesSystem` | — |
-  | `CharacterModule` | `movement_profile`, Move/Jump/Run/Crouch, the `character` part, `PlayerControlSystem`, `CharacterMovementSystem`, the player camera and its rigs (`PlayerCameraSystem`, `FirstPersonRigSystem`; #78), the `PawnIntent` phase contract | `PhysicsModule` |
+  | `CharacterModule` | `movement_profile`, Move/Jump/Run/Crouch/ToggleView, the `character` part, `PlayerControlSystem`, `CharacterMovementSystem`, the player camera and its rigs (`PlayerCameraSystem`, `FirstPersonRigSystem`, `ThirdPersonRigSystem`, `ToggleViewSystem`; #78, #79), the `PawnIntent` phase contract | `PhysicsModule` |
   | `AnimationModule` | the `sprite` part, `SpriteAnimationSystem` | — |
   | `LightsModule` | the `light` part (06 §3.9) | — |
   | `CombatModule` | `damage_type`/`attack`, `combat_debug`, `hurt`, Attack, the `melee` part, `MeleeCombatSystem` | Attributes, Character |

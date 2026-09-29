@@ -213,6 +213,211 @@ public class CameraRigTests
         Assert.Equal(camera, Assert.Single(PlayerCameras(world)));
         Assert.Equal(Player(world), world.Get<FirstPersonRig>(camera).Follow);
     }
+
+    // ---- Third person (#79) -----------------------------------------------------------------------
+
+    // A static wall, four metres wide, for the probe to find.
+    internal const string Wall = """
+        [ { "type": "prefab", "id": "wall", "name": "wall", "parts": { "body": { "size": [4, 4, 0.4] } } } ]
+        """;
+
+    // The player camera in third person, looking along -Z (yaw 0), a frame drawn.
+    internal static Entity ThirdPerson(World world)
+    {
+        var player = Player(world);
+        world.Get<PawnIntent>(player).Yaw = 0f;
+        world.Get<PawnIntent>(player).Pitch = 0f;
+        Step(world);
+        ToggleViewSystem.Toggle(world);
+        Step(world);
+        var camera = Assert.Single(PlayerCameras(world));
+        Assert.Equal(CameraRigKind.ThirdPerson, world.MainViewRig());
+        return camera;
+    }
+
+    // How far the screen's camera is from the player's eye.
+    internal static float Boom(HeadlessApp app) =>
+        Vector3.Distance(EyeOf(app, Player(app.World)), app.World.Resources.Get<CameraViews>().Main.Position);
+
+    // The prefab's defaults: three metres back, a shoulder out and up, out of the scenery.
+    private static float FullBoom => (ThirdPersonRig.DefaultShoulderOffset + new Vector3(0, 0, ThirdPersonRig.DefaultDistance)).Length();
+
+    // Over the shoulder, looking where the pawn aims; the body is drawn from here, not from the head.
+    [Fact]
+    public void ThirdPerson_SitsBehindTheShoulder_LookingWhereThePawnAims()
+    {
+        using var app = SceneOnly();
+        var world = app.World;
+        var camera = ThirdPerson(world);
+        var player = Player(world);
+        var view = world.Resources.Get<CameraViews>().Main;
+
+        var expected = EyeOf(app, player) + ThirdPersonRig.DefaultShoulderOffset + new Vector3(0, 0, ThirdPersonRig.DefaultDistance);
+        Near(expected, view.Position);                           // yaw 0 looks down -Z: behind is +Z
+        Assert.True(Quaternion.Dot(Quaternion.Identity, view.Rotation) > 0.99999f);
+        Assert.Equal(camera, view.Entity);
+
+        // The seam #77 left for this: the first-person view hides the body it sits in, this one does not.
+        Assert.True(CameraRigs.HiddenBy(world, camera).IsNull);
+        ToggleViewSystem.Toggle(world);
+        Step(world);
+        Assert.Equal(player, CameraRigs.HiddenBy(world, camera));
+        world.Get<FirstPersonRig>(camera).ShowBody = true;       // a game with full-body awareness
+        Assert.True(CameraRigs.HiddenBy(world, camera).IsNull);
+    }
+
+    // #79's acceptance: a wall behind the pawn pulls the camera in — at once — and when it goes the camera
+    // eases back out rather than springing.
+    [Fact]
+    public void AWallBehindThePawn_PullsTheCameraIn_AtOnce_AndItEasesBackOut()
+    {
+        using var app = SceneOnly(Wall);
+        var world = app.World;
+        ThirdPerson(world);
+        Assert.Equal(FullBoom, Boom(app), 3);
+
+        var eye = EyeOf(app, Player(world));
+        var wall = world.Spawn(new RecordId("sceneonly", "wall"), new Vector3(eye.X, eye.Y - 2f, eye.Z + 1.5f));
+        Step(world);   // the body goes into the physics world on the tick; the probe finds it the same frame
+        float pulled = Boom(app);
+        Assert.True(pulled < ThirdPersonRig.DefaultDistance, $"the camera is {pulled} m out, through the wall");
+        Assert.True(pulled > 0.3f, $"the camera is {pulled} m out: it should stop at the wall, not in the head");
+        var camera = world.Resources.Get<CameraViews>().Main.Position;
+        float face = eye.Z + 1.5f - 0.2f;   // the wall's near face
+        Assert.True(camera.Z <= face - ThirdPersonRig.DefaultProbeRadius + 0.02f, $"the camera at z {camera.Z} is closer than the probe's radius to the wall at {face}");
+
+        world.Destroy(wall);
+        Step(world);
+        float easing = Boom(app);
+        Assert.True(easing > pulled && easing < FullBoom - 0.1f, $"out to {easing} m in one frame: it should ease, not spring");
+        Step(world, 120);   // two seconds, a smoothing time of 0.3
+        Assert.Equal(FullBoom, Boom(app), 2);
+    }
+
+    // The eased boom is a length, not a position: a floating-origin shift moves the camera with the
+    // world and does not reset the easing.
+    [Fact]
+    public void RebasingMovesTheThirdPersonCamera_WithoutAJump()
+    {
+        using var app = SceneOnly(Wall);
+        var world = app.World;
+        var camera = ThirdPerson(world);
+        var eye = EyeOf(app, Player(world));
+        var wall = world.Spawn(new RecordId("sceneonly", "wall"), new Vector3(eye.X, eye.Y - 2f, eye.Z + 1.5f));
+        Step(world);
+        world.Destroy(wall);
+        Step(world);
+        var rig = world.Get<ThirdPersonRig>(camera);
+        Assert.True(rig.Settled && rig.Boom < FullBoom - 0.1f, "mid-ease");
+        var before = world.Get<CameraPose>(camera).Position;
+
+        var offset = world.Rebase(new SectorCoord(1, 0));
+        Assert.NotEqual(Vector3.Zero, offset);
+        Assert.Equal(before + offset, world.Get<CameraPose>(camera).Position);
+        Assert.Equal(rig.Boom, world.Get<ThirdPersonRig>(camera).Boom);
+
+        Step(world);
+        float after = Boom(app);
+        Assert.True(after > rig.Boom && after < FullBoom, $"{after} m after the rebase, from {rig.Boom}: it should go on easing");
+    }
+
+    // The player's choice is saved on the camera: a load comes back in third person.
+    [Fact]
+    public void TheChosenViewIsSavedWithTheCamera()
+    {
+        using var app = SceneOnly();
+        app.Engine.Saves.Root = Path.Combine(TestEnv.NewTempDir(), "saves");
+        var world = app.World;
+        ThirdPerson(world);
+        Assert.True(app.Engine.Saves.Save("third"));
+        ToggleViewSystem.Toggle(world);
+        Step(world);
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
+
+        Assert.True(app.Engine.Saves.Load("third"));
+        var camera = Assert.Single(PlayerCameras(world));
+        Assert.True(world.Get<ThirdPersonRig>(camera).Enabled);
+        Assert.False(world.Get<FirstPersonRig>(camera).Enabled);
+        Assert.Equal(Player(world), world.Get<ThirdPersonRig>(camera).Follow);
+        Step(world);
+        Assert.Equal(CameraRigKind.ThirdPerson, world.MainViewRig());
+        Assert.Equal(FullBoom, Boom(app), 3);
+    }
+
+    // #79's other acceptance: the ToggleView button switches the view mid-fight within one frame, and the
+    // fight goes on exactly as it would have. Two Sandbox worlds play the same commands; one also presses
+    // ToggleView half-way through a swing at a creature.
+    [Fact]
+    public void ToggleView_MidMeleeInTheSandbox_SwitchesWithinAFrame_AndCombatIsUnaffected()
+    {
+        using var toggled = Sandbox();
+        using var control = Sandbox();
+        var attack = toggled.Engine.Actions.Get("Attack");
+        var toggle = toggled.Engine.Actions.Get(ToggleViewSystem.Action);
+        Assert.True(toggle.IsValid && attack.IsValid);
+        var foes = new[] { Foe(toggled), Foe(control) };
+
+        for (int tick = 1; tick <= 90; tick++)
+        {
+            var held = tick <= 60 ? default(ActionMask).With(attack) : default;
+            var pressed = tick == 1 || tick == 40 ? default(ActionMask).With(attack) : default;
+            Command(control.World, tick, held, pressed);
+            Command(toggled.World, tick, held, tick == 8 ? pressed.With(toggle) : pressed);
+            if (tick == 8)
+            {
+                var melee = toggled.World.Get<Melee>(Player(toggled.World));
+                Assert.NotEqual(MeleePhase.Ready, melee.Phase);   // mid-swing
+                Assert.Equal(CameraRigKind.FirstPerson, toggled.World.MainViewRig());
+            }
+            toggled.World.RunFixed(Frame);
+            toggled.World.RunFrame(Frame, 1f);
+            control.World.RunFixed(Frame);
+            control.World.RunFrame(Frame, 1f);
+            if (tick == 8)
+                Assert.Equal(CameraRigKind.ThirdPerson, toggled.World.MainViewRig());   // the frame after the press
+        }
+
+        Assert.Equal(CameraRigKind.ThirdPerson, toggled.World.MainViewRig());
+        Assert.Equal(CameraRigKind.FirstPerson, control.World.MainViewRig());
+
+        // The fight: the swings, the creature's health and where everybody is.
+        var health = new RecordId("sage", "health");
+        float hurt = control.World.Attribute(foes[1], health);
+        Assert.True(hurt < 100f, $"the creature was never hit ({hurt}): the test is not a fight");
+        Assert.Equal(hurt, toggled.World.Attribute(foes[0], health));
+        Assert.Equal(control.World.Attribute(Player(control.World), health), toggled.World.Attribute(Player(toggled.World), health));
+        var a = toggled.World.Get<Melee>(Player(toggled.World));
+        var b = control.World.Get<Melee>(Player(control.World));
+        Assert.Equal((b.Phase, b.Timer, b.Cooldown), (a.Phase, a.Timer, a.Cooldown));
+        Assert.Equal(control.World.Get<Transform>(Player(control.World)).LocalPosition,
+                     toggled.World.Get<Transform>(Player(toggled.World)).LocalPosition);
+        Assert.Equal(control.World.Get<PawnIntent>(Player(control.World)), toggled.World.Get<PawnIntent>(Player(toggled.World)));
+    }
+
+    private static string SandboxGame => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
+
+    private static HeadlessApp Sandbox() =>
+        HeadlessApp.ForGame(SandboxGame, new global::Sandbox.SandboxModule()).WithEngineContent().Boot();
+
+    // The scene's watcher, stood a pace in front of the player (who faces -Z): something to hit.
+    private static Entity Foe(HeadlessApp app)
+    {
+        var world = app.World;
+        var foe = world.FindByName("watcher");
+        Assert.False(foe.IsNull);
+        var at = world.Get<Transform>(Player(world)).LocalPosition + new Vector3(0, 0, -1.3f);
+        var where = Transform.At(at);
+        where.LocalRotation = SageMath.RotationFromYaw(MathF.PI);   // facing the player
+        world.Teleport(foe, where);
+        return foe;
+    }
+
+    private static void Command(World world, long tick, ActionMask held, ActionMask pressed)
+    {
+        var input = world.Resources.Get<PlayerInput>();
+        input.HasCommand = true;
+        input.Command = new PlayerCommand { Tick = tick, ViewYaw = 0f, ViewPitch = -0.1f, Held = held, Pressed = pressed };
+    }
 }
 
 // Zero per-frame allocation with the player's camera in its head (02 §4.6). Allocation is measured per
@@ -239,6 +444,29 @@ public class CameraRigAllocationTests
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
         Assert.False(views.Main.FromActiveCamera);
+        Assert.Equal(0, allocated);
+    }
+
+    // And over the shoulder, with the probe sweeping every frame against a wall that keeps it pulled in.
+    [Fact]
+    public void TheThirdPersonCameraAndItsProbeAllocateNothingPerFrame()
+    {
+        using var app = CameraRigTests.SceneOnly(CameraRigTests.Wall);
+        var world = app.World;
+        CameraRigTests.ThirdPerson(world);
+        var eye = CameraRigTests.EyeOf(app, CameraRigTests.Player(world));
+        world.Spawn(new RecordId("sceneonly", "wall"), new Vector3(eye.X, eye.Y - 2f, eye.Z + 1.5f));
+        for (int i = 0; i < 5; i++) { CameraRigTests.Step(world); Profiler.EndFrame(); }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 200; i++)
+        {
+            world.RunFrame(1f / 60f, i / 200f);
+            Profiler.EndFrame();
+        }
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.Equal(CameraRigKind.ThirdPerson, world.MainViewRig());
+        Assert.True(CameraRigTests.Boom(app) < ThirdPersonRig.DefaultDistance, "the probe is not finding the wall");
         Assert.Equal(0, allocated);
     }
 }

@@ -14,8 +14,8 @@ namespace Sage.Simulation;
 //
 // **Saves.** The camera entity is saved when its pawn is: it gets a Persistent id derived from the pawn's
 // (so the same pawn's camera has the same id every run), and a load rebuilds it from its prefab with its
-// saved components over the top — FirstPersonRig.Follow comes back as a reference to the rebuilt pawn, and
-// the player's choice of rig with it. A load destroys and rebuilds every persistent entity, so the camera
+// saved components over the top — each rig's Follow comes back as a reference to the rebuilt pawn, and
+// the player's choice of rig (first or third person) with it. A load destroys and rebuilds every persistent entity, so the camera
 // is neither duplicated nor lost. What a save cannot carry is repaired here, once, rather than every frame:
 //   - a save from before #78 has no camera: the pawn has none following it, and one is spawned;
 //   - a player camera whose pawn is gone (a non-persistent camera beside a reloaded pawn, a pawn a game
@@ -24,7 +24,7 @@ namespace Sage.Simulation;
 // The steady state is two short loops over a handful of entities and allocates nothing; a spawn happens
 // once per player.
 [Experimental("SAGE0123")]
-[System(Id, Phase.FrameUpdate, Before = new[] { FirstPersonRigSystem.Id, CameraDirector.Id })]
+[System(Id, Phase.FrameUpdate, Before = new[] { FirstPersonRigSystem.Id, ThirdPersonRigSystem.Id, CameraDirector.Id })]
 public sealed class PlayerCameraSystem : ISystem
 {
     public const string Id = "sage.camera.player";
@@ -83,13 +83,14 @@ public sealed class PlayerCameraSystem : ISystem
         return default;
     }
 
-    // What a player camera follows: its rig's Follow.
+    // What a player camera follows: its rigs' Follow (the same pawn for both).
     private Entity Follows(Entity camera) =>
-        _world.TryGet<FirstPersonRig>(camera, out var first) ? first.Follow : default;
+        _world.TryGet<FirstPersonRig>(camera, out var first) && !first.Follow.IsNull ? first.Follow
+        : _world.TryGet<ThirdPersonRig>(camera, out var third) ? third.Follow : default;
 
     private void Point(Entity camera, Entity pawn)
     {
-        if (_world.Has<FirstPersonRig>(camera)) _world.Get<FirstPersonRig>(camera).Follow = pawn;
+        Aim(_world, camera, pawn);
         Log.Info(LogCat.World, $"The player camera {World.Describe(camera)} follows {World.Describe(pawn)} now");
     }
 
@@ -106,15 +107,23 @@ public sealed class PlayerCameraSystem : ISystem
             camera = world.Create(Transform.At(at), "player camera");
             world.Add(camera, Camera.Perspective());
             new FirstPersonRigPart().AddTo(world, camera, pawn);
+            new ThirdPersonRigPart { Enabled = false }.AddTo(world, camera, pawn);
         }
 
         if (!camera.Tags.Has<PlayerCamera>()) camera.AddTag<PlayerCamera>();
-        if (!world.Has<FirstPersonRig>(camera)) new FirstPersonRigPart().AddTo(world, camera, pawn);
-        world.Get<FirstPersonRig>(camera).Follow = pawn;
+        if (!world.Has<FirstPersonRig>(camera) && !world.Has<ThirdPersonRig>(camera))
+            new FirstPersonRigPart().AddTo(world, camera, pawn);   // a patched prefab with no rig at all
+        Aim(world, camera, pawn);
 
         // Saved with its pawn, under an id derived from the pawn's, so a load finds the same camera.
         if (world.TryGet<Persistent>(pawn, out var persistent) && !persistent.Id.IsEmpty && !world.Has<Persistent>(camera))
             world.Add(camera, new Persistent { Id = PersistentId.FromName($"camera:{persistent.Id}") });
         return camera;
+    }
+
+    private static void Aim(World world, Entity camera, Entity pawn)
+    {
+        if (world.Has<FirstPersonRig>(camera)) world.Get<FirstPersonRig>(camera).Follow = pawn;
+        if (world.Has<ThirdPersonRig>(camera)) world.Get<ThirdPersonRig>(camera).Follow = pawn;
     }
 }

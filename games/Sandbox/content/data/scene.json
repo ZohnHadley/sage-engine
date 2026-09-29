@@ -646,13 +646,17 @@
   },
   {
     // The same parts as the creature, plus the tag that says the local PlayerCommand drives this one.
-    // Where the player starts is the scene's "player" placement, not this record.
+    // Where the player starts is the scene's "player" placement, not this record. The sprite is a
+    // placeholder body, so the third-person camera (V) has someone to look at; the first-person view
+    // does not draw it (engine issue #79). No "animation": a clip with a "hit" event would time the
+    // player's swings (12 §3), and these stay on the attack record's wind-up.
     "type": "prefab",
     "id": "player",
     "name": "player",
     "tags": ["player_controlled"],
     "parts": {
       "character": { "layer": "player" },
+      "sprite": { "sheet": "creature" },
       "attributes": {},
       "melee": { "attack": "sage:default_attack" },
       "inventory": { "capacity": 60 },

@@ -558,9 +558,10 @@ renderer read `ActiveCamera` until #77 made it draw every view in `CameraViews` 
   director resolves one). Pixel-perfect ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work,
   not this.
 
-### As built (camera rigs, 2026-09-29 — #78)
+### As built (camera rigs, 2026-09-29 — #78, #79)
 The rigs of decision D2: the player's view is a camera entity that follows the pawn, and the pawn carries
-no camera state.
+no camera state. First person (#78), then third person over the shoulder with collision and the 1P/3P
+toggle (#79).
 
 - **Code:** `src/Sage.Simulation/Camera/Rigs/` — `CameraRigs.cs` (`FirstPersonRig`, the `PlayerCamera`
   tag, `CameraRigKind`, `world.MainViewRig()`), `FirstPersonRigSystem.cs`, `PlayerCameraSystem.cs`,
@@ -595,11 +596,57 @@ no camera state.
   (test: CamFree_FliesOverThePlayersCamera_AndGivesTheScreenBack)
 - **Allocation:** a frame with the player's camera in its head allocates nothing.
   (test: ThePlayersCameraAllocatesNothingPerFrame)
+- **The third-person rig** (`sage:third_person_rig`, the `third_person_rig` part; system
+  `sage.camera.third_person`, FrameUpdate, after the first-person rig and before the director): from the
+  followed pawn's eye, out by `ShoulderOffset` in the view's frame (x right, y up, z back) and back by
+  `Distance` along the view, looking along the pawn's view angles — so the centre of the screen is where
+  it aims, a shoulder-width aside. (test: ThirdPerson_SitsBehindTheShoulder_LookingWhereThePawnAims)
+- **Collision.** A sphere of `ProbeRadius` is swept (`IPhysicsWorld.Sweep`) from the head toward that
+  point against `CollisionLayers` (the part takes layer names, default `["default"]`: scenery, not
+  creatures), ignoring the pawn. A hit pulls the camera in **at once**; when the way clears it eases back
+  out over `Smoothing` seconds. (test: AWallBehindThePawn_PullsTheCameraIn_AtOnce_AndItEasesBackOut)
+  **A physics query outside the tick is legal:** the physics world is single-threaded and steps only in
+  `Phase.Physics`; FrameUpdate runs after the frame's ticks on the same thread and reads a settled world
+  (the last tick's bodies against a pose interpolated up to one tick behind them — well inside the probe's
+  radius at character speeds). A world without physics has no probe.
+- **Origin rebasing.** The eased state is a length along the boom (`ThirdPersonRig.Boom`, transient), not a
+  position, so a rebase has nothing of the rig's to move: `CameraPose` moves with the world and the easing
+  carries on. (test: RebasingMovesTheThirdPersonCamera_WithoutAJump)
+- **The 1P/3P toggle.** The `ToggleView` action (registered by the character plugin in `Init`; bound to
+  V and the right stick's button in the engine's `gameplay` input map) is read from the tick's command
+  in the Commands phase by `sage.camera.toggle_view`, which turns the player camera's two rigs' `Enabled`
+  flags over (`ToggleViewSystem.Toggle(world)` from code). **Why two components, not a mode:** each rig is
+  whole on its own (a chase camera is a `ThirdPersonRig` alone), the third-person settings survive the
+  switch because nothing is removed, and flipping two booleans is no structural change, so the next frame
+  draws the other view. The prefab starts in first person with the third-person rig off. Mid-swing in the
+  Sandbox, the view switches the frame after the press and the fight (swings, health, positions, intent) is
+  exactly what it is in a world that did not press it.
+  (test: ToggleView_MidMeleeInTheSandbox_SwitchesWithinAFrame_AndCombatIsUnaffected)
+  The choice is two saved flags on the camera, so a load comes back in the view the player left.
+  (test: TheChosenViewIsSavedWithTheCamera)
+- **The body.** `CameraRigs.HiddenBy(world, camera)` is the pawn a first-person rig sits in (unless its
+  `ShowBody` is set) and nothing for any other camera; the renderer's per-view seam from #77
+  (`ViewSource.HiddenFor`) asks it, so the first-person view does not draw its own body and the
+  third-person view behind it does. The Sandbox's player has a placeholder body for that: the creature's
+  sprite, with no animation (a clip with a `hit` event would time the player's swings).
+- **The crosshair** shows for either rig (`MainViewRig()` is `FirstPerson` or `ThirdPerson`): the
+  over-the-shoulder camera looks along the aim. The Sandbox's viewmodel (hands) is first person only.
+- **The director** now clears `ActiveCamera.DrivenByRig` when the last camera entity lets go of the screen
+  (it used to stay set, and the free camera never got the view back).
+  (test: WhenTheLastCameraEntityLetsGo_DrivenByRigIsCleared)
+- **Allocation:** the third-person rig and its probe, sweeping every frame against a wall, allocate
+  nothing. (test: TheThirdPersonCameraAndItsProbeAllocateNothingPerFrame)
 - **Deviations.** The director no longer orders itself after the legacy rig (`?sage.character.camera` is
   gone); the rigs order themselves before it. The eye is `CharacterController.EyeOf` rather than the old
   system's `Height + EyeOffset` (the same number for a standing character; it also covers a character
   whose height is not set yet). `FirstPersonCameraSystem` is removed from the public API (`*REMOVED*` in
-  Sage.Simulation's `PublicAPI.Unshipped.txt`).
+  Sage.Simulation's `PublicAPI.Unshipped.txt`). The third-person rig's collision layers are stored as a
+  mask's bits (`CollisionLayers`), not names, so a game that reorders `physics_layers` re-reads them from
+  the prefab only for new cameras (a saved camera keeps its bits). The body hide is one entity: what the
+  pawn holds is drawn unless hidden the same way.
+- **Not yet:** a camera that turns the pawn toward where it looks in third person (strafe-only today, as
+  in first person); orbiting the pawn freely while it stands (the view angles are the pawn's); a
+  third-person crosshair that corrects for the shoulder's parallax; the editor camera as an entity (#81).
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

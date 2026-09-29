@@ -185,6 +185,14 @@
           "$ref": "#/definitions/sprite"
         }
       ]
+    },
+    "third_person_rig": {
+      "description": "Prefab part 'third_person_rig' (ThirdPersonRigPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/third_person_rig"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -514,6 +522,11 @@
           "description": "Off: it leaves the camera's pose alone (the player camera's other rig may be on) (bool, default true)",
           "default": true,
           "type": "boolean"
+        },
+        "showBody": {
+          "description": "Draw the followed body from this view (a game with full-body awareness); off hides it. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -775,6 +788,71 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'sprite' (SpritePart)."
+    },
+    "third_person_rig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Off: it leaves the camera's pose alone (the player camera's other rig may be on) (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "distance": {
+          "description": "How far behind the shoulder, along the view, when nothing is in the way. Unit: m. At least 0. (float, default 3)",
+          "default": 3,
+          "type": "number",
+          "minimum": 0
+        },
+        "shoulderOffset": {
+          "description": "From the eye, in the view's frame: x right, y up, z back. Unit: m. (Vector3, default [0.45,0.25,0])",
+          "default": [
+            0.45,
+            0.25,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "probeRadius": {
+          "description": "Radius of the sphere swept from the head to keep the camera out of walls. Unit: m. At least 0. Category: Collision. (float, default 0.25)",
+          "default": 0.25,
+          "type": "number",
+          "minimum": 0
+        },
+        "collision": {
+          "description": "Physics layers the probe stops at, by name; empty = every layer. Category: Collision. (List<string>)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "collision+": {
+          "description": "Adds to \"collision\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "collision-": {
+          "description": "Removes these from \"collision\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "smoothing": {
+          "description": "How long it takes to ease back out once the way clears; 0 = at once. Unit: s. At least 0. Category: Collision. (float, default 0.3)",
+          "default": 0.3,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'third_person_rig' (ThirdPersonRigPart)."
     }
   }
 }
