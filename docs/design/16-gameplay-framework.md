@@ -145,8 +145,9 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
   (a burst where a Touch would have landed — a fireball). `Range` is how far it reaches, `Radius` is
   how wide it bursts, and `Width` is how fat the thing that travels is. Those last two started as one
   field and it was a bug: sweeping with the *burst* radius makes a fireball start already overlapping
-  its own caster, and an overlapping sweep reports nothing (10 §4, review #55), so a three-metre
-  burst reached exactly nothing.
+  its own caster, and an overlapping sweep reported nothing (10 §4, review #55), so a three-metre
+  burst reached exactly nothing. Since #30 a sweep leaves its caster out (`ignore`) and hits what
+  it starts inside at distance 0 (10 "As built (the facade)").
 - **Only things that can hold an effect are targets.** A blast lands on the world and most of the
   world is scenery; a fireball bursting against a tree is a normal Tuesday, not a mis-configured
   entity.

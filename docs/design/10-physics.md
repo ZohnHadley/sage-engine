@@ -1,7 +1,7 @@
 # 10 — Physics (short)
 
 ## 1. Purpose and scope
-Collision, queries, triggers, rigid bodies and the character controller. Built on **BepuPhysics v2**, in the `Sage.Physics3D` plugin (Bepu uses `System.Numerics`, so it has no MonoGame dependency). Expanded when roadmap Phase 2 starts.
+Collision, queries, triggers, rigid bodies and the character controller. Everything outside the physics plugin reaches it through one interface, **`IPhysicsWorld`** (`Sage.Simulation`, issue #30), so a 2D backend can stand in for the 3D one (REDESIGN §0.5). The 3D backend is **BepuPhysics v2**, in the `Sage.Physics3D` plugin (Bepu uses `System.Numerics`, so it has no MonoGame dependency). Expanded when roadmap Phase 2 starts.
 
 ## 2. Research basis
 Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character *demos* (dynamic character without crouch or step-up); **local determinism only; no full-state snapshot/restore**. That's fine for single-player, and it's why the character controller is our own kinematic one.
@@ -29,7 +29,15 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
   - crouch with a headroom check, jump and gravity.
   
   Movement tuning is in `movement_profile` records (walk/run/air control). A GoldSrc-style air-acceleration profile comes later for HL1-like games.
-- **Queries** go through `PhysicsSpace`: raycast, shape sweep, overlap. Results go into caller-provided spans (no allocation).
+- **Queries** go through `IPhysicsWorld` (the Bepu `PhysicsSpace` behind it): raycast, shape sweep, overlap. Results go into caller-provided spans (no allocation).
+
+### As built (the facade, issue #30, 2026-09-29)
+- **`IPhysicsWorld`** (`src/Sage.Simulation/Physics/IPhysicsWorld.cs`) is what gameplay, levels, entity I/O, origin rebasing and the scale commands use; `PhysicsModule` installs its `PhysicsSpace` under it in every world. It has the world (counts, step time, gravity, the named `Layers`, `Rebase`), **bodies** (`AddBody` for a `Collider` + `RigidBody` of any kind, `RemoveBody`, `AddHull`, `AddMesh`, `MoveStatic`, pose and velocity), **queries** (`Raycast`, `Sweep`, `OverlapBox`, each with a `LayerMask`, `includeTriggers` and an `ignore` entity), **events** (trigger enter/exit, contact begin/end) and **`DrawDebug`**. It names no Bepu type; `PhysicsSpace.Simulation` and its callbacks are internal to `Sage.Physics3D`.
+- **`Sage.Gameplay` uses no Bepu type and no `Sage.Physics3D` type but `PhysicsModule` and `CharacterModule`**, which it names in the two composition lists (`BasePlugins`, `GameplayModules.All`); combat, AI, abilities and navigation require the character plugin by id (`[RequiresPlugin("sage.gameplay.character")]`). Checked from the compiled metadata (test: GameplayReachesPhysicsOnlyThroughTheFacade). The project reference stays for those lists: dropping it needs a composition root above both (`Sage.Sdk`, #32, or a profile list per spatial mode).
+- **Backend-neutral data lives in `Sage.Simulation`:** `Collider`/`RigidBody`/`PhysicsBody`, `CharacterController`, `movement_profile` and `AddCharacter` (`Physics/Character.cs`), the `body` and `character` prefab parts (`Physics/PhysicsParts.cs`, same ids, options and owning plugins, so shipped prefabs and golden saves are unchanged) and `PhysicsDebugSystem`. `Sage.Physics3D` keeps the Bepu space, its tick systems, terrain collision, `CharacterMovementSystem` and the first-person rig, and declares no component (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
+- **The sweep gap is closed.** A shape cast that starts inside something used to be dropped (`OnHitAtZeroT` was empty), so a swing pressed against its target, or a bolt fired point-blank, found nothing. Now it is a hit at distance 0 with `SweepHit.StartsInside` (no surface, so `Normal` is `-direction`), and it wins over anything further along; combat, projectiles and touch abilities leave their own caster out with `ignore` (test: ASwingHitsATargetPressedAgainstTheAttacker). The character controller passes `ignoreInitialOverlaps`, because it rests a skin width above the floor and wants only what it moves into (test: ASweepThatStartsInsideSomethingHitsItAtDistanceZero). Depenetration is still not built (TODO 61).
+- **Contact events are opt-in:** `Collider.ReportContacts` (the `body` part's `"contacts": true`) makes `ContactBegin`/`ContactEnd` report a pair, with the deepest contact's point and a normal from B to A; tracking every pair of a two-thousand-tree world would cost every tick (test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd). **A pair with nothing awake in it keeps its state**: Bepu stops testing it, which used to read as leaving a trigger when a crate fell asleep inside one (test: SomethingAsleepInATriggerIsStillInsideIt).
+- **`phys_debug` draws through the facade** (`IPhysicsWorld.DrawDebug`): the backend draws what it simulates, so brush hulls (which have no `Collider`) show up as their bounds, and a body out of step with its transform shows where physics has it (test: PhysicsDebugDrawShowsWhatTheBackendSimulates).
 
 ### As built (rebasing, 2026-09-24 — R6)
 `PhysicsSpace.Rebase(offset)` shifts every body and static when the origin sector moves (14 §3). Two
@@ -58,47 +66,58 @@ waking one deallocates it.
   - **`phys_debug` draws it all** (06 §3.2, needs `r_debugdraw 1`): every collider in its real place — cyan for solid, magenta for triggers — plus each character's swept capsule, green when it is grounded and orange when it is not, and an arrow along the ground normal that turns red on a slope too steep to stand on. A capsule sunk into the ground (review #44) is obvious at a glance in it.
   - **Queries see solid things.** A trigger has no surface, so it stops neither a ray, a sweep nor a sword; `includeTriggers: true` asks for them anyway. Before F20 a trigger volume blocked line of sight and swallowed a swing (review #53).
   - Physics entities are assumed to be **roots**: the sync uses the local transform, so a parented collider would be placed wrong.
-  - `Collided` events, `phys_debug` (it needs `DebugDraw`, 06) and dynamic-vs-kinematic teleport smoothing are not built.
+  - Dynamic-vs-kinematic teleport smoothing is not built. Contacts arrived with the facade (#30) as opt-in lists (`ContactBegin`/`ContactEnd`), not as `Collided` game events.
   - Stepping allocates ~40 bytes per tick inside Bepu's own profiler; everything else in the frame allocates nothing (TODO #41).
 ### The character controller (F7, 2026-09-22)
-- **Code:** `src/Sage.Physics3D/Character/CharacterController.cs` — the `movement_profile` record, the `CharacterController` component and `CharacterMovementSystem` (PrePhysics, before the bodies sync), plus the first-person camera rig. It is simulation code, so it runs headless and a server would run the same paths.
+- **Code:** `src/Sage.Simulation/Physics/Character.cs` — the `movement_profile` record, the `CharacterController` component and `AddCharacter`, which gameplay reads without a physics backend (#30); `src/Sage.Physics3D/Character/CharacterController.cs` — `CharacterMovementSystem` (PrePhysics, before the bodies sync), plus the first-person camera rig. It is simulation code, so it runs headless and a server would run the same paths.
 - **Each tick:** intent → acceleration (ground or air, with friction when there is no input) → jump/gravity → **horizontal collide-and-slide** (up to 4 planes) with a **step-up** attempt → **vertical move** (falling or a ceiling) → **ground check** with snapping. The character is a kinematic body, so the world collides with it and it pushes dynamic props.
 - **Details that matter:**
   - Horizontal sweeps start a few centimetres above the feet. Otherwise the ground the capsule rests on answers every horizontal sweep at zero distance and the character never moves.
   - A step-up moves forward at least a capsule radius before sweeping down, or the capsule lands on the *edge* of the step, whose blended normal looks like a cliff and gets rejected.
   - On a face steeper than the slope limit the character slides down it and cannot push itself up: projecting motion onto a steep plane otherwise turns "walk into the cliff" into "climb it".
   - Crouching is instant and checks headroom before standing up.
-  - **Starting inside the ground is survivable.** A sweep that begins overlapping carries no normal, so the space reports nothing; if the ground check believed that, a character placed a few centimetres into a hill would fall through the world (review #55). When the sweep finds nothing it casts a ray down from the capsule's centre and, if that finds walkable ground, puts the feet back on top of it.
+  - **Starting inside the ground is survivable.** A sweep that begins overlapping carries no normal, and the controller's sweeps leave such overlaps out (`ignoreInitialOverlaps`); if the ground check believed that, a character placed a few centimetres into a hill would fall through the world (review #55). When the sweep finds nothing it casts a ray down from the capsule's centre and, if that finds walkable ground, puts the feet back on top of it.
 - **One call to place one:** `world.AddCharacter(entity, layer, profile)` adds the controller, a `Pawn`, a `PawnIntent` **seeded from the entity's rotation**, a `Collider.Standing` on the same layer and a kinematic `RigidBody`. Doing it by hand is what let the sweep layer, the collider layer and the capsule height drift apart, and what silently discarded the direction a scene placed a character facing (review #43).
-- **Limitations:** no depenetration — a sweep that starts already overlapping carries no normal, so it is ignored and the skin width does the work (a shape-overlap query, §4, would fix it); no moving platforms; no smooth crouch interpolation; **crouching shrinks the sweep capsule but not the `Collider`**, so a crouching character still blocks the world at full height until `PhysicsSpace` can update a shape; the GoldSrc air-strafe profile is still "later".
+- **Limitations:** no depenetration — the controller ignores what its capsule already overlaps and the skin width does the work (a narrow-phase overlap query, §4, would fix it); no moving platforms; no smooth crouch interpolation; **crouching shrinks the sweep capsule but not the `Collider`**, so a crouching character still blocks the world at full height until `PhysicsSpace` can update a shape; the GoldSrc air-strafe profile is still "later".
 
 - **Not yet:** the origin rebasing hook (`Rebase` exists but nothing calls it until R6).
 
 ## 4. API sketch
 ```csharp
-public sealed class PhysicsSpace                          // world resource, one Bepu Simulation
+public interface IPhysicsWorld                            // world resource; PhysicsSpace (Bepu) in 3D
 {
-    public LayerMatrix Layers { get; }                   // named layers: Player, Enemy, Trigger
+    LayerMatrix Layers { get; }                          // named layers: Player, Enemy, Trigger
+    void Rebase(Vector3 offset);                         // origin sector changed (14)
 
-    public RayHit   Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default);
-    public SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default);
-    public int      OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default);   // broad phase only
+    PhysicsBody AddBody(Entity entity, in Collider collider, in RigidBody body, in Pose pose);
+    void        RemoveBody(in PhysicsBody body);
+    void        MoveStatic(in PhysicsBody body, Vector3 position);
+    Pose        PoseOf(in PhysicsBody body);             // the shape's pose, centre included
+    void        SetPose(in PhysicsBody body, in Collider collider, in Pose pose);   // pose is the entity's
+    Vector3     VelocityOf(in PhysicsBody body);
 
-    public Pose    PoseOf(in PhysicsBody body);          // the shape's pose, centre included
-    public void    SetPose(in PhysicsBody body, in Collider collider, in Pose pose);   // pose is the entity's
-    public Vector3 VelocityOf(in PhysicsBody body);
-    public void    Rebase(Vector3 offset);               // origin sector changed (14; no caller yet)
+    RayHit   Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default,
+                     bool includeTriggers = false, Entity ignore = default);
+    SweepHit Sweep(in Collider shape, in Pose from, Vector3 direction, float maxDistance, LayerMask mask = default,
+                   bool includeTriggers = false, Entity ignore = default, bool ignoreInitialOverlaps = false);
+    int      OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default,
+                        bool includeTriggers = false, Entity ignore = default);   // broad phase only
 
-    public ReadOnlySpan<TriggerOverlap> TriggerEnter { get; }   // events when 04 exists
-    public ReadOnlySpan<TriggerOverlap> TriggerExit { get; }
+    ReadOnlySpan<TriggerOverlap> TriggerEnter { get; }   // read in PostPhysics
+    ReadOnlySpan<TriggerOverlap> TriggerExit { get; }
+    ReadOnlySpan<ContactEvent>   ContactBegin { get; }   // Collider.ReportContacts only
+    ReadOnlySpan<ContactEvent>   ContactEnd { get; }
+
+    void DrawDebug(DebugDraw debug, Vector3 around, float range);   // phys_debug
+    // … counts, gravity, AddHull/AddMesh, SetVelocity, IsDynamic, IsAwake
 }
 
 public struct Collider : IComponent
 {
-    public ColliderShape Shape; public Vector3 Size; public Vector3 Center; public byte Layer; public bool IsTrigger;
+    public ColliderShape Shape; public Vector3 Size; public Vector3 Center; public byte Layer; public bool IsTrigger, ReportContacts;
     // Statics the engine builds itself, from geometry rather than from a component:
-    //   PhysicsSpace.AddMesh(entity, vertices, indices, position, layer)   // terrain sectors (14)
-    //   PhysicsSpace.AddHull(entity, points, position, layer)              // one brush of a level (15 §10a, F16)
+    //   IPhysicsWorld.AddMesh(entity, vertices, indices, position, layer)   // terrain sectors (14)
+    //   IPhysicsWorld.AddHull(entity, points, position, layer)              // one brush of a level (15 §10a, F16)
     // A hull, not a mesh, for a brush: a brush is convex by construction, and a mesh collider is a
     // one-sided surface that a body ending up behind falls through. Bepu recentres a hull on its centre
     // of mass and returns the offset, which the static's pose has to carry. Both release their shape
@@ -141,6 +160,6 @@ Only the local player's KCC would be predicted (against static geometry). Bepu's
 ## 14. Build steps
 1. ~~`PhysicsSpace` resource + `Collider`/`RigidBody`/`PhysicsBody` + body sync~~ **Done 2026-09-22** (TODO F6).
 2. ~~Raycast/sweep/overlap queries + layers~~ **Done 2026-09-22** (overlap is broad phase only).
-3. Triggers → game events. **Overlaps are collected as lists (`PhysicsSpace.TriggerEnter`/`TriggerExit`) and drive entity I/O's `OnStartTouch`/`OnEndTouch` (F17). The event bus exists (04, R13); moving the overlaps onto it is not done.**
+3. Triggers → game events. **Overlaps are collected as lists (`IPhysicsWorld.TriggerEnter`/`TriggerExit`) and drive entity I/O's `OnStartTouch`/`OnEndTouch` (F17). The event bus exists (04, R13); moving the overlaps onto it is not done.**
 4. ~~KCC + movement profile records~~ **Done 2026-09-22** (TODO F7). Left: depenetration (TODO bug 61).
 5. ~~Origin rebasing hook (with 14)~~ **Done 2026-09-24** (R6; "As built (rebasing)").

@@ -260,11 +260,9 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   the registration ledger and seals, the declaration attributes and the metadata table. It references
   no package; Friflo's `Entity` is recognised by name in the metadata, and the ECS's entity converter
   for record JSON is added by the `Engine`.
-- **Physics is its own base plugin, `Sage.Physics3D` (Bepu)**, with the character controller and the
-  first-person rig (until the camera-rig work). The simulation reaches physics only through
-  **`IPhysicsWorld`** (the seed of #30: counts, trigger overlaps, `AddHull`, `Rebase`), which the space
-  is installed as too. `Sage.Gameplay` still references `Sage.Physics3D` (AI, combat, items and abilities
-  sweep the space) until #30. `PawnIntent`, `Pawn`, `PlayerControlled` and `Players.ForEachPlayer` are
+- **Physics is its own base plugin, `Sage.Physics3D` (Bepu)**, with character movement and the
+  first-person rig (until the camera-rig work). The simulation and gameplay reach physics only through
+  **`IPhysicsWorld`** (issue #30, below), which the space is installed as too. `PawnIntent`, `Pawn`, `PlayerControlled` and `Players.ForEachPlayer` are
   simulation (`Sage.Simulation/Input`), because streaming, maps, entity I/O and the controller all read them.
 - **No `Sage.Kits.Rpg` yet.** The client builds the dialogue screen itself, so the RPG screens
   (spellmaker, journal, dialogue, panels) wait in `Sage.Gameplay/Rpg/` for #27. What stops them from
@@ -272,7 +270,8 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   Gameplay, Client and Editor) that references a `Sage.Kits.*` assembly or uses its types is a build error.
 - **Plugin ids did not change** (`sage.physics3d`, `sage.streaming`, `sage.gameplay.*` — `game.json`
   names them), even where the plugin's assembly did: entity I/O (`sage.gameplay.io`) and maps are in
-  `Sage.Simulation`, the character (`sage.gameplay.character`) in `Sage.Physics3D`.
+  `Sage.Simulation`, the character (`sage.gameplay.character`) in `Sage.Physics3D` (its data in
+  `Sage.Simulation` since #30).
 - **The one list of base plugins is `BasePlugins.All()` in `Sage.Gameplay`** (it is the only assembly
   that can name them all); `SageAppOptions.AvailablePlugins` replaces `IncludeSimulationModules`, and the
   host, `sage`, `HeadlessApp` and the tests pass it. `SaveSystem.AddConverter` (attributes and tags by
@@ -284,7 +283,7 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   The `physics_layers` record (owned by `sage.physics3d`) stays in `Sage.Simulation` beside the other
   physics data, which is always included.
 - **Friflo builds its schema from every loaded assembly that references it**, the split ones included
-  (22 in Simulation, 1 in Physics3D, 15 in Gameplay) (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
+  (23 in Simulation and 15 in Gameplay since #30 moved `CharacterController`; none in Physics3D) (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
 - **`InternalsVisibleTo` goes only to `Sage.Tests`**, so what the next layer used became public: the record
   JSON helpers (`JsonMembers`, `RecordParseContext`, the vector converters), `Upgraders`,
   `Screen.Index`'s setter, `RegistrationLedger.Owner`'s setter, `MovementProfileRecord.Fallback` and the
@@ -294,6 +293,20 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   (`Private="false"`, so a game's `bin/` still holds only its own dll). The generators name engine types
   from one list, `src/Sage.Generators/SageTypes.cs` (test: EveryTypeTheGeneratorsNameExists). Every
   engine project is simulation-only (SAGE0024) unless it opts out (Client, Editor, Host).
+- *As built (issue #30, 2026-09-29): the physics facade.* **`IPhysicsWorld`** (`Sage.Simulation`) is the
+  whole of what gameplay asks of physics: bodies (static, kinematic, dynamic; hulls and meshes), the
+  named layers of `physics_layers`, raycast, shape cast and overlap (with an `ignore` entity), trigger
+  and opt-in contact events, and debug draw (docs/design/10 "As built (the facade)"). Combat, projectiles,
+  AI sight and steering, navigation probes, items, movers and entity I/O use it and nothing else;
+  `Sage.Gameplay` uses no Bepu type, and from `Sage.Physics3D` only `PhysicsModule` and `CharacterModule`,
+  in `BasePlugins` and `GameplayModules.All` (test: GameplayReachesPhysicsOnlyThroughTheFacade). **The
+  project reference stays** for those two lists, the one place the base names its 3D backend: dropping
+  it needs a composition root above both assemblies (`Sage.Sdk`, #32, or one plugin list per spatial
+  mode when `Sage.Physics2D` arrives). What a 2D backend shares moved to `Sage.Simulation`: the
+  character's data (`CharacterController`, `movement_profile`, `AddCharacter`), the `body` and
+  `character` parts under the same ids, options and plugins, and `phys_debug`'s system. A sweep that
+  starts inside something is a hit now rather than nothing, which was the "overlapped sweeps are
+  discarded" gap (test: ASwingHitsATargetPressedAgainstTheAttacker).
 - Not done here: `GameplayModules.cs`, `PrefabParts.cs` and `MapLevel.cs` moved whole rather than one
   file per module or type; the render, audio, input and UI view-models stay in `Sage.Simulation` rather
   than separate `Sage.UI`/`Sage.Audio` plugins (§0.5); `Sage.Sdk` is #32.

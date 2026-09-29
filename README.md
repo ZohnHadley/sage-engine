@@ -46,7 +46,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 702 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 710 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -234,7 +234,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 |---|---|
 | `src/Sage.Core` | The kernel: cvars and console, logging, VFS, records, plugins, declarations. **No ECS, no MonoGame.** |
 | `src/Sage.Simulation` | The simulation: engine and app, ECS, prefabs, saves, levels, streaming, entity I/O. **No MonoGame.** |
-| `src/Sage.Physics3D` | Bepu physics and the character controller, a base plugin. **No MonoGame.** |
+| `src/Sage.Physics3D` | Bepu physics behind the `IPhysicsWorld` facade, and character movement, a base plugin. **No MonoGame.** |
 | `src/Sage.Gameplay` | Generic gameplay plugins: attributes, combat, items, abilities, AI, navigation, factions, animation. **No MonoGame.** |
 | `src/Sage.Client` | Rendering, input devices, assets, sprite batching — the MonoGame half |
 | `src/Sage.Editor` | Dev camera, console window, entity outliner, stat overlay (ImGui) |

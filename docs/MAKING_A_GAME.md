@@ -275,7 +275,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 
 | Part | Gives the entity |
 |---|---|
-| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass` |
+| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end) |
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` |
 | `light` | a lamp — `colour`, `range` in metres, `intensity` (06 §3.9) |
@@ -568,6 +568,21 @@ public void OnWorldCreated(World world) => world.AddSystem(new TideSystem(world)
   plugin that depends on the one it changes. Both are logged against your plugin, and `sys_list` shows
   every system's id, its plugin and who replaced or disabled it.
 - A test's probe or a tool's one-off can stay undeclared: `world.AddSystem(probe, Phase.Late)`.
+
+**Asking physics something** goes through the world's `IPhysicsWorld`, never the Bepu space behind it,
+so the same code runs when a 2D backend arrives (issue #30):
+
+```csharp
+var physics = world.Resources.Get<IPhysicsWorld>();
+var mask = LayerMask.All.Except(physics.Layers.Enemy);             // layers by name, not by number
+var hit = physics.Raycast(eye, aim, 30f, mask, ignore: self);      // `ignore`: leave the asker out
+var swing = physics.Sweep(Collider.Sphere(0.3f), pose, aim, 2f, ignore: self);   // starts inside? Distance 0
+foreach (var touch in physics.TriggerEnter) { /* PostPhysics: who entered which trigger */ }
+```
+
+A sweep that starts inside something hits it at distance 0 (`StartsInside`), which is what a swing
+pressed against its target wants; contact begin/end is reported only for colliders with
+`ReportContacts` (the `body` part's `"contacts": true`).
 
 ---
 
