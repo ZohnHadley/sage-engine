@@ -1,0 +1,14 @@
+{
+  // A scripted camera cut with no C# (issue #80, REDESIGN §5 phase 4a's exit criterion): trigger volumes
+  // whose `OnStartTouch` wires turn on placed `sage:scripted_camera`s, one for a hold time and one until a
+  // delayed `CameraOff`, after which the screen goes back to the player's view. The wiring is the scene's
+  // own (a placement's `outputs`). CI validates it and runs it in the real host (tools/smoke_run.sh): a
+  // crate falls through the yard trigger as the game starts, so the cut happens with nobody at the keys.
+  // tests/Sage.Tests/Presentation/CameraIOTests.cs boots it headlessly.
+  "name": "Camera cut",
+  "id": "cameracut",
+  // A player to walk about as (physics comes with it), and entity I/O to wire the triggers.
+  "plugins": ["sage.gameplay.character", "sage.gameplay.io"],
+  "mounts": ["content"],
+  "scene": "courtyard"
+}
