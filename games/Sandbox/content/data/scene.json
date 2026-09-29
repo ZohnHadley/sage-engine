@@ -710,15 +710,17 @@
   // ---- where the instances go --------------------------------------------------------------------
   {
     // Placement is not the prefab's business. Map files with a persistent id and per-entity overrides
-    // are F27 (09 §3.4); until then this is the Sandbox's own list, and it is four fields wide
-    // instead of the twenty the old `spawn` record had grown.
+    // are F27 (09 §3.4). A `scene` is the engine's (issue #29): game.json's "scene" names this one,
+    // and the engine places it, respawns it when a record file is saved, and keeps the player.
     //
-    // "at" is relative to the scene's spot in the sector, and its y is height above the ground:
-    // everything stands on the terrain. Yaw is the engine's one convention (SageMath): degrees about
-    // +Y, 0 faces -Z, growing counter-clockwise seen from above. The player starts away at +Z, so
-    // the watcher's "yaw": 180 looks back at them.
+    // "at" is measured from the scene's "origin" (the middle of sector 0,0) and, because the scene is
+    // "relativeTo": "Ground", its y is height above the terrain: everything stands on the hills. Yaw is
+    // the engine's one convention (SageMath): degrees about +Y, 0 faces -Z, growing counter-clockwise
+    // seen from above. The player starts away at +Z, so the watcher's "yaw": 180 looks back at them.
     "type": "scene",
     "id": "main",
+    "origin": [512, 0, 512],
+    "relativeTo": "Ground",
 
     // Brush levels (15 §3, F16): the hut, from maps/hut.map.
     "maps": ["hut"],
