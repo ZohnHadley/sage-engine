@@ -553,7 +553,7 @@ renderer read `ActiveCamera` until #77 made it draw every view in `CameraViews` 
 - **Since #77** every view is drawn, into its target and viewport, with its own projection (an
   orthographic screen camera draws orthographic), §3.4a.
 - **Not yet:** rigs as camera entities, the first-person one moved over (#78), third-person (#79);
-  scripted cuts from entity I/O (#80); the editor camera as an entity (#81). One view per target means
+  scripted cuts from entity I/O (#80, done: "As built (scripted cameras from entity I/O)"); the editor camera as an entity (#81). One view per target means
   split screen is two targets for now (the renderer itself draws several views into one target; the
   director resolves one). Pixel-perfect ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work,
   not this.
@@ -613,8 +613,10 @@ toggle (#79).
   position, so a rebase has nothing of the rig's to move: `CameraPose` moves with the world and the easing
   carries on. (test: RebasingMovesTheThirdPersonCamera_WithoutAJump)
 - **The 1P/3P toggle.** The `ToggleView` action (registered by the character plugin in `Init`; bound to
-  V and the right stick's button in the engine's `gameplay` input map) is read from the tick's command
-  in the Commands phase by `sage.camera.toggle_view`, which turns the player camera's two rigs' `Enabled`
+  V and the right stick's button in the engine's `gameplay` input map) is read from the followed pawn's
+  `PawnIntent` in the Commands phase by `sage.camera.toggle_view` — after the controller and after a
+  scripted camera's input lock (#80), so a cut that holds the player's buttons holds this one — which
+  turns the player camera's two rigs' `Enabled`
   flags over (`ToggleViewSystem.Toggle(world)` from code). **Why two components, not a mode:** each rig is
   whole on its own (a chase camera is a `ThirdPersonRig` alone), the third-person settings survive the
   switch because nothing is removed, and flipping two booleans is no structural change, so the next frame
@@ -647,6 +649,73 @@ toggle (#79).
 - **Not yet:** a camera that turns the pawn toward where it looks in third person (strafe-only today, as
   in first person); orbiting the pawn freely while it stands (the view angles are the pawn's); a
   third-person crosshair that corrects for the shoulder's parallax; the editor camera as an entity (#81).
+
+### As built (scripted cameras from entity I/O, 2026-09-29 — #80)
+Phase 4a's exit criterion "a scripted camera cut from I/O": an HL1 scene cuts to a placed camera when a
+trigger fires, and back.
+
+- **Code:** `src/Sage.Simulation/Camera/CameraIO.cs` — `ScriptedCamera` (`sage:scripted_camera`), the
+  `scripted_camera` part, the inputs and outputs (registered in `Engine`'s constructor), and two systems
+  added in `Engine.CreateWorld` beside the director: `sage.camera.scripted` (EntityIO, before
+  `sage.io.dispatch`: holds running out) and `sage.camera.input_lock` (Commands, after
+  `sage.character.player_control`). Engine content: `engine_content/data/cameras.json`. Tests:
+  `tests/Sage.Tests/Presentation/CameraIOTests.cs`. Experimental (SAGE0123) with the rest.
+- **Inputs `CameraOn [hold]` / `CameraOff`, outputs `OnCameraOn` / `OnCameraOff`**, on any entity with a
+  `Camera`. They toggle `Camera.Enabled`; the camera then wins or loses the screen by priority like any
+  other, so "back" means the next camera down — the player's camera (#78, priority 0), or `ActiveCamera`
+  in a world without one. The outputs fire on a change only: `CameraOn` at a camera that is on restarts
+  its hold and fires nothing. (test: CameraOnTakesTheScreen_CameraOffGivesItBack_AndTheOutputsFireOnlyOnAChange)
+  The names are camera-specific because `EntityInputs` is one global, case-insensitive table.
+- **The hold:** `CameraOn`'s parameter in seconds (> 0: off again after it, firing `OnCameraOff`; 0: until
+  `CameraOff`); with no parameter, the entity's `ScriptedCamera.HoldTime`. A hold on a camera with no
+  `ScriptedCamera` adds one; a parameter that is not a number is warned about and ignored; `CameraOff`
+  cancels a running hold, so the next cut is not ended early by the last one's.
+  (test: TheHoldComesFromTheWire_ElseTheEntity_AndCameraOffOrARestartCancelsIt)
+  (test: AHoldOnACameraWithoutTheCompanionGivesItOne_AndABadParameterFallsBack)
+  It counts down in fixed ticks (paused with the simulation) before each tick's dispatch, so a hold of N
+  seconds ends on the tick a `CameraOff` queued with a delay of N at the same moment arrives.
+  (test: AHoldTurnsTheCameraOffOnTheTickADelayedCameraOffWouldArrive)
+- **Which frame the cut lands on (decision).** Entity I/O is delivered in the `EntityIO` phase of a fixed
+  tick; the director runs in `FrameUpdate`. So: the physics step of tick N sees the overlap, PostPhysics
+  fires `OnStartTouch`, a wire with no delay is delivered in tick N's `EntityIO` phase, and **the first
+  frame after tick N** shows the camera — the same host frame, since a frame runs its ticks before its
+  Frame phases. Turning off is the same: the frame after the tick that delivered `CameraOff` (or in which
+  the hold ran out) shows the player's view. (test: TheCutLandsOnTheFrameAfterTheTickThatDeliveredIt)
+  (test: ATriggerCutsToANamedCameraAndBack_InAGameWithNoCode) An output the camera fires in reply
+  (`OnCameraOn`) is a tick later, as every chained wire is (04 §3.4a).
+- **A cut, not a blend.** Blends wait for 4b's tweens, which will animate between two views; nothing here
+  assumes a cut beyond not having one.
+- **The input lock** is `ScriptedCamera.LockInput`: while a camera with it is on and draws to the screen,
+  the local player's `PawnIntent` loses its movement and buttons after the controller writes it, and its
+  view angles are held where the lock began — asked of the host each tick with `PlayerInput.RequestView`,
+  so the mouse does not wind the view round behind the cut. AI and other pawns are untouched. Headless
+  tests see exactly what a played game does, because the gate is in the Commands phase, not the client.
+  (test: ALockingCameraHoldsThePlayersIntent_AndLetsGoWhenItIsOff)
+- **The prefab `sage:scripted_camera`** is a `camera` part that starts off at priority 100 plus a
+  `scripted_camera` part with `lockInput`: place it, name it, wire it.
+  (test: TheEnginePrefabIsAnOffHighPriorityCameraThatLocksInput)
+- **Ownership: `sage.core`**, like the `camera` part and the director: the inputs only touch components
+  the engine owns, so every game has them whatever plugins it lists, a data-only game needs no extra
+  plugin id to wire a cut, and entity I/O (`sage.gameplay.io`) does not have to know about cameras.
+  Delivering them still takes that plugin, as every wire does. (test: TheInputsOutputsAndSystemsAreTheEngines_InAGameWithNoPlugins)
+- **Wiring without a map** (a deviation the acceptance test needed): until now only a `.map` could wire
+  I/O, so a game with no C# and no maps could not be proven. A placement (in a scene or a placements
+  document) now has `outputs`, the five Hammer fields by name; each placed entity gets its own copies;
+  an input nobody registered is a load error at the file and line, an undeclared output a warning; targets
+  bind by name when they fire. And a `.map` classname may be a full id, so a mapper places
+  `sage:scripted_camera` directly. (test: AScenePlacementsOutputsAreWiredAndChecked)
+  (test: AMapPlacesTheEnginesScriptedCameraByItsQualifiedClassname)
+- **`tests/games/camera-cut`**, a game with no C# (character and I/O plugins): a crate falls through the
+  yard trigger as it starts (a `CameraOn` and a `CameraOff` two seconds behind it), and walking into the
+  gate cuts to the intro camera for a three-second hold that says so through its outputs. CI validates it,
+  generates schemas from it and smoke-runs it in the real host. (test: TheCameraCutGameValidates)
+- **Zero allocation per tick** with holds running and the player locked. (test: CountingDownAndLockingAllocateNothing)
+- **Not yet:** blends (4b); a camera that looks *at* something (a target to track) — a scripted camera
+  looks where it is placed, or where a mover or a rig takes it; letterboxing or a HUD hidden during a cut;
+  the editor showing a camera's frustum and wiring (#81). A wire's delay fired from outside the dispatch
+  (a trigger's `OnStartTouch`, in PostPhysics) is counted from the previous tick's I/O clock, so a
+  `CameraOff` wired two seconds behind a `CameraOn` from the same trigger arrives after 119 ticks, not 120
+  (entity I/O's, older than this; a hold is exact).
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

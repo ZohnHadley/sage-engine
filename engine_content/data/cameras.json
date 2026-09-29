@@ -1,0 +1,20 @@
+[
+  // A scripted camera (issue #80): the HL1 kind a trigger cuts to. Place it where it should look from
+  // and give it a name; wire `CameraOn` at it (with a hold time in seconds, or none for "until
+  // `CameraOff`") and it takes the screen from the player's view — off by default, and a priority
+  // above any rig's — then gives it back. While it is on, the player stands still (`lockInput`).
+  //
+  //   scene:  { "prefab": "sage:scripted_camera", "at": [0, 3, 8], "yaw": 180, "name": "intro_cam" }
+  //   .map:   "classname" "sage:scripted_camera"   "targetname" "intro_cam"
+  //
+  // A game changes what every one does by patching this record, or makes its own from the two parts.
+  {
+    "type": "prefab",
+    "id": "scripted_camera",
+    "name": "scripted camera",
+    "parts": {
+      "camera": { "enabled": false, "priority": 100 },
+      "scripted_camera": { "lockInput": true }
+    }
+  }
+]

@@ -154,6 +154,111 @@
               "type": "null"
             }
           ]
+        },
+        "outputs": {
+          "description": "Entity I/O wires from this entity's outputs to other entities' inputs. (List<Connection>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                "type": "string"
+              },
+              "target": {
+                "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                "type": "string"
+              },
+              "input": {
+                "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                "type": "string"
+              },
+              "parameter": {
+                "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                "type": "string"
+              },
+              "delay": {
+                "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              },
+              "times": {
+                "description": "How many times it may fire; -1 = every time. (int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "outputs+": {
+          "description": "Adds to \"outputs\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                "type": "string"
+              },
+              "target": {
+                "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                "type": "string"
+              },
+              "input": {
+                "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                "type": "string"
+              },
+              "parameter": {
+                "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                "type": "string"
+              },
+              "delay": {
+                "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              },
+              "times": {
+                "description": "How many times it may fire; -1 = every time. (int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "outputs-": {
+          "description": "Removes these from \"outputs\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                "type": "string"
+              },
+              "target": {
+                "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                "type": "string"
+              },
+              "input": {
+                "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                "type": "string"
+              },
+              "parameter": {
+                "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                "type": "string"
+              },
+              "delay": {
+                "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              },
+              "times": {
+                "description": "How many times it may fire; -1 = every time. (int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
@@ -204,6 +309,111 @@
                 "type": "null"
               }
             ]
+          },
+          "outputs": {
+            "description": "Entity I/O wires from this entity's outputs to other entities' inputs. (List<Connection>)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "outputs+": {
+            "description": "Adds to \"outputs\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "outputs-": {
+            "description": "Removes these from \"outputs\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "additionalProperties": false
@@ -255,6 +465,111 @@
                 "type": "null"
               }
             ]
+          },
+          "outputs": {
+            "description": "Entity I/O wires from this entity's outputs to other entities' inputs. (List<Connection>)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "outputs+": {
+            "description": "Adds to \"outputs\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "outputs-": {
+            "description": "Removes these from \"outputs\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "additionalProperties": false
@@ -306,6 +621,111 @@
                 "type": "null"
               }
             ]
+          },
+          "outputs": {
+            "description": "Entity I/O wires from this entity's outputs to other entities' inputs. (List<Connection>)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "outputs+": {
+            "description": "Adds to \"outputs\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "outputs-": {
+            "description": "Removes these from \"outputs\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "output": {
+                  "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "target": {
+                  "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                  "type": "string"
+                },
+                "parameter": {
+                  "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                  "type": "string"
+                },
+                "delay": {
+                  "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "times": {
+                  "description": "How many times it may fire; -1 = every time. (int)",
+                  "type": "integer"
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "additionalProperties": false

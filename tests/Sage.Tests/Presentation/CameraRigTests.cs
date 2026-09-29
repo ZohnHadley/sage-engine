@@ -394,6 +394,34 @@ public class CameraRigTests
         Assert.Equal(control.World.Get<PawnIntent>(Player(control.World)), toggled.World.Get<PawnIntent>(Player(toggled.World)));
     }
 
+    // A scripted cut that locks the player's input (#80) holds this button too: the toggle reads the pawn's
+    // intent after the lock, not the raw command.
+    [Fact]
+    public void ALockingScriptedCameraHoldsTheToggle()
+    {
+        using var app = SceneOnly();
+        var world = app.World;
+        Step(world);
+        var camera = Assert.Single(PlayerCameras(world));
+        var toggle = app.Engine.Actions.Get(ToggleViewSystem.Action);
+
+        var cut = world.Spawn(new RecordId("sage", "scripted_camera"), new Vector3(100, 5, 100));
+        world.Get<Camera>(cut).Enabled = true;
+        Step(world);
+        Assert.Equal(cut, world.Resources.Get<CameraViews>().Main.Entity);
+        Command(world, 1, default, default(ActionMask).With(toggle));
+        Step(world);
+        world.Resources.Get<PlayerInput>().HasCommand = false;   // a press is one tick's
+        Assert.True(world.Get<FirstPersonRig>(camera).Enabled, "the cut held the player's buttons, but not this one");
+
+        world.Get<Camera>(cut).Enabled = false;
+        Step(world);
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
+        Command(world, 2, default, default(ActionMask).With(toggle));
+        Step(world);
+        Assert.Equal(CameraRigKind.ThirdPerson, world.MainViewRig());
+    }
+
     private static string SandboxGame => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
 
     private static HeadlessApp Sandbox() =>

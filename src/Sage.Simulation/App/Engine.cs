@@ -53,7 +53,13 @@ public sealed class Engine : IDisposable
         Generated.Include(typeof(Engine).Assembly);
         SystemCatalog.Include(typeof(Engine).Assembly);
         Registrations.Owner = RegistrationOwners.Core;
-        try { Generated.Register(RegistrationOwners.Core, new RegistrationBuilder(this)); }
+        try
+        {
+            Generated.Register(RegistrationOwners.Core, new RegistrationBuilder(this));
+            // And by hand, what has no declaration yet: the camera inputs and outputs (issue #80; the
+            // engine's like the camera itself, so a data-only game can wire a cut — see CameraIO).
+            CameraIO.Register(this);
+        }
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
         Scenes = new Scenes(this);
@@ -124,6 +130,8 @@ public sealed class Engine : IDisposable
         {
             world.Resources.Add(new CameraViews());
             world.AddSystem(new CameraDirector(world));
+            world.AddSystem(new ScriptedCameraSystem(world));     // holds run out (issue #80)
+            world.AddSystem(new CameraInputLockSystem(world));    // a cut may hold the player still
         }
         finally { Registrations.Owner = "host"; }
 

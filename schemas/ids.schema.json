@@ -259,6 +259,10 @@
       "type": "string",
       "enum": [
         "bunny",
+        "cameracut:crate",
+        "cameracut:floor",
+        "cameracut:player",
+        "cameracut:trigger_zone",
         "campfire",
         "crate",
         "door",
@@ -274,6 +278,7 @@
         "player",
         "player_camera",
         "sage:player_camera",
+        "sage:scripted_camera",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
@@ -292,8 +297,10 @@
         "sceneonly:crate",
         "sceneonly:floor",
         "sceneonly:player",
+        "scripted_camera",
         "sword_pickup",
         "tree",
+        "trigger_zone",
         "watcher"
       ]
     },
@@ -314,6 +321,8 @@
       "description": "The id of a scene record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "cameracut:courtyard",
+        "courtyard",
         "hello:main",
         "main",
         "sandbox:main",
@@ -642,6 +651,10 @@
       "type": "string",
       "enum": [
         "bunny",
+        "cameracut:crate",
+        "cameracut:floor",
+        "cameracut:player",
+        "cameracut:trigger_zone",
         "campfire",
         "crate",
         "creature",
@@ -658,6 +671,7 @@
         "player",
         "player_camera",
         "sage:player_camera",
+        "sage:scripted_camera",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
@@ -677,8 +691,10 @@
         "sceneonly:crate",
         "sceneonly:floor",
         "sceneonly:player",
+        "scripted_camera",
         "sword_pickup",
         "tree",
+        "trigger_zone",
         "watcher"
       ]
     },
@@ -699,6 +715,8 @@
       "description": "Another scene record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "cameracut:courtyard",
+        "courtyard",
         "hello:main",
         "main",
         "sandbox:main",

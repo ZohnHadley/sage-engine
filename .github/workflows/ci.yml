@@ -126,6 +126,7 @@ jobs:
           "$sage" validate games/Sandbox
           "$sage" validate tests/games/no-plugins
           "$sage" validate tests/games/scene-only
+          "$sage" validate tests/games/camera-cut
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -133,11 +134,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut --out schemas' and commit the result"
             exit 1
           fi
 
@@ -165,6 +166,9 @@ jobs:
           # No C# at all, and a scene (issue #29): game.json and records boot into placed prefabs and a
           # player. Records for the same reason as above (it asks for the character plugin only).
           tools/smoke_run.sh "$host" tests/games/scene-only 3 Shaders Audio Records Input
+          # A scripted camera cut with no C# (issue #80): a crate falls through a trigger wired in the
+          # scene, and a placed camera takes the screen and gives it back. Records and Input as above.
+          tools/smoke_run.sh "$host" tests/games/camera-cut 3 Shaders Audio Records Input
 
       # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
       # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.

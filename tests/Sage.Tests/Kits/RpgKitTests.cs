@@ -43,7 +43,7 @@ public class RpgKitTests
     [Fact]
     public void TheDataOnlyGamesHaveNoKit()
     {
-        foreach (string game in new[] { "tests/games/scene-only", "tests/games/no-plugins" })
+        foreach (string game in new[] { "tests/games/scene-only", "tests/games/camera-cut", "tests/games/no-plugins" })
         {
             using var app = HeadlessApp.ForGame(Game(game)).Build();
             Assert.DoesNotContain(app.PluginIds, IsKit);
