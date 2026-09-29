@@ -114,6 +114,14 @@
         }
       ]
     },
+    "first_person_rig": {
+      "description": "Prefab part 'first_person_rig' (FirstPersonRigPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/first_person_rig"
+        }
+      ]
+    },
     "hop": {
       "description": "Prefab part 'hop' (HopPart).",
       "allOf": [
@@ -498,6 +506,18 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'faction' (FactionPart)."
+    },
+    "first_person_rig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Off: it leaves the camera's pose alone (the player camera's other rig may be on) (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'first_person_rig' (FirstPersonRigPart)."
     },
     "hop": {
       "type": "object",

@@ -117,7 +117,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - `MeshExtract`: `GlobalTransform` interpolated with alpha, camera-relative matrices, frustum culling per mesh part (bounding sphere), and sort keys (§3.5).
   - The Render phase clears to the environment's colour (the v1 sky), sorts, and draws opaque → alpha-tested → transparent in key order. Materials switch only when the material id changes.
 - **Deviations and gaps:**
-  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), but the renderer still draws one view: `CameraExtract` reads the world's `ActiveCamera` resource, which the `CameraDirector` keeps as a mirror of the screen view, until the multi-view renderer (#77) reads `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. With no camera entity a legacy rig fills it when one is driving: `FirstPersonCameraSystem` (`src/Sage.Simulation/Physics/FirstPersonCameraSystem.cs`, FrameUpdate) puts it in the local pawn's head and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when no rig did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the rig hands the camera back when it's set again (16 §3.2).
+  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), but the renderer still draws one view: `CameraExtract` reads the world's `ActiveCamera` resource, which the `CameraDirector` keeps as a mirror of the screen view, until the multi-view renderer (#77) reads `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. Since #78 the player's view is a camera entity too ("As built (camera rigs)" below): its `FirstPersonRig` puts it in the local pawn's head, and the director mirrors it into `ActiveCamera` and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when nothing did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the director hands the screen back to the camera entity when it's set again (16 §3.2).
   - **Snapshot:** one view (`RenderSnapshot.View`), not a list.
   - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
   - **Tint:** always 1 (no per-entity tint component yet).
@@ -489,6 +489,49 @@ reads `ActiveCamera`.
   camera as an entity (#81). One view per target means split screen is two targets for now. Pixel-perfect
   ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work, not this. `ActiveCamera` has no
   projection kind, so a screen camera that is orthographic still draws in perspective until #77.
+
+### As built (camera rigs, 2026-09-29 — #78)
+The rigs of decision D2: the player's view is a camera entity that follows the pawn, and the pawn carries
+no camera state.
+
+- **Code:** `src/Sage.Simulation/Camera/Rigs/` — `CameraRigs.cs` (`FirstPersonRig`, the `PlayerCamera`
+  tag, `CameraRigKind`, `world.MainViewRig()`), `FirstPersonRigSystem.cs`, `PlayerCameraSystem.cs`,
+  `RigParts.cs` (the `first_person_rig` part); the prefab is `engine_content/data/camera.json`
+  (`sage:player_camera`). The character plugin installs the systems (they replace
+  `FirstPersonCameraSystem`, which is gone). Tests: `tests/Sage.Tests/Presentation/CameraRigTests.cs`.
+  Experimental, SAGE0123.
+- **The first-person rig** (`sage:first_person_rig`: `Follow`, `Enabled`; system `sage.camera.first_person`,
+  FrameUpdate, before the director) writes its camera's `CameraPose` at the followed pawn's eye —
+  `CharacterController.EyeOf`, the point the swing and the Use action start from, so all three agree —
+  from its interpolated pose, looking along its `PawnIntent` view angles.
+  (test: ThePlayerGetsACameraEntity_InItsHead_FromTheEnginePrefab)
+  (test: ThePlayerHasWhatTheCameraRigLooksFor)
+- **The player's camera** (`sage.camera.player`, FrameUpdate, before the rigs): every `PlayerControlled`
+  pawn with no player camera following it gets one, spawned from `sage:player_camera` (a `camera` part and
+  a `first_person_rig`; a game patches the record to change the player's view) and tagged
+  `sage:player_camera`. A world without engine content (tests, tools) gets the same camera from the parts'
+  defaults. (test: WithoutEngineContent_ThePlayerCameraIsBuiltFromThePartsDefaults) A game that wants no
+  player camera disables the system by id or puts a camera of higher priority on the screen.
+- **Saves.** The camera is saved when its pawn is, under a `PersistentId` derived from the pawn's
+  (`camera:<pawn id>`), and a load rebuilds it from its prefab with `Follow` resolved to the rebuilt pawn:
+  never two, never none. (test: SaveAndLoad_KeepExactlyOneCamera_FollowingTheRebuiltPlayer) A save from
+  before #78 (no camera in it) gets one on the next frame, and a player camera left following nothing is
+  relinked to the player rather than joined by a second.
+  (test: ASaveWithoutACamera_GetsOne_AndAnOrphanIsRelinkedNotDuplicated)
+- **"Am I looking out of the player's eyes?"** is `world.MainViewRig()` (`None`, `FirstPerson`), read from
+  `CameraViews` after the director: the engine's crosshair and the Sandbox's viewmodel ask it instead of
+  the obsolete `ActiveCamera.DrivenByRig`, so neither shows from a fixed camera, a cutscene or `cam_free`.
+  (test: ACameraOfHigherPriorityTakesTheScreen_AndTheRigKindSaysSo)
+- **`cam_free`** is unchanged: the director's special case gives the screen to the free camera and back.
+  `RigEnabled`/`DrivenByRig` remain its protocol with the host until the editor camera is an entity (#81).
+  (test: CamFree_FliesOverThePlayersCamera_AndGivesTheScreenBack)
+- **Allocation:** a frame with the player's camera in its head allocates nothing.
+  (test: ThePlayersCameraAllocatesNothingPerFrame)
+- **Deviations.** The director no longer orders itself after the legacy rig (`?sage.character.camera` is
+  gone); the rigs order themselves before it. The eye is `CharacterController.EyeOf` rather than the old
+  system's `Height + EyeOffset` (the same number for a standing character; it also covers a character
+  whose height is not set yet). `FirstPersonCameraSystem` is removed from the public API (`*REMOVED*` in
+  Sage.Simulation's `PublicAPI.Unshipped.txt`).
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

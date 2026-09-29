@@ -1013,6 +1013,14 @@ world with no camera entity behaves as before. Rigs will be camera entities that
 `CameraPose` before the director (D2: #78, #79). Ortho is in from the start (§0.5). The API is experimental
 (SAGE0123). Details and deviations: docs/design/06 "As built (camera components)".
 
+*As built, 4a (issue #78, 2026-09-29): the first-person rig.* The player's view is a camera entity that
+follows the pawn (D2): `PlayerCameraSystem` spawns one from the engine's `sage:player_camera` prefab for
+each player pawn, and its `FirstPersonRig` writes `CameraPose` at the pawn's eye before the director.
+`FirstPersonCameraSystem` is gone. The camera is saved with its pawn (an id derived from the pawn's), so a
+load neither duplicates nor loses it; `world.MainViewRig()` replaces `ActiveCamera.DrivenByRig` for the
+crosshair and viewmodels; `cam_free` is unchanged until #81. Details: docs/design/06 "As built (camera
+rigs)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |

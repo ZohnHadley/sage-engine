@@ -12,11 +12,10 @@ namespace Sage.Simulation;
 // **Order (decision D2).** Rigs (#78: first person, #79: third person, fixed and cinematic) live on
 // camera entities and write `CameraPose` in FrameUpdate at display rate; each declares
 // `Before = new[] { CameraDirector.Id }`, so the director reads this frame's pose. The director itself
-// runs *after* the legacy first-person rig (which still writes ActiveCamera directly until #78) and
-// otherwise as early in FrameUpdate as registration puts it — the engine adds it before any plugin's
-// systems — so that the FrameUpdate systems that read ActiveCamera (audio, weather, particles, a game's
-// HUD) see this frame's view rather than last frame's. It is "last" among the camera writers, not last in
-// the phase: a system that moves a camera in FrameUpdate declares Before the director, like a rig.
+// runs as early in FrameUpdate as that allows — the engine adds it before any plugin's systems — so that
+// the FrameUpdate systems that read ActiveCamera (audio, weather, particles, a game's HUD) see this
+// frame's view rather than last frame's. It is "last" among the camera writers, not last in the phase: a
+// system that moves a camera in FrameUpdate declares Before the director, like a rig.
 //
 // **Resolution.** For each target ("" = the screen), the enabled camera with the highest priority wins
 // (a tie: the lower entity id, so it is stable). Its pose is its CameraPose when a rig drives it, else
@@ -25,16 +24,18 @@ namespace Sage.Simulation;
 //
 // **ActiveCamera (decision D1).** ActiveCamera stays, as a mirror of the screen view that only the
 // director writes once a camera entity draws to the screen. Until one does, the director leaves it
-// **exactly** as it is today — FirstPersonCameraSystem and the editor's free camera drive it — and the
-// screen view is made from it (a null Entity), so a renderer that reads only CameraViews still draws.
+// **exactly** as it is — the editor's free camera (or a game's own code) drives it — and the screen view
+// is made from it (a null Entity), so a renderer that reads only CameraViews still draws. Since #78 a
+// player pawn always has a camera entity (PlayerCameraSystem), so in a game this is the case with no
+// player yet, or a world without the character plugin.
 //   - A camera entity on the screen: its view is mirrored into ActiveCamera (position, rotation, field
 //     of view, clip planes) and ActiveCamera.DrivenByRig is set, so the editor's free camera stands aside
 //     as it does for a rig, and fixed-tick readers never see the free camera's pose in between.
 //   - `cam_free` (ActiveCamera.RigEnabled false): the free camera wins the screen whatever the entities
 //     say; the director writes nothing to ActiveCamera and clears DrivenByRig (only if a camera entity
-//     had claimed the screen: with none, it is the legacy rig's to clear, as today).
+//     had claimed the screen: with none, nothing had set it).
 [Experimental("SAGE0123")]
-[System(Id, Phase.FrameUpdate, After = new[] { "?sage.character.camera" })]
+[System(Id, Phase.FrameUpdate)]
 public sealed class CameraDirector : ISystem
 {
     public const string Id = "sage.camera.director";
@@ -91,7 +92,7 @@ public sealed class CameraDirector : ISystem
         var active = _active;
         if (active != null)
         {
-#pragma warning disable CS0618   // ActiveCamera's rig flags: obsolete for games, still the protocol with cam_free until #78/#81
+#pragma warning disable CS0618   // ActiveCamera's rig flags: obsolete for games, still the protocol with cam_free until #81
             if (!active.RigEnabled)
             {
                 // cam_free: the editor camera flies, over whatever camera had the screen.

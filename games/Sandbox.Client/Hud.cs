@@ -8,8 +8,9 @@ namespace Sandbox;
 // crosshair; what a health bar looks like is the game's business, which is why this lives here and
 // not in Sage.Client.
 //
-// FrameUpdate, so it runs at display rate and is queued before the Overlay phase draws it.
-[System("sandbox.hud", Phase.FrameUpdate)]
+// FrameUpdate, so it runs at display rate and is queued before the Overlay phase draws it; after the
+// camera director, so it knows which rig draws this frame's screen (the viewmodel is first person only).
+[System("sandbox.hud", Phase.FrameUpdate, After = new[] { "sage.camera.director" })]
 public sealed class SandboxHud : ISystem
 {
 
@@ -19,7 +20,6 @@ public sealed class SandboxHud : ISystem
     private readonly RecordStore _records;
     private readonly InteractionState _interactions;
     private readonly ContentService _content;
-    private readonly ActiveCamera _camera;
 
     // Cached text: a HUD that rebuilds its strings every frame allocates in the steady state, which
     // the frame budget does not allow (02 §4.6). These change when what they say changes.
@@ -31,7 +31,6 @@ public sealed class SandboxHud : ISystem
     public SandboxHud(World world, RecordStore records, ContentService content)
     {
         _content = content;
-        _camera = world.Resources.Get<ActiveCamera>();
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
         _ui = world.Resources.Get<UiDraw>();
         _messages = world.Messages();
@@ -91,10 +90,11 @@ public sealed class SandboxHud : ISystem
     // back during the wind-up, and extended on the strike. Daggerfall drew the same three moments.
     private void DrawViewmodel(World world, Entity player)
     {
-        // Not while the editor camera is flying: hands belong to the body the rig is sitting in.
-#pragma warning disable CS0618   // obsolete (engine issue #76): the viewmodel follows the rig until #78/#81
-        if (!_camera.DrivenByRig) return;
-#pragma warning restore CS0618
+        // Only looking out of the player's eyes: hands belong to the body the rig is sitting in, not to
+        // the editor's free camera or a camera somewhere else (engine issue #78).
+#pragma warning disable SAGE0123   // cameras as entities are experimental; this game follows them
+        if (world.MainViewRig() != CameraRigKind.FirstPerson) return;
+#pragma warning restore SAGE0123
         if (!world.TryGet<Melee>(player, out var melee)) return;
         var attackId = melee.Attack.IsEmpty ? world.Conventions().Attack.Id : melee.Attack;
         if (attackId.IsEmpty) return;
