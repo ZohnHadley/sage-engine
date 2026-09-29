@@ -484,7 +484,7 @@ a script, `tools/migrate_ecs_api.py`, kept for code written against the old name
   Schemas, and the ECS schema (45 components and 7 tags for the Sandbox). The scale run
   (`scale_spawn 2000 tree`) is within noise of before (numbers in 03 §3.1a).
 - **Not done here:** the Shipping dummy in `World.Get<T>` (the last bullet above) is unchanged, a
-  separate behaviour change for #31's API pass.
+  separate behaviour change for #31's API pass. *(Done in #31, §3.6: `Get<T>` throws in every build.)*
 
 ### 3.6 Public API discipline
 
@@ -493,6 +493,49 @@ a script, `tools/migrate_ecs_api.py`, kept for code written against the old name
 - Use SemVer from git (MinVer or Nerdbank.GitVersioning) feeding `BuildInfo.EngineVersion`, which is
   always `1.0.0.0` today.
 - Plugins and mods declare the `sage` range they need, and the loader checks it.
+
+*As built (issue #31, 2026-09-29).* The procedure is [`docs/RELEASING.md`](RELEASING.md); the
+experimental ids are MAKING_A_GAME §10b.
+
+- **The version comes from git tags.** `build/Sage.Version.props` runs **MinVer** (tag prefix `v`,
+  minimum 0.1) in every engine project and in the three packages, so one number reaches the engine
+  assemblies, `Sage.Sdk`, `Sage.Player` and `Sage.Templates`; #32's hard-coded `SageVersion` 0.1.0 is gone,
+  and `tools/pack_sdk.sh` asks MSBuild for it. Before the first tag that is `0.1.0-alpha.0.N`.
+  `BuildInfo.EngineVersion` reads the informational version (`0.1.0-alpha.0.N+sha`), the host logs it,
+  a new `version` command prints it (test: TheVersionCommandPrintsIt), and `BuildInfo.EngineSemVersion`
+  is its `major.minor.patch` (test: TheEngineVersionIsASemVerFromGitNotTheDefaultAssemblyVersion). CI
+  checks out with `fetch-depth: 0`; without git MinVer warns and builds `0.1.0-alpha.0`. The templates
+  name `Sage.Sdk/SAGE_SDK_VERSION`, an `sdkVersion` template parameter whose default the pack stamps.
+- **The public API is declared** by `Microsoft.CodeAnalysis.PublicApiAnalyzers` on Core, Simulation,
+  Physics3D, Gameplay, Client and both halves of the RPG kit (`SagePublicApi` in `src/Directory.Build.props`;
+  the host, CLI, editor and generators are not compiled against). All of it starts in
+  `PublicAPI.Unshipped.txt`: nothing ships before `v0.1.0`, and moving it to Shipped is a step of tagging.
+  RS0016/RS0017 are errors in every configuration on both CI jobs; a Linux step adds an undeclared public
+  type to Sage.Core and expects RS0016, and a test runs the analyzer from its package on a small library
+  (test: ANewPublicMemberWithoutTheFilesIsABuildError) (test: EveryExportedTypeOfTheBaseIsDeclared).
+  RS0026/RS0027 (optional-parameter design advice) are off.
+- **Internalised what games and kits do not need**, 606 exported types to 522: the engine's systems
+  (every base plugin's, the client's and the kit's), the built-in vocabulary entries, the renderer's
+  snapshot and audio backends, the `.map` reader and FGD export, the console registrars. What another
+  engine assembly uses stays public, because `InternalsVisibleTo` goes only to the tests; that decides
+  #24's list — the record JSON helpers, `Upgraders`, `Screen.Index`'s setter, `RegistrationLedger.Owner`,
+  `MovementProfileRecord.Fallback` and the keyboard and mouse listeners stay public (RELEASING §2).
+  `Entity.DeleteEntity`/`AddChild`/`RemoveChild` are internal (World's checked methods are the way), and
+  `World.Get<T>` on a missing component throws in Shipping too, instead of returning a shared dummy
+  (test: Get_ReturnsRef_MissingComponentThrowsInEveryBuild).
+- **Experimental:** SAGE0120 the open vocabularies' contracts (#28), SAGE0121 scenes and placements (#29),
+  SAGE0122 brush maps. The declaring assemblies suppress their own ids, the client SAGE0122 (it draws
+  maps), the tests all three.
+- **The `sage` range.** The plugin id `sage` is the engine: `[RequiresPlugin("sage", "^0.1")]` is checked
+  when modules are sorted, and game.json's `"sage"` when the manifest loads, each an error naming both
+  versions (test: APluginForAnotherEngineIsALoadErrorThatSaysBothVersions)
+  (test: AGameMadeForAnotherEngineIsALoadErrorThatSaysBothVersions); no plugin may take the id
+  (test: NoPluginMayCallItselfSage). The kit, the Sandbox, Hello and the `sage-game` template say `>=0.1`
+  (test: TheRpgKitSaysWhichEnginesItIsBuiltFor). Mods: `mod.json` gets `"sage"` in the template, read
+  once data mods load (Stage B).
+- **Not done here:** a build-time check of a malformed `[RequiresPlugin]` range (it is a load error);
+  Core, Simulation and Gameplay still export ~490 types, most of them the vocabulary games use, and a
+  finer pass (members, not types) can follow once games outside this repository exist to say what they use.
 
 ---
 

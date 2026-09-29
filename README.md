@@ -24,6 +24,9 @@ the `games/Sandbox` test game in the same commit.
   already cost a session.
 - [`docs/history/code-review-log.md`](docs/history/code-review-log.md) — every bug worth remembering,
   with what it was and why it happened.
+- [`docs/RELEASING.md`](docs/RELEASING.md) — the version (from git tags), the declared public API
+  (`PublicAPI.*.txt`), experimental areas, the `sage` range plugins and games declare, and how to tag a
+  release.
 
 ## What runs today
 
@@ -46,7 +49,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 779 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 800 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -71,7 +74,7 @@ To make a game of your own, outside this repository, pack the SDK and start from
 
 ```bash
 tools/pack_sdk.sh ~/sage-feed --build
-dotnet new install ~/sage-feed/Sage.Templates.0.1.0.nupkg
+dotnet new install ~/sage-feed/Sage.Templates.*.nupkg   # the engine's version, from git tags
 dotnet new sage-game -n MyGame -o ~/games/MyGame --feed ~/sage-feed && cd ~/games/MyGame && dotnet run
 ```
 
@@ -121,6 +124,7 @@ searches both. Some worth knowing:
 | `ui_crosshair 0` | hide the crosshair (it is on while a camera rig has the view) |
 | `r_debugdraw 1`, then `phys_debug 1`, `ai_debug 1`, `combat_debug 1` | see the simulation: colliders and capsules, sight cones and targets, every swing and what it found. `r_debugdraw_xray 1` draws it through walls |
 | `modules`, `sys_list`, `ent_list` | what is loaded, what runs each phase, what exists in the world |
+| `version`, `plugins` | the engine's version (SemVer from git tags, [RELEASING.md](docs/RELEASING.md)), and every plugin with its version and the ranges it needs |
 | `asset_list`, `asset_reload [path]` | what art is loaded; reload one file or all of it |
 | `save [slot]`, `load [slot]`, `saves` | write and read a save; JSON under `user/sandbox/saves/`, so you can read it |
 | `snd_stats`, `snd_play boom_fire`, `snd_volume 0.5` | what is playing with its gain and pan, an audition of one sound, and the buses |
@@ -229,6 +233,12 @@ and every pull request:
 - **Windows** builds the whole solution, shaders included, and runs the tests; then builds a template
   game with a shader of its own against the packed SDK, which is where `mgfxc` runs for a game.
 
+Both jobs check out the whole history (`fetch-depth: 0`), because the version comes from git tags, and
+both jobs' builds check the **declared public API**: each assembly games compile against keeps
+`PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt`, and a public change the files do not have is a
+build error (RS0016/RS0017; Linux also shows it on purpose). [`docs/RELEASING.md`](docs/RELEASING.md)
+says how to update them.
+
 Warnings are errors (`Directory.Build.props`), and package versions live in one place
 (`Directory.Packages.props`). `main` is
 protected by the ruleset in [`.github/rulesets/protect-main.json`](.github/rulesets/protect-main.json):
@@ -260,7 +270,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `games/Sandbox` | The test game's **simulation**: its module, scene records, placeholder art and tools. References only the base engine (`Sage.Core` … `Sage.Gameplay`) and the RPG kit it is built on, so it is testable headlessly |
 | `games/Sandbox.Client` | The same game's **client half**: the HUD, and the prefab part that needs a renderer |
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
-| `sdk/` | `Sage.Sdk`, the MSBuild SDK a game builds with (`<Project Sdk="Sage.Sdk/0.1.0">`), and the packing of it, of `Sage.Player` (the host and `sage`, per configuration) and of the `dotnet new` templates (`sage-game`, `sage-game-data`, `sage-mod-data`) |
+| `sdk/` | `Sage.Sdk`, the MSBuild SDK a game builds with (`<Project Sdk="Sage.Sdk/<version>">`), and the packing of it, of `Sage.Player` (the host and `sage`, per configuration) and of the `dotnet new` templates (`sage-game`, `sage-game-data`, `sage-mod-data`) |
 | `tests/Sage.Tests` | xUnit, headless, in folders by subject (`Core`, `Ecs`, `Gameplay`, `Maps`, `UI`…) |
 | `tests/Sage.Testing` | The harness tests boot through — `HeadlessApp`, `MountFixture`, `EventProbe`, `CaptureSink` — for the engine's tests and a game's |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |
@@ -298,7 +308,7 @@ you write, how to get a character walking about, levels, your HUD, and the list 
 do nothing if you forget them. It describes the engine as it is rather than as it is planned.
 
 [`games/Hello`](games/Hello) is that guide as a runnable game — the smallest one this engine can run:
-four files, 45 lines of code. It is in the solution and covered by tests, so it cannot rot. <!-- counts: files games/Hello, code games/Hello -->
+four files, 46 lines of code. It is in the solution and covered by tests, so it cannot rot. <!-- counts: files games/Hello, code games/Hello -->
 
 ```bash
 dotnet run --project src/Sage.Host -c Development -- -game games/Hello
