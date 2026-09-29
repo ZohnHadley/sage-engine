@@ -200,6 +200,9 @@ public sealed class PrefabRegistry
 
     public bool IsOptional(string name) => _optional.Contains(name);
 
+    // Every part declared optional, sorted: a schema names them even when it cannot describe them (#21).
+    public IEnumerable<string> OptionalNames => _optional.OrderBy(n => n, StringComparer.Ordinal);
+
     public IEnumerable<string> Names
     {
         get { foreach (var p in Parts) yield return p.Id; }

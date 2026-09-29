@@ -29,6 +29,11 @@ public sealed class ValidateOptions
     // The game's module, when the caller already has it loaded (a test that references the game): the
     // manifest's assembly is then not loaded again from disk, as HeadlessApp.ForGame does.
     public IGameModule? GameModule { get; init; }
+
+    // Called with the booted engine once its content has loaded, before the game starts: what
+    // `sage schema` reads record types, declarations and the loaded ids from (issue #21). What it
+    // throws is reported like any other failure of the run.
+    public Action<Engine>? Inspect { get; init; }
 }
 
 public sealed class ValidationReport
@@ -102,6 +107,7 @@ public static class ContentValidation
         app.Configure();
         app.LoadContent();
         report.Records = app.Engine.Records.Count;
+        options.Inspect?.Invoke(app.Engine);
         app.Start();
         app.CreateWorld("validate");   // the game's rules run: its scene is placed, its prefabs spawn
     }

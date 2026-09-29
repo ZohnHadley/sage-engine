@@ -4,34 +4,34 @@
     "id": "yard",
     "place": [
       {
-        "Prefab": "sandbox:crate",
-        "At": [
+        "prefab": "sandbox:crate",
+        "at": [
           518,
           0,
           508
         ],
-        "Yaw": -0,
-        "Name": "crate by the door"
+        "yaw": -0,
+        "name": "crate by the door"
       },
       {
-        "Prefab": "sandbox:crate",
-        "At": [
+        "prefab": "sandbox:crate",
+        "at": [
           519,
           0,
           509
         ],
-        "Yaw": -0,
-        "Name": "crate"
+        "yaw": -0,
+        "name": "crate"
       },
       {
-        "Prefab": "sandbox:tree",
-        "At": [
+        "prefab": "sandbox:tree",
+        "at": [
           522,
           0,
           506
         ],
-        "Yaw": 30,
-        "Name": "tree"
+        "yaw": 30,
+        "name": "tree"
       }
     ]
   }

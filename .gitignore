@@ -373,8 +373,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# VS Code files for those working on multiple tools
-.vscode/
+# VS Code files for those working on multiple tools, except the workspace settings that map the
+# record schemas onto data files (issue #21)
+.vscode/*
+!.vscode/settings.json
 *.code-workspace
 
 # Local History for Visual Studio Code

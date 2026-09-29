@@ -1,0 +1,660 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sage prefab parts",
+  "description": "A prefab's \"parts\": setups a plugin declared ([PrefabPart]), by id, with their options.",
+  "type": "object",
+  "properties": {
+    "abilities": {
+      "description": "Prefab part 'abilities' (AbilitiesPart). A bare value is its \"ids\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/abilities"
+        },
+        {
+          "description": "Abilities it can cast. Names a ability record. (List<RecordRef<AbilityRecord>>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:ability"
+          }
+        }
+      ]
+    },
+    "attributes": {
+      "description": "Prefab part 'attributes' (AttributesPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/attributes"
+        }
+      ]
+    },
+    "audio": {
+      "description": "Prefab part 'audio' (AudioPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/audio"
+        }
+      ]
+    },
+    "body": {
+      "description": "Prefab part 'body' (BodyPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/body"
+        }
+      ]
+    },
+    "box_mesh": {
+      "description": "Prefab part 'box_mesh' (BoxMeshPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/box_mesh"
+        }
+      ]
+    },
+    "character": {
+      "description": "Prefab part 'character' (CharacterPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/character"
+        }
+      ]
+    },
+    "dialogue": {
+      "description": "Prefab part 'dialogue' (DialoguePart). A bare value is its \"id\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/dialogue"
+        },
+        {
+          "description": "What it says when used. Names a dialogue record. (RecordRef<DialogueRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:dialogue"
+            }
+          ]
+        }
+      ]
+    },
+    "effects": {
+      "description": "Prefab part 'effects' (EffectsPart). A bare value is its \"ids\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/effects"
+        },
+        {
+          "description": "Effects it starts with. Names a effect record. (List<RecordRef<EffectRecord>>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:effect"
+          }
+        }
+      ]
+    },
+    "faction": {
+      "description": "Prefab part 'faction' (FactionPart). A bare value is its \"id\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/faction"
+        },
+        {
+          "description": "The faction it belongs to. Names a faction record. (RecordRef<FactionRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        }
+      ]
+    },
+    "hop": {
+      "description": "Prefab part 'hop' (HopPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/hop"
+        }
+      ]
+    },
+    "inventory": {
+      "description": "Prefab part 'inventory' (InventoryPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/inventory"
+        }
+      ]
+    },
+    "light": {
+      "description": "Prefab part 'light' (LightPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/light"
+        }
+      ]
+    },
+    "melee": {
+      "description": "Prefab part 'melee' (MeleePart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/melee"
+        }
+      ]
+    },
+    "mover": {
+      "description": "Prefab part 'mover' (MoverPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/mover"
+        }
+      ]
+    },
+    "particles": {
+      "description": "Prefab part 'particles' (ParticlesPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/particles"
+        }
+      ]
+    },
+    "pickup": {
+      "description": "Prefab part 'pickup' (PickupPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/pickup"
+        }
+      ]
+    },
+    "sprite": {
+      "description": "Prefab part 'sprite' (SpritePart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sprite"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "abilities": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "description": "Abilities it can cast. Names a ability record. (List<RecordRef<AbilityRecord>>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:ability"
+          }
+        },
+        "ids+": {
+          "description": "Adds to \"ids\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:ability"
+          }
+        },
+        "ids-": {
+          "description": "Removes these from \"ids\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:ability"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'abilities' (AbilitiesPart)."
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Prefab part 'attributes' (AttributesPart)."
+    },
+    "audio": {
+      "type": "object",
+      "properties": {
+        "sound": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "loop": {
+          "description": "(bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "volume": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'audio' (AudioPart)."
+    },
+    "body": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "description": "Box, Sphere or Capsule; a capsule stands on the origin. Category: Shape. (ColliderShape, default \"Box\")",
+          "default": "Box",
+          "type": "string",
+          "enum": [
+            "Box",
+            "Sphere",
+            "Capsule",
+            "Mesh"
+          ]
+        },
+        "size": {
+          "description": "Box only: full extents. Unit: m. At least 0. Category: Shape. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "radius": {
+          "description": "Sphere and capsule. Unit: m. At least 0. Category: Shape. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "description": "Capsule only: total height, feet to head. Unit: m. At least 0. Category: Shape. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "mass": {
+          "description": "Above 0 it is a dynamic body that falls; 0 is static. Unit: kg. At least 0. Category: Physics. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "trigger": {
+          "description": "Reports overlaps and never blocks. Category: Physics. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "layer": {
+          "description": "Physics layer by name; empty = default. Category: Physics. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'body' (BodyPart)."
+    },
+    "box_mesh": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "Full extents of the box. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "material": {
+          "description": "What the box is drawn with. Names a material record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'box_mesh' (BoxMeshPart)."
+    },
+    "character": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "description": "Physics layer by name (player, enemy); empty = default. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "profile": {
+          "description": "How it moves; empty = the engine's default. Names a movement_profile record. (RecordRef<MovementProfileRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:movement_profile"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'character' (CharacterPart)."
+    },
+    "dialogue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "What it says when used. Names a dialogue record. (RecordRef<DialogueRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:dialogue"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'dialogue' (DialoguePart)."
+    },
+    "effects": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "description": "Effects it starts with. Names a effect record. (List<RecordRef<EffectRecord>>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:effect"
+          }
+        },
+        "ids+": {
+          "description": "Adds to \"ids\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:effect"
+          }
+        },
+        "ids-": {
+          "description": "Removes these from \"ids\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:effect"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'effects' (EffectsPart)."
+    },
+    "faction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The faction it belongs to. Names a faction record. (RecordRef<FactionRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'faction' (FactionPart)."
+    },
+    "hop": {
+      "type": "object",
+      "description": "Prefab part 'hop' (HopPart)."
+    },
+    "inventory": {
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "description": "How much it can carry; 0 = no limit. Unit: kg. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "items": {
+          "description": "What it starts with. (List<Stack>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "Names a item record. (RecordRef<ItemRecord>)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:item"
+                  }
+                ]
+              },
+              "count": {
+                "description": "At least 1. (int)",
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "items+": {
+          "description": "Adds to \"items\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "Names a item record. (RecordRef<ItemRecord>)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:item"
+                  }
+                ]
+              },
+              "count": {
+                "description": "At least 1. (int)",
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "items-": {
+          "description": "Removes these from \"items\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "Names a item record. (RecordRef<ItemRecord>)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:item"
+                  }
+                ]
+              },
+              "count": {
+                "description": "At least 1. (int)",
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'inventory' (InventoryPart)."
+    },
+    "light": {
+      "type": "object",
+      "properties": {
+        "colour": {
+          "description": "Linear RGB; 0 0 0 means white. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "range": {
+          "description": "Where the light fades to nothing. Unit: m. At least 0. (float, default 8)",
+          "default": 8,
+          "type": "number",
+          "minimum": 0
+        },
+        "intensity": {
+          "description": "Multiplies the colour; 1 is a lamp. At least 0. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'light' (LightPart)."
+    },
+    "melee": {
+      "type": "object",
+      "properties": {
+        "attack": {
+          "description": "What it swings. Names a attack record. (RecordRef<AttackRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:attack"
+            }
+          ]
+        },
+        "natural": {
+          "description": "What it swings bare-handed; empty = the same as attack. Names a attack record. (RecordRef<AttackRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:attack"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'melee' (MeleePart)."
+    },
+    "mover": {
+      "type": "object",
+      "properties": {
+        "open": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "seconds": {
+          "description": "(float, default 1)",
+          "default": 1,
+          "type": "number"
+        },
+        "closeAfter": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'mover' (MoverPart)."
+    },
+    "particles": {
+      "type": "object",
+      "properties": {
+        "effect": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "enabled": {
+          "description": "(bool, default true)",
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'particles' (ParticlesPart)."
+    },
+    "pickup": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "description": "The item taking it gives you. Names a item record. (RecordRef<ItemRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:item"
+            }
+          ]
+        },
+        "count": {
+          "description": "How many. At least 1. (int, default 1)",
+          "default": 1,
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'pickup' (PickupPart)."
+    },
+    "sprite": {
+      "type": "object",
+      "properties": {
+        "sheet": {
+          "description": "The sprite sheet to draw. Names a sprite_sheet record. (RecordRef<SpriteSheetRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:sprite_sheet"
+            }
+          ]
+        },
+        "material": {
+          "description": "Empty = the default sprite material. Names a material record. (RecordRef<MaterialRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "size": {
+          "description": "Width and height; 0 = the sheet's own. Unit: m. At least 0. (Vector2, default [0,0])",
+          "default": [
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "animation": {
+          "description": "A clip name to play; empty = don't animate. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'sprite' (SpritePart)."
+    }
+  }
+}

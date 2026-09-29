@@ -19,6 +19,16 @@ namespace sage_engine;
 // shows and what "#FFB0A0" means. Written back as "#RRGGBBAA".
 //
 // Put on a uint field with [JsonConverter(typeof(ColourJsonConverter))]: not every uint is a colour.
+[SchemaShape("""
+    {
+      "description": "A colour: \"#RRGGBB\" or \"#RRGGBBAA\" in hex, or [r, g, b] / [r, g, b, a] as whole numbers 0-255.",
+      "anyOf": [
+        { "type": "string", "pattern": "^\\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\\s*$" },
+        { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 255 }, "minItems": 3, "maxItems": 4 },
+        { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      ]
+    }
+    """)]
 public sealed class ColourJsonConverter : JsonConverter<uint>
 {
     private const string Expected = "a colour is \"#RRGGBB\", \"#RRGGBBAA\" or [r, g, b(, a)] with whole numbers 0-255";

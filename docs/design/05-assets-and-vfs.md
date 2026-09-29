@@ -201,7 +201,8 @@ public sealed class PickupPart : IPrefabPart
 - `Prefabs.Optional(name)` is unchanged: the simulation half declares that a client-only part may be
   missing headless.
 - **Not done here:** namespaced part ids (`sage:light`, as REDESIGN §3.4 sketches) — ids stay the keys
-  prefabs already write — and schemas for the options (#21); their metadata is "As built (metadata)".
+  prefabs already write. Their metadata is "As built (metadata)", and their schemas "As built (JSON
+  Schemas)".
 
 ### As built (metadata, 2026-09-28 — issue #18)
 
@@ -240,8 +241,59 @@ assembly by `src/Sage.Generators/MetadataGenerator.cs`:
   component, tag, saved resource, part, system, entity input and output and input action with its owner
   and fields (test: TheRegistryDumpListsEverythingRegisteredWithItsOwner). `tools/check_docs.py` reads
   that dump instead of scanning the source (test: ANameRegisteredAnyWayAtAllIsInTheDump).
-- **Not done here:** JSON Schemas (#21), `RecordRef<T>` (#22) and the analyzers (#19); the record forms
-  an editor would build from the table.
+- **Not done here:** the record forms an editor would build from the table. JSON Schemas are "As built
+  (JSON Schemas)" below; `RecordRef<T>` is §3.6's strict loading.
+
+### As built (JSON Schemas, 2026-09-29 — issue #21)
+
+Record files are checked in the editor, before the game runs (REDESIGN §4.2): `sage schema` writes JSON
+Schemas from the metadata table and the loaded content, the repository commits them in `schemas/`, and
+`.vscode/settings.json` maps them onto every `data/**/*.json` (as `jsonc`, for the comments). How to use
+it is MAKING_A_GAME §3, "Editing records in VS Code".
+
+- **Layout** (`src/Sage.Engine/Content/RecordSchemas.cs`, draft-07): `record.schema.json` is the root —
+  one record or an array of them, each sent by an `if`/`then` on its `"type"` to `<type>.schema.json`,
+  one per record type, which has the type's fields plus `type`, `id`, `base`, `patch`, `abstract`,
+  `disabled`, `$schema`, and `field+`/`field-` beside every list at any depth (the merge applies them
+  anywhere). `additionalProperties: false` everywhere a type is known, so a misspelt field is an error
+  (test: AMisspeltComponentFieldInASandboxPrefab_FailsTheSchema, test:
+  MistakesInPartsReferencesAndTypes_FailTheSchema); everything the loader accepts passes (test:
+  WhatRecordFilesMayWrite_PassesTheSchema), and so does every shipped data file (test:
+  EveryShippedDataFile_ValidatesAgainstTheCommittedSchemas).
+- **Prefab bodies:** `prefab-components.schema.json` keys every component by id *and* by bare name,
+  a bare name that two namespaces share being either one (`anyOf`), since a bare name is the file's
+  namespace, then `sage`; `prefab-parts.schema.json` keys every part by id, its shorthand accepted as a
+  bare value; `tags` are tag ids, full or bare.
+- **From the metadata:** a field's `description` is its tooltip, unit, range, record or asset kind,
+  category, C# type and default (test: HoveringAComponentField_ShowsItsTooltipUnitAndRange); `minimum`/
+  `maximum`, `enum` for enums and `default` for scalars. `ValueKind` maps one to one: vectors are
+  fixed-length number arrays, a list is `items`, a map is `additionalProperties`, an object nests
+  (deeper than the table goes, by reflection), JSON and entities accept anything. A value with its own
+  converter takes its shape from `[SchemaShape]` on the converter (a colour's `"#RRGGBB"` or `[r, g, b]`,
+  an AI task, a material param); one without is open.
+- **Ids from content:** `ids.schema.json` holds, per record type, the ids the content loaded (full and
+  bare) — what a `RecordRef<T>` or `[RecordRef]` field and `"base"` (abstract records too) may name —
+  and the tag ids; a type with no records loaded checks only the id's form. Mounted mods add theirs
+  (test: IdEnumsComeFromTheLoadedContent_ModsIncluded).
+- **`sage schema <game> [<game> …] [--out dir] [--mounts …] [--client Sage.Client.dll]`** boots each game
+  through `ContentValidation` (its `Inspect` hook hands over the loaded engine) into one `SchemaCatalog`:
+  every declaration in the engine's and the plugins' assemblies (a record type whose plugin is off still
+  has a schema), the registered parts and optional names, and the ids. A game's client half and the
+  engine's `Sage.Client` are not loaded headless; their assemblies are *read* for their metadata
+  (`AddAssemblyFile`), so `box_mesh`, `audio` and `particles` are described (test:
+  APrefabPartsOptions_AreDescribedFromItsDeclaration).
+- **Deterministic:** sorted where the order is not the declaration's, `\n` line endings, identical from
+  Debug, Development and Shipping builds. CI regenerates `schemas/` and fails on any difference, and a
+  test compares the committed files with what this process generates (test:
+  TheCommittedSchemas_AreWhatSageSchemaWrites); `.gitattributes` keeps them `\n` on Windows.
+- **Validated without a new dependency:** `tests/Sage.Tests/Content/SchemaValidator.cs` implements the
+  draft-07 keywords the generator uses and refuses a schema that uses any other (test:
+  TheSchemas_UseOnlyWhatTheValidatorChecks_AndEveryRefResolves); Python's `jsonschema` agreed with it on
+  every shipped file. The mapping is checked too (test:
+  TheWorkspaceSettings_MapTheRootSchemaOntoEveryDataFile_AsJsonWithComments).
+- **Not done here:** names are matched ignoring case at load but exactly in a schema (content is
+  written in camel case; the Sandbox's `placements.json` was the one file that was not, and now is);
+  a bare id that exists only in another namespace is not underlined; asset paths are not enumerated.
 
 ### As built (asset hot reload, 2026-09-23 — part of F32)
 

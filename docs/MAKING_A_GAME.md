@@ -331,6 +331,46 @@ The Sandbox has two of its own: `hop` (a creature that bounces, a few lines, in 
 whose plugin is missing (a mesh part in a headless run) is declared `Prefabs.Optional(name)` by the half
 that is always there, so the same prefab loads with no renderer at all.
 
+### Editing records in VS Code
+
+Open the repository folder in VS Code and every record file (`data/**/*.json`, in engine content, a
+game or a mod) is checked as you type, with no extension to install:
+
+- **Autocomplete** for a record's `type`, its fields, component ids and part ids under a prefab's
+  `components` and `parts`, enum values, and the ids content defines wherever a field names a record
+  (`"base"`, `"sound"`, `"schedule"`…), in full (`"sandbox:creature"`) and bare (`"creature"`).
+- **Hover** shows a field's tooltip, unit, range, type and default, from its `[Property]`: over a
+  `point_light`'s `range`, "Where the light fades to nothing. Unit: m. At least 0. (float, default 0)".
+- **Red underlines** under a misspelt field (`"rnage"`), a component or part that does not exist, a value
+  of the wrong type or out of range, and an id nothing defines — before the game runs. `sage validate`
+  (§9) is still the final word; the schemas catch the same typos sooner.
+
+It works through two committed pieces: [`schemas/`](../schemas), JSON Schemas generated from the
+metadata table and the loaded content, and [`.vscode/settings.json`](../.vscode/settings.json), which maps
+`schemas/record.schema.json` onto `**/data/**/*.json` and opens those files as *JSON with comments*
+(`jsonc`), so the `//` comments record files use are not errors. A file needs no `"$schema"` of its own
+(a record may still carry one, and the loader ignores it; an array file has nowhere to put it).
+
+The schemas come from `sage schema`, which boots each game headlessly as `sage validate` does, and
+writes one schema per record type, the prefab `components` and `parts` tables, and `ids.schema.json`
+with every id the content loaded — mods included when you mount them:
+
+```bash
+dotnet build Sage.sln -c Development -p:SageSkipShaders=true
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello --out schemas   # this repository's
+src/Sage.Cli/bin/Development/net8.0/sage schema games/YourGame --mounts mods/better_swords=swords --out schemas
+```
+
+**Regenerate after adding a field, a component, a part or a record**, or the new name is underlined as
+unknown; CI regenerates `schemas/` and fails when the committed copy differs. For your own game, write
+them into its folder (`--out games/YourGame/schemas`) and point a `json.schemas` entry at that folder
+instead. A part only a client half declares (the Sandbox's `box_mesh`) is described from that half's
+built assembly, which is read, not run; before the client is built its options are left unchecked.
+
+What a schema cannot know: the loader matches field names ignoring case, the schemas only in the camel
+case content is written in (`"range"`, not `"Range"`); and a bare id means the file's own namespace, so
+the id lists hold every bare name and a bare id that exists only in another namespace is not underlined.
+
 ---
 
 ## 4. From empty to walking about
@@ -635,7 +675,8 @@ None of this exists in a Shipping build, which contains no editor at all.
 
 ## 9. Checking your game without playing it
 
-Four tools, in the order you should reach for them:
+Four tools, in the order you should reach for them — after the editor's own checks (§3, "Editing
+records in VS Code"), which catch a misspelt field as you type it:
 
 **`sage validate`.** Loads your game headlessly — every mount, every record, every prefab body, every
 asset path, then the game's own start-up with its scene placed — and exits non-zero if anything was an

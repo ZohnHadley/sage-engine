@@ -68,6 +68,16 @@ public sealed class MaterialParam
     public override string ToString() => IsTexture ? Texture.ToString() : $"[{string.Join(", ", Values ?? Array.Empty<float>())}]";
 }
 
+[SchemaShape("""
+    {
+      "description": "A material parameter: a number, 1 to 16 numbers, or a texture path.",
+      "anyOf": [
+        { "type": "number" },
+        { "type": "array", "items": { "type": "number" }, "minItems": 1, "maxItems": 16 },
+        { "type": "string" }
+      ]
+    }
+    """)]
 internal sealed class MaterialParamJsonConverter : JsonConverter<MaterialParam>
 {
     public override MaterialParam Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

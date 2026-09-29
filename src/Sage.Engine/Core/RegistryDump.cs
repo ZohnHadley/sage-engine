@@ -170,8 +170,8 @@ public static class RegistryDump
     }
 
     // A default as content would write it, or null when it has no JSON form worth quoting (a handle,
-    // an empty reference, a float at its limit that JSON cannot spell).
-    private static JsonNode? Default(object? value, JsonSerializerOptions json)
+    // an empty reference, a float at its limit that JSON cannot spell). JSON Schemas quote it too (#21).
+    internal static JsonNode? Default(object? value, JsonSerializerOptions json)
     {
         if (value is null or Friflo.Engine.ECS.Entity) return null;
         if (value is float f && (float.IsNaN(f) || float.IsInfinity(f) || f is float.MaxValue or float.MinValue)) return null;
