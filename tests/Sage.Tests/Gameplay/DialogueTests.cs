@@ -17,7 +17,9 @@ public class DialogueTests
     public DialogueTests() { _ = TestEnv.UserRoot; }
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "playerFaction": "player" },
+         { "type": "faction", "id": "player" },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "tag", "id": "state.dead" },
          { "type": "tag", "id": "quest.errand" },
          { "type": "effect", "id": "blessing", "duration": "Infinite", "grantTags": ["quest.errand"], "modifiers": [] },

@@ -16,7 +16,10 @@ public class FactionTests
     public FactionTests() { _ = TestEnv.UserRoot; }
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "invulnerable": "state.invulnerable", "damageType": "physical",
+           "aiProfile": "default_ai", "playerFaction": "player", "schedules": { "idle": "idle", "chase": "chase", "meleeAttack": "melee_attack" } },
+         { "type": "faction", "id": "player" },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "tag", "id": "state.dead" },
          { "type": "tag", "id": "state.invulnerable" },
          { "type": "effect", "id": "damage", "duration": "Instant", "blockTags": ["state.invulnerable"],
@@ -55,7 +58,7 @@ public class FactionTests
     {
         var entity = world.Create(Transform.At(at), name);
         world.AddCharacter(entity, world.Resources.Get<IPhysicsWorld>().Layers.Enemy);
-        world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+        world.Add(entity, new AIState { Schedule = Conventional.Idle });
         world.Add(entity, Melee.With(Id("claws")));
         world.AddAttributes(entity);
         if (faction.Length > 0) world.Add(entity, new Faction { Id = Id(faction) });
@@ -113,7 +116,7 @@ public class FactionTests
             // Six seconds later the wolf has crossed the field and bitten it, and *that* is how the
             // sheep finds out: a creature notices whoever hits it, whatever it was looking at.
             Tick(world, 60 * 6);
-            Assert.True(world.Attribute(sheep, AttributeRecord.Health) < 100f,
+            Assert.True(world.Attribute(sheep, Conventional.Health) < 100f,
                 "the wolf never reached the sheep");
             Assert.Equal(wolf, world.Get<AIState>(sheep).Target);
         }
@@ -131,7 +134,7 @@ public class FactionTests
             Tick(world, 60 * 4);
 
             Assert.True(world.Get<AIState>(sheep).Target.IsNull);
-            Assert.Equal(100f, world.Attribute(shepherd, AttributeRecord.Health), 1);
+            Assert.Equal(100f, world.Attribute(shepherd, Conventional.Health), 1);
         }
     }
 

@@ -33,7 +33,7 @@ public sealed class AbilitySystem : ISystem
     public AbilitySystem(World world, RecordStore records, ActionRegistry actions, CVar<bool> debugCasts)
     {
         _casters = world.Query<Transform, PawnIntent, Abilities>();
-        _cast = actions.Get("Cast");
+        _cast = actions.Get(world.Conventions().Actions.Cast);
         _records = records;
         _space = world.Resources.Get<IPhysicsWorld>();
         _payload = new AbilityPayload(world);
@@ -129,8 +129,7 @@ public sealed class AbilitySystem : ISystem
     private Vector3 Origin(World world, Entity entity, in Transform transform)
     {
         if (!world.TryGet<CharacterController>(entity, out var character)) return transform.LocalPosition;
-        var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile,
-                                      out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+        var profile = CharacterConventions.Of(world).ProfileOf(_records, character.Profile);
         return CharacterController.EyeOf(transform.LocalPosition, in character, profile);
     }
 

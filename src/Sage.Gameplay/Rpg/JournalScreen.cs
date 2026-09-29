@@ -16,11 +16,11 @@ public sealed class JournalScreen : Screen
 
     public override void Build(World world, Entity subject)
     {
-        var journal = world.Resources.Get<Journal>();
+        var journal = Quests.JournalOf(world);   // null: a game without the quests plugin (issue #26)
         var records = world.Resources.Get<RecordStore>();
         Panel.Begin("Journal", subject);
 
-        if (journal.Entries.Count == 0)
+        if (journal == null || journal.Entries.Count == 0)
         {
             Panel.Add(PanelRow.Of(default, "(nothing yet)", enabled: false));
             return;

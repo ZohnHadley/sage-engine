@@ -12,7 +12,6 @@ namespace Sandbox;
 [System("sandbox.hud", Phase.FrameUpdate)]
 public sealed class SandboxHud : ISystem
 {
-    private static readonly RecordId Health = new("sage", "health");
 
     private readonly ArchetypeQuery<Transform> _players;
     private readonly UiDraw _ui;
@@ -67,8 +66,9 @@ public sealed class SandboxHud : ISystem
     // exactly what the simulation says.
     private void DrawHealth(World world, Entity player, float x, float y)
     {
-        float health = world.Attribute(player, Health);
-        float max = _records.TryGet(Health, out AttributeRecord record) ? record.Max : 100f;
+        var healthId = world.Conventions().Health;   // whatever this game calls it (issue #26)
+        float health = world.Attribute(player, healthId);
+        float max = !healthId.IsEmpty && _records.TryGet(healthId, out AttributeRecord record) ? record.Max : 100f;
         float fraction = max > 0f ? System.Math.Clamp(health / max, 0f, 1f) : 0f;
 
         int shownHealth = (int)MathF.Round(health), shownMax = (int)MathF.Round(max);
@@ -94,7 +94,8 @@ public sealed class SandboxHud : ISystem
         // Not while the editor camera is flying: hands belong to the body the rig is sitting in.
         if (!_camera.DrivenByRig) return;
         if (!world.TryGet<Melee>(player, out var melee)) return;
-        var attackId = melee.Attack.IsEmpty ? AttackRecord.Default : melee.Attack;
+        var attackId = melee.Attack.IsEmpty ? world.Conventions().Attack.Id : melee.Attack;
+        if (attackId.IsEmpty) return;
         if (!_records.TryGet(attackId, out AttackRecord attack) || attack.Viewmodel.IsEmpty) return;
         if (!_records.TryGet(attack.Viewmodel, out SpriteSheetRecord sheet) || sheet.Frames.Count == 0) return;
 

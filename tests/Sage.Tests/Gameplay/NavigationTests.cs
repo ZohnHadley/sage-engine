@@ -257,7 +257,8 @@ public class NavigationTests
     // ---- through the real thing -----------------------------------------------------------------
 
     private const string Records = """
-        [{ "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
+        [{ "type": "gameplay_conventions", "id": "default_conventions", "health": "health", "dead": "state.dead", "aiProfile": "default_ai", "schedules": { "idle": "idle", "chase": "chase", "meleeAttack": "melee_attack" } },
+         { "type": "attribute", "id": "health", "start": 100, "min": 0, "max": 100 },
          { "type": "tag", "id": "state.dead" },
          { "type": "ai_profile", "id": "default_ai", "sightRange": 60, "meleeRange": 1.8, "thinkRate": 20 },
          { "type": "ai_schedule", "id": "idle", "tasks": [{ "task": "Wait", "seconds": 1.5 }], "interrupts": ["SeeEnemy"] },
@@ -291,7 +292,7 @@ public class NavigationTests
     {
         var entity = world.Create(Transform.At(position), "creature");
         world.AddCharacter(entity, world.Resources.Get<IPhysicsWorld>().Layers.Enemy);
-        world.Add(entity, new AIState { Schedule = AIThinkSystem.Schedules.Idle });
+        world.Add(entity, new AIState { Schedule = Conventional.Idle });
         world.AddAttributes(entity);
         return entity;
     }

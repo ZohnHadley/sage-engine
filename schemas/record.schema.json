@@ -34,6 +34,7 @@
             "dialogue",
             "effect",
             "faction",
+            "gameplay_conventions",
             "input_map",
             "item",
             "map",
@@ -201,6 +202,21 @@
           },
           "then": {
             "$ref": "faction.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "gameplay_conventions"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "gameplay_conventions.schema.json"
           }
         },
         {

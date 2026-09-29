@@ -347,7 +347,7 @@ public sealed class InteractionSystem : ISystem
         _records = records;
         _space = world.Resources.Get<IPhysicsWorld>();
         _state = world.Resources.Get<InteractionState>();
-        _use = actions.Get("Use");
+        _use = actions.Get(world.Conventions().Actions.Use);
         _range = range;
     }
 
@@ -415,8 +415,7 @@ public sealed class InteractionSystem : ISystem
     // swallow the press.
     private Entity Reach(World world, in Transform transform, in PawnIntent intent, in CharacterController character)
     {
-        var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile,
-                                      out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+        var profile = CharacterConventions.Of(world).ProfileOf(_records, character.Profile);
         Vector3 feet = transform.LocalPosition;
         Vector3 eye = CharacterController.EyeOf(feet, in character, profile);
         Vector3 aim = Vector3.Transform(TransformMath.Forward, Quaternion.CreateFromYawPitchRoll(intent.Yaw, intent.Pitch, 0));

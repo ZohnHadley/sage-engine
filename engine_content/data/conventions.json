@@ -1,0 +1,33 @@
+[
+  // What the engine's gameplay means by its words (REDESIGN §3.1, issue #26). Gameplay code reads this
+  // record instead of knowing an id: which attribute is life, which tag is death, what a hit or a swing
+  // is when nobody said, which schedules a creature runs, which buttons do what.
+  //
+  // A kit or a game changes any of it by patching this record, from its own content:
+  //   { "type": "gameplay_conventions", "id": "sage:default_conventions", "patch": true, "health": "hp" }
+  // ("hp" is then the game's own attribute: an id in a patch resolves in the patch's namespace). A field
+  // set to "" means the game has no such thing — no `health`, and nothing dies.
+  {
+    "type": "gameplay_conventions",
+    "id": "default_conventions",
+    "health": "health",
+    "dead": "state.dead",
+    "invulnerable": "state.invulnerable",
+    "damageType": "physical",
+    "attack": "default_attack",
+    "movement": "default_movement",
+    "aiProfile": "default_ai",
+    "playerFaction": "player",
+    "costAttribute": "mana",
+    "schedules": {
+      "idle": "idle",
+      "chase": "chase",
+      "meleeAttack": "melee_attack",
+      "castSpell": "cast_spell",
+      "holdGround": "hold_ground"
+    },
+    // Input actions by name. Modules register these in Init, before content loads; a game that wants
+    // its own registers them in its module and names them here.
+    "actions": { "attack": "Attack", "use": "Use", "cast": "Cast", "jump": "Jump", "run": "Run", "crouch": "Crouch" }
+  }
+]

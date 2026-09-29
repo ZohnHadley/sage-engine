@@ -32,8 +32,6 @@ public sealed class MovementProfileRecord
     public float GroundSnap = 0.35f;        // how far it sticks to the ground when walking downhill
     public float EyeOffset = -0.18f;        // eye height relative to the top of the capsule
 
-    public static readonly RecordId Default = new("sage", "default_movement");
-
     // The values above, for when the record is missing: one shared instance, so the controller and the
     // camera can never disagree about a default (review #43).
     public static readonly MovementProfileRecord Fallback = new();
@@ -45,7 +43,7 @@ public sealed class MovementProfileRecord
 [Component("sage:character_controller")]
 public struct CharacterController : IComponent
 {
-    [RecordRef("movement_profile"), Property(Tooltip = "How it moves; empty = sage:default_movement")]
+    [RecordRef("movement_profile"), Property(Tooltip = "How it moves; empty = the game's default (gameplay_conventions)")]
     public RecordId Profile;
     [Property(Min = 0, Max = 31, Tooltip = "Its own physics layer, which its sweeps ignore")]
     public byte Layer;              // its own layer, excluded from its sweeps ("player" or "enemy")
@@ -83,8 +81,7 @@ public static class CharacterExtensions
     public static void AddCharacter(this World world, Entity entity, byte layer, RecordId profileId = default)
     {
         var records = world.Resources.Get<RecordStore>();
-        var id = profileId.IsEmpty ? MovementProfileRecord.Default : profileId;
-        var profile = records.TryGet(id, out MovementProfileRecord found) ? found : MovementProfileRecord.Fallback;
+        var profile = CharacterConventions.Of(world).ProfileOf(records, profileId);
 
         // A character sweeps against everything *except its own layer* (see `CharacterMovementSystem`),
         // which is what lets creatures on one layer pass through each other. That makes the **default**

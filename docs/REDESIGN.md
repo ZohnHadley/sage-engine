@@ -443,6 +443,32 @@ game's and every mod's contract.
 
 ---
 
+*As built (issue #26, 2026-09-29): conventions and `Died`.* The last two hard rules above hold for
+gameplay. **`gameplay_conventions`** is a record type of `sage.gameplay.attributes`
+(`src/Sage.Gameplay/Conventions/GameplayConventions.cs`); the engine ships one well-known instance,
+`sage:default_conventions`, and a kit or game patches it. It names health, the dead and invulnerable
+tags, the default damage type, attack, movement and AI profiles, the player's faction, the attribute
+spellmaker spells cost, the AI's five built-in schedules and the action names, and code reads it with
+`world.Conventions()` — so a game renames health to hp in one record (test:
+AGameRenamesHealthToHpByChangingOneRecord). No `new RecordId("sage", …)` is left in `Sage.Gameplay`,
+`Sage.Physics3D` or the games, and a test keeps it that way (test: NoGameplayCodeNamesAnEngineRecordId).
+`EffectSystem` raises **`Died(Victim, Killer)`**; factions, quests and the game's rules
+(`DeathRulesSystem` → `GameRules.OnEntityDied`) read it. Differences from the plan:
+
+- **Two narrative plugins, not one `NarrativeModule`**: `sage.gameplay.quests` (quests, the `journal`)
+  and `sage.gameplay.dialogue` (dialogue, the `dialogue` part, `Conversation`), beside
+  `sage.gameplay.factions` (factions, `reputation`). The acceptance switches factions, quests and
+  dialogue off one at a time, which one module could not do (test: EachNarrativePluginCanBeSwitchedOffAlone).
+  Saved-resource, component and part ids are unchanged.
+- **Action names stay registered in code.** Actions are registered in `Init`, before content loads, so the
+  record picks among registered actions (defaulting to the engine's names) and an unregistered one is a
+  load error, rather than the record creating actions.
+- **The character controller reads its share through `CharacterConventions`** (`Sage.Simulation` since #30), because
+  it sits below the assembly that owns the record; gameplay installs one that reads it.
+- **Still constants below gameplay:** the simulation's own defaults — `sage:lit_default`, `sage:error`,
+  the sprite and particle materials, `sage:clear` weather and `sage:default` physics material — are
+  rendering and physics fallbacks rather than gameplay conventions, and wait for a scene or kit record.
+
 ## 4. Pillar plans
 
 ### 4.1 Gameplay layering and data-only games (serves all three)
@@ -452,7 +478,7 @@ game's and every mod's contract.
   - `Sage.Kits.Rpg`: the spellmaker, readied `Selected` spell, journal and dialogue screens,
     `sage:mana` cost, and sprite clip names `attack`/`hit`/`idle`. The Kit exposes these as conventions
     in data.
-- Move dialogue and quest record registration out of `FactionsModule` (`GameplayModules.cs:544-554`).
+- Move dialogue and quest record registration out of `FactionsModule` (`GameplayModules.cs:544-554`). *Done (issue #26): `QuestsModule` and `DialogueModule`, see §3.1.*
   Split `GameplayModules.cs` (634 lines) and `MapLevel.cs` (757 lines, 11 types) into one file per module.
 - **Promote scene spawning into the engine.** `SceneRecord`, the spawn loop and respawn-on-reload are
   Sandbox C# today (`SandboxModule.cs:39,56-77,154`), and every game rewrites them.

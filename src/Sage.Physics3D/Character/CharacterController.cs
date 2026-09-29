@@ -22,15 +22,17 @@ public sealed class CharacterMovementSystem : ISystem
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
     private readonly ActionId _jump, _crouch, _run;
+    private readonly CharacterConventions _conventions;
 
     public CharacterMovementSystem(World world, RecordStore records, ActionRegistry actions)
     {
         _characters = world.Query<Transform, CharacterController, PawnIntent>();
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
-        _jump = actions.Get("Jump");
-        _crouch = actions.Get("Crouch");
-        _run = actions.Get("Run");
+        _conventions = CharacterConventions.Of(world);
+        _jump = actions.Get(_conventions.JumpAction);
+        _crouch = actions.Get(_conventions.CrouchAction);
+        _run = actions.Get(_conventions.RunAction);
     }
 
     public void Run(in SystemContext ctx)
@@ -48,8 +50,7 @@ public sealed class CharacterMovementSystem : ISystem
 
     private void Move(ref Transform transform, ref CharacterController character, in PawnIntent intent, float dt)
     {
-        var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile, out MovementProfileRecord found)
-            ? found : DefaultProfile;
+        var profile = _conventions.ProfileOf(_records, character.Profile);
         var mask = LayerMask.All.Except(character.Layer);
         if (character.Height <= 0) character.Height = profile.StandHeight;
 
@@ -127,8 +128,6 @@ public sealed class CharacterMovementSystem : ISystem
         GroundCheck(ref position, ref character, profile, cosSlope, mask, wasGrounded);
         transform.LocalPosition = position;
     }
-
-    private static readonly MovementProfileRecord DefaultProfile = new();
 
     // Accelerates the horizontal velocity toward `target`, with friction when there's no input.
     private static void Accelerate(ref CharacterController character, Vector3 target, float acceleration, float friction, float dt)
@@ -348,9 +347,8 @@ public sealed class FirstPersonCameraSystem : ISystem
         {
             if (globals.Length == 0) continue;
             ref readonly var character = ref characters.Span[0];   // one local player
-            var profile = _records.TryGet(character.Profile.IsEmpty ? MovementProfileRecord.Default : character.Profile, out MovementProfileRecord found)
-                ? found : null;
-            float eye = character.Height + (profile ?? MovementProfileRecord.Fallback).EyeOffset;
+            var profile = CharacterConventions.Of(ctx.World).ProfileOf(_records, character.Profile);
+            float eye = character.Height + profile.EyeOffset;
             _camera.Position = globals.Span[0].Interpolated(alpha).Position + Vector3.UnitY * eye;
             _camera.Rotation = Quaternion.CreateFromYawPitchRoll(intents.Span[0].Yaw, intents.Span[0].Pitch, 0);
             _camera.DrivenByRig = true;
