@@ -30,7 +30,7 @@ public class RegistryDumpTests
 
         Assert.Equal("sage.gameplay.items", (string?)Entry("commands", "give")["owner"]);
         Assert.Equal("sage.gameplay.items", (string?)Entry("cvars", "g_interact_range")["owner"]);
-        Assert.Equal("sandbox", (string?)Entry("recordTypes", "scene")["owner"]);
+        Assert.Equal(RegistrationOwners.Core, (string?)Entry("recordTypes", "scene")["owner"]);   // the engine's (#29)
         Assert.Equal("sage.gameplay.movers", (string?)Entry("entityInputs", "Open")["owner"]);
         Assert.Equal("sage.gameplay.items", (string?)Entry("entityOutputs", "OnUse")["owner"]);
         Assert.Equal("sage.gameplay.items", (string?)Entry("inputActions", "Use")["owner"]);

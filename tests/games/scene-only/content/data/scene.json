@@ -1,0 +1,42 @@
+[
+  // What there is. Plain prefabs: a body each, and the player a character (its layer is "player", so
+  // it stands on the floor rather than sweeping through it).
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } },
+  {
+    "type": "prefab",
+    "id": "player",
+    "name": "player",
+    "tags": ["player_controlled"],
+    "parts": { "character": { "layer": "player" } }
+  },
+
+  // Where it goes. "at" is measured from "origin" (relativeTo "Origin"); left out, it would be absolute
+  // metres. game.json starts every world here.
+  {
+    "type": "scene",
+    "id": "yard",
+    "origin": [100, 0, 100],
+    "relativeTo": "Origin",
+    "player": { "prefab": "player", "at": [0, 1, 6] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+      { "prefab": "crate", "at": [0, 0.5, 0], "name": "crate by the door" },
+      { "prefab": "crate", "at": [1.5, 0.5, 0], "yaw": 30 },
+      { "prefab": "crate", "at": [0.7, 1.5, 0] }
+    ]
+  },
+
+  // Another, for `scene_load shed`: the player keeps what it is and moves to this start.
+  {
+    "type": "scene",
+    "id": "shed",
+    "origin": [-100, 0, -100],
+    "relativeTo": "Origin",
+    "player": { "prefab": "player", "at": [0, 1, 3], "yaw": 180 },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+      { "prefab": "crate", "at": [0, 0.5, 0] }
+    ]
+  }
+]

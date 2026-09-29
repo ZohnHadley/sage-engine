@@ -166,7 +166,10 @@ does not push what is leaning on it.
 its prefab; what is left — and what nothing else could edit — is **where things stand**. So a document is
 a `placements` record: prefab, position, yaw, name. The engine owns the type rather than the editor, so
 the editor is not the only thing that can read what it wrote: `world.SpawnPlacements(id)` is one line in
-a game.
+a game, and a scene loads one by naming it (`"placements": ["yard"]`, issue #29). Since #29 a placement
+is the one format scenes use too, with an optional `relativeTo` (`World`, `Origin`, `Ground`) and a
+document-wide `origin` and `relativeTo`; a save writes positions back in the document's frame, so a
+placement that named a frame of its own comes back in the document's.
 
 | Piece | Where | What it does |
 |---|---|---|

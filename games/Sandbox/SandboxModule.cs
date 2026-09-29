@@ -3,8 +3,9 @@ using System.Numerics;
 namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/Directory.Build.props
 
 // The Sandbox game's *simulation* (docs/design/01 §4, §3.1): the dogfooding game that grows into the
-// Daggerfall-like vertical slice (TODO milestone). It places its scene from prefabs (F31), runs the
-// game's own rules, and makes things hop on the Jump action (PlayerCommand, 08 §3.4).
+// Daggerfall-like vertical slice (TODO milestone). It runs the game's own rules and makes things hop on
+// the Jump action (PlayerCommand, 08 §3.4). Its scene is data — `sandbox:main` in content/data/scene.json,
+// named by game.json's "scene" — and the engine places it (issue #29).
 //
 // It references the base engine and nothing else, so all of this is testable headlessly (R15); the HUD
 // and anything else needing a screen live in `Sandbox.Client`.
@@ -13,9 +14,7 @@ namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/
 [RequiresPlugin("sage.gameplay.character", ">=0.1")]   // the player it commands and looks through
 public sealed class SandboxModule : IGameModule
 {
-    private RecordStore? _records;
     private ActionId _jump = ActionId.None;
-    private readonly List<World> _worlds = new();
 
     // The simulation depends on gameplay, not on the client: that is the whole point of the split
     // (R15). Sandbox.Client declares the ClientModule dependency for the half that needs a screen.
@@ -23,9 +22,6 @@ public sealed class SandboxModule : IGameModule
 
     public void Init(ModuleContext ctx)
     {
-        // SceneRecord needs no call here: [Record("scene")] is registered by generated code, and this
-        // assembly's one plugin owns it (issue #16).
-
         // What a game adding to prefabs looks like (05 "As built (prefabs)"): `hop` is declared below
         // (HopPart) and needs no call. `box_mesh` builds a mesh at run time, which needs the renderer,
         // so it lives in Sandbox.Client — here the simulation only says that going without it is
@@ -37,17 +33,14 @@ public sealed class SandboxModule : IGameModule
         ctx.Engine.Prefabs.Optional("particles");
     }
 
-
     public void Start(ModuleContext ctx)
     {
-        _records = ctx.Engine.Records;
-        _records.Reloaded += RespawnAll;   // hot reload: edit content/data/scene.json while running
         _jump = ctx.Engine.Actions.Get("Jump");   // registered by CharacterModule (08 §3.2)
     }
 
     public void OnWorldCreated(World world)
     {
-        // Terrain first: the scene is placed on the ground (14 §3, TODO F13).
+        // Terrain first: the engine places the scene on the ground once this returns (14 §3, TODO F13).
         var terrain = world.Resources.Get<Terrain>();
         terrain.Generator = new HillsGenerator();
         terrain.Seed = 1;
@@ -57,142 +50,15 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new TriggerLogSystem(world));
         world.AddSystem(new CombatLogSystem(world));
         world.AddSystem(new FaceCameraSystem(world));
-        _worlds.Add(world);
-        Spawn(world);
     }
-
-    public void Shutdown()
-    {
-        if (_records != null) _records.Reloaded -= RespawnAll;
-    }
-
-    private void RespawnAll()
-    {
-        foreach (var world in _worlds)
-        {
-            foreach (var e in world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList())
-                world.Destroy(e);
-
-            // Levels too, or a reload builds the hut a second time inside the first one. Unloading
-            // drops the brushes' entities, their hulls and their meshes; `Spawn` loads them again.
-            // `TryGet`, because `MapModule` is a default module a game may have turned off in
-            // `game.json` — and a game without brush levels should not fail to reload its scene.
-            if (world.Resources.TryGet<MapLevels>(out var levels) && levels != null) levels.Clear();
-
-            Spawn(world);
-
-            // And the player, which the rules placed at world start rather than the scene loop. It
-            // carries the same tag, so the sweep above took it: without this, saving a record file
-            // left the world with nothing to control (review #59).
-            SpawnPlayer(world);
-        }
-    }
-
-    private SceneRecord? Scene => _records!.TryGet(new RecordId("sandbox", "main"), out SceneRecord scene) ? scene : null;
-
-    private void Spawn(World world)
-    {
-        var scene = Scene;
-        if (scene == null) { Log.Warn(LogCat.Gameplay, "No `scene` record 'sandbox:main': the world is empty"); return; }
-
-        for (int i = 0; i < scene.Place.Count; i++) Place(world, scene.Place[i], i);
-
-        // Levels after placements: a `.map` spawns its own entities, and they should land in a world
-        // that already has everything the scene put in it.
-        foreach (var map in scene.Maps) MapLoader.Load(world, map);
-
-        Log.Info(LogCat.Gameplay, $"Sandbox: placed {world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Count} entities in '{world.Name}'");
-    }
-
-    // Where the player starts, without placing anything: the camera needs it before the rules run.
-    public Vector3 PlayerStart(World world) =>
-        Scene?.Player is { } start ? Ground(world, start)
-                                   : world.Origin().ToOrigin(HillsGenerator.SceneCenter);   // absolute, like a placement
 
     // The Sandbox's rules for each world; the engine starts them once every module has set it up.
-    public GameRules CreateRules(World world) => new SandboxRules(this);
-
-    // Called by SandboxRules once every module has set the world up.
-    public Entity SpawnPlayer(World world)
-    {
-        if (Scene?.Player is { } start) return Place(world, start, -1);   // -1: the player's own identity
-        Log.Warn(LogCat.Gameplay, "The scene has no \"player\" placement: there is nothing to control");
-        return default;
-    }
-
-    // A placement's `at` is relative to the scene's spot in the sector, and its y is height above the
-    // ground, so everything stands on the terrain however the hills came out.
-    // A scene places things in the **world**, not in whatever frame the simulation happens to be using
-    // right now (R6): its coordinates are absolute, so they are converted. Without this, dying after
-    // travelling a hundred kilometres would respawn the player at the scene's numbers *in the current
-    // origin* — a place the scene has never been.
-    private static Vector3 Ground(World world, ScenePlacement placement)
-    {
-        Vector3 absolute = HillsGenerator.SceneCenter + placement.At;
-        Vector3 position = world.Origin().ToOrigin(absolute);
-        position.Y = world.Resources.Get<Terrain>().HeightAt(position.X, position.Z) + placement.At.Y;
-        return position;
-    }
-
-    // One line, and the engine builds the whole thing from the prefab (F31). What used to live here
-    // was a hundred lines of "if it has a sheet... else if it has a box mesh... else if it is a
-    // character", which is the engine's job and is now done once, in one order, for every game.
-    private Entity Place(World world, ScenePlacement placement, int index)
-    {
-        var entity = world.Spawn(placement.Prefab, Ground(world, placement), placement.Yaw);
-        if (entity.IsNull) return entity;
-        if (!string.IsNullOrEmpty(placement.Name)) entity.Name = new EntityName(placement.Name);
-        entity.AddTag<FromScene>();
-
-        // A stable identity, so a save can find this *same* thing next run (09 §3.5, F27). Derived
-        // from the placement rather than authored, because a scene record is a list and its entries
-        // do not want GUIDs in them — but it does mean that reordering `place` moves identities, which
-        // a real map file (with ids in it) will not.
-        world.Add(entity, new Persistent { Id = PersistentId.FromName($"sandbox:scene:{index}:{placement.Prefab}") });
-        return entity;
-    }
-
-}
-
-
-// Where the scene's instances go (content/data/scene.json). A prefab says what a thing *is* (05
-// §3.5); this says where the copies of it are. Map files with persistent ids and per-entity overrides
-// are F27 — this is the four fields that need until then.
-[Record("scene")]
-public sealed class SceneRecord
-{
-    [Property(Tooltip = "Where the local player starts")]
-    public ScenePlacement? Player;            // where the local player starts
-    [Property(Tooltip = "Everything else the scene places")]
-    public List<ScenePlacement> Place = new();
-
-    // Brush levels to load with the scene (15 §3, F16). A `.map` places its own contents, so this is
-    // the whole of what the scene has to say about one.
-    [Property(Tooltip = "Brush levels to load with the scene")]
-    public List<RecordRef<MapRecord>> Maps = new();
-}
-
-public sealed class ScenePlacement
-{
-    [Property(Tooltip = "What to place")]
-    public RecordRef<PrefabRecord> Prefab;
-    [Property(Unit = "m", Tooltip = "Relative to the scene centre; y is height above the ground")]
-    public Vector3 At;                        // relative to the scene centre; y is height above ground
-    [Property(Unit = "deg", Tooltip = "Degrees about +Y; 0 faces -Z")]
-    public float Yaw;                         // degrees about +Y, 0 faces -Z (SageMath)
-    [Property(Tooltip = "Optional, so ent_list can tell two copies apart")]
-    public string Name = "";                  // optional, so `ent_list` can tell two copies apart
+    public GameRules CreateRules(World world) => new SandboxRules();
 }
 
 // Tags.
 [Tag("sandbox:faces_camera")]
 public struct FacesCamera : ITag { }
-// Placed by the scene record, so hot reload knows what to sweep away and put back.
-// [Transient]: saving it would make loaded entities eligible for the hot-reload sweep, or have them
-// double up with the scene's own (R15).
-[Transient]
-[Tag("sandbox:from_scene")]
-public struct FromScene : ITag { }
 
 // A little vertical hop with gravity.
 [Component("sandbox:hop")]
@@ -339,21 +205,16 @@ public sealed class CombatLogSystem : ISystem
         : entity.TryGetComponent(out EntityName name) ? name.value : "something";
 }
 
-// The Sandbox's rules (docs/design/16): what happens when the world starts, and where the player
-// comes from. Death, respawn and time of day join it as the slice grows.
+// The Sandbox's rules (docs/design/16): what happens when the world starts and when something dies.
+// Where the player comes from is the scene's `player` (the engine's GameRules.SpawnPlayer). Time of day
+// joins it as the slice grows.
 public sealed class SandboxRules : GameRules
 {
-    private readonly SandboxModule _game;
-
-    public SandboxRules(SandboxModule game) { _game = game; }
-
     public override void OnWorldStarted(World world)
     {
         var player = SpawnPlayer(world);
         Log.Info(LogCat.Gameplay, $"Sandbox rules started in '{world.Name}': player {World.Describe(player)}");
     }
-
-    public override Entity SpawnPlayer(World world) => _game.SpawnPlayer(world);
 
     // The creature's claws can kill the player: put them back on their feet, healed (16 §3.1). A real
     // game would show a screen and ask; this is the slice's stand-in.
@@ -370,7 +231,7 @@ public sealed class SandboxRules : GameRules
         {
             world.RemoveTag(victim, new RecordId("sage", "state.dead"));
             world.AddAttributes(victim);                       // back to full health
-            world.Teleport(victim, Transform.At(_game.PlayerStart(world)));
+            if (world.PlayerStart() is { } start) world.Teleport(victim, Transform.At(start));
             Log.Info(LogCat.Gameplay, "The player respawns at the start");
         }
     }
