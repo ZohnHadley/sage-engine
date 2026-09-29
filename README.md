@@ -49,7 +49,7 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 836 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 851 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: skeletal animation, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -91,6 +91,7 @@ pressing `E` would pick up, and what just hit you.
 | `Left Shift`, `Left Ctrl` | run, crouch |
 | **Left mouse** | attack |
 | `E` | use |
+| `V` | first person / third person over the shoulder |
 | `I`, `B`, `M` | your bag, your spellbook, the spellmaker (↑↓ or the mouse to choose, Enter or click to use, Del or right-click, Esc or click away to close) |
 | `Escape` | quit (closes the console, or an open screen, first) |
 | `` ` `` | open the console |

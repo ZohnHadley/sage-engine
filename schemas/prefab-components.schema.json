@@ -100,6 +100,14 @@
         }
       ]
     },
+    "first_person_rig": {
+      "description": "The component sage:first_person_rig (FirstPersonRig), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:first_person_rig"
+        }
+      ]
+    },
     "from_map": {
       "description": "The component sage:from_map (FromMap), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -372,6 +380,14 @@
         }
       ]
     },
+    "sage:first_person_rig": {
+      "description": "Component sage:first_person_rig (FirstPersonRig).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:first_person_rig"
+        }
+      ]
+    },
     "sage:from_map": {
       "description": "Component sage:from_map (FromMap).",
       "allOf": [
@@ -572,6 +588,14 @@
         }
       ]
     },
+    "sage:third_person_rig": {
+      "description": "Component sage:third_person_rig (ThirdPersonRig).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:third_person_rig"
+        }
+      ]
+    },
     "sage:transform": {
       "description": "Component sage:transform (Transform).",
       "allOf": [
@@ -617,6 +641,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:sprite_renderer"
+        }
+      ]
+    },
+    "third_person_rig": {
+      "description": "The component sage:third_person_rig (ThirdPersonRig), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:third_person_rig"
         }
       ]
     },
@@ -1384,6 +1416,26 @@
       },
       "additionalProperties": false,
       "description": "Component sage:faction (Faction)."
+    },
+    "sage:first_person_rig": {
+      "type": "object",
+      "properties": {
+        "follow": {
+          "description": "(Entity)"
+        },
+        "enabled": {
+          "description": "Off: it leaves the camera's pose alone (the player camera's other rig may be on) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "showBody": {
+          "description": "Draw the followed body from this view (a game with full-body awareness); off hides it. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:first_person_rig (FirstPersonRig)."
     },
     "sage:from_map": {
       "type": "object",
@@ -2228,6 +2280,69 @@
       },
       "additionalProperties": false,
       "description": "Component sage:sprite_renderer (SpriteRenderer)."
+    },
+    "sage:third_person_rig": {
+      "type": "object",
+      "properties": {
+        "follow": {
+          "description": "(Entity)"
+        },
+        "enabled": {
+          "description": "Off: it leaves the camera's pose alone (the player camera's other rig may be on) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "distance": {
+          "description": "How far behind the shoulder, along the view, when nothing is in the way. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "shoulderOffset": {
+          "description": "From the eye, in the view's frame: x right, y up, z back. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "probeRadius": {
+          "description": "Radius of the sphere swept from the head to keep the camera out of walls. Unit: m. At least 0. Category: Collision. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "collisionLayers": {
+          "description": "Physics layers the probe stops at, as a LayerMask's bits (the part takes names); 0 = every layer. Category: Collision. (uint, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "smoothing": {
+          "description": "How long it takes to ease back out once the way clears; 0 = at once. Unit: s. At least 0. Category: Collision. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "boom": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "settled": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:third_person_rig (ThirdPersonRig)."
     },
     "sage:transform": {
       "type": "object",

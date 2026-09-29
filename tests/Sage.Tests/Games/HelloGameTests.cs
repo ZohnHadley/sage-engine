@@ -77,14 +77,30 @@ public class HelloGameTests
         using var engine = NewEngine();
         var world = engine.CreateWorld("hello");
         world.RunFixed(1f / 60f);
+        world.RunFrame(1f / 60f, 1f);
 
-        // Exactly the query `FirstPersonCameraSystem` runs. If this finds nothing, the game has a player
-        // and no view of it — which looks, from inside, like a world made entirely of sky.
-        int seen = 0;
-        foreach (var _ in world.Query<GlobalTransform, CharacterController, PawnIntent>()
-                              .AllTags(Tags.Get<PlayerControlled>()).Entities) seen++;
+        // A player whose camera sits in its head (issue #78: a camera entity with a first-person rig,
+        // spawned for the player by the character plugin). If the player has no camera, the game has a
+        // player and no view of it — which looks, from inside, like a world made entirely of sky.
+        var player = default(Entity);
+        foreach (var entity in world.Query<GlobalTransform, CharacterController, PawnIntent>()
+                              .AllTags(Tags.Get<PlayerControlled>()).Entities) player = entity;
+        Assert.False(player.IsNull);
 
-        Assert.Equal(1, seen);
+        var views = world.Resources.Get<CameraViews>();
+        Assert.True(views.HasMain);
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
+        Assert.Equal(player, world.Get<FirstPersonRig>(views.Main.Entity).Follow);
+
+        // At eye height: the character's height plus its profile's eye offset, above its feet.
+        var feet = world.Get<GlobalTransform>(player).Current.Position;
+        var character = world.Get<CharacterController>(player);
+        var profile = CharacterConventions.Of(world).ProfileOf(engine.Records, character.Profile);
+        float eye = character.Height + profile.EyeOffset;
+        Assert.InRange(eye, 1.4f, 2f);
+        Assert.Equal(feet.Y + eye, views.Main.Position.Y, 3);
+        Assert.Equal(new Vector2(feet.X, feet.Z), new Vector2(views.Main.Position.X, views.Main.Position.Z));
+        Assert.Equal(views.Main.Position, world.Resources.Get<ActiveCamera>().Position);   // what gets drawn
     }
 
     [Fact]

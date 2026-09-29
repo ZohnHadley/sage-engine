@@ -183,7 +183,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - `MeshExtract`: `GlobalTransform` interpolated with alpha, camera-relative matrices, frustum culling per mesh part (bounding sphere), and sort keys (§3.5).
   - The Render phase clears to the environment's colour (the v1 sky), sorts, and draws opaque → alpha-tested → transparent in key order. Materials switch only when the material id changes.
 - **Deviations and gaps:**
-  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), and since #77 `CameraExtract` draws every view the world's `CameraViews` holds (§3.4a); `ActiveCamera` is the `CameraDirector`'s mirror of the screen view, and the fallback for a world without `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. With no camera entity a legacy rig fills it when one is driving: `FirstPersonCameraSystem` (`src/Sage.Simulation/Physics/FirstPersonCameraSystem.cs`, FrameUpdate) puts it in the local pawn's head and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when no rig did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the rig hands the camera back when it's set again (16 §3.2).
+  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), and since #77 `CameraExtract` draws every view the world's `CameraViews` holds (§3.4a); `ActiveCamera` is the `CameraDirector`'s mirror of the screen view, and the fallback for a world without `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. Since #78 the player's view is a camera entity too ("As built (camera rigs)" below): its `FirstPersonRig` puts it in the local pawn's head, and the director mirrors it into `ActiveCamera` and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when nothing did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the director hands the screen back to the camera entity when it's set again (16 §3.2).
   - **Snapshot:** one view (`RenderSnapshot.View`) at first; a list of views since issue #77 (§3.4a).
   - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
   - **Tint:** always 1 (no per-entity tint component yet).
@@ -558,6 +558,98 @@ renderer read `ActiveCamera` until #77 made it draw every view in `CameraViews` 
   director resolves one). Pixel-perfect ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work,
   not this.
 
+### As built (camera rigs, 2026-09-29 — #78, #79)
+The rigs of decision D2: the player's view is a camera entity that follows the pawn, and the pawn carries
+no camera state. First person (#78), then third person over the shoulder with collision and the 1P/3P
+toggle (#79).
+
+- **Code:** `src/Sage.Simulation/Camera/Rigs/` — `CameraRigs.cs` (`FirstPersonRig`, the `PlayerCamera`
+  tag, `CameraRigKind`, `world.MainViewRig()`), `FirstPersonRigSystem.cs`, `PlayerCameraSystem.cs`,
+  `RigParts.cs` (the `first_person_rig` part); the prefab is `engine_content/data/camera.json`
+  (`sage:player_camera`). The character plugin installs the systems (they replace
+  `FirstPersonCameraSystem`, which is gone). Tests: `tests/Sage.Tests/Presentation/CameraRigTests.cs`.
+  Experimental, SAGE0123.
+- **The first-person rig** (`sage:first_person_rig`: `Follow`, `Enabled`; system `sage.camera.first_person`,
+  FrameUpdate, before the director) writes its camera's `CameraPose` at the followed pawn's eye —
+  `CharacterController.EyeOf`, the point the swing and the Use action start from, so all three agree —
+  from its interpolated pose, looking along its `PawnIntent` view angles.
+  (test: ThePlayerGetsACameraEntity_InItsHead_FromTheEnginePrefab)
+  (test: ThePlayerHasWhatTheCameraRigLooksFor)
+- **The player's camera** (`sage.camera.player`, FrameUpdate, before the rigs): every `PlayerControlled`
+  pawn with no player camera following it gets one, spawned from `sage:player_camera` (a `camera` part and
+  a `first_person_rig`; a game patches the record to change the player's view) and tagged
+  `sage:player_camera`. A world without engine content (tests, tools) gets the same camera from the parts'
+  defaults. (test: WithoutEngineContent_ThePlayerCameraIsBuiltFromThePartsDefaults) A game that wants no
+  player camera disables the system by id or puts a camera of higher priority on the screen.
+- **Saves.** The camera is saved when its pawn is, under a `PersistentId` derived from the pawn's
+  (`camera:<pawn id>`), and a load rebuilds it from its prefab with `Follow` resolved to the rebuilt pawn:
+  never two, never none. (test: SaveAndLoad_KeepExactlyOneCamera_FollowingTheRebuiltPlayer) A save from
+  before #78 (no camera in it) gets one on the next frame, and a player camera left following nothing is
+  relinked to the player rather than joined by a second.
+  (test: ASaveWithoutACamera_GetsOne_AndAnOrphanIsRelinkedNotDuplicated)
+- **"Am I looking out of the player's eyes?"** is `world.MainViewRig()` (`None`, `FirstPerson`), read from
+  `CameraViews` after the director: the engine's crosshair and the Sandbox's viewmodel ask it instead of
+  the obsolete `ActiveCamera.DrivenByRig`, so neither shows from a fixed camera, a cutscene or `cam_free`.
+  (test: ACameraOfHigherPriorityTakesTheScreen_AndTheRigKindSaysSo)
+- **`cam_free`** is unchanged: the director's special case gives the screen to the free camera and back.
+  `RigEnabled`/`DrivenByRig` remain its protocol with the host until the editor camera is an entity (#81).
+  (test: CamFree_FliesOverThePlayersCamera_AndGivesTheScreenBack)
+- **Allocation:** a frame with the player's camera in its head allocates nothing.
+  (test: ThePlayersCameraAllocatesNothingPerFrame)
+- **The third-person rig** (`sage:third_person_rig`, the `third_person_rig` part; system
+  `sage.camera.third_person`, FrameUpdate, after the first-person rig and before the director): from the
+  followed pawn's eye, out by `ShoulderOffset` in the view's frame (x right, y up, z back) and back by
+  `Distance` along the view, looking along the pawn's view angles — so the centre of the screen is where
+  it aims, a shoulder-width aside. (test: ThirdPerson_SitsBehindTheShoulder_LookingWhereThePawnAims)
+- **Collision.** A sphere of `ProbeRadius` is swept (`IPhysicsWorld.Sweep`) from the head toward that
+  point against `CollisionLayers` (the part takes layer names, default `["default"]`: scenery, not
+  creatures), ignoring the pawn. A hit pulls the camera in **at once**; when the way clears it eases back
+  out over `Smoothing` seconds. (test: AWallBehindThePawn_PullsTheCameraIn_AtOnce_AndItEasesBackOut)
+  **A physics query outside the tick is legal:** the physics world is single-threaded and steps only in
+  `Phase.Physics`; FrameUpdate runs after the frame's ticks on the same thread and reads a settled world
+  (the last tick's bodies against a pose interpolated up to one tick behind them — well inside the probe's
+  radius at character speeds). A world without physics has no probe.
+- **Origin rebasing.** The eased state is a length along the boom (`ThirdPersonRig.Boom`, transient), not a
+  position, so a rebase has nothing of the rig's to move: `CameraPose` moves with the world and the easing
+  carries on. (test: RebasingMovesTheThirdPersonCamera_WithoutAJump)
+- **The 1P/3P toggle.** The `ToggleView` action (registered by the character plugin in `Init`; bound to
+  V and the right stick's button in the engine's `gameplay` input map) is read from the followed pawn's
+  `PawnIntent` in the Commands phase by `sage.camera.toggle_view` — after the controller and after a
+  scripted camera's input lock (#80), so a cut that holds the player's buttons holds this one
+  (test: ALockingScriptedCameraHoldsTheToggle) — which turns the player camera's two rigs' `Enabled`
+  flags over (`ToggleViewSystem.Toggle(world)` from code). **Why two components, not a mode:** each rig is
+  whole on its own (a chase camera is a `ThirdPersonRig` alone), the third-person settings survive the
+  switch because nothing is removed, and flipping two booleans is no structural change, so the next frame
+  draws the other view. The prefab starts in first person with the third-person rig off. Mid-swing in the
+  Sandbox, the view switches the frame after the press and the fight (swings, health, positions, intent) is
+  exactly what it is in a world that did not press it.
+  (test: ToggleView_MidMeleeInTheSandbox_SwitchesWithinAFrame_AndCombatIsUnaffected)
+  The choice is two saved flags on the camera, so a load comes back in the view the player left.
+  (test: TheChosenViewIsSavedWithTheCamera)
+- **The body.** `CameraRigs.HiddenBy(world, camera)` is the pawn a first-person rig sits in (unless its
+  `ShowBody` is set) and nothing for any other camera; the renderer's per-view seam from #77
+  (`ViewSource.HiddenFor`) asks it, so the first-person view does not draw its own body and the
+  third-person view behind it does. The Sandbox's player has a placeholder body for that: the creature's
+  sprite, with no animation (a clip with a `hit` event would time the player's swings).
+- **The crosshair** shows for either rig (`MainViewRig()` is `FirstPerson` or `ThirdPerson`): the
+  over-the-shoulder camera looks along the aim. The Sandbox's viewmodel (hands) is first person only.
+- **The director** now clears `ActiveCamera.DrivenByRig` when the last camera entity lets go of the screen
+  (it used to stay set, and the free camera never got the view back).
+  (test: WhenTheLastCameraEntityLetsGo_DrivenByRigIsCleared)
+- **Allocation:** the third-person rig and its probe, sweeping every frame against a wall, allocate
+  nothing. (test: TheThirdPersonCameraAndItsProbeAllocateNothingPerFrame)
+- **Deviations.** The director no longer orders itself after the legacy rig (`?sage.character.camera` is
+  gone); the rigs order themselves before it. The eye is `CharacterController.EyeOf` rather than the old
+  system's `Height + EyeOffset` (the same number for a standing character; it also covers a character
+  whose height is not set yet). `FirstPersonCameraSystem` is removed from the public API (`*REMOVED*` in
+  Sage.Simulation's `PublicAPI.Unshipped.txt`). The third-person rig's collision layers are stored as a
+  mask's bits (`CollisionLayers`), not names, so a game that reorders `physics_layers` re-reads them from
+  the prefab only for new cameras (a saved camera keeps its bits). The body hide is one entity: what the
+  pawn holds is drawn unless hidden the same way.
+- **Not yet:** a camera that turns the pawn toward where it looks in third person (strafe-only today, as
+  in first person); orbiting the pawn freely while it stands (the view angles are the pawn's); a
+  third-person crosshair that corrects for the shoulder's parallax; the editor camera as an entity (#81).
+
 ### As built (scripted cameras from entity I/O, 2026-09-29 — #80)
 Phase 4a's exit criterion "a scripted camera cut from I/O": an HL1 scene cuts to a placed camera when a
 trigger fires, and back.
@@ -570,8 +662,8 @@ trigger fires, and back.
   `tests/Sage.Tests/Presentation/CameraIOTests.cs`. Experimental (SAGE0123) with the rest.
 - **Inputs `CameraOn [hold]` / `CameraOff`, outputs `OnCameraOn` / `OnCameraOff`**, on any entity with a
   `Camera`. They toggle `Camera.Enabled`; the camera then wins or loses the screen by priority like any
-  other, so "back" means the next camera down — the player's rig once it is a camera entity (#78), or
-  `ActiveCamera` today. The outputs fire on a change only: `CameraOn` at a camera that is on restarts
+  other, so "back" means the next camera down — the player's camera (#78, priority 0), or `ActiveCamera`
+  in a world without one. The outputs fire on a change only: `CameraOn` at a camera that is on restarts
   its hold and fires nothing. (test: CameraOnTakesTheScreen_CameraOffGivesItBack_AndTheOutputsFireOnlyOnAChange)
   The names are camera-specific because `EntityInputs` is one global, case-insensitive table.
 - **The hold:** `CameraOn`'s parameter in seconds (> 0: off again after it, firing `OnCameraOff`; 0: until

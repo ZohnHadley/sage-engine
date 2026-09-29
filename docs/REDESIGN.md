@@ -1025,6 +1025,22 @@ per-view ranges) is `RenderViewPlan`, tested headless; `r_testview` shows a spli
 Linux CI's smoke run. The public `RenderContext` and the pass registry stay in 4h (§4.7). Details:
 docs/design/06 §3.4a.
 
+*As built, 4a (issue #78, 2026-09-29): the first-person rig.* The player's view is a camera entity that
+follows the pawn (D2): `PlayerCameraSystem` spawns one from the engine's `sage:player_camera` prefab for
+each player pawn, and its `FirstPersonRig` writes `CameraPose` at the pawn's eye before the director.
+`FirstPersonCameraSystem` is gone. The camera is saved with its pawn (an id derived from the pawn's), so a
+load neither duplicates nor loses it; `world.MainViewRig()` replaces `ActiveCamera.DrivenByRig` for the
+crosshair and viewmodels; `cam_free` is unchanged until #81. Details: docs/design/06 "As built (camera
+rigs)".
+
+*As built, 4a (issue #79, 2026-09-29): third person and the toggle.* The player's camera also carries a
+`ThirdPersonRig`: over the shoulder, a sphere swept from the head keeping it out of walls (in at once, eased
+back out), its eased state a length so origin shifts leave it alone. `ToggleView` (V) turns the two rigs'
+`Enabled` flags over in the Commands phase — two whole components rather than a mode, no structural change —
+and switching mid-swing in the Sandbox changes nothing about the fight. The first-person view hides its own
+body through #77's per-view seam (`CameraRigs.HiddenBy`); the Sandbox's player has a placeholder sprite to
+be seen in third person. Details: docs/design/06 "As built (camera rigs)".
+
 *As built, 4a (issue #80, 2026-09-29): scripted cuts from I/O.* The exit criterion's "a scripted camera
 cut from I/O": entity inputs `CameraOn [hold]` / `CameraOff` and outputs `OnCameraOn` / `OnCameraOff` on
 any camera, owned by the engine (`sage.core`) so a data-only game has them; the `sage:scripted_camera`

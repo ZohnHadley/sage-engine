@@ -419,7 +419,7 @@ public class CameraIOTests
         Assert.False(yardCam.IsNull || introCam.IsNull || yard.IsNull || gate.IsNull || player.IsNull);
 
         world.RunFrame(Dt, 1f);
-        Assert.True(views.Main.FromActiveCamera);                  // the player's rig to begin with
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());   // the player's camera to begin with (#78)
 
         // The yard: a crate falls through its trigger. The tick whose physics saw it is the tick the
         // camera comes on, and the frame after that tick shows it.
@@ -439,12 +439,12 @@ public class CameraIOTests
         Assert.Equal(yardCam, views.Main.Entity);
         Assert.Equal(world.Get<GlobalTransform>(yardCam).Interpolated(1f).Position, views.Main.Position);
 
-        // Two seconds later the wired CameraOff gives the screen back — to ActiveCamera, which the
-        // player's first-person rig writes, in the same frame.
+        // Two seconds later the wired CameraOff gives the screen back — to the player's camera (#78),
+        // which the director mirrors into ActiveCamera, in the same frame.
         int held = 0;
         while (world.Get<Camera>(yardCam).Enabled && held < 300) { Step(world); held++; }
         Assert.InRange(held, 119, 120);                            // 2 s, give or take the tick the output fired in
-        Assert.True(views.Main.FromActiveCamera);
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
         var eye = world.Resources.Get<ActiveCamera>().Position;
         var feet = world.Get<GlobalTransform>(player).Interpolated(1f).Position;
         Assert.True(Vector3.Distance(feet, eye) < 2.5f, $"the view is at {eye}, the player at {feet}");
@@ -463,7 +463,7 @@ public class CameraIOTests
         int hold = 1;
         while (world.Get<Camera>(introCam).Enabled && hold < 400) { Step(world); hold++; }
         Assert.Equal(180, hold);                                   // three seconds, to the tick
-        Assert.True(views.Main.FromActiveCamera);
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
         Step(world);
         Assert.Contains(Said(world), m => m == "Back to you.");
     }

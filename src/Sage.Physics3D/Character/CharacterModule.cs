@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Sage.Physics3D;
 
 // A body that walks (10 §3, 16 §3.1): the capsule the engine moves, the intent its controller writes,
-// and the first-person rig that sits in its head.
+// and the player's camera that follows it (issue #78: a camera entity with a first-person rig).
 [Plugin("sage.gameplay.character", "0.1.0")]
 public sealed class CharacterModule : IModule
 {
@@ -25,6 +25,10 @@ public sealed class CharacterModule : IModule
         _actions.Register("Jump", ActionKind.Button);
         _actions.Register("Run", ActionKind.Button);
         _actions.Register("Crouch", ActionKind.Button);
+        // The player's camera, first person to third and back (issue #79).
+#pragma warning disable SAGE0123
+        _actions.Register(ToggleViewSystem.Action, ActionKind.Button);
+#pragma warning restore SAGE0123
     }
 
     public void OnWorldCreated(World world)
@@ -35,8 +39,9 @@ public sealed class CharacterModule : IModule
         // exactly review #48, found by reading code rather than by the engine saying so (03 §3.5).
         world.Contracts.FinalAfter<PawnIntent>(Phase.Commands);
 
-        // A player to command and to look through (issue #13): the host samples into PlayerInput and
-        // the first-person rig drives ActiveCamera. The client may have installed the camera already.
+        // A player to command and to look through (issue #13): the host samples into PlayerInput, and
+        // the player's camera entity (issue #78) is mirrored into ActiveCamera by the CameraDirector. The
+        // client may have installed ActiveCamera already.
         world.Resources.GetOrAdd(() => new PlayerInput());
         world.Resources.GetOrAdd(() => new ActiveCamera());
         // The game's words for a character (issue #26): gameplay installs one that reads its
@@ -45,6 +50,15 @@ public sealed class CharacterModule : IModule
 
         world.AddSystem(new PlayerControlSystem(world));
         world.AddSystem(new CharacterMovementSystem(world, _records!, _actions!));
-        world.AddSystem(new FirstPersonCameraSystem(world, _records!));
+
+        // The player's camera (issues #78, #79; decision D2): a camera entity per player pawn, the rigs
+        // that put it in the pawn's head or over its shoulder, and the button that switches between them.
+        // Cameras are experimental (SAGE0123); this plugin is their first user.
+#pragma warning disable SAGE0123
+        world.AddSystem(new PlayerCameraSystem(world));
+        world.AddSystem(new FirstPersonRigSystem(world, _records!));
+        world.AddSystem(new ThirdPersonRigSystem(world, _records!));
+        world.AddSystem(new ToggleViewSystem(world, _actions!));
+#pragma warning restore SAGE0123
     }
 }

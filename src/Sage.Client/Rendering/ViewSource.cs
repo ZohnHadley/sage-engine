@@ -34,6 +34,7 @@ internal sealed class ViewSource
     public const string TestTarget = "testview";
     private const int TestTargetSize = 256;
 
+    private readonly World _world;
     private readonly ActiveCamera _camera;
     private readonly CameraViews? _views;
     private readonly Renderer _renderer;
@@ -42,6 +43,7 @@ internal sealed class ViewSource
 
     public ViewSource(World world, Renderer renderer, CVar<int> testView)
     {
+        _world = world;
         _camera = world.Resources.Get<ActiveCamera>();
         world.Resources.TryGet(out _views);
         _renderer = renderer;
@@ -102,11 +104,10 @@ internal sealed class ViewSource
 
     // **The seam for "don't draw my own body"** (#79: a first-person camera must not see the pawn it
     // sits in; the third-person camera behind it must). The entity a view leaves out: MeshExtract and
-    // SpriteExtract skip an entity whose id this is, for this view only. Nothing sets it yet; the rig
-    // that knows its owner fills it here from the view's camera entity (`view.Entity`), e.g. from a
-    // component on the camera naming the owner. One entity, not a subtree: the owner's attachments
-    // (a held weapon) are drawn unless they are hidden the same way.
-    private static Entity HiddenFor(in CameraView view) => default;
+    // SpriteExtract skip an entity whose id this is, for this view only. The view's camera entity says
+    // (`CameraRigs.HiddenBy`: the pawn a first-person rig sits in, unless it shows it). One entity, not a
+    // subtree: the owner's attachments (a held weapon) are drawn unless they are hidden the same way.
+    private Entity HiddenFor(in CameraView view) => CameraRigs.HiddenBy(_world, view.Entity);
 
     private static int MainIndex(PooledList<ViewRequest> views)
     {

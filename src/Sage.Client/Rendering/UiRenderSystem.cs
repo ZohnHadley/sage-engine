@@ -15,7 +15,6 @@ internal sealed class UiRenderSystem : ISystem
     private readonly UiDraw _ui;
     private readonly GraphicsDevice _device;
     private readonly ContentService _content;
-    private readonly ActiveCamera _camera;
     private readonly UiResources _shared;
     private readonly CVar<bool> _crosshair;
     private readonly Renderer _renderer;
@@ -35,7 +34,6 @@ internal sealed class UiRenderSystem : ISystem
         _ui = world.Resources.Get<UiDraw>();
         _device = host.GraphicsDevice;
         _content = content;
-        _camera = world.Resources.Get<ActiveCamera>();
         _shared = shared;
         _crosshair = crosshair;
     }
@@ -63,13 +61,15 @@ internal sealed class UiRenderSystem : ISystem
         _ui.Size = new Vector2(viewport.Width, viewport.Height);
 
         // The crosshair is the engine's one piece of HUD: combat and the Use action both aim from the
-        // centre of the screen, so not drawing it is a handicap rather than a style. With a screen
-        // open there is nothing to aim at, and a cross floating over an inventory looks like a bug.
+        // centre of the screen, so not drawing it is a handicap rather than a style. Only while a
+        // player's rig draws the screen (issues #78, #79: not from a fixed camera, a cutscene or
+        // cam_free). In third person too: the over-the-shoulder camera looks along the pawn's aim, so
+        // the centre is where the swing goes, a shoulder-width to the side. With a screen open there is
+        // nothing to aim at, and a cross floating over an inventory looks like a bug.
         bool screenOpen = ctx.World.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen;
-#pragma warning disable CS0618   // obsolete for games (issue #76); the crosshair follows the rig until #78/#81
-        bool driven = _camera.DrivenByRig;
-#pragma warning restore CS0618
-        if (_crosshair.Value && driven && !screenOpen)
+        var rig = ctx.World.MainViewRig();
+        bool aiming = rig == CameraRigKind.FirstPerson || rig == CameraRigKind.ThirdPerson;
+        if (_crosshair.Value && aiming && !screenOpen)
         {
             const float Arm = 6f, Thickness = 2f;
             float x = viewport.Width * 0.5f, y = viewport.Height * 0.5f;
