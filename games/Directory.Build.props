@@ -9,15 +9,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <!-- Every game file sees the engine and ECS namespaces. Friflo ships its own Transform (and Position,
-       Rotation, Scale3) components; the alias makes `Transform` mean Sage's (docs/design/03 §3.1). -->
+  <!-- Every game file sees the engine's namespaces, the ECS included: Entity, IComponent, ITag, Tags,
+       Query<…> and EntityCommands are Sage.Simulation's (issue #25). A game never names Friflo, the
+       storage underneath. -->
   <ItemGroup>
     <Using Include="Sage.Core" />
     <Using Include="Sage.Simulation" />
     <Using Include="Sage.Physics3D" />
     <Using Include="Sage.Gameplay" />
-    <Using Include="Friflo.Engine.ECS" />
-    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 
   <!-- The base engine, compile-time only (Private=false): at run time the host's own copies are used,

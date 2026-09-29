@@ -141,7 +141,7 @@ public sealed class SandboxModule : IGameModule
     {
         var entity = world.Spawn(placement.Prefab, Ground(world, placement), placement.Yaw);
         if (entity.IsNull) return entity;
-        if (!string.IsNullOrEmpty(placement.Name)) entity.Name = new EntityName(placement.Name);
+        if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
         entity.AddTag<FromScene>();
 
         // A stable identity, so a save can find this *same* thing next run (09 §3.5, F27). Derived
@@ -220,7 +220,7 @@ public sealed class HopPart : IPrefabPart
 public sealed class HopSystem : ISystem
 {
     private const float LaunchSpeed = 3.5f, Gravity = -12f;
-    private readonly ArchetypeQuery<Transform, Hop> _hoppers;
+    private readonly Query<Transform, Hop> _hoppers;
     private readonly ActionId _jump;
 
     public HopSystem(World world, ActionId jump)
@@ -258,7 +258,7 @@ public sealed class HopSystem : ISystem
 [System("sandbox.face_camera", Phase.Gameplay)]
 public sealed class FaceCameraSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform> _facing;
+    private readonly Query<Transform> _facing;
 
     public FaceCameraSystem(World world)
     {
@@ -336,7 +336,7 @@ public sealed class CombatLogSystem : ISystem
 
     private static string Name(World world, Entity entity) =>
         entity.IsNull || !world.IsAlive(entity) ? "something"
-        : entity.TryGetComponent(out EntityName name) ? name.value : "something";
+        : entity.Name ?? "something";
 }
 
 // The Sandbox's rules (docs/design/16): what happens when the world starts, and where the player
@@ -363,7 +363,7 @@ public sealed class SandboxRules : GameRules
             ? $"{World.Describe(victim)} died"
             : $"{World.Describe(victim)} was killed by {World.Describe(killer)}");
         if (victim.Tags.Has<PlayerControlled>()) world.Say("You died", MessageKind.Bad, 4f);
-        else world.Say($"{(victim.TryGetComponent(out EntityName n) ? n.value : "Something")} dies", MessageKind.Good, 4f);
+        else world.Say($"{(victim.Name ?? "Something")} dies", MessageKind.Good, 4f);
         if (!world.HasTag(victim, new RecordId("sage", "state.dead"))) return;
 
         if (world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList().Contains(victim))

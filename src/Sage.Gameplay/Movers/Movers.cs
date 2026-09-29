@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -41,7 +40,7 @@ public struct Mover : IComponent
 internal sealed class MoverSystem : ISystem
 {
     private readonly World _world;
-    private readonly ArchetypeQuery<Mover, Transform> _movers;
+    private readonly Query<Mover, Transform> _movers;
     private readonly PhysicsSpace? _space;
 
     public MoverSystem(World world)

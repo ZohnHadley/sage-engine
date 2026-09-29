@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Physics3D;
 
@@ -13,8 +12,8 @@ namespace Sage.Physics3D;
 [System("sage.physics.debug", Phase.Late)]
 public sealed class PhysicsDebugSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, Collider> _colliders;
-    private readonly ArchetypeQuery<Transform, CharacterController> _characters;
+    private readonly Query<Transform, Collider> _colliders;
+    private readonly Query<Transform, CharacterController> _characters;
     private readonly DebugDraw _debug;
     private readonly RecordStore _records;
     private readonly World _world;

@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -331,7 +330,7 @@ public static class Items
 [System("sage.items.use", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
 public sealed class InteractionSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController> _users;
+    private readonly Query<Transform, PawnIntent, CharacterController> _users;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
     private readonly InteractionState _state;

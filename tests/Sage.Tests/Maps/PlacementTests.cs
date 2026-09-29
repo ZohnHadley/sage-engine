@@ -1,6 +1,5 @@
 #nullable enable
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Tests;
 
@@ -52,7 +51,7 @@ public class PlacementTests
 
         var named = default(Entity);
         foreach (var entity in world.Query<Transform, FromPlacements>().Entities)
-            if (entity.Name.value == "north post") named = entity;
+            if (entity.Name == "north post") named = entity;
 
         Assert.False(named.IsNull);
         Assert.Equal(new Vector3(10, 0, -4), named.GetComponent<Transform>().LocalPosition);
@@ -68,7 +67,7 @@ public class PlacementTests
 
         // Move one, the way an editor would.
         foreach (var entity in world.Query<Transform, FromPlacements>().Entities)
-            if (entity.Name.value == "north post")
+            if (entity.Name == "north post")
                 entity.GetComponent<Transform>().LocalPosition = new Vector3(3, 2, 1);
 
         var saved = world.ReadPlacements(id);

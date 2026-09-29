@@ -9,7 +9,7 @@ namespace Sage.Simulation;
 //
 // Also what the editor's "revert to prefab" (15) will read.
 [Component("sage:from_prefab")]
-public struct FromPrefab : Friflo.Engine.ECS.IComponent
+public struct FromPrefab : IComponent
 {
     public RecordId Prefab;
 }

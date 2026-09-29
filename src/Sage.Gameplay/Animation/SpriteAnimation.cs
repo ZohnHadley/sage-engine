@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -47,7 +46,7 @@ public sealed class SpriteAnimationSystem : ISystem
 {
     private const int MaxStepsPerTick = 64;   // a clip that somehow jumps a long way doesn't spin here
 
-    private readonly ArchetypeQuery<SpriteAnimator, SpriteRenderer> _animators;
+    private readonly Query<SpriteAnimator, SpriteRenderer> _animators;
     private readonly RecordStore _records;
     private readonly GameEvents _events;
 

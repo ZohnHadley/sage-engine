@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     The simulation (REDESIGN §3.1, issue #24): the engine and its app (Engine, SageApp, modules), the
-    World and its ECS (Friflo), systems and events, prefabs, saves, levels, streaming, entity I/O, and
+    World and its ECS (Sage's vocabulary over Friflo), systems and events, prefabs, saves, levels, streaming, entity I/O, and
     the data the client presents (render, audio, input and UI view-models). Must never reference
     MonoGame (ARCHITECTURE.md §2 rule 2); math is System.Numerics (decision D2). Physics is a plugin
     on top of it (Sage.Physics3D), reached through IPhysicsWorld.
@@ -12,8 +12,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- ECS storage (decision D4; spike results in docs/design/03 §3.1). Components are structs
-         implementing Friflo.Engine.ECS.IComponent; World (ECS/World.cs) is the thin wrapper. -->
+    <!-- ECS storage (decision D4; spike results in docs/design/03 §3.1), under Sage's own types: Entity,
+         IComponent, ITag, Tags, Query<…>, EntityCommands (ECS/Api, issue #25). Its compile assets still
+         flow to every project above, because Sage's IComponent extends Friflo's (the schema scan and
+         the generic constraints need it) and a derived interface needs its base to compile. -->
     <PackageReference Include="Friflo.Engine.ECS" />
   </ItemGroup>
 

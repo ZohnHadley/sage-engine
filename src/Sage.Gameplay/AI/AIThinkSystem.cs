@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -13,8 +12,8 @@ namespace Sage.Gameplay;
 [System("sage.ai.think", Phase.Commands, After = new[] { "sage.character.player_control" })]
 public sealed class AIThinkSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, AIState, PawnIntent> _agents;
-    private readonly ArchetypeQuery<Transform> _players;
+    private readonly Query<Transform, AIState, PawnIntent> _agents;
+    private readonly Query<Transform> _players;
     private readonly Entity[] _candidates;   // broad-phase scratch, reused every think (F24)
     private readonly EventReader<Damaged> _damage;
     private readonly RecordStore _records;

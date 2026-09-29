@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Physics3D;
 
@@ -16,15 +15,14 @@ namespace Sage.Physics3D;
 internal sealed class PhysicsSyncSystem : ISystem
 {
     private readonly PhysicsSpace _space;
-    private readonly ArchetypeQuery<Transform, Collider> _pending;
-    private readonly ArchetypeQuery<Transform, Collider, PhysicsBody> _bodies;
+    private readonly Query<Transform, Collider> _pending;
+    private readonly Query<Transform, Collider, PhysicsBody> _bodies;
     private readonly List<Entity> _toAdd = new();
 
     public PhysicsSyncSystem(World world, PhysicsSpace space)
     {
         _space = space;
-        var withoutBody = ComponentTypes.Get<PhysicsBody>();
-        _pending = world.Query<Transform, Collider>().WithoutAllComponents(withoutBody);
+        _pending = world.Query<Transform, Collider>().WithoutComponent<PhysicsBody>();
         _bodies = world.Query<Transform, Collider, PhysicsBody>();
     }
 
@@ -84,7 +82,7 @@ internal sealed class PhysicsStepSystem : ISystem
 internal sealed class PhysicsWriteBackSystem : ISystem
 {
     private readonly PhysicsSpace _space;
-    private readonly ArchetypeQuery<Transform, Collider, PhysicsBody> _bodies;
+    private readonly Query<Transform, Collider, PhysicsBody> _bodies;
 
     public PhysicsWriteBackSystem(World world, PhysicsSpace space)
     {

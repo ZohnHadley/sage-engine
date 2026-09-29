@@ -1,6 +1,5 @@
 #nullable enable
 using System.Numerics;
-using Friflo.Engine.ECS;
 using Hello;
 
 namespace Sage.Tests;

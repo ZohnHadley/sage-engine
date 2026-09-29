@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Linq;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 

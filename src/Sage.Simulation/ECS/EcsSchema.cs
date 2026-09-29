@@ -1,7 +1,9 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
-using Friflo.Engine.ECS;
+using System.Linq;
+using F = Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -26,7 +28,7 @@ internal static class EcsSchema
             try
             {
                 System.Console.SetOut(captured);
-                var schema = EntityStore.GetEntitySchema();
+                var schema = F.EntityStore.GetEntitySchema();
                 System.Console.SetOut(original);
                 Log.Debug(LogCat.World, $"ECS schema: {schema.Components.Length} component types, {schema.Tags.Length} tags. {captured.ToString().Trim()}");
             }
@@ -35,5 +37,14 @@ internal static class EcsSchema
                 System.Console.SetOut(original);
             }
         }
+    }
+
+    // Every component and tag type in the schema: Sage's, every loaded game's and Friflo's own. For the
+    // tests that check the scan found each assembly, without naming Friflo's schema types.
+    internal static IReadOnlyCollection<Type> ComponentTypes()
+    {
+        EnsureInitialized();
+        var schema = F.EntityStore.GetEntitySchema();
+        return schema.ComponentTypeByType.Keys.Concat(schema.TagTypeByType.Keys).ToHashSet();
     }
 }

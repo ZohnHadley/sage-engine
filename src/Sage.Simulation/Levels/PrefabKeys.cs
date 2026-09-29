@@ -51,7 +51,7 @@ public static class PrefabKeys
             foreach (var (name, fields) in prefab.Components)
             {
                 if (!engine.Components.TryResolveComponent(name, id.Namespace, out var type, out _)) continue;
-                var meta = Metadata.Of(type.Type);
+                var meta = Metadata.Of(type);
                 foreach (var field in meta.Fields.Where(Offered))
                     keys.Add(new PrefabKey(KeyOf(name, field), name, false, meta, field, fields is JsonObject o ? Find(o, field) : null));
             }

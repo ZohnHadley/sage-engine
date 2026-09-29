@@ -1,6 +1,5 @@
 #nullable enable
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Tests;
 
@@ -140,7 +139,7 @@ public class MapLevelTests
         // `origin`; `nothing_has_this` does not, and is left to whatever reads the level for itself.
         var entity = default(Entity);
         foreach (var candidate in world.Query<Transform>().Entities)
-            if (candidate.Name.value == "the marker") { entity = candidate; break; }
+            if (candidate.Name == "the marker") { entity = candidate; break; }
         Assert.False(entity.IsNull);
 
         // Map (32, 0, 64) units is (1, 2, 0) metres in engine axes, on top of the level's position.

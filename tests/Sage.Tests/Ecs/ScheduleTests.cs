@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Tests;
 
@@ -109,17 +108,17 @@ public class ScheduleTests
 
     private sealed class Killer : ISystem
     {
-        private readonly ArchetypeQuery<Transform> _q;
+        private readonly Query<Transform> _q;
         public Killer(World w) { _q = w.Query<Transform>(); }
         public void Run(in SystemContext ctx)
         {
-            foreach (var e in _q.Entities) ctx.Commands.DeleteEntity(e.Id);   // structural change inside a loop
+            foreach (var e in _q.Entities) ctx.Commands.Destroy(e);   // structural change inside a loop
         }
     }
     private sealed class Counter : ISystem
     {
         public int Seen;
-        private readonly ArchetypeQuery<Transform> _q;
+        private readonly Query<Transform> _q;
         public Counter(World w) { _q = w.Query<Transform>(); }
         public void Run(in SystemContext ctx) => Seen = _q.Count;
     }
@@ -172,7 +171,7 @@ public class ScheduleTests
 
     private sealed class MoveX : ISystem
     {
-        private readonly ArchetypeQuery<Transform> _q;
+        private readonly Query<Transform> _q;
         public MoveX(World w) { _q = w.Query<Transform>(); }
         public void Run(in SystemContext ctx)
         {

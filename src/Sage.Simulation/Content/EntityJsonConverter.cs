@@ -10,14 +10,14 @@ namespace Sage.Simulation;
 // writing one gives null. It needs a converter at all because `Entity` exposes a ref struct (`Tags`),
 // which System.Text.Json refuses to look at — without this, any component holding one (`AIState`,
 // `ActiveEffect`) cannot be read from a prefab at all. Saves give entities stable ids instead (F27).
-internal sealed class EntityJsonConverter : JsonConverter<Friflo.Engine.ECS.Entity>
+internal sealed class EntityJsonConverter : JsonConverter<Entity>
 {
-    public override Friflo.Engine.ECS.Entity Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override Entity Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         reader.Skip();
         return default;
     }
 
-    public override void Write(Utf8JsonWriter writer, Friflo.Engine.ECS.Entity value, JsonSerializerOptions options) =>
+    public override void Write(Utf8JsonWriter writer, Entity value, JsonSerializerOptions options) =>
         writer.WriteNullValue();
 }

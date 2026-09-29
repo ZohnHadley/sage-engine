@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -62,7 +61,7 @@ public static class PlacementExtensions
             var entity = world.Spawn(placement.Prefab, at, placement.Yaw);
             if (entity.IsNull) continue;
 
-            if (!string.IsNullOrEmpty(placement.Name)) entity.Name = new EntityName(placement.Name);
+            if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
             world.Add(entity, new FromPlacements { Document = document });
             spawned++;
         }
@@ -87,7 +86,7 @@ public static class PlacementExtensions
                 Prefab = entity.TryGetComponent<FromPrefab>(out var from) ? from.Prefab : default,
                 At = world.Origin().ToAbsolute(transform.LocalPosition),
                 Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI,
-                Name = entity.TryGetComponent<EntityName>(out var name) ? name.value : "",
+                Name = entity.Name ?? "",
             });
         }
 

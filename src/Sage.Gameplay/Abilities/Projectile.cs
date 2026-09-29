@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -33,7 +32,7 @@ public struct Projectile : IComponent
 [System("sage.abilities.projectiles", Phase.Gameplay, After = new[] { "sage.abilities.cast" }, Before = new[] { "sage.effects.tick" })]
 public sealed class ProjectileSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, Projectile> _flying;
+    private readonly Query<Transform, Projectile> _flying;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
     private readonly AbilityPayload _payload;

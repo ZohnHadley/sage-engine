@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using BepuPhysics.Collidables;
 using BepuPhysics.CollisionDetection;
-using Friflo.Engine.ECS;
 
 namespace Sage.Physics3D;
 

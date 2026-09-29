@@ -1,5 +1,4 @@
 #nullable enable
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 

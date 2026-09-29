@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -448,7 +447,7 @@ public sealed class NavDebugSystem : ISystem
 {
     private readonly Navigation _nav;
     private readonly DebugDraw _draw;
-    private readonly ArchetypeQuery<Transform, AIState> _agents;
+    private readonly Query<Transform, AIState> _agents;
     private readonly CVar<bool> _enabled, _debug;
     private readonly CVar<float> _cell;
     private readonly CVar<int> _nodes, _plans;

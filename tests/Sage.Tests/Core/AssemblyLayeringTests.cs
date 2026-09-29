@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Friflo.Engine.ECS;
 using Sage.Generators;
 
 namespace Sage.Tests;
@@ -84,8 +83,7 @@ public class AssemblyLayeringTests
     public void TheEcsSchemaHasTheComponentsOfEveryBaseAssembly()
     {
         using var app = HeadlessApp.Bare().Build();
-        var schema = EntityStore.GetEntitySchema();
-        var components = schema.ComponentTypeByType.Keys.Concat(schema.TagTypeByType.Keys).ToHashSet();
+        var components = EcsSchema.ComponentTypes();
 
         Assert.Contains(typeof(PawnIntent), components);            // Sage.Simulation
         Assert.Contains(typeof(CharacterController), components);   // Sage.Physics3D
@@ -99,7 +97,7 @@ public class AssemblyLayeringTests
     [Fact]
     public void EveryTypeTheGeneratorsNameExists()
     {
-        var where = EngineAssemblies.Base.Append(typeof(IComponent).Assembly).ToList();
+        var where = EngineAssemblies.Base.ToList();
         var names = typeof(SageTypes).GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(f => f.IsLiteral && f.FieldType == typeof(string))
             .Select(f => (f.Name, Value: (string)f.GetRawConstantValue()!))

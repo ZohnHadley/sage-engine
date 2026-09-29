@@ -25,7 +25,5 @@
   <ItemGroup>
     <Using Include="Sage.Core" />
     <Using Include="Sage.Simulation" />
-    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
-    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 </Project>

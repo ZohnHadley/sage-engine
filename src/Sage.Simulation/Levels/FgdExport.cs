@@ -170,7 +170,7 @@ public static class FgdExport
     {
         if (prefab.Components is null) return null;
         foreach (var (name, fields) in prefab.Components)
-            if (schema.TryResolveComponent(name, id.Namespace, out var resolved, out _) && resolved.Type == type)
+            if (schema.TryResolveComponent(name, id.Namespace, out var resolved, out _) && resolved == type)
                 return fields as JsonObject;
         return null;
     }

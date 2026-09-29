@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -17,7 +16,7 @@ namespace Sage.Gameplay;
 [System("sage.abilities.cast", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
 public sealed class AbilitySystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, PawnIntent, Abilities> _casters;
+    private readonly Query<Transform, PawnIntent, Abilities> _casters;
     private readonly ActionId _cast;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;

@@ -14,7 +14,7 @@ public sealed class SandboxHud : ISystem
 {
     private static readonly RecordId Health = new("sage", "health");
 
-    private readonly ArchetypeQuery<Transform> _players;
+    private readonly Query<Transform> _players;
     private readonly UiDraw _ui;
     private readonly MessageLog _messages;
     private readonly RecordStore _records;

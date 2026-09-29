@@ -23,7 +23,6 @@ public class AnalyzerTests
     private const string Usings = """
         using Sage.Core;
         using Sage.Simulation;
-        using Friflo.Engine.ECS;
         """;
 
     [Fact]
@@ -311,7 +310,8 @@ public class AnalyzerTests
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
-            .Append(MetadataReference.CreateFromFile(typeof(Friflo.Engine.ECS.IComponent).Assembly.Location))
+            // Friflo's assembly: Sage's IComponent extends Friflo's, so a game compiles against it too.
+            .Append(MetadataReference.CreateFromFile(typeof(IComponent).GetInterfaces().Single().Assembly.Location))
             .GroupBy(r => r.FilePath).Select(g => g.First())
             .Concat(extra);
         var compilation = CSharpCompilation.Create("Analyzed",

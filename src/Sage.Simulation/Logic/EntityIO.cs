@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -307,7 +306,7 @@ public static class EntityIOExtensions
     {
         if (string.IsNullOrEmpty(name)) return default;
         foreach (var entity in world.Query<Transform>().Entities)
-            if (entity.Name.value == name) return entity;
+            if (entity.Name == name) return entity;
         return default;
     }
 }

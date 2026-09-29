@@ -1,7 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Tests;
 
@@ -35,7 +34,7 @@ public class EntityIOTests
     private static Entity Wired(World world, string name, params Connection[] wires)
     {
         var entity = world.Create(Transform.At(Vector3.Zero), name);
-        entity.Name = new EntityName(name);
+        entity.Name = name;
         world.Add(entity, new IOConnections { Wires = wires });
         return entity;
     }
@@ -69,7 +68,7 @@ public class EntityIOTests
         var world = engine.CreateWorld("io");
 
         var target = world.Create(Transform.At(Vector3.Zero), "target");
-        target.Name = new EntityName("target");
+        target.Name = "target";
         var source = Wired(world, "source", new Connection { Output = "OnUse", Target = "target", Input = "TestCount" });
 
         world.FireOutput(source, "OnUse");
@@ -85,7 +84,7 @@ public class EntityIOTests
         var world = engine.CreateWorld("io");
 
         var target = world.Create(Transform.At(Vector3.Zero), "target");
-        target.Name = new EntityName("target");
+        target.Name = "target";
         var source = Wired(world, "source",
             new Connection { Output = "OnUse", Target = "target", Input = "TestCount", Delay = 0.5f });
 
@@ -104,7 +103,7 @@ public class EntityIOTests
         var world = engine.CreateWorld("io");
 
         var target = world.Create(Transform.At(Vector3.Zero), "target");
-        target.Name = new EntityName("target");
+        target.Name = "target";
         var source = Wired(world, "source",
             new Connection { Output = "OnUse", Target = "target", Input = "TestCount", Times = 2 });
 
@@ -120,7 +119,7 @@ public class EntityIOTests
         using var engine = NewEngine();
         var seen = new List<string>();
         engine.Inputs.Register("TestWho", (World w, in IOContext io) =>   // before the world, as a module's Init would
-            seen.Add($"{io.Self.Name.value}<-{(io.Activator.IsNull ? "nobody" : io.Activator.Name.value)}"));
+            seen.Add($"{io.Self.Name}<-{(io.Activator.IsNull ? "nobody" : io.Activator.Name)}"));
         var world = engine.CreateWorld("io");
 
         var source = Wired(world, "button",
@@ -128,7 +127,7 @@ public class EntityIOTests
             new Connection { Output = "OnUse", Target = "!activator", Input = "TestWho" });
 
         var player = world.Create(Transform.At(Vector3.Zero), "player");
-        player.Name = new EntityName("player");
+        player.Name = "player";
 
         world.FireOutput(source, "OnUse", player);
         Tick(world);
@@ -233,7 +232,7 @@ public class EntityIOTests
         world.FireOutput(source, "OnUse");
 
         var late = world.Create(Transform.At(Vector3.Zero), "arrives_later");
-        late.Name = new EntityName("arrives_later");
+        late.Name = "arrives_later";
         Tick(world);
 
         Assert.Equal(1, _counter);
@@ -331,7 +330,7 @@ public class EntityIOTests
         var world = engine.CreateWorld("io");
 
         var door = world.Create(Transform.At(new Vector3(0, 0, 0)), "door");
-        door.Name = new EntityName("door");
+        door.Name = "door";
         world.Add(door, new Mover { OpenOffset = new Vector3(2, 0, 0), Seconds = 0.5f, CloseAfter = 0.5f });
         world.Add(door, new IOConnections
         {

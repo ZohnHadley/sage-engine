@@ -1,7 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Physics3D;
 

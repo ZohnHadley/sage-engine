@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Client;
 
@@ -27,7 +26,7 @@ public sealed class AudioSystem : ISystem
     private readonly EventReader<CueTriggered> _cues;
     private readonly EventReader<Damaged> _damage;
     private readonly EventReader<Used> _used;
-    private readonly ArchetypeQuery<Transform, AudioSource> _sources;
+    private readonly Query<Transform, AudioSource> _sources;
 
     // The looping voices that belonged to a source last frame. A campfire that is destroyed — or whose
     // sector was unloaded (F14) — stops iterating, and without this its voice would hum for ever from
