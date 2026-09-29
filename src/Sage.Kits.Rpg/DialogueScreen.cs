@@ -1,13 +1,14 @@
 #nullable enable
 
-namespace Sage.Gameplay;
+namespace Sage.Kits.Rpg;
 
 // What a conversation looks like (docs/design/13 §3, 16 §3.5, F24).
 //
-// In the engine, like the spellmaker's screen and for the same reason: what a conversation *is* belongs
-// to this feature, and only the drawing belongs to the client. The node's line is the panel's title and
-// the things you may say are its rows — which means a conversation is the same list-with-reasons every
-// other screen is, and the client learnt nothing new to show it.
+// In the RPG kit, like the spellmaker's screen (issue #27): the conversation model is the base's
+// (DialogueRules), and this is the RPG's way of showing it; the drawing belongs to the client, which
+// asks for it by id ("dialogue", ScreenRegistry) rather than by name. The node's line is the panel's
+// title and the things you may say are its rows — which means a conversation is the same
+// list-with-reasons every other screen is, and the client learnt nothing new to show it.
 public sealed class DialogueScreen : Screen
 {
     public override float Width => 620f;      // wider than a spell list: these rows are sentences

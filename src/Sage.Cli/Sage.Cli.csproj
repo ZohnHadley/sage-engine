@@ -17,6 +17,9 @@
     <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
   </ItemGroup>
 
+  <!-- The kits' simulation halves beside `sage`, for a game that names one (issue #27). -->
+  <Import Project="..\..\build\Sage.Kits.targets" />
+
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
   <ItemGroup>
     <Using Include="Sage.Core" />

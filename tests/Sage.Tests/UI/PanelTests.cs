@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using Sage.Kits.Rpg;
 
 namespace Sage.Tests;
 
@@ -23,6 +24,8 @@ public class PanelTests
       { "type": "effect", "id": "spend_mana", "modifiers": [ { "attribute": "mana", "op": "Add", "value": -1 } ] },
       { "type": "effect", "id": "mend", "cost": 6, "modifiers": [ { "attribute": "health", "op": "Add", "value": 10 } ] },
       { "type": "effect", "id": "house_only", "modifiers": [ { "attribute": "health", "op": "Add", "value": -1 } ] },
+      // What a composed spell costs is the game's word, not the kit's (issue #27): mana, here too.
+      { "type": "gameplay_conventions", "id": "default_conventions", "costAttribute": "mana" },
 
       { "type": "damage_type", "id": "physical" },
       { "type": "attack", "id": "swing", "damage": 6, "reach": 1.8 },
@@ -46,7 +49,7 @@ public class PanelTests
 
         public Fixture()
         {
-            Engine = HeadlessApp.Gameplay().File("data/panel_test.json", Records).Build().Engine;
+            Engine = HeadlessApp.Gameplay().With(new RpgKitModule()).File("data/panel_test.json", Records).Build().Engine;
 
             World = Engine.CreateWorld("panels");
             var ground = World.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
@@ -106,7 +109,7 @@ public class PanelTests
 
         // And a spell it does not know cannot be readied, so a stale screen cannot ready nothing.
         Assert.False(fx.World.Ready(hero, Id("mend")));
-        Assert.Equal(Id("pillar"), fx.World.Get<Abilities>(hero).Selected);
+        Assert.Equal(Id("pillar"), fx.World.Readied(hero));
     }
 
     // A cooldown is a refusal like any other, and it comes back on its own — which is the difference

@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Numerics;
+using Sage.Kits.Rpg;
 
 namespace Sage.Tests;
 

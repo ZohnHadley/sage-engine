@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using Sage.Kits.Rpg;
 
 namespace Sage.Tests;
 
@@ -124,7 +125,7 @@ public class SpellmakerScreenTests
 
         public Fixture()
         {
-            Engine = HeadlessApp.Gameplay().File("data/spellmaker_screen.json", Records).Build().Engine;
+            Engine = HeadlessApp.Gameplay().With(new RpgKitModule()).File("data/spellmaker_screen.json", Records).Build().Engine;
 
             World = Engine.CreateWorld("spellmaker");
             World.Resources.Add(Screens);

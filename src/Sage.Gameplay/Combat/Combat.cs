@@ -50,7 +50,8 @@ public sealed class AttackRecord
     public float WindupTime = 0.25f;        // swing -> hit, unless the animation says when (12 §3)
     public float RecoverTime = 0.2f;        // hit -> able to do anything else
     public float Cooldown = 0.5f;           // and how long before the next swing
-    public string Animation = "attack";     // clip to play; its "hit" event lands the blow
+    public string Animation = "";           // clip to play; empty = the game's (gameplay_conventions
+                                            // `animations.attack`), and its `animations.hit` event lands the blow
     // Raised where the swing starts (16 §3.3), so a weapon can be heard leaving its scabbard and seen
     // trailing without combat knowing what either looks like. The *hit* is the damage type's business:
     // one entry for fire covers a fireball and a torch, and a blade's own noise is this.
@@ -210,7 +211,7 @@ public sealed class MeleeCombatSystem : ISystem
                             m[n].Phase = MeleePhase.Windup;
                             m[n].Timer = 0f;
                             m[n].Swung = false;
-                            PlayAnimation(world, entity, attack.Animation);
+                            PlayAnimation(world, entity, attack.Animation.Length > 0 ? attack.Animation : conventions.Animations.Attack);
                             // The swing, not the hit: a blow that misses still made a noise, and a
                             // creature winding up behind you is the warning you get.
                             if (!attack.SwingCue.IsEmpty)
@@ -229,7 +230,7 @@ public sealed class MeleeCombatSystem : ISystem
                             m[n].Swung = true;
                             break;
                         }
-                        if (!Lands(world, entity, attack, m[n].Timer)) break;
+                        if (!Lands(entity, attack, m[n].Timer, conventions.Animations.Hit)) break;
                         _pending.Add((Resolve(world, entity, in t[n], in i[n], in c[n], attack), attack));
                         m[n].Swung = true;
                         m[n].Timer = 0f;
@@ -239,7 +240,9 @@ public sealed class MeleeCombatSystem : ISystem
                     case MeleePhase.Recover:
                         m[n].Timer += dt;
                         if (m[n].Timer < attack.RecoverTime) break;
-                        PlayAnimation(world, entity, IdleAnimation);   // or it stands frozen mid-swing
+                        // Or it stands frozen mid-swing. A sheet without the idle clip keeps whatever it
+                        // was playing, which is the best a system this simple can do.
+                        PlayAnimation(world, entity, conventions.Animations.Idle);
                         m[n].Phase = MeleePhase.Ready;
                         m[n].Timer = 0f;
                         m[n].Cooldown = attack.Cooldown;
@@ -268,11 +271,12 @@ public sealed class MeleeCombatSystem : ISystem
         return null;
     }
 
-    // When the blow lands: on the animation's "hit" event if the clip has one, otherwise on the
-    // record's windup time. The event is raised in the Animation phase, which runs after this one, so
-    // a sprite's hit lands one tick (16 ms) after the frame that shows it — not worth a phase shuffle.
-    private bool Lands(World world, Entity entity, AttackRecord attack, float timer) =>
-        Fired(entity, "hit") || timer >= attack.WindupTime;
+    // When the blow lands: on the animation's hit event (the conventions name it: "hit" in the engine's)
+    // if the clip has one, otherwise on the record's windup time. The event is raised in the Animation
+    // phase, which runs after this one, so a sprite's hit lands one tick (16 ms) after the frame that
+    // shows it — not worth a phase shuffle.
+    private bool Lands(Entity entity, AttackRecord attack, float timer, string hit) =>
+        (hit.Length > 0 && Fired(entity, hit)) || timer >= attack.WindupTime;
 
     private bool Fired(Entity entity, string name)
     {
@@ -334,8 +338,4 @@ public sealed class MeleeCombatSystem : ISystem
     // at all). Combat driving animation directly is v1: an AnimationStateSystem picking clips from
     // gameplay state is 12 §3's job once there is more than "swinging" and "not swinging".
     private void PlayAnimation(World world, Entity entity, string name) => world.PlayClip(entity, name, _records);
-
-    // What a fighter shows when it is not swinging. A sheet without an "idle" clip keeps whatever it
-    // was playing, which is the best a system this simple can do.
-    private const string IdleAnimation = "idle";
 }

@@ -17,7 +17,6 @@ namespace Sage.Gameplay;
 public sealed class AbilitySystem : ISystem
 {
     private readonly Query<Transform, PawnIntent, Abilities> _casters;
-    private readonly ActionId _cast;
     private readonly RecordStore _records;
     private readonly IPhysicsWorld _space;
     private readonly AbilityPayload _payload;
@@ -29,10 +28,9 @@ public sealed class AbilitySystem : ISystem
 
     private readonly record struct Pending(Entity Caster, RecordId Ability, Vector3 Point, Vector3 Aim);
 
-    public AbilitySystem(World world, RecordStore records, ActionRegistry actions, CVar<bool> debugCasts)
+    public AbilitySystem(World world, RecordStore records, CVar<bool> debugCasts)
     {
         _casters = world.Query<Transform, PawnIntent, Abilities>();
-        _cast = actions.Get(world.Conventions().Actions.Cast);
         _records = records;
         _space = world.Resources.Get<IPhysicsWorld>();
         _payload = new AbilityPayload(world);
@@ -54,11 +52,8 @@ public sealed class AbilitySystem : ISystem
             {
                 var entity = entities.EntityAt(n);
 
-                // Pressing Cast fires the readied spell, which is how a player casts; `world.Cast`
-                // is how everything else does (an AI task, the console), and both arrive here.
-                if (i[n].Pressed.Has(_cast) && !a[n].Selected.IsEmpty && a[n].Queued.IsEmpty)
-                    a[n].Queued = a[n].Selected;
-
+                // `world.Cast` queues it: an AI task, the console, or a kit's button (Sage.Kits.Rpg
+                // fires the readied spell, issue #27) — they all arrive here.
                 if (!a[n].Queued.IsEmpty)
                 {
                     var wanted = a[n].Queued;

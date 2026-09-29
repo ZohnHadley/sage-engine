@@ -17,9 +17,14 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sage.Client\Sage.Client.csproj" Private="false" />
     <ProjectReference Include="..\Sandbox\Sandbox.csproj" Private="false" />
+    <!-- The RPG kit, both halves by name (a transitive reference would be copied): its screens and the
+         actions that open them (issue #27). The host loads its own copies. -->
+    <ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />
+    <ProjectReference Include="..\..\src\Sage.Kits.Rpg.Client\Sage.Kits.Rpg.Client.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Sage.Client" />
+    <Using Include="Sage.Kits.Rpg" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The RPG kit's simulation half (REDESIGN §0.5, §3.1, issue #27): what the action-RPG family —
+    Daggerfall, Morrowind, S.T.A.L.K.E.R. — shares and a platformer does not. The spellmaker and its
+    book, the readied spell a Cast button fires, the bag and spellbook panels, and the journal,
+    conversation and spellmaker screens. Built on the base with its public API only; the base never
+    references it (SAGE0025). Plugin `sage.kits.rpg`; a game opts in with game.json's "kits".
+
+    Not a base assembly (no SageBaseAssembly), and not in BasePlugins.All(). No MonoGame: the screens
+    here are the simulation's (Screen, Panel); drawing them is the client's, and the client half
+    (Sage.Kits.Rpg.Client) says which screen is which.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Sage.Kits.Rpg</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
+  </ItemGroup>
+
+  <!-- The layers below, for every file. -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+    <Using Include="Sage.Gameplay" />
+  </ItemGroup>
+</Project>

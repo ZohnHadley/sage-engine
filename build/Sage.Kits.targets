@@ -1,0 +1,30 @@
+<Project>
+  <!--
+    The kits ship beside the executable (issue #27): a game names one in game.json ("kits"), and the
+    host loads Sage.Kits.<Name>.dll from beside the game's assembly or, failing that, from here. The
+    executable does not *reference* a kit — it must not load one for a game that did not ask, since the
+    ECS schema is built from the assemblies loaded — so each kit is built first (ReferenceOutputAssembly
+    false) and its output copied next to the executable's.
+
+    Imported by Sage.Host (with SageKitClients=true: a host with a window loads a kit's client half
+    too) and Sage.Cli (the simulation halves only). A new kit adds its project(s) here.
+  -->
+  <ItemGroup>
+    <SageKit Include="$(MSBuildThisFileDirectory)..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
+    <SageKit Include="$(MSBuildThisFileDirectory)..\src\Sage.Kits.Rpg.Client\Sage.Kits.Rpg.Client.csproj"
+             Condition="'$(SageKitClients)' == 'true'" />
+    <ProjectReference Include="@(SageKit)" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+
+  <Target Name="SageCopyKits" AfterTargets="CopyFilesToOutputDirectory">
+    <MSBuild Projects="@(SageKit)" Targets="GetTargetPath" Properties="Configuration=$(Configuration)">
+      <Output TaskParameter="TargetOutputs" ItemName="_SageKitAssembly" />
+    </MSBuild>
+    <ItemGroup>
+      <_SageKitFile Include="@(_SageKitAssembly)" />
+      <_SageKitFile Include="@(_SageKitAssembly->'%(RootDir)%(Directory)%(Filename).pdb')"
+                    Condition="Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SageKitFile)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
