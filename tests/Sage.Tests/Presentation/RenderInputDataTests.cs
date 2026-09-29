@@ -71,6 +71,32 @@ public class MaterialAndInputRecordTests
     }
 
     [Fact]
+    public void MaterialParam_RtName_IsARenderTarget_NotAnAsset()   // issue #77, decision D3
+    {
+        var fx = new MountFixture();
+        fx.Write("game", "data/m.json", """
+            [{ "type": "material", "id": "minimap", "effect": "x.mgfxo", "params": { "Albedo": "rt:minimap", "Tint": [1, 1, 1, 1] } },
+             { "type": "material", "id": "nameless", "effect": "x.mgfxo", "params": { "Albedo": "rt:" } }]
+            """);
+        fx.Mount("game", "sandbox");
+        var store = Load(fx);
+
+        var minimap = store.Get<MaterialRecord>(new RecordId("sandbox", "minimap"));
+        var albedo = minimap.Params["Albedo"];
+        Assert.Equal("minimap", albedo.RenderTarget);
+        Assert.False(albedo.IsTexture);                       // no mount is asked for it
+        Assert.Equal("rt:minimap", albedo.ToString());
+        Assert.Null(minimap.Params["Tint"].RenderTarget);
+
+        Assert.Equal(1, store.ErrorCount);                    // "rt:" alone names nothing
+        Assert.False(store.TryGet(new RecordId("sandbox", "nameless"), out MaterialRecord _));
+
+        var json = System.Text.Json.JsonSerializer.Serialize(albedo);
+        Assert.Equal("\"rt:minimap\"", json);
+        Assert.Equal("minimap", System.Text.Json.JsonSerializer.Deserialize<MaterialParam>(json)!.RenderTarget);
+    }
+
+    [Fact]
     public void MaterialParam_WithAnObject_IsAnError()
     {
         var fx = new MountFixture();

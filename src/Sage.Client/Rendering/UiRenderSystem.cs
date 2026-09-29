@@ -7,6 +7,8 @@ namespace Sage.Client;
 
 // Overlay phase (docs/design/13 §3): draws whatever was queued into UiDraw this frame, plus the
 // crosshair, and clears the queue. One SpriteBatch, one pass, after the world and before the dev UI.
+// Only the screen world's UI is drawn (`Renderer.ScreenWorld`, issue #77): another world's queue is
+// emptied unseen, the way its views into the screen are never made.
 [System("sage.client.ui", Phase.Overlay)]
 internal sealed class UiRenderSystem : ISystem
 {
@@ -15,6 +17,8 @@ internal sealed class UiRenderSystem : ISystem
     private readonly ContentService _content;
     private readonly UiResources _shared;
     private readonly CVar<bool> _crosshair;
+    private readonly Renderer _renderer;
+    private readonly CVar<int> _testView;
     private bool _fontWarned;
 
     // Interned once; the font itself is looked up every frame (see `Run`).
@@ -22,8 +26,11 @@ internal sealed class UiRenderSystem : ISystem
 
     // The batch and the white pixel are the module's: a system is built per world, and two worlds
     // would mean two of each with nothing to dispose them (review #57's lesson, applied early).
-    public UiRenderSystem(World world, ClientHost host, ContentService content, UiResources shared, CVar<bool> crosshair)
+    public UiRenderSystem(World world, ClientHost host, ContentService content, UiResources shared, CVar<bool> crosshair,
+                          Renderer renderer, CVar<int> testView)
     {
+        _renderer = renderer;
+        _testView = testView;
         _ui = world.Resources.Get<UiDraw>();
         _device = host.GraphicsDevice;
         _content = content;
@@ -33,6 +40,8 @@ internal sealed class UiRenderSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
+        if (!_renderer.IsScreenWorld(ctx.World)) { _ui.Clear(); return; }
+
         // The font is content like anything else, so it is loaded on the first frame that wants it
         // rather than at boot, and a missing one costs the text, not the HUD (13 §3).
         //
@@ -65,6 +74,15 @@ internal sealed class UiRenderSystem : ISystem
             var colour = new Color(255, 255, 255, 150);
             _ui.Rect(x - Arm, y - Thickness * 0.5f, Arm * 2f, Thickness, colour);
             _ui.Rect(x - Thickness * 0.5f, y - Arm, Thickness, Arm * 2f, colour);
+        }
+
+        // `r_testview 2`: the render target the top-down test view drew into, in the top-right corner.
+        if (_testView.Value == 2 && _renderer.FindTarget(ViewSource.TestTarget) is { } map)
+        {
+            const int Size = 192, Margin = 12;
+            var at = new Rectangle(viewport.Width - Size - Margin, Margin, Size, Size);
+            _ui.Rect(at.X - 2, at.Y - 2, at.Width + 4, at.Height + 4, new Color(0, 0, 0, 180));
+            _ui.Image(map, at, Color.White);
         }
 
         _shared.Batch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.PointClamp);

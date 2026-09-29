@@ -33,7 +33,7 @@ Pooled; its arrays grow but are never freed during play, so steady-state frames 
 
 | Buffer | Element | Filled by |
 |---|---|---|
-| `Views` | camera matrices, viewport, frustum, camera position (in origin space), render scale, clear/fog colour | `CameraExtract` |
+| `Views` | camera matrices, target and viewport, frustum, camera position (in origin space), each view's runs of items, sprites, lights and debug lines (§3.4a) | `CameraExtract` |
 | `Items` | `RenderItem`: mesh + submesh, material, world matrix (camera-relative), bounds, sort key, per-object params (tint) | `MeshExtract`, `TerrainExtract` |
 | `Sprites` | `SpriteInstance`: centre (camera-relative), size, UV rect, tint, billboard mode, material | `SpriteExtract` |
 | `Lights` | sun, ambient, point lights (position, radius, colour) | `LightExtract` |
@@ -57,6 +57,72 @@ Pooled; its arrays grow but are never freed during play, so steady-state frames 
 | 6 | Overlay | ImGui dev UI, console, game UI (13) | — | 2D |
 
 Shadows (later) would be pass 0 into a shadow map. Lightmaps (later, HL1-style interiors) are a material technique (07), not a pass.
+
+### 3.4a Views and render targets
+
+**Built (issue #77, phase 4a).** A frame draws **several views**: the main view, a split-screen partner,
+a minimap, a mirror, an editor viewport. Each is a `RenderView` in the snapshot's pooled `Views` list, a
+value type with its own matrices, frustum and cull state, target, viewport and ranges.
+
+- **Where views come from.** `CameraExtract` asks the client's `ViewSource` (`src/Sage.Client/Rendering/ViewSource.cs`),
+  the one place that knows. It reads the world's `CameraViews` (#76, "As built (camera components)"
+  below): one view per target, and a screen view made from `ActiveCamera` when no camera entity draws
+  there. A world without that resource gets one screen view from `ActiveCamera`. Each view is built with the aspect ratio of **its own viewport**:
+  half a screen or a square target is not stretched to the window's shape. Perspective and orthographic
+  projections are both supported.
+  A view can leave one entity out (`RenderView.Hidden`, filled by `ViewSource.HiddenFor`, nothing yet):
+  the seam a first-person camera uses not to see its own body (#79).
+- **Extract runs once per view.** `MeshExtract` and `SpriteExtract` interpolate an entity once and then
+  cull, make camera-relative and key it once per view. Each item or sprite is tagged with its view.
+  `LightExtract`, `ParticleExtract` and `DebugExtract` go a view at a time, so each view's lights and
+  debug lines are one contiguous run of their lists. A sprite faces each camera separately, and the
+  debug queue still ages once a frame.
+- **Planning** (`RenderViewPlan`, `src/Sage.Simulation/Rendering/RenderViewPlan.cs`) is pure and has no
+  graphics types, so a headless test can reach it:
+  - **View order:** every view into an off-screen target first, grouped by target, then the screen's
+    views. Within a target, a lower `Order` draws first, and ties keep their order
+    (test: OffScreenTargetsDrawFirst_ThenTheScreen_EachByOrder).
+  - **Item ranges:** a counting sort by view, then a sort by key within each view. Each view gets its
+    own run of the order arrays, with each pass contiguous inside it
+    (test: Bucket_GivesEachViewItsOwnRange_SortedByKey) (test: Bucket_KeepsEachPassContiguousWithinAView).
+    The view can't be the top bits of the 64-bit key, because every bit is in use (§3.5).
+  - Planning allocates nothing (test: Planning_DoesNotAllocate).
+- **Drawing** (`Renderer.Draw`):
+  - Each target is bound once and cleared whole to the sky colour. Depth is cleared too.
+  - A view that covers only part of its target clears just its rectangle, through a scissor.
+  - Each view then draws its range through the fixed passes: pass 1, 2, 4, then debug in pass 5.
+  - The effects' frame-tier parameters are set **per view**: `ViewProj` differs between views.
+  - The device goes back to the whole back buffer before Overlay. The **UI draws once, on the screen,
+    after the views.**
+- **Render targets** (decision D3):
+  - The renderer owns a pool of **named** `RenderTarget2D`s. Each has one fixed size, colour plus
+    depth, and `PreserveContents`.
+  - Code declares a target with `Renderer.DeclareTarget(name, width, height)`. That returns the texture
+    an editor viewport or a HUD draws. A target that only content names is made at 512×512 the first
+    time it's used, and the log says so.
+  - `FindTarget` and `ReleaseTarget` complete the API. All of it is `[Experimental("SAGE0123")]`.
+  - A camera draws into a target by naming it. A **material samples a target as `rt:<name>`** in its
+    `params`. That's a render target, not an asset, so no mount is asked for it
+    (test: MaterialParam_RtName_IsARenderTarget_NotAnAsset).
+  - Re-declaring a target at another size remakes it and rebuilds the materials that sample it.
+  - A material is **not drawn into a target it samples**, because reading and writing one texture is
+    undefined. It is skipped there, and the log says so once at Debug level.
+- **One world draws to the screen** (`Renderer.ScreenWorld`). Before this, every world's `RenderSystem`
+  cleared the back buffer, so with several worlds the last one won.
+  - The screen world is the first world with a client, which is the host's main world, unless code
+    sets another (an editor showing its edit world).
+  - Other worlds drop their screen views at extract and draw only into render targets. Their UI queue
+    is emptied without being drawn.
+  - The host keeps the back buffer's contents across render-target switches (`PreserveContents`).
+    MonoGame otherwise clears it to purple when a world that renders later binds a target and comes back.
+  - A target drawn by a world that renders later is sampled a frame late by the screen world.
+- **See it:** `r_testview 1` (a cheat, dev builds) splits the screen with a second view from behind.
+  `r_testview 2` draws a top-down orthographic view into the target `testview` and shows it in the HUD's
+  corner. `r_stats` prints the views, how many went into targets, and the pool's size. CI's Linux smoke
+  run runs both modes. Under Xvfb the shaders aren't compiled, so that proves the code path and the
+  clears, not the picture.
+- **Allocations:** none added. Measured with `mem_warn_bytes 1` and `ui_entities 0` in the Sandbox, the
+  host allocates 152 B/frame on `main` and 112–152 B/frame with `r_testview` 0, 1 or 2.
 
 ### 3.5 Sort key
 A 64-bit key per item, compared as an integer:
@@ -117,8 +183,8 @@ Sorting by material first minimises effect and texture switches; depth last give
   - `MeshExtract`: `GlobalTransform` interpolated with alpha, camera-relative matrices, frustum culling per mesh part (bounding sphere), and sort keys (§3.5).
   - The Render phase clears to the environment's colour (the v1 sky), sorts, and draws opaque → alpha-tested → transparent in key order. Materials switch only when the material id changes.
 - **Deviations and gaps:**
-  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), but the renderer still draws one view: `CameraExtract` reads the world's `ActiveCamera` resource, which the `CameraDirector` keeps as a mirror of the screen view, until the multi-view renderer (#77) reads `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. Since #78 the player's view is a camera entity too ("As built (camera rigs)" below): its `FirstPersonRig` puts it in the local pawn's head, and the director mirrors it into `ActiveCamera` and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when nothing did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the director hands the screen back to the camera entity when it's set again (16 §3.2).
-  - **Snapshot:** one view (`RenderSnapshot.View`), not a list.
+  - **Camera:** cameras are entities since #76 ("As built (camera components)" below), and since #77 `CameraExtract` draws every view the world's `CameraViews` holds (§3.4a); `ActiveCamera` is the `CameraDirector`'s mirror of the screen view, and the fallback for a world without `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. Since #78 the player's view is a camera entity too ("As built (camera rigs)" below): its `FirstPersonRig` puts it in the local pawn's head, and the director mirrors it into `ActiveCamera` and sets `ActiveCamera.DrivenByRig`. The host's editor camera only writes position/rotation when nothing did (`!activeCamera.DrivenByRig`); the `cam_free` cvar clears `ActiveCamera.RigEnabled` to fly the editor camera instead, and the director hands the screen back to the camera entity when it's set again (16 §3.2).
+  - **Snapshot:** one view (`RenderSnapshot.View`) at first; a list of views since issue #77 (§3.4a).
   - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
   - **Tint:** always 1 (no per-entity tint component yet).
   - **Allocations:** steady-state frames allocate nothing in these systems. Measured with `mem_warn_bytes 1`, the host allocates 176 B/frame, the same as before step 6 (TODO #41).
@@ -435,8 +501,8 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
 
 ### As built (camera components, 2026-09-29 — #76)
 Phase 4a's first piece (REDESIGN §5): cameras become entities, so rigs, several views, render targets and
-the editor camera (#77–#81) have something to be. Nothing a game draws changes yet: the renderer still
-reads `ActiveCamera`.
+the editor camera (#77–#81) have something to be. Nothing a game draws changed with #76 alone: the
+renderer read `ActiveCamera` until #77 made it draw every view in `CameraViews` (§3.4a).
 
 - **Code:** `src/Sage.Simulation/Camera/` — `Camera.cs` (`Camera`, `CameraPose`, `CameraProjection`,
   `CameraViewport`), `CameraViews.cs` (`CameraView`, `CameraViews`), `CameraDirector.cs`, `CameraMath.cs`,
@@ -484,11 +550,13 @@ reads `ActiveCamera`.
   (test: OrthographicMatchesTheTextbookMatrix_WidthFollowsTheAspect)
 - **Origin rebasing** moves rig poses and the resolved views with everything else.
   (test: RebasingMovesRigPosesAndViews)
-- **Not yet:** drawing more than one view, and render targets (#77); rigs as camera entities, the
-  first-person one moved over (#78), third-person (#79); scripted cuts from entity I/O (#80); the editor
-  camera as an entity (#81). One view per target means split screen is two targets for now. Pixel-perfect
-  ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work, not this. `ActiveCamera` has no
-  projection kind, so a screen camera that is orthographic still draws in perspective until #77.
+- **Since #77** every view is drawn, into its target and viewport, with its own projection (an
+  orthographic screen camera draws orthographic), §3.4a.
+- **Not yet:** rigs as camera entities, the first-person one moved over (#78), third-person (#79);
+  scripted cuts from entity I/O (#80); the editor camera as an entity (#81). One view per target means
+  split screen is two targets for now (the renderer itself draws several views into one target; the
+  director resolves one). Pixel-perfect ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work,
+  not this.
 
 ### As built (camera rigs, 2026-09-29 — #78)
 The rigs of decision D2: the player's view is a camera entity that follows the pawn, and the pawn carries
