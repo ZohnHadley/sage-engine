@@ -4,8 +4,11 @@
 #            the projects target, the docs checked against the registry dump (every name the host registered,
 #            written by -dump-registry) with the real test count, each game's content through `sage validate`,
 #            the committed JSON Schemas against a fresh `sage schema`, and the real executable run for a few
-#            seconds on each game under Xvfb (tools/smoke_run.sh)
-#   windows  the whole solution in all three configurations, shaders included, and the tests
+#            seconds on each game under Xvfb (tools/smoke_run.sh); then the SDK, the Player and the templates
+#            packed into a local feed and a game made from each template outside the checkout: built against
+#            the packages alone, validated, and run with `dotnet run` under Xvfb (issue #32)
+#   windows  the whole solution in all three configurations, shaders included, and the tests; then the
+#            packed templates build a game with a shader of its own, which is where mgfxc runs
 #
 # Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001).
 # The .NET 10 SDK builds; the .NET 8 runtime runs. Both matter: the 8.0.1xx SDK's compiler produced
@@ -35,7 +38,7 @@ jobs:
   linux:
     name: Linux · tests and docs
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -134,6 +137,38 @@ jobs:
           # player. Records for the same reason as above (it asks for the character plugin only).
           tools/smoke_run.sh "$host" tests/games/scene-only 3 Shaders Audio Records Input
 
+      # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
+      # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.
+      - name: Pack the SDK, the Player and the templates (local feed)
+        run: tools/pack_sdk.sh "$RUNNER_TEMP/sage-feed"
+
+      # A game from each template, in a folder outside the checkout, so nothing of the repository's
+      # Directory.Build.props, engine projects or tools can help: built against the packages alone, its
+      # content validated (the mod against the game), the Sage analyzers shown to run (naming Friflo is
+      # SAGE0050), and `dotnet run` started under Xvfb, walking for two seconds.
+      - name: Template smoke test (outside the repository)
+        run: |
+          set -euo pipefail
+          feed="$RUNNER_TEMP/sage-feed"
+          games="$RUNNER_TEMP/sage-games"
+          dotnet new install "$feed"/Sage.Templates.*.nupkg
+          dotnet new sage-game -n MyGame -o "$games/MyGame" --feed "$feed"
+          dotnet new sage-game-data -n MyData -o "$games/MyData" --feed "$feed"
+          dotnet new sage-mod-data -n MyMod -o "$games/MyMod" --game mygame
+          ( cd "$games/MyGame" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
+          ( cd "$games/MyData" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
+          src/Sage.Cli/bin/Debug/net8.0/sage validate "$games/MyGame" --mounts "$games/MyMod=mymod"
+
+          echo 'namespace MyGame; public sealed class Store { public Friflo.Engine.ECS.EntityStore? Inner; }' > "$games/MyGame/Simulation/Friflo.cs"
+          if ( cd "$games/MyGame" && dotnet build > "$games/sage0050.log" 2>&1 ); then
+            echo "::error::a game naming Friflo built: the Sage analyzers did not run"; exit 1
+          fi
+          grep -q "error SAGE0050" "$games/sage0050.log" || { cat "$games/sage0050.log"; exit 1; }
+          rm "$games/MyGame/Simulation/Friflo.cs"
+
+          SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_axis Move 0 1 2' tools/smoke_run.sh --dotnet-run "$games/MyGame" 4 Shaders Audio
+          tools/smoke_run.sh --dotnet-run "$games/MyData" 3 Shaders Audio Records Input
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -171,6 +206,27 @@ jobs:
 
       - name: Test (Debug)
         run: dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug --no-build --logger "trx;LogFileName=Debug.trx" --results-directory TestResults
+
+      # The packed SDK where shaders compile (issue #32): a game from the template with a shader of its own
+      # (the engine's debug.fx and the include it needs), built against the packages; Sage.Sdk restores
+      # the game's mgfxc and writes the .mgfxo beside the .fx.
+      - name: Pack the SDK, the Player and the templates (local feed)
+        shell: bash
+        run: tools/pack_sdk.sh "$(cygpath -m "$RUNNER_TEMP")/sage-feed"
+
+      - name: Template build with a game shader (outside the repository)
+        shell: bash
+        run: |
+          set -euo pipefail
+          temp=$(cygpath -m "$RUNNER_TEMP")   # D:/a/_temp: a path both bash and dotnet read the same way
+          feed="$temp/sage-feed"
+          game="$temp/sage-games/MyGame"
+          dotnet new install "$feed"/Sage.Templates.*.nupkg
+          dotnet new sage-game -n MyGame -o "$game" --feed "$feed"
+          mkdir -p "$game/content/shaders"
+          cp engine_content/shaders/debug.fx engine_content/shaders/common.fxh "$game/content/shaders/"
+          ( cd "$game" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
+          test -s "$game/content/shaders/debug.mgfxo"
 
       - name: Upload test results
         if: always()
