@@ -1,0 +1,21 @@
+[
+  // The player: a character (the kinematic controller, on the "player" layer so that it stands on the
+  // ground instead of sweeping through it) with the tag that makes the camera and input follow it.
+  {
+    "type": "prefab",
+    "id": "player",
+    "name": "player",
+    "tags": ["player_controlled"],
+    "parts": { "character": { "layer": "player" }, "attributes": {} }
+  },
+
+  // Where it starts: 2 m above the ground in the middle of the first sector (the ground is the terrain
+  // MyGameModule generates).
+  {
+    "type": "scene",
+    "id": "main",
+    "origin": [512, 0, 512],
+    "relativeTo": "Ground",
+    "player": { "prefab": "player", "at": [0, 2, 0] }
+  }
+]

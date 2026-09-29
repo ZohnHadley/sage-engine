@@ -1,0 +1,28 @@
+[
+  // What there is: plain prefabs, a body each, and the player a character (on the "player" layer, so
+  // it stands on the floor rather than sweeping through it) with the tag the camera and input follow.
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } },
+  {
+    "type": "prefab",
+    "id": "player",
+    "name": "player",
+    "tags": ["player_controlled"],
+    "parts": { "character": { "layer": "player" } }
+  },
+
+  // Where it goes: game.json starts every world in this scene. "at" is measured from "origin".
+  {
+    "type": "scene",
+    "id": "yard",
+    "origin": [100, 0, 100],
+    "relativeTo": "Origin",
+    "player": { "prefab": "player", "at": [0, 1, 6] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+      { "prefab": "crate", "at": [0, 0.5, 0], "name": "crate by the door" },
+      { "prefab": "crate", "at": [1.5, 0.5, 0], "yaw": 30 },
+      { "prefab": "crate", "at": [0.7, 1.5, 0] }
+    ]
+  }
+]

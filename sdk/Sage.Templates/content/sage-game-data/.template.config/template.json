@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Sage",
+  "classifications": [
+    "Game",
+    "Sage",
+    "Data"
+  ],
+  "identity": "Sage.Templates.GameData",
+  "name": "Sage game (data only, no C#)",
+  "description": "A Sage game made of game.json and records only: the engine places the scene and spawns the player. dotnet run starts it.",
+  "shortName": "sage-game-data",
+  "sourceName": "MyGame",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "symbols": {
+    "feed": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "",
+      "replaces": "SAGE_FEED_PATH",
+      "description": "A local NuGet feed holding Sage.Sdk and Sage.Player (tools/pack_sdk.sh writes one). Writes a nuget.config that names it; without it, the feed must already be a package source."
+    },
+    "hasFeed": {
+      "type": "computed",
+      "value": "(feed != \"\")"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!hasFeed)",
+          "exclude": [
+            "nuget.config"
+          ]
+        }
+      ]
+    }
+  ]
+}

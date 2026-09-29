@@ -1,0 +1,12 @@
+<Project Sdk="Sage.Sdk/0.1.0">
+  <!--
+    MyGame has no C#: game.json and the records in content/data are the whole game (the engine places the
+    scene game.json names and spawns its player). This project is here so that `dotnet run` starts the
+    Player host on this folder and `dotnet msbuild -t:SageValidate` checks the content; it compiles
+    nothing and references no engine assembly. Add C# later by removing SageDataOnly and giving
+    game.json an "assembly" (the sage-game template shows both halves).
+  -->
+  <PropertyGroup>
+    <SageDataOnly>true</SageDataOnly>
+  </PropertyGroup>
+</Project>

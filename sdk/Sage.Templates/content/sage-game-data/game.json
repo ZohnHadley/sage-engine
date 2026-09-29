@@ -1,0 +1,11 @@
+{
+  // A game with no C# at all (the engine's scene record, issue #29): no "assembly", only this manifest
+  // and the records in content/data. `id` is the record namespace: everything there is `mygame:...`.
+  "name": "MyGame",
+  "id": "mygame",
+  // A player to walk about as (physics comes with it). No terrain: the floor is a prefab.
+  "plugins": ["sage.gameplay.character"],
+  "mounts": ["content"],
+  "modsDirectory": "mods",
+  "scene": "yard"
+}

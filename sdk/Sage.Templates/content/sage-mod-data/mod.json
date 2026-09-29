@@ -1,0 +1,13 @@
+{
+  // A data mod (docs/design/17-modding.md). A stub for now: nothing reads mod.json until data mods land
+  // (REDESIGN Stage B, 4j). The records in data/ are real, and can be checked against the game today:
+  //   sage validate <game folder> --mounts <this folder>=mymod
+  // `id` is the mod's record namespace, as a game's is: what data/ defines is `mymod:...`.
+  "id": "mymod",
+  "name": "MyMod",
+  "version": "0.1.0",
+  "game": "targetgame",
+  "gameVersion": ">=0.1",
+  "dependencies": [],
+  "loadAfter": []
+}

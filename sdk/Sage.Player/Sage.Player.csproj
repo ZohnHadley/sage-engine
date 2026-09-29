@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Packs Sage.Player (issue #32): the host (src/Sage.Host) and the `sage` CLI (src/Sage.Cli) for each
+    configuration, under host/<Debug|Development|Shipping>/. Sage.Sdk restores it for every game: its
+    `dotnet run` starts host/<config>/Sage.Host.dll with -game, SageValidate runs sage.dll from the same
+    folder, and a game compiles against the engine assemblies there, so it is built against exactly what
+    runs it. The CLI sits beside the host on purpose: it finds Content/ and Sage.Client.dll beside itself.
+
+    The host is packed as it was built: a Linux build without shaders (SageSkipShaders) makes a Player
+    whose renderer has nothing to draw with, which is enough to boot, run and validate a game headlessly
+    (CI does) but not to look at one. Pack with tools/pack_sdk.sh after building all three.
+  -->
+  <PropertyGroup>
+    <PackageId>Sage.Player</PackageId>
+    <Description>The Sage engine's Player host and sage CLI, for Sage.Sdk games.</Description>
+    <SageRepositoryRoot>$(MSBuildThisFileDirectory)..\..\</SageRepositoryRoot>
+    <SagePlayerConfigurations Condition="'$(SagePlayerConfigurations)' == ''">Debug;Development;Shipping</SagePlayerConfigurations>
+  </PropertyGroup>
+
+  <!-- The engine's shader sources too, beside whatever was compiled: `sage validate` counts a compiled
+       shader as there when its source is (AssetChecks), so a Player built without shaders on Linux still
+       validates a game's materials; the renderer reads only the .mgfxo files. -->
+  <ItemGroup>
+    <_SageShaderSource Include="$(SageRepositoryRoot)engine_content\shaders\*.fx;$(SageRepositoryRoot)engine_content\shaders\*.fxh" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(SagePlayerConfigurations.Contains('Debug'))">
+    <None Include="$(SageRepositoryRoot)src\Sage.Host\bin\Debug\net8.0\**\*" Pack="true" PackagePath="host/Debug/" />
+    <None Include="$(SageRepositoryRoot)src\Sage.Cli\bin\Debug\net8.0\sage.dll;$(SageRepositoryRoot)src\Sage.Cli\bin\Debug\net8.0\sage.pdb;$(SageRepositoryRoot)src\Sage.Cli\bin\Debug\net8.0\sage.deps.json;$(SageRepositoryRoot)src\Sage.Cli\bin\Debug\net8.0\sage.runtimeconfig.json" Pack="true" PackagePath="host/Debug/" />
+    <None Include="@(_SageShaderSource)" Pack="true" PackagePath="host/Debug/Content/shaders/" />
+  </ItemGroup>
+  <ItemGroup Condition="$(SagePlayerConfigurations.Contains('Development'))">
+    <None Include="$(SageRepositoryRoot)src\Sage.Host\bin\Development\net8.0\**\*" Pack="true" PackagePath="host/Development/" />
+    <None Include="$(SageRepositoryRoot)src\Sage.Cli\bin\Development\net8.0\sage.dll;$(SageRepositoryRoot)src\Sage.Cli\bin\Development\net8.0\sage.pdb;$(SageRepositoryRoot)src\Sage.Cli\bin\Development\net8.0\sage.deps.json;$(SageRepositoryRoot)src\Sage.Cli\bin\Development\net8.0\sage.runtimeconfig.json" Pack="true" PackagePath="host/Development/" />
+    <None Include="@(_SageShaderSource)" Pack="true" PackagePath="host/Development/Content/shaders/" />
+  </ItemGroup>
+  <ItemGroup Condition="$(SagePlayerConfigurations.Contains('Shipping'))">
+    <None Include="$(SageRepositoryRoot)src\Sage.Host\bin\Shipping\net8.0\**\*" Pack="true" PackagePath="host/Shipping/" />
+    <None Include="$(SageRepositoryRoot)src\Sage.Cli\bin\Shipping\net8.0\sage.dll;$(SageRepositoryRoot)src\Sage.Cli\bin\Shipping\net8.0\sage.pdb;$(SageRepositoryRoot)src\Sage.Cli\bin\Shipping\net8.0\sage.deps.json;$(SageRepositoryRoot)src\Sage.Cli\bin\Shipping\net8.0\sage.runtimeconfig.json" Pack="true" PackagePath="host/Shipping/" />
+    <None Include="@(_SageShaderSource)" Pack="true" PackagePath="host/Shipping/Content/shaders/" />
+  </ItemGroup>
+
+  <!-- Every configuration packed has to have been built: a missing one would make a Player that fails
+       only when a game asks for it. -->
+  <ItemGroup>
+    <_SagePlayerConfiguration Include="$(SagePlayerConfigurations)" />
+  </ItemGroup>
+  <Target Name="SageCheckPlayerBuilt" BeforeTargets="_GetPackageFiles">
+    <Error Condition="!Exists('$(SageRepositoryRoot)src\Sage.Host\bin\%(_SagePlayerConfiguration.Identity)\net8.0\Sage.Host.dll')"
+           Text="Build the host first: dotnet build src/Sage.Host -c %(_SagePlayerConfiguration.Identity)" />
+    <Error Condition="!Exists('$(SageRepositoryRoot)src\Sage.Cli\bin\%(_SagePlayerConfiguration.Identity)\net8.0\sage.dll')"
+           Text="Build the CLI first: dotnet build src/Sage.Cli -c %(_SagePlayerConfiguration.Identity)" />
+  </Target>
+</Project>

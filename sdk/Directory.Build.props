@@ -1,0 +1,25 @@
+<Project>
+  <!--
+    The projects under sdk/ only pack (tools/pack_sdk.sh, issue #32): Sage.Sdk (the MSBuild SDK),
+    Sage.Player (the host and the `sage` CLI, per configuration) and Sage.Templates (`dotnet new`). None
+    of them compiles anything, and none is in Sage.sln. Games built with the SDK are not under here:
+    sdk/Sage.Sdk/Sdk is imported by path (games/Hello) or from the package.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <Import Project="..\build\Sage.Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>$(SageVersion)</Version>
+    <Authors>Sage</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Files outside lib/ on purpose (NU5100, NU5128); no readme or icon in a local feed (NU5048). -->
+    <NoWarn>$(NoWarn);NU5100;NU5128;NU5110;NU5111</NoWarn>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,4 @@
+bin/
+obj/
+# Compiled shaders: Sage.Sdk writes content/**/X.mgfxo beside each X.fx at build time.
+*.mgfxo

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Packs Sage.Sdk, the MSBuild SDK (issue #32): <Project Sdk="Sage.Sdk/0.1.0">. What goes in:
+      Sdk/Sdk.props, Sdk/Sdk.targets     the SDK itself (the same files games/Hello imports by path)
+      Sdk/Sage.Configurations.props      build/'s copy: Debug, Development, Shipping
+      Sdk/Sage.Sdk.Package.props         written here: "from a package", and the version, which is also
+                                         the version of Sage.Player the SDK restores
+      analyzers/dotnet/cs/               the Sage generators and analyzers (src/Sage.Generators)
+    Pack with tools/pack_sdk.sh, which builds src/Sage.Generators first.
+  -->
+  <PropertyGroup>
+    <PackageId>Sage.Sdk</PackageId>
+    <PackageType>MSBuildSdk</PackageType>
+    <Description>The MSBuild SDK for games made with the Sage engine.</Description>
+    <SageGeneratorsConfiguration Condition="'$(SageGeneratorsConfiguration)' == ''">Debug</SageGeneratorsConfiguration>
+    <SageGeneratorsDll>$(MSBuildThisFileDirectory)..\..\src\Sage.Generators\bin\$(SageGeneratorsConfiguration)\netstandard2.0\Sage.Generators.dll</SageGeneratorsDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="Sdk\Sdk.props;Sdk\Sdk.targets" Pack="true" PackagePath="Sdk/" />
+    <None Include="..\..\build\Sage.Configurations.props" Pack="true" PackagePath="Sdk/" />
+    <None Include="$(SageGeneratorsDll)" Pack="true" PackagePath="analyzers/dotnet/cs/" />
+  </ItemGroup>
+
+  <Target Name="SageWritePackageProps" BeforeTargets="_GetPackageFiles">
+    <Error Condition="!Exists('$(SageGeneratorsDll)')" Text="Build src/Sage.Generators ($(SageGeneratorsConfiguration)) before packing: $(SageGeneratorsDll)" />
+    <PropertyGroup>
+      <_SagePackageProps>$(IntermediateOutputPath)Sage.Sdk.Package.props</_SagePackageProps>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_SagePackageProps)" Overwrite="true" WriteOnlyWhenDifferent="true" Lines="&lt;Project&gt;;  &lt;!-- Written by the pack (sdk/Sage.Sdk/Sage.Sdk.csproj): this SDK came from a package. --&gt;;  &lt;PropertyGroup&gt;;    &lt;SageSdkFromPackage&gt;true&lt;/SageSdkFromPackage&gt;;    &lt;SageVersion&gt;$(SageVersion)&lt;/SageVersion&gt;;  &lt;/PropertyGroup&gt;;&lt;/Project&gt;" />
+    <ItemGroup>
+      <None Include="$(_SagePackageProps)" Pack="true" PackagePath="Sdk/" />
+      <FileWrites Include="$(_SagePackageProps)" />
+    </ItemGroup>
+  </Target>
+</Project>
