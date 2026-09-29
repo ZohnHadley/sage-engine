@@ -1025,6 +1025,17 @@ per-view ranges) is `RenderViewPlan`, tested headless; `r_testview` shows a spli
 Linux CI's smoke run. The public `RenderContext` and the pass registry stay in 4h (§4.7). Details:
 docs/design/06 §3.4a.
 
+*As built, 4a (issue #80, 2026-09-29): scripted cuts from I/O.* The exit criterion's "a scripted camera
+cut from I/O": entity inputs `CameraOn [hold]` / `CameraOff` and outputs `OnCameraOn` / `OnCameraOff` on
+any camera, owned by the engine (`sage.core`) so a data-only game has them; the `sage:scripted_camera`
+prefab (off, priority 100, locks the player's input while on); a hold counted in fixed ticks; a cut, with
+blends left to 4b's tweens. A cut delivered in tick N shows in the first frame after it
+(test: TheCutLandsOnTheFrameAfterTheTickThatDeliveredIt). Deviation: scene and placements documents can
+now wire entity I/O (a placement's `outputs`), because only `.map`s could, and a `.map` classname may name
+another namespace's prefab. `tests/games/camera-cut` proves it with no C#
+(test: ATriggerCutsToANamedCameraAndBack_InAGameWithNoCode). Details: docs/design/06 "As built (scripted
+cameras from entity I/O)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |

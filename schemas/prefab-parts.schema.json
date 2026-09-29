@@ -170,6 +170,14 @@
         }
       ]
     },
+    "scripted_camera": {
+      "description": "Prefab part 'scripted_camera' (ScriptedCameraPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/scripted_camera"
+        }
+      ]
+    },
     "sprite": {
       "description": "Prefab part 'sprite' (SpritePart).",
       "allOf": [
@@ -713,6 +721,24 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'pickup' (PickupPart)."
+    },
+    "scripted_camera": {
+      "type": "object",
+      "properties": {
+        "holdTime": {
+          "description": "How long CameraOn holds when the wire gives no time; 0 = until CameraOff. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "lockInput": {
+          "description": "While on and drawing to the screen, the local player's movement, look and buttons are held. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'scripted_camera' (ScriptedCameraPart)."
     },
     "sprite": {
       "type": "object",

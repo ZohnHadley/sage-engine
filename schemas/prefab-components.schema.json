@@ -540,6 +540,14 @@
         }
       ]
     },
+    "sage:scripted_camera": {
+      "description": "Component sage:scripted_camera (ScriptedCamera).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:scripted_camera"
+        }
+      ]
+    },
     "sage:sector_owned": {
       "description": "Component sage:sector_owned (SectorOwned).",
       "allOf": [
@@ -577,6 +585,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sandbox:hop"
+        }
+      ]
+    },
+    "scripted_camera": {
+      "description": "The component sage:scripted_camera (ScriptedCamera), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:scripted_camera"
         }
       ]
     },
@@ -1593,27 +1609,28 @@
             "type": "object",
             "properties": {
               "output": {
-                "description": "(string)",
+                "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
                 "type": "string"
               },
               "target": {
-                "description": "(string)",
+                "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
                 "type": "string"
               },
               "input": {
-                "description": "(string)",
+                "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
                 "type": "string"
               },
               "parameter": {
-                "description": "(string)",
+                "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
                 "type": "string"
               },
               "delay": {
-                "description": "(float)",
-                "type": "number"
+                "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
               },
               "times": {
-                "description": "(int)",
+                "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
               }
             },
@@ -1627,27 +1644,28 @@
             "type": "object",
             "properties": {
               "output": {
-                "description": "(string)",
+                "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
                 "type": "string"
               },
               "target": {
-                "description": "(string)",
+                "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
                 "type": "string"
               },
               "input": {
-                "description": "(string)",
+                "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
                 "type": "string"
               },
               "parameter": {
-                "description": "(string)",
+                "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
                 "type": "string"
               },
               "delay": {
-                "description": "(float)",
-                "type": "number"
+                "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
               },
               "times": {
-                "description": "(int)",
+                "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
               }
             },
@@ -1661,27 +1679,28 @@
             "type": "object",
             "properties": {
               "output": {
-                "description": "(string)",
+                "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
                 "type": "string"
               },
               "target": {
-                "description": "(string)",
+                "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
                 "type": "string"
               },
               "input": {
-                "description": "(string)",
+                "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
                 "type": "string"
               },
               "parameter": {
-                "description": "(string)",
+                "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
                 "type": "string"
               },
               "delay": {
-                "description": "(float)",
-                "type": "number"
+                "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
               },
               "times": {
-                "description": "(int)",
+                "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
               }
             },
@@ -2093,6 +2112,32 @@
       },
       "additionalProperties": false,
       "description": "Component sage:rigid_body (RigidBody)."
+    },
+    "sage:scripted_camera": {
+      "type": "object",
+      "properties": {
+        "holdTime": {
+          "description": "How long CameraOn holds when the wire gives no time; 0 = until CameraOff. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "lockInput": {
+          "description": "While on and drawing to the screen, the local player's movement, look and buttons are held. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "remaining": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "activator": {
+          "description": "Not saved. (Entity)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:scripted_camera (ScriptedCamera)."
     },
     "sage:sector_owned": {
       "type": "object",

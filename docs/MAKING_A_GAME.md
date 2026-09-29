@@ -544,7 +544,7 @@ with every id the content loaded — mods included when you mount them:
 
 ```bash
 dotnet build Sage.sln -c Development -p:SageSkipShaders=true
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas   # this repository's
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut --out schemas   # this repository's
 src/Sage.Cli/bin/Development/net8.0/sage schema games/YourGame --mounts mods/better_swords=swords --out schemas
 ```
 
@@ -665,6 +665,22 @@ material shows it with `"params": { "Albedo": "rt:minimap" }` — a mirror, a se
 table; code puts it on the HUD with `Renderer.FindTarget` and `UiDraw.Image`. Render targets draw before
 the screen, so the screen sees this frame's picture.
 
+**A scripted cut** (issue #80) is the engine's `sage:scripted_camera` prefab — a camera that starts off,
+with priority 100, which holds the player still while it is on — placed and named, and wired from
+something that happens (§5, "Wiring"):
+
+```json
+{ "prefab": "trigger_zone", "at": [0, 1.5, 0], "name": "gate",
+  "outputs": [ { "output": "OnStartTouch", "target": "intro_cam", "input": "CameraOn", "parameter": "3", "times": 1 } ] },
+{ "prefab": "sage:scripted_camera", "at": [0, 3, -8], "yaw": 180, "name": "intro_cam" }
+```
+
+`CameraOn` takes the screen for the parameter's seconds (none: until a `CameraOff`); the camera fires
+`OnCameraOn` and `OnCameraOff` as it changes. It is a cut; blends wait for tweens (phase 4b). Your own
+kind is a prefab with the two parts, `camera` (`"enabled": false` and a priority above your rig's) and
+`scripted_camera` (`holdTime`, the default hold; `lockInput`). `tests/games/camera-cut` is a game with
+no C# that does both kinds of cut.
+
 **4. A scene** — the engine's `scene` record (issue #29): what stands where, where the player starts,
 the maps and placements documents to load, and the weather to start in. Name it in `game.json` and every
 world starts in it:
@@ -692,8 +708,8 @@ world starts in it:
 }
 ```
 
-A placement is the same everywhere — `prefab`, `at`, `yaw`, `name` and an optional `relativeTo` — in a
-scene and in the editor's `placements` documents. The engine places the scene once every module has
+A placement is the same everywhere — `prefab`, `at`, `yaw`, `name`, an optional `relativeTo` and its
+entity I/O `outputs` (§5, "Wiring") — in a scene and in the editor's `placements` documents. The engine places the scene once every module has
 furnished the world and before the rules start; saving a record file places it again, sweeping only
 what the scene put there (its placements, its documents', its levels) and **keeping the player**;
 `scene_load <id>` swaps one scene for another and moves the player to the new start. Each placement gets a
@@ -750,8 +766,9 @@ a named *input* on another entity:
 "OnUse" "!self,Open"                       target,input[,parameter,delay,times]
 ```
 
-Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`.
-Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire` — `io_list` prints the live lists, and
+Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`,
+`OnCameraOn` / `OnCameraOff`.
+Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff` — `io_list` prints the live lists, and
 your own modules can register more inputs (`engine.Inputs.Register`) and declare the outputs they fire
 (`engine.Outputs.Declare(name, what it means)`), which puts them in the FGD. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
 
@@ -759,6 +776,23 @@ Connections are **checked when the level loads**: a typo names the map file and 
 that quietly never opens. `map_load`, `map_list`, `map_unload`, `map_goto` (stand where the map's
 `info_player_start` says) and `ent_fire <name> <input>` drive it
 from the console, and `io_trace 1` logs every wire as it fires.
+
+**Without a map**, a scene or placements document wires a placement the same way, as a list of
+`outputs` on the placement that fires them (issue #80): `{ "output": "OnStartTouch", "target":
+"intro_cam", "input": "CameraOn", "parameter": "3", "delay": 0, "times": 1 }` — the five Hammer fields
+by name. They are checked when content loads (an input nobody registered is an error naming the file and
+line; an output no plugin declares is a warning), and a target is found by its placement `name` when the
+wire fires, so it may be placed before or after the wire, or spawned later. A map can place an engine
+prefab by its full id, `"classname" "sage:scripted_camera"`.
+
+| Input | Parameter | What it does |
+|---|---|---|
+| `Kill` | | Destroys the entity |
+| `Say` | the text | Puts a line in the message log |
+| `Fire` | an output's name | Fires one of the entity's own outputs (a relay) |
+| `Open` / `Close` / `Toggle` | | Moves a `mover` (a door, a lift) |
+| `CameraOn` | a hold, in seconds (optional) | Turns a camera on, so it wins the screen at its priority; with a hold, off again after it (none: the entity's `scripted_camera.holdTime`, 0 = until `CameraOff`). Fires `OnCameraOn` if it was off |
+| `CameraOff` | | Turns a camera off; the screen goes back to the next camera, or the player's view. Fires `OnCameraOff` if it was on |
 
 ---
 
@@ -1244,7 +1278,7 @@ names their types needs the opt-in.
 | SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
-| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget` | Phase 4a is still building on it: rigs (#78, #79), the multi-view renderer and render targets (#77), scripted cuts (#80) and the editor camera (#81) |
+| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart` | Phase 4a is still building on it: rigs (#78, #79) and the editor camera (#81); blends wait for 4b's tweens |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 

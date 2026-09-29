@@ -91,15 +91,36 @@ public sealed class EntityOutputs
     public IEnumerable<string> Names => _outputs.Keys;
 }
 
-// One wire: "when this entity fires `Output`, send `Input` to `Target` after `Delay` seconds".
+// One wire: "when this entity fires `Output`, send `Input` to `Target` after `Delay` seconds". Written
+// in a `.map` as `"OnStartTouch" "target,input,parameter,delay,times"`, and in a scene or placements
+// document as a placement's `outputs` (issue #80): { "output": "OnStartTouch", "target": "intro_cam",
+// "input": "CameraOn", "parameter": "3" }.
 public sealed class Connection
 {
+    [Property(Tooltip = "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them")]
     public string Output = "";
+    [Property(Tooltip = "Who receives it: an entity's name, or !self / !activator / !caller")]
     public string Target = "";              // a name, or !self / !activator / !caller
+    [Property(Tooltip = "The input it sends: Open, Kill, CameraOn; io_list lists them")]
     public string Input = "";
+    [Property(Tooltip = "Handed to the input: a hold time, a line to say, an output to fire")]
     public string Parameter = "";
+    [Property(Min = 0, Unit = "s", Tooltip = "Seconds between the output firing and the input arriving")]
     public float Delay;
+    [Property(Tooltip = "How many times it may fire; -1 = every time")]
     public int Times = -1;                  // -1: as often as it fires
+
+    // A fresh wire with the same settings, for each entity a shared record places: what is resolved and
+    // counted belongs to one entity.
+    internal Connection Copy() => new()
+    {
+        Output = Output,
+        Target = Target,
+        Input = Input,
+        Parameter = Parameter,
+        Delay = Delay,
+        Times = Times,
+    };
 
     // Filled in at load. A handle rather than a name lookup per fire — but the name is kept, because an
     // entity that is spawned later (or respawned) has to be found again (04 §3.4, "late binding").

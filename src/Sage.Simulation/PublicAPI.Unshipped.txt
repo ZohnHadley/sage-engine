@@ -85,6 +85,18 @@ Sage.Simulation.CameraViews.this[int index].get -> Sage.Simulation.CameraView
 Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> bool
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
+Sage.Simulation.Placement.Outputs -> System.Collections.Generic.List<Sage.Simulation.Connection!>!
+Sage.Simulation.ScriptedCamera
+Sage.Simulation.ScriptedCamera.Activator -> Sage.Simulation.Entity
+Sage.Simulation.ScriptedCamera.HoldTime -> float
+Sage.Simulation.ScriptedCamera.LockInput -> bool
+Sage.Simulation.ScriptedCamera.Remaining -> float
+Sage.Simulation.ScriptedCamera.ScriptedCamera() -> void
+Sage.Simulation.ScriptedCameraPart
+Sage.Simulation.ScriptedCameraPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.ScriptedCameraPart.HoldTime -> float
+Sage.Simulation.ScriptedCameraPart.LockInput -> bool
+Sage.Simulation.ScriptedCameraPart.ScriptedCameraPart() -> void
 static Sage.Simulation.Camera.Orthographic(float height = 10, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.Camera.Perspective(float fovYDegrees = 45, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.CameraMath.Aspect(int targetWidth, int targetHeight, in Sage.Simulation.CameraViewport viewport) -> float

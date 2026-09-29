@@ -21,7 +21,7 @@ public class SchemaTests
 
     private static SchemaValidator Validator() => new(Committed);
 
-    // What `sage schema games/Sandbox games/Hello tests/games/scene-only` writes, less the client halves'
+    // What `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut` writes, less the client halves'
     // parts: the tests cannot load Sage.Client (it is MonoGame), so its `audio` and `particles` and the Sandbox's
     // `box_mesh` are named but not described here.
     private static SortedDictionary<string, string> Generate(params (string Directory, string Namespace)[] mounts)
@@ -30,7 +30,8 @@ public class SchemaTests
         // The data-only test game too (issue #29): its prefab ids are in the enums its own scene is checked against.
         foreach (var (game, module) in new (string, IGameModule?)[] { ("games/Sandbox", new Sandbox.SandboxModule()),
                                                                       ("games/Hello", new Hello.HelloModule()),
-                                                                      ("tests/games/scene-only", null) })
+                                                                      ("tests/games/scene-only", null),
+                                                                      ("tests/games/camera-cut", null) })
         {
             var report = ContentValidation.Run(new ValidateOptions
             {
@@ -214,7 +215,7 @@ public class SchemaTests
             string disk = File.ReadAllText(Path.Combine(Committed, name));
             if (name != RecordSchemas.Parts)
             {
-                Assert.True(disk == text, $"schemas/{name} is stale: run `sage schema games/Sandbox games/Hello tests/games/scene-only --out schemas` (README)");
+                Assert.True(disk == text, $"schemas/{name} is stale: run `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut --out schemas` (README)");
                 continue;
             }
             // The parts file differs only by the client parts this process cannot read.

@@ -1,0 +1,48 @@
+[
+  // A trigger volume: a box you walk into rather than against. What it does is the placement's wiring.
+  { "type": "prefab", "id": "trigger_zone", "name": "trigger zone", "parts": { "body": { "size": [4, 3, 2], "trigger": true } } },
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } },
+  {
+    "type": "prefab",
+    "id": "player",
+    "name": "player",
+    "tags": ["player_controlled"],
+    "parts": { "character": { "layer": "player" } }
+  },
+
+  {
+    "type": "scene",
+    "id": "courtyard",
+    "player": { "prefab": "player", "at": [0, 0.1, 6] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+
+      // The gate: walk into it and the intro camera takes the screen for three seconds (a hold time,
+      // CameraOn's parameter), once. The camera says so through its own outputs.
+      {
+        "prefab": "trigger_zone", "at": [0, 1.5, 0], "name": "gate",
+        "outputs": [ { "output": "OnStartTouch", "target": "intro_cam", "input": "CameraOn", "parameter": "3", "times": 1 } ]
+      },
+      {
+        "prefab": "sage:scripted_camera", "at": [0, 3, -8], "yaw": 180, "name": "intro_cam",
+        "outputs": [
+          { "output": "OnCameraOn", "target": "!self", "input": "Say", "parameter": "The gate creaks open." },
+          { "output": "OnCameraOff", "target": "!self", "input": "Say", "parameter": "Back to you." }
+        ]
+      },
+
+      // The yard: a crate falls through it as the game starts, and the yard camera holds the screen
+      // until a CameraOff wired two seconds behind the CameraOn turns it off.
+      {
+        "prefab": "trigger_zone", "at": [10, 1.5, 0], "name": "yard",
+        "outputs": [
+          { "output": "OnStartTouch", "target": "yard_cam", "input": "CameraOn", "times": 1 },
+          { "output": "OnStartTouch", "target": "yard_cam", "input": "CameraOff", "delay": 2, "times": 1 }
+        ]
+      },
+      { "prefab": "sage:scripted_camera", "at": [10, 6, 8], "name": "yard_cam" },
+      { "prefab": "crate", "at": [10, 4, 0], "name": "falling crate" }
+    ]
+  }
+]

@@ -397,7 +397,7 @@ internal static class MapLoader
             string className = entity.ClassName;
             if (string.IsNullOrEmpty(className)) continue;
 
-            var prefab = new RecordId(level.Record.Namespace, className);
+            var prefab = ClassPrefab(level, className);
             if (!engine.Records.Exists(prefab))
             {
                 // Not an error: `info_player_start` and the rest of a mapper's furniture is meaningful
@@ -447,6 +447,16 @@ internal static class MapLoader
                                  + (unknown != null ? $", left for the game: {string.Join(", ", unknown)}" : ""));
     }
 
+    // A classname is a prefab of the level's own namespace, or of another when it says so
+    // (`sage:scripted_camera`, issue #80): the engine's prefabs are placeable from a map too. A classname
+    // that is not an id at all is looked for as written, and is not found.
+    private static RecordId ClassPrefab(MapLevel level, string className)
+    {
+        if (className.IndexOf(':') < 0) return new RecordId(level.Record.Namespace, className);
+        try { return RecordId.Parse(className, level.Record.Namespace); }
+        catch (FormatException) { return new RecordId(level.Record.Namespace, className); }
+    }
+
     // A brush entity: a door, a lift, a trigger volume. It is an ordinary entity that happens to own
     // geometry — which is why it can be a prefab like any other, and why "how far does this door open"
     // lives in the prefab rather than in the level.
@@ -464,7 +474,7 @@ internal static class MapLoader
         // drew it, so turning the entity would turn the mesh away from the hull that stayed put — which
         // is what a door two feet wide and facing sideways looked like the first time. Quake's `angle` on
         // a solid means which way it *moves* rather than which way it faces, and nothing reads it yet.
-        var prefab = new RecordId(level.Record.Namespace, className);
+        var prefab = ClassPrefab(level, className);
         var entity = engine.Records.Exists(prefab)
             ? world.Spawn(prefab, at, 0f, solid.Source.Keys, where)
             : world.Create(Transform.At(at), className.Length > 0 ? className : "brush entity");
