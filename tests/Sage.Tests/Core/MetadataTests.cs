@@ -5,7 +5,6 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sage.Generators;
@@ -237,7 +236,6 @@ public class MetadataTests
         var (output, diagnostics) = Generate("""
             using Sage.Core;
             using Sage.Simulation;
-            using Friflo.Engine.ECS;
             using System.Collections.Generic;
             public enum Mood { Calm, Angry }
             [Component("game:health")]
@@ -276,7 +274,6 @@ public class MetadataTests
         var (_, diagnostics) = Generate($$"""
             using Sage.Core;
             using Sage.Simulation;
-            using Friflo.Engine.ECS;
             [Component("game:health")] public struct Health : IComponent { {{field}} }
             [Record("loot")] public sealed class LootRecord { }
             """);

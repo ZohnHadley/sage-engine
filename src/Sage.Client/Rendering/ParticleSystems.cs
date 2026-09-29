@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 using Color = Microsoft.Xna.Framework.Color;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 using Vector4 = Microsoft.Xna.Framework.Vector4;
@@ -29,7 +28,7 @@ public sealed class ParticleSystem : ISystem
 
     private readonly EventReader<CueTriggered> _cues;
     private readonly EventReader<Damaged> _damage;
-    private readonly ArchetypeQuery<Transform, ParticleEmitter> _emitters;
+    private readonly Query<Transform, ParticleEmitter> _emitters;
 
     public ParticleSystem(World world, RecordStore records, CVar<bool> enabled, CVar<bool> numbers)
     {

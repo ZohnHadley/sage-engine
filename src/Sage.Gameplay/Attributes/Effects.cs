@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -203,7 +202,7 @@ public readonly record struct Died(Entity Victim, Entity Killer);
 [System("sage.effects.tick", Phase.Gameplay)]
 public sealed class EffectSystem : ISystem
 {
-    private readonly ArchetypeQuery<Attributes, ActiveEffects> _affected;
+    private readonly Query<Attributes, ActiveEffects> _affected;
     private readonly RecordStore _records;
     private readonly GameplayRegistries _registries;
     private readonly Deferred<Entity> _died = new();   // deaths are reported after the loop: the rules

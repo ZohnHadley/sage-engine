@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using Friflo.Engine.ECS;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;

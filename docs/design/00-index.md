@@ -100,11 +100,12 @@ source: the self test plants a name and counts only a dump has, and fails if the
 | Name | Meaning | Doc |
 |---|---|---|
 | `World` | One simulation: entities, schedules, event queues, physics space | 03 |
-| `EntityRef` | Handle to an entity in a `World`; detects stale (deleted) entities. **Realised as Friflo.Engine.ECS's `Entity` struct** (in code: `Entity`) | 03 |
+| `EntityRef` | Handle to an entity in a `World`; detects stale (deleted) entities. **Realised as Sage's `Entity` struct**, over Friflo.Engine.ECS's (in code: `Entity`; issue #25) | 03 |
 | `PersistentId` | Stable id for placed or saved entities, used by maps, saves, quests | 03, 09 |
-| Component | Plain data attached to an entity: a struct implementing `Friflo.Engine.ECS.IComponent`. No behaviour, no service references | 03 |
+| Component | Plain data attached to an entity: a struct implementing Sage's `IComponent` (tags: `ITag`), with a stable id. No behaviour, no service references | 03 |
 | System | Code that runs over queries in a schedule phase | 03 |
-| `CommandBuffer` | Deferred structural changes (spawn, despawn, add/remove component): Friflo's, reached through `World.Commands`, applied at the end of every phase (and by `World.FlushCommands`) | 03 |
+| `EntityCommands` | Deferred structural changes (despawn, add/remove component or tag, parent): `World.Commands` / `SystemContext.Commands`, over Friflo's command buffer, applied at the end of every phase (and by `World.FlushCommands`). Not a `ConsoleCommand` (typed at the console) nor a `PlayerCommand` (a tick of input) | 03 |
+| `Query<…>` | The entities with some components (and tags), walked chunk by chunk: Sage structs over Friflo's archetype queries | 03 |
 | `Schedule.Fixed` | Runs at a fixed rate, `sim_tickrate` (default **60 Hz**). Gameplay, physics, AI | 01, 03 |
 | `Schedule.Frame` | Runs once per rendered frame. Camera, cosmetics, extract, render, UI | 01, 03 |
 | Fixed phases | `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late` | 03 |

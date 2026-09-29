@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Friflo.Engine.ECS;
+using F = Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -29,6 +29,9 @@ namespace Sage.Simulation;
 // Transform, the Disabled tag) share Friflo's schema but are not Sage's. They have no id, so content
 // cannot name them and saves do not write them; the entity's name is written on the entity (09 §3.4).
 //
+// **Types, not Friflo's schema handles** (issue #25): a component or tag is its System.Type here, and
+// what Friflo calls it (ComponentType, TagType) stays inside this class.
+//
 // **Bare names** in a prefab resolve in the prefab's own namespace first, then in `sage`, so a game's
 // content can write its own components and the engine's briefly (`"hop"`, `"sprite_renderer"`) and a
 // game component deliberately shadows an engine one of the same name. Anything else — another mod's
@@ -42,8 +45,8 @@ public sealed class ComponentSchema
     private sealed class Entry
     {
         public required ComponentDeclaration Declaration;
-        public ComponentType? Component;
-        public TagType? Tag;
+        public F.ComponentType? Component;
+        public F.TagType? Tag;
     }
 
     private readonly Dictionary<string, Entry> _components = new(StringComparer.Ordinal);
@@ -62,13 +65,13 @@ public sealed class ComponentSchema
     {
         if (_built) return;
         EcsSchema.EnsureInitialized();
-        var schema = EntityStore.GetEntitySchema();
+        var schema = F.EntityStore.GetEntitySchema();
 
         // By the lookup dictionaries rather than the Components/Tags spans: index 0 of a span is
         // Friflo's reserved blank entry, and asking a blank for its name throws.
-        var components = new Dictionary<Type, ComponentType>();
+        var components = new Dictionary<Type, F.ComponentType>();
         foreach (var (type, component) in schema.ComponentTypeByType) components[type] = component;
-        var tags = new Dictionary<Type, TagType>();
+        var tags = new Dictionary<Type, F.TagType>();
         foreach (var (type, tag) in schema.TagTypeByType) tags[type] = tag;
 
         var schemaTypes = components.Keys.Concat(tags.Keys).ToList();
@@ -148,17 +151,17 @@ public sealed class ComponentSchema
 
     // ---- by exact id ----------------------------------------------------------------------------------
 
-    public bool TryComponent(string id, [MaybeNullWhen(false)] out ComponentType type)
+    public bool TryComponent(string id, [MaybeNullWhen(false)] out Type type)
     {
         Build();
-        type = _components.TryGetValue(id, out var entry) ? entry.Component : null;
+        type = _components.TryGetValue(id, out var entry) ? entry.Component?.Type : null;
         return type != null;
     }
 
-    public bool TryTag(string id, [MaybeNullWhen(false)] out TagType type)
+    public bool TryTag(string id, [MaybeNullWhen(false)] out Type type)
     {
         Build();
-        type = _tags.TryGetValue(id, out var entry) ? entry.Tag : null;
+        type = _tags.TryGetValue(id, out var entry) ? entry.Tag?.Type : null;
         return type != null;
     }
 
@@ -176,21 +179,21 @@ public sealed class ComponentSchema
     // A component named in a file whose namespace is `fileNamespace`: an id as written, or a bare name
     // in that namespace and then in `sage` (see the top of this file). `error` says why not, and what
     // it might have meant.
-    public bool TryResolveComponent(string name, string fileNamespace, [MaybeNullWhen(false)] out ComponentType type,
+    public bool TryResolveComponent(string name, string fileNamespace, [MaybeNullWhen(false)] out Type type,
                                     [MaybeNullWhen(true)] out string error)
     {
         Build();
         var entry = Resolve(_components, name, fileNamespace, "component", out error);
-        type = entry?.Component;
+        type = entry?.Component?.Type;
         return type != null;
     }
 
-    public bool TryResolveTag(string name, string fileNamespace, [MaybeNullWhen(false)] out TagType type,
+    public bool TryResolveTag(string name, string fileNamespace, [MaybeNullWhen(false)] out Type type,
                               [MaybeNullWhen(true)] out string error)
     {
         Build();
         var entry = Resolve(_tags, name, fileNamespace, "tag", out error);
-        type = entry?.Tag;
+        type = entry?.Tag?.Type;
         return type != null;
     }
 
@@ -278,55 +281,72 @@ public sealed class ComponentSchema
     // Returns false and says why on bad JSON: one bad component costs that component, not the spawn.
     // `reported`: the content load already said what is wrong with these fields, at their line
     // (issue #22), so a failure here is logged at Debug rather than again as an error.
-    public bool Add(Entity entity, in ComponentType type, JsonNode? fields, string where, bool reported = false)
+    public bool Add(Entity entity, Type type, JsonNode? fields, string where, bool reported = false)
     {
         object? value;
         try
         {
             value = fields is null
-                ? Activator.CreateInstance(type.Type)
-                : JsonSerializer.Deserialize(fields.ToJsonString(), type.Type, _json);
+                ? Activator.CreateInstance(type)
+                : JsonSerializer.Deserialize(fields.ToJsonString(), type, _json);
         }
         catch (JsonException ex)
         {
-            string message = $"{where}: {IdOf(type.Type) ?? type.Name}: {ex.Message}";
+            string message = $"{where}: {IdOf(type) ?? type.Name}: {ex.Message}";
             if (reported) Log.Debug(LogCat.Records, message);
             else Log.Error(LogCat.Records, message);
             return false;
         }
 
         if (value is null) return false;
-        EntityUtils.AddEntityComponentValue(entity, type, value);
+        Write(entity, type, value);
         return true;
     }
+
+    // Puts a tag, by its type, on the entity (prefabs and saves name tags by id).
+    public void AddTag(Entity entity, Type tag)
+    {
+        if (entity.IsNull) return;
+        if (!F.EntityStore.GetEntitySchema().TagTypeByType.TryGetValue(tag, out var tagType))
+            throw new ArgumentException($"{tag.FullName} is not a tag (a struct implementing ITag)", nameof(tag));
+        entity.Raw.AddTags(new F.Tags(tagType));
+    }
+
+    // Friflo's handle for a component type, declared or not (the inspector writes Friflo's own too).
+    private static F.ComponentType ComponentTypeOf(Type type) =>
+        F.EntityStore.GetEntitySchema().ComponentTypeByType.TryGetValue(type, out var component)
+            ? component
+            : throw new ArgumentException($"{type.FullName} is not a component (a struct implementing IComponent)", nameof(type));
 
     // Writes a boxed component back onto an entity — the other half of `Read`, and what an editor's
     // inspector needs: a component is a struct, so editing one means boxing it, changing a field by
     // reflection and putting the box back (15 §3). The generated metadata (09 §3.2) replaces the
     // reflection, not this call.
-    public void Write(Entity entity, in ComponentType type, object value)
+    public void Write(Entity entity, Type type, object value)
     {
         if (entity.IsNull || value is null) return;
-        EntityUtils.AddEntityComponentValue(entity, type, value);
+        F.EntityUtils.AddEntityComponentValue(entity.Raw, ComponentTypeOf(type), value);
     }
 
     // The component as a boxed value, for printing (`ent_dump`). Null when the entity hasn't got one
     // — asking Friflo for a component that isn't there throws, so the archetype is checked first.
-    public object? Read(Entity entity, in ComponentType type) =>
-        !entity.IsNull && entity.Archetype is { } archetype && archetype.ComponentTypes.Contains(type)
-            ? EntityUtils.GetEntityComponent(entity, type)
-            : null;
+    public object? Read(Entity entity, Type type)
+    {
+        if (entity.IsNull || entity.Raw.Archetype is not { } archetype) return null;
+        var component = ComponentTypeOf(type);
+        return archetype.ComponentTypes.Contains(component) ? F.EntityUtils.GetEntityComponent(entity.Raw, component) : null;
+    }
 
     // Every declared component on the entity, in schema order, as (id, value). Friflo's own components
     // have no id and are left out.
     public IEnumerable<(string Id, object Value)> ComponentsOf(Entity entity)
     {
-        if (entity.IsNull || entity.Archetype is not { } archetype) yield break;
+        if (entity.IsNull || entity.Raw.Archetype is not { } archetype) yield break;
         Build();
         foreach (var type in archetype.ComponentTypes)
         {
             if (!_byType.TryGetValue(type.Type, out var entry)) continue;
-            var value = EntityUtils.GetEntityComponent(entity, type);
+            var value = F.EntityUtils.GetEntityComponent(entity.Raw, type);
             if (value != null) yield return (entry.Declaration.Id, value);
         }
     }
@@ -337,6 +357,6 @@ public sealed class ComponentSchema
         if (entity.IsNull) yield break;
         Build();
         foreach (var tag in entity.Tags)
-            if (_byType.TryGetValue(tag.Type, out var entry)) yield return entry.Declaration.Id;
+            if (_byType.TryGetValue(tag, out var entry)) yield return entry.Declaration.Id;
     }
 }

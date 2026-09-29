@@ -21,7 +21,7 @@ namespace Sage.Simulation;
 //     _died.Add(entity);                                 // inside the loop
 //     foreach (var e in _died.Drain()) Die(world, e);    // after it
 //
-// Not a `CommandBuffer`: that one defers *component* changes and the world plays it back at the end
+// Not `EntityCommands`: that one defers *structural* changes and the world plays them back at the end
 // of the phase. This defers a system's own work, with its own data, to a point the system chooses.
 public sealed class Deferred<T>
 {

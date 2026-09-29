@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Physics3D;
 
@@ -18,7 +17,7 @@ public sealed class CharacterMovementSystem : ISystem
     private const float GroundOffset = 0.06f; // horizontal sweeps start this far above the feet
     private const int SlideIterations = 4;   // 10 §3: collide-and-slide, up to four planes
 
-    private readonly ArchetypeQuery<Transform, CharacterController, PawnIntent> _characters;
+    private readonly Query<Transform, CharacterController, PawnIntent> _characters;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
     private readonly ActionId _jump, _crouch, _run;
@@ -323,7 +322,7 @@ public sealed class CharacterMovementSystem : ISystem
 [System("sage.character.camera", Phase.FrameUpdate)]
 public sealed class FirstPersonCameraSystem : ISystem
 {
-    private readonly ArchetypeQuery<GlobalTransform, CharacterController, PawnIntent> _pawns;
+    private readonly Query<GlobalTransform, CharacterController, PawnIntent> _pawns;
     private readonly ActiveCamera _camera;
     private readonly RecordStore _records;
 

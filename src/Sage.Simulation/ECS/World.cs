@@ -1,21 +1,22 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using Friflo.Engine.ECS;
+using F = Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
 // One simulation (docs/design/03-world-and-ecs.md): entities, components, queries, resources.
-// A thin wrapper over a Friflo.Engine.ECS EntityStore (decision D4, spike in 03 §3.1):
+// A thin wrapper over a Friflo.Engine.ECS EntityStore (decision D4, spike in 03 §3.1), in Sage's own
+// vocabulary (ECS/Api, issue #25): no Friflo type appears in its public surface.
 //
-// - Entity handles are Friflo's `Entity` struct (the design's "EntityRef"): store + id + revision.
+// - Entity handles are Sage's `Entity` (the design's "EntityRef"): world + id + revision.
 //   A handle to a deleted entity reports IsNull even if the id is reused (requirement E1).
-// - Components are structs implementing Friflo's IComponent.
-// - Queries are Friflo's ArchetypeQuery types, returned as-is so nothing is lost to wrapping.
+// - Components are structs implementing Sage's IComponent; tags implement ITag.
+// - Queries are `Query<T1..T5>`, zero-cost structs over Friflo's archetype queries.
 //   Create a query once (e.g. in a system's constructor) and keep it; iterate `query.Chunks`
 //   in hot paths (zero allocations), `query.Entities` elsewhere.
-// - Structural changes inside a query loop throw; use `Commands` for those. They're applied at the
-//   end of every phase (and by FlushCommands()).
+// - Structural changes inside a query loop throw; record them on `Commands` (EntityCommands).
+//   They're applied at the end of every phase (and by FlushCommands()).
 // - Systems run in schedules and phases (03 §3.5): the host calls RunFixed once per simulation tick
 //   and RunFrame once per rendered frame (01 §5.2).
 //
@@ -25,11 +26,11 @@ namespace Sage.Simulation;
 //   (also for deletes played back from a command buffer)
 public sealed class World : IDisposable
 {
-    private readonly EntityStore _store;
+    private readonly F.EntityStore _store;
     private readonly Dictionary<PersistentId, Entity> _persistent = new();
     private readonly SystemScheduler _scheduler;
     private readonly TransformPropagation _propagation;
-    private CommandBuffer? _commands;
+    private EntityCommands? _commands;
     private readonly GameEvents _events;
     private readonly PhaseContracts _contracts;
     private readonly DebugDraw _debugDraw;
@@ -52,8 +53,8 @@ public sealed class World : IDisposable
         EcsSchema.EnsureInitialized();
         Name = name;
         Engine = engine;
-        _store = new EntityStore();
-        _store.OnEntityCreate += e => EntitySpawned?.Invoke(e.Entity);
+        _store = new F.EntityStore();
+        _store.OnEntityCreate += e => EntitySpawned?.Invoke(e.Entity.AsSage());
         _store.OnComponentAdded += OnComponentAdded;
         _store.OnComponentRemoved += OnComponentRemoved;
         _store.OnEntityDelete += OnEntityDelete;
@@ -91,7 +92,7 @@ public sealed class World : IDisposable
     }
 
     // The underlying store, for engine code (editor listing, serializers). Game code uses the API below.
-    internal EntityStore Store => _store;
+    internal F.EntityStore Store => _store;
 
     public int EntityCount => _store.Count;
 
@@ -111,15 +112,15 @@ public sealed class World : IDisposable
 
     public Entity Create(in Transform transform, string? name = null)
     {
-        var entity = _store.CreateEntity();
+        var entity = _store.CreateEntity().AsSage();
         entity.AddComponent(transform);
         entity.AddComponent(GlobalTransform.At(Pose.FromLocal(transform)));
         if (name != null)
-            entity.AddComponent(new EntityName(name));
+            entity.Name = name;
         return entity;
     }
 
-    // Outside query loops only; inside one, use Commands.DeleteEntity(entity.Id).
+    // Outside query loops only; inside one, use Commands.Destroy(entity).
     public void Destroy(Entity entity)
     {
         if (!IsAlive(entity))
@@ -130,11 +131,11 @@ public sealed class World : IDisposable
         entity.DeleteEntity();
     }
 
-    public bool IsAlive(Entity entity) => !entity.IsNull && entity.Store == _store;
+    public bool IsAlive(Entity entity) => !entity.IsNull && entity.Raw.Store == _store;
 
     public static string Describe(Entity entity) =>
         entity.IsNull ? "(null entity)"
-        : entity.TryGetComponent<EntityName>(out var n) ? $"{n.value} ({entity.Id})"
+        : entity.Name is { } n ? $"{n} ({entity.Id})"
         : $"entity {entity.Id}";
 
     // ---- Components -----------------------------------------------------------------------------
@@ -221,21 +222,25 @@ public sealed class World : IDisposable
     // ---- Queries --------------------------------------------------------------------------------
     // Cache the returned query; creating one allocates.
 
-    public ArchetypeQuery<T1> Query<T1>()
-        where T1 : struct, IComponent => _store.Query<T1>();
+    public Query<T1> Query<T1>()
+        where T1 : struct, IComponent => new(_store.Query<T1>());
 
-    public ArchetypeQuery<T1, T2> Query<T1, T2>()
-        where T1 : struct, IComponent where T2 : struct, IComponent => _store.Query<T1, T2>();
+    public Query<T1, T2> Query<T1, T2>()
+        where T1 : struct, IComponent where T2 : struct, IComponent => new(_store.Query<T1, T2>());
 
-    public ArchetypeQuery<T1, T2, T3> Query<T1, T2, T3>()
-        where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent => _store.Query<T1, T2, T3>();
+    public Query<T1, T2, T3> Query<T1, T2, T3>()
+        where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent => new(_store.Query<T1, T2, T3>());
 
-    public ArchetypeQuery<T1, T2, T3, T4> Query<T1, T2, T3, T4>()
+    public Query<T1, T2, T3, T4> Query<T1, T2, T3, T4>()
         where T1 : struct, IComponent where T2 : struct, IComponent
-        where T3 : struct, IComponent where T4 : struct, IComponent => _store.Query<T1, T2, T3, T4>();
+        where T3 : struct, IComponent where T4 : struct, IComponent => new(_store.Query<T1, T2, T3, T4>());
+
+    public Query<T1, T2, T3, T4, T5> Query<T1, T2, T3, T4, T5>()
+        where T1 : struct, IComponent where T2 : struct, IComponent where T3 : struct, IComponent
+        where T4 : struct, IComponent where T5 : struct, IComponent => new(_store.Query<T1, T2, T3, T4, T5>());
 
     // Every entity (editor, tools, debug commands).
-    public ArchetypeQuery QueryAll() => _store.Query();
+    public Query QueryAll() => new(_store.Query());
 
     // ---- Systems and schedules ---------------------------------------------------------------------
 
@@ -374,23 +379,14 @@ public sealed class World : IDisposable
 
     // Record structural changes here while iterating a query; they're applied at the end of the
     // current phase (or by FlushCommands()).
-    public CommandBuffer Commands => _commands ??= CreateCommandBuffer();
+    public EntityCommands Commands => _commands ??= new EntityCommands(_store.GetCommandBuffer());
 
-    private bool HasPendingCommands => _commands != null &&
-        (_commands.EntityCommandsCount > 0 || _commands.ComponentCommandsCount > 0 ||
-         _commands.TagCommandsCount > 0 || _commands.ChildCommandsCount > 0);
+    private bool HasPendingCommands => _commands is { HasPending: true };
 
     public void FlushCommands()
     {
         if (HasPendingCommands)
             _commands!.Playback();
-    }
-
-    private CommandBuffer CreateCommandBuffer()
-    {
-        var cb = _store.GetCommandBuffer();
-        cb.ReuseBuffer = true;
-        return cb;
     }
 
     // ---- Persistent ids ---------------------------------------------------------------------------
@@ -409,31 +405,32 @@ public sealed class World : IDisposable
 
     // ---- Notifications ----------------------------------------------------------------------------
 
-    private void OnComponentAdded(ComponentChanged change)
+    private void OnComponentAdded(F.ComponentChanged change)
     {
+        var entity = change.Entity.AsSage();
         if (change.Type == typeof(Persistent))
-            IndexPersistent(change.Entity);
-        ComponentAdded?.Invoke(change.Entity, change.Type);
+            IndexPersistent(entity);
+        ComponentAdded?.Invoke(entity, change.Type);
     }
 
-    private void OnComponentRemoved(ComponentChanged change)
+    private void OnComponentRemoved(F.ComponentChanged change)
     {
         if (change.Type == typeof(Persistent))
             _persistent.Remove(change.OldComponent<Persistent>().Id);
-        ComponentRemoved?.Invoke(change.Entity, change.Type);
+        ComponentRemoved?.Invoke(change.Entity.AsSage(), change.Type);
     }
 
     // Friflo raises only OnEntityDelete when an entity is deleted, while it is still alive with all
     // its components. Report each component's removal first, then the destruction (spike, 03 §3.1).
-    private void OnEntityDelete(EntityDelete delete)
+    private void OnEntityDelete(F.EntityDelete delete)
     {
-        var entity = delete.Entity;
+        var entity = delete.Entity.AsSage();
         if (entity.TryGetComponent<Persistent>(out var p))
             _persistent.Remove(p.Id);
         if (ComponentRemoved != null)
         {
             foreach (var component in entity.Components)
-                ComponentRemoved.Invoke(entity, component.Type.Type);
+                ComponentRemoved.Invoke(entity, component.Type);
         }
         EntityDestroyed?.Invoke(entity);
     }

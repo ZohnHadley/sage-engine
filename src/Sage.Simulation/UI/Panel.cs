@@ -52,7 +52,7 @@ public sealed class Panel
     public int Version { get; private set; }
 
     // What the panel is about — the entity whose spellbook or inventory this is, when it has one.
-    public Friflo.Engine.ECS.Entity Subject { get; private set; }
+    public Entity Subject { get; private set; }
 
     // Set when the subject cannot have this panel at all: not "you are carrying nothing" but "this is
     // not something that carries anything". A screen shows the first as an empty list and the second
@@ -82,7 +82,7 @@ public sealed class Panel
 
     // ---- building (for panel builders; a screen only reads) -----------------------------------------
 
-    public Panel Begin(string title, Friflo.Engine.ECS.Entity subject = default, string problem = "")
+    public Panel Begin(string title, Entity subject = default, string problem = "")
     {
         _rows.Clear();
         Title = title;

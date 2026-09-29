@@ -2,7 +2,6 @@
 using System;
 using System.Numerics;
 using System.Linq;
-using Friflo.Engine.ECS;
 using ImGuiNET;
 
 namespace Sage.Editor;
@@ -60,7 +59,7 @@ internal sealed class EntityInspectorWindow
         {
             // Headed by the stable id a prefab or a save would write (issue #16); Friflo's own
             // components have none and keep their type name.
-            string id = _schema.IdOf(component.Type.Type) ?? component.Type.Name;
+            string id = _schema.IdOf(component.Type) ?? component.Type.Name;
             if (!ImGui.CollapsingHeader(id)) continue;
 
 #pragma warning disable CS0618   // Friflo prefers GetComponent<T>(); an inspector only knows the type

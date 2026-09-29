@@ -208,8 +208,8 @@ public sealed class SageApp : IDisposable
         Engine.Scenes.RegisterCommands(CVars);   // scene_load (issue #29)
         // Entity and scale commands work on any world, so every host has them, not only the one with
         // a window: a server's console and a test can spawn and list entities too.
-        WorldCommands.Register(CVars, Engine);
-        ScaleCommands.Register(CVars, Engine);   // scale_spawn / scale_report (R18)
+        WorldConsoleCommands.Register(CVars, Engine);
+        ScaleConsoleCommands.Register(CVars, Engine);   // scale_spawn / scale_report (R18)
     }
 
     // config.cfg, once every cvar and command a host will register exists.

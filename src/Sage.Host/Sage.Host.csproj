@@ -51,7 +51,5 @@
     <Using Include="Sage.Gameplay" />
     <Using Include="Sage.Client" />
     <Using Include="Sage.Editor" Condition="'$(Configuration)' != 'Shipping'" />
-    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
-    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 </Project>

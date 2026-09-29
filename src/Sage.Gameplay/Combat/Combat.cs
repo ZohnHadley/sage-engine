@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -154,7 +153,7 @@ public struct Melee : IComponent
 [System("sage.combat.melee", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
 public sealed class MeleeCombatSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, PawnIntent, CharacterController, Melee> _fighters;
+    private readonly Query<Transform, PawnIntent, CharacterController, Melee> _fighters;
     private readonly RecordStore _records;
     private readonly IPhysicsWorld _space;
     private readonly EventReader<AnimationEvent> _animation;

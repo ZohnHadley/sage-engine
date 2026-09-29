@@ -23,7 +23,6 @@ public class AnalyzerTests
     private const string Usings = """
         using Sage.Core;
         using Sage.Simulation;
-        using Friflo.Engine.ECS;
         """;
 
     [Fact]
@@ -294,6 +293,53 @@ public class AnalyzerTests
         Assert.Empty(Analyze(Components, new KitReferenceAnalyzer(), ("SageBaseAssembly", "true")));
     }
 
+    // ---- SAGE0050: Friflo is the ECS's storage, not its vocabulary ------------------------------------
+
+    private const string NamesFriflo = """
+        namespace Game.Tools
+        {
+            using Friflo.Engine.ECS;
+            public static class Census
+            {
+                public static int Count() => EntityStore.GetEntitySchema().Components.Length;
+                public static Friflo.Engine.ECS.Tags Hostile;
+            }
+        }
+        namespace Game
+        {
+            using Sage.Simulation;
+            public static class Fine
+            {
+                public static bool Named(Entity e) => e.Name != null && e.Tags.Count >= 0;
+                public static Query<Transform> Placed(World w) => w.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
+            }
+        }
+        """;
+
+    [Fact]
+    public void NamingFrifloOutsideTheEcsImplementationIsABuildError()
+    {
+        var diagnostics = Analyze(NamesFriflo, new EcsVocabularyAnalyzer());
+        Assert.All(diagnostics, d => Assert.Equal("SAGE0050", d.Id));
+        // The import, once; the type named through it; the type named in full. Not the members reached
+        // through them, and nothing in Game.Fine, which says the same through Sage's types.
+        Assert.Equal(new[] { "Friflo.Engine.ECS", "Friflo.Engine.ECS.EntityStore", "Friflo.Engine.ECS.Tags" },
+                     diagnostics.Select(d => d.GetMessage().Split(' ')[0]));
+        Assert.Contains("name the ECS through Sage.Simulation", diagnostics[0].GetMessage());
+    }
+
+    [Fact]
+    public void TheEcsImplementationMayNameFriflo()
+    {
+        Assert.Empty(Analyze(NamesFriflo, new EcsVocabularyAnalyzer(), ("SageEcsImplementation", "true")));
+    }
+
+    [Fact]
+    public void AGameInSagesVocabularyHasNothingToReport()
+    {
+        Assert.Empty(Analyze(Components, new EcsVocabularyAnalyzer()));
+    }
+
     // ---- The harness ---------------------------------------------------------------------------------
 
     // Runs `analyzer` over `source`, compiled against the engine and Friflo with the given MSBuild
@@ -311,7 +357,8 @@ public class AnalyzerTests
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
-            .Append(MetadataReference.CreateFromFile(typeof(Friflo.Engine.ECS.IComponent).Assembly.Location))
+            // Friflo's assembly: Sage's IComponent extends Friflo's, so a game compiles against it too.
+            .Append(MetadataReference.CreateFromFile(typeof(IComponent).GetInterfaces().Single().Assembly.Location))
             .GroupBy(r => r.FilePath).Select(g => g.First())
             .Concat(extra);
         var compilation = CSharpCompilation.Create("Analyzed",

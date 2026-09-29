@@ -2,7 +2,6 @@
 using System;
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Tests;
 
@@ -226,10 +225,10 @@ public class PrefabTests
         using (engine)
         {
             Assert.True(engine.Components.TryComponent("test:health", out var health));
-            Assert.Equal(typeof(Health), health.Type);
+            Assert.Equal(typeof(Health), health);
             Assert.True(engine.Components.TryTag("test:from_prefab", out _));
             Assert.True(engine.Components.TryComponent("sage:transform", out var transform));
-            Assert.Equal(typeof(Transform), transform.Type);   // Sage's, not Friflo's own Transform
+            Assert.Equal(typeof(Transform), transform);   // Sage's, not Friflo's own Transform
             Assert.Equal("sage:transform", engine.Components.IdOf(typeof(Transform)));
             Assert.Null(engine.Components.IdOf(typeof(Friflo.Engine.ECS.Transform)));   // Friflo's: no id
 

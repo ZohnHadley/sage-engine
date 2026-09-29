@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework.Graphics;
 
 
 
-using Friflo.Engine.ECS;
 
 namespace Sage.Client;
 // Extract (docs/design/06 §3.1, §5): the only code that reads simulation components for rendering.
@@ -77,7 +76,7 @@ internal sealed class MeshExtract : ISystem
 {
     private readonly Renderer _renderer;
     private readonly RenderSnapshot _snapshot;
-    private readonly Friflo.Engine.ECS.ArchetypeQuery<GlobalTransform, MeshRenderer> _meshes;
+    private readonly Query<GlobalTransform, MeshRenderer> _meshes;
 
     public MeshExtract(World world, Renderer renderer)
     {
@@ -170,7 +169,7 @@ internal sealed class RenderSystem : ISystem
 [System("sage.client.extract.lights", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class LightExtract : ISystem
 {
-    private readonly ArchetypeQuery<GlobalTransform, PointLight> _lights;
+    private readonly Query<GlobalTransform, PointLight> _lights;
     private readonly RenderSnapshot _snapshot;
     private readonly CVar<bool> _enabled;
 
@@ -263,7 +262,7 @@ internal sealed class SpriteExtract : ISystem
     private readonly Renderer _renderer;
     private readonly RecordStore _records;
     private readonly RenderSnapshot _snapshot;
-    private readonly Friflo.Engine.ECS.ArchetypeQuery<GlobalTransform, SpriteRenderer> _sprites;
+    private readonly Query<GlobalTransform, SpriteRenderer> _sprites;
 
     public SpriteExtract(World world, Renderer renderer, RecordStore records)
     {

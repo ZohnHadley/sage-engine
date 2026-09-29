@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -82,7 +81,7 @@ public static class PlacementExtensions
             var entity = world.Spawn(placement.Prefab, at, placement.Yaw);
             if (entity.IsNull) continue;
 
-            if (!string.IsNullOrEmpty(placement.Name)) entity.Name = new EntityName(placement.Name);
+            if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
             world.Add(entity, new FromPlacements { Document = document });
             spawned++;
         }
@@ -160,7 +159,7 @@ public static class PlacementExtensions
                 At = world.PlacementAt(transform.LocalPosition, record.Origin, record.RelativeTo),
                 // + 0: a yaw of -0 is 0, and a file should not say "-0".
                 Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI + 0f,
-                Name = entity.TryGetComponent<EntityName>(out var name) ? name.value : "",
+                Name = entity.Name ?? "",
             });
         }
 

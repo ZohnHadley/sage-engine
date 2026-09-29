@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -77,7 +76,7 @@ public sealed class PhaseContracts
 
         private readonly Phase _finalAfter;
         private readonly Dictionary<int, T> _snapshot = new();   // entity id → value as it was left
-        private ArchetypeQuery<T>? _query;
+        private Query<T>? _query;
 
         public Contract(Phase finalAfter)
         {
@@ -103,14 +102,14 @@ public sealed class PhaseContracts
         private void Take()
         {
             _snapshot.Clear();
-            foreach (var entity in _query!.Entities)
+            foreach (var entity in _query!.Value.Entities)
                 _snapshot[entity.Id] = entity.GetComponent<T>();
         }
 
         private int Compare(World world, Phase phase)
         {
             int broken = 0;
-            foreach (var entity in _query!.Entities)
+            foreach (var entity in _query!.Value.Entities)
             {
                 if (!_snapshot.TryGetValue(entity.Id, out var was)) continue;   // it only just appeared
                 var now = entity.GetComponent<T>();

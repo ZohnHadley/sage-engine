@@ -125,7 +125,7 @@ Inside each assembly, features are **logical `IModule`s** (Renderer, Physics, Au
 - **`EntityRef`** (stale-detecting) and **`PersistentId`** (maps/saves).
 - **Command buffers** flushed at phase ends.
 - **Transform hierarchy:** `Transform` → `GlobalTransform` (previous/current poses, for interpolation), all relative to the world's **origin sector** (`Origin`, R6 as built 2026-09-24). A rebase shifts every transform, both poses, the physics world and the camera at once, rather than each entity carrying a `SectorCoord`.
-- **Storage:** **Friflo.Engine.ECS** behind a thin `World`, adopted after it passed requirements E1–E9 in a spike (D4, 03 §3.1). Handles are Friflo's `Entity`; queries are Friflo's; hot paths iterate chunks.
+- **Storage:** **Friflo.Engine.ECS** behind a thin `World`, adopted after it passed requirements E1–E9 in a spike (D4, 03 §3.1). The vocabulary is Sage's (issue #25, 03 §3.1a): `Entity`, `IComponent`/`ITag`, `Tags`, `Query<…>` and `EntityCommands` are zero-cost structs over Friflo's, no public signature names Friflo, and a game that does is a build error (SAGE0050); hot paths iterate chunks.
 
 ### 4.4 Events and messaging — [04](docs/design/04-events-and-messaging.md)
 Four mechanisms, each with a distinct job:
@@ -315,7 +315,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **99 console commands, 26 record types, 731 headless tests.** <!-- counts -->
+and audible: **99 console commands, 26 record types, 737 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
@@ -354,7 +354,7 @@ start, and [`docs/REDESIGN.md`](docs/REDESIGN.md) where the engine is going; [`d
 | D1 | Multiplayer | **Later (Phase 7), not now.** Follow the readiness rules (§4.9) |
 | D2 | Math types in simulation | **`System.Numerics`** in all simulation code; MonoGame types only in `Sage.Client`. Bepu-native, SIMD, keeps MonoGame out of the simulation, enables headless tests and a future server |
 | D3 | Game code and modding | **C# game modules; data mods + trusted C# mods** (no sandboxed scripting). Code mods are never auto-downloaded ([17](docs/design/17-modding.md)) |
-| D4 | ECS storage | **Decided (step 3): Friflo.Engine.ECS 3.6.0** behind a thin `World`. It passed requirements E1–E9 in a spike ([03 §3.1](docs/design/03-world-and-ecs.md)); Arch was not needed. Queries are Friflo's own types; hot paths iterate chunks (0 allocations) |
+| D4 | ECS storage | **Decided (step 3): Friflo.Engine.ECS 3.6.0** behind a thin `World`. It passed requirements E1–E9 in a spike ([03 §3.1](docs/design/03-world-and-ecs.md)); Arch was not needed. Queries were Friflo's own types; since issue #25 they, `Entity`, `IComponent`/`ITag`, `Tags` and `EntityCommands` are Sage's zero-cost structs over Friflo's (03 §3.1a). Hot paths iterate chunks (0 allocations) |
 | D5 | Physics | **BepuPhysics v2** + **own kinematic character controller** |
 | D6 | Level editing | Own editor for terrain/props/entities + **TrenchBroom `.map` import** for brush interiors. **As built (2026-09-24, F16): the import came first** — brushes, hulls, meshes, prefab entities and FGD export, all without the editor, which is the point: a good editor already exists for brushes |
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |

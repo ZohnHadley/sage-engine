@@ -7,7 +7,6 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -175,8 +174,8 @@ public sealed class SaveSystem
             var saved = new JsonObject { ["id"] = persistent.Id.ToString() };
             if (world.TryGet<FromPrefab>(entity, out var from) && !from.Prefab.IsEmpty)
                 saved["prefab"] = from.Prefab.ToString();
-            if (entity.TryGetComponent<Friflo.Engine.ECS.EntityName>(out var named) && !string.IsNullOrEmpty(named.value))
-                saved["name"] = named.value;
+            if (entity.Name is { Length: > 0 } named)
+                saved["name"] = named;
             saved["components"] = _serializer.WriteComponents(world, entity, json);
             var tags = _serializer.WriteTags(world, entity);
             if (tags.Count > 0) saved["tags"] = tags;
@@ -306,10 +305,10 @@ public sealed class SaveSystem
             if (entity.IsNull) { Log.Warn(LogCat.Save, $"{where}: {id} could not be rebuilt from {prefab}"); continue; }
 
             world.Add(entity, new Persistent { Id = id });
-            // Added rather than assigned when the entity has no name yet: Friflo's `Name` setter throws on
-            // an entity without one, which is every prefab-less entity (a golden save found it, #20).
+            // Entity.Name adds the name when the entity has none (Friflo's own setter threw on an entity
+            // without one, which is every prefab-less entity: a golden save found it, #20).
             if ((string?)saved["name"] is { Length: > 0 } name)
-                entity.AddComponent(new Friflo.Engine.ECS.EntityName(name));
+                entity.Name = name;
             rebuilt.Add((entity, saved));
         }
         world.FlushCommands();

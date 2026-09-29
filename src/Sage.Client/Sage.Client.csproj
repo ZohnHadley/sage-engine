@@ -22,7 +22,5 @@
     <Using Include="Sage.Simulation" />
     <Using Include="Sage.Physics3D" />
     <Using Include="Sage.Gameplay" />
-    <!-- Friflo has a Transform too; this one is Sage's (docs/design/03 §3.1). -->
-    <Using Include="Sage.Simulation.Transform" Alias="Transform" />
   </ItemGroup>
 </Project>

@@ -3,7 +3,6 @@ using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using Friflo.Engine.ECS;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sage.Generators;
@@ -32,11 +31,9 @@ public class ComponentIdTests
     public void EveryEngineAndGameComponentHasAStableId()
     {
         using var app = HeadlessApp.Bare().Build();
-        var schema = EntityStore.GetEntitySchema();
         var ours = EngineAssemblies.Base.Append(typeof(Sandbox.SandboxModule).Assembly).ToList();
 
-        var types = schema.ComponentTypeByType.Keys.Concat(schema.TagTypeByType.Keys)
-                          .Where(t => ours.Contains(t.Assembly)).ToList();
+        var types = EcsSchema.ComponentTypes().Where(t => ours.Contains(t.Assembly)).ToList();
         Assert.True(types.Count >= 40, $"expected the engine's components, found {types.Count}");
         foreach (var type in types)
         {
@@ -152,7 +149,6 @@ public class ComponentIdTests
         var (output, diagnostics) = Generate("""
             using Sage.Core;
             using Sage.Simulation;
-            using Friflo.Engine.ECS;
             using System.Text.Json.Nodes;
             [Component("game:health", Version = 2, FormerNames = new[] { "Health" })]
             public struct Health : IComponent { public float Value; [Upgrade(1)] static void From1(ref JsonObject o) { } }
@@ -183,7 +179,6 @@ public class ComponentIdTests
         var (_, diagnostics) = Generate($$"""
             using Sage.Core;
             using Sage.Simulation;
-            using Friflo.Engine.ECS;
             using System.Text.Json.Nodes;
             {{declaration}}
             """);
@@ -199,7 +194,6 @@ public class ComponentIdTests
         var (_, diagnostics) = Generate("""
             using Sage.Core;
             using Sage.Simulation;
-            using Friflo.Engine.ECS;
             [Component("game:health")] public struct Health : IComponent { }
             [Component("game:health")] public struct Hitpoints : IComponent { }
             """);
@@ -209,15 +203,17 @@ public class ComponentIdTests
         Assert.Contains("[Component(\"game:health\")] is declared by both Health and Hitpoints", d.GetMessage());
     }
 
-    // Runs ComponentGenerator over `source`, compiled against the engine and Friflo, and returns what it
-    // wrote and reported — failing on a compile error in what it wrote.
+    // Runs ComponentGenerator over `source`, compiled against the engine (and Friflo, which its
+    // IComponent extends), and returns what it wrote and reported — failing on a compile error in what
+    // it wrote.
     private static (string Output, ImmutableArray<Diagnostic> Diagnostics) Generate(string source)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Concat(EngineAssemblies.Base.Select(a => MetadataReference.CreateFromFile(a.Location)))
-            .Append(MetadataReference.CreateFromFile(typeof(IComponent).Assembly.Location))
+            // Friflo's assembly: Sage's IComponent extends Friflo's, so a game compiles against it too.
+            .Append(MetadataReference.CreateFromFile(typeof(IComponent).GetInterfaces().Single().Assembly.Location))
             .GroupBy(r => r.FilePath).Select(g => g.First());
         var compilation = CSharpCompilation.Create("Components",
             new[] { CSharpSyntaxTree.ParseText(source) }, references,

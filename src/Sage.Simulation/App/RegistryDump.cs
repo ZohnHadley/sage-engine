@@ -173,7 +173,7 @@ public static class RegistryDump
     // an empty reference, a float at its limit that JSON cannot spell). JSON Schemas quote it too (#21).
     internal static JsonNode? Default(object? value, JsonSerializerOptions json)
     {
-        if (value is null or Friflo.Engine.ECS.Entity) return null;
+        if (value is null or Entity) return null;
         if (value is float f && (float.IsNaN(f) || float.IsInfinity(f) || f is float.MaxValue or float.MinValue)) return null;
         if (value is double d && (double.IsNaN(d) || double.IsInfinity(d))) return null;
         try

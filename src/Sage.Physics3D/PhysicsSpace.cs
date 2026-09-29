@@ -9,7 +9,6 @@ using BepuPhysics.CollisionDetection;
 using BepuPhysics.Constraints;
 using BepuUtilities;
 using BepuUtilities.Memory;
-using Friflo.Engine.ECS;
 // Inside namespace Sage.Physics3D, `Simulation` would name the Sage.Simulation namespace first.
 using BepuSimulation = BepuPhysics.Simulation;
 

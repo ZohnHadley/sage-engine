@@ -6,7 +6,6 @@ using System.Numerics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -268,8 +267,8 @@ internal static class PrefabChecks
                 string path = JsonMembers.Child("Components", name);
                 if (!schema.TryResolveComponent(name, ns, out var type, out string? error)) { check.Error(path, error); continue; }
                 if (fields is null) continue;
-                if (!check.CheckFields(fields, type.Type, path)) continue;
-                if (Read(fields, type.Type, json, path, check) is { } value) check.CheckValues(value, path);
+                if (!check.CheckFields(fields, type, path)) continue;
+                if (Read(fields, type, json, path, check) is { } value) check.CheckValues(value, path);
             }
 
         for (int i = 0; i < prefab.Tags.Count; i++)
@@ -435,8 +434,7 @@ public static class PrefabExtensions
         foreach (var name in record.Tags)
         {
             if (!schema.TryResolveTag(name, ns, out var tag, out string? error)) { Said(record, $"{where}: {error}"); continue; }
-            var tags = new Tags(tag);
-            entity.AddTags(tags);
+            schema.AddTag(entity, tag);
         }
 
         if (record.Parts == null) return;

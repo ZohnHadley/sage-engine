@@ -1,5 +1,4 @@
 #nullable enable
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -8,7 +7,7 @@ namespace Sage.Simulation;
 // Current to Previous so rendering can interpolate.
 internal sealed class TransformPropagation
 {
-    private readonly ArchetypeQuery<Transform, GlobalTransform> _all;
+    private readonly Query<Transform, GlobalTransform> _all;
 
     public TransformPropagation(World world)
     {

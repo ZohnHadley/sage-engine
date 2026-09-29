@@ -48,7 +48,7 @@ public sealed class SoundRecord
 // A sound that lives on an entity: a waterfall, a campfire, a torch (11 §3). The system starts it when
 // the entity appears and stops it when the entity goes.
 [Component("sage:audio_source")]
-public struct AudioSource : Friflo.Engine.ECS.IComponent
+public struct AudioSource : IComponent
 {
     [RecordRef("sound")] public RecordId Sound;
     public bool Loop;

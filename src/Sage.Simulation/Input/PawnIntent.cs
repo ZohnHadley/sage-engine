@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -45,7 +44,7 @@ public struct PawnIntent : IComponent, IEquatable<PawnIntent>
 [System("sage.character.player_control", Phase.Commands)]
 public sealed class PlayerControlSystem : ISystem
 {
-    private readonly ArchetypeQuery<PawnIntent> _pawns;
+    private readonly Query<PawnIntent> _pawns;
 
     public PlayerControlSystem(World world)
     {

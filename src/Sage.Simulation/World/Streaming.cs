@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -149,8 +148,8 @@ public sealed class StreamingSystem : ISystem
     private readonly CVar<int> _radius;
     private readonly CVar<bool> _enabled;
 
-    private readonly ArchetypeQuery<Transform> _sources;
-    private readonly ArchetypeQuery<Transform> _players;
+    private readonly Query<Transform> _sources;
+    private readonly Query<Transform> _players;
 
     // Reused every tick: this runs in the fixed schedule, where allocating is not allowed (02 §4.6).
     private readonly List<SectorCoord> _sourceSectors = new();
@@ -219,7 +218,7 @@ public sealed class StreamingSystem : ISystem
         if (_sourceSectors.Count == 0) Collect(_players);
     }
 
-    private void Collect(ArchetypeQuery<Transform> query)
+    private void Collect(Query<Transform> query)
     {
         foreach (var (transforms, _) in query.Chunks)
         {

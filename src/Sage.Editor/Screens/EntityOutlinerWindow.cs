@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
-using Friflo.Engine.ECS;
 using ImGuiNET;
 
 namespace Sage.Editor;
@@ -15,7 +14,7 @@ namespace Sage.Editor;
 internal sealed class EntityOutlinerWindow
 {
     private readonly World _world;
-    private readonly ArchetypeQuery _all;
+    private readonly Query _all;
     private readonly List<Entity> _entities = new();
     private readonly ImGuiWindowFlags _flags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
     private readonly EditorSelection? _selection;
@@ -75,7 +74,7 @@ internal sealed class EntityOutlinerWindow
             {
                 ImGui.Separator();
                 // By stable id where it has one (issue #16), as the inspector and `ent_dump` show it.
-                string label = _world.Engine?.Components.IdOf(component.Type.Type) ?? component.Type.Name;
+                string label = _world.Engine?.Components.IdOf(component.Type) ?? component.Type.Name;
                 if (ImGui.TreeNodeEx($"{label}##{entity.Id}", ImGuiTreeNodeFlags.SpanFullWidth))
                 {
 #pragma warning disable CS0618   // Friflo marks the boxed Value obsolete in favour of GetComponent<T>(); a

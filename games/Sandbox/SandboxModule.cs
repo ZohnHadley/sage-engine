@@ -86,7 +86,7 @@ public sealed class HopPart : IPrefabPart
 public sealed class HopSystem : ISystem
 {
     private const float LaunchSpeed = 3.5f, Gravity = -12f;
-    private readonly ArchetypeQuery<Transform, Hop> _hoppers;
+    private readonly Query<Transform, Hop> _hoppers;
     private readonly ActionId _jump;
 
     public HopSystem(World world, ActionId jump)
@@ -124,7 +124,7 @@ public sealed class HopSystem : ISystem
 [System("sandbox.face_camera", Phase.Gameplay)]
 public sealed class FaceCameraSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform> _facing;
+    private readonly Query<Transform> _facing;
 
     public FaceCameraSystem(World world)
     {
@@ -202,7 +202,7 @@ public sealed class CombatLogSystem : ISystem
 
     private static string Name(World world, Entity entity) =>
         entity.IsNull || !world.IsAlive(entity) ? "something"
-        : entity.TryGetComponent(out EntityName name) ? name.value : "something";
+        : entity.Name ?? "something";
 }
 
 // The Sandbox's rules (docs/design/16): what happens when the world starts and when something dies.
@@ -224,7 +224,7 @@ public sealed class SandboxRules : GameRules
             ? $"{World.Describe(victim)} died"
             : $"{World.Describe(victim)} was killed by {World.Describe(killer)}");
         if (victim.Tags.Has<PlayerControlled>()) world.Say("You died", MessageKind.Bad, 4f);
-        else world.Say($"{(victim.TryGetComponent(out EntityName n) ? n.value : "Something")} dies", MessageKind.Good, 4f);
+        else world.Say($"{(victim.Name ?? "Something")} dies", MessageKind.Good, 4f);
         var dead = world.Conventions().Dead;   // the engine's words, as this game's content left them
         if (!world.HasTag(victim, dead)) return;
 

@@ -55,10 +55,13 @@ public static class SageTypes
     public const string PrefabRegistry = Simulation + ".PrefabRegistry";
     public const string SaveSystem = Simulation + ".SaveSystem";
 
-    // ---- the ECS (Friflo) until the engine owns its vocabulary (#25) --------------------------------
-    public const string Entity = "Friflo.Engine.ECS.Entity";
-    public const string IComponent = "Friflo.Engine.ECS.IComponent";
-    public const string ITag = "Friflo.Engine.ECS.ITag";
+    // The ECS vocabulary, Sage's own since issue #25 (Friflo is the storage underneath).
+    public const string Entity = Simulation + ".Entity";
+    public const string IComponent = Simulation + ".IComponent";
+    public const string ITag = Simulation + ".ITag";
+
+    // ---- what games must not name (SAGE0050) ---------------------------------------------------------
+    public const string FrifloNamespace = "Friflo";
 
     // The text after the namespace: what a message calls a type.
     public static string ShortName(string fullName)

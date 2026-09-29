@@ -3,7 +3,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Tests;
 
@@ -43,7 +42,7 @@ public class SceneTests
         Assert.IsType<DefaultGameRules>(world.Resources.Get<GameRules>());
 
         Assert.Equal(4, FromScene(world).Length);                    // the floor and three crates
-        Assert.Contains(FromScene(world), e => e.TryGetComponent(out EntityName n) && n.value == "crate by the door");
+        Assert.Contains(FromScene(world), e => e.Name == "crate by the door");
 
         var player = Assert.Single(Players(world));
         Assert.True(world.Has<CharacterController>(player));
@@ -220,7 +219,7 @@ public class SceneTests
 
             app.Records.Reload();
 
-            Assert.Equal(2, world.Query<EntityName>().Entities.ToEntityList().Count(e => e.GetComponent<EntityName>().value == "rock"));
+            Assert.Equal(2, world.QueryAll().Entities.ToEntityList().Count(e => e.Name == "rock"));
             Assert.Equal(player, Assert.Single(Players(world)));
         }
     }
@@ -246,7 +245,7 @@ public class SceneTests
         using var app = HeadlessApp.Bare().Mount(files).StartScene("game:main").Build();
         var world = app.CreateWorld("frames");
 
-        Vector3 Named(string name) => At(FromScene(world).Single(e => e.GetComponent<EntityName>().value == name));
+        Vector3 Named(string name) => At(FromScene(world).Single(e => e.Name == name));
         Assert.Equal(new Vector3(11, 3, 21), Named("origin"));
         Assert.Equal(new Vector3(1, 0, 1), Named("world"));
         Assert.Equal(new Vector3(11, 5, 21), Named("ground"));   // no terrain: the origin's height is the ground

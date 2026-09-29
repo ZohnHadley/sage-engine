@@ -3,7 +3,6 @@ using System;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -76,7 +75,7 @@ internal sealed class SaveSerializer
     {
         var result = new JsonArray();
         foreach (string tag in _schema.TagsOf(entity))
-            if (_schema.TryTag(tag, out var type) && !IsTransient(type.Type)) result.Add(tag);
+            if (_schema.TryTag(tag, out var type) && !IsTransient(type)) result.Add(tag);
         return result;
     }
 
@@ -86,7 +85,7 @@ internal sealed class SaveSerializer
         {
             if (node is null) continue;
             ComponentDeclaration? declaration = null;
-            if (_schema.TryComponent(key, out var found)) declaration = _schema.DeclarationOf(found.Type);
+            if (_schema.TryComponent(key, out var found)) declaration = _schema.DeclarationOf(found);
             else if (_schema.TryFormerComponent(key, typeNames: false, out var former)) declaration = former;
 
             if (declaration is null)
@@ -101,7 +100,7 @@ internal sealed class SaveSerializer
 
             object? value = ReadEntry(declaration.Type, declaration.Id, declaration.Version, node, json, $"{where}: component '{declaration.Id}'");
             if (value != null && _schema.TryComponent(declaration.Id, out var type))
-                EntityUtils.AddEntityComponentValue(entity, type, value);
+                _schema.Write(entity, type, value);
         }
     }
 
@@ -162,7 +161,7 @@ internal sealed class SaveSerializer
         {
             string? name = (string?)node;
             if (string.IsNullOrEmpty(name)) continue;
-            TagType? tag = null;
+            Type? tag = null;
             if (_schema.TryTag(name, out var found)) tag = found;
             else if (_schema.TryFormerTag(name, typeNames: false, out var former) && _schema.TryTag(former.Id, out var renamed)) tag = renamed;
 
@@ -171,9 +170,8 @@ internal sealed class SaveSerializer
                 Log.Once(LogCat.Save, LogLevel.Warn, $"unknown-tag:{name}", $"{where}: no tag '{name}' any more; skipped");
                 continue;
             }
-            if (IsTransient(tag.Type)) continue;
-            var set = new Tags(tag);
-            entity.AddTags(set);
+            if (IsTransient(tag)) continue;
+            _schema.AddTag(entity, tag);
         }
     }
 }

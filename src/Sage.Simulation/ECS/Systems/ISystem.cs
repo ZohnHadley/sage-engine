@@ -1,5 +1,4 @@
 #nullable enable
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -51,5 +50,5 @@ public readonly ref struct SystemContext
     public Phase Phase { get; }
     public TickTime Tick { get; }       // valid in Fixed phases (and the last tick in Frame phases)
     public FrameTime Frame { get; }     // valid in Frame phases
-    public CommandBuffer Commands => World.Commands;
+    public EntityCommands Commands => World.Commands;   // deferred structural changes
 }

@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Tests;
 
@@ -29,7 +28,7 @@ public class WorldTests
 
         Assert.True(world.IsAlive(e));
         Assert.Equal(Transform.Identity, world.Get<Transform>(e));
-        Assert.Equal("bunny", e.GetComponent<EntityName>().value);
+        Assert.Equal("bunny", e.Name);
         Assert.Equal("bunny (" + e.Id + ")", World.Describe(e));
         Assert.Equal(1, world.EntityCount);
     }
@@ -112,7 +111,7 @@ public class WorldTests
         world.EntityDestroyed += _ => log.Add("destroyed");
 
         foreach (var entity in world.Query<Health>().Entities)
-            world.Commands.DeleteEntity(entity.Id);   // structural change inside a loop: buffered
+            world.Commands.Destroy(entity);   // structural change inside a loop: buffered
         Assert.True(world.IsAlive(e));
         world.FlushCommands();
 

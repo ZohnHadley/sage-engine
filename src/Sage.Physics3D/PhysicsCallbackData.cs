@@ -5,7 +5,6 @@ using System.Numerics;
 using BepuPhysics;
 using BepuPhysics.Collidables;
 using BepuPhysics.CollisionDetection;
-using Friflo.Engine.ECS;
 
 namespace Sage.Physics3D;
 

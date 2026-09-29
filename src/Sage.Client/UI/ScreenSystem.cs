@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Friflo.Engine.ECS;
 using Color = Microsoft.Xna.Framework.Color;
 
 namespace Sage.Client;
@@ -25,7 +24,7 @@ public sealed class ScreenSystem : ISystem
     private readonly UiDraw _ui;
     private readonly InputActions _actions;
     private readonly InputDevices _devices;
-    private readonly ArchetypeQuery<Transform> _players;
+    private readonly Query<Transform> _players;
 
     private readonly ActionId _up, _down, _confirm, _alternate, _back;
 

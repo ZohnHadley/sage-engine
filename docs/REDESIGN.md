@@ -288,8 +288,8 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   JSON helpers (`JsonMembers`, `RecordParseContext`, the vector converters), `Upgraders`,
   `Screen.Index`'s setter, `RegistrationLedger.Owner`'s setter, `MovementProfileRecord.Fallback` and the
   client's keyboard and mouse listeners. #31's public-API pass decides which stay.
-- Each project imports the layers below as **global usings in its csproj** (with the `Transform`
-  alias), and games take the four base references and usings from `games/Directory.Build.props`
+- Each project imports the layers below as **global usings in its csproj** (the `Transform` alias
+  went with #25, §3.5), and games take the four base references and usings from `games/Directory.Build.props`
   (`Private="false"`, so a game's `bin/` still holds only its own dll). The generators name engine types
   from one list, `src/Sage.Generators/SageTypes.cs` (test: EveryTypeTheGeneratorsNameExists). Every
   engine project is simulation-only (SAGE0024) unless it opts out (Client, Editor, Host).
@@ -418,9 +418,9 @@ other (`ComponentSchema.cs:39`).
 
 ### 3.5 Own the ECS vocabulary
 
-Friflo is in every public signature today: `Entity`, `IComponent`, `ArchetypeQuery`, `CommandBuffer`,
+Friflo was in every public signature until #25: `Entity`, `IComponent`, `ArchetypeQuery`, `CommandBuffer`,
 `Tags`, plus a global `using Friflo.Engine.ECS` for games and a `Transform` alias hack
-(`games/Directory.Build.props:14-18`). That makes Friflo 3.6's API and schema behaviour part of every
+(`games/Directory.Build.props:14-18`). That made Friflo 3.6's API and schema behaviour part of every
 game's and every mod's contract.
 
 - `Sage.Simulation` exposes `Entity` (a Sage handle), `IComponent`, `Query<T1..Tn>` (a zero-cost
@@ -432,6 +432,31 @@ game's and every mod's contract.
 - In Shipping, `World.Get<T>` on a missing component must not return a shared static dummy
   (`World.cs:143-144`). Use `TryGet`/`ref` with a dev assert, and fail loudly in all configurations for
   writes.
+
+*As built (issue #25, 2026-09-29).* `Sage.Simulation/ECS/Api` has `Entity`, `IComponent`, `ITag`,
+`Tags`, `Query` and `Query<T1..T5>` (with `Chunks`, `Chunk<T>`, `ChunkEntities`, `Entities`) and
+`EntityCommands`, each a struct (or, for the buffer, a class) over Friflo's that forwards to it; `World`
+and `SystemContext` speak only these, and `ComponentSchema` answers in `System.Type`. The migration was
+a script, `tools/migrate_ecs_api.py`, kept for code written against the old names. Where it differs:
+
+- **Friflo is still a compile-time reference of every game.** Sage's `IComponent` and `ITag` *extend*
+  Friflo's, because Friflo's schema scan looks for its own interface and its generic calls are
+  constrained on it; anything else would put a boxing or reflective bridge in every component access.
+  A derived interface needs its base to compile, so the package flows to games as before. "Private"
+  is enforced instead as *nobody names it*: no `Friflo.*` type in a public signature of Core,
+  Simulation, Physics3D, Gameplay or Client (test: NoPublicTypeInTheBaseEngineExposesFriflo)
+  (test: NoPublicTypeInTheClientExposesFriflo) — the two marker interfaces' base aside — and
+  **SAGE0050** for a Friflo type or namespace written outside `Sage.Simulation` (which sets
+  `SageEcsImplementation`) (test: NamingFrifloOutsideTheEcsImplementationIsABuildError).
+- **`Commands` stays the property name** (`world.Commands`, `ctx.Commands`); its type is
+  `EntityCommands`. The console's registrars became `WorldConsoleCommands` and `ScaleConsoleCommands`;
+  `ConsoleCommand` (Core) and `PlayerCommand` were already named.
+- **`EntityName` is gone from the API**: `entity.Name` is a string (Friflo's component underneath).
+- **Unchanged:** component ids, the save format and golden saves, prefabs, the registry dump, the JSON
+  Schemas, and the ECS schema (45 components and 7 tags for the Sandbox). The scale run
+  (`scale_spawn 2000 tree`) is within noise of before (numbers in 03 §3.1a).
+- **Not done here:** the Shipping dummy in `World.Get<T>` (the last bullet above) is unchanged, a
+  separate behaviour change for #31's API pass.
 
 ### 3.6 Public API discipline
 
@@ -817,7 +842,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
-| 3 — Carve the base | **In progress.** The assembly split (#24) is done ([plan](history/plan-24-assembly-split.md), as built in §3.1); next #25, #26, #29 and #30 in parallel, then #27, #28, #31 and #32 |
+| 3 — Carve the base | **In progress.** Done: the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30) and the owned ECS API (#25), each with an "As built" note; next #27, #28, #31 and #32 |
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|

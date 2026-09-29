@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -195,7 +194,7 @@ public sealed class Scenes
             var placement = scene.Place[i];
             var entity = world.Spawn(placement.Prefab, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), placement.Yaw);
             if (entity.IsNull) continue;   // `Spawn` said why; one bad line costs that line
-            if (!string.IsNullOrEmpty(placement.Name)) entity.Name = new EntityName(placement.Name);
+            if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
             entity.AddTag<FromScene>();
 
             // A stable identity, so a save can find this *same* thing next run (09 §3.5, F27). Derived
@@ -250,7 +249,7 @@ public sealed class Scenes
         var state = world.Resources.Get<ActiveScene>();
         var entity = world.Spawn(start.Prefab, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), start.Yaw);
         if (entity.IsNull) return entity;
-        if (!string.IsNullOrEmpty(start.Name)) entity.Name = new EntityName(start.Name);
+        if (!string.IsNullOrEmpty(start.Name)) entity.Name = start.Name;
         world.Add(entity, new Persistent { Id = PlayerId(state.Id) });
         state.Player = entity;
         return entity;

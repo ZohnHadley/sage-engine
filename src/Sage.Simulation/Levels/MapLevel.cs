@@ -5,7 +5,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
 
@@ -426,7 +425,7 @@ public static class MapLoader
             world.Add(spawnedEntity, new FromMap { Level = level.Record });
 
             if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
-                spawnedEntity.Name = new EntityName(name);
+                spawnedEntity.Name = name;
             spawned++;
         }
 
@@ -468,7 +467,7 @@ public static class MapLoader
         if (entity.IsNull) return;
 
         if (solid.Source.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
-            entity.Name = new EntityName(name);
+            entity.Name = name;
 
         world.Add(entity, new FromMap { Level = level.Record });
         world.Add(entity, new MapSolid { Level = level.Record, Index = index });

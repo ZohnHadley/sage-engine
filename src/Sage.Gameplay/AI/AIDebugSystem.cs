@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Numerics;
-using Friflo.Engine.ECS;
 
 namespace Sage.Gameplay;
 
@@ -14,7 +13,7 @@ namespace Sage.Gameplay;
 [System("sage.ai.debug", Phase.Late)]
 public sealed class AIDebugSystem : ISystem
 {
-    private readonly ArchetypeQuery<Transform, AIState> _agents;
+    private readonly Query<Transform, AIState> _agents;
     private readonly DebugDraw _debug;
     private readonly RecordStore _records;
     private readonly World _world;

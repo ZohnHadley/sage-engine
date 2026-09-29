@@ -1,7 +1,6 @@
 #nullable enable
 using System.Linq;
 using System.Numerics;
-using Friflo.Engine.ECS;
 using Sandbox;
 
 namespace Sage.Tests;
