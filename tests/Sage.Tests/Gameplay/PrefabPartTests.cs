@@ -159,7 +159,7 @@ public class PrefabPartTests
         var expected = new Dictionary<string, string>
         {
             ["abilities"] = "sage.gameplay.abilities", ["attributes"] = "sage.gameplay.attributes",
-            ["body"] = "sage.physics3d", ["character"] = "sage.gameplay.character",
+            ["body"] = "sage.physics3d", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
             ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
             ["faction"] = "sage.gameplay.factions", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
             ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
@@ -178,7 +178,7 @@ public class PrefabPartTests
         Assert.True(order.IndexOf("attributes") < order.IndexOf("effects"));
         Assert.True(order.IndexOf("sprite") < order.IndexOf("pickup"));
         Assert.True(order.IndexOf("body") < order.IndexOf("pickup"));
-        Assert.Equal(new[] { "abilities", "attributes", "body", "character" }, order.Take(4));
+        Assert.Equal(new[] { "abilities", "attributes", "body", "camera", "character" }, order.Take(5));
     }
 
     private static string SandboxDirectory => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
