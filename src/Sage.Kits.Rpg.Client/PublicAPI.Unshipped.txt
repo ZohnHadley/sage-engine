@@ -1,0 +1,7 @@
+#nullable enable
+const Sage.Kits.Rpg.RpgKitClientModule.Journal = "journal" -> string!
+const Sage.Kits.Rpg.RpgKitClientModule.Spellmaker = "spellmaker" -> string!
+Sage.Kits.Rpg.RpgKitClientModule
+Sage.Kits.Rpg.RpgKitClientModule.Dependencies.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+Sage.Kits.Rpg.RpgKitClientModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
+Sage.Kits.Rpg.RpgKitClientModule.RpgKitClientModule() -> void

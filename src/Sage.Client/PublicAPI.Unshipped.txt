@@ -1,0 +1,168 @@
+#nullable enable
+const Sage.Client.BitmapFont.Cell = 8 -> int
+const Sage.Client.BitmapFont.Columns = 16 -> int
+const Sage.Client.BitmapFont.GlyphHeight = 7 -> int
+const Sage.Client.BitmapFont.GlyphWidth = 5 -> int
+const Sage.Client.ScreenRegistry.Dialogue = "dialogue" -> string!
+Sage.Client.AudioPart
+Sage.Client.AudioPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Client.AudioPart.AudioPart() -> void
+Sage.Client.AudioPart.Loop -> bool
+Sage.Client.AudioPart.Sound -> Sage.Core.RecordId
+Sage.Client.AudioPart.Volume -> float
+Sage.Client.BitmapFont
+Sage.Client.BitmapFont.Advance.get -> float
+Sage.Client.BitmapFont.BitmapFont(Microsoft.Xna.Framework.Graphics.Texture2D! texture) -> void
+Sage.Client.BitmapFont.Draw(Microsoft.Xna.Framework.Graphics.SpriteBatch! batch, string! text, Microsoft.Xna.Framework.Vector2 at, Microsoft.Xna.Framework.Color colour, float scale = 1) -> void
+Sage.Client.BitmapFont.LineHeight.get -> float
+Sage.Client.BitmapFont.Measure(string! text, float scale = 1) -> Microsoft.Xna.Framework.Vector2
+Sage.Client.BitmapFont.PixelSize.get -> float
+Sage.Client.BitmapFont.PixelSize.set -> void
+Sage.Client.ClientHost
+Sage.Client.ClientHost.ClientHost(Microsoft.Xna.Framework.Game! game) -> void
+Sage.Client.ClientHost.Game.get -> Microsoft.Xna.Framework.Game!
+Sage.Client.ClientHost.GraphicsDevice.get -> Microsoft.Xna.Framework.Graphics.GraphicsDevice!
+Sage.Client.ClientModule
+Sage.Client.ClientModule.ClientModule() -> void
+Sage.Client.ClientModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
+Sage.Client.ClientModule.OnWorldCreated(Sage.Simulation.World! world) -> void
+Sage.Client.ClientModule.Screens.get -> Sage.Client.ScreenRegistry!
+Sage.Client.ClientModule.Shutdown() -> void
+Sage.Client.ClientModule.Start(Sage.Simulation.ModuleContext! ctx) -> void
+Sage.Client.ContentService
+Sage.Client.ContentService.Cached.get -> System.Collections.Generic.IEnumerable<(Sage.Core.AssetPath Path, string! Kind, bool CanReload)>!
+Sage.Client.ContentService.Dispose() -> void
+Sage.Client.ContentService.LoadEffect(Sage.Core.AssetPath path) -> Microsoft.Xna.Framework.Graphics.Effect?
+Sage.Client.ContentService.LoadFont(Sage.Core.AssetPath path) -> Sage.Client.BitmapFont?
+Sage.Client.ContentService.LoadSound(Sage.Core.AssetPath path) -> Microsoft.Xna.Framework.Audio.SoundEffect?
+Sage.Client.ContentService.LoadTexture(Sage.Core.AssetPath path) -> Microsoft.Xna.Framework.Graphics.Texture2D?
+Sage.Client.ContentService.Open(Sage.Core.AssetPath path) -> System.IO.Stream?
+Sage.Client.ContentService.Reload(Sage.Core.AssetPath path) -> bool
+Sage.Client.ContentService.Reloaded -> System.Action<Sage.Core.AssetPath>?
+Sage.Client.GamepadListener
+Sage.Client.GamepadListener.ConnectionChanged -> System.Action<bool>?
+Sage.Client.GamepadListener.GamepadListener() -> void
+Sage.Client.GamepadListener.IsConnected.get -> bool
+Sage.Client.GamepadListener.IsDown(Microsoft.Xna.Framework.Input.Buttons button) -> bool
+Sage.Client.GamepadListener.IsPressed(Microsoft.Xna.Framework.Input.Buttons button) -> bool
+Sage.Client.GamepadListener.IsReleased(Microsoft.Xna.Framework.Input.Buttons button) -> bool
+Sage.Client.GamepadListener.LeftStick.get -> Microsoft.Xna.Framework.Vector2
+Sage.Client.GamepadListener.LeftTrigger.get -> float
+Sage.Client.GamepadListener.RightStick.get -> Microsoft.Xna.Framework.Vector2
+Sage.Client.GamepadListener.RightTrigger.get -> float
+Sage.Client.GamepadListener.Update(bool focused) -> void
+Sage.Client.InputActions
+Sage.Client.InputActions.Axis(Sage.Simulation.ActionId a) -> float
+Sage.Client.InputActions.Axis2(Sage.Simulation.ActionId a) -> System.Numerics.Vector2
+Sage.Client.InputActions.Held(Sage.Simulation.ActionId a) -> bool
+Sage.Client.InputActions.HeldMask.get -> Sage.Simulation.ActionMask
+Sage.Client.InputActions.InputActions(Sage.Simulation.ActionRegistry! registry, Sage.Core.RecordStore! records, Sage.Client.InputDevices! devices, Sage.Core.CVarRegistry! cvars) -> void
+Sage.Client.InputActions.InvertMouseY.get -> bool
+Sage.Client.InputActions.IsActive(Sage.Simulation.InputContext context) -> bool
+Sage.Client.InputActions.MouseSensitivity.get -> float
+Sage.Client.InputActions.Pressed(Sage.Simulation.ActionId a) -> bool
+Sage.Client.InputActions.PressedMask.get -> Sage.Simulation.ActionMask
+Sage.Client.InputActions.Rebuild() -> void
+Sage.Client.InputActions.Released(Sage.Simulation.ActionId a) -> bool
+Sage.Client.InputActions.ReleasedMask.get -> Sage.Simulation.ActionMask
+Sage.Client.InputActions.SetActive(Sage.Simulation.InputContext context, bool active) -> void
+Sage.Client.InputActions.UiWantsKeyboard.get -> bool
+Sage.Client.InputActions.UiWantsKeyboard.set -> void
+Sage.Client.InputActions.UiWantsMouse.get -> bool
+Sage.Client.InputActions.UiWantsMouse.set -> void
+Sage.Client.InputActions.Update(float dt) -> void
+Sage.Client.InputDevices
+Sage.Client.InputDevices.EndFrame() -> void
+Sage.Client.InputDevices.Focused.get -> bool
+Sage.Client.InputDevices.Gamepad.get -> Sage.Client.GamepadListener!
+Sage.Client.InputDevices.InputDevices() -> void
+Sage.Client.InputDevices.Keyboard.get -> Sage.Client.KeyboardListener!
+Sage.Client.InputDevices.Mouse.get -> Sage.Client.MouseListener!
+Sage.Client.InputDevices.Poll(bool focused) -> void
+Sage.Client.InputDevices.PushTyped(char c) -> void
+Sage.Client.InputDevices.Typed.get -> System.ReadOnlySpan<char>
+Sage.Client.KeyboardListener
+Sage.Client.KeyboardListener.AreKeysDown(params Microsoft.Xna.Framework.Input.Keys[]! keys) -> bool
+Sage.Client.KeyboardListener.CurrentKeySet.get -> Microsoft.Xna.Framework.Input.KeyboardState
+Sage.Client.KeyboardListener.IsChordPressed(params Microsoft.Xna.Framework.Input.Keys[]! keys) -> bool
+Sage.Client.KeyboardListener.IsKeyDown(Microsoft.Xna.Framework.Input.Keys key) -> bool
+Sage.Client.KeyboardListener.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys key) -> bool
+Sage.Client.KeyboardListener.IsKeyReleased(Microsoft.Xna.Framework.Input.Keys key) -> bool
+Sage.Client.KeyboardListener.IsKeyUp(Microsoft.Xna.Framework.Input.Keys key) -> bool
+Sage.Client.KeyboardListener.KeyboardListener() -> void
+Sage.Client.KeyboardListener.OnKeyPressed -> System.Action<Microsoft.Xna.Framework.Input.Keys>?
+Sage.Client.KeyboardListener.OnKeyReleased -> System.Action<Microsoft.Xna.Framework.Input.Keys>?
+Sage.Client.KeyboardListener.PreviousKeySet.get -> Microsoft.Xna.Framework.Input.KeyboardState
+Sage.Client.KeyboardListener.Update(bool focused) -> void
+Sage.Client.MouseButton
+Sage.Client.MouseButton.LEFT = 1 -> Sage.Client.MouseButton
+Sage.Client.MouseButton.MIDDLE = 4 -> Sage.Client.MouseButton
+Sage.Client.MouseButton.RIGHT = 2 -> Sage.Client.MouseButton
+Sage.Client.MouseListener
+Sage.Client.MouseListener.AreButtonsDown(Sage.Client.MouseButton combo) -> bool
+Sage.Client.MouseListener.DragThreshold -> float
+Sage.Client.MouseListener.GetDragDelta(Sage.Client.MouseButton button) -> Microsoft.Xna.Framework.Point
+Sage.Client.MouseListener.IsButtonDown(Sage.Client.MouseButton button) -> bool
+Sage.Client.MouseListener.IsButtonPressed(Sage.Client.MouseButton button) -> bool
+Sage.Client.MouseListener.IsButtonReleased(Sage.Client.MouseButton button) -> bool
+Sage.Client.MouseListener.IsButtonUp(Sage.Client.MouseButton button) -> bool
+Sage.Client.MouseListener.IsDragging(Sage.Client.MouseButton button) -> bool
+Sage.Client.MouseListener.IsMoving.get -> bool
+Sage.Client.MouseListener.MouseListener() -> void
+Sage.Client.MouseListener.MoveDirection.get -> Microsoft.Xna.Framework.Vector2
+Sage.Client.MouseListener.OnButtonPressed -> System.Action<Sage.Client.MouseButton>?
+Sage.Client.MouseListener.OnButtonReleased -> System.Action<Sage.Client.MouseButton>?
+Sage.Client.MouseListener.OnDrag -> System.Action<Sage.Client.MouseButton, Microsoft.Xna.Framework.Point>?
+Sage.Client.MouseListener.OnDragEnd -> System.Action<Sage.Client.MouseButton>?
+Sage.Client.MouseListener.OnDragStart -> System.Action<Sage.Client.MouseButton, Microsoft.Xna.Framework.Point>?
+Sage.Client.MouseListener.OnMouseMoved -> System.Action<Microsoft.Xna.Framework.Point>?
+Sage.Client.MouseListener.OnScroll -> System.Action<int>?
+Sage.Client.MouseListener.Position.get -> Microsoft.Xna.Framework.Point
+Sage.Client.MouseListener.PositionDelta.get -> Microsoft.Xna.Framework.Point
+Sage.Client.MouseListener.PressedButtons.get -> Sage.Client.MouseButton
+Sage.Client.MouseListener.PreviousPosition.get -> Microsoft.Xna.Framework.Point
+Sage.Client.MouseListener.ScrollWheelDelta.get -> int
+Sage.Client.MouseListener.ScrollWheelValue.get -> int
+Sage.Client.MouseListener.update(bool focused) -> void
+Sage.Client.PanelView
+Sage.Client.ParticlesPart
+Sage.Client.ParticlesPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Client.ParticlesPart.Effect -> Sage.Core.RecordId
+Sage.Client.ParticlesPart.Enabled -> bool
+Sage.Client.ParticlesPart.ParticlesPart() -> void
+Sage.Client.Renderer
+Sage.Client.Renderer.CreateBox(Microsoft.Xna.Framework.Vector3 size, string! name = "(box)") -> Sage.Simulation.MeshHandle
+Sage.Client.Renderer.CreateMesh(System.ReadOnlySpan<Microsoft.Xna.Framework.Graphics.VertexPositionNormalTexture> vertices, System.ReadOnlySpan<int> indices, Microsoft.Xna.Framework.BoundingSphere bounds, string! name = "(procedural)") -> Sage.Simulation.MeshHandle
+Sage.Client.Renderer.DestroyMesh(Sage.Simulation.MeshHandle handle) -> void
+Sage.Client.Renderer.Dispose() -> void
+Sage.Client.Renderer.LastFrame.get -> Sage.Client.RenderStats
+Sage.Client.RenderStats
+Sage.Client.RenderStats.Culled -> int
+Sage.Client.RenderStats.DebugLines -> int
+Sage.Client.RenderStats.DrawCalls -> int
+Sage.Client.RenderStats.Items -> int
+Sage.Client.RenderStats.Lights -> int
+Sage.Client.RenderStats.MaterialSwitches -> int
+Sage.Client.RenderStats.MaxLightsOnADraw -> int
+Sage.Client.RenderStats.RenderStats() -> void
+Sage.Client.RenderStats.Sprites -> int
+Sage.Client.RenderStats.Triangles -> int
+Sage.Client.ScreenRegistry
+Sage.Client.ScreenRegistry.Create(string! id) -> Sage.Simulation.Screen?
+Sage.Client.ScreenRegistry.Has(string! id) -> bool
+Sage.Client.ScreenRegistry.Ids.get -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Client.ScreenRegistry.Register(string! id, System.Func<Sage.Simulation.Screen!>! create) -> void
+Sage.Client.ScreenRegistry.ScreenRegistry() -> void
+Sage.Client.ScreenRegistry.Seal.get -> Sage.Core.RegistrationSeal!
+Sage.Client.UiDraw
+Sage.Client.UiDraw.Frame(float x, float y, float width, float height, Microsoft.Xna.Framework.Color colour, float thickness = 1) -> void
+Sage.Client.UiDraw.HasFont.get -> bool
+Sage.Client.UiDraw.Image(Microsoft.Xna.Framework.Graphics.Texture2D! texture, Microsoft.Xna.Framework.Rectangle destination, Microsoft.Xna.Framework.Color colour, Microsoft.Xna.Framework.Rectangle? source = null) -> void
+Sage.Client.UiDraw.LineHeight.get -> float
+Sage.Client.UiDraw.Measure(string! text, float scale = 1) -> Microsoft.Xna.Framework.Vector2
+Sage.Client.UiDraw.Rect(float x, float y, float width, float height, Microsoft.Xna.Framework.Color colour) -> void
+Sage.Client.UiDraw.Size.get -> Microsoft.Xna.Framework.Vector2
+Sage.Client.UiDraw.Text(float x, float y, string! text, Microsoft.Xna.Framework.Color colour, float scale = 1) -> void
+Sage.Client.UiDraw.UiDraw() -> void
+static Sage.Client.PanelView.Draw(Sage.Client.UiDraw! ui, Sage.Simulation.Screen! screen, in Sage.Simulation.PanelLayout layout) -> void
+static Sage.Client.PanelView.WrapTitle(Sage.Client.UiDraw! ui, string! title, float room) -> System.Collections.Generic.List<string!>!

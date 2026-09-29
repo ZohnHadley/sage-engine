@@ -39,4 +39,32 @@
     <CompilerVisibleProperty Include="SageBaseAssembly" />
     <CompilerVisibleProperty Include="SageEcsImplementation" />
   </ItemGroup>
+
+  <!--
+    Public API discipline (issue #31, docs/RELEASING.md): every assembly a game, kit or mod compiles
+    against keeps its public API in PublicAPI.Shipped.txt (what released versions had) and
+    PublicAPI.Unshipped.txt (what changed since). Microsoft.CodeAnalysis.PublicApiAnalyzers compares the
+    code with them, and since warnings are errors a public symbol added (RS0016), removed or changed
+    (RS0017) without the files agreeing fails the build, on every job and platform. The host, the CLI,
+    the editor and the generators are not compiled against by games, so they have no files.
+  -->
+  <PropertyGroup>
+    <SagePublicApi Condition="'$(SagePublicApi)' == '' And ('$(MSBuildProjectName)' == 'Sage.Core' Or '$(MSBuildProjectName)' == 'Sage.Simulation'
+                              Or '$(MSBuildProjectName)' == 'Sage.Physics3D' Or '$(MSBuildProjectName)' == 'Sage.Gameplay'
+                              Or '$(MSBuildProjectName)' == 'Sage.Client' Or '$(MSBuildProjectName)' == 'Sage.Kits.Rpg'
+                              Or '$(MSBuildProjectName)' == 'Sage.Kits.Rpg.Client')">true</SagePublicApi>
+  </PropertyGroup>
+  <!-- The package's two API-design rules about optional parameters (RS0026, RS0027) are advice, not
+       declaration: Log.Info(cat, message, [CallerFilePath] file = "", ...) and friends are meant that way. -->
+  <PropertyGroup Condition="'$(SagePublicApi)' == 'true'">
+    <NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(SagePublicApi)' == 'true'">
+    <!-- The package adds both files as AdditionalFiles when they exist; without them it checks nothing. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+  <Target Name="SageCheckPublicApiFiles" BeforeTargets="CoreCompile" Condition="'$(SagePublicApi)' == 'true'">
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt') Or !Exists('$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt')"
+           Text="$(MSBuildProjectName) has no PublicAPI.Shipped.txt / PublicAPI.Unshipped.txt: its public API must be declared (docs/RELEASING.md)" />
+  </Target>
 </Project>
