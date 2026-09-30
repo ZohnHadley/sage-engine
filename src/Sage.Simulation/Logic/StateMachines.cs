@@ -216,7 +216,8 @@ public static class StateMachines
     internal static void Register(Engine engine)
     {
         var records = engine.Records;
-        engine.Inputs.Register(SetStateInput, static (World world, in IOContext io) => SetState(world, io.Self, io.Parameter, io.Activator));
+        // Routed to the machine (issue #91): an entity without one is refused naming sage:state_machine.
+        engine.Inputs.Register<StateMachine>(SetStateInput, static (World world, in IOContext io) => SetState(world, io.Self, io.Parameter, io.Activator));
         engine.Outputs.Declare(OnStateChanged, "This state machine changed state (sage:state_machine); a wire with no parameter is handed the new state's name.");
 
         // A wire may send any name a machine listens for (checked at load against the content being

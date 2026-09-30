@@ -21,6 +21,7 @@ public sealed class QuestsModule : IModule
     {
         // The quest record and the saved Journal are this plugin's by their attributes (Plugin =
         // "sage.gameplay.quests"); generated code registers them (issues #16, #17).
+        BridgeIO.RegisterQuests(ctx.Engine);        // SetStage, OnStageChanged, OnQuestFinished (issue #91)
 
         ctx.Engine.CVars.RegisterCommand("quests", CVarFlags.None,
             "What you are on, and how far.", _ =>
@@ -62,6 +63,7 @@ public sealed class QuestsModule : IModule
         world.Resources.Add(new Journal());
         world.AddSystem(new QuestDeathSystem(world));
         world.AddSystem(new QuestWatchSystem(world));   // conversations and places (issue #28)
+        world.AddSystem(new QuestOutputSystem(world));  // OnStageChanged (issue #91)
     }
 }
 
@@ -73,7 +75,7 @@ public sealed class DialogueModule : IModule
 {
     // The dialogue record and the `dialogue` part are this plugin's by their attributes (Plugin =
     // "sage.gameplay.dialogue"); generated code registers them (issues #16, #17).
-    public void Init(ModuleContext ctx) { }
+    public void Init(ModuleContext ctx) => BridgeIO.RegisterDialogue(ctx.Engine);   // StartDialogue (issue #91)
 
     public void OnWorldCreated(World world) => world.Resources.Add(new Conversation());
 }

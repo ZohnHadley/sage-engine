@@ -16,5 +16,60 @@
     "parts": {
       "timer": { "interval": 1, "repeat": true }
     }
+  },
+
+  // Logic entities (issue #91): Half-Life's relays, counters, comparisons and branches. Each is an entity
+  // with nothing but its part; place it, name it and wire at it. Their short inputs (Trigger, Add,
+  // SetValue, Toggle, …) are routed by component, so they do not collide with a mover's Toggle.
+  //
+  //   scene:  { "prefab": "sage:logic_counter", "name": "levers",
+  //             "outputs": [ { "output": "OnHitMax", "target": "gate", "input": "Open" } ] }
+  //   .map:   "classname" "sage:logic_counter"   "targetname" "levers"   "logic_counter.max" "3"   "OnHitMax" "gate,Open"
+  //
+  // A relay: Trigger → (requires) → then → OnTrigger. Enable / Disable / Toggle.
+  {
+    "type": "prefab",
+    "id": "logic_relay",
+    "name": "logic relay",
+    "parts": {
+      "logic_relay": { }
+    }
+  },
+  // A counter: Add / Subtract [n], SetValue n, Reset, GetValue → OnChanged, OnHitMax, OnHitMin, OnGetValue.
+  // With min and max both 0 it has no limits; a game patches this or puts the part on its own prefab.
+  {
+    "type": "prefab",
+    "id": "logic_counter",
+    "name": "logic counter",
+    "parts": {
+      "logic_counter": { "start": 0, "min": 0, "max": 0 }
+    }
+  },
+  // A comparison: SetValue / SetValueCompare / SetCompareValue / Compare → OnEqual, OnNotEqual, OnLess, OnGreater.
+  {
+    "type": "prefab",
+    "id": "logic_compare",
+    "name": "logic compare",
+    "parts": {
+      "logic_compare": { "value": 0, "compareValue": 0 }
+    }
+  },
+  // A remembered true or false: SetValue / SetValueTest / Toggle / ToggleTest / Test → OnTrue, OnFalse.
+  {
+    "type": "prefab",
+    "id": "logic_branch",
+    "name": "logic branch",
+    "parts": {
+      "logic_branch": { "value": false }
+    }
+  },
+  // A number from one range to another: SetValue → OnValue.
+  {
+    "type": "prefab",
+    "id": "math_remap",
+    "name": "math remap",
+    "parts": {
+      "math_remap": { "inMin": 0, "inMax": 1, "outMin": 0, "outMax": 1, "clamp": true }
+    }
   }
 ]

@@ -260,6 +260,81 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   nested or parallel states, a saved activator (it is a handle, as a timer's is), and an engine prefab
   (placements cannot override a part's `machine` yet, so a game writes its own prefab with the part).
 
+### 3.4d As built (logic entities and bridge I/O, 2026-09-30, issue #91)
+- **Inputs routed by component.** The design above says "the input must exist on some component of the
+  target"; now it can. `EntityInputs.Register<T>(name, handler)` registers a handler for one component
+  (one per name and component), beside the global `Register(name, handler)`. An input arriving at an
+  entity runs **every** routed handler whose component the entity has, in registration order — not the
+  first, so an entity that is both a mover and a branch hears `Toggle` as both, and nothing depends on
+  which plugin registered first but the order they run in — and the global handler only if none did; with
+  neither it is refused with a warning naming the components that take it. Every global handler works as
+  before, and a game may still register a global `Open` for things that are not movers. `Takes(entity,
+  name)` and `ComponentsTaking(name)` answer for tools; the ledger records a routed one as
+  `name@component` (`Toggle@sage:mover`), `io_list` prints the components beside each name and the
+  registry dump lists them under `components`. The load-time check is still "some plugin takes this
+  name": a wire's target is found by name when it fires, so its components are not known at load. Movers'
+  `Open`/`Close`/`Toggle` are routed to `sage:mover`; the timer and tween inputs stay global under their
+  long names. Dispatch allocates nothing (a lookup, a walk of a small array).
+  (test: AnInputNameIsRoutedToEachComponentThatTakesIt)
+  (test: ARoutedInputAtAnEntityWithoutItsComponentIsRefusedByName)
+- **Logic entities** (`Logic/LogicEntities.cs`, the engine's like timers; parts and prefabs of the same
+  names in `engine_content/data/logic.json`):
+  `sage:logic_relay` (`Trigger` → `requires` of the activator → `then` actions with the activator as
+  subject and the relay as other → `OnTrigger`, handing Trigger's parameter on; `Enable`, `Disable`,
+  `Toggle`), `sage:logic_counter` (`Add`/`Subtract` [n], `SetValue`, `Reset`, `GetValue`, `Enable`,
+  `Disable` → `OnChanged`, `OnHitMax`, `OnHitMin`, `OnGetValue`; clamped to `min`..`max` when max > min),
+  `sage:logic_compare` (`SetValue`, `SetValueCompare`, `SetCompareValue`, `Compare` → `OnEqual`, or
+  `OnNotEqual` and `OnLess`/`OnGreater`; equal within 1e-5, relative above 1), `sage:logic_branch`
+  (`SetValue`, `SetValueTest`, `Toggle`, `ToggleTest`, `Test` → `OnTrue`/`OnFalse`) and `sage:math_remap`
+  (`SetValue` → `OnValue`, along an `Ease`, clamped by default). Each driven with `ent_fire` headless:
+  (test: ARelayTriggersRunsItsActionsOnlyWhenItsConditionHolds_AndCanBeDisabled)
+  (test: ACounterCountsBetweenItsLimitsAndHandsItsValueOn) (test: ACompareSaysWhichIsBigger)
+  (test: ABranchRemembersAndTells) (test: ARemapMapsOneRangeToAnother)
+  (test: TheLogicEntitiesAreTheEngines_WithPrefabs)
+- **Outputs carry values.** `EntityIO.Fire`/`world.FireOutput` take a value (a string or a number); a
+  wire with no parameter of its own hands it on, as Source's do. A whole number from -1024 to 1023 is
+  written once and kept, so a counter's outputs allocate nothing after the first time each count is seen.
+- **Saved.** The logic entities' state is their components' (`sage:logic_counter` and the rest), saved
+  as any component is; a relay's `requires`/`then` are content, in the [Transient]
+  `sage:logic_relay_script` its part adds, which a load's respawn from the prefab puts back. A counter at
+  2 of 3 is at 2 of 3 after a load. No format change. (test: ACountersStateSurvivesASave) An entity a
+  `.map` places has no persistent id and is not saved, as before — logic that must survive a save goes in
+  a scene or placements document.
+- **Conditional wires.** `Connection.Requires` (an `ICondition`, `"requires"` on a scene or placements
+  `outputs` entry; a `.map` key has no room for one) is asked when the output fires, with
+  `ConditionContext(world, activator, self)`; while it fails the wire sends nothing and is not counted
+  toward `times`. (test: AConditionalWireFiresOnlyWhenItsConditionHolds_AndAFailureIsNotCounted)
+- **Same-tick relays.** A relay with `sameTick` queues its `OnTrigger` wires that have no delay as
+  same-tick deliveries: after the tick's pass the dispatch runs another pass of only those, and so on down
+  the chain. Everything else is unchanged — a plain wire still takes a tick a hop — and the
+  `io_maxdispatch` budget counts every delivery of the tick across passes, so a same-tick relay wired to
+  itself stops at the budget with the warning. Only relays have the option: it is where a mapper builds
+  chains, and a counter or branch that must be instant feeds a same-tick relay. Not saved: a save is taken
+  between ticks, when nothing same-tick is left unless the budget cut it, and then it arrives next tick.
+  (test: SameTickRelaysRunAChainInOneTick) (test: ASameTickRelayWiredToItselfStopsAtTheBudget)
+- **Bridge I/O**, each registered by the plugin that owns it (`Sage.Gameplay/Logic/BridgeIO.cs`):
+  `SetStage "quest stage"` (or a bare stage at a `quest_watch`; starts the quest first if it is not on)
+  and `OnStageChanged`/`OnQuestFinished` on every entity whose `quest_watch` names the quest, the stage as
+  the value and the player as the activator (quests); `StartDialogue`, routed to `sage:dialogue`, with the
+  activator or else the player listening (dialogue); `GiveItem "item [count]"`, routed to
+  `sage:inventory` (items); `ApplyEffect "effect [magnitude]"`, the activator as the source (attributes);
+  `SetFaction "faction"`, nothing clearing it (factions).
+  (test: ABridgeInputChangesAQuestStage_AndAQuestWatchSaysSo)
+  (test: BridgeInputsGiveItemsApplyEffectsSetFactionsAndStartConversations)
+- **Outputs from events:** `OnDeath` on the victim from `Died` (the killer as activator; system
+  `sage.io.deaths`, before `sage.effects.deaths` may destroy it), `OnDamaged` from `Damaged` (the attacker
+  as activator, the damage done as the value; `sage.io.damage`) and `OnPickedUp` on a pickup as the
+  interaction takes it (who took it as activator).
+  (test: DeathAndDamageAreOutputs) (test: APickupSaysItWasPickedUp)
+- **No allocation per tick** with a timer driving a counter, a comparison, a branch, a same-tick relay, a
+  conditional wire and a remap. (test: LogicEntitiesAllocateNothingPerTick)
+- **With state machines (#92):** `SetState` is routed to `sage:state_machine`, so at an entity without
+  one it is refused naming the component. A machine's `on` names (the `Heard`/`Listener` hooks of 3.4c)
+  are asked after an input's handlers, routed or global, and an input a machine heard counts as delivered;
+  a name only a machine listens for is still a known input at load. `OnStateChanged` hands the state on
+  through the same values as the logic entities' outputs.
+  (test: AStateMachineHearsAnInputBesideTheComponentsThatTakeIt)
+
 ### 3.5 Engine signals in detail
 `EngineSignals` (on `Engine`, 01) holds plain C# events, raised on the main thread at the start of a frame (never inside a tick):
 - `AssetReloaded(AssetPath)`, `RecordsReloaded(RecordType)`;

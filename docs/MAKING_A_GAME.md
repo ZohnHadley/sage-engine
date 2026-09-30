@@ -520,9 +520,15 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `dialogue` | something to say |
 | `timer` | a timer that fires `OnTimer` — `interval`, `spread` (± seconds, at random), `repeat`, `startOn`, `seed` (issue #90) |
 | `tween` | something a `TweenTo` wire moves, turns or scales — `channel`, `target`, `relative`, `duration`, `ease` (issue #90) |
+| `logic_relay` | a relay: `Trigger` asks `requires`, runs `then` and fires `OnTrigger` — `requires`, `then`, `startDisabled`, `sameTick` (issue #91) |
+| `logic_counter` | a counter — `start`, `min`, `max` (no limits while max ≤ min), `startDisabled` (issue #91) |
+| `logic_compare` | a comparison — `value`, `compareValue` (issue #91) |
+| `logic_branch` | a remembered true or false — `value` (issue #91) |
+| `math_remap` | a number from one range to another — `inMin`, `inMax`, `outMin`, `outMax`, `clamp`, `ease` (issue #91) |
+| `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Eighteen here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Twenty-four here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -829,11 +835,21 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`,
-`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`.
+`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`, the logic entities' (below) and
+gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
-`TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState` — `io_list` prints the live lists, and
+`TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState`, the logic entities' and gameplay's
+`SetStage`, `StartDialogue`, `GiveItem`, `ApplyEffect`, `SetFaction` — `io_list` prints the live lists
+(with the components each short name belongs to), and
 your own modules can register more inputs (`engine.Inputs.Register`) and declare the outputs they fire
 (`engine.Outputs.Declare(name, what it means)`), which puts them in the FGD. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
+
+**An input may belong to a component** (issue #91). `engine.Inputs.Register<Mover>("Toggle", …)` runs
+only at an entity with a `Mover`, beside `Register<LogicBranch>("Toggle", …)` for branches: an input
+arriving runs *every* handler whose component the entity has, and a global handler of that name (plain
+`Register`) only when none did. So short names — `Enable`, `Toggle`, `SetValue`, `Trigger` — are each
+component's own, and a name no component of the target takes is a warning saying which components
+would have. `Open`, `Close` and `Toggle` are the mover's this way.
 
 Connections are **checked when the level loads**: a typo names the map file and line rather than a door
 that quietly never opens. `map_load`, `map_list`, `map_unload`, `map_goto` (stand where the map's
@@ -861,6 +877,18 @@ prefab by its full id, `"classname" "sage:scripted_camera"`.
 | `TweenTo` | `[position\|rotation\|scale\|offset\|turn] [x y z] [seconds] [ease]`, all optional | Moves, turns or scales a `tween` from where it is to the goal (metres; degrees of pitch, yaw, roll; factors); `offset` and `turn` are *by* rather than *to*. Left out, the tween's own `target`, `duration` and `ease`. Fires `OnTweenDone` on arrival |
 | `TweenStop` | | Stops a tween where it is |
 | `SetState` | a state's name | Sends a `state_machine` to that state now (its exits and enters run, `OnStateChanged` fires); already there, nothing |
+| `Trigger` | handed on (optional) | A `logic_relay`: if enabled and its `requires` holds (of the activator), runs its `then` and fires `OnTrigger` |
+| `Enable` / `Disable` | | A relay or a counter: takes its other inputs again, or ignores them (a relay also takes `Toggle`) |
+| `Add` / `Subtract` | a number (1 if none) | A `logic_counter`: counts, within `min`..`max`; fires `OnChanged` with the value, and `OnHitMax` / `OnHitMin` on reaching a limit |
+| `SetValue` | a number; true/false on a branch | Sets a counter (firing as above), a compare's value, a branch, or a remap's input (firing `OnValue` with the result) |
+| `Reset` / `GetValue` | | A counter: back to `start`; or fires `OnGetValue` with the value |
+| `SetCompareValue` / `SetValueCompare` / `Compare` | a number (the first two) | A `logic_compare`: sets what it compares with; sets the value and compares; compares — `OnEqual`, or `OnNotEqual` and `OnLess` / `OnGreater` |
+| `Test` / `SetValueTest` / `Toggle` / `ToggleTest` | true/false for `SetValueTest` | A `logic_branch`: fires `OnTrue` or `OnFalse` by its value; sets it and tests; flips it; flips it and tests |
+| `SetStage` | `quest stage`, or a stage at a `quest_watch` | Moves a quest to a stage, starting it first if it is not on (quests plugin) |
+| `StartDialogue` | | Starts the entity's conversation (a `dialogue` part) with the activator, else the player |
+| `GiveItem` | `item [count]` | Puts items in the entity's inventory |
+| `ApplyEffect` | `effect [magnitude]` | Applies an effect to the entity, with the activator as its source |
+| `SetFaction` | a faction, or nothing | Sets the entity's faction, or clears it |
 
 **Time.** A delay counts from the tick the output fired in, wherever in the tick that was (a trigger's
 and a relay's arrive together), and stands still while the game is paused. A `timer` fires on the tick
@@ -902,6 +930,42 @@ reload names a state the machine no longer has, it goes back to `initial` with a
 
 Curves are named the way you would expect — `QuadInOut`, `ease_out_bounce`, `SmoothStep`, `Linear`: every
 `Ease` value, case and underscores as you like.
+
+**Logic entities** (issue #91) are what a sequence needs between "the player walked in" and "the door
+opens": the engine's `sage:logic_relay`, `sage:logic_counter`, `sage:logic_compare`,
+`sage:logic_branch` and `sage:math_remap` prefabs, each an entity with nothing but its part (put the part
+on your own prefab to change the defaults, or set `logic_counter.max` on a map entity). Three levers, and
+the gate opens only if the alarm is off:
+
+```json
+{ "prefab": "yourgame:three_levers", "name": "levers",
+  "outputs": [ { "output": "OnHitMax", "target": "gate_relay", "input": "Trigger" } ] },
+{ "prefab": "yourgame:gate_relay", "name": "gate_relay",
+  "outputs": [ { "output": "OnTrigger", "target": "gate", "input": "Open" } ] }
+```
+
+with `three_levers` a prefab of `"logic_counter": { "max": 3 }` (each lever wired `OnUse` → `levers.Add`)
+and `gate_relay` one of `"logic_relay": { "requires": { "var": "alarm", "eq": 0 }, "then": [ { "set_var":
+"gate_opened", "value": 1 } ] }` — the condition and action language of §3. **Values travel:** an output
+with a value (`OnChanged`, `OnValue`, `OnDamaged`, `OnStageChanged`) hands it to a wire whose
+`parameter` is empty, so `OnChanged` → `check.SetValueCompare` compares the count. Their state — a
+count, a branch, a relay disabled — is saved like any component's.
+
+**A wire can have a condition** (scenes and placements; a `.map` key has no room for one): `"requires":
+{ "var": "power", "eq": 1 }` on an `outputs` entry is asked when the output fires, of the activator
+(and the entity firing it as the other); while it fails the wire sends nothing and does not count toward
+its `times`.
+
+**Same tick.** A chain of wires takes a tick a hop, which is what keeps a wire that fires itself from
+hanging the game. A relay with `"sameTick": true` delivers its `OnTrigger` wires that have no delay in
+the same tick instead, so a chain of such relays runs to its end at once; the `io_maxdispatch` budget
+still counts every delivery in the tick, so one wired to itself stops at the budget with a warning.
+
+**Gameplay's own**, each there only with its plugin: `SetStage`, `StartDialogue`, `GiveItem`,
+`ApplyEffect`, `SetFaction` (table above); `OnDeath` (the victim, the killer as activator), `OnDamaged`
+(the one hurt, the attacker as activator, the damage done as its value) and `OnPickedUp` (a pickup, as it
+is taken). `OnStageChanged` / `OnQuestFinished` fire on anything with a `quest_watch` part for that quest,
+with the stage as the value and the player as the activator.
 
 ---
 
@@ -1451,7 +1515,7 @@ names their types needs the opt-in.
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
-| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
+| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel`, `ViewModelAttribute`, `Localisation`, `PluralCategory` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.

@@ -64,6 +64,8 @@ public sealed class Engine : IDisposable
             // I/O plugin to reach a wire, as every output does.
             Timers.Register(this);
             Tweens.Register(this);
+            // Relays, counters, comparisons, branches and remaps (issue #91), the same way.
+            LogicEntities.Register(this);
             // State machines (issue #92): the engine's too; SetState, OnStateChanged and the `on` names
             // content listens for.
             StateMachines.Register(this);

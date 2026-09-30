@@ -752,6 +752,20 @@ built (dialogue topics)".
 - An I/O output and a data `action` become the same thing: `fire` is an action, and an input can take
   `then` actions.
 
+As built (issue #91): inputs are **routed by component** (`EntityInputs.Register<T>`): every component
+of the target that takes the name runs it, a global handler only when none did, so `Toggle`, `Enable`,
+`SetValue` and `Trigger` are each component's own and movers keep theirs
+(test: AnInputNameIsRoutedToEachComponentThatTakesIt). The engine's `logic_relay` (with `requires` and
+`then`), `logic_counter`, `logic_compare`, `logic_branch` and `math_remap` are components, parts and
+prefabs, driven by `ent_fire` headless (test: ACounterCountsBetweenItsLimitsAndHandsItsValueOn) and saved
+(test: ACountersStateSurvivesASave); outputs hand a value on to a wire with no parameter; a wire takes an
+optional `requires` (test: AConditionalWireFiresOnlyWhenItsConditionHolds_AndAFailureIsNotCounted); a
+relay may deliver in the same tick (test: SameTickRelaysRunAChainInOneTick). The bridges are `SetStage`
+(test: ABridgeInputChangesAQuestStage_AndAQuestWatchSaysSo), `StartDialogue`, `GiveItem`, `ApplyEffect`,
+`SetFaction` and `OnStageChanged`, `OnDeath` (test: DeathAndDamageAreOutputs), `OnDamaged`,
+`OnPickedUp`, each registered by its plugin. `logic_timer` was #90's. Per-entity map keys were already
+there (§5 of MAKING_A_GAME: `"logic_counter.max" "3"`). Details: 04 §3.4d.
+
 **Stage 4: AI as data behaviour trees.**
 - Leaves are the existing `IAITask`s, and today's schedules become a `sequence` node.
 - The trees hot-reload, mods can patch them, and a graph editor can come later.

@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json.Serialization;
 
@@ -41,35 +42,187 @@ public readonly struct IOContext
 public delegate void EntityInput(World world, in IOContext io);
 
 // Every input the game knows, by name. Case-insensitive, because a mapper types these by hand.
+//
+// **Two kinds of handler** (issue #91). A *global* one (`Register(name, handler)`) is the only one for
+// its name and takes every entity it is sent at: `Kill`, `Say`, `Fire`, a game's own. A *routed* one
+// (`Register<T>(name, handler)`) belongs to one component: `Trigger` on a relay, `Add` on a counter,
+// `Toggle` on a mover *and* on a branch. A name may have one routed handler per component, and a global
+// one beside them. When an input arrives at an entity:
+//
+//   1. every routed handler whose component the entity has runs, in the order they were registered —
+//      all of them, not the first: an entity that is a counter and a remap both hear `SetValue`, the
+//      way a Source entity with two behaviours would, and nothing depends on registration order but
+//      the order they run in;
+//   2. if none did, the global handler runs, if there is one — so a game's own `Toggle` for things that
+//      are not movers or branches still works, and every global handler registered before #91 works
+//      exactly as it did;
+//   3. if neither, the input is refused with a warning naming the components that take it.
+//
+// Short generic names can therefore coexist: `Enable`, `Disable`, `Toggle`, `Add`, `SetValue`,
+// `Trigger`, each once per component that means something by it.
 public sealed class EntityInputs
 {
-    private readonly Dictionary<string, EntityInput> _inputs = new(StringComparer.OrdinalIgnoreCase);
+    // Who takes one input name: a global handler, routed ones, or both.
+    private sealed class Entry
+    {
+        public EntityInput? Global;
+        public Route[] Routes = Array.Empty<Route>();
+    }
+
+    internal readonly struct Route
+    {
+        public Route(Type component, string componentId, Func<Entity, bool> has, EntityInput handler)
+        {
+            Component = component;
+            ComponentId = componentId;
+            Has = has;
+            Handler = handler;
+        }
+
+        public Type Component { get; }
+        public string ComponentId { get; }
+        public Func<Entity, bool> Has { get; }
+        public EntityInput Handler { get; }
+    }
+
+    // What happened to one input at one entity (Deliver).
+    internal enum Delivery { NoSuchInput, NobodyTookIt, Delivered }
+
+    private readonly Dictionary<string, Entry> _inputs = new(StringComparer.OrdinalIgnoreCase);
 
     // Closed when the first world exists (SageApp.CreateWorld): its level's wiring was checked without it.
     public RegistrationSeal Seal { get; } = new("entity input", "a level's wiring may already have been checked without it");
 
-    // Who registered each input (issue #12); set by the Engine.
+    // Who registered each input (issue #12); set by the Engine. A routed one is recorded as
+    // `name@component` ("Trigger@sage:logic_relay"), so each has an owner of its own, and under its name
+    // too when it is the first of that name.
     public RegistrationLedger? Ledger { get; set; }
 
+    // A global handler: the only one for this name, for any entity it is sent at.
     public void Register(string name, EntityInput handler)
     {
         Seal.Check(name);
-        if (!_inputs.TryAdd(name, handler))
+        var entry = EntryFor(name);
+        if (entry.Global != null)
             Assert.Ensure(false, $"Entity input '{name}' is registered twice" +
                                  (Ledger?.OwnerOf("entity input", name) is { } first ? $" (first by {first})" : ""));
         else
+        {
+            entry.Global = handler;
             Ledger?.Record("entity input", name);
+        }
     }
 
-    // A registered input, or a name content listens for (a state machine's `on`, issue #92): what a
-    // wire may send without being an unknown input.
+    // A handler routed to one component (issue #91): it runs only for an entity that has a `T`, beside
+    // any other component's handler for the same name. One per name and component.
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
+    public void Register<T>(string name, EntityInput handler) where T : struct, IComponent
+    {
+        Seal.Check(name);
+        string component = ComponentId(typeof(T));
+        var entry = EntryFor(name);
+        foreach (var route in entry.Routes)
+        {
+            if (route.Component != typeof(T)) continue;
+            Assert.Ensure(false, $"Entity input '{name}' is registered twice for {component}" +
+                                 (Ledger?.OwnerOf("entity input", $"{name}@{component}") is { } first ? $" (first by {first})" : ""));
+            return;
+        }
+        var routes = new Route[entry.Routes.Length + 1];
+        entry.Routes.CopyTo(routes, 0);
+        routes[^1] = new Route(typeof(T), component, static e => e.HasComponent<T>(), handler);
+        entry.Routes = routes;
+        Ledger?.Record("entity input", $"{name}@{component}");
+        // And the name, for the first to register it (a global handler registered later takes it over),
+        // so "who owns SetState" still has an answer.
+        if (Ledger != null && Ledger.OwnerOf("entity input", name) == null) Ledger.Record("entity input", name);
+    }
+
+    // Whether anything takes this name, globally or on some component, or content listens for it (a
+    // state machine's `on`, issue #92): what a wire may send without being an unknown input.
     public bool Has(string name) => _inputs.ContainsKey(name) || (Heard != null && Heard(name));
-    public bool TryGet(string name, out EntityInput handler) => _inputs.TryGetValue(name, out handler!);
+
+    // The *global* handler for a name. A name only components take has none: send it with EntityIO,
+    // which routes it (Deliver).
+    public bool TryGet(string name, out EntityInput handler)
+    {
+        if (_inputs.TryGetValue(name, out var entry) && entry.Global != null)
+        {
+            handler = entry.Global;
+            return true;
+        }
+        handler = null!;
+        return false;
+    }
+
     public IEnumerable<string> Names => _inputs.Keys;
+
+    // Whether this entity would take the input: a component of its has a handler for it, or there is
+    // a global one.
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
+    public bool Takes(Entity entity, string name)
+    {
+        if (!_inputs.TryGetValue(name, out var entry)) return false;
+        if (entry.Global != null) return true;
+        foreach (var route in entry.Routes)
+            if (route.Has(entity)) return true;
+        return false;
+    }
+
+    // The components with a handler of their own for this name, in registration order ("sage:mover").
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
+    public IReadOnlyList<string> ComponentsTaking(string name)
+    {
+        if (!_inputs.TryGetValue(name, out var entry) || entry.Routes.Length == 0) return Array.Empty<string>();
+        var ids = new string[entry.Routes.Length];
+        for (int i = 0; i < ids.Length; i++) ids[i] = entry.Routes[i].ComponentId;
+        return ids;
+    }
+
+    // Whether a global handler exists for this name (the registry dump says so beside the components).
+    internal bool HasGlobal(string name) => _inputs.TryGetValue(name, out var entry) && entry.Global != null;
+
+    // Runs what takes this input at `io.Self` (the rule in the class comment). Allocation-free: a
+    // lookup, a walk of a small array and the handlers themselves.
+    internal Delivery Deliver(World world, string name, in IOContext io)
+    {
+        bool known = _inputs.TryGetValue(name, out var entry);
+        bool took = false;
+        if (known)
+        {
+            var routes = entry!.Routes;
+            for (int i = 0; i < routes.Length; i++)
+            {
+                // Asked afresh for each: an earlier handler may have added or removed a component.
+                if (!world.IsAlive(io.Self) || !routes[i].Has(io.Self)) continue;
+                took = true;
+                routes[i].Handler(world, in io);
+            }
+            if (!took && entry.Global != null)
+            {
+                took = true;
+                entry.Global(world, in io);
+            }
+        }
+
+        // And whatever listens on the entity (a state machine's `on`, issue #92), if it is still there.
+        bool heard = Listener != null && world.IsAlive(io.Self) && Listener(world, name, in io);
+        if (took || heard) return Delivery.Delivered;
+        return known ? Delivery.NobodyTookIt : Delivery.NoSuchInput;
+    }
+
+    private Entry EntryFor(string name)
+    {
+        if (!_inputs.TryGetValue(name, out var entry)) _inputs.Add(name, entry = new Entry());
+        return entry;
+    }
+
+    private static string ComponentId(Type type) =>
+        System.Reflection.CustomAttributeExtensions.GetCustomAttribute<ComponentAttribute>(type)?.Id ?? type.Name;
 
     // Inputs content listens for rather than code (issue #92): whether some record hears the name, for
     // Has; and, as each input arrives, whether the entity it arrives at heard it — called after the
-    // registered handler, if there is one. Set by the engine (StateMachines.Register).
+    // handlers, if there are any (Deliver). Set by the engine (StateMachines.Register).
     internal Func<string, bool>? Heard;
     internal InputListener? Listener;
 }
@@ -121,6 +274,13 @@ public sealed class Connection
     [Property(Tooltip = "How many times it may fire; -1 = every time")]
     public int Times = -1;                  // -1: as often as it fires
 
+    // Fires only when this holds (issue #91), asked when the output fires, of the activator (the
+    // condition's subject) and this entity (its other). A wire whose condition does not hold sends
+    // nothing and is not counted toward `times`. Written in a scene or placements document; a `.map`
+    // key has no room for one.
+    [Property(Tooltip = "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times")]
+    public ICondition? Requires;
+
     // A fresh wire with the same settings, for each entity a shared record places: what is resolved and
     // counted belongs to one entity.
     internal Connection Copy() => new()
@@ -131,6 +291,7 @@ public sealed class Connection
         Parameter = Parameter,
         Delay = Delay,
         Times = Times,
+        Requires = Requires,
     };
 
     // Filled in at load. A handle rather than a name lookup per fire — but the name is kept, because an
@@ -178,6 +339,7 @@ public sealed class EntityIO : ISavedResource
         public Entity Activator;
         public Entity Caller;
         public string TargetName;           // for late binding when the handle is dead
+        public bool SameTick;               // may arrive in this tick's dispatch (a same-tick relay, #91)
     }
 
     // A delay of N ticks' worth of seconds is due on the Nth tick, not one later for float dust: a tick's
@@ -191,6 +353,7 @@ public sealed class EntityIO : ISavedResource
     private long _clockTick = -1;
     private World? _world;
     private bool _warnedBudget;
+    private bool _sameTickQueued;
 
     [Transient] public int PendingCount => _pending.Count;
     [Transient] public int DispatchedLastTick { get; private set; }
@@ -206,11 +369,28 @@ public sealed class EntityIO : ISavedResource
 
     // Fires an output: every wire on the entity with that name queues its input.
     public void Fire(World world, Entity source, string output, Entity activator = default) =>
-        Fire(world, source, output, activator, "");
+        Fire(world, source, output, activator, null, 0f, false, false);
 
     // Fires an output with a value: a wire with no parameter of its own hands the value to its input
-    // (Source's rule), so `OnStateChanged` tells a wire the state it changed to (issue #92).
-    public void Fire(World world, Entity source, string output, Entity activator, string value)
+    // (Source's rule), so `OnStateChanged` tells a wire the state it changed to (issue #92) and a
+    // counter's `OnChanged` a comparison the count (issue #91).
+    public void Fire(World world, Entity source, string output, Entity activator, string value) =>
+        Fire(world, source, output, activator, value ?? "", 0f, false, false);
+
+    // The same, and `sameTick` (issue #91): its wires with no delay arrive in this tick's dispatch
+    // rather than the next (a same-tick relay).
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
+    public void Fire(World world, Entity source, string output, Entity activator, string? value, bool sameTick) =>
+        Fire(world, source, output, activator, value, 0f, false, sameTick);
+
+    // With a number, written out only if a wire hands it on (and then without allocating for a whole
+    // number up to a thousand or so, so a counter's outputs cost nothing per tick).
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
+    public void Fire(World world, Entity source, string output, Entity activator, float value, bool sameTick = false) =>
+        Fire(world, source, output, activator, null, value, true, sameTick);
+
+    private void Fire(World world, Entity source, string output, Entity activator,
+                      string? text, float number, bool hasNumber, bool sameTick)
     {
         _world ??= world;
         if (source.IsNull || !source.HasComponent<IOConnections>()) return;
@@ -222,17 +402,22 @@ public sealed class EntityIO : ISavedResource
         {
             if (!string.Equals(wire.Output, output, StringComparison.OrdinalIgnoreCase)) continue;
             if (wire.Times >= 0 && wire.Fired >= wire.Times) continue;
+            // A condition on the wire (#91): asked of whoever set this off, about this entity. One that
+            // does not hold sends nothing and spends none of the wire's `times`.
+            if (wire.Requires != null && !wire.Requires.Test(new ConditionContext(world, activator, source), out _)) continue;
             wire.Fired++;
 
+            string parameter = wire.Parameter.Length > 0 ? wire.Parameter
+                             : text ?? (hasNumber ? IOValues.Format(number) : "");
             var target = Resolve(world, wire, source, activator);
-            Queue(target, wire.Input, wire.Parameter.Length > 0 ? wire.Parameter : value ?? "", wire.Delay, activator, source, wire.Target);
+            Queue(target, wire.Input, parameter, wire.Delay, activator, source, wire.Target, sameTick && wire.Delay <= 0f);
         }
     }
 
     // Fires one input directly, from code or the console.
     public void FireInput(Entity target, string input, string parameter = "", float delay = 0f,
                           Entity activator = default, Entity caller = default) =>
-        Queue(target, input, parameter, delay, activator, caller, "");
+        Queue(target, input, parameter, delay, activator, caller, "", false);
 
     // Fires one input at an entity by name, found when it arrives rather than now (a wire's late
     // binding, 04 §3.4): what a delayed `fire` action (#89) or a wire aims at may be spawned, or
@@ -241,12 +426,13 @@ public sealed class EntityIO : ISavedResource
                           Entity activator = default, Entity caller = default)
     {
         var target = _world != null ? _world.FindByName(targetName) : default;
-        Queue(target, input, parameter, delay, activator, caller, targetName ?? "");
+        Queue(target, input, parameter, delay, activator, caller, targetName ?? "", false);
     }
 
     private void Queue(Entity target, string input, string parameter, float delay,
-                       Entity activator, Entity caller, string targetName)
+                       Entity activator, Entity caller, string targetName, bool sameTick)
     {
+        if (sameTick) _sameTickQueued = true;
         _pending.Add(new Queued
         {
             Due = Clock(_world) + Math.Max(0f, delay),
@@ -257,6 +443,7 @@ public sealed class EntityIO : ISavedResource
             Activator = activator,
             Caller = caller,
             TargetName = targetName,
+            SameTick = sameTick,
         });
     }
 
@@ -295,19 +482,38 @@ public sealed class EntityIO : ISavedResource
         _world ??= world;
         double now = Clock(world);
         DispatchedLastTick = 0;
+        _sameTickQueued = false;
         if (_pending.Count == 0) return;
 
         // Everything due this tick, oldest first. Taken out of the list before dispatching, because an
         // input may fire more outputs and those belong to the *next* pass, not this one — which is what
         // stops one tick from running a chain to its end and makes a delay of 0 still mean "next tick".
+        if (!Deliver(world, inputs, now, sameTickOnly: false)) return;
+
+        // The one exception (issue #91): a same-tick relay's wires with no delay, fired during the pass,
+        // arrive in another pass of this tick, and so on down the chain. The budget still counts every
+        // delivery of the tick, so a same-tick relay wired to itself stops at io_maxdispatch with the
+        // warning, not in a hang.
+        while (_sameTickQueued)
+        {
+            _sameTickQueued = false;
+            if (!Deliver(world, inputs, now, sameTickOnly: true)) return;
+        }
+    }
+
+    // One pass: takes what is due (only same-tick deliveries, for the passes after the first) and
+    // delivers it in order. False when the budget ran out.
+    private bool Deliver(World world, EntityInputs inputs, double now, bool sameTickOnly)
+    {
         _due.Clear();
         for (int i = _pending.Count - 1; i >= 0; i--)
         {
             if (_pending[i].Due > now + DueEpsilon) continue;
+            if (sameTickOnly && !_pending[i].SameTick) continue;
             _due.Add(_pending[i]);
             _pending.RemoveAt(i);
         }
-        if (_due.Count == 0) return;
+        if (_due.Count == 0) return true;
 
         _due.Sort(static (a, b) => a.Due != b.Due ? a.Due.CompareTo(b.Due) : a.Order.CompareTo(b.Order));
 
@@ -321,7 +527,7 @@ public sealed class EntityIO : ISavedResource
                     Log.Warn(LogCat.Events, $"Entity I/O: more than {Budget} inputs in one tick; the rest are dropped "
                                           + "(a wire that fires itself?). `io_trace 1` shows the chain.");
                 }
-                break;
+                return false;
             }
 
             var target = pending.Target;
@@ -335,33 +541,31 @@ public sealed class EntityIO : ISavedResource
                 continue;
             }
 
-            bool registered = inputs.TryGet(pending.Input, out var handler);
-            if (!registered && inputs.Listener == null)
-            {
-                // Logged at load too, but a `ent_fire` typo arrives here.
-                Log.Warn(LogCat.Events, $"I/O: no input called '{pending.Input}' ({World.Describe(target)})");
-                continue;
-            }
-
             if (Trace)
                 Log.Info(LogCat.Events, $"I/O: {World.Describe(pending.Caller)} → {World.Describe(target)}."
                                       + $"{pending.Input}({pending.Parameter})");
 
             DispatchedLastTick++;
-            var context = new IOContext
+            var delivered = inputs.Deliver(world, pending.Input, new IOContext
             {
                 Self = target,
                 Activator = pending.Activator,
                 Caller = pending.Caller,
                 Parameter = pending.Parameter,
-            };
-            if (registered) handler(world, context);
-
-            // And whatever listens on the entity (a state machine's `on`, issue #92), if it is still there.
-            bool heard = inputs.Listener != null && world.IsAlive(target) && inputs.Listener(world, pending.Input, in context);
-            if (!registered && !heard)
+            });
+            if (delivered == EntityInputs.Delivery.NoSuchInput)
+            {
+                // Logged at load too, but a `ent_fire` typo arrives here.
+                DispatchedLastTick--;
                 Log.Warn(LogCat.Events, $"I/O: no input called '{pending.Input}' ({World.Describe(target)})");
+            }
+            else if (delivered == EntityInputs.Delivery.NobodyTookIt)
+            {
+                Log.Warn(LogCat.Events, $"I/O: '{pending.Input}' at {World.Describe(target)}, which has nothing that takes it "
+                                      + $"(it is for {string.Join(", ", inputs.ComponentsTaking(pending.Input))})");
+            }
         }
+        return true;
     }
 
     internal void Clear()
@@ -549,10 +753,24 @@ public static class EntityIOExtensions
         if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator);
     }
 
-    // With a value, which a wire with no parameter of its own passes on (EntityIO.Fire).
+    // With a value, which a wire with no parameter of its own passes on (EntityIO.Fire; #92, #91).
     public static void FireOutput(this World world, Entity source, string output, Entity activator, string value)
     {
         if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator, value);
+    }
+
+    // With a number (`OnChanged` with the counter's value, `OnDamaged` with the damage done), and a
+    // same-tick option (issue #91).
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
+    public static void FireOutput(this World world, Entity source, string output, Entity activator, float value, bool sameTick = false)
+    {
+        if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator, value, sameTick);
+    }
+
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
+    public static void FireOutput(this World world, Entity source, string output, Entity activator, string? value, bool sameTick)
+    {
+        if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator, value, sameTick);
     }
 
     // Whether an entity has a wire for this output. What makes a door usable is that using it *does*
@@ -576,6 +794,24 @@ public static class EntityIOExtensions
         foreach (var entity in world.Query<Transform>().Entities)
             if (entity.Name == name) return entity;
         return default;
+    }
+}
+
+// A number as an output's value (issue #91): invariant, shortest round-trip, and a whole number from
+// -1024 to 1023 written once and kept, so a counter counting doors allocates nothing after the first.
+internal static class IOValues
+{
+    private const int Low = -1024, High = 1023;
+    private static readonly string?[] Whole = new string?[High - Low + 1];
+
+    public static string Format(float value)
+    {
+        if (value >= Low && value <= High && value == MathF.Floor(value))
+        {
+            int i = (int)value - Low;
+            return Whole[i] ??= ((int)value).ToString(CultureInfo.InvariantCulture);
+        }
+        return value.ToString("R", CultureInfo.InvariantCulture);
     }
 }
 
@@ -694,7 +930,14 @@ public sealed class EntityIOModule : IModule
         {
             var names = new List<string>(ctx.Engine.Inputs.Names);
             names.Sort(StringComparer.OrdinalIgnoreCase);
-            foreach (var name in names) Log.Info(LogCat.Console, $"  {name}");
+            foreach (var name in names)
+            {
+                // A name some components take says which (issue #91): `Toggle  sage:mover, sage:logic_branch`.
+                var components = ctx.Engine.Inputs.ComponentsTaking(name);
+                if (components.Count == 0) Log.Info(LogCat.Console, $"  {name}");
+                else Log.Info(LogCat.Console, $"  {name,-14} {string.Join(", ", components)}"
+                                            + (ctx.Engine.Inputs.HasGlobal(name) ? " (and any entity)" : ""));
+            }
             Log.Info(LogCat.Console, $"{names.Count} input(s)");
             var outputs = new List<string>(ctx.Engine.Outputs.Names);
             outputs.Sort(StringComparer.OrdinalIgnoreCase);
