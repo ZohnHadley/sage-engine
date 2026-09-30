@@ -142,6 +142,13 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   `OnCameraOn` / `OnCameraOff` on a change; registered by the engine (`sage.core`) rather than by this
   plugin, like the camera itself. A cut delivered in tick N shows in the first frame after tick N. See
   06 "As built (scripted cameras from entity I/O)". (test: TheCutLandsOnTheFrameAfterTheTickThatDeliveredIt)
+- **Data can fire too (issue #89):** the `fire` action — `{ "fire": "hut_door", "input": "Open",
+  "parameter": "", "delay": 0 }` — sends an input through `EntityIO.FireInput` from anything that runs
+  actions (a dialogue option today; relays, state machines and topics in 4b). Its target is a name looked
+  up when it runs, or `!subject`/`!activator` (who the action is about) or `!other`/`!self`/`!caller`
+  (who is doing it); the subject arrives as the activator. It is the base's (`sage.core`), and does
+  nothing but warn once in a game without this plugin (test: FireSendsAnInputThroughEntityIO). 16 "As
+  built (one condition and action language)" has the rest of the language.
 - **Not built:** `@group` targets, an editor link view, and the per-entity I/O history. An output fired
   outside the dispatch (a trigger's, in PostPhysics) measures its delay from the previous tick's clock,
   one tick short of one fired from inside it.

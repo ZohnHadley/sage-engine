@@ -705,6 +705,20 @@ something uses the same typed vocabulary, including dialogue, quests, triggers, 
 - It's saveable, because the save stores *which* verbs ran, not script state (the Papyrus lesson that
   17 §2 cites).
 
+As built (issue #89, decision D2): the language is the base's. `ICondition`, `IAction`, their attributes
+and contexts moved to `Sage.Simulation` (`Logic/Conditions.cs`; still SAGE0120, content ids unchanged),
+and the base owns `all`, `any`, `not`, `var` and `fire`, `set_var`, `add_var` (plugin `sage.core`), so a
+game with no plugins but its own reads the `requires` above and asks it with `Conditions.Evaluate`
+(test: AGameWithoutDialogueReadsAndEvaluatesNestedRequires). An entry may be written as the sketch
+writes it, its id as the property (`VocabularyAttribute.Shorthand`, `[EntryValue]`), or in the long form;
+an unknown id is a load error with the nearest one (test: AnUnknownIdSuggestsTheNearestOne). World
+variables are the saved `vars` resource (test: AVarSurvivesSaveAndLoad); asking allocates nothing
+(test: EvaluatingConditionsAllocatesNothing). The gameplay entries moved from dialogue to the plugins
+that own what they ask about, and `quest` takes `atLeast` — a stage *name*, since stages are named, not
+numbered (test: AQuestConditionAsksHowFarAlongItIs). Dialogue's `requires`/`then` stay as sugar. What
+reads a `requires` besides dialogue — wires, relays, state machines, topics — is the rest of phase 4b
+(#91–#93). Details: 16 "As built (one condition and action language)".
+
 **Stage 3: entity I/O as the level-logic backbone.**
 - Add logic entities: `logic_relay`, `logic_counter`, `logic_timer`, `logic_compare`, `logic_branch` and
   `math_*`.

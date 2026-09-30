@@ -186,27 +186,33 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: apply_effect, change_standing, finish_quest, give_item, set_stage, start_quest, take_item.",
+      "description": "An action by id: add_var, apply_effect, change_standing, finish_quest, fire, give_item, set_stage, set_var, start_quest, take_item.",
       "type": "string",
       "enum": [
+        "AddVar",
         "ApplyEffect",
         "ChangeStanding",
         "FinishQuest",
+        "Fire",
         "GiveItem",
         "SetStage",
+        "SetVar",
         "StartQuest",
         "TakeItem",
+        "add_var",
         "apply_effect",
         "change_standing",
         "finish_quest",
+        "fire",
         "give_item",
         "set_stage",
+        "set_var",
         "start_quest",
         "take_item"
       ]
     },
     "action": {
-      "description": "An action: its id, or { \"action\": \"<id>\", … } with its settings.",
+      "description": "An action: its id, or { \"action\": \"<id>\", … } with its settings, or { \"<id>\": <value>, … }.",
       "anyOf": [
         {
           "$ref": "#/definitions/action:id"
@@ -222,6 +228,45 @@
             "action"
           ],
           "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "add_var",
+                      "AddVar"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: add_var.",
+                    "enum": [
+                      "add_var",
+                      "AddVar"
+                    ]
+                  },
+                  "amount": {
+                    "description": "How much to add; negative takes away. (double, default 1)",
+                    "default": 1,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "The world variable to add to; unset counts from 0. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'add_var' (AddVarAction)."
+              }
+            },
             {
               "if": {
                 "properties": {
@@ -348,6 +393,56 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "fire",
+                      "Fire"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: fire.",
+                    "enum": [
+                      "fire",
+                      "Fire"
+                    ]
+                  },
+                  "delay": {
+                    "description": "Seconds between the action and the input arriving. Unit: s. At least 0. (float, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "input": {
+                    "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "parameter": {
+                    "description": "Handed to the input: a hold time, a line to say, an output to fire. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "target": {
+                    "description": "Who receives it: an entity's name, or !subject / !activator / !other / !self. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'fire' (FireAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "give_item",
                       "GiveItem"
                     ]
@@ -433,6 +528,45 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "set_var",
+                      "SetVar"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: set_var.",
+                    "enum": [
+                      "set_var",
+                      "SetVar"
+                    ]
+                  },
+                  "name": {
+                    "description": "The world variable to set. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "value": {
+                    "description": "What it becomes. (double, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'set_var' (SetVarAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "start_quest",
                       "StartQuest"
                     ]
@@ -509,6 +643,1044 @@
               }
             }
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "add_var": {
+              "anyOf": [
+                {
+                  "description": "The world variable to add to; unset counts from 0. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The world variable to add to; unset counts from 0. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "amount": {
+                      "description": "How much to add; negative takes away. (double, default 1)",
+                      "default": 1,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'add_var' (AddVarAction), in shorthand."
+            },
+            "amount": {
+              "description": "How much to add; negative takes away. (double, default 1)",
+              "default": 1,
+              "type": "number"
+            },
+            "name": {
+              "description": "The world variable to add to; unset counts from 0. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "add_var"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "AddVar": {
+              "anyOf": [
+                {
+                  "description": "The world variable to add to; unset counts from 0. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The world variable to add to; unset counts from 0. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "amount": {
+                      "description": "How much to add; negative takes away. (double, default 1)",
+                      "default": 1,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'add_var' (AddVarAction), in shorthand."
+            },
+            "amount": {
+              "description": "How much to add; negative takes away. (double, default 1)",
+              "default": 1,
+              "type": "number"
+            },
+            "name": {
+              "description": "The world variable to add to; unset counts from 0. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "AddVar"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "apply_effect": {
+              "anyOf": [
+                {
+                  "description": "Names a effect record. (RecordRef<EffectRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "effect": {
+                      "description": "Names a effect record. (RecordRef<EffectRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:effect"
+                        }
+                      ]
+                    },
+                    "magnitude": {
+                      "description": "(float, default 1)",
+                      "default": 1,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'apply_effect' (ApplyEffectAction), in shorthand."
+            },
+            "effect": {
+              "description": "Names a effect record. (RecordRef<EffectRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:effect"
+                }
+              ]
+            },
+            "magnitude": {
+              "description": "(float, default 1)",
+              "default": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "apply_effect"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ApplyEffect": {
+              "anyOf": [
+                {
+                  "description": "Names a effect record. (RecordRef<EffectRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "effect": {
+                      "description": "Names a effect record. (RecordRef<EffectRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:effect"
+                        }
+                      ]
+                    },
+                    "magnitude": {
+                      "description": "(float, default 1)",
+                      "default": 1,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'apply_effect' (ApplyEffectAction), in shorthand."
+            },
+            "effect": {
+              "description": "Names a effect record. (RecordRef<EffectRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:effect"
+                }
+              ]
+            },
+            "magnitude": {
+              "description": "(float, default 1)",
+              "default": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "ApplyEffect"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "description": "(float, default 0)",
+              "default": 0,
+              "type": "number"
+            },
+            "change_standing": {
+              "anyOf": [
+                {
+                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "amount": {
+                      "description": "(float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'change_standing' (ChangeStandingAction), in shorthand."
+            },
+            "faction": {
+              "description": "Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "change_standing"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ChangeStanding": {
+              "anyOf": [
+                {
+                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "amount": {
+                      "description": "(float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'change_standing' (ChangeStandingAction), in shorthand."
+            },
+            "amount": {
+              "description": "(float, default 0)",
+              "default": 0,
+              "type": "number"
+            },
+            "faction": {
+              "description": "Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "ChangeStanding"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "finish_quest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'finish_quest' (FinishQuestAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "finish_quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "FinishQuest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'finish_quest' (FinishQuestAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "FinishQuest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "delay": {
+              "description": "Seconds between the action and the input arriving. Unit: s. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "fire": {
+              "anyOf": [
+                {
+                  "description": "Who receives it: an entity's name, or !subject / !activator / !other / !self. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !subject / !activator / !other / !self. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the action and the input arriving. Unit: s. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'fire' (FireAction), in shorthand."
+            },
+            "input": {
+              "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "parameter": {
+              "description": "Handed to the input: a hold time, a line to say, an output to fire. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "target": {
+              "description": "Who receives it: an entity's name, or !subject / !activator / !other / !self. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "fire"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Fire": {
+              "anyOf": [
+                {
+                  "description": "Who receives it: an entity's name, or !subject / !activator / !other / !self. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !subject / !activator / !other / !self. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the action and the input arriving. Unit: s. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'fire' (FireAction), in shorthand."
+            },
+            "delay": {
+              "description": "Seconds between the action and the input arriving. Unit: s. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "input": {
+              "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "parameter": {
+              "description": "Handed to the input: a hold time, a line to say, an output to fire. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "target": {
+              "description": "Who receives it: an entity's name, or !subject / !activator / !other / !self. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Fire"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "count": {
+              "description": "At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "give_item": {
+              "anyOf": [
+                {
+                  "description": "Names a item record. (RecordRef<ItemRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:item"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "description": "Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    },
+                    "count": {
+                      "description": "At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'give_item' (GiveItemAction), in shorthand."
+            },
+            "item": {
+              "description": "Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            }
+          },
+          "required": [
+            "give_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "GiveItem": {
+              "anyOf": [
+                {
+                  "description": "Names a item record. (RecordRef<ItemRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:item"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "description": "Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    },
+                    "count": {
+                      "description": "At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'give_item' (GiveItemAction), in shorthand."
+            },
+            "count": {
+              "description": "At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "item": {
+              "description": "Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            }
+          },
+          "required": [
+            "GiveItem"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            },
+            "set_stage": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    },
+                    "stage": {
+                      "description": "(string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_stage' (SetStageAction), in shorthand."
+            },
+            "stage": {
+              "description": "(string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "set_stage"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SetStage": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    },
+                    "stage": {
+                      "description": "(string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_stage' (SetStageAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            },
+            "stage": {
+              "description": "(string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "SetStage"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "The world variable to set. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "set_var": {
+              "anyOf": [
+                {
+                  "description": "The world variable to set. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The world variable to set. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "What it becomes. (double, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_var' (SetVarAction), in shorthand."
+            },
+            "value": {
+              "description": "What it becomes. (double, default 0)",
+              "default": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "set_var"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SetVar": {
+              "anyOf": [
+                {
+                  "description": "The world variable to set. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The world variable to set. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "What it becomes. (double, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_var' (SetVarAction), in shorthand."
+            },
+            "name": {
+              "description": "The world variable to set. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "value": {
+              "description": "What it becomes. (double, default 0)",
+              "default": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "SetVar"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            },
+            "start_quest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'start_quest' (StartQuestAction), in shorthand."
+            }
+          },
+          "required": [
+            "start_quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "StartQuest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'start_quest' (StartQuestAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "StartQuest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "count": {
+              "description": "At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "item": {
+              "description": "Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            },
+            "take_item": {
+              "anyOf": [
+                {
+                  "description": "Names a item record. (RecordRef<ItemRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:item"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "description": "Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    },
+                    "count": {
+                      "description": "At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'take_item' (TakeItemAction), in shorthand."
+            }
+          },
+          "required": [
+            "take_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "TakeItem": {
+              "anyOf": [
+                {
+                  "description": "Names a item record. (RecordRef<ItemRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:item"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "description": "Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    },
+                    "count": {
+                      "description": "At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'take_item' (TakeItemAction), in shorthand."
+            },
+            "count": {
+              "description": "At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "item": {
+              "description": "Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            }
+          },
+          "required": [
+            "TakeItem"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -970,23 +2142,31 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: has_item, has_tag, lacks_tag, quest, standing.",
+      "description": "A condition by id: all, any, has_item, has_tag, lacks_tag, not, quest, standing, var.",
       "type": "string",
       "enum": [
+        "All",
+        "Any",
         "HasItem",
         "HasTag",
         "LacksTag",
+        "Not",
         "Quest",
         "Standing",
+        "Var",
+        "all",
+        "any",
         "has_item",
         "has_tag",
         "lacks_tag",
+        "not",
         "quest",
-        "standing"
+        "standing",
+        "var"
       ]
     },
     "condition": {
-      "description": "A condition: its id, or { \"condition\": \"<id>\", … } with its settings.",
+      "description": "A condition: its id, or { \"condition\": \"<id>\", … } with its settings, or { \"<id>\": <value>, … }.",
       "anyOf": [
         {
           "$ref": "#/definitions/condition:id"
@@ -1002,6 +2182,116 @@
             "condition"
           ],
           "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "all",
+                      "All"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: all.",
+                    "enum": [
+                      "all",
+                      "All"
+                    ]
+                  },
+                  "of": {
+                    "description": "The conditions that must all hold. (List<ICondition>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  },
+                  "of+": {
+                    "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  },
+                  "of-": {
+                    "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  },
+                  "why": {
+                    "description": "What a refusal says, instead of the reason of the first that failed. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'all' (AllCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "any",
+                      "Any"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: any.",
+                    "enum": [
+                      "any",
+                      "Any"
+                    ]
+                  },
+                  "of": {
+                    "description": "The conditions of which one must hold. (List<ICondition>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  },
+                  "of+": {
+                    "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  },
+                  "of-": {
+                    "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  },
+                  "why": {
+                    "description": "What a refusal says, instead of the reason of the last that failed. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'any' (AnyCondition)."
+              }
+            },
             {
               "if": {
                 "properties": {
@@ -1124,6 +2414,48 @@
                 "properties": {
                   "condition": {
                     "enum": [
+                      "not",
+                      "Not"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: not.",
+                    "enum": [
+                      "not",
+                      "Not"
+                    ]
+                  },
+                  "of": {
+                    "description": "The condition that must not hold. (ICondition)",
+                    "allOf": [
+                      {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    ]
+                  },
+                  "why": {
+                    "description": "What a refusal says. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'not' (NotCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
                       "quest",
                       "Quest"
                     ]
@@ -1140,6 +2472,11 @@
                     "description": "(bool, default false)",
                     "default": false,
                     "type": "boolean"
+                  },
+                  "atLeast": {
+                    "description": "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
                   },
                   "condition": {
                     "description": "The condition: quest.",
@@ -1220,8 +2557,1171 @@
                 "additionalProperties": false,
                 "description": "condition 'standing' (StandingCondition)."
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "var",
+                      "Var"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: var.",
+                    "enum": [
+                      "var",
+                      "Var"
+                    ]
+                  },
+                  "eq": {
+                    "description": "The value it must equal (leave out for any) (double?)",
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max": {
+                    "description": "The most it may be. (double)",
+                    "type": "number"
+                  },
+                  "min": {
+                    "description": "The least it may be. (double)",
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "The world variable to test; unset reads as 0. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'var' (VarCondition)."
+              }
             }
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "anyOf": [
+                {
+                  "description": "The conditions that must all hold. (List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "description": "The conditions that must all hold. (List<ICondition>)",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of+": {
+                      "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of-": {
+                      "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "why": {
+                      "description": "What a refusal says, instead of the reason of the first that failed. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'all' (AllCondition), in shorthand."
+            },
+            "of": {
+              "description": "The conditions that must all hold. (List<ICondition>)",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of+": {
+              "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of-": {
+              "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "why": {
+              "description": "What a refusal says, instead of the reason of the first that failed. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "All": {
+              "anyOf": [
+                {
+                  "description": "The conditions that must all hold. (List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "description": "The conditions that must all hold. (List<ICondition>)",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of+": {
+                      "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of-": {
+                      "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "why": {
+                      "description": "What a refusal says, instead of the reason of the first that failed. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'all' (AllCondition), in shorthand."
+            },
+            "of": {
+              "description": "The conditions that must all hold. (List<ICondition>)",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of+": {
+              "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of-": {
+              "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "why": {
+              "description": "What a refusal says, instead of the reason of the first that failed. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "All"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "anyOf": [
+                {
+                  "description": "The conditions of which one must hold. (List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "description": "The conditions of which one must hold. (List<ICondition>)",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of+": {
+                      "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of-": {
+                      "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "why": {
+                      "description": "What a refusal says, instead of the reason of the last that failed. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'any' (AnyCondition), in shorthand."
+            },
+            "of": {
+              "description": "The conditions of which one must hold. (List<ICondition>)",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of+": {
+              "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of-": {
+              "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "why": {
+              "description": "What a refusal says, instead of the reason of the last that failed. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Any": {
+              "anyOf": [
+                {
+                  "description": "The conditions of which one must hold. (List<ICondition>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "description": "The conditions of which one must hold. (List<ICondition>)",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of+": {
+                      "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "of-": {
+                      "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "$ref": "vocabularies.schema.json#/definitions/condition"
+                      }
+                    },
+                    "why": {
+                      "description": "What a refusal says, instead of the reason of the last that failed. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'any' (AnyCondition), in shorthand."
+            },
+            "of": {
+              "description": "The conditions of which one must hold. (List<ICondition>)",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of+": {
+              "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "of-": {
+              "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            },
+            "why": {
+              "description": "What a refusal says, instead of the reason of the last that failed. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "count": {
+              "description": "At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "has_item": {
+              "anyOf": [
+                {
+                  "description": "Names a item record. (RecordRef<ItemRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:item"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "description": "Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    },
+                    "count": {
+                      "description": "At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'has_item' (HasItemCondition), in shorthand."
+            },
+            "item": {
+              "description": "Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            }
+          },
+          "required": [
+            "has_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "HasItem": {
+              "anyOf": [
+                {
+                  "description": "Names a item record. (RecordRef<ItemRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:item"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "description": "Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    },
+                    "count": {
+                      "description": "At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'has_item' (HasItemCondition), in shorthand."
+            },
+            "count": {
+              "description": "At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "item": {
+              "description": "Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            }
+          },
+          "required": [
+            "HasItem"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "has_tag": {
+              "anyOf": [
+                {
+                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:tag"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:tag"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'has_tag' (HasTagCondition), in shorthand."
+            },
+            "tag": {
+              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:tag"
+                }
+              ]
+            }
+          },
+          "required": [
+            "has_tag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "HasTag": {
+              "anyOf": [
+                {
+                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:tag"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:tag"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'has_tag' (HasTagCondition), in shorthand."
+            },
+            "tag": {
+              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:tag"
+                }
+              ]
+            }
+          },
+          "required": [
+            "HasTag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lacks_tag": {
+              "anyOf": [
+                {
+                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:tag"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:tag"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'lacks_tag' (LacksTagCondition), in shorthand."
+            },
+            "tag": {
+              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:tag"
+                }
+              ]
+            }
+          },
+          "required": [
+            "lacks_tag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "LacksTag": {
+              "anyOf": [
+                {
+                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:tag"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:tag"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'lacks_tag' (LacksTagCondition), in shorthand."
+            },
+            "tag": {
+              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:tag"
+                }
+              ]
+            }
+          },
+          "required": [
+            "LacksTag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "description": "condition 'not' (NotCondition), in shorthand.",
+              "allOf": [
+                {
+                  "$ref": "vocabularies.schema.json#/definitions/condition"
+                }
+              ]
+            },
+            "of": {
+              "description": "The condition that must not hold. (ICondition)",
+              "allOf": [
+                {
+                  "$ref": "vocabularies.schema.json#/definitions/condition"
+                }
+              ]
+            },
+            "why": {
+              "description": "What a refusal says. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Not": {
+              "description": "condition 'not' (NotCondition), in shorthand.",
+              "allOf": [
+                {
+                  "$ref": "vocabularies.schema.json#/definitions/condition"
+                }
+              ]
+            },
+            "of": {
+              "description": "The condition that must not hold. (ICondition)",
+              "allOf": [
+                {
+                  "$ref": "vocabularies.schema.json#/definitions/condition"
+                }
+              ]
+            },
+            "why": {
+              "description": "What a refusal says. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "active": {
+              "description": "(bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
+            "atLeast": {
+              "description": "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "finished": {
+              "description": "(bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
+            "notStarted": {
+              "description": "(bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
+            "quest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    },
+                    "stage": {
+                      "description": "(string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "atLeast": {
+                      "description": "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "active": {
+                      "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "finished": {
+                      "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "notStarted": {
+                      "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'quest' (QuestCondition), in shorthand."
+            },
+            "stage": {
+              "description": "(string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Quest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    },
+                    "stage": {
+                      "description": "(string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "atLeast": {
+                      "description": "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "active": {
+                      "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "finished": {
+                      "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "notStarted": {
+                      "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'quest' (QuestCondition), in shorthand."
+            },
+            "active": {
+              "description": "(bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
+            "atLeast": {
+              "description": "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "finished": {
+              "description": "(bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
+            "notStarted": {
+              "description": "(bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            },
+            "stage": {
+              "description": "(string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "faction": {
+              "description": "Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "max": {
+              "description": "(float)",
+              "type": "number"
+            },
+            "min": {
+              "description": "(float)",
+              "type": "number"
+            },
+            "standing": {
+              "anyOf": [
+                {
+                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "(float)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "(float)",
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'standing' (StandingCondition), in shorthand."
+            }
+          },
+          "required": [
+            "standing"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Standing": {
+              "anyOf": [
+                {
+                  "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "(float)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "(float)",
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'standing' (StandingCondition), in shorthand."
+            },
+            "faction": {
+              "description": "Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "max": {
+              "description": "(float)",
+              "type": "number"
+            },
+            "min": {
+              "description": "(float)",
+              "type": "number"
+            }
+          },
+          "required": [
+            "Standing"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "eq": {
+              "description": "The value it must equal (leave out for any) (double?)",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "max": {
+              "description": "The most it may be. (double)",
+              "type": "number"
+            },
+            "min": {
+              "description": "The least it may be. (double)",
+              "type": "number"
+            },
+            "name": {
+              "description": "The world variable to test; unset reads as 0. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "var": {
+              "anyOf": [
+                {
+                  "description": "The world variable to test; unset reads as 0. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The world variable to test; unset reads as 0. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "eq": {
+                      "description": "The value it must equal (leave out for any) (double?)",
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "The least it may be. (double)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "The most it may be. (double)",
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'var' (VarCondition), in shorthand."
+            }
+          },
+          "required": [
+            "var"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Var": {
+              "anyOf": [
+                {
+                  "description": "The world variable to test; unset reads as 0. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The world variable to test; unset reads as 0. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "eq": {
+                      "description": "The value it must equal (leave out for any) (double?)",
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "The least it may be. (double)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "The most it may be. (double)",
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'var' (VarCondition), in shorthand."
+            },
+            "eq": {
+              "description": "The value it must equal (leave out for any) (double?)",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "max": {
+              "description": "The most it may be. (double)",
+              "type": "number"
+            },
+            "min": {
+              "description": "The least it may be. (double)",
+              "type": "number"
+            },
+            "name": {
+              "description": "The world variable to test; unset reads as 0. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Var"
+          ],
+          "additionalProperties": false
         }
       ]
     },
