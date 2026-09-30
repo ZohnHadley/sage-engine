@@ -1,0 +1,20 @@
+[
+  // A timer on its own (issue #90): Source's logic_timer. Place it, name it, wire `TimerStart` at it
+  // (with an interval in seconds, or none for its own) and its `OnTimer` output fires every interval
+  // until `TimerStop`. Stopped until then; `"startOn": true` on the part starts it as it spawns.
+  //
+  //   scene:  { "prefab": "sage:logic_timer", "name": "gusts",
+  //             "outputs": [ { "output": "OnTimer", "target": "flag", "input": "Say", "parameter": "Whoosh." } ] }
+  //   .map:   "classname" "sage:logic_timer"   "targetname" "gusts"
+  //
+  // A game changes what every one does by patching this record, or puts the `timer` part on its own
+  // prefabs (and `tween` on anything that should move, turn or scale from a wire: `TweenTo`).
+  {
+    "type": "prefab",
+    "id": "logic_timer",
+    "name": "logic timer",
+    "parts": {
+      "timer": { "interval": 1, "repeat": true }
+    }
+  }
+]

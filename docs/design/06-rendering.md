@@ -686,8 +686,8 @@ trigger fires, and back.
   the hold ran out) shows the player's view. (test: TheCutLandsOnTheFrameAfterTheTickThatDeliveredIt)
   (test: ATriggerCutsToANamedCameraAndBack_InAGameWithNoCode) An output the camera fires in reply
   (`OnCameraOn`) is a tick later, as every chained wire is (04 §3.4a).
-- **A cut, not a blend.** Blends wait for 4b's tweens, which will animate between two views; nothing here
-  assumes a cut beyond not having one.
+- **A cut, unless asked for a blend.** Since #90 `CameraOn`'s parameter may carry a blend time after the
+  hold ("As built (camera blends)" below); without one it is the cut described here.
 - **The input lock** is `ScriptedCamera.LockInput`: while a camera with it is on and draws to the screen,
   the local player's `PawnIntent` loses its movement and buttons after the controller writes it, and its
   view angles are held where the lock began — asked of the host each tick with `PlayerInput.RequestView`,
@@ -713,12 +713,12 @@ trigger fires, and back.
   gate cuts to the intro camera for a three-second hold that says so through its outputs. CI validates it,
   generates schemas from it and smoke-runs it in the real host. (test: TheCameraCutGameValidates)
 - **Zero allocation per tick** with holds running and the player locked. (test: CountingDownAndLockingAllocateNothing)
-- **Not yet:** blends (4b); a camera that looks *at* something (a target to track) — a scripted camera
-  looks where it is placed, or where a mover or a rig takes it; letterboxing or a HUD hidden during a cut;
-  the editor showing a camera's frustum and wiring (phase 10's editor host). A wire's delay fired from outside the dispatch
-  (a trigger's `OnStartTouch`, in PostPhysics) is counted from the previous tick's I/O clock, so a
-  `CameraOff` wired two seconds behind a `CameraOn` from the same trigger arrives after 119 ticks, not 120
-  (entity I/O's, older than this; a hold is exact).
+- **Not yet:** a camera that looks *at* something (a target to track) — a scripted camera
+  looks where it is placed, or where a mover or a rig takes it (or a tween, since #90); letterboxing or a
+  HUD hidden during a cut; the editor showing a camera's frustum and wiring (phase 10's editor host). A
+  wire's delay fired from outside the dispatch (a trigger's `OnStartTouch`, in PostPhysics) was counted
+  from the previous tick's I/O clock until #90, which moved the clock to the start of the tick (04 §3.4b):
+  a `CameraOff` wired two seconds behind a `CameraOn` from the same trigger now arrives after 120 ticks.
 
 ### As built (the editor's cameras, and phase 4a's exit, 2026-09-29 — #81)
 The last piece of phase 4a: the host and the editor move onto camera views, the editor gets a viewport
@@ -779,9 +779,42 @@ that is a render target, and the Sandbox shows both exit criteria.
   will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host
   will own the viewport. Its shape should settle against those, not before; the id leaves when 4b and 4c
   have used it.
-- **Not yet:** blends (4b); an editor viewport that picks, shows camera frustums and wiring, or looks at
+- **Not yet:** an editor viewport that picks, shows camera frustums and wiring, or looks at
   another world (the edit world is phase 10's); the free camera on Editor-context actions (08 §14 step 4);
   resizing the viewport with its window (it is a fixed 480×270 target, scaled).
+
+### As built (camera blends, 2026-09-30 — #90)
+What 4a deferred to 4b's tweens: a scripted camera eased in rather than cut to.
+
+- **Code:** `src/Sage.Simulation/Camera/CameraBlend.cs` — `CameraBlend` (`sage:camera_blend`),
+  `CameraBlends.Begin`/`End`, and `sage.camera.blend` (EntityIO, before `sage.io.dispatch`, added beside
+  the director); `CameraOn`'s parameter in `CameraIO.cs`; the director applies a blend in
+  `CameraDirector.Run`. Curves are `Easing` (`src/Sage.Simulation/Logic/Easing.cs`). Tests:
+  `tests/Sage.Tests/Presentation/CameraBlendTests.cs`. Experimental (SAGE0123) with the rest.
+- **`CameraOn [hold [blend [ease]]]`**, space-separated (a `.map` wire is comma-separated): the second
+  number is a blend time in seconds and the word after it an easing curve (`SineInOut`, `ease_out_quad`;
+  `Easing.TryParse`). Without them, the entity's `ScriptedCamera.BlendTime` and `BlendEase` (part fields
+  `blendTime`, `blendEase`, which is `SmoothStep` unless it says otherwise); `BlendTime` is 0 unless set,
+  so **a cut stays the default**, and a `0` on the wire cuts a camera whose own default blends. A word that
+  is not what it should be is a warning and the default stands; the camera comes on either way.
+  (test: ACutIsStillTheDefault_AndTheEntitysBlendTimeIsUsedWhenTheWireGivesNone)
+  (test: ABadBlendOrEaseIsAWarning_AndTheCameraStillComesOn)
+- **From the screen's view, to the camera's own.** The blend starts from `world.TryGetMainView` when the
+  input arrives — whatever drew the screen: a rig, another camera, `ActiveCamera` — and ends on the
+  camera's pose as the director resolves it every frame (its rig's `CameraPose`, else its interpolated
+  transform), so a blend into a moving camera lands on it. Position lerps, rotation slerps, and the field
+  of view blends when both are perspective. Only a camera that draws to the screen blends. The director
+  applies it after choosing the views and before mirroring the screen into `ActiveCamera`, so every
+  reader sees the blended view. (test: CameraOnWithABlendTime_EasesFromTheScreensViewToTheCamera_AndActiveCameraFollows)
+- **Deterministic and saved.** `Elapsed` moves in fixed ticks (paused with the simulation) and the frame
+  interpolates between the last two ticks' values with its alpha, so a blend is smooth at any display rate
+  and the same in every run; `CameraBlend` is saved with the camera (its start point moved by rebasing), so
+  a save taken half-way ends the blend on time. (test: ABlendSavedHalfWay_EndsOnTime)
+- **No structural change mid-frame:** a finished blend stays on the entity, inert, until the next
+  `CameraOn` replaces or ends it. Zero allocation per tick and frame while one runs.
+  (test: ACameraBlendAllocatesNothingPerTickOrFrame)
+- **Not yet:** blending *out* (`CameraOff` is a cut back to whatever is next), and blends between two rigs
+  of the player's own camera (the V toggle cuts).
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

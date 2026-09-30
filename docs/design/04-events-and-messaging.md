@@ -145,13 +145,65 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
 - **Data can fire too (issue #89):** the `fire` action — `{ "fire": "hut_door", "input": "Open",
   "parameter": "", "delay": 0 }` — sends an input through `EntityIO.FireInput` from anything that runs
   actions (a dialogue option today; relays, state machines and topics in 4b). Its target is a name looked
-  up when it runs, or `!subject`/`!activator` (who the action is about) or `!other`/`!self`/`!caller`
+  up when the input arrives (late binding, `EntityIO.FireInput(name, …)` since #90), or `!subject`/`!activator` (who the action is about) or `!other`/`!self`/`!caller`
   (who is doing it); the subject arrives as the activator. It is the base's (`sage.core`), and does
   nothing but warn once in a game without this plugin (test: FireSendsAnInputThroughEntityIO). 16 "As
   built (one condition and action language)" has the rest of the language.
-- **Not built:** `@group` targets, an editor link view, and the per-entity I/O history. An output fired
-  outside the dispatch (a trigger's, in PostPhysics) measures its delay from the previous tick's clock,
-  one tick short of one fired from inside it.
+- **Not built:** `@group` targets, an editor link view, and the per-entity I/O history.
+
+### 3.4b As built (time in level logic, 2026-09-30, issue #90)
+- **The queue is saved.** `EntityIO` is the `entity_io` saved resource (plugin `sage.gameplay.io`,
+  version 1): every input still on its way — the seconds it has left, its target by persistent id *and*
+  by name (an entity a map or a placements document put there has no id), the input, the parameter, the
+  activator and the caller — and every wire's `Fired` count, against its entity (id, else name) and its
+  index, with the output and input as a check that it is the same wire. A save taken half-way through a
+  one-second delay delivers the input on the tick it would have, and a `times: 1` wire stays spent.
+  (test: ADelayedInputSavedHalfWayArrivesOnTheTickItWould_AndItsWireStaysSpent)
+  (test: TheSavedQueueNamesItsTargetsByIdentityAndByName)
+- **Wires come back with a save.** `IOConnections` stays transient — the wiring is the scene's, as the
+  walls are a map's — but a scene's placements (and its player) are rebuilt by a load, so
+  `Scenes.AfterLoad` attaches their wires again, before the resources are read so the counts have wires
+  to land on. A map's or a placements document's entities are not rebuilt by a load; their counts are
+  reset and then set from the save like any other.
+- **Old saves load.** A save from before #90 has no `entity_io`, and loads as a world with nothing on its
+  way and every wire unfired — what it would have been then. No format change.
+  (test: ASaveWithoutEntityIO_LoadsWithNothingPendingAndEveryWireUnfired)
+- **The clock moves at the start of the tick.** It is the world's unpaused ticks, brought up to date the
+  first time anything in a tick asks (an output fired in PostPhysics, the dispatch), so a trigger's wire
+  and a wire fired by an input count the same delay from the same tick; before #90 the clock moved only
+  in the dispatch and a trigger's delay was one tick short (#80's note). A paused world's clock stands
+  still. `EntityIO.Now` reads it. A delay due within a microsecond of a tick is due on that tick.
+  (test: ATriggerWiresDelayCountsFromTheSameTickAsADispatchWires) (test: APausedWorldsDelaysWait)
+- **A load replaces the resource**, as it does every saved resource, so code holds `world.IO()` for a
+  call, not across ticks; the dispatch system picks up the new one and carries the cvars' settings
+  (`io_trace`, `io_maxdispatch`) over.
+- **By name, late.** `EntityIO.FireInput(name, input, …)` finds its target when the input arrives, so a
+  delayed input reaches something spawned or respawned meanwhile; the `fire` action uses it.
+  (test: AnInputSentByNameFindsATargetSpawnedMeanwhile)
+- **Timers** (`sage:timer`, part `timer`, prefab `sage:logic_timer`): `interval`, `spread` (each wait is
+  interval ± spread, from the timer's own saved random stream, so runs and loads draw the same waits),
+  `repeat`, `running` and `remaining`; inputs `TimerStart [interval]`, `TimerStop`, `TimerReset`; output
+  `OnTimer`. Counted down in the EntityIO phase before the dispatch, so a timer started on tick D fires
+  on the tick an input sent on tick D with the same delay arrives, and a repeating one carries its
+  overshoot and does not drift. The inputs are named for timers because the input table is global
+  (`Toggle` is movers'); #91's component-routed inputs may add shorter ones.
+  (test: ATimerFiresOnTheTickADelayedWireArrives_AndRepeatsWithoutDrift)
+  (test: AOneShotTimerFiresOnceAndStops_AndResetStartsTheWaitAgain)
+  (test: ARandomTimerIsDeterministic_AcrossRunsAndASave)
+- **Tweens** (`sage:tween`, part `tween`): a transform's local position, rotation or scale to a goal
+  over some seconds along an `Ease` (`Easing`, pure maths), from `TweenTo [position|rotation|scale|offset|turn]
+  [x y z] [seconds] [ease]` — every word optional, the tween's own `target`, `duration` and `ease`
+  standing in; no commas, because a `.map` wire is comma-separated — and `TweenStop`; output
+  `OnTweenDone`. A new TweenTo starts from where the entity is. Progress (`elapsed`, `from`, `to`) is
+  saved, and each tick is a pure function of it, so two runs and a run through a save agree to the bit.
+  A static body is told where it went, as movers do.
+  (test: TweensAreDeterministicAndSurviveASave) (test: TweenToReadsItsParameter)
+  (test: ATweenTurnsAndScales_AndASecondTweenToStartsFromWhereItIs)
+- **Timers, tweens and blends are the engine's** (`sage.core`), like cameras: their inputs exist in every
+  game, and reach a wire when this plugin is on. (test: TimersAndTweensAreTheEngines_InAGameWithNoPlugins)
+- **No allocation per tick** with timers, tweens and wires running.
+  (test: TimersTweensAndEntityIOAllocateNothingPerTick)
+- **Camera blends:** `CameraOn [hold [blend [ease]]]`; see 06 "As built (camera blends)".
 
 ### 3.5 Engine signals in detail
 `EngineSignals` (on `Engine`, 01) holds plain C# events, raised on the main thread at the start of a frame (never inside a tick):

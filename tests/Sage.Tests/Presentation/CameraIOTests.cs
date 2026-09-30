@@ -443,7 +443,9 @@ public class CameraIOTests
         // which the director mirrors into ActiveCamera, in the same frame.
         int held = 0;
         while (world.Get<Camera>(yardCam).Enabled && held < 300) { Step(world); held++; }
-        Assert.InRange(held, 119, 120);                            // 2 s, give or take the tick the output fired in
+        // Exactly 2 s: the trigger's wires count their delay from the tick it fired in (#90's clock; it was
+        // 119 ticks when the clock moved only in the dispatch).
+        Assert.Equal(120, held);
         Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
         var eye = world.Resources.Get<ActiveCamera>().Position;
         var feet = world.Get<GlobalTransform>(player).Interpolated(1f).Position;

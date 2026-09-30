@@ -280,7 +280,9 @@ public sealed class Scenes
 
     // A save has just rebuilt the world's persistent entities (09 §3.5). `FromScene` is not saved, so the
     // ones that came from the scene are found by their identities and tagged again — or the next reload
-    // would place a second copy of each beside the loaded ones. The player likewise.
+    // would place a second copy of each beside the loaded ones. The player likewise. Their wiring is not
+    // saved either (IOConnections is the scene's, like the walls are a map's), so it is attached again
+    // from the scene; how often each wire had fired comes back with entity I/O's saved resource (#90).
     internal void AfterLoad(World world)
     {
         if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null || state.Id.IsEmpty) return;
@@ -289,10 +291,16 @@ public sealed class Scenes
         for (int i = 0; i < scene.Place.Count; i++)
         {
             var entity = world.Resolve(PlacementId(state.Id, i, scene.Place[i]));
-            if (!entity.IsNull && !entity.Tags.Has<FromScene>()) entity.AddTag<FromScene>();
+            if (entity.IsNull) continue;
+            if (!entity.Tags.Has<FromScene>()) entity.AddTag<FromScene>();
+            if (!entity.HasComponent<IOConnections>()) PlacementWires.Attach(world, entity, scene.Place[i]);
         }
         var player = world.Resolve(PlayerId(state.Id));
-        if (!player.IsNull) state.Player = player;
+        if (!player.IsNull)
+        {
+            state.Player = player;
+            if (scene.Player != null && !player.HasComponent<IOConnections>()) PlacementWires.Attach(world, player, scene.Player);
+        }
     }
 
     private static PersistentId PlacementId(RecordId scene, int index, Placement placement) =>
