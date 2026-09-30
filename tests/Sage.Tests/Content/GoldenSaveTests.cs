@@ -42,7 +42,8 @@ public struct ChainedUpgrades : IComponent
 
 // Golden saves (docs/REDESIGN.md §4.5, issue #20): a save written by each released format must still
 // load. `Saves/format1` was written by main before components had stable ids — keyed by C# type name,
-// with no versions — and `Saves/format2` by this format. Both are committed files, not written by the
+// with no versions — `Saves/format2` by the format that gave them ids, and `Saves/format3` by the
+// reconciling format (4i-3) once it wrote a prefab-spawned entity as a diff against its prefab (4i-5). Both are committed files, not written by the
 // test, because the point is that a *file from the past* loads: a save written and read by the same
 // build proves nothing about that.
 //
@@ -100,8 +101,10 @@ public class GoldenSaveTests
         return root;
     }
 
-    // What the scene was when both golden saves were taken; each golden test checks all of it.
-    private static void AssertTheGoldenWorld(World world)
+    // What the scene was when the golden saves were taken; each golden test checks all of it. The goblin's
+    // schedule is what its AI had chosen by then, which is what the build that wrote it chose with these
+    // records: `chase` for formats 1 and 2, none for format 3.
+    private static void AssertTheGoldenWorld(World world, string schedule = "chase")
     {
         var hero = world.Resolve(PersistentId.FromName("hero"));
         var goblin = world.Resolve(PersistentId.FromName("goblin"));
@@ -122,7 +125,7 @@ public class GoldenSaveTests
         Assert.Equal(65f, world.Attribute(hero, Id("health")));
         Assert.True(hero.Tags.Has<PlayerControlled>(), "the tag, by id now, by type name then");
         Assert.Equal(goblin, world.Get<ActiveEffects>(hero).Effects.Single(e => e.Record == Id("curse")).Source);
-        Assert.Equal(Id("chase"), world.Get<AIState>(goblin).Schedule);
+        Assert.Equal(schedule.Length == 0 ? default : Id(schedule), world.Get<AIState>(goblin).Schedule);
 
         Assert.Equal(-40f, world.Resources.Get<Reputation>().Of(new RecordId("sandbox", "townsfolk")), 1);
         Assert.Equal("hunt", world.Resources.Get<Journal>().Of(new RecordId("sandbox", "errand"))!.Stage);
@@ -147,7 +150,7 @@ public class GoldenSaveTests
     }
 
     [Fact]
-    public void AGoldenSaveInTheCurrentFormatLoads()
+    public void AGoldenSaveInFormat2Loads()
     {
         using var app = NewApp(Golden(2));
         var world = app.Engine.CreateWorld("main");
@@ -157,6 +160,28 @@ public class GoldenSaveTests
         AssertTheGoldenWorld(world);
         // Every component and resource in the file was understood: nothing skipped, nothing unknown.
         Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn && e.Message.Contains("golden/world_main"));
+    }
+
+    // Format 3, written as diffs (4i-5): the hero and the goblin carry only what the game changed from their
+    // prefabs, and are rebuilt from the prefabs with that laid over them.
+    [Fact]
+    public void AGoldenSaveInTheCurrentFormatLoads()
+    {
+        Assert.Equal(3, SaveSystem.FormatVersion);
+        using var app = NewApp(Golden(3));
+        var world = app.Engine.CreateWorld("main");
+        using var log = new CaptureSink();
+
+        Assert.True(app.Engine.Saves.Load("golden"));
+        AssertTheGoldenWorld(world, schedule: "");
+        Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn && e.Message.Contains("golden/world_main"));
+
+        // It is a diff: the goblin's attributes were never changed, so the file has none for it.
+        var saved = JsonNode.Parse(File.ReadAllText(Path.Combine(Golden(3), "golden", "world_main.json")))!["entities"]!.AsArray()
+            .Single(e => (string?)e!["name"] == "goblin")!;
+        Assert.True((bool)saved["diff"]!);
+        Assert.False(saved["components"]!.AsObject().ContainsKey("sage:attributes"));
+        Assert.Equal(100f, world.Attribute(world.Resolve(PersistentId.FromName("goblin")), Id("health")));
     }
 
     // The other half of the acceptance test: the same rename with no upgrader is an error that names
