@@ -124,6 +124,14 @@ public sealed class AttackRecord
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Min = 0, Unit = "shots/s", Tooltip = "Shots a second (replaces cooldown when above 0)")]
     public float RateOfFire;
+
+    // ---- spread and recoil (issue #136; Spread.cs) — last, so parallel additions above merge cleanly ----
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "How far a shot may stray from the aim; empty = it flies true")]
+    public RecordRef<SpreadRecord> Spread;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "How a shot kicks the wielder's aim; empty = no kick")]
+    public RecordRef<RecoilRecord> Recoil;
 }
 
 // A hit that landed, for anything that reacts to one: the death seam's "who killed me", the game's
@@ -407,11 +415,19 @@ internal sealed class MeleeCombatSystem : ISystem
         var debug = _debugSwings.Value && _debug.Enabled ? _debug : null;
         foreach (var (request, attack) in _strikes.Drain())
         {
-            if (HitDeliveries.Of(world, attack) is not { } delivery) continue;
-            delivery.Deliver(new HitContext
-            {
-                World = world, Space = _space, Request = request, Attack = attack, Debug = debug, Landed = _landed,
-            });
+            // Spread and recoil (issue #136): the cone is what the shots so far and the stance make it,
+            // the shot is its number for the deterministic random, and the bloom and kick follow the blow.
+            SpreadRecord? spread = attack.Spread.IsEmpty ? null : _records.TryGet(attack.Spread.Id, out SpreadRecord sr) ? sr : null;
+            RecoilRecord? recoil = attack.Recoil.IsEmpty ? null : _records.TryGet(attack.Recoil.Id, out RecoilRecord rr) ? rr : null;
+            float cone = spread == null ? 0f : Spread.ConeOf(world, request.Attacker, spread);
+            uint shot = world.TryGet<WeaponState>(request.Attacker, out var weapon) ? weapon.Shots : 0u;
+            if (HitDeliveries.Of(world, attack) is { } delivery)
+                delivery.Deliver(new HitContext
+                {
+                    World = world, Space = _space, Request = request, Attack = attack, Debug = debug, Landed = _landed,
+                    Cone = cone, Shot = shot,
+                });
+            Sage.Gameplay.Spread.Fired(world, request.Attacker, spread, recoil);
         }
         foreach (var hit in _landed.Drain())
             Combat.ApplyHit(world, hit.Request, hit.Result, hit.Attack);

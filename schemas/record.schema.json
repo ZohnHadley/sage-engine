@@ -50,12 +50,14 @@
             "placements",
             "prefab",
             "quest",
+            "recoil",
             "rpg_conventions",
             "rpg_item",
             "scene",
             "screen",
             "skeleton_sockets",
             "sound",
+            "spread",
             "sprite_sheet",
             "state_machine",
             "tag",
@@ -461,6 +463,21 @@
           "if": {
             "properties": {
               "type": {
+                "const": "recoil"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "recoil.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "rpg_conventions"
               }
             },
@@ -545,6 +562,21 @@
           },
           "then": {
             "$ref": "sound.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "spread"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "spread.schema.json"
           }
         },
         {
