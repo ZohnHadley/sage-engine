@@ -150,8 +150,9 @@ public sealed class Engine : IDisposable
             world.AddSystem(new TweenSystem(world));
             world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
             // Skeletal poses and what follows them (issue #120): whoever animates a skeleton registers
-            // its pose here; aim IK and bone attachments adjust and follow it in the Late phase.
-            world.Resources.Add(new SkeletonPoses());
+            // its pose here; aim IK and bone attachments adjust and follow it in the Late phase, and the
+            // registration passes through to SkinPoses, which skinned meshes are drawn from (#117).
+            world.Resources.Add(new SkeletonPoses(world.Resources.GetOrAdd(() => new SkinPoses())));
             world.AddSystem(new AimIkSystem(world));
             world.AddSystem(new AttachmentSystem(world));
         }

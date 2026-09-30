@@ -22,10 +22,20 @@ namespace Sage.Simulation;
 //
 // Lookups are a dictionary by entity id and allocate nothing; a handle to a destroyed entity (or to an
 // id since reused) is not found.
+//
+// **One registration feeds skinning too.** The engine makes each world's SkeletonPoses over its
+// SkinPoses (#117's seam, what SkinnedMeshExtract draws from), and Set and Remove pass through to it, so
+// a pose source registers once and the mesh is drawn in the pose IK left, at extract.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
 public sealed class SkeletonPoses
 {
     private readonly Dictionary<int, Entry> _byEntity = new();
+    private readonly SkinPoses? _skin;
+
+    public SkeletonPoses() { }
+
+    // The engine's: registrations pass through to the renderer's seam.
+    internal SkeletonPoses(SkinPoses skin) => _skin = skin;
 
     private readonly struct Entry
     {
@@ -50,11 +60,17 @@ public sealed class SkeletonPoses
         ArgumentNullException.ThrowIfNull(pose);
         if (entity.IsNull) throw new ArgumentException("A pose needs a live entity", nameof(entity));
         _byEntity[entity.Id] = new Entry(entity, pose, model);
+        _skin?.Set(entity, pose);
     }
 
     // True when it was registered. Does not Dispose the pose: whoever made it owns it.
-    public bool Remove(Entity entity) =>
-        _byEntity.TryGetValue(entity.Id, out var entry) && entry.Entity.Equals(entity) && _byEntity.Remove(entity.Id);
+    public bool Remove(Entity entity)
+    {
+        if (!_byEntity.TryGetValue(entity.Id, out var entry) || !entry.Entity.Equals(entity)) return false;
+        _byEntity.Remove(entity.Id);
+        _skin?.Remove(entity);
+        return true;
+    }
 
     public bool TryGet(Entity entity, [NotNullWhen(true)] out SkeletonPose? pose) => TryGet(entity, out pose, out _);
 

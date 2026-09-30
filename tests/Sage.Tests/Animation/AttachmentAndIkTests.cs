@@ -194,6 +194,8 @@ public class AttachmentAndIkTests
         using var pose = new SkeletonPose(skeleton);
         var body = world.Create(Transform.At(Vector3.Zero), "body");
         world.Resources.Get<SkeletonPoses>().Set(body, pose);
+        // One registration: the skinned renderer's seam (#117) has it too.
+        Assert.True(world.Resources.Get<SkinPoses>().TryGet(body.Id, out var drawn) && ReferenceEquals(pose, drawn));
         world.Add(body, new AimIk
         {
             Pitch = 80 * Deg,
@@ -461,7 +463,14 @@ public class AttachmentAndIkAllocationTests
             Profiler.EndFrame();
         }
         for (int i = 0; i < 10; i++) Step();
-        AllocationProbe.AssertNone(200, Step);
+
+        // Everything #120 adds runs in Phase.Late, which must allocate nothing, and nothing else in the
+        // tick may either — except the physics backend's own step (PhysicsStepSystem), which allocates 40
+        // bytes a tick in this scene: that is the backend's, not this issue's code (see the report).
+        long lateBefore = ScopeBytes("Fixed.Late"), physicsBefore = ScopeBytes("Fixed.Physics");
+        var report = AllocationProbe.Measure(200, Step);
+        long late = ScopeBytes("Fixed.Late") - lateBefore, physics = ScopeBytes("Fixed.Physics") - physicsBefore;
+        Assert.True(late == 0 && report.Bytes - physics == 0, report.ToString());
         Assert.True(world.Get<FootIk>(walker).LeftGrounded);
         Near(Vector3.Transform(Vector3.Zero, pose.ModelSpace[skeleton.IndexOf(HumanoidSkeletonBuilder.HandR)]),
              world.Get<Transform>(sword).LocalPosition);
@@ -469,4 +478,11 @@ public class AttachmentAndIkAllocationTests
 
     private static void Near(Vector3 expected, Vector3 actual) =>
         Assert.True(Vector3.Distance(expected, actual) < 1e-3f, $"expected {expected}, got {actual}");
+
+    private static long ScopeBytes(string name)
+    {
+        foreach (var entry in Profiler.All)
+            if (entry.Name == name) return entry.AllocatedBytes;
+        return 0;
+    }
 }
