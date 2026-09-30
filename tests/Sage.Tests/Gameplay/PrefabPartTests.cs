@@ -164,7 +164,7 @@ public class PrefabPartTests
             ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
             ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
             ["pickup"] = "sage.gameplay.items", ["scripted_camera"] = "sage.core", ["sprite"] = "sage.gameplay.animation", ["third_person_rig"] = "sage.core",
-            ["timer"] = "sage.core", ["tween"] = "sage.core",
+            ["state_machine"] = "sage.core", ["timer"] = "sage.core", ["tween"] = "sage.core",
         };
         var parts = app.Engine.Prefabs.Parts;
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), parts.Select(p => p.Id).OrderBy(k => k, StringComparer.Ordinal));
