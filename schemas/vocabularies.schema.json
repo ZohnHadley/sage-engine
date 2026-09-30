@@ -4759,9 +4759,18 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id (none is registered).",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_loot, rpg_topics.",
       "type": "string",
-      "enum": []
+      "enum": [
+        "RpgEquipment",
+        "RpgInventory",
+        "RpgLoot",
+        "RpgTopics",
+        "rpg_equipment",
+        "rpg_inventory",
+        "rpg_loot",
+        "rpg_topics"
+      ]
     },
     "view_model": {
       "description": "A view_model: its id, or { \"viewModel\": \"<id>\", … } with its settings.",
@@ -4778,6 +4787,124 @@
           },
           "required": [
             "viewModel"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_equipment",
+                      "RpgEquipment"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_equipment.",
+                    "enum": [
+                      "rpg_equipment",
+                      "RpgEquipment"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_equipment' (EquipmentView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_inventory",
+                      "RpgInventory"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_inventory.",
+                    "enum": [
+                      "rpg_inventory",
+                      "RpgInventory"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_inventory' (InventoryView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_loot",
+                      "RpgLoot"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_loot.",
+                    "enum": [
+                      "rpg_loot",
+                      "RpgLoot"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_loot' (LootView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_topics",
+                      "RpgTopics"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_topics.",
+                    "enum": [
+                      "rpg_topics",
+                      "RpgTopics"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_topics' (TopicsView)."
+              }
+            }
           ]
         }
       ]

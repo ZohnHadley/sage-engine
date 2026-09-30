@@ -47,6 +47,7 @@
             "prefab",
             "quest",
             "rpg_conventions",
+            "rpg_item",
             "scene",
             "screen",
             "sound",
@@ -403,6 +404,21 @@
           },
           "then": {
             "$ref": "rpg_conventions.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "rpg_item"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "rpg_item.schema.json"
           }
         },
         {
