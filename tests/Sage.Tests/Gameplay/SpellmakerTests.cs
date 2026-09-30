@@ -112,6 +112,39 @@ public class SpellmakerTests
         Assert.True(fx.World.Attribute(hero, Id("mana")) < 50f);
     }
 
+    // A composed spell that flies (issue #138) is thrown on the one carrier attacks fly on too, from the
+    // kit's Cast button, and its payload lands on what it struck: the readied spell, the carrier and the
+    // payload are the same with the 4e hit pipeline as before it.
+    [Xunit.Fact]
+    public void AComposedProjectileSpellFromTheCastButtonLandsOnItsTarget()
+    {
+        using var fx = new Fixture();
+        var world = fx.World;
+        var mage = HitPipelineTests.Body(world, Vector3.Zero, "mage", new Vector3(0, 0, -8));
+        var target = HitPipelineTests.Body(world, new Vector3(0, 0, -8), "target", Vector3.Zero);
+        world.RunFixed(1f / 60f);
+
+        var made = Spellmaker.Compose(world, new SpellDraft
+        {
+            Name = "frost dart", Targeting = AbilityTargeting.Projectile, Effects = { Id("harm") }, Range = 20f, ProjectileSpeed = 30f,
+        });
+        Assert.True(made.Ok, made.Problem);
+        world.Teach(mage, made.Id);
+        Assert.Equal(made.Id, world.Readied(mage));
+
+        var cast = fx.Engine.Actions.Get(RpgConventions.Of(world).CastAction);
+        world.Get<PawnIntent>(mage).Pressed = default(ActionMask).With(cast);
+        world.RunFixed(1f / 60f);
+        world.Get<PawnIntent>(mage).Pressed = default;
+        world.RunFixed(1f / 60f);
+        Assert.Single(world.Query<Transform, Projectile>().Entities.ToEntityList());   // in flight, not arrived
+
+        for (int i = 0; i < 40; i++) world.RunFixed(1f / 60f);
+        Assert.Equal(90f, world.Attribute(target, Id("health")));
+        Assert.Equal(100f, world.Attribute(mage, Id("health")));
+        Assert.Empty(world.Query<Transform, Projectile>().Entities.ToEntityList());
+    }
+
     // A price the player can see before committing, and one that responds to what they asked for.
     [Xunit.Fact]
     public void AskingForMoreCostsMore()

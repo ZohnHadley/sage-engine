@@ -39,6 +39,8 @@ public sealed class EquipmentView : IViewModel
     public List<SlotRow> Slots { get; } = new();
     public List<CandidateRow> Candidates { get; } = new();
     public string Message { get; private set; } = "";
+    // The rounds of the weapon in hand, loaded and carried (issue #138); `ammo.has` is false for a sword.
+    public AmmoReadout Ammo { get; } = new();
 
     public void Refresh(in UiBindContext context)
     {
@@ -46,6 +48,7 @@ public sealed class EquipmentView : IViewModel
         var who = context.Subject;
         world.TryGet<Equipment>(who, out var equipment);
         world.TryGet<Inventory>(who, out var inventory);
+        Ammo.Read(world, who);
         if (_has && who == _who && Same(equipment.Worn, inventory.Items)) return;
 
         _has = true;

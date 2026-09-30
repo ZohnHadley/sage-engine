@@ -23,7 +23,10 @@
     "type": "skeleton_sockets",
     "id": "arms",
     "model": "models/arms.glb",
-    "sockets": { "hand_r": { "joint": "hand_r", "offset": [0, 0, -0.05], "angles": [-50, 0, 0] } }
+    // A gun sits level in the same hand: `grip_r` turns a held model's +Y forward and its +Z up
+    // (tools/make_weapons.py models the pistol and the crossbow that way; engine issue #138).
+    "sockets": { "hand_r": { "joint": "hand_r", "offset": [0, 0, -0.05], "angles": [-50, 0, 0] },
+                 "grip_r": { "joint": "hand_r", "offset": [0, 0.02, -0.06], "angles": [-90, 0, 0] } }
   },
   {
     // The arms' clip events (engine issue #119): the swing connects 0.28 s into the attack (and so lands
@@ -63,5 +66,27 @@
     "weapon": "models/viewmodel_sword.glb",
     "weaponMaterial": "steel",
     "socket": "hand_r"
+  },
+  {
+    // The pistol and the crossbow in the same arms (engine issue #138): the Reload button plays `reload`,
+    // and its `mag_in` event is when the rounds go in.
+    "type": "viewmodel",
+    "id": "pistol_arms",
+    "model": "models/arms.glb",
+    "graph": "arms",
+    "material": "arms_skin",
+    "weapon": "models/viewmodel_pistol.glb",
+    "weaponMaterial": "gunmetal",
+    "socket": "grip_r"
+  },
+  {
+    "type": "viewmodel",
+    "id": "crossbow_arms",
+    "model": "models/arms.glb",
+    "graph": "arms",
+    "material": "arms_skin",
+    "weapon": "models/viewmodel_crossbow.glb",
+    "weaponMaterial": "wood",
+    "socket": "grip_r"
   }
 ]

@@ -13,6 +13,7 @@ namespace Sandbox;
 // It runs every frame, so it keeps its strings until what they say changes and reuses its message rows:
 // a HUD frame allocates nothing (test: TheHudIsAScreenRecordAndAFrameOfItAllocatesNothing).
 #pragma warning disable SAGE0123   // cameras as entities are experimental; the HUD follows which rig has the screen
+#pragma warning disable SAGE0127   // the ammunition readout reads the 4e magazine (engine issue #138)
 [ViewModel("sandbox_hud")]
 public sealed class HudView : IViewModel
 {
@@ -39,6 +40,10 @@ public sealed class HudView : IViewModel
     public string Hands = "";
     public bool HasPlayer;
 
+    // The rounds of the weapon in hand, loaded / carried (the kit's AmmoReadout; engine issue #138).
+    public string Ammo = "";
+    public bool HasAmmo;
+
     // Looking out of the player's own eyes with no screen up: what the prompt and the view hint need.
     public bool Aiming;
 
@@ -60,6 +65,7 @@ public sealed class HudView : IViewModel
     private RecordId _lastMain, _lastOff;
     private bool _handsShown;
     private Entity _lastHovered;
+    private readonly AmmoReadout _ammo = new();
 
     public HudView()
     {
@@ -94,10 +100,12 @@ public sealed class HudView : IViewModel
 
         Messages.Clear();
         ReadMessages(world);
-        if (!HasPlayer) { HasPrompt = HasViewHint = false; return; }
+        if (!HasPlayer) { HasPrompt = HasViewHint = HasAmmo = false; return; }
 
         ReadHealth(world, player);
         ReadHands(world, player);
+        if (_ammo.Read(world, player)) Ammo = _ammo.Text;
+        HasAmmo = _ammo.Has;
         ReadPrompt(world);
         ViewHint = rig switch
         {
@@ -176,4 +184,5 @@ public sealed class HudView : IViewModel
     private static string Describe(World world, RecordId item) =>
         world.Records().TryGet(item, out ItemRecord record) ? record.Describe(item) : item.Name;
 }
+#pragma warning restore SAGE0127
 #pragma warning restore SAGE0123

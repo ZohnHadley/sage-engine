@@ -30,9 +30,9 @@
   </ItemGroup>
 
   <!-- Experimental API (docs/MAKING_A_GAME.md §10b): the screens are Sage.UI's (SAGE0125) and the topics
-       screen reads DialogueTopics (SAGE0124). -->
+       screen reads DialogueTopics (SAGE0124); the ammunition readout reads the 4e magazine (SAGE0127). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0124;SAGE0125</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0124;SAGE0125;SAGE0127</NoWarn>
   </PropertyGroup>
 
   <!-- The layers below, for every file. -->

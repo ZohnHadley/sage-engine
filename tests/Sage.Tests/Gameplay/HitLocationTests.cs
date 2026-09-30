@@ -20,6 +20,7 @@ public class HitLocationTests
     private static readonly RecordId Head = new("skeletal", "head");
     private static readonly RecordId ArmL = new("skeletal", "arm_l");
     private static readonly RecordId Pistol = new("hits", "pistol");
+    private static readonly RecordId Bolt = new("hits", "bolt");
 
     // A pistol, a helmet that is only data (an item whose effect adds armor_head while it is worn) and a
     // mannequin with a capsule round it as well as its hitboxes.
@@ -27,6 +28,9 @@ public class HitLocationTests
         [{ "type": "attack", "id": "pistol", "delivery": "ray", "damage": 10, "range": 60,
            "windupTime": 0, "recoverTime": 0.1, "cooldown": 0.3 },
          { "type": "attack", "id": "peashooter", "base": "pistol", "damage": 0.001 },
+         { "type": "attack", "id": "bolt", "delivery": "projectile", "damage": 10, "range": 60, "radius": 0.02,
+           "projectileSpeed": 50, "windupTime": 0, "recoverTime": 0.1, "cooldown": 1 },
+         { "type": "attack", "id": "piercing_bolt", "base": "bolt", "projectilePierce": 1 },
          { "type": "effect", "id": "helmet_armor", "duration": "Infinite",
            "modifiers": [ { "attribute": "skeletal:armor_head", "op": "Add", "value": 50 } ] },
          { "type": "item", "id": "helmet", "slot": "Head", "effects": ["helmet_armor"] },
@@ -191,6 +195,48 @@ public class HitLocationTests
         Assert.True(result.Location.IsEmpty);
         Assert.Equal(10f, applied, 3);
         Assert.True(Assert.Single(damage.All).Location.IsEmpty);
+    }
+
+    // Acceptance (issue #138): a bolt lands through the same hitbox resolution as a sweep or a ray. The
+    // mannequin has no capsule, only its boxes, so before this a bolt flew straight through it; a bolt at
+    // its head now lands on `head` for double damage, one at its shins (between the boxes) still misses,
+    // and a piercing bolt is one landing on the mannequin, not one per box it passes through.
+    [Xunit.Fact]
+    public void ABoltAtTheHeadLandsOnHead()
+    {
+        using var app = Yard();
+        var world = app.World;
+        var target = Npc(world, new Vector3(12, 0, 14));
+        var shooter = world.Create(Transform.At(new Vector3(0, 0, 30)), "shooter");
+        NpcLocomotionTests.Step(world, 5);
+        var damage = new EventProbe<Damaged>(world);
+        var records = world.Resources.Get<RecordStore>();
+
+        Entity Fire(RecordId attack, Vector3 from)
+        {
+            var bolt = world.Launch(shooter, attack, records.Get<AttackRecord>(attack), from, -Vector3.UnitZ);
+            for (int i = 0; i < 20; i++) world.RunFixed(Dt);
+            return bolt;
+        }
+
+        var bolt = Fire(Bolt, new Vector3(12f, 1.62f, 19f));
+        var hit = Assert.Single(damage.All);
+        Assert.Equal(target, hit.Hit.Target);
+        Assert.Equal(shooter, hit.Hit.Attacker);
+        Assert.Equal(Head, hit.Location);
+        Assert.Equal(20f, hit.Applied, 3);
+        Assert.InRange(hit.Hit.Point.Z, 14f, 14.3f);            // on the head's box, not past it
+        Assert.False(world.IsAlive(bolt));
+
+        // Beside the legs, below the hands, there is no box (and no capsule): it flies on.
+        Fire(Bolt, new Vector3(12.6f, 0.6f, 19f));
+        Assert.Single(damage.All);
+
+        // A piercing bolt through the chest lands once on the mannequin, then flies on.
+        Fire(new RecordId("hits", "piercing_bolt"), new Vector3(12f, 1.25f, 19f));
+        Assert.Equal(2, damage.All.Count);
+        Assert.Equal(target, damage.All[1].Hit.Target);
+        Assert.Equal(new RecordId("skeletal", "torso"), damage.All[1].Location);
     }
 
     // Hitboxes follow the bones (the Late phase's attachments) and the body (composed in PrePhysics from

@@ -62,8 +62,11 @@ internal sealed class ProjectileSystem : ISystem
     private readonly Deferred<Arrival> _arrivals = new();
 
     // `Final`: it stops here and is destroyed; otherwise it passed through `Struck` (piercing) and flies on.
+    // `Collider` is what the sweep met — `Struck` itself, or one of its hitboxes — and `Location` that
+    // hitbox's hit_location (empty: the body).
     private readonly record struct Arrival(Entity Projectile, Entity Caster, RecordId Ability, RecordId Attack, Vector3 Point,
-                                           Vector3 Direction, Entity Struck, bool Final = true);
+                                           Vector3 Direction, Entity Struck, bool Final = true,
+                                           Entity Collider = default, RecordId Location = default);
 
     public ProjectileSystem(World world, RecordStore records, CVar<bool> debugCasts)
     {
@@ -79,6 +82,7 @@ internal sealed class ProjectileSystem : ISystem
     {
         var world = ctx.World;
         float dt = ctx.Tick.Dt;
+        var boxes = Hitboxes.Mask(_space);   // the hitbox layer (issue #137), or none; the layers are content
 
         foreach (var (transforms, projectiles, entities) in _flying.Chunks)
         {
@@ -125,22 +129,42 @@ internal sealed class ProjectileSystem : ISystem
                     // inside. Anything else it starts inside (a creature at point-blank range) stops it
                     // where it is (issue #30; review #55 was the same gap from the other side).
                     var ignore = p[n].Passed.IsNull ? p[n].Caster : p[n].Passed;
-                    var hit = _space.Sweep(Collider.Sphere(MathF.Max(p[n].Radius, 0.05f)),
-                        new Pose { Position = at, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                        direction, left, LayerMask.All, ignore: ignore);
+                    var sphere = Collider.Sphere(MathF.Max(p[n].Radius, 0.05f));
+                    var pose = new Pose { Position = at, Rotation = Quaternion.Identity, Scale = Vector3.One };
+                    var hit = _space.Sweep(sphere, pose, direction, left, LayerMask.All, ignore: ignore);
+                    bool solid = hit.Hit && !hit.Entity.IsNull && hit.Entity != ignore;
 
-                    if (!hit.Hit || hit.Entity.IsNull || hit.Entity == ignore) { at += direction * left; break; }
+                    // Then the hitboxes (issue #138), which no query for solid things sees: a bolt lands
+                    // where a sweep or a ray would (Hits.Sweep), on a box in front of what it met or inside
+                    // its owner's capsule — and on a creature with no capsule at all. Leaving out `ignore`
+                    // leaves out its boxes too (they are its children).
+                    Entity struck = solid ? hit.Entity : default, collider = struck;
+                    RecordId location = default;
+                    float distance = hit.Distance;
+                    if (boxes.Bits != 0)
+                    {
+                        var box = _space.Sweep(sphere, pose, direction, left, boxes, ignore: ignore);
+                        if (box.Hit && Hitboxes.Landed(p[n].Caster, box.Entity, box.Distance, struck, hit.Distance, out var landed))
+                        {
+                            struck = landed.Owner;
+                            collider = box.Entity;
+                            location = landed.Location;
+                            distance = box.Distance;
+                        }
+                    }
 
-                    at += direction * hit.Distance;
-                    left -= hit.Distance;
-                    if (p[n].Pierce > 0 && hit.Entity != p[n].Caster && Hits.CanBeHurt(world, hit.Entity))
+                    if (struck.IsNull) { at += direction * left; break; }
+
+                    at += direction * distance;
+                    left -= distance;
+                    if (p[n].Pierce > 0 && struck != p[n].Caster && Hits.CanBeHurt(world, struck))
                     {
                         p[n].Pierce--;
-                        p[n].Passed = hit.Entity;
-                        _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, hit.Entity, Final: false));
+                        p[n].Passed = struck;
+                        _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, struck, Final: false, collider, location));
                         continue;
                     }
-                    _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, hit.Entity));
+                    _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, struck, Final: true, collider, location));
                     break;
                 }
 
@@ -163,7 +187,8 @@ internal sealed class ProjectileSystem : ISystem
             if (!Hits.CanBeHurt(world, arrival.Struck) || arrival.Struck == arrival.Caster) return;
             if (!_records.TryGet(arrival.Attack, out AttackRecord attack)) return;
             var request = new HitRequest(arrival.Caster, arrival.Point, arrival.Direction, arrival.Attack);
-            Combat.ApplyHit(world, in request, new HitResult(arrival.Struck, arrival.Point, -arrival.Direction, arrival.Struck, default), attack);
+            var collider = arrival.Collider.IsNull ? arrival.Struck : arrival.Collider;
+            Combat.ApplyHit(world, in request, new HitResult(arrival.Struck, arrival.Point, -arrival.Direction, collider, arrival.Location), attack);
             return;
         }
 

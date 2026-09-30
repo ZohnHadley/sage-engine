@@ -568,7 +568,7 @@ public sealed class RecordStore
     private void CheckValues(object? value, string prefix, Dictionary<(string, RecordId), object> built, HashSet<RecordId> ids,
                              Func<string, string> at, string what)
     {
-        foreach (var (path, found) in ContentValues.Find(value, _json, prefix))
+        foreach (var (path, found, kind) in ContentValues.Find(value, _json, prefix))
         {
             string field = JsonMembers.Display(path);
             switch (found)
@@ -585,7 +585,9 @@ public sealed class RecordStore
                                            : Spelling.Suggest(reference.Id.ToString(), built.Keys.Where(k => k.Item1 == type).Select(k => k.Item2.ToString()))));
                     break;
                 }
-                case RecordId id when !id.IsEmpty && !ids.Contains(id):
+                // A plain id whose `[RecordRef]` names a type this app has not registered (a mesh
+                // renderer's material in a headless server) can't be checked either.
+                case RecordId id when !id.IsEmpty && !ids.Contains(id) && (kind == null || _namesByType.ContainsValue(kind)):
                     Error($"{at(path)}: {what}: '{field}' refers to {id}, which doesn't exist");
                     break;
                 case AssetPath asset when !asset.IsEmpty:

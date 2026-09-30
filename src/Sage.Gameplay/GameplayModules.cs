@@ -166,12 +166,14 @@ public sealed class CombatModule : IModule
     private RecordStore? _records;
     private ActionRegistry? _actions;
     private CVar<bool>? _combatDebug;
+    private ModuleManager? _modules;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule) };
 
     public void Init(ModuleContext ctx)
     {
         _records = ctx.Engine.Records;
+        _modules = ctx.Engine.Modules;
         _actions = ctx.Engine.Actions;
         _actions.Register("Attack", ActionKind.Button);   // the engine's name; gameplay_conventions picks which one swings
         _actions.Register("Reload", ActionKind.Button);   // plays the first-person arms' reload (issue #121)
@@ -216,6 +218,11 @@ public sealed class CombatModule : IModule
         // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);
         // their clip events are the animator's, like everyone's (issue #119).
         world.AddSystem(new ViewmodelCombatSystem(world, _records!, _actions!));
+        // A `projectile` attack flies on the carrier abilities throw (issue #134). The abilities plugin
+        // adds its system; a game with combat and no magic (issue #138) gets it here, or its bolts would
+        // hang in the air where they were fired.
+        if (!_modules!.Modules.OfType<AbilitiesModule>().Any())
+            world.AddSystem(new ProjectileSystem(world, _records!, _combatDebug!));
     }
 }
 
