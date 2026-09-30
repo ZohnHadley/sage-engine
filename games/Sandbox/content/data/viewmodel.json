@@ -1,0 +1,55 @@
+[
+  // First-person arms (engine issue #121; docs/design/12 "As built (first-person arms)"). The sword's
+  // attack names `sword_arms` (scene.json), so drawing it puts these on the player's camera: skinned arms
+  // animated by `arms`, the sword on their `hand_r` socket, drawn over the world from the player's eyes
+  // only. Bare hands have none, so the HUD keeps drawing its sprite hands for them (Hud.cs).
+  //
+  // Both models are generated (tools/make_viewmodel_arms.py) and meant to be replaced: engine issue #122
+  // brings a box mannequin and proper arms.
+  {
+    "type": "material",
+    "id": "arms_skin",
+    "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.86, 0.66, 0.52, 1] }
+  },
+  {
+    "type": "material",
+    "id": "steel",
+    "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.72, 0.74, 0.78, 1] }
+  },
+  {
+    // Where the sword sits in the right hand: in the palm, its blade tilted forward.
+    "type": "skeleton_sockets",
+    "id": "arms",
+    "model": "models/arms.glb",
+    "sockets": { "hand_r": { "joint": "hand_r", "offset": [0, 0, -0.05], "angles": [-50, 0, 0] } }
+  },
+  {
+    // A swing sets `attack` and the Reload button (R) sets `reload` (gameplay_conventions `animations`);
+    // each plays its clip once and goes back to idle. The reload's `mag_out`/`mag_in` events come with
+    // clip events (engine issue #119): 0.3 s and 0.9 s into its clip.
+    "type": "anim_graph",
+    "id": "arms",
+    "initial": "idle",
+    "fade": 0.1,
+    "params": { "attack": { "kind": "Trigger" }, "reload": { "kind": "Trigger" } },
+    "states": {
+      "idle":   { "clip": "idle" },
+      "attack": { "clip": "attack", "loop": false, "fade": 0.05, "tags": ["attacking"], "transitions": [ { "to": "idle", "after": 0.5 } ] },
+      "reload": { "clip": "reload", "loop": false, "tags": ["reloading"], "transitions": [ { "to": "idle", "after": 1.2 } ] }
+    },
+    "transitions": [ { "to": "attack", "on": "attack" }, { "to": "reload", "on": "reload" } ]
+  },
+  {
+    // Modelled in view space (the eye at the origin), so no offset.
+    "type": "viewmodel",
+    "id": "sword_arms",
+    "model": "models/arms.glb",
+    "graph": "arms",
+    "material": "arms_skin",
+    "weapon": "models/viewmodel_sword.glb",
+    "weaponMaterial": "steel",
+    "socket": "hand_r"
+  }
+]

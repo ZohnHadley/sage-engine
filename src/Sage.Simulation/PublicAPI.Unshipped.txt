@@ -45,6 +45,10 @@ const Sage.Simulation.ToggleViewSystem.Id = "sage.camera.toggle_view" -> string!
 const Sage.Simulation.Tweens.OnTweenDone = "OnTweenDone" -> string!
 const Sage.Simulation.Tweens.StopInput = "TweenStop" -> string!
 const Sage.Simulation.Tweens.ToInput = "TweenTo" -> string!
+const Sage.Simulation.Viewmodel.DefaultFar = 10 -> float
+const Sage.Simulation.Viewmodel.DefaultFovY = 54 -> float
+const Sage.Simulation.Viewmodel.DefaultNear = 0.01 -> float
+const Sage.Simulation.Viewmodels.SystemId = "sage.camera.viewmodel" -> string!
 override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
 override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
@@ -628,6 +632,34 @@ Sage.Simulation.TweenPart.Relative -> bool
 Sage.Simulation.TweenPart.Target -> System.Numerics.Vector3
 Sage.Simulation.TweenPart.TweenPart() -> void
 Sage.Simulation.Tweens
+Sage.Simulation.Viewmodel
+Sage.Simulation.Viewmodel.Enabled -> bool
+Sage.Simulation.Viewmodel.Far -> float
+Sage.Simulation.Viewmodel.FovY -> float
+Sage.Simulation.Viewmodel.Near -> float
+Sage.Simulation.Viewmodel.Record -> Sage.Core.RecordId
+Sage.Simulation.Viewmodel.Viewmodel() -> void
+Sage.Simulation.ViewmodelLayer
+Sage.Simulation.ViewmodelLayer.ViewmodelLayer() -> void
+Sage.Simulation.ViewmodelPart
+Sage.Simulation.ViewmodelPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.ViewmodelPart.Enabled -> bool
+Sage.Simulation.ViewmodelPart.Far -> float
+Sage.Simulation.ViewmodelPart.FovY -> float
+Sage.Simulation.ViewmodelPart.Near -> float
+Sage.Simulation.ViewmodelPart.Record -> Sage.Core.RecordId
+Sage.Simulation.ViewmodelPart.ViewmodelPart() -> void
+Sage.Simulation.ViewmodelRecord
+Sage.Simulation.ViewmodelRecord.Angles -> System.Numerics.Vector3
+Sage.Simulation.ViewmodelRecord.Graph -> Sage.Core.RecordId
+Sage.Simulation.ViewmodelRecord.Material -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
+Sage.Simulation.ViewmodelRecord.Model -> Sage.Core.AssetPath
+Sage.Simulation.ViewmodelRecord.Offset -> System.Numerics.Vector3
+Sage.Simulation.ViewmodelRecord.Socket -> string!
+Sage.Simulation.ViewmodelRecord.ViewmodelRecord() -> void
+Sage.Simulation.ViewmodelRecord.Weapon -> Sage.Core.AssetPath
+Sage.Simulation.ViewmodelRecord.WeaponMaterial -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
+Sage.Simulation.Viewmodels
 static readonly Sage.Simulation.PlayerCameraSystem.Prefab -> Sage.Core.RecordId
 Sage.Simulation.Placement.Outputs -> System.Collections.Generic.List<Sage.Simulation.Connection!>!
 Sage.Simulation.ScriptedCamera
@@ -735,3 +767,9 @@ Sage.Simulation.SaveSystem.Rescan() -> void
 Sage.Simulation.SaveSystem.Slots.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SaveSlot!>!
 Sage.Simulation.SaveSystem.SlotsVersion.get -> int
 override Sage.Simulation.SaveSlot.ToString() -> string!
+static Sage.Simulation.Viewmodel.Create(Sage.Core.RecordId record = default(Sage.Core.RecordId)) -> Sage.Simulation.Viewmodel
+static Sage.Simulation.Viewmodels.ArmsOf(Sage.Simulation.World! world, Sage.Simulation.Entity camera) -> Sage.Simulation.Entity
+static Sage.Simulation.Viewmodels.CameraOf(Sage.Simulation.World! world, Sage.Simulation.Query<Sage.Simulation.Viewmodel> query, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
+static Sage.Simulation.Viewmodels.IsDrawn(Sage.Simulation.World! world) -> bool
+static Sage.Simulation.Viewmodels.Show(Sage.Simulation.World! world, Sage.Simulation.Entity camera, Sage.Core.RecordId record) -> bool
+static Sage.Simulation.Viewmodels.WeaponOf(Sage.Simulation.World! world, Sage.Simulation.Entity camera) -> Sage.Simulation.Entity

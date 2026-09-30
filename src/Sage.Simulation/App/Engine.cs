@@ -49,6 +49,8 @@ public sealed class Engine : IDisposable
         Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Parts), (key, body, _) => PrefabChecks.BodyType(Prefabs, key, body));
         // Sockets name a model and a joint (issue #120).
         Records.AddCheck<SkeletonSocketsRecord>(BoneAttachments.Check);
+        // First-person arms name a model, and a weapon a socket (issue #121).
+        Records.AddCheck<ViewmodelRecord>(ViewmodelRecord.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the
@@ -166,6 +168,7 @@ public sealed class Engine : IDisposable
             world.AddSystem(new AttachmentSystem(world));
             world.Resources.Add(Animations);                     // skinned models' skeletons and clips (issue #118)
             world.AddSystem(new AnimatorSystem(world));          // sage:animator (issue #118)
+            world.AddSystem(new ViewmodelSystem(world));         // a camera's first-person arms (issue #121)
         }
         finally { Registrations.Owner = "host"; }
 

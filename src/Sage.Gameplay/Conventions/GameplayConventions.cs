@@ -94,10 +94,13 @@ public sealed class ActionConventions
     public string Run = "Run";
     [Property(Tooltip = "The button held to crouch")]
     public string Crouch = "Crouch";
+    [Property(Tooltip = "The button that reloads: plays the first-person arms' reload (ammunition is the game's)")]
+    public string Reload = "Reload";
 
     internal (string Field, string Name)[] All() => new[]
     {
         (nameof(Attack), Attack), (nameof(Use), Use), (nameof(Jump), Jump), (nameof(Run), Run), (nameof(Crouch), Crouch),
+        (nameof(Reload), Reload),
     };
 }
 
@@ -109,6 +112,8 @@ public sealed class AnimationConventions
     public string Hit = "hit";
     [Property(Tooltip = "The clip a fighter goes back to when a swing is over")]
     public string Idle = "idle";
+    [Property(Tooltip = "The trigger the Reload button sets on the first-person arms' anim_graph (a swing sets `attack`'s)")]
+    public string Reload = "reload";
 }
 
 public static class GameplayConventions

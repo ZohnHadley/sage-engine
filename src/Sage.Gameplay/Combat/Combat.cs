@@ -58,6 +58,11 @@ public sealed class AttackRecord
     public RecordRef<CueRecord> SwingCue;
     public RecordRef<SpriteSheetRecord> Viewmodel; // the sprite sheet a first-person wielder sees (13 §3):
                                             // rest, wind-up and strike, in that order
+    // The 3D first-person arms and what they hold (issue #121): a `viewmodel` record (a skinned model,
+    // its anim_graph, a weapon on a socket), shown on the wielder's camera while this is the swing in its
+    // hands. It wins over the sprite `viewmodel`, which the HUD draws when this is empty (or not drawn).
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RecordRef<ViewmodelRecord> Arms;
     public List<RecordRef<EffectRecord>> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
 }
 

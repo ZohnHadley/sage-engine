@@ -62,6 +62,7 @@ internal struct RenderView
     public bool FullTarget;          // the viewport is the whole target: its clear is the target's
     public int Order;                // within a target, lower draws first (06 §3.4a)
     public int Hidden;               // id of an entity this view does not draw (0: none; ViewSource.HiddenFor)
+    public bool DepthOnly;           // clears only depth, over what the target holds: the viewmodel pass (issue #121)
 
     // Written during extract: lights and debug lines are added by one system each, a view at a time,
     // so each view's are contiguous.

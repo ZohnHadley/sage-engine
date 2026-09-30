@@ -83,6 +83,7 @@ internal sealed class CameraExtract : ISystem
         view.Target = request.Target;
         view.Order = request.Order;
         view.Hidden = request.Hidden.IsNull ? 0 : request.Hidden.Id;
+        view.DepthOnly = false;          // pooled: the slot may have been last frame's viewmodel view
 
         Vector3 forward = Vector3.Transform(Vector3.Forward, request.Rotation);
         Vector3 up = Vector3.Transform(Vector3.Up, request.Rotation);
@@ -117,7 +118,7 @@ internal sealed class MeshExtract : ISystem
     {
         _renderer = renderer;
         _snapshot = world.Resources.Get<RenderSnapshot>();
-        _meshes = world.Query<GlobalTransform, MeshRenderer>();
+        _meshes = world.Query<GlobalTransform, MeshRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());   // the viewmodel pass draws those (#121)
     }
 
     public void Run(in SystemContext ctx)
@@ -215,7 +216,7 @@ internal sealed class SkinnedMeshExtract : ISystem
         _renderer = renderer;
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _poses = world.Resources.GetOrAdd(() => new SkinPoses());
-        _meshes = world.Query<GlobalTransform, SkinnedMeshRenderer>();
+        _meshes = world.Query<GlobalTransform, SkinnedMeshRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());   // the viewmodel pass draws those (#121)
     }
 
     public void Run(in SystemContext ctx)
@@ -476,7 +477,7 @@ internal sealed class SpriteExtract : ISystem
         _renderer = renderer;
         _records = records;
         _snapshot = world.Resources.Get<RenderSnapshot>();
-        _sprites = world.Query<GlobalTransform, SpriteRenderer>();
+        _sprites = world.Query<GlobalTransform, SpriteRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());
     }
 
     public void Run(in SystemContext ctx)

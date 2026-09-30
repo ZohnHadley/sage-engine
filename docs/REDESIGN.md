@@ -1226,6 +1226,18 @@ distant animators sample less often (`anim_lod_distance`); `anim_debug` shows th
 nothing a tick (test: AHundredAnimatorsAllocateNothingPerTick) (test: WalkAndRunBlendWeightsFollowSpeed).
 SAGE0126. Details: docs/design/12 "As built (the animation graph)".
 
+*As built, 4d (issue #121, 2026-09-30): first-person arms.* A `viewmodel` record (skinned arms in view
+space, their `anim_graph`, a weapon on a #120 socket) is shown by a `sage:viewmodel` component on the
+player's camera, chosen by the attack in the pawn's hands (`AttackRecord.Arms`; an attack without one
+keeps its sprite hands). The pass is **one more view**, not a renderer layer: a copy of the main view with
+the viewmodel's own field of view and depth range, drawn after it with only depth cleared, holding just
+the `sage:viewmodel_layer` pieces the world's extracts leave out; it exists only while the screen looks
+out of a first-person rig (test: TheViewmodelIsHiddenInThirdPersonAndFromTheEditorsFreeCamera). A
+`Reload` action plays the arms' reload (test: Reload_Plays_FiresMagOutThenMagIn_AndReturnsToIdle), whose
+clip events reach `AnimationEvent` through a small stand-in that #119's event firing replaces. Nothing
+allocates per frame (test: TheViewmodelAndItsExtractAllocateNothingPerFrame). SAGE0126. Details:
+docs/design/12 "As built (first-person arms)" and 06 "As built (the viewmodel pass)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |

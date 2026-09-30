@@ -468,7 +468,20 @@ public sealed class Renderer : IDisposable
     {
         _viewStamp++;
         _device.Viewport = new Viewport(view.Viewport);
-        if (!view.FullTarget)
+        if (view.DepthOnly)
+        {
+            // Over what the target already holds (the viewmodel pass, issue #121): only depth is
+            // cleared, so what this view draws is in front of everything drawn before it.
+            if (!view.FullTarget)
+            {
+                _device.ScissorRectangle = view.Viewport;
+                _device.RasterizerState = ScissorClear;
+            }
+            _device.Clear(ClearOptions.DepthBuffer, clear, 1f, 0);
+            _device.RasterizerState = RasterizerState.CullCounterClockwise;
+            _current = -1;
+        }
+        else if (!view.FullTarget)
         {
             // A part of the target: clear only that part (Bind cleared the whole target already
             // when this view is all of it).
