@@ -216,6 +216,39 @@ static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.R
 Sage.Gameplay.AnimationConventions.AttackTrigger -> string!
 Sage.Gameplay.AttackRecord.Trigger -> string!
 Sage.Gameplay.SpritePart.Graph -> Sage.Core.RecordRef<Sage.Simulation.AnimGraphRecord!>
+const Sage.Gameplay.Hitboxes.Layer = "hitbox" -> string!
+Sage.Gameplay.Hitbox
+Sage.Gameplay.Hitbox.Hitbox() -> void
+Sage.Gameplay.Hitbox.Location -> Sage.Core.RecordId
+Sage.Gameplay.Hitbox.Owner -> Sage.Simulation.Entity
+Sage.Gameplay.Hitboxes
+Sage.Gameplay.HitboxesPart
+Sage.Gameplay.HitboxesPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.HitboxesPart.HitboxesPart() -> void
+Sage.Gameplay.HitboxesPart.Model -> Sage.Core.AssetPath
+Sage.Gameplay.HitboxesRecord
+Sage.Gameplay.HitboxesRecord.Boxes -> System.Collections.Generic.Dictionary<string!, Sage.Gameplay.HitboxShape!>!
+Sage.Gameplay.HitboxesRecord.HitboxesRecord() -> void
+Sage.Gameplay.HitboxesRecord.Model -> Sage.Core.AssetPath
+Sage.Gameplay.HitboxShape
+Sage.Gameplay.HitboxShape.Bone -> string!
+Sage.Gameplay.HitboxShape.HitboxShape() -> void
+Sage.Gameplay.HitboxShape.Location -> Sage.Core.RecordRef<Sage.Gameplay.HitLocationRecord!>
+Sage.Gameplay.HitboxShape.Offset -> System.Numerics.Vector3
+Sage.Gameplay.HitboxShape.Shape -> Sage.Simulation.ColliderShape
+Sage.Gameplay.HitboxShape.Size -> System.Numerics.Vector3
+Sage.Gameplay.HitboxShape.Socket -> string!
+Sage.Gameplay.HitLocationRecord
+Sage.Gameplay.HitLocationRecord.DamageMultiplier -> float
+Sage.Gameplay.HitLocationRecord.Effects -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>!
+Sage.Gameplay.HitLocationRecord.HitLocationRecord() -> void
+Sage.Gameplay.HitLocationRecord.Resist -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.HitLocationRecord.Tags -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.TagRecord!>>!
+Sage.Gameplay.HitLocations
+static Sage.Gameplay.Hitboxes.Mask(Sage.Simulation.IPhysicsWorld! space) -> Sage.Simulation.LayerMask
+static Sage.Gameplay.Hitboxes.Resolve(in Sage.Gameplay.HitResult result) -> Sage.Gameplay.HitResult
+static Sage.Gameplay.Hitboxes.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity owner, Sage.Core.AssetPath model, byte layer) -> int
+static Sage.Gameplay.HitLocations.HasTag(Sage.Core.RecordStore! records, Sage.Core.RecordId location, Sage.Core.RecordId tag) -> bool
 static Sage.Gameplay.ProjectileExtensions.Launch(this Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Core.RecordId attack, Sage.Gameplay.AttackRecord! record, System.Numerics.Vector3 from, System.Numerics.Vector3 direction) -> Sage.Simulation.Entity
 Sage.Gameplay.AttackRecord.Ammo -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
 Sage.Gameplay.AttackRecord.AmmoPerShot -> int

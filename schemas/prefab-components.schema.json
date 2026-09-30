@@ -188,6 +188,14 @@
         }
       ]
     },
+    "hitbox": {
+      "description": "The component sage:hitbox (Hitbox), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:hitbox"
+        }
+      ]
+    },
     "hop": {
       "description": "The component sandbox:hop (Hop), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -601,6 +609,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:global_transform"
+        }
+      ]
+    },
+    "sage:hitbox": {
+      "description": "Component sage:hitbox (Hitbox).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:hitbox"
         }
       ]
     },
@@ -2684,6 +2700,24 @@
       },
       "additionalProperties": false,
       "description": "Component sage:global_transform (GlobalTransform)."
+    },
+    "sage:hitbox": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "description": "What takes the damage when this box is struck. (Entity)"
+        },
+        "location": {
+          "description": "Where on the owner this box is. Names a hit_location record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:hit_location"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:hitbox (Hitbox)."
     },
     "sage:inventory": {
       "type": "object",

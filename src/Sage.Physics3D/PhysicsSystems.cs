@@ -48,10 +48,12 @@ internal sealed class PhysicsSyncSystem : ISystem
             world.Add(entity, _space.AddBody(entity, collider, body, pose));
         }
 
-        // Kinematic bodies (and anything gameplay moved directly) follow their transform. v1 assumes
-        // physics entities are roots, so the local transform is the world one; parented colliders
-        // would need GlobalTransform here and a local conversion on write-back.
-        foreach (var (transforms, colliders, handles, _) in _bodies.Chunks)
+        // Kinematic bodies (and anything gameplay moved directly) follow their transform. A root's local
+        // transform is its world one; a parented kinematic collider — a hitbox on a creature's bone
+        // (issue #137) — is composed up its parents' transforms as they are now, not GlobalTransform,
+        // which is last tick's: the owner has already moved this tick (sage.character.move runs first).
+        // Dynamic bodies are still assumed to be roots (write-back sets the local transform).
+        foreach (var (transforms, colliders, handles, entities) in _bodies.Chunks)
         {
             var t = transforms.Span;
             var c = colliders.Span;
@@ -60,9 +62,19 @@ internal sealed class PhysicsSyncSystem : ISystem
             {
                 if (h[n].IsStatic) continue;
                 if (_space.IsDynamic(h[n])) continue;
-                _space.SetPose(h[n], c[n], Pose.FromLocal(t[n]));
+                var parent = entities.EntityAt(n).Parent;
+                _space.SetPose(h[n], c[n], parent.IsNull ? Pose.FromLocal(t[n]) : Pose.Combine(WorldPose(parent), Pose.FromLocal(t[n])));
             }
         }
+    }
+
+    // An entity's world pose from its transform and its parents', as of now.
+    private static Pose WorldPose(Entity entity)
+    {
+        var pose = entity.TryGetComponent<Transform>(out var local) ? Pose.FromLocal(local) : Pose.Identity;
+        for (var parent = entity.Parent; !parent.IsNull; parent = parent.Parent)
+            if (parent.TryGetComponent<Transform>(out var above)) pose = Pose.Combine(Pose.FromLocal(above), pose);
+        return pose;
     }
 }
 

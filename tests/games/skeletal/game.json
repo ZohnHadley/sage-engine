@@ -9,8 +9,10 @@
   "name": "Skeletal NPCs",
   "id": "skeletal",
   // A player to watch from (physics comes with it: foot IK's rays need it), entity I/O for the wires the
-  // state machines send, and the animation plugin for foot IK.
-  "plugins": ["sage.gameplay.character", "sage.gameplay.io", "sage.gameplay.animation"],
+  // state machines send, the animation plugin for foot IK, and attributes, combat and items for the
+  // NPCs' health, hitboxes and armour (engine issue #137).
+  "plugins": ["sage.gameplay.character", "sage.gameplay.io", "sage.gameplay.animation", "sage.gameplay.attributes",
+              "sage.gameplay.combat", "sage.gameplay.items"],
   "mounts": ["content"],
   "scene": "yard"
 }

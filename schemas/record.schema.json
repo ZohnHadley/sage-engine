@@ -38,6 +38,8 @@
             "effect",
             "faction",
             "gameplay_conventions",
+            "hit_location",
+            "hitboxes",
             "input_map",
             "item",
             "map",
@@ -275,6 +277,36 @@
           },
           "then": {
             "$ref": "gameplay_conventions.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "hit_location"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "hit_location.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "hitboxes"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "hitboxes.schema.json"
           }
         },
         {

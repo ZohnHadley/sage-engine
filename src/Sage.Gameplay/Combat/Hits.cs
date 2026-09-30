@@ -23,8 +23,8 @@ namespace Sage.Gameplay;
 public readonly record struct HitRequest(Entity Attacker, Vector3 Origin, Vector3 Aim, RecordId Attack);
 
 // Where a strike landed. `Target` is what takes the damage; `Collider` is the entity the physics query
-// touched, which is the target itself until hitboxes (issue #137) put a child collider on a limb, and
-// `Location` is the hit location that limb names (empty: the body).
+// touched — the target itself, or one of its hitboxes (issue #137, a child collider on a limb) — and
+// `Location` is the hit_location that hitbox names (empty: the body).
 [Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4e: may change before 1.0
 public readonly record struct HitResult(Entity Target, Vector3 Point, Vector3 Normal, Entity Collider, RecordId Location)
 {
@@ -90,12 +90,30 @@ public static class Hits
     // touches, scenery included, and never `attacker` (the sweep starts inside it). Something else it
     // starts inside is hit at distance 0 (issue #30). `result.Point` is on the aim line where the sphere
     // stopped, or at full reach on a miss; false and an empty `Target` for a miss.
+    // A strike that meets a hitbox (issue #137) lands on the box's owner, `Collider` the box and
+    // `Location` its hit_location; one that meets only a capsule lands on the body (an empty location).
     public static bool Sweep(IPhysicsWorld space, Entity attacker, Vector3 origin, Vector3 aim, float radius, float reach,
                              out HitResult result)
     {
-        var hit = space.Sweep(Collider.Sphere(radius), new Pose { Position = origin, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                              aim, reach, LayerMask.All, ignore: attacker);
-        if (!hit.Hit || hit.Entity.IsNull || hit.Entity == attacker)
+        var sphere = Collider.Sphere(radius);
+        var from = new Pose { Position = origin, Rotation = Quaternion.Identity, Scale = Vector3.One };
+        var hit = space.Sweep(sphere, from, aim, reach, LayerMask.All, ignore: attacker);
+        bool solid = hit.Hit && !hit.Entity.IsNull && hit.Entity != attacker;
+
+        // Then the hitboxes (issue #137), which no query for solid things sees: one in front of what the
+        // sweep met, or inside its owner's capsule, is where the blow landed.
+        var boxes = Hitboxes.Mask(space);
+        if (boxes.Bits != 0)
+        {
+            var box = space.Sweep(sphere, from, aim, reach, boxes, ignore: attacker);
+            if (box.Hit && Hitboxes.Landed(attacker, box.Entity, box.Distance, solid ? hit.Entity : default, hit.Distance, out var struck))
+            {
+                result = new HitResult(struck.Owner, origin + aim * box.Distance, box.Normal, box.Entity, struck.Location);
+                return true;
+            }
+        }
+
+        if (!solid)
         {
             result = new HitResult(default, origin + aim * reach, -aim, default, default);
             return false;
@@ -105,11 +123,25 @@ public static class Hits
     }
 
     // A ray from `origin` along `aim` for `range`: the first solid thing, never `attacker`. The point and
-    // normal are the surface's. False and an empty `Target` for a miss.
+    // normal are the surface's. False and an empty `Target` for a miss. Hitboxes as for Sweep.
     public static bool Ray(IPhysicsWorld space, Entity attacker, Vector3 origin, Vector3 aim, float range, out HitResult result)
     {
         var hit = space.Raycast(origin, aim, range, LayerMask.All, ignore: attacker);
-        if (!hit.Hit || hit.Entity.IsNull || hit.Entity == attacker)
+        bool solid = hit.Hit && !hit.Entity.IsNull && hit.Entity != attacker;
+
+        // Then the hitboxes (issue #137), as for a sweep.
+        var boxes = Hitboxes.Mask(space);
+        if (boxes.Bits != 0)
+        {
+            var box = space.Raycast(origin, aim, range, boxes, ignore: attacker);
+            if (box.Hit && Hitboxes.Landed(attacker, box.Entity, box.Distance, solid ? hit.Entity : default, hit.Distance, out var struck))
+            {
+                result = new HitResult(struck.Owner, box.Position, box.Normal, box.Entity, struck.Location);
+                return true;
+            }
+        }
+
+        if (!solid)
         {
             result = new HitResult(default, origin + aim * range, -aim, default, default);
             return false;

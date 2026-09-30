@@ -92,6 +92,8 @@ public struct PhysicsBody : IComponent
 }
 
 // Which layers collide with which (10 §3). Layer 0 is "default"; a missing entry means "collides".
+// `"ignore": { "hitbox": ["*"] }` makes a layer collide with nothing at all: a query-only layer
+// (LayerMatrix.QueryOnly, issue #137).
 [Record("physics_layers", Plugin = "sage.physics3d")]
 public sealed class PhysicsLayersRecord
 {
@@ -131,6 +133,24 @@ public sealed class LayerMatrix
 
     public bool Collide(int a, int b) => (_masks[a & 31] & (1u << (b & 31))) != 0;
 
+    // The layers that collide with nothing (`"ignore": { "hitbox": ["*"] }`, issue #137): shapes that
+    // exist only to be asked about — a creature's hitboxes. A query sees them only when its mask names
+    // nothing else (`LayerMask.Only(hitbox)`), so every query written for solid things — the character
+    // controller's sweeps, foot IK's rays, AI sight, a swing — goes on seeing exactly what it saw.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public LayerMask QueryOnly => new(_queryOnly);
+    private uint _queryOnly;
+
+    // Does a query with `mask` see a collider on `layer`? The mask names it, and a query-only layer
+    // only when the mask names nothing but query-only layers (see QueryOnly).
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public bool Sees(LayerMask mask, int layer)
+    {
+        uint bit = 1u << (layer & 31);
+        if ((mask.Bits & bit) == 0) return false;
+        return (_queryOnly & bit) == 0 || (mask.Bits & ~_queryOnly) == 0;
+    }
+
     // A layer by name, for data that names one (a prefab's "character" part). The engine's own four
     // are answered from the resolved indices rather than the name table, so a game that never wrote
     // a physics_layers record still gets "enemy" instead of silently getting the default layer.
@@ -161,6 +181,7 @@ public sealed class LayerMatrix
     public void Apply(PhysicsLayersRecord record)
     {
         for (int i = 0; i < 32; i++) { _masks[i] = uint.MaxValue; _names[i] = i == 0 ? "default" : $"layer{i}"; }
+        _queryOnly = 0;
         for (int i = 0; i < record.Layers.Count && i < 32; i++) _names[i] = record.Layers[i];
         if (record.Layers.Count > 32) Log.Error(LogCat.Physics, $"physics_layers: {record.Layers.Count} layers, only the first 32 are used");
 
@@ -175,6 +196,13 @@ public sealed class LayerMatrix
             if (a < 0) { Log.Warn(LogCat.Physics, $"physics_layers: unknown layer '{name}' in \"ignore\""); continue; }
             foreach (var other in ignored)
             {
+                // "*": every layer, including ones a later patch appends — a query-only layer (QueryOnly).
+                if (other == "*")
+                {
+                    for (int k = 0; k < 32; k++) { _masks[a] &= ~(1u << k); _masks[k] &= ~(1u << a); }
+                    _queryOnly |= 1u << a;
+                    continue;
+                }
                 int b = IndexOf(other);
                 if (b < 0) { Log.Warn(LogCat.Physics, $"physics_layers: unknown layer '{other}' ignored by '{name}'"); continue; }
                 _masks[a] &= ~(1u << b);

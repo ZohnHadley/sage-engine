@@ -162,7 +162,7 @@ public class PrefabPartTests
             ["bone_attachment"] = "sage.core", ["foot_ik"] = "sage.gameplay.animation",
             ["body"] = "sage.physics3d", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
             ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
-            ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
+            ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hitboxes"] = "sage.gameplay.combat", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
             ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
             ["logic_branch"] = "sage.core", ["logic_compare"] = "sage.core", ["logic_counter"] = "sage.core",
             ["logic_relay"] = "sage.core", ["math_remap"] = "sage.core", ["quest_watch"] = "sage.gameplay.quests",

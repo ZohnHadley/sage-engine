@@ -67,7 +67,9 @@ public interface IPhysicsWorld
     //
     // Every query takes a LayerMask (default = every layer) and skips triggers unless asked: a trigger
     // has no surface to stop a ray, a sweep or a sword (review #53). `ignore` leaves one entity out,
-    // usually the one asking (a swing starts inside its own attacker).
+    // usually the one asking (a swing starts inside its own attacker). A query-only layer (hitboxes,
+    // LayerMatrix.QueryOnly, issue #137) is seen only by a mask that names nothing else, and then never
+    // the colliders parented to `ignore`: the asker's own hitboxes.
 
     // The nearest hit along a ray, or Hit = false.
     RayHit Raycast(Vector3 from, Vector3 direction, float maxDistance, LayerMask mask = default,

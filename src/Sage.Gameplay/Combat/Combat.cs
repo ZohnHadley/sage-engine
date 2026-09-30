@@ -22,7 +22,7 @@ public readonly record struct DamageInfo(
 {
     public float Applied { get; init; }   // after resistance and tag gating: what health actually lost
 
-    // Where on the body it landed: a `hit_location` id once hitboxes exist (issue #137); empty = the body.
+    // Where on the body it landed: the `hit_location` of the hitbox a strike met (issue #137); empty = the body.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public RecordId Location { get; init; }
 }
@@ -143,7 +143,8 @@ public sealed class AttackRecord
 [GameEvent]
 public readonly record struct Damaged(DamageInfo Hit, float Applied)
 {
-    // Where on the body it landed (issue #133): the hit's `Location`, empty for the body.
+    // Where on the body it landed (issues #133, #137): the hit's `Location` — the hit_location of the
+    // hitbox the strike met — empty for the body (a capsule, a sprite creature, a spell, the `hurt` cheat).
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public RecordId Location => Hit.Location;
 }
@@ -166,18 +167,22 @@ public static class Combat
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public static float ApplyHit(World world, in HitRequest request, in HitResult result, AttackRecord attack)
     {
-        if (result.Target.IsNull) return 0f;
-        if (!Factions.MayHurt(world, request.Attacker, result.Target)) return 0f;
-        var damage = new DamageInfo(request.Attacker, result.Target, attack.DamageType, attack.Damage, result.Point, request.Aim);
-        return ApplyHit(world, in damage, in result, attack.Effects);
+        var landed = Hitboxes.Resolve(in result);   // a hitbox is its owner's (issue #137)
+        if (landed.Target.IsNull) return 0f;
+        if (!Factions.MayHurt(world, request.Attacker, landed.Target)) return 0f;
+        var damage = new DamageInfo(request.Attacker, landed.Target, attack.DamageType, attack.Damage, landed.Point, request.Aim);
+        return ApplyHit(world, in damage, in landed, attack.Effects);
     }
 
     // The pipeline itself: `damage` is what was asked for (who, how much, of what, which way) and
-    // `result` where it landed (on what, where, which location), which wins over the request's own.
+    // `result` where it landed (on what, where, which location), which wins over the request's own. A
+    // landing on a hitbox is its owner's, at the box's location (issue #137); the location's multiplier,
+    // then its resist, then the damage type's resist scale the damage, and its effects ride along.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public static float ApplyHit(World world, in DamageInfo damage, in HitResult result, List<RecordRef<EffectRecord>>? alsoApply = null)
     {
-        var hit = damage with { Target = result.Target, Point = result.Point, Location = result.Location };
+        var landed = Hitboxes.Resolve(in result);
+        var hit = damage with { Target = landed.Target, Point = landed.Point, Location = landed.Location };
         if (!world.IsAlive(hit.Target) || hit.Amount <= 0f) return 0f;
 
         var records = world.Resources.Get<RecordStore>();
@@ -200,7 +205,16 @@ public static class Combat
             return 0f;
         }
 
-        float amount = Mitigate(world, hit.Target, type, hit.Amount);
+        // Where it landed first (issue #137): the location's multiplier and its own armour, then the
+        // damage type's resist — each a fraction of what is left, so they multiply.
+        var location = LocationOf(records, hit.Location);
+        float amount = hit.Amount;
+        if (location != null)
+        {
+            amount *= MathF.Max(0f, location.DamageMultiplier);
+            amount = Resist(world, hit.Target, location.Resist.Id, amount);
+        }
+        amount = Resist(world, hit.Target, type.Resist.Id, amount);
         float before = world.Attribute(hit.Target, conventions.Health);
 
         // The health change is an effect like any other, so tags gate it and saves see it (16 §3.3).
@@ -209,18 +223,29 @@ public static class Combat
         float applied = MathF.Max(0f, before - world.Attribute(hit.Target, conventions.Health));
         if (alsoApply != null)
             foreach (var effect in alsoApply) Effects.Apply(world, hit.Target, effect, hit.Attacker);
+        if (location != null)
+            foreach (var effect in location.Effects) Effects.Apply(world, hit.Target, effect, hit.Attacker);
 
         world.Events.Send(new Damaged(hit, applied));
         return applied;
     }
 
-    // Resistance is a percentage attribute (armour, fire_resist…), clamped so nothing is ever immune
-    // by arithmetic: a resistance record's own Max decides the ceiling (95 for the engine's armour).
-    private static float Mitigate(World world, Entity target, DamageTypeRecord type, float amount)
+    // Resistance is a percentage attribute (armour, fire_resist, armor_head…), clamped so nothing is
+    // ever immune by arithmetic: a resistance record's own Max decides the ceiling (95 for the engine's armour).
+    private static float Resist(World world, Entity target, RecordId resist, float amount)
     {
-        if (type.Resist.IsEmpty) return amount;
-        float resist = Math.Clamp(world.Attribute(target, type.Resist), 0f, 95f);
-        return amount * (1f - resist * 0.01f);
+        if (resist.IsEmpty) return amount;
+        float percent = Math.Clamp(world.Attribute(target, resist), 0f, 95f);
+        return amount * (1f - percent * 0.01f);
+    }
+
+    // The body (empty) has no record; a location nobody defined is said once and counts as the body.
+    private static HitLocationRecord? LocationOf(RecordStore records, RecordId location)
+    {
+        if (location.IsEmpty) return null;
+        if (records.TryGet(location, out HitLocationRecord record)) return record;
+        Log.Once(LogCat.Gameplay, LogLevel.Error, $"hit_location:{location}", $"No hit_location record {location}: a strike there counts as the body");
+        return null;
     }
 }
 

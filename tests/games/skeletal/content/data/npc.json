@@ -75,8 +75,8 @@
   },
 
   {
-    // The NPC: the skinned mannequin, its animator, aim IK up the spine (the head ends up facing the whole
-    // pitch, the chest half of it) and foot IK. The mannequin's clips keep the stance foot on the ground,
+    // The NPC: the skinned mannequin, its animator, attributes and hitboxes, aim IK up the spine (the head
+    // ends up facing the whole pitch, the chest half of it) and foot IK. The mannequin's clips keep the stance foot on the ground,
     // so on the flat the feet need nothing; the rays reach only 4 cm under an animated sole (the ankle is
     // 8 cm above it), so a foot in the air is left alone.
     "type": "prefab",
@@ -85,6 +85,9 @@
     "parts": {
       "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "mannequin" },
       "animator": { "graph": "npc" },
+      // Health to lose, and the boxes a strike finds (hitboxes.json, engine issue #137).
+      "attributes": {},
+      "hitboxes": {},
       "aim_ik": {
         "joints": [
           { "joint": "spine", "weight": 0.25, "pitchLimit": 30, "yawLimit": 30 },

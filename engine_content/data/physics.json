@@ -1,13 +1,18 @@
 [
   // Collision layers (docs/design/10 §3). Layer 0 is "default"; everything collides unless listed in
   // "ignore" (which is symmetric). Games patch this record to add their own layers.
+  //
+  // `hitbox` (issue #137) ignores "*", everything, so it is a query-only layer: a creature's hitboxes
+  // (the `hitboxes` part) push nothing, trip no trigger, and are seen only by a query that asks for
+  // them alone — a shot resolving where it landed — never by a sweep, a ray or a swing aimed at solid things.
   {
     "type": "physics_layers",
     "id": "default",
-    "layers": ["default", "player", "enemy", "projectile", "trigger", "debris"],
+    "layers": ["default", "player", "enemy", "projectile", "trigger", "debris", "hitbox"],
     "ignore": {
       "projectile": ["projectile", "debris"],
-      "debris": ["debris"]
+      "debris": ["debris"],
+      "hitbox": ["*"]
     }
   }
 ]

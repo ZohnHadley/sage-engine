@@ -159,6 +159,18 @@
         }
       ]
     },
+    "hitboxes": {
+      "description": "Prefab part 'hitboxes' (HitboxesPart). A bare value is its \"model\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/hitboxes"
+        },
+        {
+          "description": "The model whose hitboxes records to use; left out, the skinned_mesh's or the animator's. A mesh path. (AssetPath)",
+          "type": "string"
+        }
+      ]
+    },
     "hop": {
       "description": "Prefab part 'hop' (HopPart).",
       "allOf": [
@@ -927,6 +939,17 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'foot_ik' (FootIkPart)."
+    },
+    "hitboxes": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "description": "The model whose hitboxes records to use; left out, the skinned_mesh's or the animator's. A mesh path. (AssetPath)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'hitboxes' (HitboxesPart)."
     },
     "hop": {
       "type": "object",
