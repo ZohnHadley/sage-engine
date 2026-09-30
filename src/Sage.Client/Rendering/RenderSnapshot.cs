@@ -28,6 +28,15 @@ internal sealed class PooledList<T> : IPooledList
         return ref _items[Count++];
     }
 
+    // `count` new entries at the end, as one span (a skinned renderer's palette, issue #117).
+    public Span<T> AddRange(int count)
+    {
+        if (Count + count > _items.Length) Array.Resize(ref _items, Math.Max(_items.Length * 2, Count + count));
+        var span = _items.AsSpan(Count, count);
+        Count += count;
+        return span;
+    }
+
     public void Clear() => Count = 0;
 
     public Span<T> AsSpan() => _items.AsSpan(0, Count);
@@ -88,6 +97,9 @@ internal struct RenderItem
     public Vector4 Tint;
     public ulong SortKey;
     public int View;           // index into RenderSnapshot.Views
+    // A skinned draw's palette (issue #117): RenderSnapshot.Bones[BoneStart, BoneStart + BoneCount).
+    // BoneCount 0 is a rigid draw. Every view that sees a renderer shares its one range.
+    public int BoneStart, BoneCount;
 }
 
 // Everything the Render phase draws this frame (06 §3.1–3.2): Extract writes it, Render reads only it.
@@ -122,6 +134,10 @@ internal sealed class RenderSnapshot
     // wall and a lamp across the room want different answers.
     public readonly PooledList<LightSample> Lights;
 
+    // Skinned renderers' palettes (issue #117), in model space: one run per renderer seen by any view
+    // (`RenderItem.BoneStart`), written by SkinnedMeshExtract through `SkinnedExtract.Emit`.
+    public readonly PooledList<System.Numerics.Matrix4x4> Bones;
+
     public RenderSnapshot()
     {
         Views = Pool<RenderView>(4);
@@ -129,6 +145,7 @@ internal sealed class RenderSnapshot
         Sprites = Pool<SpriteInstance>(256);
         DebugLines = Pool<VertexPositionColor>(512);
         Lights = Pool<LightSample>(32);
+        Bones = Pool<System.Numerics.Matrix4x4>(256);
     }
 
     public int Culled;                   // items rejected by frustum culling this frame, every view

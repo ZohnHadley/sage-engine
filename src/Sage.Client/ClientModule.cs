@@ -300,6 +300,9 @@ public sealed class ClientModule : IModule
         // What the world is drawn from: its views (issue #77; ActiveCamera until camera components).
         world.AddSystem(new CameraExtract(world, _renderer!, new ViewSource(world, _renderer!, _rendererCVars!.TestView)));
         world.AddSystem(new MeshExtract(world, _renderer!));
+        // Skinned meshes and their joint palettes (issue #117); `r_testskin` stands a bending column up.
+        world.AddSystem(new SkinnedMeshExtract(world, _renderer!));
+        world.AddSystem(new TestSkinSystem(world, _renderer!, _rendererCVars!.TestSkin));
         world.AddSystem(new SpriteExtract(world, _renderer!, _records!));
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
         world.AddSystem(new LightExtract(world, _renderer!, _lightsOn!));

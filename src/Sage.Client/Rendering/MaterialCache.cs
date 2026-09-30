@@ -16,6 +16,7 @@ internal sealed class EffectBinding
     {
         "ViewProj", "SunDir", "SunColor", "AmbientSky", "AmbientGround", "FogColor", "FogParams", "Time",
         "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount",
+        "Bones",   // the skinned draw's palette (issue #117), set per draw
     };
 
     public EffectBinding(Effect effect)
@@ -27,12 +28,14 @@ internal sealed class EffectBinding
         FogColor = P("FogColor"); FogParams = P("FogParams"); Time = P("Time");
         World = P("World"); Tint = P("Tint"); FogEnabled = P("FogEnabled");
         LightPositions = P("LightPositions"); LightColors = P("LightColors"); LightCount = P("LightCount");
+        Bones = P("Bones");
     }
 
     public Effect Effect { get; }
     public long FrameStamp = -1;
     public readonly EffectParameter? ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time, World, Tint, FogEnabled;
     public readonly EffectParameter? LightPositions, LightColors, LightCount;
+    public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
 
     // The four lights this draw is lit by (06 §3.9). Reused arrays: this is set per item, and a frame
     // with a thousand items would otherwise allocate two arrays a thousand times (02 §4.6).
@@ -76,6 +79,8 @@ internal sealed class MaterialRuntime
     public required RecordId Id;
     public required EffectBinding Effect;
     public required EffectTechnique Technique;
+    public EffectTechnique? Skinned;   // the effect's `Skinned` technique, for skinned meshes (issue #117)
+    public bool WarnedNoSkin;
     public required (EffectParameter Parameter, MaterialParam Value, Texture2D? Texture)[] Params;
     public required RenderPass Pass;
     public required BlendState Blend;
@@ -254,6 +259,7 @@ internal sealed class MaterialCache : IDisposable
             Id = id,
             Effect = binding,
             Technique = technique,
+            Skinned = effect.Techniques["Skinned"],
             Params = values.ToArray(),
             Pass = record.Pass,
             Blend = record.Blend switch { MaterialBlend.AlphaBlend => BlendState.AlphaBlend, MaterialBlend.Additive => BlendState.Additive, _ => BlendState.Opaque },

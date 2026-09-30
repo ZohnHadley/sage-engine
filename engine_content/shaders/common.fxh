@@ -3,7 +3,7 @@
 //
 // Parameter tiers (07 §3.4), set by the renderer; materials never set these:
 //   frame:  ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time
-//   object: World, Tint
+//   object: World, Tint, and for skinned draws Bones
 //   material (set from the material record, with FogEnabled from the record's "fog"):
 //           FogEnabled + whatever the effect declares (Albedo, AlphaCutoff...)
 // OpenGL ignores default values in .fx files: every parameter is set by the engine or a material.
@@ -34,6 +34,38 @@ float4 Tint;            // premultiplied colour multiplier
 float3 LightPositions[MAX_LIGHTS];
 float4 LightColors[MAX_LIGHTS];     // rgb = colour x intensity, a = range in metres
 float LightCount;
+
+// ---- Object: a skinned draw's joint palette (issue #117) ----
+//
+// Joint j's bind space → model space, as 4x3 (the last column of a row-vector affine matrix is always
+// 0,0,0,1, so it is not sent): 64 of them are 192 of vs_3_0's 256 constant registers. Set per draw by
+// the renderer from RenderSnapshot.Bones, only for the `Skinned` technique; `SkinMath` (Sage.Simulation)
+// is the same maths on the CPU, and its tests are this function's.
+#define MAX_BONES 64
+float4x3 Bones[MAX_BONES];
+
+// The vertex's skin matrix: its four joints' palette entries blended by its weights (which the loader
+// makes sum to one).
+float4x3 SkinMatrix(float4 indices, float4 weights)
+{
+    float4x3 skin = Bones[(int)indices.x] * weights.x;
+    skin += Bones[(int)indices.y] * weights.y;
+    skin += Bones[(int)indices.z] * weights.z;
+    skin += Bones[(int)indices.w] * weights.w;
+    return skin;
+}
+
+// A bind-space position into model space; World then places the model as for any mesh.
+float4 SkinPosition(float4 position, float4x3 skin)
+{
+    return float4(mul(position, skin), 1);
+}
+
+// A bind-space normal into model space (rotation only; joints are rigid). Normalised by the pixel shader.
+float3 SkinNormal(float3 normal, float4x3 skin)
+{
+    return mul(normal, (float3x3)skin);
+}
 
 // ---- Material ----
 float FogEnabled;       // 1 or 0, from the material's "fog"

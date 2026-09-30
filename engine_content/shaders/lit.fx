@@ -1,5 +1,6 @@
 // Meshes (docs/design/07 §3.2): techniques Default (sun + hemispheric ambient + up to four point lights
-// + fog), AlphaTest (Default + clip at AlphaCutoff) and Unlit (albedo + fog).
+// + fog), AlphaTest (Default + clip at AlphaCutoff), Unlit (albedo + fog) and Skinned (Default, with the
+// vertices bent by up to four of the draw's `Bones` each; issue #117).
 #include "common.fxh"
 
 texture Albedo;
@@ -28,6 +29,28 @@ VSOutput VS(VSInput input)
     float4 relative = mul(input.Position, World);
     output.Position = mul(relative, ViewProj);
     output.Normal = mul(input.Normal, (float3x3)World);
+    output.UV = input.UV;
+    output.Relative = relative.xyz;
+    return output;
+}
+
+// A skinned vertex (the client's VertexSkinned): the rigid vertex plus four joint indices and weights.
+struct VSSkinnedInput
+{
+    float4 Position : POSITION0;
+    float3 Normal   : NORMAL0;
+    float2 UV       : TEXCOORD0;
+    float4 Indices  : BLENDINDICES0;
+    float4 Weights  : BLENDWEIGHT0;
+};
+
+VSOutput VSSkinned(VSSkinnedInput input)
+{
+    VSOutput output;
+    float4x3 skin = SkinMatrix(input.Indices, input.Weights);
+    float4 relative = mul(SkinPosition(input.Position, skin), World);
+    output.Position = mul(relative, ViewProj);
+    output.Normal = mul(SkinNormal(input.Normal, skin), (float3x3)World);
     output.UV = input.UV;
     output.Relative = relative.xyz;
     return output;
@@ -72,4 +95,9 @@ technique AlphaTest
 technique Unlit
 {
     pass P0 { VertexShader = compile vs_3_0 VS(); PixelShader = compile ps_3_0 PSUnlit(); }
+}
+
+technique Skinned
+{
+    pass P0 { VertexShader = compile vs_3_0 VSSkinned(); PixelShader = compile ps_3_0 PSDefault(); }
 }
