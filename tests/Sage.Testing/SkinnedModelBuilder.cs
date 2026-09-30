@@ -22,16 +22,18 @@ namespace Sage.Testing;
 //       "walk" (1 s, meant to loop): mid rotation LINEAR about +Z, 0 s identity, 0.5 s 90°, 1 s identity;
 //                     root translation CUBICSPLINE, 0 s value (0,0,0) out-tangent (1,0,0),
 //                     1 s in-tangent (3,0,0) value (2,0,0) — (0.75,0,0) at 0.5 s.
+//   and, with `withRun: true` (issue #118's walk↔run blends), a third:
+//       "run" (0.5 s, meant to loop): mid rotation LINEAR about +Z, 0 s identity, 0.25 s −90°, 0.5 s identity.
 //
 // `withSkin: false` writes the same nodes, mesh and clips with no skin, for the reader's warning.
 public static class SkinnedModelBuilder
 {
     public const string Root = "root", Mid = "mid", Tip = "tip";
-    public const string Idle = "idle", Walk = "walk";
+    public const string Idle = "idle", Walk = "walk", Run = "run";
     public const float BoneLength = 1f;
-    public const float IdleDuration = 2f, WalkDuration = 1f;
+    public const float IdleDuration = 2f, WalkDuration = 1f, RunDuration = 0.5f;
 
-    public static byte[] Build(bool withSkin = true)
+    public static byte[] Build(bool withSkin = true, bool withRun = false)
     {
         var model = ModelRoot.CreateModel();
         var scene = model.UseScene("scene");
@@ -74,14 +76,25 @@ public static class SkinnedModelBuilder
             [1f] = (new Vector3(3, 0, 0), new Vector3(2, 0, 0), Vector3.Zero),
         });
 
+        if (withRun)
+        {
+            var run = model.CreateAnimation(Run);
+            run.CreateRotationChannel(mid, new Dictionary<float, Quaternion>
+            {
+                [0f] = Quaternion.Identity,
+                [0.25f] = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -MathF.PI / 2),
+                [0.5f] = Quaternion.Identity,
+            }, true);
+        }
+
         return model.WriteGLB().ToArray();
     }
 
-    // Writes Build(withSkin) to `file` (folders made as needed) and returns the path.
-    public static string Write(string file, bool withSkin = true)
+    // Writes Build(withSkin, withRun) to `file` (folders made as needed) and returns the path.
+    public static string Write(string file, bool withSkin = true, bool withRun = false)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
-        File.WriteAllBytes(file, Build(withSkin));
+        File.WriteAllBytes(file, Build(withSkin, withRun));
         return file;
     }
 

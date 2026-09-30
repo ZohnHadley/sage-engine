@@ -1,4 +1,9 @@
 #nullable enable
+const Sage.Simulation.Animators.BaseLayer = "base" -> string!
+const Sage.Simulation.Animators.MaxBlendPoints = 16 -> int
+const Sage.Simulation.Animators.SetParamInput = "SetAnimParam" -> string!
+const Sage.Simulation.Animators.SystemId = "sage.animation.animator" -> string!
+const Sage.Simulation.Animators.TriggerInput = "AnimTrigger" -> string!
 const Sage.Simulation.Camera.DefaultFar = 1000 -> float
 const Sage.Simulation.Camera.DefaultFovY = 45 -> float
 const Sage.Simulation.Camera.DefaultNear = 0.1 -> float
@@ -72,6 +77,89 @@ Sage.Simulation.AnimationSet.Clips.get -> System.Collections.Generic.IReadOnlyLi
 Sage.Simulation.AnimationSet.FindClip(string! name) -> Sage.Simulation.AnimationClip?
 Sage.Simulation.AnimationSet.Skeleton.get -> Sage.Simulation.Skeleton!
 Sage.Simulation.AnimationSet.Source.get -> string!
+Sage.Simulation.Animator
+Sage.Simulation.Animator.Animator() -> void
+Sage.Simulation.Animator.Graph -> Sage.Core.RecordId
+Sage.Simulation.Animator.Layers -> Sage.Simulation.AnimatorLayer[]?
+Sage.Simulation.Animator.Model -> Sage.Core.AssetPath
+Sage.Simulation.Animator.Params -> Sage.Simulation.AnimatorParam[]?
+Sage.Simulation.AnimatorLayer
+Sage.Simulation.AnimatorLayer.AnimatorLayer() -> void
+Sage.Simulation.AnimatorLayer.Fade -> float
+Sage.Simulation.AnimatorLayer.FadeDuration -> float
+Sage.Simulation.AnimatorLayer.FadeEase -> Sage.Simulation.Ease
+Sage.Simulation.AnimatorLayer.Fading.get -> bool
+Sage.Simulation.AnimatorLayer.From -> string?
+Sage.Simulation.AnimatorLayer.FromPhase -> float
+Sage.Simulation.AnimatorLayer.Name -> string?
+Sage.Simulation.AnimatorLayer.Phase -> float
+Sage.Simulation.AnimatorLayer.State -> string?
+Sage.Simulation.AnimatorLayer.Time -> float
+Sage.Simulation.AnimatorParam
+Sage.Simulation.AnimatorParam.AnimatorParam() -> void
+Sage.Simulation.AnimatorParam.Name -> string?
+Sage.Simulation.AnimatorParam.Value -> float
+Sage.Simulation.AnimatorPart
+Sage.Simulation.AnimatorPart.AnimatorPart() -> void
+Sage.Simulation.AnimatorPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.AnimatorPart.Graph -> Sage.Core.RecordId
+Sage.Simulation.AnimatorPart.Model -> Sage.Core.AssetPath
+Sage.Simulation.Animators
+Sage.Simulation.AnimBlendPoint
+Sage.Simulation.AnimBlendPoint.AnimBlendPoint() -> void
+Sage.Simulation.AnimBlendPoint.Clip -> string!
+Sage.Simulation.AnimBlendPoint.X -> float
+Sage.Simulation.AnimBlendPoint.Y -> float
+Sage.Simulation.AnimBlendSpace
+Sage.Simulation.AnimBlendSpace.AnimBlendSpace() -> void
+Sage.Simulation.AnimBlendSpace.Points -> System.Collections.Generic.List<Sage.Simulation.AnimBlendPoint!>!
+Sage.Simulation.AnimBlendSpace.X -> string!
+Sage.Simulation.AnimBlendSpace.Y -> string!
+Sage.Simulation.AnimGraphRecord
+Sage.Simulation.AnimGraphRecord.AnimGraphRecord() -> void
+Sage.Simulation.AnimGraphRecord.Ease -> Sage.Simulation.Ease
+Sage.Simulation.AnimGraphRecord.Fade -> float
+Sage.Simulation.AnimGraphRecord.Initial -> string!
+Sage.Simulation.AnimGraphRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.AnimLayer!>!
+Sage.Simulation.AnimGraphRecord.Params -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.AnimParam!>!
+Sage.Simulation.AnimGraphRecord.States -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.AnimState!>!
+Sage.Simulation.AnimGraphRecord.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
+Sage.Simulation.AnimLayer
+Sage.Simulation.AnimLayer.AnimLayer() -> void
+Sage.Simulation.AnimLayer.Initial -> string!
+Sage.Simulation.AnimLayer.Mask -> System.Collections.Generic.List<string!>!
+Sage.Simulation.AnimLayer.Name -> string!
+Sage.Simulation.AnimLayer.States -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.AnimState!>!
+Sage.Simulation.AnimLayer.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
+Sage.Simulation.AnimLayer.Weight -> float
+Sage.Simulation.AnimParam
+Sage.Simulation.AnimParam.AnimParam() -> void
+Sage.Simulation.AnimParam.Default -> float
+Sage.Simulation.AnimParam.From -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParam.Kind -> Sage.Simulation.AnimParamKind
+Sage.Simulation.AnimParamKind
+Sage.Simulation.AnimParamKind.Bool = 1 -> Sage.Simulation.AnimParamKind
+Sage.Simulation.AnimParamKind.Float = 0 -> Sage.Simulation.AnimParamKind
+Sage.Simulation.AnimParamKind.Trigger = 2 -> Sage.Simulation.AnimParamKind
+Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.AimPitch = 5 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.Crouching = 7 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.Grounded = 6 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.MoveX = 3 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.MoveY = 4 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.None = 0 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.Speed = 1 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.VerticalSpeed = 2 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimState
+Sage.Simulation.AnimState.AnimState() -> void
+Sage.Simulation.AnimState.Blend -> Sage.Simulation.AnimBlendSpace?
+Sage.Simulation.AnimState.Clip -> string!
+Sage.Simulation.AnimState.Ease -> Sage.Simulation.Ease?
+Sage.Simulation.AnimState.Fade -> float?
+Sage.Simulation.AnimState.Loop -> bool
+Sage.Simulation.AnimState.Speed -> float
+Sage.Simulation.AnimState.Tags -> System.Collections.Generic.List<string!>!
+Sage.Simulation.AnimState.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
 Sage.Simulation.Camera
 Sage.Simulation.Camera.Camera() -> void
 Sage.Simulation.Camera.Enabled -> bool
@@ -218,6 +306,7 @@ Sage.Simulation.Ease.SineOut = 14 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmootherStep = 29 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmoothStep = 28 -> Sage.Simulation.Ease
 Sage.Simulation.Easing
+Sage.Simulation.Engine.Animations.get -> Sage.Simulation.GltfAnimationReader!
 Sage.Simulation.EntityInputs.ComponentsTaking(string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.EntityInputs.Register<T>(string! name, Sage.Simulation.EntityInput! handler) -> void
 Sage.Simulation.EntityInputs.Takes(Sage.Simulation.Entity entity, string! name) -> bool
@@ -479,6 +568,17 @@ Sage.Simulation.ScriptedCameraPart.Apply(in Sage.Simulation.PrefabPartContext ct
 Sage.Simulation.ScriptedCameraPart.HoldTime -> float
 Sage.Simulation.ScriptedCameraPart.LockInput -> bool
 Sage.Simulation.ScriptedCameraPart.ScriptedCameraPart() -> void
+static Sage.Simulation.Animators.ClipWeight(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! clip, string? layer = null) -> float
+static Sage.Simulation.Animators.Describe(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> string!
+static Sage.Simulation.Animators.GetParam(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name) -> float?
+static Sage.Simulation.Animators.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
+static Sage.Simulation.Animators.Play(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, string? layer = null) -> bool
+static Sage.Simulation.Animators.SetParam(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name, bool value) -> bool
+static Sage.Simulation.Animators.SetParam(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name, float value) -> bool
+static Sage.Simulation.Animators.SetTrigger(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name) -> bool
+static Sage.Simulation.Animators.StateOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string? layer = null) -> string?
+static Sage.Simulation.Animators.TryGetPose(Sage.Simulation.World! world, Sage.Simulation.Entity entity, out Sage.Simulation.SkeletonPose? pose) -> bool
+static Sage.Simulation.Animators.TryGetPose(Sage.Simulation.World! world, Sage.Simulation.Entity entity, out Sage.Simulation.SkeletonPose? pose, out bool sampledThisTick) -> bool
 static Sage.Simulation.Camera.Orthographic(float height = 10, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.Camera.Perspective(float fovYDegrees = 45, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.CameraBlends.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity camera, in Sage.Simulation.CameraView from, float seconds, Sage.Simulation.Ease ease) -> void

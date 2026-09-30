@@ -1,0 +1,532 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Text;
+
+namespace Sage.Simulation;
+
+// The animator on an entity (issue #118): which anim_graph it runs, the model whose skeleton and clips
+// it plays, and where each layer is. Saved by name, like a state machine:
+//
+//   "sage:animator": { "Graph": "game:soldier", "Model": "models/soldier.glb",
+//     "Layers": [ { "Name": "base", "State": "move", "Time": 1.25, "Phase": 0.4,
+//                   "From": "idle", "FromPhase": 0.9, "Fade": 0.1, "FadeDuration": 0.2, "FadeEase": "SmoothStep" },
+//                 { "Name": "upper", "State": "none", "Time": 3, "Phase": 0, "From": null, ... } ],
+//     "Params": [ { "Name": "speed", "Value": 2.5 }, { "Name": "crouch", "Value": 0 } ] }
+//
+// A state that is not in the graph any more (a save from before an edit, a hot reload) sends its layer
+// to the layer's initial state, with a warning; a layer or param that is gone is dropped, a new one
+// starts at its initial state or default. The pose is never saved: it is sampled again from these.
+[Component("sage:animator")]
+[Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+public struct Animator : IComponent
+{
+    [RecordRef("anim_graph"), Property(Tooltip = "The anim_graph record it runs")]
+    public RecordId Graph;
+    [AssetKind("mesh"), Property(Tooltip = "The skinned .glb whose skeleton and clips it plays")]
+    public AssetPath Model;
+    [Property(Tooltip = "Each layer's state, time and cross-fade, the base first; filled on its first tick")]
+    public AnimatorLayer[]? Layers;
+    [Property(Tooltip = "Each param's value, by name; filled on its first tick")]
+    public AnimatorParam[]? Params;
+
+    // Its pose's slot in the world's AnimatorPoses (0: none yet), and the compiled graph its indices were
+    // resolved against. Neither is saved: both are found again after a load.
+    [Transient] internal int Slot;
+    [Transient] internal int Version;
+}
+
+// One layer of an animator: the state it is in and the one it is fading from.
+[Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+public struct AnimatorLayer
+{
+    [Property(Tooltip = "The layer's name (\"base\" for the graph's own states)")]
+    public string? Name;
+    [Property(Tooltip = "The state it is in, by name")]
+    public string? State;
+    [Property(Min = 0, Unit = "s", Tooltip = "Seconds in that state (what a transition's after reads)")]
+    public float Time;
+    [Property(Min = 0, Tooltip = "How far through its clip or blend: 0..1 a loop (wrapping), clamped at 1 for a one-shot")]
+    public float Phase;
+    [Property(Tooltip = "The state it is cross-fading from; null when it is not fading")]
+    public string? From;
+    [Property(Min = 0, Tooltip = "How far through the state it is fading from")]
+    public float FromPhase;
+    [Property(Min = 0, Unit = "s", Tooltip = "Seconds into the cross-fade")]
+    public float Fade;
+    [Property(Min = 0, Unit = "s", Tooltip = "How long the cross-fade takes")]
+    public float FadeDuration;
+    [Property(Tooltip = "The curve the cross-fade follows")]
+    public Ease FadeEase;
+
+    // Indices into the compiled layer (-1: none); found again by name.
+    internal int Index;
+    internal int FromIndex;
+
+    public readonly bool Fading => From != null;
+}
+
+[Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+public struct AnimatorParam
+{
+    public string? Name;
+    public float Value;
+}
+
+// "animator": { "graph": "soldier", "model": "models/soldier.glb" }. Reads the model when it is applied
+// (content time, never a tick), and says which clips the graph names that the model lacks.
+[PrefabPart("animator", Plugin = RegistrationOwners.Core)]
+[Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+public sealed class AnimatorPart : IPrefabPart
+{
+    [RecordRef("anim_graph"), Property(Tooltip = "The anim_graph record it runs")]
+    public RecordId Graph;
+    [AssetKind("mesh"), Property(Tooltip = "The skinned .glb whose skeleton and clips it plays")]
+    public AssetPath Model;
+
+    public void Apply(in PrefabPartContext ctx)
+    {
+        if (Graph.IsEmpty)
+        {
+            ctx.Warn("an animator part needs a \"graph\" (an anim_graph record)");
+            return;
+        }
+        if (Model.IsEmpty) ctx.Warn("an animator part needs a \"model\" (a skinned .glb); it will stand still");
+        ctx.World.Add(ctx.Entity, new Animator { Graph = Graph, Model = Model });
+        if (Model.IsEmpty || !ctx.World.Resources.TryGet<GltfAnimationReader>(out var reader) || reader == null) return;
+        if (reader.Load(Model) is not { } set) return;
+        if (!ctx.World.Resources.TryGet<RecordStore>(out var records) || records == null) return;
+        if (!records.TryGet(Graph, out AnimGraphRecord graph)) return;
+        foreach (var clip in graph.Compile().ClipNames)
+            if (set.FindClip(clip) == null)
+                Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-clip:{Graph}:{Model}:{clip}",
+                    $"{ctx.Where}: anim_graph {Graph} plays '{clip}', which {set.Source} has no clip called; that state stands at rest");
+    }
+}
+
+// Reading and driving animators: params, triggers, states, tags and the sampled pose. Registered by the
+// engine (Engine's constructor, sage.core), like state machines.
+//
+// **The pose, for #117 (skinning) and #120 (attachments, IK):** AnimatorSystem ("sage.animation.animator",
+// Phase.Animation) samples each animator into a pooled SkeletonPose and leaves its ModelSpace filled.
+// `TryGetPose` hands it out. A system that changes the pose (IK, a look-at) runs in Phase.Animation
+// `After = new[] { Animators.SystemId }`, edits `Local` and calls PoseSampler.ToModelSpace again; one
+// that only reads it (skinning extract, sockets) reads it any time after. The pose belongs to the
+// world's AnimatorPoses: never keep it past the tick, never Dispose it.
+[Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+public static class Animators
+{
+    public const string SystemId = "sage.animation.animator";
+    public const string SetParamInput = "SetAnimParam";
+    public const string TriggerInput = "AnimTrigger";
+
+    // The base layer's name in saves, anim_debug and StateOf.
+    public const string BaseLayer = "base";
+
+    // The most points a blend space may have (its weights are worked out on the stack).
+    public const int MaxBlendPoints = 16;
+
+    internal const string LodDistanceCVar = "anim_lod_distance";
+
+    internal static void Register(Engine engine)
+    {
+        // Routed to the animator (issue #91): an entity without one is refused naming sage:animator.
+        engine.Inputs.Register<Animator>(SetParamInput, static (World world, in IOContext io) => SetParamFromText(world, io.Self, io.Parameter));
+        engine.Inputs.Register<Animator>(TriggerInput, static (World world, in IOContext io) =>
+        {
+            if (!SetTrigger(world, io.Self, io.Parameter.Trim()))
+                Log.Warn(LogCat.Events, $"I/O: {TriggerInput}({io.Parameter}) at {World.Describe(io.Self)}: no such trigger param");
+        });
+        engine.Records.AddCheck<AnimGraphRecord>(Check);
+
+        engine.CVars.Register(LodDistanceCVar, 30f, CVarFlags.None,
+            "Animation LOD: animators farther than this from the main camera sample their pose every 2nd tick, past twice it every 4th " +
+            "(their states and times still step every tick); 0 = every animator every tick.", 0f, 100000f);
+        engine.CVars.RegisterCommand("anim_debug", CVarFlags.None,
+            "anim_debug [filter]: every animator's layers (state, time, cross-fade, blend weights), params and LOD rate.", a =>
+        {
+            string filter = a.Count > 0 ? a[0] : "";
+            int shown = 0;
+            foreach (var world in engine.Worlds)
+            {
+                foreach (var e in world.Query<Animator>().Entities)
+                {
+                    string label = World.Describe(e);
+                    if (filter.Length > 0 && !label.Contains(filter, StringComparison.OrdinalIgnoreCase)) continue;
+                    Log.Info(LogCat.Console, $"[{world.Name}] {Describe(world, e)}");
+                    shown++;
+                }
+            }
+            Log.Info(LogCat.Console, $"anim_debug: {shown} animator(s)");
+        });
+    }
+
+    // ---- params ----------------------------------------------------------------------------------------
+
+    // Sets a float or bool param (a bool reads any non-zero as 1). False when there is no animator or no
+    // such param. A param with a `from` is overwritten on the next tick.
+    public static bool SetParam(World world, Entity entity, string name, float value)
+    {
+        if (!TryParams(world, entity, out var graph, out var values)) return false;
+        int i = graph.ParamIndex(name);
+        if (i < 0) return false;
+        values[i].Value = graph.ParamKinds[i] == AnimParamKind.Float ? value : value != 0f ? 1f : 0f;
+        return true;
+    }
+
+    public static bool SetParam(World world, Entity entity, string name, bool value) => SetParam(world, entity, name, value ? 1f : 0f);
+
+    // Sets a trigger: the next tick's transitions with `on` its name may take it; then it is used up.
+    public static bool SetTrigger(World world, Entity entity, string name)
+    {
+        if (!TryParams(world, entity, out var graph, out var values)) return false;
+        int i = graph.ParamIndex(name);
+        if (i < 0 || graph.ParamKinds[i] != AnimParamKind.Trigger) return false;
+        values[i].Value = 1f;
+        return true;
+    }
+
+    // A param's value (a bool or a set trigger: 1), or null.
+    public static float? GetParam(World world, Entity entity, string name)
+    {
+        if (!TryParams(world, entity, out var graph, out var values)) return null;
+        int i = graph.ParamIndex(name);
+        return i < 0 ? null : values[i].Value;
+    }
+
+    // Reads a param without the graph: what the anim_param condition asks. Allocation-free.
+    internal static bool TryReadParam(World world, Entity entity, string name, out float value)
+    {
+        value = 0f;
+        if (entity.IsNull || !world.IsAlive(entity) || !world.TryGet<Animator>(entity, out var a) || a.Params is not { } values) return false;
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (!string.Equals(values[i].Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+            value = values[i].Value;
+            return true;
+        }
+        return false;
+    }
+
+    // "name value" (value: a number, true/false, on/off; left out: 1). Only a trigger's name: sets it.
+    private static void SetParamFromText(World world, Entity entity, string text)
+    {
+        var span = text.AsSpan().Trim();
+        int space = span.IndexOf(' ');
+        string name = (space < 0 ? span : span[..space]).ToString();
+        var rest = space < 0 ? ReadOnlySpan<char>.Empty : span[(space + 1)..].Trim();
+        if (!TryParams(world, entity, out var graph, out _))
+        {
+            Log.Warn(LogCat.Events, $"I/O: {SetParamInput}({text}) at {World.Describe(entity)}: its animator has no graph yet");
+            return;
+        }
+        int i = graph.ParamIndex(name);
+        if (i < 0)
+        {
+            Log.Warn(LogCat.Events, $"I/O: {SetParamInput}({text}) at {World.Describe(entity)}: no param '{name}'" + Spelling.Suggest(name, graph.ParamNames));
+            return;
+        }
+        if (graph.ParamKinds[i] == AnimParamKind.Trigger)
+        {
+            SetTrigger(world, entity, name);
+            return;
+        }
+        float value;
+        if (rest.IsEmpty) value = 1f;
+        else if (float.TryParse(rest, NumberStyles.Float, CultureInfo.InvariantCulture, out float number)) value = number;
+        else if (rest.Equals("true", StringComparison.OrdinalIgnoreCase) || rest.Equals("on", StringComparison.OrdinalIgnoreCase)) value = 1f;
+        else if (rest.Equals("false", StringComparison.OrdinalIgnoreCase) || rest.Equals("off", StringComparison.OrdinalIgnoreCase)) value = 0f;
+        else
+        {
+            Log.Warn(LogCat.Events, $"I/O: {SetParamInput}({text}) at {World.Describe(entity)}: expected \"name value\" (a number, true or false)");
+            return;
+        }
+        SetParam(world, entity, name, value);
+    }
+
+    // The animator's graph and its param values, shaped to that graph (filled if this is before its
+    // first tick).
+    private static bool TryParams(World world, Entity entity, [NotNullWhen(true)] out AnimGraphRecord.Compiled? graph,
+                                  [NotNullWhen(true)] out AnimatorParam[]? values)
+    {
+        graph = null;
+        values = null;
+        if (entity.IsNull || !world.IsAlive(entity) || !world.Has<Animator>(entity)) return false;
+        ref var a = ref world.Get<Animator>(entity);
+        if (Compiled(world, a.Graph) is not { } g) return false;
+        AnimatorStepper.Resolve(entity, ref a, g);
+        graph = g;
+        values = a.Params!;
+        return true;
+    }
+
+    // ---- states and tags -------------------------------------------------------------------------------
+
+    // The state a layer is in ("base" or null: the base layer), or null (no animator, no such layer, not
+    // started).
+    public static string? StateOf(World world, Entity entity, string? layer = null)
+    {
+        if (entity.IsNull || !world.IsAlive(entity) || !world.TryGet<Animator>(entity, out var a) || a.Layers is not { } layers) return null;
+        string want = string.IsNullOrEmpty(layer) ? BaseLayer : layer;
+        foreach (var l in layers)
+            if (string.Equals(l.Name, want, StringComparison.OrdinalIgnoreCase)) return string.IsNullOrEmpty(l.State) ? null : l.State;
+        return null;
+    }
+
+    // Whether the state some layer is in carries `tag` (a layer fading into a state is in it).
+    public static bool HasTag(World world, Entity entity, string tag)
+    {
+        if (entity.IsNull || !world.IsAlive(entity) || !world.Has<Animator>(entity)) return false;
+        ref var a = ref world.Get<Animator>(entity);
+        if (a.Layers is not { } layers || Compiled(world, a.Graph) is not { } g) return false;
+        AnimatorStepper.Resolve(entity, ref a, g);
+        for (int i = 0; i < layers.Length && i < g.Layers.Length; i++)
+        {
+            int s = a.Layers![i].Index;
+            if (s >= 0 && g.Layers[i].States[s].HasTag(tag)) return true;
+        }
+        return false;
+    }
+
+    // How much of `clip` the layer's current state plays (0..1; a clip state: 1 for its clip; a blend:
+    // the clip's weight at the params now). Not the cross-fade: what the state itself is made of.
+    public static float ClipWeight(World world, Entity entity, string clip, string? layer = null)
+    {
+        if (entity.IsNull || !world.IsAlive(entity) || !world.Has<Animator>(entity)) return 0f;
+        ref var a = ref world.Get<Animator>(entity);
+        if (Compiled(world, a.Graph) is not { } g) return 0f;
+        AnimatorStepper.Resolve(entity, ref a, g);
+        int l = g.LayerIndex(layer);
+        if (l < 0 || a.Layers![l].Index < 0) return 0f;
+        var state = g.Layers[l].States[a.Layers[l].Index];
+        Span<float> weights = stackalloc float[MaxBlendPoints];
+        int count = AnimatorStepper.Weights(state, a.Params!, weights);
+        float total = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            int c = state.IsBlend ? state.PointClips[i] : state.Clip;
+            if (string.Equals(g.ClipNames[c], clip, StringComparison.Ordinal)) total += weights[i];
+        }
+        return total;
+    }
+
+    // Goes to `state` on a layer now (a cross-fade by the state's fade). False when there is no such state.
+    public static bool Play(World world, Entity entity, string state, string? layer = null)
+    {
+        if (entity.IsNull || !world.IsAlive(entity) || !world.Has<Animator>(entity)) return false;
+        ref var a = ref world.Get<Animator>(entity);
+        if (Compiled(world, a.Graph) is not { } g) return false;
+        AnimatorStepper.Resolve(entity, ref a, g);
+        int l = g.LayerIndex(layer);
+        if (l < 0) return false;
+        int to = g.Layers[l].IndexOf(state);
+        if (to < 0) return false;
+        AnimatorStepper.Change(g, g.Layers[l], ref a.Layers![l], to);
+        return true;
+    }
+
+    // ---- the pose --------------------------------------------------------------------------------------
+
+    // The entity's pose, as AnimatorSystem last sampled it (ModelSpace filled). False when it has no
+    // animator, or no pose yet (before its first tick, or its model did not load).
+    public static bool TryGetPose(World world, Entity entity, [NotNullWhen(true)] out SkeletonPose? pose) =>
+        TryGetPose(world, entity, out pose, out _);
+
+    // And whether it was sampled this tick (animation LOD skips some ticks for distant animators).
+    public static bool TryGetPose(World world, Entity entity, [NotNullWhen(true)] out SkeletonPose? pose, out bool sampledThisTick)
+    {
+        pose = null;
+        sampledThisTick = false;
+        if (entity.IsNull || !world.IsAlive(entity) || !world.TryGet<Animator>(entity, out var a)) return false;
+        if (!world.Resources.TryGet<AnimatorPoses>(out var poses) || poses == null) return false;
+        if (poses.Find(a.Slot, entity) is not { Pose: { } p } instance) return false;
+        pose = p;
+        sampledThisTick = instance.SampledTick == world.Tick;
+        return true;
+    }
+
+    // ---- debugging -------------------------------------------------------------------------------------
+
+    // One animator, in words (anim_debug).
+    public static string Describe(World world, Entity entity)
+    {
+        var sb = new StringBuilder(World.Describe(entity));
+        if (!world.IsAlive(entity) || !world.Has<Animator>(entity)) return sb.Append(": no animator").ToString();
+        ref var a = ref world.Get<Animator>(entity);
+        sb.Append(": graph ").Append(a.Graph).Append(", model ").Append(a.Model.IsEmpty ? "(none)" : a.Model.ToString());
+        if (Compiled(world, a.Graph) is not { } g) return sb.Append(" (no such anim_graph)").ToString();
+        AnimatorStepper.Resolve(entity, ref a, g);
+        AnimatorPoses.Instance? instance = null;
+        if (world.Resources.TryGet<AnimatorPoses>(out var poses) && poses != null) instance = poses.Find(a.Slot, entity);
+        sb.Append(instance?.Pose == null ? ", no pose" : $", pose of {instance.Pose.JointCount} joints");
+        if (instance != null) sb.Append(CultureInfo.InvariantCulture, $", LOD every {instance.Interval} tick(s)");
+        Span<float> weights = stackalloc float[MaxBlendPoints];
+        for (int l = 0; l < g.Layers.Length; l++)
+        {
+            ref var s = ref a.Layers![l];
+            var layer = g.Layers[l];
+            sb.Append("\n  ").Append(layer.Name).Append(": ").Append(s.State ?? "(none)")
+              .Append(CultureInfo.InvariantCulture, $" t={s.Time:F2}s phase={s.Phase:F2}");
+            if (s.Fading)
+                sb.Append(CultureInfo.InvariantCulture, $", fading from {s.From} ({s.Fade:F2}/{s.FadeDuration:F2}s {s.FadeEase})");
+            if (s.Index >= 0 && layer.States[s.Index].IsBlend)
+            {
+                var state = layer.States[s.Index];
+                int count = AnimatorStepper.Weights(state, a.Params!, weights);
+                sb.Append(", blend");
+                for (int i = 0; i < count; i++)
+                    sb.Append(CultureInfo.InvariantCulture, $" {g.ClipNames[state.PointClips[i]]}={weights[i]:F2}");
+            }
+        }
+        if (a.Params!.Length > 0)
+        {
+            sb.Append("\n  params:");
+            foreach (var p in a.Params) sb.Append(CultureInfo.InvariantCulture, $" {p.Name}={p.Value:0.##}");
+        }
+        return sb.ToString();
+    }
+
+    internal static AnimGraphRecord.Compiled? Compiled(World world, RecordId graph)
+    {
+        if (graph.IsEmpty || !world.Resources.TryGet<RecordStore>(out var records) || records == null) return null;
+        return records.TryGet(graph, out AnimGraphRecord record) ? record.Compile() : null;
+    }
+
+    // ---- content ---------------------------------------------------------------------------------------
+
+    // Load: initial states that are states, targets that are states, blend spaces over float params,
+    // `on` names that are triggers, layers with names of their own.
+    private static void Check(AnimGraphRecord record, RecordCheck check)
+    {
+        var g = record.Compile();
+        if (!(record.Fade >= 0f) || !float.IsFinite(record.Fade)) check.Error("Fade", $"{record.Fade} is not a time in seconds");
+        foreach (var (name, param) in record.Params)
+        {
+            if (string.IsNullOrWhiteSpace(name)) check.Error("Params", "a param needs a name");
+            if (param == null) continue;
+            if (param.Kind == AnimParamKind.Trigger && param.From != AnimParamSource.None)
+                check.Error($"Params['{name}'].From", "a trigger is set by inputs and code, never from the body");
+            if (param.Kind == AnimParamKind.Bool && param.From is not (AnimParamSource.None or AnimParamSource.Grounded or AnimParamSource.Crouching))
+                check.Warn($"Params['{name}'].From", $"{param.From} is a number; a Bool reads it as 1 when it is not 0");
+        }
+
+        var layerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Animators.BaseLayer };
+        for (int l = 0; l < g.Layers.Length; l++)
+        {
+            var layer = g.Layers[l];
+            string at = l == 0 ? "" : $"Layers[{l - 1}].";
+            if (l > 0)
+            {
+                var source = record.Layers[l - 1];
+                if (source == null) { check.Error($"Layers[{l - 1}]", "an empty layer"); continue; }
+                if (string.IsNullOrEmpty(source.Name)) check.Error($"{at}Name", "a layer needs a name");
+                else if (!layerNames.Add(source.Name)) check.Error($"{at}Name", $"'{source.Name}' is taken (\"base\" is the graph's own states)");
+                if (!(source.Weight >= 0f && source.Weight <= 1f)) check.Error($"{at}Weight", $"{source.Weight} is not a weight in [0, 1]");
+                if (source.Mask != null)
+                    foreach (var joint in source.Mask)
+                        if (string.IsNullOrWhiteSpace(joint)) check.Error($"{at}Mask", "an empty joint name");
+            }
+            CheckLayer(g, layer, at, check);
+        }
+    }
+
+    private static void CheckLayer(AnimGraphRecord.Compiled g, AnimGraphRecord.Layer layer, string at, RecordCheck check)
+    {
+        if (layer.Count == 0)
+        {
+            check.Error($"{at}States", "a layer needs at least one state");
+            return;
+        }
+        if (string.IsNullOrEmpty(layer.InitialName)) check.Error($"{at}Initial", "an \"initial\" state is needed");
+        else if (layer.Initial < 0) check.Error($"{at}Initial", $"'{layer.InitialName}' is not one of its states" + Spelling.Suggest(layer.InitialName, layer.Names));
+
+        for (int s = 0; s < layer.Count; s++)
+        {
+            var state = layer.States[s];
+            string path = $"{at}States['{layer.Names[s]}']";
+            var source = state.Source;
+            if (!string.IsNullOrEmpty(source.Clip) && source.Blend != null)
+                check.Error(path, "a state plays a clip or a blend, not both");
+            if (source.Fade is { } fade && (!(fade >= 0f) || !float.IsFinite(fade))) check.Error($"{path}.Fade", $"{fade} is not a time in seconds");
+            if (!float.IsFinite(source.Speed)) check.Error($"{path}.Speed", $"{source.Speed} is not a rate");
+            if (source.Blend is { } blend && string.IsNullOrEmpty(source.Clip)) CheckBlend(g, blend, $"{path}.Blend", check);
+            CheckTransitions(g, layer, source.Transitions, $"{path}.Transitions", check, s);
+        }
+        CheckTransitions(g, layer, layer.Any, $"{at}Transitions", check, -1);
+    }
+
+    private static void CheckBlend(AnimGraphRecord.Compiled g, AnimBlendSpace blend, string path, RecordCheck check)
+    {
+        if (blend.Points == null || blend.Points.Count == 0) check.Error($"{path}.Points", "a blend space needs at least one point");
+        else if (blend.Points.Count > Animators.MaxBlendPoints) check.Error($"{path}.Points", $"a blend space has at most {Animators.MaxBlendPoints} points");
+        else
+            for (int i = 0; i < blend.Points.Count; i++)
+                if (blend.Points[i] is not { } p || string.IsNullOrEmpty(p.Clip)) check.Error($"{path}.Points[{i}]", "a point needs a \"clip\"");
+                else if (!float.IsFinite(p.X) || !float.IsFinite(p.Y)) check.Error($"{path}.Points[{i}]", "a point sits at finite numbers");
+        CheckAxis(g, blend.X, $"{path}.X", check, required: true);
+        CheckAxis(g, blend.Y, $"{path}.Y", check, required: false);
+    }
+
+    private static void CheckAxis(AnimGraphRecord.Compiled g, string name, string path, RecordCheck check, bool required)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            if (required) check.Error(path, "a blend space needs the param it blends over");
+            return;
+        }
+        int i = g.ParamIndex(name);
+        if (i < 0) check.Error(path, $"'{name}' is not one of its params" + Spelling.Suggest(name, g.ParamNames));
+        else if (g.ParamKinds[i] != AnimParamKind.Float) check.Error(path, $"'{name}' is a {g.ParamKinds[i]}; a blend space reads a Float");
+    }
+
+    private static void CheckTransitions(AnimGraphRecord.Compiled g, AnimGraphRecord.Layer layer, List<StateTransition>? transitions,
+                                         string path, RecordCheck check, int state)
+    {
+        if (transitions == null) return;
+        for (int i = 0; i < transitions.Count; i++)
+        {
+            string at = $"{path}[{i}]";
+            if (transitions[i] is not { } t) { check.Error(at, "an empty transition"); continue; }
+            if (string.IsNullOrEmpty(t.To)) check.Error(at, "a transition needs a \"to\" (the state it goes to)");
+            else if (layer.Target(t) < 0) check.Error($"{at}.To", $"'{t.To}' is not one of the layer's states" + Spelling.Suggest(t.To, layer.Names));
+            if (!(t.After >= 0f) || !float.IsFinite(t.After)) check.Error($"{at}.After", $"{t.After} is not a time in seconds");
+            if (!string.IsNullOrEmpty(t.On))
+            {
+                int p = g.ParamIndex(t.On);
+                if (p < 0 || g.ParamKinds[p] != AnimParamKind.Trigger)
+                    check.Error($"{at}.On", $"'{t.On}' is not one of its trigger params: an anim_graph's `on` is a trigger (AnimTrigger, Animators.SetTrigger)");
+            }
+            bool always = string.IsNullOrEmpty(t.On) && t.When == null && !(t.After > 0f);
+            if (always && state >= 0 && layer.Target(t) == state)
+                check.Warn(at, "a transition to its own state with no on, when or after is taken every tick");
+            else if (always && state < 0)
+                check.Warn(at, "a transition from any state with no on, when or after is taken from every other state at once");
+        }
+    }
+}
+
+// `{ "anim_param": "speed", "min": 0.2 }`, `{ "anim_param": "crouch", "eq": 1 }`: a param of the animator
+// on the entity doing the asking (the context's other; its subject when there is none) equals `eq`
+// (when given) and is inside [min, max]. No animator or no such param: false.
+[Condition("anim_param", Plugin = RegistrationOwners.Core)]
+internal sealed class AnimParamCondition : ICondition
+{
+    [EntryValue, Property(Tooltip = "The animator param to test")]
+    public string Name = "";
+    [Property(Tooltip = "The value it must equal (leave out for any)")]
+    public float? Eq;
+    [Property(Tooltip = "The least it may be")]
+    public float Min = float.NegativeInfinity;
+    [Property(Tooltip = "The most it may be")]
+    public float Max = float.PositiveInfinity;
+
+    public bool Test(in ConditionContext context, out string why)
+    {
+        why = "not now";
+        var entity = context.Other.IsNull ? context.Subject : context.Other;
+        if (!Animators.TryReadParam(context.World, entity, Name, out float value)) return false;
+        return (Eq is not { } eq || value == eq) && value >= Min && value <= Max;
+    }
+}

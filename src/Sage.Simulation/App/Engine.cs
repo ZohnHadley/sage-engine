@@ -25,6 +25,7 @@ public sealed class Engine : IDisposable
         Records.Json.Converters.Insert(3, new EntityJsonConverter());
         Components = new ComponentSchema(Records.Json);
         Saves = new SaveSystem(this);
+        Animations = new GltfAnimationReader(Vfs);
         // Every registry records who registered what (issue #12).
         CVars.Ledger = Registrations;
         Records.Ledger = Registrations;
@@ -69,6 +70,8 @@ public sealed class Engine : IDisposable
             // State machines (issue #92): the engine's too; SetState, OnStateChanged and the `on` names
             // content listens for.
             StateMachines.Register(this);
+            // Animation graphs and animators (issue #118): SetAnimParam, AnimTrigger, anim_debug.
+            Animators.Register(this);
         }
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
@@ -104,6 +107,12 @@ public sealed class Engine : IDisposable
 
     // And the outputs a wire can listen for, with what each means (issue #18).
     public EntityOutputs Outputs { get; } = new();
+
+    // Skinned models' skeletons and clips (issue #118), read through the VFS and cached by path, shared
+    // by every world (each has it as a resource). The `animator` part loads its model when it is
+    // applied (content time); AnimatorSystem only asks the cache. Hot reload: Forget a path, re-spawn.
+    [System.Diagnostics.CodeAnalysis.Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+    public GltfAnimationReader Animations { get; }
 
     // Save and load (09 §3.5, F27).
     public SaveSystem Saves { get; }
@@ -147,6 +156,8 @@ public sealed class Engine : IDisposable
             world.AddSystem(new LogicTimerSystem(world));         // sage:timer and sage:tween (issue #90)
             world.AddSystem(new TweenSystem(world));
             world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
+            world.Resources.Add(Animations);                     // skinned models' skeletons and clips (issue #118)
+            world.AddSystem(new AnimatorSystem(world));          // sage:animator (issue #118)
         }
         finally { Registrations.Owner = "host"; }
 
