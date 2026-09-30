@@ -18,6 +18,18 @@ const Sage.Simulation.ToggleViewSystem.Id = "sage.camera.toggle_view" -> string!
 override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
 override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
+Sage.Simulation.ActionAttribute
+Sage.Simulation.ActionAttribute.ActionAttribute(string! id) -> void
+Sage.Simulation.ActionContext
+Sage.Simulation.ActionContext.ActionContext() -> void
+Sage.Simulation.ActionContext.ActionContext(Sage.Simulation.World! World, Sage.Simulation.Entity Subject, Sage.Simulation.Entity Other = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.ActionContext.Other.get -> Sage.Simulation.Entity
+Sage.Simulation.ActionContext.Other.init -> void
+Sage.Simulation.ActionContext.Records.get -> Sage.Core.RecordStore!
+Sage.Simulation.ActionContext.Subject.get -> Sage.Simulation.Entity
+Sage.Simulation.ActionContext.Subject.init -> void
+Sage.Simulation.ActionContext.World.get -> Sage.Simulation.World!
+Sage.Simulation.ActionContext.World.init -> void
 Sage.Simulation.Camera
 Sage.Simulation.Camera.Camera() -> void
 Sage.Simulation.Camera.Enabled -> bool
@@ -100,6 +112,19 @@ Sage.Simulation.CameraViews.this[int index].get -> Sage.Simulation.CameraView
 Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> bool
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
+Sage.Simulation.ConditionAttribute
+Sage.Simulation.ConditionAttribute.ConditionAttribute(string! id) -> void
+Sage.Simulation.ConditionContext
+Sage.Simulation.ConditionContext.ConditionContext() -> void
+Sage.Simulation.ConditionContext.ConditionContext(Sage.Simulation.World! World, Sage.Simulation.Entity Subject, Sage.Simulation.Entity Other = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.ConditionContext.Other.get -> Sage.Simulation.Entity
+Sage.Simulation.ConditionContext.Other.init -> void
+Sage.Simulation.ConditionContext.Records.get -> Sage.Core.RecordStore!
+Sage.Simulation.ConditionContext.Subject.get -> Sage.Simulation.Entity
+Sage.Simulation.ConditionContext.Subject.init -> void
+Sage.Simulation.ConditionContext.World.get -> Sage.Simulation.World!
+Sage.Simulation.ConditionContext.World.init -> void
+Sage.Simulation.Conditions
 Sage.Simulation.DebugCamera
 Sage.Simulation.Ease
 Sage.Simulation.Ease.BackIn = 19 -> Sage.Simulation.Ease
@@ -146,6 +171,10 @@ Sage.Simulation.FirstPersonRigPart.ShowBody -> bool
 Sage.Simulation.FirstPersonRigSystem
 Sage.Simulation.FirstPersonRigSystem.FirstPersonRigSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 Sage.Simulation.FirstPersonRigSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.IAction
+Sage.Simulation.IAction.Run(in Sage.Simulation.ActionContext context) -> void
+Sage.Simulation.ICondition
+Sage.Simulation.ICondition.Test(in Sage.Simulation.ConditionContext context, out string! why) -> bool
 Sage.Simulation.MainViewExtensions
 Sage.Simulation.PlayerCamera
 Sage.Simulation.PlayerCamera.PlayerCamera() -> void
@@ -179,6 +208,14 @@ Sage.Simulation.ThirdPersonRigSystem.ThirdPersonRigSystem(Sage.Simulation.World!
 Sage.Simulation.ToggleViewSystem
 Sage.Simulation.ToggleViewSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.ToggleViewSystem.ToggleViewSystem(Sage.Simulation.World! world, Sage.Simulation.ActionRegistry! actions) -> void
+Sage.Simulation.Vars
+Sage.Simulation.Vars.Add(string! name, double amount) -> double
+Sage.Simulation.Vars.Get(string! name) -> double
+Sage.Simulation.Vars.Has(string! name) -> bool
+Sage.Simulation.Vars.Set(string! name, double value) -> void
+Sage.Simulation.Vars.Values.get -> System.Collections.Generic.Dictionary<string!, double>!
+Sage.Simulation.Vars.Values.set -> void
+Sage.Simulation.Vars.Vars() -> void
 static readonly Sage.Simulation.PlayerCameraSystem.Prefab -> Sage.Core.RecordId
 Sage.Simulation.Placement.Outputs -> System.Collections.Generic.List<Sage.Simulation.Connection!>!
 Sage.Simulation.ScriptedCamera
@@ -208,6 +245,12 @@ static Sage.Simulation.CameraRigs.RigOf(Sage.Simulation.World! world, Sage.Simul
 static Sage.Simulation.CameraViewport.Full.get -> Sage.Simulation.CameraViewport
 static Sage.Simulation.CameraViewport.operator !=(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
 static Sage.Simulation.CameraViewport.operator ==(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
+static Sage.Simulation.Conditions.Evaluate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, Sage.Simulation.ICondition? condition, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> bool
+static Sage.Simulation.Conditions.Evaluate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, System.Collections.Generic.IReadOnlyList<Sage.Simulation.ICondition!>? conditions, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> bool
+static Sage.Simulation.Conditions.Run(Sage.Simulation.World! world, Sage.Simulation.Entity subject, System.Collections.Generic.IReadOnlyList<Sage.Simulation.IAction!>? actions, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> void
+static Sage.Simulation.Conditions.Run(System.Collections.Generic.IReadOnlyList<Sage.Simulation.IAction!>? actions, in Sage.Simulation.ActionContext context) -> void
+static Sage.Simulation.Conditions.Test(Sage.Simulation.ICondition? condition, in Sage.Simulation.ConditionContext context, out string! why) -> bool
+static Sage.Simulation.Conditions.TestAll(System.Collections.Generic.IReadOnlyList<Sage.Simulation.ICondition!>? conditions, in Sage.Simulation.ConditionContext context, out string! why) -> bool
 static Sage.Simulation.DebugCamera.Drive(Sage.Simulation.World! world, Sage.Simulation.Entity camera, System.Numerics.Vector3 position, System.Numerics.Quaternion rotation, bool overriding) -> void
 static Sage.Simulation.DebugCamera.Spawn(Sage.Simulation.World! world, string! name, string! target = "") -> Sage.Simulation.Entity
 static Sage.Simulation.Easing.Apply(Sage.Simulation.Ease ease, float t) -> float
@@ -223,3 +266,5 @@ Sage.Simulation.MaterialParam.RenderTarget -> string?
 static Sage.Simulation.ThirdPersonRig.Create(Sage.Simulation.Entity follow = default(Sage.Simulation.Entity), bool enabled = true) -> Sage.Simulation.ThirdPersonRig
 static Sage.Simulation.ThirdPersonRig.DefaultShoulderOffset.get -> System.Numerics.Vector3
 static Sage.Simulation.ToggleViewSystem.Toggle(Sage.Simulation.World! world) -> void
+static Sage.Simulation.Vars.Of(Sage.Simulation.World! world) -> Sage.Simulation.Vars!
+static Sage.Simulation.Vars.ValueOf(Sage.Simulation.World! world, string! name) -> double

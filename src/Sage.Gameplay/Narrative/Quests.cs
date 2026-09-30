@@ -208,6 +208,25 @@ public static class Quests
 
     public static string StageOf(World world, RecordId quest) => JournalOf(world)?.Of(quest)?.Stage ?? "";
 
+    // Whether the quest has got as far as `stage`: it is on that stage or one after it in the record's
+    // list, or it is finished (Morrowind's "journal ≥ 30"; the `quest` condition's `atLeast`, issue #89).
+    // A stage the quest does not have is never reached, short of finishing.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // stage 2 logic (#89): may change before 1.0
+    public static bool HasReached(World world, RecordId quest, string stage)
+    {
+        var entry = JournalOf(world)?.Of(quest);
+        if (entry == null) return false;
+        if (entry.Finished) return true;
+        if (!world.Resources.Get<RecordStore>().TryGet(quest, out QuestRecord record)) return false;
+        int at = -1, wanted = -1;
+        for (int i = 0; i < record.Stages.Count; i++)
+        {
+            if (record.Stages[i].Id == entry.Stage) at = i;
+            if (record.Stages[i].Id == stage) wanted = i;
+        }
+        return wanted >= 0 && at >= wanted;
+    }
+
     // The world's journal, or null in a game without the quests plugin: then nobody is on anything,
     // and asking is not an error (dialogue asks, issue #26).
     public static Journal? JournalOf(World world) =>

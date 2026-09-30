@@ -669,7 +669,9 @@ public sealed class RecordStore
             return string.IsNullOrWhiteSpace(text) || text.Contains(':') ? node.DeepClone() : JsonValue.Create($"{ns}:{text.Trim()}");
         }
 
-        // A vocabulary entry (issue #28) is qualified as the type its key names.
+        // A vocabulary entry (issue #28) is qualified as the type its key names; one in shorthand
+        // (issue #89) as its long form, so the value its id carries is qualified as the field it fills.
+        if (node is JsonObject && PolymorphicShorthand?.Invoke(type, node) is JsonObject expanded) node = expanded;
         if (node is JsonObject && PolymorphicTypes?.Invoke(type, node) is { } concrete) type = concrete;
 
         if (node is JsonArray array)
@@ -714,6 +716,11 @@ public sealed class RecordStore
     // For a field typed as an interface or abstract class whose JSON says which concrete type it is (a
     // vocabulary entry, issue #28): that type, or null. Set by the Engine over its Vocabularies.
     public Func<Type, JsonNode?, Type?>? PolymorphicTypes { get; set; }
+
+    // And for one written in a shorthand (`{ "has_item": "key" }`, issue #89): its long form, or null.
+    // Set by the Engine over its Vocabularies (Vocabularies.Expand).
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // stage 2 logic (#89): may change before 1.0
+    public Func<Type, JsonNode?, JsonNode?>? PolymorphicShorthand { get; set; }
 
     // For a record field that maps a key to a body whose type the key decides — a prefab's
     // "components" and "parts" — how to find that type: `typeOf(key, body, fileNamespace)`, null when

@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Sage.Core;
@@ -28,6 +30,18 @@ namespace Sage.Core;
 // Marks the type a vocabulary's entries implement (an interface or an abstract class). `Name` is what
 // schemas, the registry dump and errors call it; `Key` is the field that names the entry in a JSON
 // object; `Default` is the entry an object without that field means (the old implicit kind).
+//
+// `Shorthand` (issue #89) lets an object name its entry by using the id *as* a property, the way
+// REDESIGN §4.3 stage 2 writes conditions and actions:
+//
+//   { "has_item": "key_iron", "count": 2 }     = { "condition": "has_item", "item": "key_iron", "count": 2 }
+//   { "not": { "var": "alarm", "eq": 1 } }     = { "condition": "not", "of": { … } }
+//   { "set_stage": { "quest": "q", "stage": "b" } }   the value is the settings when it is an object
+//
+// The first property that names a registered entry is the entry; the rest are its settings. Its value
+// fills the entry's [EntryValue] field, unless it is an object and that field is not itself a
+// vocabulary, in which case it is the entry's settings. Only for a vocabulary without a `Default`: an
+// object without the key has no other meaning there, so no content that loaded before reads differently.
 [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = false)]
 public sealed class VocabularyAttribute : Attribute
 {
@@ -36,6 +50,17 @@ public sealed class VocabularyAttribute : Attribute
     public string Name { get; }
     public string Key { get; set; } = "kind";
     public string? Default { get; set; }
+
+    [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // stage 2 logic (#89): may change before 1.0
+    public bool Shorthand { get; set; }
+}
+
+// The field of an entry that the shorthand's value fills: `{ "var": "alarm" }` sets the `var`
+// condition's `Name`, `{ "all": [ … ] }` the `all` condition's `Of` (VocabularyAttribute.Shorthand).
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false)]
+[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // stage 2 logic (#89): may change before 1.0
+public sealed class EntryValueAttribute : Attribute
+{
 }
 
 // The base of every attribute that declares an entry: `[AICondition("is_night")]`,
@@ -99,6 +124,7 @@ public abstract class Vocabulary
         Name = declared.Name;
         Key = declared.Key;
         Default = declared.Default;
+        Shorthand = declared.Shorthand && declared.Default == null;
         _ledger = ledger;
         Seal = new RegistrationSeal($"{Name} entry", "content read before it could not name it");
     }
@@ -107,6 +133,9 @@ public abstract class Vocabulary
     public string Key { get; }
     public string? Default { get; }
     public Type EntryType { get; }
+
+    // Whether an entry may be written `{ "<id>": value, …settings }` (VocabularyAttribute.Shorthand).
+    public bool Shorthand { get; }
 
     // Closed when content loads: an entry registered later was missing when the records naming it read.
     public RegistrationSeal Seal { get; }
@@ -127,17 +156,102 @@ public abstract class Vocabulary
     public string Unknown(string id) =>
         $"no {Name} '{id}'" + Spelling.Suggest(id, Ids) + (_entries.Count == 0 ? " (none are registered)" : $" (there are: {string.Join(", ", Ids)})");
 
-    // The type an entry written as `node` is: a bare id, or an object naming it under `Key`.
+    // The type an entry written as `node` is: a bare id, or an object naming it under `Key` (or, in
+    // shorthand, by a property named for it).
     public Type? TypeOf(JsonNode? node)
     {
         string? id = node switch
         {
             JsonValue value when value.TryGetValue(out string? text) => text,
-            JsonObject obj => KeyOf(obj, out var named) ? named : Default,
+            JsonObject obj => KeyOf(obj, out var named) ? named : ShorthandOf(obj, out _)?.Id ?? Default,
             _ => null,
         };
         return id != null && TryFind(id, out var entry) ? entry.Type : null;
     }
+
+    // The entry a shorthand object names, and the property that names it: the first that is an id.
+    private VocabularyEntry? ShorthandOf(JsonObject obj, out string? property)
+    {
+        property = null;
+        if (!Shorthand) return null;
+        foreach (var (name, _) in obj)
+            if (TryFind(name, out var entry))
+            {
+                property = name;
+                return entry;
+            }
+        return null;
+    }
+
+    // The long form of an entry written in shorthand — `{ "<Key>": "<id>", …settings }` — or null when
+    // `obj` is not shorthand (it has the key, or this vocabulary has none, or nothing in it is an id).
+    // What the reader and the namespace qualifier (RecordStore.PolymorphicShorthand) both read.
+    public JsonObject? Expand(JsonObject obj)
+    {
+        if (!Shorthand || KeyOf(obj, out _)) return null;
+        var entry = ShorthandOf(obj, out string? property);
+        if (entry == null) return null;
+
+        var value = obj[property!];
+        var result = new JsonObject { [Key] = entry.Id };
+        var field = ValueFieldOf(entry.Type);
+        if (field != null && !(value is JsonObject && !Vocabularies.IsVocabulary(field.Value.Type)))
+        {
+            result[JsonMembers.JsonName(field.Value.Name)] = value?.DeepClone();
+        }
+        else if (value is JsonObject settings)
+        {
+            foreach (var (name, setting) in settings) result[name] = setting?.DeepClone();
+        }
+        else if (value is not null && !(value is JsonValue flag && flag.TryGetValue(out bool yes) && yes))
+        {
+            throw new JsonException($"{Name} '{entry.Id}' takes no value of its own: write {{ \"{property}\": {{ …settings }} }}");
+        }
+
+        foreach (var (name, setting) in obj)
+        {
+            if (name == property) continue;
+            if (result.Any(p => string.Equals(p.Key, name, StringComparison.OrdinalIgnoreCase)))
+                throw new JsonException($"{Name} '{entry.Id}': '{name}' is given twice");
+            result[name] = setting?.DeepClone();
+        }
+        return result;
+    }
+
+    // Why an object without the key names no entry: the nearest id to what it wrote.
+    internal string NoEntry(JsonObject obj)
+    {
+        if (Shorthand)
+        {
+            // The property most like an id: the one a typo was made in.
+            string? best = null;
+            int bestDistance = int.MaxValue;
+            foreach (var (name, _) in obj)
+                foreach (var id in _entries)
+                {
+                    int d = Spelling.Distance(Normalize(name), Normalize(id.Id));
+                    if (d < bestDistance) { bestDistance = d; best = name; }
+                }
+            if (best != null) return Unknown(best);
+        }
+        return $"a {Name} needs \"{Key}\"" + (Shorthand ? ", or its id as a property" : "") + $": one of {string.Join(", ", Ids)}";
+    }
+
+    private static (string Name, Type Type)? ValueFieldOf(Type type)
+    {
+        foreach (var member in type.GetMembers(BindingFlags.Public | BindingFlags.Instance))
+            if (member.GetCustomAttribute<EntryValueAttribute>(true) != null)
+                return member switch
+                {
+                    FieldInfo f => (f.Name, f.FieldType),
+                    PropertyInfo p => (p.Name, p.PropertyType),
+                    _ => null,
+                };
+        return null;
+    }
+
+    // The member an entry's shorthand value fills, for schemas.
+    public static string? ValueFieldName(Type type) => ValueFieldOf(type)?.Name;
 
     internal bool KeyOf(JsonObject obj, out string? id)
     {
@@ -243,6 +357,10 @@ public sealed class Vocabularies
     // PolymorphicTypes: bare ids inside an entry are qualified like any other field's).
     public Type? ConcreteTypeOf(Type type, JsonNode? node) =>
         IsVocabulary(type) ? Of(type).TypeOf(node) : null;
+
+    // An entry written in shorthand, in its long form (Vocabulary.Expand); null for anything else.
+    public JsonNode? Expand(Type type, JsonNode? node) =>
+        node is JsonObject obj && IsVocabulary(type) ? Of(type).Expand(obj) : null;
 
     public void Seal(string stage)
     {

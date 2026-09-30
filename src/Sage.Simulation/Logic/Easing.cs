@@ -19,7 +19,7 @@ namespace Sage.Simulation;
 // What every curve promises: `Apply(e, 0) == 0` and `Apply(e, 1) == 1`, and `t` outside [0, 1] is clamped
 // first. Everything but `Back*` (overshoots), `Elastic*` (oscillates) and `Bounce*` (bounces) is monotonic
 // (test: EveryCurveStartsAtZeroAndEndsAtOne, TheMonotonicCurvesNeverGoBack).
-[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // easing, timers and tweens (#90): 4c's UI transitions are the next consumer
+[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4b's logic (#87); easing is #90, and 4c's UI transitions are its next consumer
 public enum Ease
 {
     Linear,
@@ -38,7 +38,7 @@ public enum Ease
     SmootherStep,
 }
 
-[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // easing, timers and tweens (#90): 4c's UI transitions are the next consumer
+[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4b's logic (#87); easing is #90, and 4c's UI transitions are its next consumer
 public static class Easing
 {
     // Penner's overshoot for Back (about 10%), and its InOut scaling.

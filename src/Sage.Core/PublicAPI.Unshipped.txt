@@ -1,1 +1,11 @@
 #nullable enable
+Sage.Core.EntryValueAttribute
+Sage.Core.EntryValueAttribute.EntryValueAttribute() -> void
+Sage.Core.RecordStore.PolymorphicShorthand.get -> System.Func<System.Type!, System.Text.Json.Nodes.JsonNode?, System.Text.Json.Nodes.JsonNode?>?
+Sage.Core.RecordStore.PolymorphicShorthand.set -> void
+Sage.Core.Vocabularies.Expand(System.Type! type, System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?
+Sage.Core.Vocabulary.Expand(System.Text.Json.Nodes.JsonObject! obj) -> System.Text.Json.Nodes.JsonObject?
+Sage.Core.Vocabulary.Shorthand.get -> bool
+Sage.Core.VocabularyAttribute.Shorthand.get -> bool
+Sage.Core.VocabularyAttribute.Shorthand.set -> void
+static Sage.Core.Vocabulary.ValueFieldName(System.Type! type) -> string?
