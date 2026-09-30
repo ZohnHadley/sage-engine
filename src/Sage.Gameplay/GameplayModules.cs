@@ -179,6 +179,7 @@ public sealed class CombatModule : IModule
         // An attack's `delivery` names a registered hit_delivery (issue #133), checked when content loads.
         var vocabularies = ctx.Engine.Vocabularies;
         _records.AddCheck<AttackRecord>((attack, check) => HitDeliveries.Check(vocabularies, attack, check));
+        _records.AddCheck<HitboxesRecord>(Hitboxes.Check);   // hit locations (issue #137)
 
         // Registered here, once, rather than in the systems: systems are per world (review #57).
         _combatDebug = ctx.Engine.CVars.Register("combat_debug", false, CVarFlags.DevOnly,
@@ -209,6 +210,7 @@ public sealed class CombatModule : IModule
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
+        world.AddSystem(new HitboxCleanupSystem(world));    // a hitbox goes with its owner (issue #137)
         // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);
         // their clip events are the animator's, like everyone's (issue #119).
         world.AddSystem(new ViewmodelCombatSystem(world, _records!, _actions!));
