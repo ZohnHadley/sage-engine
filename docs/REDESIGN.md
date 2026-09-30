@@ -1275,6 +1275,16 @@ keeps its id, `sage:melee` and its timing, and the existing combat tests pass un
 (test: TwentyAttackersAllocateNothingOver600Ticks). SAGE0127. Details: docs/design/16 "As built (the hit
 pipeline)".
 
+*As built, 4e (issue #137, 2026-09-30): hit locations.* `hit_location` records (a multiplier, a resist
+attribute, effects, tags) and `hitboxes` records keyed by model; the `hitboxes` part puts kinematic boxes on
+a creature's bones, on a query-only `hitbox` physics layer that no query for solid things sees. A shot at
+tests/games/skeletal's mannequin's head lands on `head` for double damage, and a helmet — an item whose
+effect adds `armor_head` — halves it (test: AShotAtTheHeadLandsOnHeadForDoubleDamage_AndAHelmetHalvesIt); a
+limb shot lands on `arm_l` (test: ALimbShotHitsArmL); a creature with no hitboxes is hit on the body as before
+(test: ACreatureWithNoHitboxesIsHitAsTheBody); fifty mannequins with hitboxes allocate nothing
+(test: FiftyNpcsWithHitboxesAllocateNothingPerTick). The boxes use the previous tick's bones on the current
+body position, documented rather than synced. SAGE0127. Details: docs/design/16 "As built (hit locations)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |
