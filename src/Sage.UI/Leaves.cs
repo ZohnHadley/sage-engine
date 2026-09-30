@@ -164,8 +164,10 @@ public class Scroll : Widget
         {
             if (_content == value) return;
             if (_content != null) RemoveChild(_content);
+            _content = null;
+            if (value == null) return;
+            AddChild(value);   // throws, leaving no content, if it already has a parent
             _content = value;
-            if (value != null) AddChild(value);
         }
     }
 
@@ -205,6 +207,14 @@ public class Scroll : Widget
         ArrangeChild(_content, new Rect(content.X - _offset.X, content.Y - _offset.Y, size.X, size.Y));
     }
 
+    // The offset that shows [start, start + length) in a viewport `view` long, moving `offset` least.
+    private static float Reveal(float start, float length, float view, float offset)
+    {
+        if (start + length > offset + view) offset = start + length - view;
+        if (start < offset) offset = start;
+        return offset;
+    }
+
     public void ScrollBy(Vector2 delta) => Offset = Vector2.Clamp(_offset + delta, Vector2.Zero, MaxOffset);
 
     // Scrolls the least that shows `widget` (one inside this) whole, or its top-left when it is bigger
@@ -215,16 +225,9 @@ public class Scroll : Widget
         var view = ContentRect;
         var r = widget.Rect;
         var offset = _offset;
-        if (_vertical)
-        {
-            if (r.Bottom > view.Bottom) offset.Y += r.Bottom - view.Bottom;
-            if (r.Y - (offset.Y - _offset.Y) < view.Y) offset.Y -= view.Y - (r.Y - (offset.Y - _offset.Y));
-        }
-        if (_horizontal)
-        {
-            if (r.Right > view.Right) offset.X += r.Right - view.Right;
-            if (r.X - (offset.X - _offset.X) < view.X) offset.X -= view.X - (r.X - (offset.X - _offset.X));
-        }
+        // Where the widget is in the content, measured from the viewport's top-left at offset zero.
+        if (_vertical) offset.Y = Reveal(r.Y - view.Y + _offset.Y, r.Height, view.Height, offset.Y);
+        if (_horizontal) offset.X = Reveal(r.X - view.X + _offset.X, r.Width, view.Width, offset.X);
         Offset = Vector2.Clamp(offset, Vector2.Zero, MaxOffset);
     }
 }

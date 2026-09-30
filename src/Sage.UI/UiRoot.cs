@@ -309,9 +309,10 @@ public sealed class UiRoot
     }
 
     // The nearest focusable widget in `direction` from `from`: it has to lie beyond from's edge that way
-    // (or, failing any, merely have its centre that way), and the score is the gap along the direction
-    // plus twice the gap across it, so a widget in line beats a nearer one off to the side — moving down
-    // a grid column stays in the column.
+    // (or, failing any, merely have its centre that way). One in line — overlapping `from` across the
+    // direction — always beats one off to the side, so Right along a grid row skips a disabled slot to
+    // the next one in the row rather than dropping diagonally; among each kind the score is the gap along
+    // the direction plus twice the gap across it.
     private Widget? Spatial(Widget from, UiNavigation direction)
     {
         Widget? best = Pick(from, direction, strict: true);
@@ -320,7 +321,7 @@ public sealed class UiRoot
 
     private Widget? Pick(Widget from, UiNavigation direction, bool strict)
     {
-        const float Epsilon = 0.5f;
+        const float Epsilon = 0.5f, OffLine = 1e7f;
         var f = from.Rect;
         var fc = RectMath.Center(f);
         Widget? best = null;
@@ -352,7 +353,7 @@ public sealed class UiRoot
                 default:
                     return null;
             }
-            float score = MathF.Max(along, 0f) + 2f * across + 0.001f * MathF.Abs(centreAcross);
+            float score = (across > 0f ? OffLine : 0f) + MathF.Max(along, 0f) + 2f * across + 0.001f * MathF.Abs(centreAcross);
             if (score < bestScore) { bestScore = score; best = candidate; }
         }
         return best;

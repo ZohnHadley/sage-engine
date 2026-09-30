@@ -1259,7 +1259,7 @@ engine's own: `Sage.Simulation` sets it to name Friflo, and a game cannot, since
   `games/Sandbox` and `games/Hello` set it; a client half (`Sandbox.Client`) does not
   (test: AClientAssemblyMayUseMonoGame) (test: EveryBaseAssemblyIsSimulationOnly).
 - `<SageBaseAssembly>true</SageBaseAssembly>` — the project is part of the base engine (`Sage.Core`
-  to `Sage.Gameplay`, `Sage.Client`, `Sage.Editor`), which never depends on a kit (SAGE0025,
+  to `Sage.Gameplay`, `Sage.UI`, `Sage.Client`, `Sage.Editor`), which never depends on a kit (SAGE0025,
   REDESIGN §0.5) (test: ABaseAssemblyThatUsesAKitIsABuildError) (test: AKitOrAGameMayUseAKit).
 - `<SageStrictSaves>true</SageStrictSaves>` — off by default. Today every public field of a component
   is saved unless it is `[Transient]`, so a field added later is saved without anyone choosing it;
@@ -1294,6 +1294,7 @@ names their types needs the opt-in.
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
+| SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
