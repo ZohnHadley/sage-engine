@@ -28,6 +28,7 @@ const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
+const Sage.Simulation.RenderStages.Count = 8 -> int
 const Sage.Simulation.SkinMath.Influences = 4 -> int
 const Sage.Simulation.SkinMath.MaxBones = 64 -> int
 const Sage.Simulation.StateMachines.OnStateChanged = "OnStateChanged" -> string!
@@ -536,6 +537,39 @@ Sage.Simulation.PrefabOverrides.IsEmpty.get -> bool
 Sage.Simulation.PrefabOverrides.Parts -> System.Text.Json.Nodes.JsonObject?
 Sage.Simulation.PrefabOverrides.PrefabOverrides() -> void
 Sage.Simulation.PrefabRecord.Children -> System.Collections.Generic.List<Sage.Simulation.PrefabChild!>!
+Sage.Simulation.RenderPassAttribute
+Sage.Simulation.RenderPassAttribute.After.get -> string![]!
+Sage.Simulation.RenderPassAttribute.After.set -> void
+Sage.Simulation.RenderPassAttribute.Before.get -> string![]!
+Sage.Simulation.RenderPassAttribute.Before.set -> void
+Sage.Simulation.RenderPassAttribute.Id.get -> string!
+Sage.Simulation.RenderPassAttribute.RenderPassAttribute(string! id, Sage.Simulation.RenderStage stage) -> void
+Sage.Simulation.RenderPassAttribute.Stage.get -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderPassInfo
+Sage.Simulation.RenderPassInfo.After.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.RenderPassInfo.Before.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.RenderPassInfo.Id.get -> string!
+Sage.Simulation.RenderPassInfo.Stage.get -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderPassInfo.Type.get -> System.Type!
+Sage.Simulation.RenderPassRegistry<TPass>
+Sage.Simulation.RenderPassRegistry<TPass>.Add(TPass! pass) -> Sage.Simulation.RenderPassInfo!
+Sage.Simulation.RenderPassRegistry<TPass>.Count.get -> int
+Sage.Simulation.RenderPassRegistry<TPass>.Has(string! id) -> bool
+Sage.Simulation.RenderPassRegistry<TPass>.In(Sage.Simulation.RenderStage stage) -> System.ReadOnlySpan<TPass!>
+Sage.Simulation.RenderPassRegistry<TPass>.IsSealed.get -> bool
+Sage.Simulation.RenderPassRegistry<TPass>.Ordered.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.RenderPassInfo!>!
+Sage.Simulation.RenderPassRegistry<TPass>.RenderPassRegistry() -> void
+Sage.Simulation.RenderPassRegistry<TPass>.Seal(string! stage) -> void
+Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.AlphaTested = 2 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.Debug = 5 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.Opaque = 1 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.Overlay = 7 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.PostProcess = 6 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.Shadow = 0 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.Sky = 3 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStage.Transparent = 4 -> Sage.Simulation.RenderStage
+Sage.Simulation.RenderStages
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
@@ -841,6 +875,9 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.MaterialParam.RenderTarget -> string?
 static Sage.Simulation.PrefabExtensions.Spawn(this Sage.Simulation.World! world, Sage.Core.RecordId prefab, System.Numerics.Vector3 position, float yawDegrees, Sage.Simulation.PrefabOverrides? overrides, string? where = null) -> Sage.Simulation.Entity
+static Sage.Simulation.RenderStages.IsPerView(Sage.Simulation.RenderStage stage) -> bool
+static Sage.Simulation.RenderStages.Of(Sage.Simulation.RenderPass pass) -> Sage.Simulation.RenderStage
+static Sage.Simulation.RenderStages.SortKeyPass(Sage.Simulation.RenderStage stage) -> int
 static Sage.Simulation.SkinMath.Blend(System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Matrix4x4
 static Sage.Simulation.SkinMath.Palette(System.ReadOnlySpan<System.Numerics.Matrix4x4> modelJoints, System.ReadOnlySpan<System.Numerics.Matrix4x4> inverseBind, System.Span<System.Numerics.Matrix4x4> palette) -> void
 static Sage.Simulation.SkinMath.SkinNormal(System.Numerics.Vector3 normal, System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Vector3

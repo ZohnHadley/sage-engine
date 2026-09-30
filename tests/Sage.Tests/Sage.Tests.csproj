@@ -60,7 +60,7 @@
     <ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
   </ItemGroup>
   <!-- The tests exercise the experimental API too (issue #31, docs/MAKING_A_GAME.md §10b): the open
-       vocabularies (SAGE0120), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras (SAGE0123), phase 4b's logic (SAGE0124: conditions and actions, easing) the retained UI (SAGE0125), skeletal animation (SAGE0126), the hit pipeline (SAGE0127) and phase 4i's saves (SAGE0131). -->
+       vocabularies (SAGE0120), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras (SAGE0123), phase 4b's logic (SAGE0124: conditions and actions, easing) the retained UI (SAGE0125), skeletal animation (SAGE0126), the hit pipeline (SAGE0127), render passes (SAGE0130) and phase 4i's saves (SAGE0131). -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123;SAGE0124;SAGE0125;SAGE0126;SAGE0127;SAGE0130;SAGE0131</NoWarn>
   </PropertyGroup>

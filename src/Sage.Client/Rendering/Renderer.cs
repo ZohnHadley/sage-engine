@@ -47,10 +47,13 @@ internal sealed class MeshData
 }
 
 // The client renderer (docs/design/06): owns GPU-side meshes by id, the material cache and the named
-// render targets, and draws a RenderSnapshot a view at a time — views into render targets first, then
-// the screen's — each through a fixed pass list: clear (sky) → opaque → alpha-tested → transparent, in
-// sort-key order (06 §3.4–3.5). The Overlay pass (the game's UI, then ImGui) is drawn afterwards, once,
-// on the screen. Provided to modules by ClientModule (ctx.Get<Renderer>()).
+// render targets, and draws a RenderSnapshot through the registered render passes (issue 4h-1, REDESIGN
+// §4.7; `RenderPasses`, ordered headless by `RenderPassRegistry`): the Shadow stage once; then a view at
+// a time — views into render targets first, then the screen's — the target cleared to the sky, then
+// the Opaque, AlphaTested, Sky, Transparent and Debug stages, the first four each over its run of the
+// view's items and sprites in sort-key order (06 §3.4–3.5); then PostProcess on the screen. The Overlay
+// stage (the game's UI as `sage:ui`, and whatever is added around it; ImGui after that) is drawn in the
+// Overlay phase (`DrawOverlay`). Provided to modules by ClientModule (ctx.Get<Renderer>()).
 //
 // **One world draws to the screen** (`ScreenWorld`): with several worlds, each used to clear the back
 // buffer and the last one won. Now the others draw only their views into render targets.
@@ -75,11 +78,28 @@ public sealed class Renderer : IDisposable
     private readonly Engine _engine;
     private readonly RenderTargetPool _targets;
     private World? _screenWorld;
+    private readonly RenderPasses _passes;
+    private readonly bool[][] _external;   // per stage, beside RenderPasses.In: a pass from outside this assembly
+    private readonly RenderContext _context;
+    private RenderStats _stats;            // this Draw's, added to by the passes
+    private bool _wire;
+    private bool _passBound;               // a pass bound `_bound` (RenderContext.SetTarget): a view must still clear it
+    private SpriteBatch? _fullScreen;      // RenderContext.DrawFullScreen, made on first use
     private long _frame;
     private long _viewStamp;   // one per view drawn: an effect's frame-tier parameters are per view
 
-    internal Renderer(ClientHost host, ContentService content, Engine engine, RendererCVars settings)
+    internal Renderer(ClientHost host, ContentService content, Engine engine, RendererCVars settings, RenderPasses passes)
     {
+        if (!passes.IsSealed) throw new InvalidOperationException("The render passes are ordered when they are sealed; seal them before the renderer is made.");
+        _passes = passes;
+        _external = new bool[RenderStages.Count][];
+        for (int stage = 0; stage < RenderStages.Count; stage++)
+        {
+            var inStage = passes.In((RenderStage)stage);
+            _external[stage] = new bool[inStage.Length];
+            for (int i = 0; i < inStage.Length; i++) _external[stage][i] = inStage[i].GetType().Assembly != typeof(Renderer).Assembly;
+        }
+        _context = new RenderContext(this);
         _device = host.GraphicsDevice;
         _content = content;
         _engine = engine;
@@ -165,6 +185,13 @@ public sealed class Renderer : IDisposable
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0123")]
     public RenderTarget2D DeclareTarget(string name, int width, int height) => _targets.Texture(_targets.Declare(name, width, height));
 
+    // The same, with the target's pixel format and depth buffer (issue 4h-1): a post-processing target
+    // wants no depth, a shadow map a float format. Declaring another format or depth remakes it; the
+    // three-argument form declares Color with Depth24.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RenderTarget2D DeclareTarget(string name, int width, int height, SurfaceFormat format, DepthFormat depth) =>
+        _targets.Texture(_targets.Declare(name, width, height, format, depth));
+
     // The target's texture, or null if nothing has declared or drawn it yet.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0123")]
     public RenderTarget2D? FindTarget(string name) => _targets.TryFind(name, out int id) ? _targets.Existing(id) : null;
@@ -175,6 +202,7 @@ public sealed class Renderer : IDisposable
 
     internal int DeclareTargetId(string name, int width, int height) => _targets.Declare(name, width, height);
     internal int TargetId(string name) => _targets.Id(name);
+    internal string TargetName(int target) => _targets.Name(target);
 
     // The pixel size of a view's target: the back buffer's for the screen.
     internal Point TargetSize(int target) => target == RenderViewPlan.Screen
@@ -420,41 +448,106 @@ public sealed class Renderer : IDisposable
 
     // ---- Drawing ----
 
-    internal void Draw(RenderSnapshot s, bool screen)
+    internal void Draw(RenderSnapshot s, bool screen, World world)
     {
         _frame++;
-        var stats = new RenderStats
+        _stats = new RenderStats
         {
             Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, Lights = s.Lights.Count,
             Bones = s.Bones.Count,
         };
         Plan(s);
         _sprites.FaceCameraPosition = _spriteFaceCamera.Value;
-        bool wire = _wireframe.Value;
-        var clear = new Color(s.Environment.ClearColor);   // pass 3, sky: a clear colour in v1
+        _wire = _wireframe.Value;
+        var clear = new Color(s.Environment.ClearColor);   // the sky: a clear colour until a Sky pass draws one (4h-5)
+        var ctx = Begin(world, s, screen, extracting: false);
+
+        // Shadow: once, before any view (4h-4's shadow map). A pass there binds its own target.
+        _bound = NotBound;
+        _passBound = false;
+        RunFrameStage(ctx, RenderStage.Shadow);
 
         // Views in plan order: every render target's first, then the screen's (RenderViewPlan.OrderViews).
-        _bound = NotBound;
         for (int k = 0; k < s.Views.Count; k++)
         {
-            ref var view = ref s.Views[s.DrawOrder[k]];
+            int index = s.DrawOrder[k];
+            ref var view = ref s.Views[index];
             if (view.Target == RenderViewPlan.Screen && !screen) continue;   // CameraExtract already drops these
-            if (view.Target != _bound) Bind(view.Target, clear);
-            DrawView(s, ref view, clear, wire, ref stats);
-            stats.Views++;
-            if (view.Target != RenderViewPlan.Screen) stats.TargetViews++;
+            if (view.Target != _bound || _passBound) Bind(view.Target, clear);
+            DrawView(ctx, s, index, clear);
+            _stats.Views++;
+            if (view.Target != RenderViewPlan.Screen) _stats.TargetViews++;
         }
 
         // Back to the screen, and the screen's viewport, for the UI and the dev tools. The screen world
         // clears it even with no view to draw (a world without a camera still shows its sky).
-        if (_bound != RenderViewPlan.Screen)
+        if (_bound != RenderViewPlan.Screen || _passBound)
         {
             if (screen) Bind(RenderViewPlan.Screen, clear);
             else if (_bound != NotBound) _device.SetRenderTarget(null);
         }
         var back = TargetSize(RenderViewPlan.Screen);
         _device.Viewport = new Viewport(0, 0, back.X, back.Y);
-        if (screen) LastFrame = stats;
+
+        // PostProcess: once, on the screen, over every view (4h-6's chain).
+        if (screen && _passes.In(RenderStage.PostProcess).Length > 0)
+        {
+            RunFrameStage(ctx, RenderStage.PostProcess);
+            if (_bound != RenderViewPlan.Screen || _passBound) Rebind(RenderViewPlan.Screen);
+            _device.Viewport = new Viewport(0, 0, back.X, back.Y);
+        }
+        if (screen) LastFrame = _stats;
+    }
+
+    // The Overlay stage, in the Overlay phase (UiRenderSystem): the screen world's UI (`sage:ui`) and
+    // whatever a game draws over or under it, on the screen at full size.
+    internal void DrawOverlay(World world, RenderSnapshot s)
+    {
+        var ctx = Begin(world, s, screen: true, extracting: false);
+        _passBound = false;
+        RunFrameStage(ctx, RenderStage.Overlay);
+    }
+
+    // Every pass's Extract, in draw order (RenderPassExtract, after the cameras).
+    internal void ExtractPasses(World world, RenderSnapshot s, bool screen)
+    {
+        var ctx = Begin(world, s, screen, extracting: true);
+        for (int stage = 0; stage < RenderStages.Count; stage++)
+        {
+            var passes = _passes.In((RenderStage)stage);
+            ctx.Stage = (RenderStage)stage;
+            for (int i = 0; i < passes.Length; i++) passes[i].Extract(ctx);
+        }
+    }
+
+    private RenderContext Begin(World world, RenderSnapshot s, bool screen, bool extracting)
+    {
+        var ctx = _context;
+        ctx.World = world;
+        ctx.Snapshot = s;
+        ctx.IsScreen = screen;
+        ctx.IsExtracting = extracting;
+        ctx.View = -1;
+        ctx.ItemFrom = ctx.ItemTo = ctx.SpriteFrom = ctx.SpriteTo = 0;
+        return ctx;
+    }
+
+    // A once-a-frame stage's passes. After a pass from outside the engine the material state is not
+    // trusted; in Overlay, a target it bound is left for the screen again.
+    private void RunFrameStage(RenderContext ctx, RenderStage stage)
+    {
+        var passes = _passes.In(stage);
+        if (passes.Length == 0) return;
+        var external = _external[(int)stage];
+        ctx.Stage = stage;
+        ctx.View = -1;
+        for (int i = 0; i < passes.Length; i++)
+        {
+            passes[i].Draw(ctx);
+            if (!external[i]) continue;
+            _current = -1;
+            if (stage == RenderStage.Overlay && _passBound) Rebind(RenderViewPlan.Screen);
+        }
     }
 
     private const int NotBound = int.MinValue;
@@ -466,12 +559,40 @@ public sealed class Renderer : IDisposable
     // Draw into `target` from now on: all of it cleared to the sky, depth included.
     private void Bind(int target, Color clear)
     {
+        Rebind(target);
+        _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, clear, 1f, 0);
+    }
+
+    // Draw into `target` from now on, over what it holds, all of it.
+    private void Rebind(int target)
+    {
         _device.SetRenderTarget(target == RenderViewPlan.Screen ? null : _targets.Texture(target));
         var size = TargetSize(target);
         _device.Viewport = new Viewport(0, 0, size.X, size.Y);
-        _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, clear, 1f, 0);
         _bound = target;
+        _passBound = false;
         _current = -1;
+    }
+
+    // RenderContext.SetTarget: a pass draws into a target of its own (all of it, not cleared).
+    internal void SetTarget(int target)
+    {
+        Rebind(target);
+        _passBound = true;
+    }
+
+    // RenderContext.DrawFullScreen: the texture over the current viewport, through a sprite batch.
+    internal void DrawFullScreen(Texture2D texture, Effect? effect, BlendState? blend)
+    {
+        _fullScreen ??= new SpriteBatch(_device);
+        var viewport = _device.Viewport;
+        _fullScreen.Begin(SpriteSortMode.Immediate, blend ?? BlendState.Opaque, SamplerState.LinearClamp,
+                          DepthStencilState.None, RasterizerState.CullNone, effect);
+        _fullScreen.Draw(texture, new Rectangle(0, 0, viewport.Width, viewport.Height), Color.White);
+        _fullScreen.End();
+        _current = -1;   // the batch set its own device state
+        _stats.DrawCalls++;
+        _stats.Triangles += 2;
     }
 
     // Plans the frame (RenderViewPlan): the views' draw order, and each view's run of items and sprites
@@ -507,8 +628,9 @@ public sealed class Renderer : IDisposable
         for (int v = 0; v < views; v++) { s.Views[v].SpriteStart = starts[v]; s.Views[v].SpriteCount = counts[v]; }
     }
 
-    private void DrawView(RenderSnapshot s, ref RenderView view, Color clear, bool wire, ref RenderStats stats)
+    private void DrawView(RenderContext ctx, RenderSnapshot s, int index, Color clear)
     {
+        ref var view = ref s.Views[index];
         _viewStamp++;
         _device.Viewport = new Viewport(view.Viewport);
         if (view.DepthOnly)
@@ -536,31 +658,67 @@ public sealed class Renderer : IDisposable
         }
         _sprites.Begin(view);
 
-        // Passes in order (06 §3.4). Both runs are sorted by a key whose top bits are the pass, so each
-        // pass is a contiguous run in each; meshes are drawn before sprites within a pass.
+        // The per-view stages in order (06 §3.4). Both runs are sorted by a key whose top bits are the
+        // material's pass (RenderStages.SortKeyPass), so each scene stage's entries are a contiguous run
+        // in each, which the stage's passes draw (the engine's: meshes, then sprites).
         int item = view.ItemStart, items = view.ItemStart + view.ItemCount;
         int sprite = view.SpriteStart, sprites = view.SpriteStart + view.SpriteCount;
-        var lights = s.Lights.AsSpan().Slice(view.LightStart, view.LightCount);
-        foreach (var pass in Passes)
+        ctx.View = index;
+        for (int stage = (int)RenderStage.Opaque; stage <= (int)RenderStage.Debug; stage++)
         {
-            int itemEnd = RunEnd(s.SortKeys, item, items, pass);
-            int spriteEnd = RunEnd(s.SpriteKeys, sprite, sprites, pass);
-            DrawItems(s, view, lights, item, itemEnd, wire, ref stats);
-            DrawSprites(s, view, sprite, spriteEnd, wire, ref stats);
+            int bits = RenderStages.SortKeyPass((RenderStage)stage);
+            int itemEnd = bits < 0 ? item : RunEnd(s.SortKeys, item, items, (ulong)bits);
+            int spriteEnd = bits < 0 ? sprite : RunEnd(s.SpriteKeys, sprite, sprites, (ulong)bits);
+            var passes = _passes.In((RenderStage)stage);
+            if (passes.Length > 0)
+            {
+                var external = _external[stage];
+                ctx.Stage = (RenderStage)stage;
+                ctx.ItemFrom = item;
+                ctx.ItemTo = itemEnd;
+                ctx.SpriteFrom = sprite;
+                ctx.SpriteTo = spriteEnd;
+                for (int i = 0; i < passes.Length; i++)
+                {
+                    passes[i].Draw(ctx);
+                    if (!external[i]) continue;
+                    // A game's pass may have changed anything: the view's target, viewport and material
+                    // state are put back before the next pass draws.
+                    _current = -1;
+                    if (_bound != view.Target || _passBound) Rebind(view.Target);
+                    _device.Viewport = new Viewport(view.Viewport);
+                }
+            }
             item = itemEnd;
             sprite = spriteEnd;
         }
+        ctx.View = -1;
+    }
 
-        // Pass 5 (06 §3.4): debug geometry, over everything the world drew and under the UI.
+    // The engine's scene passes (`sage:opaque`, `sage:alpha_tested`, `sage:transparent`): the stage's run
+    // of the view's items, then its sprites.
+    internal void DrawSceneRun(RenderContext ctx)
+    {
+        var s = ctx.Snapshot;
+        ref var view = ref s.Views[ctx.View];
+        var lights = s.Lights.AsSpan().Slice(view.LightStart, view.LightCount);
+        DrawItems(s, view, lights, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
+        DrawSprites(s, view, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
+    }
+
+    // `sage:debug` (06 §3.4, pass 5): debug geometry, over everything the world drew and under the UI.
+    internal void DrawDebugLines(RenderContext ctx)
+    {
+        var s = ctx.Snapshot;
+        ref var view = ref s.Views[ctx.View];
         if (view.DebugCount >= 2 && _debugLines.Ready(_content))
         {
-            stats.DrawCalls += _debugLines.Draw(s.DebugLines.AsSpan().Slice(view.DebugStart, view.DebugCount), view.ViewProj, _debugThroughWalls.Value);
-            stats.DebugLines += view.DebugCount / 2;
+            _stats.DrawCalls += _debugLines.Draw(s.DebugLines.AsSpan().Slice(view.DebugStart, view.DebugCount), view.ViewProj, _debugThroughWalls.Value);
+            _stats.DebugLines += view.DebugCount / 2;
             _current = -1;   // the debug effect changed the device state out from under the material cache
         }
     }
 
-    private static readonly RenderPass[] Passes = { RenderPass.Opaque, RenderPass.AlphaTested, RenderPass.Transparent };
     private int _current;   // the material currently applied to the device
 
     // The pooled planning arrays grow with the scene and are never shrunk (06 §3.2).
@@ -571,10 +729,10 @@ public sealed class Renderer : IDisposable
         other = new int[keys.Length];
     }
 
-    // The end of the run of entries belonging to `pass`, starting at `from` in a sorted key array.
-    private static int RunEnd(ulong[] keys, int from, int count, RenderPass pass)
+    // The end of the run of entries whose key starts with `bits` (RenderStages.SortKeyPass), from `from`
+    // in a sorted key array.
+    private static int RunEnd(ulong[] keys, int from, int count, ulong bits)
     {
-        ulong bits = pass switch { RenderPass.Opaque => 0UL, RenderPass.AlphaTested => 1UL, _ => 3UL };
         int end = from;
         while (end < count && (keys[end] >> 60) == bits) end++;
         return end;
@@ -734,6 +892,7 @@ public sealed class Renderer : IDisposable
         }
         _sprites.Dispose();
         _debugLines.Dispose();
+        _fullScreen?.Dispose();
         Materials.Dispose();
         _targets.Dispose();
     }
