@@ -3433,6 +3433,14 @@
             }
           ]
         },
+        "attack": {
+          "description": "Names a attack record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:attack"
+            }
+          ]
+        },
         "caster": {
           "description": "(Entity)"
         },
