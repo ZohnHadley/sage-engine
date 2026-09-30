@@ -7,12 +7,13 @@ namespace Sage.Gameplay;
 
 // Combat (docs/design/16 §3.2, TODO F20). One pipeline for every hit, whoever threw it:
 //
-//   a swing or a spell  ->  Combat.ApplyDamage  ->  the damage type's resistance attribute
+//   a strike or a spell  ->  Combat.ApplyHit (ApplyDamage)  ->  the damage type's resistance attribute
 //                       ->  an effect on the victim's health (16 §3.3)  ->  a Damaged event (04)
 //
 // Nothing subtracts health directly. Damage is an *effect* with a magnitude, so resistances, the
 // `god` tag, damage over time and saves all keep working through the single path F18 built, and a
-// future server runs exactly this code.
+// future server runs exactly this code. How a strike gets to what it hits — a swing, a ray, a bolt —
+// is its `hit_delivery` (Hits.cs, issue #133).
 
 // What a hit is made of. `Point` and `Direction` are where it landed and which way it was going —
 // cues, knockback and hit reactions (F21) read them; v1 only logs them.
@@ -20,6 +21,10 @@ public readonly record struct DamageInfo(
     Entity Attacker, Entity Target, RecordId Type, float Amount, Vector3 Point, Vector3 Direction)
 {
     public float Applied { get; init; }   // after resistance and tag gating: what health actually lost
+
+    // Where on the body it landed: a `hit_location` id once hitboxes exist (issue #137); empty = the body.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RecordId Location { get; init; }
 }
 
 // A kind of damage and what stands up to it (16 §3.2). Games add their own: frost, poison, falling.
@@ -68,6 +73,25 @@ public sealed class AttackRecord
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public RecordRef<ViewmodelRecord> Arms;
     public List<RecordRef<EffectRecord>> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
+
+    // How the blow gets to what it hits (issue #133): a registered `hit_delivery` — `sweep` (a swing:
+    // reach, radius, arc), `ray` (hitscan to `range`) or `projectile` (a carrier flying `range` at
+    // `projectileSpeed`). Empty means `sweep`.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [VocabularyRef("hit_delivery"), Property(Tooltip = "A registered hit delivery: sweep, ray or projectile; empty = sweep")]
+    public string Delivery = HitDeliveries.Default;
+    internal IHitDelivery? DeliveryInstance;   // found once (HitDeliveries.Of)
+    internal string? DeliveryFor;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "m", Tooltip = "How far a ray or a projectile reaches; a sweep uses reach")]
+    public float Range = 100f;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 1, Tooltip = "Rays or projectiles per strike, each landing its own hit")]
+    public int Pellets = 1;
+    // Straight flight for now; the arced carrier, its prefab and gravity are issue #134's.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "m/s", Tooltip = "How fast a projectile delivery's carrier flies")]
+    public float ProjectileSpeed = 60f;
 }
 
 // A hit that landed, for anything that reacts to one: the death seam's "who killed me", the game's
@@ -77,7 +101,12 @@ public sealed class AttackRecord
 // Sent in whatever phase does the damage and read by anyone with a cursor (04 §3.2), so there is no
 // longer a rule about who must run after whom to see the tick's hits.
 [GameEvent]
-public readonly record struct Damaged(DamageInfo Hit, float Applied);
+public readonly record struct Damaged(DamageInfo Hit, float Applied)
+{
+    // Where on the body it landed (issue #133): the hit's `Location`, empty for the body.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RecordId Location => Hit.Location;
+}
 
 public static class Combat
 {
@@ -87,8 +116,28 @@ public static class Combat
     // `alsoApply` are the effects that ride along with a landed hit — a poisoned blade, a burning
     // brand. They are applied as written (no magnitude) and only if the damage itself got through,
     // so `god` stops the poison as well as the cut.
-    public static float ApplyDamage(World world, in DamageInfo hit, List<RecordRef<EffectRecord>>? alsoApply = null)
+    public static float ApplyDamage(World world, in DamageInfo hit, List<RecordRef<EffectRecord>>? alsoApply = null) =>
+        ApplyHit(world, in hit, HitResult.Of(in hit), alsoApply);
+
+    // An attack's strike that reached `result` (issue #133): the one place a delivered hit becomes
+    // damage. A strike is a physics query and physics has no opinions, so this is where it finds out
+    // whose side it is on (16 §3.5, F24): a creature's blade passes through its own kind, and the
+    // player's lands on whoever was standing there. Then the attack's damage, type and riders.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public static float ApplyHit(World world, in HitRequest request, in HitResult result, AttackRecord attack)
     {
+        if (result.Target.IsNull) return 0f;
+        if (!Factions.MayHurt(world, request.Attacker, result.Target)) return 0f;
+        var damage = new DamageInfo(request.Attacker, result.Target, attack.DamageType, attack.Damage, result.Point, request.Aim);
+        return ApplyHit(world, in damage, in result, attack.Effects);
+    }
+
+    // The pipeline itself: `damage` is what was asked for (who, how much, of what, which way) and
+    // `result` where it landed (on what, where, which location), which wins over the request's own.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public static float ApplyHit(World world, in DamageInfo damage, in HitResult result, List<RecordRef<EffectRecord>>? alsoApply = null)
+    {
+        var hit = damage with { Target = result.Target, Point = result.Point, Location = result.Location };
         if (!world.IsAlive(hit.Target) || hit.Amount <= 0f) return 0f;
 
         var records = world.Resources.Get<RecordStore>();
@@ -159,7 +208,10 @@ public struct Melee : IComponent
 
 // Gameplay phase, before effects tick: turns "the Attack action was pressed" into a hit, for players
 // and creatures alike (16 §3.1 — the payoff of the controller/pawn split is that combat never asks
-// which one it is dealing with).
+// which one it is dealing with). Since issue #133 it is the attack system for every `attack`, not only
+// swings: it times the blow (windup -> Lands -> recover -> cooldown, unchanged) and the attack's
+// `hit_delivery` finds what the blow reaches — a sweep, a ray or a projectile. The id and the `Melee`
+// component keep their names (saves and content use them).
 [System("sage.combat.melee", Phase.Gameplay, Before = new[] { "sage.effects.tick" })]
 internal sealed class MeleeCombatSystem : ISystem
 {
@@ -175,8 +227,10 @@ internal sealed class MeleeCombatSystem : ISystem
     private readonly ActionId _attack;
     private readonly DebugDraw _debug;
     private readonly CVar<bool> _debugSwings;
-    private readonly Deferred<(DamageInfo Hit, AttackRecord Attack)> _pending = new();   // dealt after
-                        // the loop: applying an effect touches another entity's components (R14)
+    private readonly Deferred<(HitRequest Request, AttackRecord Attack)> _strikes = new();   // blows that
+                        // landed this tick, delivered after the loop: a delivery may spawn a projectile (R14)
+    private readonly Deferred<PendingHit> _landed = new();   // what they reached, dealt after every delivery
+                        // ran: applying an effect touches another entity's components (R14)
 
     public MeleeCombatSystem(World world, RecordStore records, ActionRegistry actions, CVar<bool> debugSwings)
     {
@@ -211,7 +265,7 @@ internal sealed class MeleeCombatSystem : ISystem
             for (int n = 0; n < m.Length; n++)
             {
                 var entity = entities.EntityAt(n);
-                var attack = AttackFor(ref m[n], conventions);
+                var attack = AttackFor(ref m[n], conventions, out var attackId);
                 if (attack == null) continue;
 
                 if (m[n].Cooldown > 0f) m[n].Cooldown = MathF.Max(0f, m[n].Cooldown - dt);
@@ -245,7 +299,7 @@ internal sealed class MeleeCombatSystem : ISystem
                             break;
                         }
                         if (!Lands(world, entity, attack, m[n].Timer, conventions.Animations.Hit)) break;
-                        _pending.Add((Resolve(world, entity, in t[n], in i[n], in c[n], attack), attack));
+                        _strikes.Add((Request(world, entity, attackId, in t[n], in i[n], in c[n]), attack));
                         m[n].Swung = true;
                         m[n].Timer = 0f;
                         m[n].Phase = MeleePhase.Recover;
@@ -274,20 +328,25 @@ internal sealed class MeleeCombatSystem : ISystem
         }
         _swings.Clear();
 
-        foreach (var (hit, attack) in _pending.Drain())
+        // Every blow that landed goes out by its delivery (issue #133) — nothing here moves a body, so a
+        // sweep finds what it found inside the loop, on the same tick — and then everything they reached
+        // is dealt, in the order the blows landed.
+        var debug = _debugSwings.Value && _debug.Enabled ? _debug : null;
+        foreach (var (request, attack) in _strikes.Drain())
         {
-            if (hit.Target.IsNull) continue;
-            // A swing is a physics query and physics has no opinions, so this is where the swing finds
-            // out whose side it is on (16 §3.5, F24): a creature's blade passes through its own kind,
-            // and the player's lands on whoever was standing there.
-            if (!Factions.MayHurt(world, hit.Attacker, hit.Target)) continue;
-            Combat.ApplyDamage(world, hit, attack.Effects);
+            if (HitDeliveries.Of(world, attack) is not { } delivery) continue;
+            delivery.Deliver(new HitContext
+            {
+                World = world, Space = _space, Request = request, Attack = attack, Debug = debug, Landed = _landed,
+            });
         }
+        foreach (var hit in _landed.Drain())
+            Combat.ApplyHit(world, hit.Request, hit.Result, hit.Attack);
     }
 
-    private AttackRecord? AttackFor(ref Melee melee, GameplayConventionsRecord conventions)
+    private AttackRecord? AttackFor(ref Melee melee, GameplayConventionsRecord conventions, out RecordId id)
     {
-        var id = melee.Attack.IsEmpty ? conventions.Attack.Id : melee.Attack;
+        id = melee.Attack.IsEmpty ? conventions.Attack.Id : melee.Attack;
         if (id.IsEmpty) return null;   // given no attack, and the game has no default: it cannot swing
         if (_records.TryGet(id, out AttackRecord record)) return record;
         Log.Once(LogCat.Gameplay, LogLevel.Error, $"attack:{id}", $"No attack record {id}: nothing can swing it");
@@ -319,51 +378,13 @@ internal sealed class MeleeCombatSystem : ISystem
         return false;
     }
 
-    // The swing itself: a sphere swept along the attacker's aim (10 §4), first thing it touches that
-    // can be hurt. One target per swing in v1; cleaving through several is a later flag.
-    private DamageInfo Resolve(World world, Entity attacker, in Transform transform, in PawnIntent intent,
-                               in CharacterController character, AttackRecord attack)
+    // The blow leaving the fighter: from its eye, along where its pawn looks (yaw and pitch).
+    private HitRequest Request(World world, Entity attacker, RecordId attack, in Transform transform, in PawnIntent intent,
+                               in CharacterController character)
     {
         var profile = CharacterConventions.Of(world).ProfileOf(_records, character.Profile);
         Vector3 eye = CharacterController.EyeOf(transform.LocalPosition, in character, profile);
         Vector3 aim = Vector3.Transform(TransformMath.Forward, Quaternion.CreateFromYawPitchRoll(intent.Yaw, intent.Pitch, 0));
-
-        // Every solid thing counts, including the attacker's own kind: a swing is physical, and who it
-        // is *allowed* to hurt is a rules question (factions, F24), not a physics one. The sweep starts
-        // inside the attacker's own capsule, so the attacker is left out of it (`ignore`), and the self
-        // check below is the belt to that pair of braces. Something else the swing starts inside — a
-        // creature pressed up against you — is hit at distance 0 (issue #30: it used to be missed).
-        var hit = _space.Sweep(Collider.Sphere(attack.Radius), new Pose { Position = eye, Rotation = Quaternion.Identity, Scale = Vector3.One },
-                               aim, attack.Reach, LayerMask.All, ignore: attacker);
-
-        var info = new DamageInfo(attacker, default, attack.DamageType, attack.Damage, eye + aim * attack.Reach, aim);
-        if (Connects(world, attacker, in transform, in intent, attack, hit))
-            info = info with { Target = hit.Entity, Point = eye + aim * hit.Distance };
-
-        DrawSwing(eye, aim, attack, in info);
-        return info;
-    }
-
-    // Did the sweep find something this swing is allowed to hurt?
-    private static bool Connects(World world, Entity attacker, in Transform transform, in PawnIntent intent,
-                                 AttackRecord attack, in SweepHit hit)
-    {
-        if (!hit.Hit || hit.Entity.IsNull || hit.Entity == attacker) return false;
-        if (!world.IsAlive(hit.Entity) || !world.Has<Attributes>(hit.Entity)) return false;   // scenery: the swing just stops
-
-        // A target dead ahead is the easy case; the arc decides how much of a glancing angle counts.
-        Vector3 toTarget = world.Get<Transform>(hit.Entity).LocalPosition - transform.LocalPosition;
-        return SageMath.InCone(intent.Yaw, Vector3.Zero, toTarget, attack.ArcDegrees);
-    }
-
-    // What a swing reached and whether it found anything, left on screen long enough to look at:
-    // a miss is the hard thing to debug, and a miss draws too.
-    private void DrawSwing(Vector3 eye, Vector3 aim, AttackRecord attack, in DamageInfo info)
-    {
-        if (!_debugSwings.Value || !_debug.Enabled) return;
-        uint colour = info.Target.IsNull ? DebugColour.Red : DebugColour.Green;
-        _debug.Arrow(eye, eye + aim * attack.Reach, colour, 0.6f);
-        _debug.Sphere(eye + aim * attack.Reach, attack.Radius, colour, 0.6f);
-        if (!info.Target.IsNull) _debug.Cross(info.Point, 0.25f, DebugColour.Yellow, 0.6f);
+        return new HitRequest(attacker, eye, aim, attack);
     }
 }

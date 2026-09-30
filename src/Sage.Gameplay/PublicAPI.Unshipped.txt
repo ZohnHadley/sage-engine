@@ -37,9 +37,14 @@ const Sage.Gameplay.BridgeIO.OnStageChanged = "OnStageChanged" -> string!
 const Sage.Gameplay.BridgeIO.SetFaction = "SetFaction" -> string!
 const Sage.Gameplay.BridgeIO.SetStage = "SetStage" -> string!
 const Sage.Gameplay.BridgeIO.StartDialogue = "StartDialogue" -> string!
+const Sage.Gameplay.HitDeliveries.Default = "sweep" -> string!
 Sage.Gameplay.ActionConventions.Reload -> string!
 Sage.Gameplay.AnimationConventions.Reload -> string!
 Sage.Gameplay.AttackRecord.Arms -> Sage.Core.RecordRef<Sage.Simulation.ViewmodelRecord!>
+Sage.Gameplay.AttackRecord.Delivery -> string!
+Sage.Gameplay.AttackRecord.Pellets -> int
+Sage.Gameplay.AttackRecord.ProjectileSpeed -> float
+Sage.Gameplay.AttackRecord.Range -> float
 Sage.Gameplay.AvailableTopic
 Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
 Sage.Gameplay.AvailableTopic.AvailableTopic(Sage.Core.RecordId Topic, string! Keyword) -> void
@@ -49,6 +54,9 @@ Sage.Gameplay.AvailableTopic.Topic.get -> Sage.Core.RecordId
 Sage.Gameplay.AvailableTopic.Topic.init -> void
 Sage.Gameplay.BridgeIO
 Sage.Gameplay.Conversation.Topics -> bool
+Sage.Gameplay.Damaged.Location.get -> Sage.Core.RecordId
+Sage.Gameplay.DamageInfo.Location.get -> Sage.Core.RecordId
+Sage.Gameplay.DamageInfo.Location.init -> void
 Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Simulation.ICondition!>!
 Sage.Gameplay.DialogueOption.Topics -> bool
@@ -82,9 +90,53 @@ Sage.Gameplay.FootIkPart.RayAbove -> float
 Sage.Gameplay.FootIkPart.RayBelow -> float
 Sage.Gameplay.FootIkPart.Right -> Sage.Gameplay.FootIkLeg?
 Sage.Gameplay.FootIkPart.Weight -> float
+Sage.Gameplay.HitContext
+Sage.Gameplay.HitContext.Attack.get -> Sage.Gameplay.AttackRecord!
+Sage.Gameplay.HitContext.Attack.init -> void
+Sage.Gameplay.HitContext.Debug.get -> Sage.Simulation.DebugDraw?
+Sage.Gameplay.HitContext.Debug.init -> void
+Sage.Gameplay.HitContext.HitContext() -> void
+Sage.Gameplay.HitContext.Land(in Sage.Gameplay.HitResult result) -> void
+Sage.Gameplay.HitContext.Request.get -> Sage.Gameplay.HitRequest
+Sage.Gameplay.HitContext.Request.init -> void
+Sage.Gameplay.HitContext.Space.get -> Sage.Simulation.IPhysicsWorld!
+Sage.Gameplay.HitContext.Space.init -> void
+Sage.Gameplay.HitContext.World.get -> Sage.Simulation.World!
+Sage.Gameplay.HitContext.World.init -> void
+Sage.Gameplay.HitDeliveries
+Sage.Gameplay.HitDeliveryAttribute
+Sage.Gameplay.HitDeliveryAttribute.HitDeliveryAttribute(string! id) -> void
+Sage.Gameplay.HitRequest
+Sage.Gameplay.HitRequest.Aim.get -> System.Numerics.Vector3
+Sage.Gameplay.HitRequest.Aim.init -> void
+Sage.Gameplay.HitRequest.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.HitRequest.Attack.init -> void
+Sage.Gameplay.HitRequest.Attacker.get -> Sage.Simulation.Entity
+Sage.Gameplay.HitRequest.Attacker.init -> void
+Sage.Gameplay.HitRequest.HitRequest() -> void
+Sage.Gameplay.HitRequest.HitRequest(Sage.Simulation.Entity Attacker, System.Numerics.Vector3 Origin, System.Numerics.Vector3 Aim, Sage.Core.RecordId Attack) -> void
+Sage.Gameplay.HitRequest.Origin.get -> System.Numerics.Vector3
+Sage.Gameplay.HitRequest.Origin.init -> void
+Sage.Gameplay.HitResult
+Sage.Gameplay.HitResult.Collider.get -> Sage.Simulation.Entity
+Sage.Gameplay.HitResult.Collider.init -> void
+Sage.Gameplay.HitResult.HitResult() -> void
+Sage.Gameplay.HitResult.HitResult(Sage.Simulation.Entity Target, System.Numerics.Vector3 Point, System.Numerics.Vector3 Normal, Sage.Simulation.Entity Collider, Sage.Core.RecordId Location) -> void
+Sage.Gameplay.HitResult.Location.get -> Sage.Core.RecordId
+Sage.Gameplay.HitResult.Location.init -> void
+Sage.Gameplay.HitResult.Normal.get -> System.Numerics.Vector3
+Sage.Gameplay.HitResult.Normal.init -> void
+Sage.Gameplay.HitResult.Point.get -> System.Numerics.Vector3
+Sage.Gameplay.HitResult.Point.init -> void
+Sage.Gameplay.HitResult.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.HitResult.Target.init -> void
+Sage.Gameplay.Hits
+Sage.Gameplay.IHitDelivery
+Sage.Gameplay.IHitDelivery.Deliver(in Sage.Gameplay.HitContext hit) -> void
 Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
+Sage.Gameplay.Projectile.Attack -> Sage.Core.RecordId
 Sage.Gameplay.QuestWatch
 Sage.Gameplay.QuestWatch.Quest -> Sage.Core.RecordId
 Sage.Gameplay.QuestWatch.QuestWatch() -> void
@@ -103,11 +155,21 @@ Sage.Gameplay.TopicRecord.Keyword -> string!
 Sage.Gameplay.TopicRecord.KeywordOf(Sage.Core.RecordId id) -> string!
 Sage.Gameplay.TopicRecord.Known -> bool
 Sage.Gameplay.TopicRecord.TopicRecord() -> void
+static Sage.Gameplay.Combat.ApplyHit(Sage.Simulation.World! world, in Sage.Gameplay.DamageInfo damage, in Sage.Gameplay.HitResult result, System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>? alsoApply = null) -> float
+static Sage.Gameplay.Combat.ApplyHit(Sage.Simulation.World! world, in Sage.Gameplay.HitRequest request, in Sage.Gameplay.HitResult result, Sage.Gameplay.AttackRecord! attack) -> float
 static Sage.Gameplay.DialogueTopics.Answer(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> Sage.Gameplay.TopicInfo?
 static Sage.Gameplay.DialogueTopics.Ask(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> Sage.Gameplay.TopicInfo?
 static Sage.Gameplay.DialogueTopics.Available(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, System.Collections.Generic.List<Sage.Gameplay.AvailableTopic>! into) -> int
 static Sage.Gameplay.DialogueTopics.Knows(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
 static Sage.Gameplay.DialogueTopics.Learn(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
+static Sage.Gameplay.HitDeliveries.Check(Sage.Core.Vocabularies! vocabularies, Sage.Gameplay.AttackRecord! attack, Sage.Core.RecordCheck! check) -> void
+static Sage.Gameplay.HitDeliveries.NameOf(Sage.Gameplay.AttackRecord! attack) -> string!
+static Sage.Gameplay.HitDeliveries.Of(Sage.Simulation.World! world, Sage.Gameplay.AttackRecord! attack) -> Sage.Gameplay.IHitDelivery?
+static Sage.Gameplay.HitResult.Of(in Sage.Gameplay.DamageInfo damage) -> Sage.Gameplay.HitResult
+static Sage.Gameplay.Hits.CanBeHurt(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
+static Sage.Gameplay.Hits.Launch(Sage.Simulation.World! world, in Sage.Gameplay.HitRequest request, Sage.Gameplay.AttackRecord! attack) -> Sage.Simulation.Entity
+static Sage.Gameplay.Hits.Ray(Sage.Simulation.IPhysicsWorld! space, Sage.Simulation.Entity attacker, System.Numerics.Vector3 origin, System.Numerics.Vector3 aim, float range, out Sage.Gameplay.HitResult result) -> bool
+static Sage.Gameplay.Hits.Sweep(Sage.Simulation.IPhysicsWorld! space, Sage.Simulation.Entity attacker, System.Numerics.Vector3 origin, System.Numerics.Vector3 aim, float radius, float reach, out Sage.Gameplay.HitResult result) -> bool
 static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.RecordId quest, string! stage) -> bool
 Sage.Gameplay.AnimationConventions.AttackTrigger -> string!
 Sage.Gameplay.AttackRecord.Trigger -> string!

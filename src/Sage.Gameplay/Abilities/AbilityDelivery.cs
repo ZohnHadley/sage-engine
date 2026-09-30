@@ -120,14 +120,10 @@ internal sealed class TouchDelivery : IAbilityDelivery
         // sweep used to report nothing at all (review #55) — so a three-metre burst reached exactly
         // nothing. The caster is left out now, and something else the bolt starts inside is struck at
         // distance 0 (issue #30).
-        var hit = cast.Space.Sweep(Collider.Sphere(MathF.Max(record.Width, 0.05f)),
-            new Pose { Position = cast.Origin, Rotation = Quaternion.Identity, Scale = Vector3.One },
-            cast.Aim, record.Range, LayerMask.All, ignore: cast.Caster);
-
-        point = hit.Entity.IsNull || hit.Entity == cast.Caster
-            ? cast.Origin + cast.Aim * record.Range
-            : cast.Origin + cast.Aim * hit.Distance;
-        struck = hit.Entity;
+        // The query is a swing's (Hits.Sweep, issue #133): scenery included, so a wall stops the touch.
+        Hits.Sweep(cast.Space, cast.Caster, cast.Origin, cast.Aim, MathF.Max(record.Width, 0.05f), record.Range, out var hit);
+        point = hit.Point;
+        struck = hit.Target;
         return true;
     }
 }

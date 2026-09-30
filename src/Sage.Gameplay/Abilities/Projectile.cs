@@ -15,6 +15,11 @@ namespace Sage.Gameplay;
 public struct Projectile : IComponent
 {
     public RecordId Ability;    // whose payload it carries, delivered where it lands
+    // Or the attack whose hit it carries (a `projectile` hit_delivery, issue #133), landed through
+    // Combat.ApplyHit on what it strikes. One or the other.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [RecordRef("attack")]
+    public RecordId Attack;
     public Entity Caster;       // who threw it: the damage is theirs, and it will not hit them
     public Vector3 Velocity;    // metres per second, already in world space
     public float Life;          // seconds before it gives up and bursts where it is
@@ -43,7 +48,8 @@ internal sealed class ProjectileSystem : ISystem
     // destroys this one, neither of which a query allows (R14).
     private readonly Deferred<Arrival> _arrivals = new();
 
-    private readonly record struct Arrival(Entity Projectile, Entity Caster, RecordId Ability, Vector3 Point, Entity Struck);
+    private readonly record struct Arrival(Entity Projectile, Entity Caster, RecordId Ability, RecordId Attack, Vector3 Point,
+                                           Vector3 Direction, Entity Struck);
 
     public ProjectileSystem(World world, RecordStore records, CVar<bool> debugCasts)
     {
@@ -73,7 +79,7 @@ internal sealed class ProjectileSystem : ISystem
                 p[n].Life -= dt;
                 if (step <= 0f || p[n].Life <= 0f)
                 {
-                    _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, from, default));
+                    _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, from, default, default));
                     continue;
                 }
 
@@ -91,7 +97,7 @@ internal sealed class ProjectileSystem : ISystem
                 t[n].LocalPosition = to;
                 if (_debugCasts.Value) _debug.Line(from, to, DebugColour.Orange, 1f);
 
-                if (stopped) _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, to, hit.Entity));
+                if (stopped) _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, to, direction, hit.Entity));
             }
         }
 
@@ -101,6 +107,17 @@ internal sealed class ProjectileSystem : ISystem
     private void Arrive(World world, in Arrival arrival)
     {
         if (world.IsAlive(arrival.Projectile)) world.Destroy(arrival.Projectile);
+
+        // An attack's bolt (issue #133) is one strike: what it struck takes the attack's hit, through the
+        // same Combat.ApplyHit a sword's swing and a pistol's ray use. Running out of range hits nothing.
+        if (!arrival.Attack.IsEmpty)
+        {
+            if (!Hits.CanBeHurt(world, arrival.Struck) || arrival.Struck == arrival.Caster) return;
+            if (!_records.TryGet(arrival.Attack, out AttackRecord attack)) return;
+            var request = new HitRequest(arrival.Caster, arrival.Point, arrival.Direction, arrival.Attack);
+            Combat.ApplyHit(world, in request, new HitResult(arrival.Struck, arrival.Point, -arrival.Direction, arrival.Struck, default), attack);
+            return;
+        }
 
         // A projectile outlives its caster: a fireball thrown by something that dies mid-flight still
         // lands. The payload credits a dead caster, which the death seam already copes with.
@@ -117,27 +134,9 @@ public static class ProjectileExtensions
 {
     // Throws one. The prefab is what it looks like; this adds the flight. An empty prefab still works
     // and is simply invisible, which is what a headless server gets.
+    // The carrier is the one attacks fly on too (Hits.Carrier, issue #133).
     public static Entity Launch(this World world, Entity caster, RecordId ability, AbilityRecord record,
-                                Vector3 from, Vector3 direction)
-    {
-        var entity = record.Projectile.IsEmpty
-            ? world.Create(Transform.At(from), ability.Name)
-            : world.Spawn(record.Projectile, from, SageMath.YawOf(direction) * 180f / MathF.PI);
-
-        if (entity.IsNull) return entity;
-        if (!world.Has<Transform>(entity)) return entity;
-        world.Get<Transform>(entity).LocalPosition = from;
-
-        world.Add(entity, new Projectile
-        {
-            Ability = ability,
-            Caster = caster,
-            Velocity = Vector3.Normalize(direction) * MathF.Max(record.ProjectileSpeed, 0.1f),
-            // Enough time to cross its own range, with a little slack, so a spell that never hits
-            // anything bursts at the far end instead of flying to the edge of the world.
-            Life = MathF.Max(record.Range, 1f) / MathF.Max(record.ProjectileSpeed, 0.1f) + 0.2f,
-            Radius = record.Width,
-        });
-        return entity;
-    }
+                                Vector3 from, Vector3 direction) =>
+        Hits.Carrier(world, caster, record.Projectile.Id, ability.Name, from, direction,
+                     record.ProjectileSpeed, record.Range, record.Width, ability, default);
 }

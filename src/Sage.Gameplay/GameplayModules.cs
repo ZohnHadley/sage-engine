@@ -176,6 +176,9 @@ public sealed class CombatModule : IModule
         _actions.Register("Attack", ActionKind.Button);   // the engine's name; gameplay_conventions picks which one swings
         _actions.Register("Reload", ActionKind.Button);   // plays the first-person arms' reload (issue #121)
         BridgeIO.RegisterCombat(ctx.Engine);              // OnDamaged (issue #91)
+        // An attack's `delivery` names a registered hit_delivery (issue #133), checked when content loads.
+        var vocabularies = ctx.Engine.Vocabularies;
+        _records.AddCheck<AttackRecord>((attack, check) => HitDeliveries.Check(vocabularies, attack, check));
 
         // Registered here, once, rather than in the systems: systems are per world (review #57).
         _combatDebug = ctx.Engine.CVars.Register("combat_debug", false, CVarFlags.DevOnly,
