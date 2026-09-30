@@ -788,3 +788,4 @@ static Sage.Simulation.Viewmodels.Show(Sage.Simulation.World! world, Sage.Simula
 static Sage.Simulation.Viewmodels.WeaponOf(Sage.Simulation.World! world, Sage.Simulation.Entity camera) -> Sage.Simulation.Entity
 Sage.Simulation.LayerMatrix.QueryOnly.get -> Sage.Simulation.LayerMask
 Sage.Simulation.LayerMatrix.Sees(Sage.Simulation.LayerMask mask, int layer) -> bool
+Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int
