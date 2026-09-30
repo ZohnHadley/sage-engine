@@ -208,6 +208,22 @@
       "default": 0,
       "type": "number",
       "minimum": 0
+    },
+    "spread": {
+      "description": "How far a shot may stray from the aim; empty = it flies true. Names a spread record. (RecordRef<SpreadRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:spread"
+        }
+      ]
+    },
+    "recoil": {
+      "description": "How a shot kicks the wielder's aim; empty = no kick. Names a recoil record. (RecordRef<RecoilRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:recoil"
+        }
+      ]
     }
   },
   "additionalProperties": false
