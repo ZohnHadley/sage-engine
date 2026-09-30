@@ -262,7 +262,8 @@ public class StrictContentTests
 
     // The log's "(previous message repeated N more times)" note comes from whichever thread drains the
     // queue at the time, so a validation report that counted it depended on timing: the mod test below
-    // failed in CI with a third line. The note is never a problem of its own.
+    // failed in CI with a third line. The note is never a problem of its own. (Which thread the probe's
+    // own note comes from is just as much a matter of timing, so every captured entry is checked.)
     [Fact]
     public void Validate_NeverCountsTheLogsRepeatNoteAsAProblem()
     {
@@ -277,16 +278,16 @@ public class StrictContentTests
                 string message = "repeat-note probe " + System.Guid.NewGuid().ToString("N");
                 Log.Error(LogCat.Records, message);
                 Log.Error(LogCat.Records, message);
-                Log.Flush();   // emits the pending note on this thread, as ContentValidation.Run's own Flush can
+                Log.Flush();   // emits a pending note, from this thread or the writer's
             }
         }
         finally { Log.RemoveSink(sink); }
 
-        var mine = sink.Entries.Where(e => e.ThreadId == System.Environment.CurrentManagedThreadId).ToList();
-        Assert.Contains(mine, IsNote);
-        Assert.All(mine, e => Assert.Equal(IsNote(e), ContentValidation.IsRepeatNote(e)));
+        var entries = sink.Entries;
+        Assert.Contains(entries, IsNote);
+        Assert.All(entries, e => Assert.Equal(IsNote(e), ContentValidation.IsRepeatNote(e)));
 
-        static bool IsNote(LogEntry e) => e.Message.StartsWith("(previous message repeated 1 more time", System.StringComparison.Ordinal);
+        static bool IsNote(LogEntry e) => e.Message.StartsWith("(previous message repeated ", System.StringComparison.Ordinal);
     }
 
     private sealed class CapturingSink : ILogSink
