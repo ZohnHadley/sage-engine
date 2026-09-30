@@ -88,10 +88,42 @@ public sealed class AttackRecord
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Min = 1, Tooltip = "Rays or projectiles per strike, each landing its own hit")]
     public int Pellets = 1;
-    // Straight flight for now; the arced carrier, its prefab and gravity are issue #134's.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Min = 0, Unit = "m/s", Tooltip = "How fast a projectile delivery's carrier flies")]
     public float ProjectileSpeed = 60f;
+
+    // ---- the projectile carrier (issue #134) ----
+    // What a `projectile` delivery's bolt looks like (none: invisible, the headless default), how fast it
+    // falls (0: straight flight) and how many targets it passes through before one stops it.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "The prefab a projectile delivery's carrier looks like; empty = invisible")]
+    public RecordRef<PrefabRecord> Projectile;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "m/s²", Tooltip = "How fast a projectile delivery's carrier falls; 0 flies straight (9.81 is Earth)")]
+    public float ProjectileGravity;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Tooltip = "How many targets a projectile delivery's carrier passes through before one stops it")]
+    public int ProjectilePierce;
+
+    // ---- ammunition (issue #135; Ammunition.cs) — kept together, away from the hit fields above ----
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "The item this attack spends; empty = infinite ammunition")]
+    public RecordRef<ItemRecord> Ammo;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Tooltip = "Rounds the magazine holds, filled from the inventory by Reload; 0 = no magazine, each shot is taken straight from the inventory")]
+    public int Magazine;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 1, Tooltip = "Rounds one shot spends")]
+    public int AmmoPerShot = 1;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "s", Tooltip = "How long a reload takes when the animation has no mag_in event to say when the magazine goes in")]
+    public float ReloadTime = 2f;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "Fires every time the cooldown allows while the button is held, not once per press")]
+    public bool Automatic;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "shots/s", Tooltip = "Shots a second (replaces cooldown when above 0)")]
+    public float RateOfFire;
 }
 
 // A hit that landed, for anything that reacts to one: the death seam's "who killed me", the game's
@@ -298,8 +330,22 @@ internal sealed class MeleeCombatSystem : ISystem
                 switch (m[n].Phase)
                 {
                     case MeleePhase.Ready:
-                        if (i[n].Pressed.Has(_attack) && m[n].Cooldown <= 0f && !world.HasTag(entity, dead))
+                        bool trigger = i[n].Pressed.Has(_attack) || (attack.Automatic && i[n].Held.Has(_attack));
+                        if (trigger && m[n].Cooldown <= 0f && !world.HasTag(entity, dead))
                         {
+                            // Ammunition (issue #135): an empty magazine clicks and the swing never starts; a
+                            // reload in progress swallows the press. Attacks with no `ammo` are always Ok.
+                            var spent = Ammunition.Spend(world, entity, attackId, attack);
+                            if (spent != Ammunition.Spent.Ok)
+                            {
+                                if (spent == Ammunition.Spent.Dry)
+                                {
+                                    world.Events.Send(new DryFire(entity, attackId));
+                                    m[n].Cooldown = MathF.Max(attack.Cooldown, 0.25f);   // a held trigger clicks, not buzzes
+                                }
+                                break;
+                            }
+                            world.Events.Send(new WeaponFired(entity, attackId));
                             m[n].Phase = MeleePhase.Windup;
                             m[n].Timer = 0f;
                             m[n].Swung = false;
@@ -336,7 +382,9 @@ internal sealed class MeleeCombatSystem : ISystem
                         // Going back to standing is the graph's (a transition when the clip is done).
                         m[n].Phase = MeleePhase.Ready;
                         m[n].Timer = 0f;
-                        m[n].Cooldown = attack.Cooldown;
+                        m[n].Cooldown = attack.RateOfFire > 0f
+                            ? MathF.Max(0f, 1f / attack.RateOfFire - attack.WindupTime - attack.RecoverTime)
+                            : attack.Cooldown;
                         break;
                 }
             }

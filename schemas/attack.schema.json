@@ -171,6 +171,63 @@
       "default": 60,
       "type": "number",
       "minimum": 0
+    },
+    "projectile": {
+      "description": "The prefab a projectile delivery's carrier looks like; empty = invisible. Names a prefab record. (RecordRef<PrefabRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:prefab"
+        }
+      ]
+    },
+    "projectileGravity": {
+      "description": "How fast a projectile delivery's carrier falls; 0 flies straight (9.81 is Earth) Unit: m/s². At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "projectilePierce": {
+      "description": "How many targets a projectile delivery's carrier passes through before one stops it. At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "ammo": {
+      "description": "The item this attack spends; empty = infinite ammunition. Names a item record. (RecordRef<ItemRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:item"
+        }
+      ]
+    },
+    "magazine": {
+      "description": "Rounds the magazine holds, filled from the inventory by Reload; 0 = no magazine, each shot is taken straight from the inventory. At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "ammoPerShot": {
+      "description": "Rounds one shot spends. At least 1. (int, default 1)",
+      "default": 1,
+      "type": "integer",
+      "minimum": 1
+    },
+    "reloadTime": {
+      "description": "How long a reload takes when the animation has no mag_in event to say when the magazine goes in. Unit: s. At least 0. (float, default 2)",
+      "default": 2,
+      "type": "number",
+      "minimum": 0
+    },
+    "automatic": {
+      "description": "Fires every time the cooldown allows while the button is held, not once per press. (bool, default false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "rateOfFire": {
+      "description": "Shots a second (replaces cooldown when above 0) Unit: shots/s. At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
     }
   },
   "additionalProperties": false

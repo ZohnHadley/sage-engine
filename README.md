@@ -34,22 +34,31 @@ The first vertical slice is finished (2026-09-23): **you walk a heightmap sector
 down and swings, you swing back with a sword you picked up, you throw a fireball that flies and bursts
 — or one you invented yourself — and a save brings all of it back in a new process.**
 
+Since then the engine has been following [`docs/REDESIGN.md`](docs/REDESIGN.md). Stage A (phases 0–3)
+carved a base engine out of it, with an RPG kit on top. Stage B is building the action-RPG base:
+cameras (4a), timers, state machines and logic entities (4b), the UI toolkit and RPG screens (4c) and
+skeletal animation (4d) are done; weapons and combat on one hit pipeline (4e, #132) are in progress.
+
 | Area | What exists |
 |---|---|
 | Core | Fixed 60 Hz tick with render interpolation, phases with ordering and dev-asserted contracts, logging with categories, cvars and a console, crash reports, three build configurations |
 | World | Friflo ECS behind a thin `World`, in Sage's own vocabulary (`Entity`, `IComponent`, `Query<…>`, `EntityCommands`; no Friflo type in the API), several worlds per engine, hierarchy and transform propagation, one typed event bus with per-reader cursors, world resources |
 | Content | One JSON record pipeline for every definition (items, spells, materials, AI, input maps, prefabs…) with namespaces, inheritance, per-field patch merge, validation and hot reload; a layered VFS; records that can also be made at run time |
-| Rendering | Extract → pooled snapshot → fixed passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, heightmap terrain, debug draw |
+| Rendering | Extract → pooled snapshot → fixed passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, GPU-skinned models, heightmap terrain, debug draw |
+| Cameras | Cameras are entities with a director: first- and third-person rigs with the `V` toggle, scripted cuts from entity I/O, several views a frame and named render targets |
 | World | An unbounded grid of 1024 m sectors: terrain streams in and out in rings around the player, and the simulation rebases so nothing is ever far from its own origin — verified 120 km out |
 | Physics | BepuPhysics per world behind handles, layers, raycast/sweep/overlap, triggers, and our own kinematic character controller |
-| Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, melee both sides throw, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts — and now walks round what is in the way, remembering what it can no longer see |
+| Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts — and now walks round what is in the way, remembering what it can no longer see |
+| Weapons | Every attack goes through one hit pipeline (`hit_delivery`): a melee sweep, a hitscan ray with pellets, or a projectile on the same carrier abilities use. Attacks can spend ammunition from the bag, with magazines kept per attack in the save and a reload that lands on the animation's `mag_in`. Arced bolts, spread and recoil, and hit locations are being built (4e) |
+| Logic | One condition/action language for designers; timers, tweens and a saved entity I/O queue; state machines as records; logic entities (relays, counters, compares, branches) and conditional wires — a scripted sequence or a dialogue topic needs no C# |
+| Animation | Skeletons and clips from glTF, sampled headlessly; `anim_graph` records with blend spaces, layers and cross-fades; sockets, attachments, aim and foot IK; clip events that time hits and reloads; first-person arms |
 | Audio | Positional one-shots from the events the simulation already raised, looping sources, volume buses and voice limiting — the mixer is engine-side and tested headlessly, the noise is the client's |
 | Particles and weather | Sparks, embers, smoke and blood from the cues and hits the simulation already raised — pooled and budgeted engine-side, drawn as tinted billboards — plus damage numbers over the fight, and rain or snow that rolls in over the seconds you give it |
 | Factions | Who counts as an enemy: stances between factions, a standing toward the player that killing moves, creatures that fight each other, and blasts that spare their own side |
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
-| Screens | A spellbook and a bag you can open, choose in and act from — the rows, and whether each can be used, come from the simulation, so what a screen shows is asserted by headless tests |
+| Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1101 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1117 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: ragdolls, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -93,7 +102,9 @@ pressing `E` would pick up, and what just hit you.
 | **Left mouse** | attack |
 | `E` | use |
 | `V` | first person / third person over the shoulder |
+| `R` | reload |
 | `I`, `B`, `M` | your bag, your spellbook, the spellmaker (↑↓ or the mouse to choose, Enter or click to use, Del or right-click, Esc or click away to close) |
+| `C`, `J`, `N`, `F10` | status, journal, map, the main menu (load a save) |
 | `Escape` | quit (closes the console, or an open screen, first) |
 | `` ` `` | open the console |
 
@@ -264,7 +275,8 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `src/Sage.Core` | The kernel: cvars and console, logging, VFS, records, plugins, declarations. **No ECS, no MonoGame.** |
 | `src/Sage.Simulation` | The simulation: engine and app, ECS, prefabs, saves, levels, streaming, entity I/O. **No MonoGame.** |
 | `src/Sage.Physics3D` | Bepu physics and the character controller, a base plugin. **No MonoGame.** |
-| `src/Sage.Gameplay` | Generic gameplay plugins: attributes, combat, items, abilities, AI, navigation, factions, animation. **No MonoGame.** |
+| `src/Sage.Gameplay` | Generic gameplay plugins: attributes, combat and weapons, items, abilities, AI, navigation, factions, animation. **No MonoGame.** |
+| `src/Sage.UI` | Retained game-UI widgets, layout, focus and screen records on the simulation, headless (issue #95). **No MonoGame**; the client draws its render plan |
 | `src/Sage.Kits.Rpg`, `src/Sage.Kits.Rpg.Client` | The action-RPG kit (issue #27), *not* part of the base: the readied spell, the spellmaker, two hands, the bag, spellbook, journal and conversation screens. A game opts in with `"kits": ["sage.kits.rpg"]` in `game.json` (MAKING_A_GAME §2) |
 | `src/Sage.Client` | Rendering, input devices, assets, sprite batching — the MonoGame half |
 | `src/Sage.Editor` | Dev camera, console window, entity outliner, stat overlay (ImGui) |

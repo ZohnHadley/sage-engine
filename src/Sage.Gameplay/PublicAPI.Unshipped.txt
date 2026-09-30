@@ -44,6 +44,9 @@ Sage.Gameplay.AttackRecord.Arms -> Sage.Core.RecordRef<Sage.Simulation.Viewmodel
 Sage.Gameplay.AttackRecord.Delivery -> string!
 Sage.Gameplay.AttackRecord.Pellets -> int
 Sage.Gameplay.AttackRecord.ProjectileSpeed -> float
+Sage.Gameplay.AttackRecord.Projectile -> Sage.Core.RecordRef<Sage.Simulation.PrefabRecord!>
+Sage.Gameplay.AttackRecord.ProjectileGravity -> float
+Sage.Gameplay.AttackRecord.ProjectilePierce -> int
 Sage.Gameplay.AttackRecord.Range -> float
 Sage.Gameplay.AvailableTopic
 Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
@@ -137,6 +140,9 @@ Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
 Sage.Gameplay.Projectile.Attack -> Sage.Core.RecordId
+Sage.Gameplay.Projectile.Gravity -> float
+Sage.Gameplay.Projectile.Passed -> Sage.Simulation.Entity
+Sage.Gameplay.Projectile.Pierce -> int
 Sage.Gameplay.QuestWatch
 Sage.Gameplay.QuestWatch.Quest -> Sage.Core.RecordId
 Sage.Gameplay.QuestWatch.QuestWatch() -> void
@@ -207,3 +213,38 @@ static Sage.Gameplay.Hitboxes.Mask(Sage.Simulation.IPhysicsWorld! space) -> Sage
 static Sage.Gameplay.Hitboxes.Resolve(in Sage.Gameplay.HitResult result) -> Sage.Gameplay.HitResult
 static Sage.Gameplay.Hitboxes.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity owner, Sage.Core.AssetPath model, byte layer) -> int
 static Sage.Gameplay.HitLocations.HasTag(Sage.Core.RecordStore! records, Sage.Core.RecordId location, Sage.Core.RecordId tag) -> bool
+static Sage.Gameplay.ProjectileExtensions.Launch(this Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Core.RecordId attack, Sage.Gameplay.AttackRecord! record, System.Numerics.Vector3 from, System.Numerics.Vector3 direction) -> Sage.Simulation.Entity
+Sage.Gameplay.AttackRecord.Ammo -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
+Sage.Gameplay.AttackRecord.AmmoPerShot -> int
+Sage.Gameplay.AttackRecord.Automatic -> bool
+Sage.Gameplay.AttackRecord.Magazine -> int
+Sage.Gameplay.AttackRecord.RateOfFire -> float
+Sage.Gameplay.AttackRecord.ReloadTime -> float
+Sage.Gameplay.AnimationConventions.MagIn -> string!
+Sage.Gameplay.Ammunition
+static Sage.Gameplay.Ammunition.Loaded(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId attack) -> int
+Sage.Gameplay.DryFire
+Sage.Gameplay.DryFire.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.DryFire.Attack.init -> void
+Sage.Gameplay.DryFire.DryFire() -> void
+Sage.Gameplay.DryFire.DryFire(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
+Sage.Gameplay.DryFire.Shooter.get -> Sage.Simulation.Entity
+Sage.Gameplay.DryFire.Shooter.init -> void
+Sage.Gameplay.Magazine
+Sage.Gameplay.Magazine.Loaded -> System.Collections.Generic.List<Sage.Gameplay.MagazineSlot>?
+Sage.Gameplay.Magazine.Magazine() -> void
+Sage.Gameplay.Magazine.Reloading -> bool
+Sage.Gameplay.Magazine.Reloads -> Sage.Core.RecordId
+Sage.Gameplay.Magazine.RoundsFor(Sage.Core.RecordId attack) -> int
+Sage.Gameplay.Magazine.Timer -> float
+Sage.Gameplay.MagazineSlot
+Sage.Gameplay.MagazineSlot.Attack -> Sage.Core.RecordId
+Sage.Gameplay.MagazineSlot.MagazineSlot() -> void
+Sage.Gameplay.MagazineSlot.Rounds -> int
+Sage.Gameplay.WeaponFired
+Sage.Gameplay.WeaponFired.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.WeaponFired.Attack.init -> void
+Sage.Gameplay.WeaponFired.Shooter.get -> Sage.Simulation.Entity
+Sage.Gameplay.WeaponFired.Shooter.init -> void
+Sage.Gameplay.WeaponFired.WeaponFired() -> void
+Sage.Gameplay.WeaponFired.WeaponFired(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
