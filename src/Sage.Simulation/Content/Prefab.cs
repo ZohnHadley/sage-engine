@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
@@ -37,6 +38,12 @@ public sealed class PrefabRecord
     public JsonObject? Components;
     public List<string> Tags = new();
     public JsonObject? Parts;
+
+    // Prefabs placed inside this one, parented to it and destroyed with it (phase 4i, F31). A prefab
+    // that contains itself, or nests deeper than 8, is a load error.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
+    [Property(Tooltip = "Prefabs placed inside this one: parented to it and destroyed with it")]
+    public List<PrefabChild> Children = new();
 
     // Set when content loading checked this body (PrefabChecks, issue #22): what is wrong with it was
     // said then, at its line, so a spawn says it again only at Debug rather than once per goblin.
@@ -257,28 +264,38 @@ internal static class PrefabChecks
     public static void Check(Engine engine, PrefabRecord prefab, RecordCheck check)
     {
         prefab.CheckedAtLoad = true;
-        string ns = check.Id.Namespace;
+        CheckBody(engine, prefab.Components, prefab.Tags, prefab.Parts, check.Id.Namespace, "", check);
+        PrefabOverriding.CheckChildren(engine, prefab, check);   // phase 4i: children, their overrides, nesting
+    }
+
+    // A body's halves wherever they are written: a prefab's own (`prefix` empty) or a placement's
+    // overrides (`Place[2].Overrides`), with bare ids and component names in `ns`.
+    public static void CheckBody(Engine engine, JsonObject? components, IReadOnlyList<string>? tags, JsonObject? parts,
+                                 string ns, string prefix, RecordCheck check)
+    {
         var schema = engine.Components;
         var json = check.Json;
+        if (prefix.Length > 0 && !prefix.EndsWith('.')) prefix += ".";
 
-        if (prefab.Components != null)
-            foreach (var (name, fields) in prefab.Components)
+        if (components != null)
+            foreach (var (name, fields) in components)
             {
-                string path = JsonMembers.Child("Components", name);
+                string path = JsonMembers.Child(prefix + "Components", name);
                 if (!schema.TryResolveComponent(name, ns, out var type, out string? error)) { check.Error(path, error); continue; }
                 if (fields is null) continue;
                 if (!check.CheckFields(fields, type, path)) continue;
                 if (Read(fields, type, json, path, check) is { } value) check.CheckValues(value, path);
             }
 
-        for (int i = 0; i < prefab.Tags.Count; i++)
-            if (!schema.TryResolveTag(prefab.Tags[i], ns, out _, out string? error))
-                check.Error($"Tags[{i}]", error);
+        if (tags != null)
+            for (int i = 0; i < tags.Count; i++)
+                if (!schema.TryResolveTag(tags[i], ns, out _, out string? error))
+                    check.Error($"{prefix}Tags[{i}]", error);
 
-        if (prefab.Parts == null) return;
-        foreach (var (name, options) in prefab.Parts)
+        if (parts == null) return;
+        foreach (var (name, options) in parts)
         {
-            string path = JsonMembers.Child("Parts", name);
+            string path = JsonMembers.Child(prefix + "Parts", name);
             if (!engine.Prefabs.TryGet(name, out var part))
             {
                 // A part only another host has (the client's `audio` on a server) is not a mistake.
@@ -349,9 +366,33 @@ public static class PrefabExtensions
         Spawn(world, prefab, position, yawDegrees, keys: null, where: null);
 
     // The same, with per-entity values from a map (`"light.range" "12"`): the keys PrefabKeys offers for
-    // this prefab, applied to a copy of it for this one entity (issue #18). `where` names the map line.
+    // this prefab, read as overrides of this one entity (issue #18; since phase 4i the same overrides a
+    // placement writes). `where` names the map line.
     public static Entity Spawn(this World world, RecordId prefab, Vector3 position, float yawDegrees,
                                IReadOnlyDictionary<string, string>? keys, string? where)
+    {
+        PrefabOverrides? overrides = null;
+        if (keys != null && keys.Count > 0 && world.Engine is { } engine && engine.Records.TryGet(prefab, out PrefabRecord record))
+            overrides = PrefabKeys.Overrides(engine, prefab, record, keys, where ?? prefab.ToString());
+        return Spawn(world, prefab, position, yawDegrees, overrides, where);
+    }
+
+    // The same, with a placement's overrides (phase 4i, F31): component and part bodies merged into a
+    // copy of the prefab for this one entity. The prefab's `children` are spawned with it, parented to it.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
+    public static Entity Spawn(this World world, RecordId prefab, Vector3 position, float yawDegrees,
+                               PrefabOverrides? overrides, string? where = null)
+    {
+        var placed = Transform.At(position);
+        placed.LocalRotation = SageMath.RotationFromYaw(yawDegrees * MathF.PI / 180f);
+        var entity = SpawnTree(world, prefab, placed, overrides, where, default, 0);
+        if (!entity.IsNull) SnapGlobals(world, entity);
+        return entity;
+    }
+
+    // One prefab and its children. `parent` is null for the root; a child is placed in its frame.
+    private static Entity SpawnTree(World world, RecordId prefab, in Transform placed, PrefabOverrides? overrides,
+                                    string? where, Entity parent, int depth)
     {
         var engine = world.Engine;
         if (engine is null)
@@ -362,21 +403,24 @@ public static class PrefabExtensions
 
         if (!engine.Records.TryGet(prefab, out PrefabRecord record))
         {
-            Log.Error(LogCat.Records, $"Spawn: no prefab '{prefab}'");
+            Log.Error(LogCat.Records, $"Spawn: no prefab '{prefab}'" + (where != null ? $" ({where})" : ""));
             return default;
         }
 
-        if (keys != null && keys.Count > 0)
-            record = PrefabKeys.Apply(engine, prefab, record, keys, where ?? prefab.ToString());
-
-        var placed = Transform.At(position);
-        placed.LocalRotation = SageMath.RotationFromYaw(yawDegrees * MathF.PI / 180f);
+        record = PrefabOverriding.Apply(engine, prefab, record, overrides);
 
         // Placed *before* the body goes on, because parts read the transform: `character` seeds the
         // pawn's yaw from it, and seeding that from an identity rotation would spin every creature to
         // face -Z on its first tick, throwing away the direction it was placed facing (review #43).
         var entity = world.Create(placed, string.IsNullOrEmpty(record.Name) ? prefab.Name : record.Name);
         world.Add(entity, new FromPrefab { Prefab = prefab });   // so a save can rebuild it (F27)
+        if (!parent.IsNull)
+        {
+            world.SetParent(entity, parent);
+            entity.AddTag<FromParentPrefab>();   // dies with it (World.Destroy)
+        }
+        if (overrides is { IsEmpty: false })
+            world.Add(entity, new PrefabOverridden { Overrides = overrides.Clone() });   // for ent_dump and the editor
         Populate(world, entity, record, prefab);
 
         // And again after, because placement beats the template: a prefab may write a Transform for a
@@ -384,7 +428,36 @@ public static class PrefabExtensions
         ref var transform = ref world.Get<Transform>(entity);
         transform.LocalPosition = placed.LocalPosition;
         transform.LocalRotation = placed.LocalRotation;
+
+        if (record.Children.Count == 0) return entity;
+        if (depth >= PrefabOverriding.MaxDepth)
+        {
+            // The load check says this at the prefab's line; this is the guard for content it did not see.
+            Log.Error(LogCat.Records, $"{prefab}: prefabs nest deeper than {PrefabOverriding.MaxDepth}; its children are not spawned");
+            return entity;
+        }
+        foreach (var child in record.Children)
+        {
+            if (child == null || child.Prefab.Id.IsEmpty) continue;
+            var local = Transform.At(child.At);
+            local.LocalRotation = SageMath.RotationFromYaw(child.Yaw * MathF.PI / 180f);
+            var spawned = SpawnTree(world, child.Prefab.Id, local, child.Overrides, $"{prefab}: child {child.Prefab.Id}", entity, depth + 1);
+            if (!spawned.IsNull && !string.IsNullOrEmpty(child.Name)) spawned.Name = child.Name;
+        }
         return entity;
+    }
+
+    // A new tree's global poses, both halves, from its transforms: a child starts where its parent put it
+    // rather than interpolating in from the parent's origin on the first frame.
+    private static void SnapGlobals(World world, Entity entity)
+    {
+        if (!world.Has<GlobalTransform>(entity)) return;
+        var local = Pose.FromLocal(world.Get<Transform>(entity));
+        var pose = entity.Parent.IsNull || !world.Has<GlobalTransform>(entity.Parent)
+            ? local
+            : Pose.Combine(world.Get<GlobalTransform>(entity.Parent).Current, local);
+        world.Get<GlobalTransform>(entity) = GlobalTransform.At(pose);
+        foreach (var child in entity.ChildEntities) SnapGlobals(world, child);
     }
 
     // Applies a prefab to an entity that already exists. Split out because a map load (F27) places an

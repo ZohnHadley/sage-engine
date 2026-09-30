@@ -141,7 +141,9 @@ Not every record comes from a file. A spell the player composed in the spellmake
 - **Known limitation:** parts run after components, so a part wins where both touch the same
   component — a prefab cannot shrink the capsule `character` builds by writing a `Collider`. The
   alternative (components last, as overrides) would let data silently break a character, so parts win
-  until a part needs options for it.
+  until a part needs options for it. *Since phase 4i a placement overrides the part's options instead
+  ("As built (overrides and nesting)" below): a `body` capsule is resized through `body`'s `radius`;
+  a character's capsule is its movement profile's, which `character.profile` picks.*
 - **Console:** `ent_spawn <prefab> [x y z] [yaw]` places one (3 m in front of the camera by default),
   `ent_dump <id|name>` prints every component on an entity with its non-default fields, and
   `ent_types [filter]` lists the names a prefab can use.
@@ -153,10 +155,64 @@ Not every record comes from a file. A spell the player composed in the spellmake
   §3.5's list-append doing exactly the job it was designed for. The Sandbox declares two parts of
   its own, `box_mesh` (it needs the renderer, which is client-side) and `hop`.
 - **Not done here:** placement/map files and overrides per placed entity (F27 §3.4), "revert to
-  prefab" in the editor (15), and nested prefabs. ~~A `scene` record is a game's own until then.~~
+  prefab" in the editor (15), and nested prefabs. *Overrides and nesting: "As built (overrides and
+  nesting)" below.* ~~A `scene` record is a game's own until then.~~
   Since issue #29 `scene` is the engine's (REDESIGN §4.1 "As built"): `game.json`'s `"scene"` names the
   one every world starts in, the engine places it and respawns it on reload keeping the player, and its
   placements are the same format as the editor's `placements` (test: AGameWithNoCodeBootsIntoItsScene).
+
+### As built (overrides and nesting, 2026-09-30 — issue 4i-1, F31)
+
+The half of F31 that was left: one placed thing that differs from its prefab, and prefabs inside
+prefabs. Code: `src/Sage.Simulation/Content/PrefabOverrides.cs` (`PrefabOverrides`, `PrefabChild`,
+`PrefabOverriding`), `Prefab.cs` (`Spawn`), `Levels/PrefabKeys.cs`; tests in
+`tests/Sage.Tests/Gameplay/PrefabOverrideTests.cs`. Experimental API, SAGE0131 (MAKING_A_GAME §10b).
+
+- **A placement's `overrides`** — in a scene, a `placements` document, the scene's `player`, or a
+  prefab's child — are component and part bodies, merged field by field into a *copy* of the prefab for
+  that one entity, the same merge a child prefab's body gets over its `base`:
+
+  ```json
+  { "prefab": "post", "at": [3, 0, 0],
+    "overrides": { "components": { "sprite_renderer": { "size": [1, 1] } },
+                   "parts": { "body": { "radius": 0.25 }, "light": { "range": 12 } } } }
+  ```
+
+  Part options are overridden like component fields, so the part still builds what it builds, from the
+  placement's numbers — which is how a capsule is resized without writing a `Collider` behind the part's
+  back. A component is matched however the prefab spells it (`sprite_renderer` and
+  `sage:sprite_renderer` are one), a field whichever spelling it used; a bare shorthand value
+  (`"faction": "beasts"`) becomes its object before an object merges in. The record is never touched
+  (test: APlacementsOverridesMergeIntoACopyOfThePrefab). A bare record id inside an override means the
+  prefab's namespace, as in the body it merges into.
+- **A `.map`'s per-entity keys are overrides of the same shape.** `PrefabKeys.Overrides` reads
+  `"light.range" "12"` into `{ "parts": { "light": { "range": 12 } } }`, and the map spawn goes through
+  the same merge, so the two cannot drift (test: MapKeysAreOverridesOfTheSameShape).
+- **Checked at load**, as a prefab's own body is (issue #22): every override body is read against its
+  component or part at its file:line:column, and a spawn does not say it again (test:
+  OverridesAreCheckedAtLoad).
+- **`children`** on a prefab place other prefabs inside it — `prefab`, `at` and `yaw` in the parent's
+  frame, `name`, and `overrides` of their own. They are spawned with the parent, parented to it with
+  `World.SetParent`, start where the parent put them (both halves of their `GlobalTransform` are set, so
+  the first frame does not interpolate them in from the parent's origin) and nest (test:
+  APrefabsChildrenSpawnParentedWhereItPutsThem). They are tagged `sage:from_parent_prefab`, and a tagged
+  child is **destroyed with its parent** however the parent goes — `World.Destroy`, a command buffer, a
+  scene reload — while a child a game parents by hand still outlives it, as before (test:
+  APrefabsChildrenAreDestroyedWithIt).
+- **A prefab that contains itself**, however far down, **or nests deeper than 8** is a load error at its
+  `children`, naming the chain; spawning one anyway stops at the limit (test:
+  APrefabThatContainsItselfOrNestsTooDeepIsALoadError). The check follows other prefabs through
+  `RecordCheck.TryGet`, which a record check may now use to read the content being loaded.
+- **`ent_dump`** marks a component field an override wrote with `*` (shown even when it equals the
+  default), and lists overridden part options on a line of their own (test:
+  EntDumpMarksOverriddenFields). The entity keeps its overrides on `sage:prefab_overridden` ([Transient]),
+  which is also how the editor's `ReadPlacements` writes a placement back with its overrides as written
+  rather than flattened or lost (test: ReadPlacementsKeepsOverrides).
+- **Not done here:** saves. A save still identifies only scene placements and the player, and saves every
+  public field, so an override survives a load through the component data it produced, not as an
+  override; children are not saved but come back when their parent is spawned by the load. Stable ids
+  for children and map entities are 4i-3, saving a diff against the prefab as placed is 4i-5. Overrides
+  do not add or remove tags.
 
 ### As built (declared parts, 2026-09-28 — issue #17)
 

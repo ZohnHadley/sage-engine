@@ -130,6 +130,28 @@ public sealed class World : IDisposable
             return;
         }
         entity.DeleteEntity();
+        DestroyOrphans();
+    }
+
+    // Children a prefab placed (FromParentPrefab) go with their parent, however it was destroyed —
+    // directly or from a command buffer. Friflo leaves a deleted entity's children alive as roots, so
+    // OnEntityDelete notes them and they are destroyed once the parent's delete is done (phase 4i).
+    // Children a game parented by hand are not tagged and outlive the parent, as they always have.
+    private List<Entity>? _orphans;
+
+    private void NoteOrphans(Entity parent)
+    {
+        if (parent.ChildCount == 0) return;
+        foreach (var child in parent.ChildEntities)
+            if (child.Tags.Has<FromParentPrefab>()) (_orphans ??= new List<Entity>()).Add(child);
+    }
+
+    private void DestroyOrphans()
+    {
+        if (_orphans is not { Count: > 0 } orphans) return;
+        _orphans = null;
+        foreach (var child in orphans)
+            if (IsAlive(child)) Destroy(child);
     }
 
     public bool IsAlive(Entity entity) => !entity.IsNull && entity.Raw.Store == _store;
@@ -388,6 +410,7 @@ public sealed class World : IDisposable
     {
         if (HasPendingCommands)
             _commands!.Playback();
+        DestroyOrphans();
     }
 
     // ---- Persistent ids ---------------------------------------------------------------------------
@@ -434,6 +457,7 @@ public sealed class World : IDisposable
                 ComponentRemoved.Invoke(entity, component.Type);
         }
         EntityDestroyed?.Invoke(entity);
+        NoteOrphans(entity);
     }
 
     private void IndexPersistent(Entity entity)

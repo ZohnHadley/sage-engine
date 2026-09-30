@@ -1,6 +1,7 @@
 #nullable enable
 Sage.Core.EntryValueAttribute
 Sage.Core.EntryValueAttribute.EntryValueAttribute() -> void
+Sage.Core.RecordCheck.TryGet<T>(Sage.Core.RecordId id, out T? record) -> bool
 Sage.Core.RecordStore.PolymorphicShorthand.get -> System.Func<System.Type!, System.Text.Json.Nodes.JsonNode?, System.Text.Json.Nodes.JsonNode?>?
 Sage.Core.RecordStore.PolymorphicShorthand.set -> void
 Sage.Core.Vocabularies.Expand(System.Type! type, System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?

@@ -516,6 +516,21 @@ opens the speaker's topics. Code (a screen) lists them with `DialogueTopics.Avai
 player, list)` and asks with `DialogueTopics.Ask` (SAGE0124) (test: ATopicLearntFromOneNpcIsAskedOfAnother).
 Without the dialogue plugin the records are skipped with a warning and nobody has anything to say.
 
+### One placement that differs, and prefabs inside prefabs
+
+A placement (in a scene, a `placements` document, or a prefab's `children`) can change its prefab for
+itself alone with `overrides`: component and part bodies merged field by field into a copy of the
+prefab. A prefab's `children` are spawned with it, parented to it at `at`/`yaw` in its frame, and
+destroyed with it. A prefab that contains itself, or nests deeper than 8, is a load error; `ent_dump`
+marks what was overridden with `*` (SAGE0131, §10b; design 05 "As built (overrides and nesting)").
+
+```jsonc
+{ "type": "prefab", "id": "cart", "children": [ { "prefab": "lamp", "at": [0, 1, 0] } ] }
+// in a scene's "place": a thinner post with a brighter lamp
+{ "prefab": "post", "at": [3, 0, 0],
+  "overrides": { "parts": { "body": { "radius": 0.25 }, "light": { "range": 12 } } } }
+```
+
 ### Every prefab part the engine provides
 
 A prefab's `components` block sets components directly, by id (`"sprite_renderer": { … }`); its `parts`
@@ -1675,8 +1690,10 @@ names their types needs the opt-in.
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack` (with `OpenHud`, issue #99), `UiLayer`, `UiTween`; and the RPG kit's view-models (issues #98, #99): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `ShopView`, `IPriceRule`, `StubPriceRule` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98), the HUD, journal, map, menu and shop (#99) |
 | SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; sockets and IK (issue #120): `SkeletonPoses`, `TwoBoneIk`, `AimChainIk`, `AimJoint`, `PoseSampler.ToModelSpace(…, firstJoint)`, `SkeletonSocketsRecord`, `SkeletonSocket`, `BoneAttachment`, `BoneAttachmentPart`, `BoneAttachments`, `AimIk`, `AimIkJoint`, `AimIkPart`, and in Gameplay `FootIk`, `FootIkLeg`, `FootIkPart`; animation graphs (issue #118): `AnimGraphRecord`, `AnimState`, `AnimBlendSpace`, `AnimBlendPoint`, `AnimLayer`, `AnimParam`, `AnimParamKind`, `AnimParamSource`, `Animator`, `AnimatorLayer`, `AnimatorParam`, `AnimatorPart`, `Animators` (`SetParam`, `SetTrigger`, `GetParam`, `StateOf`, `HasTag`, `ClipWeight`, `Play`, `TryGetPose`, `Describe`), `Engine.Animations`; first-person arms (issue #121): `ViewmodelRecord`, `Viewmodel`, `ViewmodelPart`, `ViewmodelLayer`, `Viewmodels` (`Show`, `ArmsOf`, `WeaponOf`, `CameraOf`, `IsDrawn`), and in Gameplay `AttackRecord.Arms`; clip events (issue #119): `AnimEventsRecord`, `AnimEventEntry`, `IAnimationEventSink`, `Animators.TryGetClip`, `Animators.SpriteSwingGraph`, `Animators.AnimEventOutput`. Complete for phase 4d: its exit (issue #122) added no API — an NPC walking, running, aiming and attacking, and first-person arms reloading, are content over these (`tests/games/skeletal`) | Stable after the Sandbox's creatures move to skeletons and 4e's weapons build on it; until then it may change |
 | SAGE0127 | Weapons and combat generalised (issue #133, phase 4e): the hit pipeline — `HitRequest`, `HitResult`, `Combat.ApplyHit`, the `hit_delivery` vocabulary (`IHitDelivery`, `HitDeliveryAttribute`, `HitContext`, `HitDeliveries`), the shared queries `Hits` (`Sweep`, `Ray`, `CanBeHurt`, `Launch`), `DamageInfo.Location`/`Damaged.Location`, `AttackRecord.Delivery`/`Range`/`Pellets`/`ProjectileSpeed` and `Projectile.Attack`; since #134 `AttackRecord.Projectile`/`ProjectileGravity`/`ProjectilePierce`, `Projectile.Gravity`/`Pierce`/`Passed` and the attack overload of `ProjectileExtensions.Launch`; hit locations (issue #137): the `hit_location` and `hitboxes` records (`HitLocationRecord`, `HitboxesRecord`, `HitboxShape`), the `hitboxes` part, `Hitbox`, `Hitboxes`, `HitLocations`, and the query-only physics layers (`LayerMatrix.QueryOnly`, `Sees`); ammunition (issue #135): `AttackRecord.Ammo`/`Magazine`/`AmmoPerShot`/`ReloadTime`/`Automatic`/`RateOfFire`, `Magazine`, `MagazineSlot`, `Ammunition`, `WeaponFired`, `DryFire`; spread and recoil (issue #136): the `spread` and `recoil` records (`SpreadRecord`, `RecoilRecord`), `AttackRecord.Spread`/`Recoil`, `WeaponState`, `ShotRandom`, `Spread`, `HitContext.Cone`/`Shot`/`PelletAim`; and in the RPG kit (issue #138) `AmmoReadout` and `EquipmentView.Ammo`. Since #138 a projectile lands on hitboxes like a sweep or a ray, with no API change | Phase 4e's exit (#139) is a data-only weapons game over it; stable once that and a game with real weapons have used it |
+| SAGE0131 | Saves you can trust (phase 4i). Prefab overrides and nesting (4i-1): `PrefabOverrides` (`Placement.Overrides`, `PrefabChild.Overrides`), `PrefabChild`, `PrefabRecord.Children`, `PrefabOverridden`, `FromParentPrefab`, the overrides overload of `PrefabExtensions.Spawn`, and `RecordCheck.TryGet` | 4i builds on it: saves identify placed entities (4i-3) and save a diff against the prefab as placed (4i-5) |
 
-SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
+SAGE0120–0139 are for experimental areas (widened from 0120–0129 by phase 4h/4i; SAGE0128 is reserved for 4f and
+SAGE0129 for 4g, 4h takes SAGE0130 and 4i SAGE0131); an id is never reused once an area leaves.
 
 ---
 

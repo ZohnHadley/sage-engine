@@ -283,6 +283,19 @@
             },
             "additionalProperties": false
           }
+        },
+        "overrides": {
+          "description": "Changes to the prefab for this placement alone: component and part bodies, merged field by field. (PrefabOverrides)",
+          "type": "object",
+          "properties": {
+            "components": {
+              "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+            },
+            "parts": {
+              "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -462,6 +475,19 @@
               },
               "additionalProperties": false
             }
+          },
+          "overrides": {
+            "description": "Changes to the prefab for this placement alone: component and part bodies, merged field by field. (PrefabOverrides)",
+            "type": "object",
+            "properties": {
+              "components": {
+                "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+              },
+              "parts": {
+                "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -642,6 +668,19 @@
               },
               "additionalProperties": false
             }
+          },
+          "overrides": {
+            "description": "Changes to the prefab for this placement alone: component and part bodies, merged field by field. (PrefabOverrides)",
+            "type": "object",
+            "properties": {
+              "components": {
+                "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+              },
+              "parts": {
+                "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -822,6 +861,19 @@
               },
               "additionalProperties": false
             }
+          },
+          "overrides": {
+            "description": "Changes to the prefab for this placement alone: component and part bodies, merged field by field. (PrefabOverrides)",
+            "type": "object",
+            "properties": {
+              "components": {
+                "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+              },
+              "parts": {
+                "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
