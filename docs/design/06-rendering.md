@@ -816,6 +816,40 @@ What 4a deferred to 4b's tweens: a scripted camera eased in rather than cut to.
 - **Not yet:** blending *out* (`CameraOff` is a cut back to whatever is next), and blends between two rigs
   of the player's own camera (the V toggle cuts).
 
+### As built (the viewmodel pass, 2026-09-30 — #121)
+First-person arms drawn over the world (docs/design/12 "As built (first-person arms)" is what they are
+and where they come from). **A separate view, not a layer bit:** #77's views already carry everything a
+pass needs — a viewport, a projection, a draw order on a target, a run of items and lights — so the
+viewmodel is one more view, and the renderer gained one flag.
+
+- **Code:** `src/Sage.Simulation/Rendering/ViewmodelPass.cs` (headless: `ViewmodelPass.TryGet` decides,
+  `ViewmodelPass.Emit` places the pieces) and `src/Sage.Client/Rendering/ViewmodelExtract.cs`
+  (`sage.client.extract.viewmodel`, the last extract); `RenderView.DepthOnly` in `RenderSnapshot.cs` and
+  its clear in `Renderer.DrawView`. Tests: `tests/Sage.Tests/Animation/ViewmodelTests.cs`.
+- **When:** only while the screen's view comes from a camera looking out of its first-person rig with an
+  enabled `Viewmodel` whose arms are spawned: not in third person (`world.MainViewRig()`), not from the
+  editor's free camera (a `DebugCamera` has no rig, so `cam_free` hides it), not from a scripted camera,
+  and never in a view into a render target (test: TheViewmodelIsHiddenInThirdPersonAndFromTheEditorsFreeCamera).
+  The Sandbox's HUD asks the same question (`Viewmodels.IsDrawn`) before drawing its sprite hands.
+- **The view:** a copy of the main view — its viewport (half the screen in `r_testview 1`), its rotation,
+  its run of point lights (the same eye, so the same camera-relative lamps) — with the viewmodel's own
+  field of view and depth range (54°, 0.01–10 m), `Order` one past the main view's so it draws after it on
+  the same target, and **`DepthOnly`**: `DrawView` clears only depth (scissored to the viewport when it is
+  not the whole target) and keeps the colour. So the arms are always in front of the world — a wall
+  pressed against the player's face does not cut them — and never behind their own depth range.
+- **The pieces:** the arms and the weapon carry the `sage:viewmodel_layer` tag, which `MeshExtract`,
+  `SkinnedMeshExtract` and `SpriteExtract` leave out of every world view. Their poses are in the camera's
+  own space, so `ViewmodelPass.ToCameraRelative` applies the view's rotation and nothing else (the eye is
+  the origin of both) (test: ThePassPutsThePiecesInFrontOfTheEye_WhereverItLooks). The arms go through
+  #117's `SkinnedExtract.Emit` for their one view, so their palette is written once and `r_stats` counts
+  them with the other skinned draws; the weapon is a rigid mesh item.
+- **Last in Extract,** after the meshes, sprites, lights, debug lines and particles, so none of those
+  ever sees the extra view: nothing is culled into it, and no debug line or particle is drawn in it.
+- **Allocation:** the pass allocates nothing per frame, nor do the viewmodel's systems per tick
+  (test: TheViewmodelAndItsExtractAllocateNothingPerFrame).
+- **Not yet:** shadows (there are none), a viewmodel in a split-screen partner's view (only the screen's
+  main view gets one), and a separate lighting rig for the arms (they are lit by the world's sun and lamps).
+
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
 

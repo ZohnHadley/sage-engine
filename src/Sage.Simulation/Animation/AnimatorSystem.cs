@@ -756,7 +756,9 @@ internal sealed class AnimatorSystem : ISystem
             }
 
             if (instance.Pose == null) continue;
-            instance.Interval = haveCamera && _world.TryGet<GlobalTransform>(entity, out var at) ? Interval(Vector3.Distance(camera, at.Current.Position), lod) : 1;
+            // First-person arms (#121) are in the camera's own space, so their distance means nothing: never LOD.
+            instance.Interval = haveCamera && !entity.Tags.Has<ViewmodelLayer>() && _world.TryGet<GlobalTransform>(entity, out var at)
+                ? Interval(Vector3.Distance(camera, at.Current.Position), lod) : 1;
             if (instance.SampledTick < 0 || tick - instance.SampledTick >= instance.Interval)
             {
                 instance.SampledTick = tick;

@@ -94,10 +94,13 @@ public sealed class ActionConventions
     public string Run = "Run";
     [Property(Tooltip = "The button held to crouch")]
     public string Crouch = "Crouch";
+    [Property(Tooltip = "The button that reloads: plays the first-person arms' reload (ammunition is the game's)")]
+    public string Reload = "Reload";
 
     internal (string Field, string Name)[] All() => new[]
     {
         (nameof(Attack), Attack), (nameof(Use), Use), (nameof(Jump), Jump), (nameof(Run), Run), (nameof(Crouch), Crouch),
+        (nameof(Reload), Reload),
     };
 }
 
@@ -105,7 +108,7 @@ public sealed class ActionConventions
 // anim_graph picks the clip (a skinned model's or a sprite sheet's), and the blow lands on the clip's
 // `hit` event. `Attack` and `Idle` were the clip names combat played; they are kept, obsolete, so old
 // content still loads, and read only by the upgrade: a fighter drawn as an animated sprite with no graph
-// of its own is given one that plays them (GameplayConventions.UpgradeSpriteFighter).
+// of its own is given one that plays them (SpriteFighterUpgrade).
 public sealed class AnimationConventions
 {
     [Obsolete("Clip names are the anim_graph's since issue #119: a swing sets AttackTrigger. Read only by the upgrade of a sprite fighter with no graph.")]
@@ -118,6 +121,8 @@ public sealed class AnimationConventions
     public string Idle = "idle";
     [Property(Tooltip = "The trigger param a swing sets on the fighter's animator when its attack names none (Animators.SetTrigger)")]
     public string AttackTrigger = "attack";
+    [Property(Tooltip = "The trigger the Reload button sets on the first-person arms' anim_graph (a swing sets `attackTrigger`)")]
+    public string Reload = "reload";
 }
 
 public static class GameplayConventions

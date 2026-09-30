@@ -325,6 +325,7 @@
     "recoverTime": 0.2,
     "cooldown": 0.55,
     "viewmodel": "sword_fp",
+    "arms": "sword_arms",                   // 3D arms holding the sword (viewmodel.json, engine #121); the sprite is the fallback
     "swingCue": "weapon_swing"
   },
   {

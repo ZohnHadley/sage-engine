@@ -62,6 +62,11 @@ public sealed class AttackRecord
     public RecordRef<CueRecord> SwingCue;
     public RecordRef<SpriteSheetRecord> Viewmodel; // the sprite sheet a first-person wielder sees (13 §3):
                                             // rest, wind-up and strike, in that order
+    // The 3D first-person arms and what they hold (issue #121): a `viewmodel` record (a skinned model,
+    // its anim_graph, a weapon on a socket), shown on the wielder's camera while this is the swing in its
+    // hands. It wins over the sprite `viewmodel`, which the HUD draws when this is empty (or not drawn).
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RecordRef<ViewmodelRecord> Arms;
     public List<RecordRef<EffectRecord>> Effects = new();  // applied to the victim on a hit, unscaled (poison, burning)
 }
 
@@ -159,6 +164,7 @@ public struct Melee : IComponent
 internal sealed class MeleeCombatSystem : ISystem
 {
     private readonly Query<Transform, PawnIntent, CharacterController, Melee> _fighters;
+    private readonly Query<Viewmodel> _cameras;             // a first-person pawn's arms (issue #121)
     private readonly RecordStore _records;
     private readonly IPhysicsWorld _space;
     private readonly EventReader<AnimationEvent> _animation;
@@ -177,6 +183,7 @@ internal sealed class MeleeCombatSystem : ISystem
         _debug = world.Debug();
         _debugSwings = debugSwings;
         _fighters = world.Query<Transform, PawnIntent, CharacterController, Melee>();
+        _cameras = world.Query<Viewmodel>();
         _records = records;
         _space = world.Resources.Get<IPhysicsWorld>();
         _animation = world.Events.Reader<AnimationEvent>(this);
@@ -237,7 +244,7 @@ internal sealed class MeleeCombatSystem : ISystem
                             m[n].Swung = true;
                             break;
                         }
-                        if (!Lands(entity, attack, m[n].Timer, conventions.Animations.Hit)) break;
+                        if (!Lands(world, entity, attack, m[n].Timer, conventions.Animations.Hit)) break;
                         _pending.Add((Resolve(world, entity, in t[n], in i[n], in c[n], attack), attack));
                         m[n].Swung = true;
                         m[n].Timer = 0f;
@@ -291,8 +298,18 @@ internal sealed class MeleeCombatSystem : ISystem
     // if the clip has one, otherwise on the record's windup time. The event is raised in the Animation
     // phase, which runs after this one, so a hit lands one tick (16 ms) after the frame that shows it —
     // a sprite's frame event and a skinned clip's anim_events alike (issue #119 kept that timing).
-    private bool Lands(Entity entity, AttackRecord attack, float timer, string hit) =>
-        (hit.Length > 0 && Fired(entity, hit)) || timer >= attack.WindupTime;
+    // A first-person pawn's arms (issue #121) are an animator of their own: their clip's `hit` lands the
+    // pawn's blow too, so a swing seen in first person connects when the arms show it connecting.
+    private bool Lands(World world, Entity entity, AttackRecord attack, float timer, string hit)
+    {
+        if (timer >= attack.WindupTime) return true;
+        if (hit.Length == 0 || _fired.Count == 0) return false;
+        if (Fired(entity, hit)) return true;
+        var camera = Viewmodels.CameraOf(world, _cameras, entity);
+        if (camera.IsNull) return false;
+        var arms = Viewmodels.ArmsOf(world, camera);
+        return !arms.IsNull && Fired(arms, hit);
+    }
 
     private bool Fired(Entity entity, string name)
     {

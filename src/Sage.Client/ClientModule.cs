@@ -307,6 +307,7 @@ public sealed class ClientModule : IModule
         // Debug geometry last in Extract: it is drawn over everything else (06 §3.2, §3.4).
         world.AddSystem(new LightExtract(world, _renderer!, _lightsOn!));
         world.AddSystem(new DebugExtract(world, _debugDraw!));
+        world.AddSystem(new ViewmodelExtract(world, _renderer!));   // first-person arms, after the world (issue #121)
         world.AddSystem(new RenderSystem(world, _renderer!));
         // Audio is per world for the same reason the snapshot is: a voice's position is in *this*
         // world's origin space (R6), and two worlds do not share a frame. The backend is a world

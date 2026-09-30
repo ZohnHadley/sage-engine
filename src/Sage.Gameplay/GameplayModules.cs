@@ -174,6 +174,7 @@ public sealed class CombatModule : IModule
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
         _actions.Register("Attack", ActionKind.Button);   // the engine's name; gameplay_conventions picks which one swings
+        _actions.Register("Reload", ActionKind.Button);   // plays the first-person arms' reload (issue #121)
         BridgeIO.RegisterCombat(ctx.Engine);              // OnDamaged (issue #91)
 
         // Registered here, once, rather than in the systems: systems are per world (review #57).
@@ -205,6 +206,9 @@ public sealed class CombatModule : IModule
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
+        // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);
+        // their clip events are the animator's, like everyone's (issue #119).
+        world.AddSystem(new ViewmodelCombatSystem(world, _records!, _actions!));
     }
 }
 

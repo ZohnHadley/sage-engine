@@ -186,6 +186,10 @@
         "crouch": {
           "description": "The button held to crouch. (string)",
           "type": "string"
+        },
+        "reload": {
+          "description": "The button that reloads: plays the first-person arms' reload (ammunition is the game's) (string)",
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -208,6 +212,10 @@
         },
         "attackTrigger": {
           "description": "The trigger param a swing sets on the fighter's animator when its attack names none (Animators.SetTrigger) (string)",
+          "type": "string"
+        },
+        "reload": {
+          "description": "The trigger the Reload button sets on the first-person arms' anim_graph (a swing sets `attackTrigger`) (string)",
           "type": "string"
         }
       },

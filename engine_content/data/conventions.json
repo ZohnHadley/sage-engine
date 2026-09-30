@@ -29,9 +29,10 @@
     // Input actions by name. Modules register these in Init, before content loads; a game that wants
     // its own registers them in its module and names them here.
     "actions": { "attack": "Attack", "use": "Use", "jump": "Jump", "run": "Run", "crouch": "Crouch" },
-    // What combat and animation share (issues #27, #119): the trigger a swing sets on the fighter's
-    // animator, and the clip event that lands the blow. Which clip plays is the anim_graph's business.
-    // (`attack` and `idle`, the clip names combat used to play, are obsolete: see 12 "As built (animation events)".)
-    "animations": { "attackTrigger": "attack", "hit": "hit" }
+    // What combat and animation share (issues #27, #119, #121): the trigger a swing sets on the fighter's
+    // animator (and its first-person arms'), the clip event that lands the blow, and the trigger Reload
+    // sets on the arms. Which clip plays is the anim_graph's business. (`attack` and `idle`, the clip
+    // names combat used to play, are obsolete: see 12 "As built (animation events)".)
+    "animations": { "attackTrigger": "attack", "hit": "hit", "reload": "reload" }
   }
 ]

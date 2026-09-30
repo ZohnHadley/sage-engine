@@ -113,6 +113,14 @@
         }
       ]
     },
+    "arms": {
+      "description": "Names a viewmodel record. (RecordRef<ViewmodelRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:viewmodel"
+        }
+      ]
+    },
     "effects": {
       "description": "Names a effect record. (List<RecordRef<EffectRecord>>)",
       "type": "array",

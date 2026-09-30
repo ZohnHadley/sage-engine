@@ -5,6 +5,8 @@
   // the rigs: first person to start with, and third person over the shoulder, switched off until the
   // ToggleView action (V) turns it on and the first-person one off (issue #79). Patch this record to
   // change the player's view: "fovY" on the camera, "distance" on the third-person rig, which starts on.
+  // `viewmodel` (issue #121) is the first-person arms: nothing until gameplay names a `viewmodel` record
+  // (an attack's `arms`), drawn over the world with their own field of view, and only in first person.
   {
     "type": "prefab",
     "id": "player_camera",
@@ -13,7 +15,8 @@
     "parts": {
       "camera": {},
       "first_person_rig": {},
-      "third_person_rig": { "enabled": false, "distance": 3, "shoulderOffset": [0.45, 0.25, 0], "collision": ["default"] }
+      "third_person_rig": { "enabled": false, "distance": 3, "shoulderOffset": [0.45, 0.25, 0], "collision": ["default"] },
+      "viewmodel": {}
     }
   }
 ]

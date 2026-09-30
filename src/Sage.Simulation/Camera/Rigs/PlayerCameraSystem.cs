@@ -108,6 +108,7 @@ public sealed class PlayerCameraSystem : ISystem
             world.Add(camera, Camera.Perspective());
             new FirstPersonRigPart().AddTo(world, camera, pawn);
             new ThirdPersonRigPart { Enabled = false }.AddTo(world, camera, pawn);
+            new ViewmodelPart().AddTo(world, camera);   // first-person arms, shown when gameplay names some (#121)
         }
 
         if (!camera.Tags.Has<PlayerCamera>()) camera.AddTag<PlayerCamera>();

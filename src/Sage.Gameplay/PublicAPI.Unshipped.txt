@@ -37,6 +37,9 @@ const Sage.Gameplay.BridgeIO.OnStageChanged = "OnStageChanged" -> string!
 const Sage.Gameplay.BridgeIO.SetFaction = "SetFaction" -> string!
 const Sage.Gameplay.BridgeIO.SetStage = "SetStage" -> string!
 const Sage.Gameplay.BridgeIO.StartDialogue = "StartDialogue" -> string!
+Sage.Gameplay.ActionConventions.Reload -> string!
+Sage.Gameplay.AnimationConventions.Reload -> string!
+Sage.Gameplay.AttackRecord.Arms -> Sage.Core.RecordRef<Sage.Simulation.ViewmodelRecord!>
 Sage.Gameplay.AvailableTopic
 Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
 Sage.Gameplay.AvailableTopic.AvailableTopic(Sage.Core.RecordId Topic, string! Keyword) -> void
