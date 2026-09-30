@@ -194,6 +194,14 @@
         }
       ]
     },
+    "state_machine": {
+      "description": "Prefab part 'state_machine' (StateMachinePart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/state_machine"
+        }
+      ]
+    },
     "third_person_rig": {
       "description": "Prefab part 'third_person_rig' (ThirdPersonRigPart).",
       "allOf": [
@@ -873,6 +881,21 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'sprite' (SpritePart)."
+    },
+    "state_machine": {
+      "type": "object",
+      "properties": {
+        "machine": {
+          "description": "The state_machine record it runs; it starts in that machine's initial state. Names a state_machine record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:state_machine"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'state_machine' (StateMachinePart)."
     },
     "third_person_rig": {
       "type": "object",

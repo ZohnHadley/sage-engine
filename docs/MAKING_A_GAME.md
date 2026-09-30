@@ -520,8 +520,9 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `dialogue` | something to say |
 | `timer` | a timer that fires `OnTimer` — `interval`, `spread` (± seconds, at random), `repeat`, `startOn`, `seed` (issue #90) |
 | `tween` | something a `TweenTo` wire moves, turns or scales — `channel`, `target`, `relative`, `duration`, `ease` (issue #90) |
+| `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Seventeen here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Eighteen here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -828,9 +829,9 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`,
-`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`.
+`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`.
 Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
-`TimerStop` / `TimerReset`, `TweenTo` / `TweenStop` — `io_list` prints the live lists, and
+`TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState` — `io_list` prints the live lists, and
 your own modules can register more inputs (`engine.Inputs.Register`) and declare the outputs they fire
 (`engine.Outputs.Declare(name, what it means)`), which puts them in the FGD. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
 
@@ -859,6 +860,7 @@ prefab by its full id, `"classname" "sage:scripted_camera"`.
 | `TimerStop` / `TimerReset` | | Stops it; or starts its wait again from full, running or not |
 | `TweenTo` | `[position\|rotation\|scale\|offset\|turn] [x y z] [seconds] [ease]`, all optional | Moves, turns or scales a `tween` from where it is to the goal (metres; degrees of pitch, yaw, roll; factors); `offset` and `turn` are *by* rather than *to*. Left out, the tween's own `target`, `duration` and `ease`. Fires `OnTweenDone` on arrival |
 | `TweenStop` | | Stops a tween where it is |
+| `SetState` | a state's name | Sends a `state_machine` to that state now (its exits and enters run, `OnStateChanged` fires); already there, nothing |
 
 **Time.** A delay counts from the tick the output fired in, wherever in the tick that was (a trigger's
 and a relay's arrive together), and stands still while the game is paused. A `timer` fires on the tick
@@ -874,6 +876,30 @@ the same every run. The engine's `sage:logic_timer` prefab is a timer and nothin
 ```
 
 Parameters are separated by spaces, never commas, because a `.map` wire's fields are comma-separated.
+
+**State machines** (issue #92). When a thing's *state* matters — a guard that idles, grows alert and
+attacks; a door that is locked, shut or open; the steps of a sequence — write it as a `state_machine`
+record and give the thing the `state_machine` part:
+
+```json
+{ "type": "state_machine", "id": "guard", "initial": "idle",
+  "states": {
+    "idle":   { "transitions": [ { "to": "alert", "when": { "var": "alarm", "eq": 1 } } ] },
+    "alert":  { "enter": [ { "fire": "!self", "input": "Say", "parameter": "Who's there?" } ],
+                "transitions": [ { "to": "attack", "after": 3 }, { "to": "idle", "on": "Calm" } ] },
+    "attack": { "tags": ["hostile"],
+                "transitions": [ { "to": "idle", "on": "Calm", "then": [ { "set_var": "alarm", "value": 0 } ] } ] } } },
+{ "type": "prefab", "id": "guard", "parts": { "state_machine": { "machine": "guard" } } }
+```
+
+A transition goes `to` a state when everything it names holds: `on` an input arriving (any name — `Calm`
+needs no C#: a wire or `ent_fire guard Calm` sends it), `when` a condition, `after` seconds in the state;
+the first that matches wins, the state's own before the machine's top-level `transitions` (from any
+state). Changing runs the old state's `exit`, the transition's `then` and the new state's `enter`, then
+fires `OnStateChanged`, whose wires are handed the new state's name when they have no parameter of their
+own. `SetState <name>` jumps. The state is saved by name with the time spent in it; if a save or a hot
+reload names a state the machine no longer has, it goes back to `initial` with a warning.
+
 Curves are named the way you would expect — `QuadInOut`, `ease_out_bounce`, `SmoothStep`, `Linear`: every
 `Ease` value, case and underscores as you like.
 
@@ -1163,7 +1189,7 @@ an upgrader's signature and version (`SAGE0007`). The same `Version` and `[Upgra
 
 **Entity I/O is saved too** (issue #90): an input still on its way arrives on the tick it would have
 (its target found by persistent id, else by name), and a wire with `times` keeps its count — the wiring
-itself is the level's and comes back with it. Timers, tweens and camera blends are components, saved
+itself is the level's and comes back with it. Timers, tweens, camera blends and state machines are components, saved
 with their entities. A save from before this loads with nothing on its way and every wire unfired.
 
 Saves from an older engine are upgraded as they load (their `formatVersion` is older); one from a newer
@@ -1425,7 +1451,7 @@ names their types needs the opt-in.
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
-| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
+| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel`, `ViewModelAttribute`, `Localisation`, `PluralCategory` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
