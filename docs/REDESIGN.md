@@ -1206,6 +1206,16 @@ optional per-joint `JointMask` and puts one in model space, allocating nothing
 (test: SamplingAllocatesNothing). `SkinnedModelBuilder` in `tests/Sage.Testing` writes the test rig in
 code. SAGE0126. Details: docs/design/12 "As built (skeletons and sampling)".
 
+*As built, 4d (issue #120, 2026-09-30): sockets, bone attachments and simple IK.* A `SkeletonPoses`
+world resource is the one place a pose source (the Animator, #118) registers an entity's pose; it
+passes through to #117's `SkinPoses`, so IK and skinning see the same pose. Sockets are a
+`skeleton_sockets` record keyed by model (a joint and an offset), and `bone_attachment` makes a child
+follow one in Phase.Late (test: AnAttachedSwordFollowsTheHandThroughAClip). The solvers are pure
+Simulation maths over a `SkeletonPose` — analytic `TwoBoneIk` with a pole, clamping unreachable targets,
+and `AimChainIk`, per-joint weights and limits (test: AimPitchTurnsTheSpineWithinItsLimits) — and foot
+IK is Gameplay's, casting through `IPhysicsWorld` and lowering the pelvis (test: FeetRestOnARamp); none
+allocates per tick. SAGE0126, TODO F12. Details: docs/design/12 "As built (attachments and IK)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |
