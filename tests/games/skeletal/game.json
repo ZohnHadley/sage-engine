@@ -1,0 +1,16 @@
+{
+  // Skeletal NPCs with no C# (issue #122, REDESIGN §5 phase 4d's exit criterion): box mannequins that walk,
+  // jog and run their lanes, aim, strike and reload, blended — a walk↔run blend space on `speed`, an
+  // upper-body layer that aims by `aim_pitch` over whatever the legs do, aim IK and foot IK — all of it
+  // records: an anim_graph, prefabs, state machines that send tweens and animation params down wires.
+  // The mannequin and the floor are generated (games/Sandbox/tools/make_mannequin.py).
+  // CI validates it and runs it in the real host (tools/smoke_run.sh); the NPCs move with nobody at the keys.
+  // tests/Sage.Tests/Animation/NpcLocomotionTests.cs boots it headlessly.
+  "name": "Skeletal NPCs",
+  "id": "skeletal",
+  // A player to watch from (physics comes with it: foot IK's rays need it), entity I/O for the wires the
+  // state machines send, and the animation plugin for foot IK.
+  "plugins": ["sage.gameplay.character", "sage.gameplay.io", "sage.gameplay.animation"],
+  "mounts": ["content"],
+  "scene": "yard"
+}

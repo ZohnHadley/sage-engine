@@ -226,26 +226,30 @@ public static class Animators
     }
 
     // "name value" (value: a number, true/false, on/off; left out: 1). Only a trigger's name: sets it.
+    // Allocation-free when it succeeds: a wire may send one every tick (the name is matched as a span).
     private static void SetParamFromText(World world, Entity entity, string text)
     {
         var span = text.AsSpan().Trim();
         int space = span.IndexOf(' ');
-        string name = (space < 0 ? span : span[..space]).ToString();
+        var name = space < 0 ? span : span[..space];
         var rest = space < 0 ? ReadOnlySpan<char>.Empty : span[(space + 1)..].Trim();
-        if (!TryParams(world, entity, out var graph, out _))
+        if (!TryParams(world, entity, out var graph, out var values))
         {
             Log.Warn(LogCat.Events, $"I/O: {SetParamInput}({text}) at {World.Describe(entity)}: its animator has no graph yet");
             return;
         }
-        int i = graph.ParamIndex(name);
+        int i = -1;
+        for (int p = 0; p < graph.ParamNames.Length && i < 0; p++)
+            if (name.Equals(graph.ParamNames[p], StringComparison.OrdinalIgnoreCase)) i = p;
         if (i < 0)
         {
-            Log.Warn(LogCat.Events, $"I/O: {SetParamInput}({text}) at {World.Describe(entity)}: no param '{name}'" + Spelling.Suggest(name, graph.ParamNames));
+            string missing = name.ToString();
+            Log.Warn(LogCat.Events, $"I/O: {SetParamInput}({text}) at {World.Describe(entity)}: no param '{missing}'" + Spelling.Suggest(missing, graph.ParamNames));
             return;
         }
         if (graph.ParamKinds[i] == AnimParamKind.Trigger)
         {
-            SetTrigger(world, entity, name);
+            values[i].Value = 1f;
             return;
         }
         float value;
@@ -258,7 +262,7 @@ public static class Animators
             Log.Warn(LogCat.Events, $"I/O: {SetParamInput}({text}) at {World.Describe(entity)}: expected \"name value\" (a number, true or false)");
             return;
         }
-        SetParam(world, entity, name, value);
+        values[i].Value = graph.ParamKinds[i] == AnimParamKind.Float ? value : value != 0f ? 1f : 0f;
     }
 
     // The animator's graph and its param values, shaped to that graph (filled if this is before its

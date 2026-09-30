@@ -47,7 +47,9 @@
       "type": "string",
       "enum": [
         "arms",
-        "sandbox:arms"
+        "mannequin",
+        "sandbox:arms",
+        "skeletal:mannequin"
       ]
     },
     "record:anim_graph": {
@@ -56,8 +58,10 @@
       "enum": [
         "arms",
         "creature",
+        "npc",
         "sandbox:arms",
-        "sandbox:creature"
+        "sandbox:creature",
+        "skeletal:npc"
       ]
     },
     "record:attack": {
@@ -223,6 +227,10 @@
         "error",
         "floor",
         "lit_default",
+        "mannequin",
+        "mannequin_blue",
+        "mannequin_green",
+        "mannequin_red",
         "particle_additive",
         "particle_blend",
         "roof",
@@ -242,6 +250,11 @@
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:wall",
+        "skeletal:floor",
+        "skeletal:mannequin",
+        "skeletal:mannequin_blue",
+        "skeletal:mannequin_green",
+        "skeletal:mannequin_red",
         "sprite_default",
         "sprite_lit",
         "steel",
@@ -317,6 +330,7 @@
         "hermit",
         "hopper",
         "hut_path",
+        "jogger",
         "keeper",
         "lift",
         "light",
@@ -326,9 +340,11 @@
         "logic_relay",
         "logic_timer",
         "math_remap",
+        "npc",
         "player",
         "player_camera",
         "rain",
+        "runner",
         "sage:logic_branch",
         "sage:logic_compare",
         "sage:logic_counter",
@@ -366,6 +382,15 @@
         "scriptedsequence:player",
         "scriptedsequence:steps",
         "scriptedsequence:trigger_zone",
+        "sentry",
+        "skeletal:floor",
+        "skeletal:jogger",
+        "skeletal:npc",
+        "skeletal:player",
+        "skeletal:runner",
+        "skeletal:sentry",
+        "skeletal:trooper",
+        "skeletal:walker",
         "steps",
         "sword_pickup",
         "topicsgame:ferryman",
@@ -373,6 +398,8 @@
         "topicsgame:rain",
         "tree",
         "trigger_zone",
+        "trooper",
+        "walker",
         "watcher"
       ]
     },
@@ -409,6 +436,7 @@
         "sceneonly:yard",
         "scriptedsequence:hall",
         "shed",
+        "skeletal:yard",
         "topicsgame:ferry",
         "yard"
       ]
@@ -486,9 +514,16 @@
       ]
     },
     "record:state_machine": {
-      "description": "The id of a state_machine record (none is loaded).",
+      "description": "The id of a state_machine record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "patrol",
+        "patrol_armed",
+        "sentry",
+        "skeletal:patrol",
+        "skeletal:patrol_armed",
+        "skeletal:sentry"
+      ]
     },
     "record:tag": {
       "description": "The id of a tag record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -677,7 +712,9 @@
       "type": "string",
       "enum": [
         "arms",
-        "sandbox:arms"
+        "mannequin",
+        "sandbox:arms",
+        "skeletal:mannequin"
       ]
     },
     "base:anim_graph": {
@@ -686,8 +723,10 @@
       "enum": [
         "arms",
         "creature",
+        "npc",
         "sandbox:arms",
-        "sandbox:creature"
+        "sandbox:creature",
+        "skeletal:npc"
       ]
     },
     "base:attack": {
@@ -853,6 +892,10 @@
         "error",
         "floor",
         "lit_default",
+        "mannequin",
+        "mannequin_blue",
+        "mannequin_green",
+        "mannequin_red",
         "particle_additive",
         "particle_blend",
         "roof",
@@ -872,6 +915,11 @@
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:wall",
+        "skeletal:floor",
+        "skeletal:mannequin",
+        "skeletal:mannequin_blue",
+        "skeletal:mannequin_green",
+        "skeletal:mannequin_red",
         "sprite_default",
         "sprite_lit",
         "steel",
@@ -948,6 +996,7 @@
         "hermit",
         "hopper",
         "hut_path",
+        "jogger",
         "keeper",
         "lift",
         "light",
@@ -957,9 +1006,11 @@
         "logic_relay",
         "logic_timer",
         "math_remap",
+        "npc",
         "player",
         "player_camera",
         "rain",
+        "runner",
         "sage:logic_branch",
         "sage:logic_compare",
         "sage:logic_counter",
@@ -998,6 +1049,15 @@
         "scriptedsequence:player",
         "scriptedsequence:steps",
         "scriptedsequence:trigger_zone",
+        "sentry",
+        "skeletal:floor",
+        "skeletal:jogger",
+        "skeletal:npc",
+        "skeletal:player",
+        "skeletal:runner",
+        "skeletal:sentry",
+        "skeletal:trooper",
+        "skeletal:walker",
         "steps",
         "sword_pickup",
         "topicsgame:ferryman",
@@ -1005,6 +1065,8 @@
         "topicsgame:rain",
         "tree",
         "trigger_zone",
+        "trooper",
+        "walker",
         "watcher"
       ]
     },
@@ -1041,6 +1103,7 @@
         "sceneonly:yard",
         "scriptedsequence:hall",
         "shed",
+        "skeletal:yard",
         "topicsgame:ferry",
         "yard"
       ]
@@ -1118,9 +1181,16 @@
       ]
     },
     "base:state_machine": {
-      "description": "The id of a state_machine record (none is loaded).",
+      "description": "Another state_machine record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "patrol",
+        "patrol_armed",
+        "sentry",
+        "skeletal:patrol",
+        "skeletal:patrol_armed",
+        "skeletal:sentry"
+      ]
     },
     "base:tag": {
       "description": "Another tag record to inherit every field from, abstract or not.",

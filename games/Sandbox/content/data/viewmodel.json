@@ -4,8 +4,8 @@
   // animated by `arms`, the sword on their `hand_r` socket, drawn over the world from the player's eyes
   // only. Bare hands have none, so the HUD keeps drawing its sprite hands for them (Hud.cs).
   //
-  // Both models are generated (tools/make_viewmodel_arms.py) and meant to be replaced: engine issue #122
-  // brings a box mannequin and proper arms.
+  // Both models are generated (tools/make_mannequin.py, with the box mannequin of tests/games/skeletal;
+  // engine issue #122): sleeves, forearms and hands curled round a grip, to be replaced by real art.
   {
     "type": "material",
     "id": "arms_skin",
@@ -26,13 +26,17 @@
     "sockets": { "hand_r": { "joint": "hand_r", "offset": [0, 0, -0.05], "angles": [-50, 0, 0] } }
   },
   {
-    // The arms' clip events (engine issue #119): the magazine comes out 0.3 s into the reload and goes
-    // back in at 0.9 s. The animator raises each once as an AnimationEvent on the arms (and as their
+    // The arms' clip events (engine issue #119): the swing connects 0.28 s into the attack (and so lands
+    // the player's blow, if the sword's windup has not already), and the magazine comes out 0.3 s into
+    // the reload and goes back in at 0.9 s. The animator raises each once as an AnimationEvent on the arms (and as their
     // OnAnimEvent output), which is where a sound or an ammunition count would listen.
     "type": "anim_events",
     "id": "arms",
     "model": "models/arms.glb",
-    "clips": { "reload": [ { "time": 0.3, "name": "mag_out" }, { "time": 0.9, "name": "mag_in" } ] }
+    "clips": {
+      "attack": [ { "time": 0.28, "name": "hit" } ],
+      "reload": [ { "time": 0.3, "name": "mag_out" }, { "time": 0.9, "name": "mag_in" } ]
+    }
   },
   {
     // A swing sets `attack` and the Reload button (R) sets `reload` (gameplay_conventions `animations`);
