@@ -150,7 +150,13 @@ internal sealed class PhysicsCallbackData
         ref var entry = ref EntryOf(collidable);
         if (!entry.Used) return true;
         if (!ignore.IsNull && entry.Entity == ignore) return false;
-        return mask.Has(entry.Layer) && (includeTriggers || !entry.Trigger);
+#pragma warning disable SAGE0127   // query-only layers (issue #137): the backend is what honours them
+        if (!Layers.Sees(mask, entry.Layer)) return false;
+        // A query-only collider (a hitbox) that is a child of the one asking is its own: a shot from the
+        // eye starts inside the shooter's head.
+        if (!ignore.IsNull && Layers.QueryOnly.Has(entry.Layer) && entry.Entity.Parent == ignore) return false;
+#pragma warning restore SAGE0127
+        return includeTriggers || !entry.Trigger;
     }
 
     // ---- Step boundaries (main thread) ----
