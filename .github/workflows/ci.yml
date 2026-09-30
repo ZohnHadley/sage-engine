@@ -175,6 +175,11 @@ jobs:
           # move right, put down, Back), then the equipment screen, opened from the console.
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+ui_open rpg:inventory\n+wait 3\n+in_tap MenuConfirm\n+wait 1\n+in_tap MenuRight\n+wait 1\n+in_tap MenuConfirm\n+wait 1\n+in_tap MenuBack\n+wait 3\n+ui_open rpg:equipment\n+wait 3\n+in_tap MenuDown\n+wait 1\n+ui_close all' \
             tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
+          # The HUD, journal, map, main menu and shop on widgets (issue #99): the HUD is up from the start;
+          # J and N open and close the journal and the map; a save is listed by the main menu (F10), and
+          # Down then Confirm loads it and closes the menu; the shop shell opens from the console.
+          SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_tap Journal\n+wait 3\n+in_tap Journal\n+wait 2\n+in_tap Map\n+wait 3\n+in_tap MenuBack\n+wait 2\n+save smoke\n+wait 1\n+in_tap MainMenu\n+wait 3\n+in_tap MenuDown\n+wait 1\n+in_tap MenuConfirm\n+wait 3\n+ui_open rpg:shop\n+wait 3\n+ui_close' \
+            tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
           # No plugins at all (issue #13). Records and Input are allowed because engine content still
           # ships every plugin's data in one folder, and says so when the plugin that reads it is absent.
           tools/smoke_run.sh "$host" tests/games/no-plugins 3 Shaders Audio Records Input

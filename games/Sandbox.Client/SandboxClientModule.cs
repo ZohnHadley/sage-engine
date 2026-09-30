@@ -36,9 +36,12 @@ public sealed class SandboxClientModule : IModule
     private ActionRegistry? _actions;
     private ScreenRegistry? _screens;
 
+    // The HUD's screen record (content/data/ui.json): the layout over HudView.
+    private static readonly RecordId Hud = new("sandbox", "hud");
+
     public void OnWorldCreated(World world)
     {
-        world.AddSystem(new SandboxHud(world, _records!, _content!));   // 13 §3
+        world.AddSystem(new SandboxHud(world, _records!, _content!));   // the first-person hands (13 §3)
 
         // Which screens this game has, and what opens them (13 §3, F38). The engine draws and drives
         // them; saying `I` is the bag and `B` is the spellbook is the game's decision, the same way
@@ -46,19 +49,23 @@ public sealed class SandboxClientModule : IModule
         var screens = world.Resources.Get<ScreenStack>();
         screens.Bind(_actions!.Get("Inventory"), new InventoryScreen());
         screens.Bind(_actions!.Get("Spellbook"), new SpellbookScreen());
-        // The spellmaker and the journal are the RPG kit's screens (16 §3.3, issue #27): what a
-        // spellmaker is belongs to the feature, not to this game, and the kit registers them by id.
-        // Binding them to a key is still the game's call.
+        // The spellmaker is the RPG kit's screen (16 §3.3, issue #27): what a spellmaker is belongs to the
+        // feature, not to this game, and the kit registers it by id. Binding it to a key is the game's call.
         screens.Bind(_actions!.Get("Spellmaker"), _screens!.Create(RpgKitClientModule.Spellmaker)!);
-        screens.Bind(_actions!.Get("Journal"), _screens!.Create(RpgKitClientModule.Journal)!);
 
-        // The widget screen (13 "As built (drawing)", issue #97): `sandbox:status`, built from records in
-        // content/data/ui.json over the StatusView view-model. C opens and closes it; its Close button
-        // is the one thing the layout cannot say, so it is said here.
+        // The widget screens (13 "As built (drawing)", #97, and "As built (the HUD, journal, map and
+        // menus)", #99), built from records in content/data/ui.json: `sandbox:status` (C), the kit's
+        // journal (J) and map (N) view-models in this game's layouts, and the main menu (F10) with the
+        // saves to load. The HUD is one too, opened once and for good as a layer that never takes a key.
+        // Their Close buttons are the one thing a layout cannot say, so it is said here.
 #pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
         var widgets = world.Resources.Get<Sage.UI.UiScreenStack>();
         widgets.Bind(_actions!.Get("Status"), new RecordId("sandbox", "status"));
+        widgets.Bind(_actions!.Get("Journal"), new RecordId("sandbox", "journal"));
+        widgets.Bind(_actions!.Get("Map"), new RecordId("sandbox", "map"));
+        widgets.Bind(_actions!.Get("MainMenu"), new RecordId("sandbox", "main_menu"));
         widgets.TooltipStyle = "sandbox:ui_tooltip";
+        widgets.OpenHud(Hud, new Sage.UI.UiBindContext(world));
         widgets.Activated += (layer, widget) =>
         {
             if (widget.Name == "close") widgets.Close(layer);

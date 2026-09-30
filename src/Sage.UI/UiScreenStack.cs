@@ -264,6 +264,16 @@ public sealed class UiScreenStack
         return Add(opened.Root, opened, modal: true);
     }
 
+    // Opens a screen record as a layer that is drawn and never takes input — a HUD (issue #99). It sits
+    // where it is opened in the stack, so a HUD opened first is under every window; its view-model is
+    // read every frame like any open screen's, and Back or a click never closes it.
+    public UiLayer OpenHud(RecordId screen, UiBindContext context = default)
+    {
+        if (_screens == null) throw new InvalidOperationException("this stack has no screens to open (UiModule's has)");
+        var opened = _screens.OpenScreen(screen, context);
+        return Add(opened.Root, opened, modal: false);
+    }
+
     // Shows a tree a game built: modal (a window) or not (a HUD).
     public UiLayer Push(Widget content, bool modal = true)
     {

@@ -357,6 +357,7 @@ Sage.UI.UiScreenStack.FocusSeconds.set -> void
 Sage.UI.UiScreenStack.IsOpen.get -> bool
 Sage.UI.UiScreenStack.Layers.get -> System.Collections.Generic.IReadOnlyList<Sage.UI.UiLayer!>!
 Sage.UI.UiScreenStack.Open(Sage.Core.RecordId screen, Sage.UI.UiBindContext context = default(Sage.UI.UiBindContext)) -> Sage.UI.UiLayer!
+Sage.UI.UiScreenStack.OpenHud(Sage.Core.RecordId screen, Sage.UI.UiBindContext context = default(Sage.UI.UiBindContext)) -> Sage.UI.UiLayer!
 Sage.UI.UiScreenStack.OpenActions.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionId>!
 Sage.UI.UiScreenStack.OpenEase.get -> Sage.Simulation.Ease
 Sage.UI.UiScreenStack.OpenEase.set -> void

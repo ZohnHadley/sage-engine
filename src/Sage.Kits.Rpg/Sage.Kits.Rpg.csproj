@@ -17,8 +17,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
-    <!-- The retained UI (issue #95/#96): the inventory, equipment, loot and topics screens are view-models
-         over it, built from the kit's own ui_layout and screen records (issue #98). -->
+    <!-- The retained UI (issue #95/#96): the inventory, equipment, loot, topics,
+         journal, map and shop screens are view-models over it, built from the kit's own ui_layout and
+         screen records (issues #98, #99). -->
     <ProjectReference Include="..\Sage.UI\Sage.UI.csproj" />
   </ItemGroup>
 

@@ -35,6 +35,9 @@ public sealed class SandboxModule : IGameModule
         // What opens the Sandbox's widget screen, `sandbox:status` (13 "As built (drawing)", #97). An
         // action like any other, so a headless server has the same ids; C is bound in content.
         ctx.Engine.Actions.Register("Status", ActionKind.Button);
+        // And its other widget screens (issue #99): the map (N) and the main menu (F10), bound in content.
+        ctx.Engine.Actions.Register("Map", ActionKind.Button);
+        ctx.Engine.Actions.Register("MainMenu", ActionKind.Button);
     }
 
     public void Start(ModuleContext ctx)

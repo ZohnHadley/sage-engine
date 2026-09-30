@@ -12,8 +12,10 @@
       "Spellbook":     [ { "key": "B" } ],
       "Spellmaker":    [ { "key": "M" } ],
       "Journal":       [ { "key": "J" } ],
-      // The Sandbox's own widget screen (issue #97): SandboxModule registers the action.
-      "Status":        [ { "key": "C" } ]
+      // The Sandbox's own widget screens (issues #97, #99): SandboxModule registers the actions.
+      "Status":        [ { "key": "C" } ],
+      "Map":           [ { "key": "N" } ],
+      "MainMenu":      [ { "key": "F10" } ]
     }
   },
   {
@@ -24,7 +26,9 @@
       "Spellbook":     [ { "key": "B" } ],
       "Spellmaker":    [ { "key": "M" } ],
       "Journal":       [ { "key": "J" } ],
-      "Status":        [ { "key": "C" } ]
+      "Status":        [ { "key": "C" } ],
+      "Map":           [ { "key": "N" } ],
+      "MainMenu":      [ { "key": "F10" } ]
     }
   }
 ]

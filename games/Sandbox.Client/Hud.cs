@@ -4,95 +4,47 @@ using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace Sandbox;
 
-// The Sandbox's HUD (docs/design/13 §3). The engine hands a game `UiDraw`, a `MessageLog` and a
-// crosshair; what a health bar looks like is the game's business, which is why this lives here and
-// not in Sage.Client.
+// The first-person hands (docs/design/13 §3). Everything else the Sandbox's HUD shows — the health bar,
+// what is in your hands, the message log, what Use and V do — is the `sandbox:hud` layout over HudView
+// since issue #99 (content/data/ui.json; SandboxClientModule opens it as a HUD layer). What is left here
+// is not a widget: a frame of a sprite sheet, chosen by where the swing is, sized to the window and drawn
+// behind the widget HUD.
 //
-// FrameUpdate, so it runs at display rate and is queued before the Overlay phase draws it; after the
-// camera director, so it knows which rig draws this frame's screen (the viewmodel is first person only).
+// FrameUpdate, so it runs at display rate and is queued before the Overlay phase draws the widgets over
+// it; after the camera director, so it knows which rig draws this frame's screen (first person only).
 [System("sandbox.hud", Phase.FrameUpdate, After = new[] { "sage.camera.director" })]
 public sealed class SandboxHud : ISystem
 {
-
     private readonly Query<Transform> _players;
     private readonly UiDraw _ui;
-    private readonly MessageLog _messages;
     private readonly RecordStore _records;
-    private readonly InteractionState _interactions;
     private readonly ContentService _content;
-
-    // Cached text: a HUD that rebuilds its strings every frame allocates in the steady state, which
-    // the frame budget does not allow (02 §4.6). These change when what they say changes.
-    private string _healthText = "", _handsText = "", _promptText = "";
-    private int _lastHealth = -1, _lastMax = -1;
-    private RecordId _lastMain, _lastOff;
-    private Entity _lastHovered;
 
     public SandboxHud(World world, RecordStore records, ContentService content)
     {
         _content = content;
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
         _ui = world.Resources.Get<UiDraw>();
-        _messages = world.Messages();
         _records = records;
-        _interactions = world.Resources.Get<InteractionState>();
     }
 
     public void Run(in SystemContext ctx)
     {
         var world = ctx.World;
-        float width = _ui.Size.X, height = _ui.Size.Y;
-        if (width < 1f) return;                       // before the first frame sized the viewport
+        if (_ui.Size.X < 1f) return;                  // before the first frame sized the viewport
 
-        // With a screen open the health bar and the message log stay — you want to read them while
-        // deciding what to equip — but the things that belong to *aiming* do not (13 §3, F38).
+        // Not with a window up: the hands belong to aiming (13 §3, F38).
         bool screenOpen = world.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen
 #pragma warning disable SAGE0125   // widget screens (#97) are experimental
                        || world.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) && widgets!.IsOpen;
 #pragma warning restore SAGE0125
-
-        float x = 24f, bottom = height - 28f;
-        DrawMessages(x, bottom - 86f);
-        // What Use would do and what V does belong to the player's own view: not to a scripted cut, nor
-        // to the editor's free camera (engine issue #81).
-#pragma warning disable SAGE0123   // cameras as entities are experimental; this game follows them
-        bool ownView = world.MainViewRig() != CameraRigKind.None;
-#pragma warning restore SAGE0123
-        if (!screenOpen && ownView) DrawPrompt(world, width * 0.5f, height * 0.5f + 28f);
-        if (!screenOpen && ownView) DrawViewHint(world, width - 24f, 28f);
+        if (screenOpen) return;
 
         foreach (var player in _players.Entities)
         {
-            if (!screenOpen) DrawViewmodel(world, player);   // behind the bars: it is the biggest thing here
-            DrawHealth(world, player, x, bottom - 44f);
-            DrawHands(world, player, x, bottom - 20f);
+            DrawViewmodel(world, player);
             return;                                   // one local player
         }
-    }
-
-    // A bar that empties and reddens, with the numbers beside it: readable at a glance and it says
-    // exactly what the simulation says.
-    private void DrawHealth(World world, Entity player, float x, float y)
-    {
-        var healthId = world.Conventions().Health;   // whatever this game calls it (issue #26)
-        float health = world.Attribute(player, healthId);
-        float max = !healthId.IsEmpty && _records.TryGet(healthId, out AttributeRecord record) ? record.Max : 100f;
-        float fraction = max > 0f ? System.Math.Clamp(health / max, 0f, 1f) : 0f;
-
-        int shownHealth = (int)MathF.Round(health), shownMax = (int)MathF.Round(max);
-        if (shownHealth != _lastHealth || shownMax != _lastMax)
-        {
-            _healthText = $"{shownHealth} / {shownMax}";
-            _lastHealth = shownHealth;
-            _lastMax = shownMax;
-        }
-
-        const float Width = 220f, Height = 16f;
-        _ui.Rect(x, y, Width, Height, new Color(0, 0, 0, 140));
-        _ui.Rect(x + 1f, y + 1f, (Width - 2f) * fraction, Height - 2f, Lerp(fraction));
-        _ui.Frame(x, y, Width, Height, new Color(0, 0, 0, 200));
-
-        _ui.Text(x + Width + 10f, y - 2f, _healthText, Color.White);
     }
 
     // Your own hands, bottom right, drawn from the frames the attack record points at: at rest, drawn
@@ -136,90 +88,5 @@ public sealed class SandboxHud : ISystem
         float elapsed = melee.Phase == MeleePhase.Windup ? melee.Timer : attack.WindupTime + melee.Timer;
         int index = (int)(elapsed / total * swing);
         return 1 + System.Math.Clamp(index, 0, swing - 1);
-    }
-
-    // What is in your hands, because equipping something is invisible otherwise (16 §3.2, F19).
-    private void DrawHands(World world, Entity player, float x, float y)
-    {
-        if (!world.TryGet<Equipment>(player, out var equipment)) return;
-        // The RPG kit's two hands (issue #27): the only slots this game has.
-        var mainHand = equipment.In(RpgKitModule.MainHand);
-        var offHand = equipment.In(RpgKitModule.OffHand);
-        if (mainHand != _lastMain || offHand != _lastOff)
-        {
-            string main = Describe(mainHand, "bare hands");
-            _handsText = offHand.IsEmpty ? main : $"{main} / {Describe(offHand, "")}";
-            _lastMain = mainHand;
-            _lastOff = offHand;
-        }
-        _ui.Text(x, y, _handsText, new Color(215, 215, 215, 230));
-    }
-
-    private string Describe(RecordId item, string ifEmpty) =>
-        item.IsEmpty ? ifEmpty
-        : _records.TryGet(item, out ItemRecord record) ? record.Describe(item)
-        : item.Name;
-
-    // What pressing Use would do, under the crosshair. Without this, an item on the ground is a
-    // decoration: nothing on screen says it can be taken (16 §3.2).
-    private void DrawPrompt(World world, float centreX, float y)
-    {
-        var target = _interactions.Hovered;
-        if (target.IsNull || !world.IsAlive(target)) { _lastHovered = default; return; }
-
-        if (target != _lastHovered)
-        {
-            _promptText = world.TryGet<Pickup>(target, out var pickup)
-                ? $"E   Pick up {Describe(pickup.Item, pickup.Item.Name)}"
-                : "E   Use";
-            _lastHovered = target;
-        }
-        var size = _ui.Measure(_promptText);
-        _ui.Text(centreX - size.X * 0.5f, y, _promptText, new Color(245, 240, 200, 235));
-    }
-
-    // What V does (engine issue #79's ToggleView, REDESIGN phase 4a's "switch 1P↔3P mid-fight"): a
-    // key nobody finds is a feature nobody has. Only while the player's rig has the screen — not during
-    // a scripted cut or with the editor's free camera — and constant strings, so nothing is allocated.
-    private void DrawViewHint(World world, float right, float y)
-    {
-#pragma warning disable SAGE0123   // cameras as entities are experimental; this game follows them
-        string? hint = world.MainViewRig() switch
-        {
-            CameraRigKind.FirstPerson => "V   third person",
-            CameraRigKind.ThirdPerson => "V   first person",
-            _ => null,
-        };
-#pragma warning restore SAGE0123
-        if (hint == null) return;
-        var size = _ui.Measure(hint);
-        _ui.Text(right - size.X, y, hint, new Color(215, 215, 215, 170));
-    }
-
-    // Newest at the bottom, fading out as they age (13 §3).
-    private void DrawMessages(float x, float bottom)
-    {
-        var messages = _messages.Messages;
-        float line = _ui.LineHeight;
-        for (int i = messages.Length - 1, row = 0; i >= 0 && row < 6; i--, row++)
-        {
-            ref readonly var message = ref messages[i];
-            var colour = message.Kind switch
-            {
-                MessageKind.Good => new Color(120, 230, 140),
-                MessageKind.Bad => new Color(240, 120, 110),
-                _ => Color.White,
-            };
-            // The last second is the fade, so a message leaves rather than vanishing.
-            byte alpha = (byte)(255 * System.Math.Clamp(message.Remaining, 0f, 1f));
-            _ui.Text(x, bottom - row * line, message.Text, new Color(colour.R, colour.G, colour.B, alpha));
-        }
-    }
-
-    // Green while you are well, red as you run out.
-    private static Color Lerp(float fraction)
-    {
-        byte r = (byte)(220 - 80 * fraction), g = (byte)(60 + 150 * fraction);
-        return new Color(r, g, (byte)70, (byte)235);
     }
 }

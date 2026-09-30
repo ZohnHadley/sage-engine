@@ -473,3 +473,14 @@ static Sage.Simulation.Vars.ValueOf(Sage.Simulation.World! world, string! name) 
 static Sage.Simulation.Tweens.Apply(in Sage.Simulation.Tween tween, ref Sage.Simulation.Transform transform) -> void
 static Sage.Simulation.Tweens.Begin(ref Sage.Simulation.Tween tween, in Sage.Simulation.Transform transform, Sage.Simulation.TweenChannel channel, System.Numerics.Vector3 goal, bool relative, float seconds, Sage.Simulation.Ease ease) -> void
 static Sage.Simulation.Tweens.TryRead(System.ReadOnlySpan<char> parameter, in Sage.Simulation.Tween tween, out Sage.Simulation.TweenChannel channel, out System.Numerics.Vector3 goal, out bool relative, out float seconds, out Sage.Simulation.Ease ease) -> bool
+Sage.Simulation.SaveSlot
+Sage.Simulation.SaveSlot.CanLoad.get -> bool
+Sage.Simulation.SaveSlot.EngineVersion.get -> string!
+Sage.Simulation.SaveSlot.FormatVersion.get -> int
+Sage.Simulation.SaveSlot.Game.get -> string!
+Sage.Simulation.SaveSlot.Name.get -> string!
+Sage.Simulation.SaveSlot.SavedUtc.get -> System.DateTime
+Sage.Simulation.SaveSystem.Rescan() -> void
+Sage.Simulation.SaveSystem.Slots.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SaveSlot!>!
+Sage.Simulation.SaveSystem.SlotsVersion.get -> int
+override Sage.Simulation.SaveSlot.ToString() -> string!

@@ -6,5 +6,45 @@
     "carrying": { "zero": "Carrying nothing", "one": "Carrying {count} thing", "other": "Carrying {count} things" },
     "close": "Close",
     "hint": "Arrows or D-pad move, Enter picks, Esc or C closes"
+  },
+  // The HUD (issue #99): what Use would do under the crosshair, what V does, and your empty hands.
+  "hud": {
+    "use": "E   Use",
+    "pick_up": "E   Pick up {item}",
+    "third_person": "V   third person",
+    "first_person": "V   first person",
+    "bare_hands": "bare hands"
+  },
+  "journal": {
+    "title": "Journal",
+    "summary": { "zero": "Nothing on the go, {finished} done", "one": "{count} quest on the go, {finished} done", "other": "{count} quests on the go, {finished} done" },
+    "empty": "(nothing yet)",
+    "done": "done",
+    "hint": "Arrows scroll, Esc or J closes"
+  },
+  "map": {
+    "title": "Map",
+    "you": "you",
+    "range": { "zero": "Nothing marked within {range} m", "one": "{count} place within {range} m", "other": "{count} places within {range} m" },
+    "hint": "North is up. Esc or N closes",
+    "hut": "the hut",
+    "campfire": "campfire",
+    "stranger": "the stranger",
+    "watcher": "watcher"
+  },
+  "menu": {
+    "title": "Sandbox",
+    "resume": "Resume",
+    "save": "Save",
+    "quit": "Quit",
+    "saves": { "zero": "No saves", "one": "{count} save", "other": "{count} saves" },
+    "no_saves": "Save once and it is listed here.",
+    "unreadable": "(cannot load)",
+    "saved": "Saved as {slot}.",
+    "save_failed": "Could not save {slot}: see the log.",
+    "loaded": "Loaded {slot}.",
+    "load_failed": "Could not load {slot}: see the log.",
+    "cannot_load": "{slot} was saved in a format this build does not read.",
+    "hint": "Enter loads the save chosen. Esc or F10 closes."
   }
 }

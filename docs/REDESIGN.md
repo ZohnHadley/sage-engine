@@ -927,6 +927,12 @@ because it edits the live play world (`DevTools.cs:84-87`).
     focus highlight eased on frame time with 4b's `Easing`; the `Menu*` actions plus
     `MenuLeft`/`MenuRight`/`MenuTab` as its input. The Sandbox's status screen (`C`) is the demo
     (docs/design/13 "As built (drawing)"). The panel screens and the HUD move onto it in #98/#99.
+  - *As built (issue #99, 2026-09-30).* The hand-placed HUD (`Sandbox.Client/Hud.cs`) is the
+    `sandbox:hud` layout over `HudView`, on a layer that is drawn and never takes input
+    (`UiScreenStack.OpenHud`; only the first-person hands are still drawn by hand); the journal and a
+    markers-only map are the kit's `JournalView`/`MapView` (`sage:map_marker`); a main menu lists
+    `SaveSystem.Slots` and loads one; the shop is a shell over a stub price rule until 4f
+    (docs/design/13 "As built (the HUD, journal, map, main menu and shop)").
   - *As built (issue #98, 2026-09-30).* The first consumers: the RPG kit's inventory grid (with weight
     and item footprints), equipment, loot and topics screens are records in the kit's own content
     (`[PluginContent("rpg")]`) over headless view-models that act through `UiScreen.Handle`, and one test

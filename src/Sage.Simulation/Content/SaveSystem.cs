@@ -105,7 +105,7 @@ public sealed class SaveSystem
     public string Root
     {
         get => _root ??= Path.Combine(UserPaths.Root, "saves");
-        set => _root = value;
+        set { _root = value; _slots = null; }
     }
 
     private string SlotDirectory(string slot) => Path.Combine(Root, Sanitise(slot));
@@ -146,6 +146,7 @@ public sealed class SaveSystem
 
             if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
             Directory.Move(staging, directory);
+            _slots = null;   // the listing a menu shows has a new or newer slot in it
             Log.Info(LogCat.Save, $"Saved '{slot}': {total} entities across {_engine.Worlds.Count} world(s)");
             return true;
         }
@@ -439,6 +440,65 @@ public sealed class SaveSystem
         }
     }
 
+    // ---- slots, for a menu (issue #99) ----------------------------------------------------------------
+
+    private List<SaveSlot>? _slots;
+    private int _slotsVersion;
+
+    // The saves a load menu lists, newest first: each slot's name and what its header says — when it was
+    // written, by which game and engine, in which format, and whether this build can read it back. Read
+    // from disk once and kept: a menu reads this every frame it is open, so the folder is scanned again
+    // only after a Save, a change of Root, or Rescan (a menu opening calls it, in case another process
+    // wrote a save meanwhile). Unlike List it opens only the headers, never the world files.
+    public IReadOnlyList<SaveSlot> Slots => _slots ??= ScanSlots();
+
+    // Moves each time Slots is read from disk again, so a view-model rebuilds its rows only then.
+    public int SlotsVersion { get { _ = Slots; return _slotsVersion; } }
+
+    // Forget the listing; the next read of Slots scans the folder again.
+    public void Rescan() => _slots = null;
+
+    private List<SaveSlot> ScanSlots()
+    {
+        _slotsVersion++;
+        var slots = new List<SaveSlot>();
+        if (!Directory.Exists(Root)) return slots;
+        foreach (string directory in Directory.EnumerateDirectories(Root))
+        {
+            string name = Path.GetFileName(directory);
+            if (name.EndsWith(".writing", StringComparison.Ordinal)) continue;   // a save interrupted mid-write
+            string headerPath = Path.Combine(directory, "header.json");
+            if (!File.Exists(headerPath)) continue;
+
+            DateTime saved = default;
+            int format = 0;
+            string game = "", engine = "";
+            try
+            {
+                if (JsonNode.Parse(File.ReadAllText(headerPath)) is JsonObject header)
+                {
+                    if (DateTime.TryParse((string?)header["savedUtc"], System.Globalization.CultureInfo.InvariantCulture,
+                                          System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var when))
+                        saved = when;
+                    format = header["formatVersion"] is JsonValue f && f.TryGetValue(out int n) ? n : 0;
+                    game = header["game"] is JsonValue g && g.TryGetValue(out string? id) ? id ?? "" : "";
+                    engine = header["engineVersion"] is JsonValue e && e.TryGetValue(out string? v) ? v ?? "" : "";
+                }
+            }
+            catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                /* a broken header still lists, as one that cannot be loaded */
+            }
+            slots.Add(new SaveSlot(name, saved, format, game, engine));
+        }
+        slots.Sort((a, b) =>
+        {
+            int byTime = b.SavedUtc.CompareTo(a.SavedUtc);
+            return byTime != 0 ? byTime : StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name);
+        });
+        return slots;
+    }
+
     // ---- console ------------------------------------------------------------------------------------
 
     public void RegisterCommands(CVarRegistry cvars)
@@ -478,4 +538,35 @@ public sealed class SaveSystem
         foreach (char bad in Path.GetInvalidFileNameChars()) clean = clean.Replace(bad, '_');
         return clean.Length == 0 ? "unnamed" : clean;
     }
+}
+
+// One save on disk, as its header describes it (SaveSystem.Slots, issue #99): what a load menu lists.
+public sealed class SaveSlot
+{
+    internal SaveSlot(string name, DateTime savedUtc, int formatVersion, string game, string engineVersion)
+    {
+        Name = name;
+        SavedUtc = savedUtc;
+        FormatVersion = formatVersion;
+        Game = game;
+        EngineVersion = engineVersion;
+    }
+
+    // The slot's name: what Save and Load take.
+    public string Name { get; }
+
+    // When it was written (UTC); default when the header does not say.
+    public DateTime SavedUtc { get; }
+
+    // The file layout it was written in (SaveSystem.FormatVersion then); 0 when the header is unreadable.
+    public int FormatVersion { get; }
+
+    // The game id and engine version that wrote it.
+    public string Game { get; }
+    public string EngineVersion { get; }
+
+    // Whether this build reads its format: not newer than FormatVersion, not older than OldestReadableFormat.
+    public bool CanLoad => FormatVersion >= SaveSystem.OldestReadableFormat && FormatVersion <= SaveSystem.FormatVersion;
+
+    public override string ToString() => Name;
 }

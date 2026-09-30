@@ -41,5 +41,13 @@
     "none": "They have nothing to talk about.",
     "no_answer": "They have nothing to say about that.",
     "hint": "A: ask    B: leave"
+  },
+  "shop": {
+    "title": "{who}'s goods",
+    "yours": "Yours",
+    "buy": "Buying {item} for {price}",
+    "sell": "Selling {item} for {price}",
+    "balance": "You owe {balance}",
+    "hint": "A: pick up / put down on the other side to trade    B: close"
   }
 }

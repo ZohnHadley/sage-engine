@@ -179,6 +179,8 @@ internal sealed class LayoutBuilder
                 case UiBindings.Enabled: bound.Enabled = reader; break;
                 case UiBindings.Data: bound.Data = reader; break;
                 case UiBindings.Columns: bound.Columns = reader; break;
+                case UiBindings.X: bound.X = reader; break;
+                case UiBindings.Y: bound.Y = reader; break;
                 case UiBindings.Rows:
                     var template = tree.ChildrenOf(name).FirstOrDefault();
                     if (template.Node != null && bound.Widget is Container host)
@@ -220,9 +222,12 @@ internal sealed class LayoutTree
 internal static class UiBindings
 {
     public const string Text = "text", Tooltip = "tooltip", Value = "value", Min = "min", Max = "max", Source = "source",
-                        Style = "style", Visible = "visible", Enabled = "enabled", Data = "data", Rows = "rows", Columns = "columns";
+                        Style = "style", Visible = "visible", Enabled = "enabled", Data = "data", Rows = "rows", Columns = "columns",
+                        // Where in its parent Box it sits, 0..1 across and down: a point anchor there (a map's
+                        // markers, issue #99). Kept inside the box: a point anchor places the widget proportionally.
+                        X = "x", Y = "y";
 
-    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns };
+    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
     public static string? Primary(string widget) => widget switch
@@ -278,13 +283,13 @@ internal sealed class BoundNode
 
     public ICondition? VisibleIf, EnabledIf;
     public TextSlot? Text, Tooltip;
-    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns;
+    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
     public RowsSlot? Rows;
     private string? _source, _style;
 
     public bool Dynamic => _children.Length > 0 || Rows != null || VisibleIf != null || EnabledIf != null || Text != null || Tooltip != null
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
-                           || Enabled != null || Data != null || Columns != null;
+                           || Enabled != null || Data != null || Columns != null || X != null || Y != null;
 
     public void SetChildren(List<BoundNode> children) => _children = children.ToArray();
 
@@ -319,6 +324,13 @@ internal sealed class BoundNode
         }
         if (Data != null) Widget.Data = Data.Read(source).Ref;
         if (Columns != null && Widget is Grid grid) grid.Columns = (int)Columns.Read(source).AsFloat;   // Grid keeps at least 1
+        if (X != null || Y != null)
+        {
+            var at = Widget.Anchors;
+            float x = X != null ? Math.Clamp(X.Read(source).AsFloat, 0f, 1f) : at.MinX;
+            float y = Y != null ? Math.Clamp(Y.Read(source).AsFloat, 0f, 1f) : at.MinY;
+            Widget.Anchors = new Anchors(x, y, x, y);   // unchanged: no layout (Anchors compares)
+        }
 
         Rows?.Refresh(source, in context);
         for (int i = 0; i < _children.Length; i++) _children[i].Refresh(source, in context);
@@ -462,6 +474,9 @@ internal sealed class RowsSlot
             else row = _builder.BuildNode(_tree, _name, _template, _style);
             _host.Add(row.Widget);
             _rows.Add(row);
+            // Room kept aside now, while rows are being made anyway, for all of them to be put aside
+            // later: a list emptying (a HUD's messages ageing out) must not grow this then (#99).
+            if (_spare.Capacity < _rows.Count + _spare.Count) _spare.Capacity = _rows.Count + _spare.Count;
         }
         while (_rows.Count > count)
         {
