@@ -129,6 +129,7 @@ jobs:
           "$sage" validate tests/games/camera-cut
           "$sage" validate tests/games/scripted-sequence
           "$sage" validate tests/games/topics
+          "$sage" validate tests/games/skeletal
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -136,11 +137,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal --out schemas' and commit the result"
             exit 1
           fi
 
@@ -207,6 +208,12 @@ jobs:
           # conditional topic, both in data only. Same allowances as above.
           tools/smoke_run.sh "$host" tests/games/scripted-sequence 3 Shaders Audio Records Input
           tools/smoke_run.sh "$host" tests/games/topics 3 Shaders Audio Records Input
+          # Phase 4d's exit (issue #122): box mannequins that walk, jog and run their lanes, and aim, strike
+          # and reload, blended, in data only (a graph, prefabs, state machines sending tweens and params);
+          # anim_debug lists their layers. Without shaders nothing is drawn: this proves the load, the
+          # graph, the wires and the IK in the real host (NpcLocomotionTests the rest). Same allowances.
+          SAGE_SMOKE_COMMANDS=$'+wait 3\n+anim_debug' \
+            tools/smoke_run.sh "$host" tests/games/skeletal 4 Shaders Audio Records Input
 
       # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
       # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.
