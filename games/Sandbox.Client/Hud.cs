@@ -4,7 +4,8 @@ using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace Sandbox;
 
-// The first-person hands (docs/design/13 §3). Everything else the Sandbox's HUD shows — the health bar,
+// The first-person hands as sprites (docs/design/13 §3), when the attack in hand has no 3D arms (engine
+// issue #121: those are the attack's `arms`, drawn by the viewmodel pass). Everything else the Sandbox's HUD shows — the health bar,
 // what is in your hands, the message log, what Use and V do — is the `sandbox:hud` layout over HudView
 // since issue #99 (content/data/ui.json; SandboxClientModule opens it as a HUD layer). What is left here
 // is not a widget: a frame of a sprite sheet, chosen by where the swing is, sized to the window and drawn
@@ -56,6 +57,11 @@ public sealed class SandboxHud : ISystem
 #pragma warning disable SAGE0123   // cameras as entities are experimental; this game follows them
         if (world.MainViewRig() != CameraRigKind.FirstPerson) return;
 #pragma warning restore SAGE0123
+        // 3D arms (engine issue #121: the attack's `arms`, drawn by the viewmodel pass) replace the
+        // sprite hands; these are the fallback for an attack that has none.
+#pragma warning disable SAGE0126   // skeletal animation, and the viewmodel with it, is experimental
+        if (Viewmodels.IsDrawn(world)) return;
+#pragma warning restore SAGE0126
         if (!world.TryGet<Melee>(player, out var melee)) return;
         var attackId = melee.Attack.IsEmpty ? world.Conventions().Attack.Id : melee.Attack;
         if (attackId.IsEmpty) return;
