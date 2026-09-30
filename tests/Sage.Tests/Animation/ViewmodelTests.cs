@@ -232,6 +232,41 @@ public class ViewmodelTests
         Assert.Equal(2, app.Records.ErrorCount);
     }
 
+    // The Sandbox's own arms (tools/make_viewmodel_arms.py, content/data/viewmodel.json): drawing the
+    // practice sword puts them on the player's camera with the sword on `hand_r`, and R plays the reload
+    // clip, which goes back to idle after its 1.2 s.
+    [Fact]
+    public void TheSandboxsSwordShowsItsArms_AndReloadPlaysTheirClip()
+    {
+        using var app = HeadlessApp.ForGame(Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox"), new global::Sandbox.SandboxModule())
+            .WithEngineContent().Boot();
+        var world = app.World;
+        var player = Assert.Single(world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList());
+        Step(world, 2);
+        var camera = Assert.Single(world.Query<Camera>().AllTags(Tags.Get<PlayerCamera>()).Entities.ToEntityList());
+        Assert.True(Viewmodels.ArmsOf(world, camera).IsNull, "bare hands are the HUD's sprites");
+        Assert.False(Viewmodels.IsDrawn(world));
+
+        world.Get<Melee>(player).Attack = new RecordId("sandbox", "sword_swing");
+        Step(world, 3);
+        var arms = Viewmodels.ArmsOf(world, camera);
+        var sword = Viewmodels.WeaponOf(world, camera);
+        Assert.False(arms.IsNull || sword.IsNull);
+        Assert.True(Viewmodels.IsDrawn(world));
+        Assert.True(Animators.TryGetPose(world, arms, out var pose));
+        Assert.Equal(7, pose.Skeleton.JointCount);
+        Assert.True(world.Get<BoneAttachment>(sword).Socket == "hand_r");
+        Assert.True(world.Get<Transform>(sword).LocalPosition != Vector3.Zero, "the sword is not in the hand");
+        Assert.True(app.Engine.Animations.TryGet(AssetPath.Intern("models/arms.glb"), out var set));
+        Assert.NotNull(set.FindClip("reload"));
+        Assert.NotNull(set.FindClip("attack"));
+
+        Press(world, app.Engine.Actions.Get("Reload"), 1);
+        Assert.Equal("reload", Animators.StateOf(world, arms));
+        Step(world, 80);
+        Assert.Equal("idle", Animators.StateOf(world, arms));
+    }
+
     internal struct Sink : IViewmodelDraws
     {
         public int Meshes, Skinned;
