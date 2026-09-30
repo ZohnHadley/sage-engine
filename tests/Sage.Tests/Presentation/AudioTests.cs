@@ -254,4 +254,26 @@ public class AudioTests
         Assert.Null(mixer.Find(handle));
         Assert.Equal(0, mixer.Playing);
     }
+
+    // A sound file was replaced (issue 4h-3): one-shots on it stop, loops on it restart from the new
+    // file, and voices on other files are not touched.
+    [Xunit.Fact]
+    public void ReplacingAFileStopsItsOneShotsRestartsItsLoopsAndLeavesOthersAlone()
+    {
+        var mixer = new AudioMixer();
+        var shot = mixer.Play(Id("shot"), Sound("audio/a.wav"), Vector3.Zero, false);
+        var loop = mixer.Play(Id("loop"), Sound("audio/a.wav"), Vector3.Zero, false, loop: true);
+        var other = mixer.Play(Id("other"), Sound("audio/b.wav"), Vector3.Zero, false, loop: true);
+        foreach (var v in mixer.Voices) v.Started = true;   // the backend has begun them all
+
+        int affected = mixer.Invalidate(AssetPath.Intern("audio/a.wav"));
+
+        Assert.Equal(2, affected);
+        Assert.True(mixer.Find(shot)!.Stopping);
+        Assert.False(mixer.Find(loop)!.Stopping);
+        Assert.False(mixer.Find(loop)!.Started);            // the backend starts it again from the new file
+        Assert.False(mixer.Find(other)!.Stopping);
+        Assert.True(mixer.Find(other)!.Started);
+        Assert.Equal(0, mixer.Invalidate(AssetPath.Intern("audio/none.wav")));
+    }
 }

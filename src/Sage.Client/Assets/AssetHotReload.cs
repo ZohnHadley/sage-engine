@@ -27,13 +27,14 @@ internal sealed class AssetHotReload : IDisposable
     // to PNG, since R12 left no content pipeline to take them through. A GIF gives its first frame; an
     // HDR is tone-mapped to 8-bit.
     //
-    // Models and sounds are deliberately absent: a `.glb` has no reload path yet (the renderer caches
-    // meshes by id) and a `.wav` cannot have one while the mixer holds instances of it (F32). Watching
-    // them would only queue reloads that refuse themselves.
+    // Models and sounds reload too (issue 4h-3): the renderer swaps a `.glb` in its mesh slot, and a
+    // `.wav` stops or restarts the voices playing it. Shader *source* is `ShaderRecompiler`'s.
     private static readonly string[] Extensions =
     {
         ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".psd", ".hdr",   // Texture2D.FromStream
         ".mgfxo",                                                          // compiled effects (07 §3.1)
+        ".glb",                                                            // models, in place in the renderer's mesh table
+        ".wav",                                                            // sounds; voices on them stop or restart
     };
 
     private readonly ContentService _content;

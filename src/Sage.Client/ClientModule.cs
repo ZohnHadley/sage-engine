@@ -30,6 +30,7 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _crosshair;
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
+    private ShaderRecompiler? _shaders;
     private InputActions? _actions;
     private CVar<bool>? _particlesOn;
     private CVar<bool>? _weatherOn;
@@ -293,6 +294,18 @@ public sealed class ClientModule : IModule
         // a pass nobody added, stops the boot here (RenderPassRegistry).
         Passes.Seal("the client started");
         _renderer = new Renderer(host, _content, ctx.Engine, _rendererCVars!, Passes);
+        _content.ModelReloader = _renderer.ReloadMesh;
+        // A reloaded sound's old effect is about to be disposed, taking its instances with it: every
+        // world's backend lets go of them and its mixer stops or restarts the voices (issue 4h-3).
+        var engine = ctx.Engine;
+        _content.SoundReplacing += path =>
+        {
+            foreach (var world in engine.Worlds)
+            {
+                if (world.Resources.TryGet<IAudioBackend>(out var backend) && backend != null) backend.Release(path);
+                if (world.Resources.TryGet<AudioMixer>(out var mixer) && mixer != null) mixer.Invalidate(path);
+            }
+        };
         _ui = new UiResources(host.GraphicsDevice);
         _uiPass!.Content = _content;
         _uiPass.Shared = _ui;
@@ -302,7 +315,11 @@ public sealed class ClientModule : IModule
         // Watching belongs here, with the thing that owns the cache (05 §3.6). It is polled by a
         // Frame-phase system rather than the host loop, so the client keeps its own hot reload the
         // way records keep theirs.
-        if (BuildInfo.IsDevBuild) _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
+        if (BuildInfo.IsDevBuild)
+        {
+            _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
+            _shaders = new ShaderRecompiler(ctx.Engine.Vfs);
+        }
         _actions = ctx.Get<InputActions>();   // the host provides it; screens navigate with it (13 §3)
         // Asked once, here, rather than per world: whether this machine has a device does not change
         // between worlds, and the answer is worth exactly one log line. A real backend where there is
@@ -367,7 +384,7 @@ public sealed class ClientModule : IModule
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
         world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!));
-        if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!));
+        if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _shaders!, _assetHotReload!));
     }
 
     // `snd_play` is an audition, so it belongs to whichever world is listening — the first one with
@@ -406,6 +423,7 @@ public sealed class ClientModule : IModule
     {
         // No backend to dispose here: each world owns one, and the world's teardown disposes it.
         _watcher?.Dispose();
+        _shaders?.Dispose();
         _ui?.Dispose();
         _renderer?.Dispose();
         _content?.Dispose();
@@ -418,17 +436,21 @@ public sealed class ClientModule : IModule
 internal sealed class AssetReloadSystem : ISystem
 {
     private readonly AssetHotReload _watcher;
+    private readonly ShaderRecompiler _shaders;
     private readonly CVar<bool> _enabled;
 
-    public AssetReloadSystem(AssetHotReload watcher, CVar<bool> enabled)
+    public AssetReloadSystem(AssetHotReload watcher, ShaderRecompiler shaders, CVar<bool> enabled)
     {
         _watcher = watcher;
+        _shaders = shaders;
         _enabled = enabled;
     }
 
     public void Run(in SystemContext ctx)
     {
-        if (_enabled.Value) _watcher.Poll();
+        if (!_enabled.Value) return;
+        _watcher.Poll();
+        _shaders.Poll();
     }
 }
 

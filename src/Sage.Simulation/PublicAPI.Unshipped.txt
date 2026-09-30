@@ -496,6 +496,27 @@ Sage.Simulation.RenderEnvironment.ShadowStrength -> float
 Sage.Simulation.RenderEnvironment.Zenith -> System.Numerics.Vector3
 Sage.Simulation.SceneEnvironment.Hour -> float?
 Sage.Simulation.SceneEnvironment.Sky -> Sage.Core.RecordRef<Sage.Simulation.SkyRecord!>
+Sage.Simulation.SavedContent
+Sage.Simulation.SavedContent.Mount.get -> string!
+Sage.Simulation.SavedContent.Mount.init -> void
+Sage.Simulation.SavedContent.Namespace.get -> string!
+Sage.Simulation.SavedContent.Namespace.init -> void
+Sage.Simulation.SavedContent.SavedContent() -> void
+Sage.Simulation.SavedContent.SavedContent(string! Mount, string! Namespace) -> void
+Sage.Simulation.SavedPlugin
+Sage.Simulation.SavedPlugin.Id.get -> string!
+Sage.Simulation.SavedPlugin.Id.init -> void
+Sage.Simulation.SavedPlugin.SavedPlugin() -> void
+Sage.Simulation.SavedPlugin.SavedPlugin(string! Id, string! Version) -> void
+Sage.Simulation.SavedPlugin.Version.get -> string!
+Sage.Simulation.SavedPlugin.Version.init -> void
+Sage.Simulation.SavePlaceholder
+Sage.Simulation.SavePlaceholder.Prefab -> Sage.Core.RecordId
+Sage.Simulation.SavePlaceholder.Saved -> string!
+Sage.Simulation.SavePlaceholder.SavePlaceholder() -> void
+Sage.Simulation.SaveSlot.Content.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SavedContent>!
+Sage.Simulation.SaveSlot.Mismatches.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.SaveSlot.Plugins.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SavedPlugin>!
 Sage.Simulation.RenderPassAttribute
 Sage.Simulation.RenderPassAttribute.After.get -> string![]!
 Sage.Simulation.RenderPassAttribute.After.set -> void
@@ -676,6 +697,10 @@ Sage.Simulation.ToggleViewSystem
 Sage.Simulation.ToggleViewSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.ToggleViewSystem.ToggleViewSystem(Sage.Simulation.World! world, Sage.Simulation.ActionRegistry! actions) -> void
 Sage.Simulation.TwoBoneIk
+Sage.Simulation.UnknownSavedData
+Sage.Simulation.UnknownSavedData.Components -> string!
+Sage.Simulation.UnknownSavedData.Tags -> string!
+Sage.Simulation.UnknownSavedData.UnknownSavedData() -> void
 Sage.Simulation.Vars
 Sage.Simulation.Vars.Add(string! name, double amount) -> double
 Sage.Simulation.Vars.Get(string! name) -> double
@@ -898,3 +923,4 @@ static Sage.Simulation.WorldClock.Between(double hour, double from, double to) -
 static Sage.Simulation.WorldClock.Format(double hour) -> string!
 static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldClock!
 static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
+Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int

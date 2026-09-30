@@ -169,6 +169,23 @@ public sealed class AudioMixer
         foreach (var voice in _voices) voice.Stopping = true;
     }
 
+    // The file behind `asset` has been replaced (hot reload, issue 4h-3): what was playing it is playing
+    // something that no longer exists. A one-shot is stopped, since restarting it would replay a
+    // footstep nobody asked for; a loop is marked not started, which makes the backend begin it again
+    // from the new file. Voices on other files are untouched. Returns how many voices were affected.
+    public int Invalidate(AssetPath asset)
+    {
+        int n = 0;
+        foreach (var voice in _voices)
+        {
+            if (voice.Asset != asset || voice.Stopping) continue;
+            if (voice.Loop) voice.Started = false;
+            else voice.Stopping = true;
+            n++;
+        }
+        return n;
+    }
+
     public Voice? Find(VoiceHandle handle)
     {
         foreach (var voice in _voices)

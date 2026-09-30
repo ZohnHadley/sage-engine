@@ -161,7 +161,8 @@ user://saves/<slot>/
   the starting sector — the numbers would look right and the player would be standing on somebody
   else's ground.
 - **Not done here:** maps, sectors, tombstones, binary, thumbnails, autosave rotation, and the mod list
-  in the header. (Upgraders and stable ids came with issue #20: "As built (stable ids and versions)".) `GameRules` state is still not saved — the mechanism exists now, and
+  in the header (the plugins and content arrived with issue 4i-2: "As built (a load that cannot
+  half-happen)"). (Upgraders and stable ids came with issue #20: "As built (stable ids and versions)".) `GameRules` state is still not saved — the mechanism exists now, and
   nothing in the Sandbox's rules has state worth keeping yet.
 
 ### As built (stable ids and versions, issues #16 and #20, 2026-09-28)
@@ -209,6 +210,38 @@ because no upgrader existed.
   The skip list used to be C# names, which a rename would have silently emptied.
 - **Fixed on the way:** an entity saved with a name but no prefab threw on load (Friflo's `Name` setter
   needs the component to exist). No test had saved one; the golden save's lamp is one.
+
+### As built (a load that cannot half-happen, issue 4i-2, 2026-09-30)
+
+REDESIGN §4.5 found three ways a load lost a playthrough: it destroyed and rebuilt one world while the
+next was still unread, so a corrupt second file left the first rebuilt and the rest untouched (and a
+malformed record id's `FormatException` escaped the catch altogether); an entity whose prefab was gone
+was dropped; and a component or tag with no type here was skipped, then missing from the next save.
+
+- **Read everything, then change anything.** `SaveSystem.Load` reads the header and every world file,
+  parses and format-upgrades each, and reads every entity's id, prefab and name before any world is
+  touched. Anything wrong there (bad JSON, no `"entities"`, a malformed prefab id, a value of the wrong
+  kind) refuses the whole save and says "nothing was changed"; every world is as it was (tests:
+  ACorruptWorldFileLeavesEveryWorldAsItWas, AMalformedPrefabIdIsRefusedBeforeAnythingChanges). The
+  catch is wide on purpose, because nothing has changed yet when it runs.
+- **A missing prefab loads as a placeholder**: an entity with a `Transform` where it stood, its
+  persistent id, and `SavePlaceholder` (the prefab id and the saved entity as JSON text). It is disabled,
+  so no query and no system sees it; what referred to it by id still does, and the next save writes its
+  saved JSON back unchanged. When the prefab comes back, so does the entity, with its state (test:
+  AnEntityWhosePrefabIsGoneIsKeptAsAPlaceholderUntilItComesBack). Saving and clearing include disabled
+  persistent entities, so a second load replaces placeholders rather than doubling them.
+- **A component, tag or saved resource this game has no type for is kept**: `UnknownSavedData` holds an
+  entity's unknown component entries (`{ "version", "data" }` as saved) and tag ids, and the save
+  merges them back; what the entity has now wins over a kept entry of the same id. Unknown resources are
+  kept per world the same way (test: AnUnknownComponentTagAndResourceAreWrittenBackUnchanged).
+- **The header lists `plugins`** (each runtime plugin's id and version) **and `content`** (each mount's
+  name and record namespace, in priority order). A load compares them with what is loaded now, warns
+  with one line per difference, and loads anyway; `SaveSlot.Plugins`, `Content` and `Mismatches` give a
+  menu the same (test: TheHeaderListsPluginsAndContentAndAMismatchWarnsButLoads). A header from before
+  this has neither list and compares as matching. Content is listed by mount, not hashed: hashing every
+  file at every save costs too much for what a warning needs.
+- **The format stays 2**: the new header keys are ignored by older readers, and both golden saves load
+  unchanged. Format 3 comes with reconciling loads (4i-3). All of this is experimental (SAGE0131).
 
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
