@@ -19,6 +19,11 @@ public struct RenderStats
     // Views drawn this frame, and how many of them into render targets (issue #77).
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0123")] public int Views;
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0123")] public int TargetViews;
+
+    // Items drawn skinned this frame, and the joints written for them (issue #117): one palette per
+    // skinned renderer, shared by every view that sees it.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int Skinned;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int Bones;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -29,6 +34,7 @@ internal sealed class MeshPart
     public int VertexOffset, StartIndex, PrimitiveCount;
     public Matrix Bone = Matrix.Identity;      // mesh space → model space
     public BoundingSphere Bounds;              // model space
+    public bool Skinned;                       // VertexSkinned, in the skin's bind space (issue #117)
 }
 
 internal sealed class MeshData
@@ -37,6 +43,7 @@ internal sealed class MeshData
     public required MeshPart[] Parts;
     public bool IsError;
     public bool Owned;   // buffers the renderer created (error mesh, terrain chunks): it disposes them
+    public GltfLoader.Skin? Skin;              // the file's skin, if any of its parts is skinned
 }
 
 // The client renderer (docs/design/06): owns GPU-side meshes by id, the material cache and the named
@@ -104,7 +111,7 @@ public sealed class Renderer : IDisposable
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  views {LastFrame.Views} ({LastFrame.TargetViews} into render targets, {_targets.Count} target(s)), items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
-                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw); " +
+                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones); " +
                                      $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials"));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
@@ -197,50 +204,70 @@ public sealed class Renderer : IDisposable
         if (stream == null)
             Log.Warn(LogCat.Render, $"Mesh '{path}' unavailable; drawing the error mesh");
         else
-        {
-            using (stream)
-            {
-                if (GltfLoader.TryLoad(stream, path.ToString(), out var loaded, out var bounds))
-                {
-                    var parts = new List<MeshPart>(loaded.Count);
-                    foreach (var (vertices, indices) in loaded)
-                    {
-                        var vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration,
-                                                  vertices.Length, BufferUsage.WriteOnly);
-                        vb.SetData(vertices);
-                        var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, indices.Length,
-                                                 BufferUsage.WriteOnly);
-                        ib.SetData(indices);
+            using (stream) id = LoadMesh(path.ToString(), stream);
 
-                        parts.Add(new MeshPart
-                        {
-                            VertexBuffer = vb,
-                            IndexBuffer = ib,
-                            VertexOffset = 0,
-                            StartIndex = 0,
-                            PrimitiveCount = indices.Length / 3,
-                            Bone = Matrix.Identity,      // the file's hierarchy is already baked in
-                            Bounds = bounds,
-                        });
-                    }
-
-                    id = _meshes.Count;
-                    // Owned: these buffers are the renderer's, so they are disposed with it. An `.xnb`
-                    // model belonged to the ContentManager, which is the thing that has gone away.
-                    _meshes.Add(new MeshData { Name = path.ToString(), Parts = parts.ToArray(), Owned = true });
-                }
-                else
-                {
-                    Log.Warn(LogCat.Render, $"Mesh '{path}' could not be read; drawing the error mesh");
-                }
-            }
-        }
-
-        _meshIds[path] = id;
+                _meshIds[path] = id;
         return id;
     }
 
     internal MeshData Mesh(int id) => _meshes[id];
+
+    // A .glb that is not on a mount (the generated `r_testskin` model), under a name nothing else uses:
+    // afterwards `path` resolves to it like any other mesh.
+    internal int RegisterMesh(AssetPath path, System.IO.Stream stream)
+    {
+        if (_meshIds.TryGetValue(path, out int id) && id != 0) return id;
+        return _meshIds[path] = LoadMesh(path.ToString(), stream);
+    }
+
+    // A .glb → buffers, one part per primitive: rigid parts as VertexPositionNormalTexture with the
+    // file's hierarchy baked in, skinned ones as VertexSkinned in bind space (issue #117). 0 (the
+    // error mesh) when it cannot be read.
+    private int LoadMesh(string name, System.IO.Stream stream)
+    {
+        if (!GltfLoader.TryLoad(stream, name, out var model))
+        {
+            Log.Warn(LogCat.Render, $"Mesh '{name}' could not be read; drawing the error mesh");
+            return 0;
+        }
+
+        var parts = new List<MeshPart>(model.Parts.Count);
+        bool skinned = false;
+        foreach (var loaded in model.Parts)
+        {
+            VertexBuffer vb;
+            if (loaded.Skinned != null)
+            {
+                vb = new VertexBuffer(_device, VertexSkinned.VertexDeclaration, loaded.Skinned.Length, BufferUsage.WriteOnly);
+                vb.SetData(loaded.Skinned);
+                skinned = true;
+            }
+            else
+            {
+                vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration, loaded.Rigid!.Length, BufferUsage.WriteOnly);
+                vb.SetData(loaded.Rigid);
+            }
+            var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, loaded.Indices.Length, BufferUsage.WriteOnly);
+            ib.SetData(loaded.Indices);
+
+            parts.Add(new MeshPart
+            {
+                VertexBuffer = vb,
+                IndexBuffer = ib,
+                VertexOffset = 0,
+                StartIndex = 0,
+                PrimitiveCount = loaded.Indices.Length / 3,
+                Bone = Matrix.Identity,      // the file's hierarchy is already baked in (rigid) or is the skin's (skinned)
+                Bounds = model.Bounds,
+                Skinned = loaded.Skinned != null,
+            });
+        }
+
+        // Owned: these buffers are the renderer's, so they are disposed with it. An `.xnb` model
+        // belonged to the ContentManager, which is the thing that has gone away.
+        _meshes.Add(new MeshData { Name = name, Parts = parts.ToArray(), Owned = true, Skin = skinned ? model.Skin : null });
+        return _meshes.Count - 1;
+    }
 
     // A mesh built by the engine or a game (terrain chunks, 14 §3): the renderer owns the buffers and
     // hands back a handle (06 §4). Destroy it with DestroyMesh when the chunk goes away.
@@ -356,6 +383,7 @@ public sealed class Renderer : IDisposable
         var stats = new RenderStats
         {
             Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, Lights = s.Lights.Count,
+            Bones = s.Bones.Count,
         };
         Plan(s);
         _sprites.FaceCameraPosition = _spriteFaceCamera.Value;
@@ -533,6 +561,7 @@ public sealed class Renderer : IDisposable
 
             m.Effect.World?.SetValue(item.World);
             m.Effect.Tint?.SetValue(item.Tint);
+            var technique = item.BoneCount > 0 ? Skin(s, item, m, ref stats) : m.Technique;
 
             // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
             // translation is where it is relative to the camera — the same frame the view's lights are in.
@@ -543,7 +572,7 @@ public sealed class Renderer : IDisposable
             var part = _meshes[item.Mesh].Parts[item.Part];
             _device.SetVertexBuffer(part.VertexBuffer);
             _device.Indices = part.IndexBuffer;
-            foreach (var pass in m.Technique.Passes)
+            foreach (var pass in technique.Passes)
             {
                 pass.Apply();
                 _device.DrawIndexedPrimitives(PrimitiveType.TriangleList, part.VertexOffset, part.StartIndex, part.PrimitiveCount);
@@ -551,6 +580,29 @@ public sealed class Renderer : IDisposable
                 stats.Triangles += part.PrimitiveCount;
             }
         }
+    }
+
+    // A skinned item's palette into the effect's `Bones`, and the technique that reads it: the
+    // material's effect's `Skinned` (07 §3.2). An effect without one draws the mesh in its bind pose
+    // with the material's own technique, which reads the same first three vertex elements.
+    private readonly Matrix[] _bones = new Matrix[SkinMath.MaxBones];
+
+    private EffectTechnique Skin(RenderSnapshot s, in RenderItem item, MaterialRuntime m, ref RenderStats stats)
+    {
+        if (m.Skinned == null || m.Effect.Bones == null)
+        {
+            if (!m.WarnedNoSkin)   // a flag, not Log.Once: its key would be a string built per draw
+            {
+                m.WarnedNoSkin = true;
+                Log.Warn(LogCat.Render, $"Material {m.Id}: its effect has no Skinned technique (and Bones), so skinned meshes drawn with it stay in their bind pose");
+            }
+            return m.Technique;
+        }
+        var palette = s.Bones.AsSpan().Slice(item.BoneStart, item.BoneCount);
+        for (int i = 0; i < palette.Length; i++) _bones[i] = palette[i];   // System.Numerics → MonoGame (implicit)
+        m.Effect.Bones.SetValue(_bones);
+        stats.Skinned++;
+        return m.Skinned;
     }
 
     // Sprites in runs of the same material and texture: one draw per run (06 §3.7). The sheet's
@@ -643,6 +695,7 @@ internal sealed class RendererCVars
     public readonly CVar<bool> FreezeCull;
     public readonly CVar<bool> DebugThroughWalls;
     public readonly CVar<int> TestView;
+    public readonly CVar<bool> TestSkin;
 
     public RendererCVars(CVarRegistry cvars)
     {
@@ -656,5 +709,7 @@ internal sealed class RendererCVars
         TestView = cvars.Register("r_testview", 0, CVarFlags.DevOnly | CVarFlags.Cheat,
             "Extra views to see several views per frame work (06 §3.4, issue #77): 1 splits the screen with a view from behind, " +
             "2 draws a top-down map into the render target 'testview' and shows it in a corner.", 0, 2);
+        TestSkin = cvars.Register("r_testskin", false, CVarFlags.DevOnly | CVarFlags.Cheat,
+            "Draw a generated skinned model in front of the camera, bending (issue #117): GPU skinning with no content.");
     }
 }

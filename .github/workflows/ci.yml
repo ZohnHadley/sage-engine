@@ -158,6 +158,13 @@ jobs:
           # HUD shows. Without shaders nothing is drawn but the clears, so this proves the path, not the picture.
           SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testview 1\n+wait 1\n+r_testview 2\n+wait 1\n+r_stats' \
             tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
+          # GPU skinning (issue #117): `r_testskin` generates a two-joint skinned column as a .glb, loads it
+          # through the glTF skinned path and poses it every frame, then removes it. Without shaders no
+          # material builds, so nothing is extracted or drawn here: this proves the generated model and the
+          # loader. The Skinned technique compiles in the Windows job; the palette maths and extract are
+          # the headless tests (SkinningTests).
+          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testskin 1\n+wait 2\n+r_stats\n+r_testskin 0\n+wait 1' \
+            tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
           # Third person (issue #79): ToggleView puts the player's camera over the shoulder, probing the
           # scenery every frame, and the renderer draws the body the first-person view hid.
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_tap ToggleView\n+wait 5\n+in_tap ToggleView\n+wait 1' \

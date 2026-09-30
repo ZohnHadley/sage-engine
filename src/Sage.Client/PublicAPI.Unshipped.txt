@@ -11,3 +11,5 @@ Sage.Client.UiDraw.ClipDepth.get -> int
 Sage.Client.UiDraw.NineSlice(Microsoft.Xna.Framework.Graphics.Texture2D! texture, float x, float y, float width, float height, float insetLeft, float insetTop, float insetRight, float insetBottom, Microsoft.Xna.Framework.Color colour, float cornerScale = 1) -> void
 Sage.Client.UiDraw.PopClip() -> void
 Sage.Client.UiDraw.PushClip(float x, float y, float width, float height) -> void
+Sage.Client.RenderStats.Bones -> int
+Sage.Client.RenderStats.Skinned -> int

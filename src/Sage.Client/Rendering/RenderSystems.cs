@@ -177,6 +177,7 @@ internal sealed class MeshExtract : ISystem
                         item.Tint = Vector4.One;
                         item.SortKey = RenderSortKey.Make(material.Pass, mr.Layer, materialId, meshId, Vector3.Dot(center, view.Forward), view.Far);
                         item.View = v;
+                        item.BoneStart = item.BoneCount = 0;   // pooled: the slot may have been a skinned draw
                     }
                 }
             }
@@ -190,8 +191,145 @@ internal sealed class MeshExtract : ISystem
         return false;
     }
 
-    private static float MaxScale(in Matrix m) =>
+    internal static float MaxScale(in Matrix m) =>
         MathHelper.Max(new Vector3(m.M11, m.M12, m.M13).Length(), MathHelper.Max(new Vector3(m.M21, m.M22, m.M23).Length(), new Vector3(m.M31, m.M32, m.M33).Length()));
+}
+
+// Extract: skinned meshes (issue #117). As MeshExtract, plus each renderer's joint palette: written once
+// into RenderSnapshot.Bones by `SkinnedExtract.Emit` (headless, tested) at the first view that sees it,
+// and shared by every view's items. The joints are the entity's `SkeletonPose` in `SkinPoses` when
+// something poses it (put in the skin's order, `SkinPoses.ToSkinOrder`), else the mesh's rest pose.
+// Hook for #118: its AnimatorSystem `Set`s each animated entity's pose there; this system only reads it.
+[System("sage.client.extract.skinned", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
+internal sealed class SkinnedMeshExtract : ISystem
+{
+    private readonly Renderer _renderer;
+    private readonly RenderSnapshot _snapshot;
+    private readonly SkinPoses _poses;
+    private readonly Query<GlobalTransform, SkinnedMeshRenderer> _meshes;
+    private readonly HashSet<int> _mismatched = new();   // entities already warned about
+    private System.Numerics.Matrix4x4[] _skinJoints = new System.Numerics.Matrix4x4[SkinMath.MaxBones];   // grown, never shrunk
+
+    public SkinnedMeshExtract(World world, Renderer renderer)
+    {
+        _renderer = renderer;
+        _snapshot = world.Resources.Get<RenderSnapshot>();
+        _poses = world.Resources.GetOrAdd(() => new SkinPoses());
+        _meshes = world.Query<GlobalTransform, SkinnedMeshRenderer>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        var s = _snapshot;
+        if (s.Views.Count == 0) return;
+        float alpha = ctx.Frame.Alpha;
+        var materials = _renderer.Materials;
+        bool hiding = MeshExtract.AnyHidden(s);
+
+        foreach (var (globals, renderers, entities) in _meshes.Chunks)
+        {
+            var g = globals.Span;
+            var r = renderers.Span;
+            for (int n = 0; n < g.Length; n++)
+            {
+                ref readonly var sr = ref r[n];
+                if (sr.Mesh.IsEmpty) continue;
+                int meshId = _renderer.ResolveMesh(sr.Mesh);
+                var mesh = _renderer.Mesh(meshId);
+                int materialId = mesh.IsError ? 0 : materials.Resolve(sr.Material);
+                var material = materials.Get(materialId);
+                if (material == null) continue;
+
+                int id = entities.EntityAt(n).Id;
+                var skin = mesh.Skin;
+                ReadOnlySpan<System.Numerics.Matrix4x4> joints = default, inverseBind = default;
+                if (skin != null)
+                {
+                    inverseBind = skin.InverseBind;
+                    joints = skin.RestJoints;
+                    if (_poses.TryGet(id, out var pose))
+                    {
+                        int count = skin.RestJoints.Length;
+                        if (_skinJoints.Length < count) _skinJoints = new System.Numerics.Matrix4x4[count];
+                        if (SkinPoses.ToSkinOrder(pose, _skinJoints.AsSpan(0, count))) joints = _skinJoints.AsSpan(0, count);
+                        else if (!_mismatched.Contains(id))
+                        {
+                            _mismatched.Add(id);
+                            Log.Warn(LogCat.Render, $"Entity {id}: its pose has {pose.Skeleton.JointOfSkinIndex.Length} skin joints and '{mesh.Name}' has {count}; drawn in the rest pose");
+                        }
+                    }
+                }
+
+                var draws = new Draws
+                {
+                    Snapshot = s, Mesh = mesh, MeshId = meshId, MaterialId = materialId, Pass = material.Pass, Layer = sr.Layer,
+                    Pose = g[n].Interpolated(alpha).ToMatrix(),   // System.Numerics → MonoGame (implicit)
+                    Hidden = hiding ? id : 0,
+                };
+                SkinnedExtract.Emit(ref draws, joints, inverseBind, mesh.Name);
+            }
+        }
+    }
+
+    // One renderer's views and items, for SkinnedExtract.Emit.
+    private struct Draws : ISkinnedDraws
+    {
+        public RenderSnapshot Snapshot;
+        public MeshData Mesh;
+        public int MeshId, MaterialId, Hidden;
+        public RenderPass Pass;
+        public byte Layer;
+        public Matrix Pose;
+
+        public readonly int Views => Snapshot.Views.Count;
+
+        // In the view's frustum (the rest-pose sphere of the whole mesh), and not the view's own body.
+        public readonly bool Sees(int v)
+        {
+            var s = Snapshot;
+            ref var view = ref s.Views[v];
+            if (Hidden != 0 && view.Hidden == Hidden) return false;   // a camera's own body (ViewSource.HiddenFor)
+            Matrix world = Pose;
+            world.Translation -= view.CameraPosition;
+            var bounds = Mesh.Parts[0].Bounds;
+            Vector3 center = Vector3.Transform(bounds.Center, world) + (view.CameraPosition - s.CullOrigins[v]);
+            if (s.Frustum(v).Intersects(new BoundingSphere(center, bounds.Radius * MeshExtract.MaxScale(world)))) return true;
+            s.Culled++;
+            view.Culled++;
+            return false;
+        }
+
+        public readonly Span<System.Numerics.Matrix4x4> AddBones(int count, out int start)
+        {
+            start = Snapshot.Bones.Count;
+            return Snapshot.Bones.AddRange(count);
+        }
+
+        public readonly void Draw(int v, int boneStart, int boneCount)
+        {
+            var s = Snapshot;
+            ref var view = ref s.Views[v];
+            Matrix world = Pose;
+            world.Translation -= view.CameraPosition;
+            for (int p = 0; p < Mesh.Parts.Length; p++)
+            {
+                var part = Mesh.Parts[p];
+                Matrix partWorld = part.Bone * world;
+                Vector3 center = Vector3.Transform(part.Bounds.Center, partWorld);
+                ref var item = ref s.Items.Add();
+                item.Mesh = MeshId;
+                item.Part = p;
+                item.Material = MaterialId;
+                item.World = partWorld;
+                item.Tint = Vector4.One;
+                item.SortKey = RenderSortKey.Make(Pass, Layer, MaterialId, MeshId, Vector3.Dot(center, view.Forward), view.Far);
+                item.View = v;
+                bool skinned = part.Skinned && boneCount > 0;
+                item.BoneStart = skinned ? boneStart : 0;
+                item.BoneCount = skinned ? boneCount : 0;
+            }
+        }
+    }
 }
 
 // Render (06 §3.4): draws the snapshot. Nothing here reads components.

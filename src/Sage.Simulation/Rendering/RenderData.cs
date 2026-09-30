@@ -29,6 +29,46 @@ public struct MeshRenderer : IComponent
     public byte Layer;   // sort layer (0..15), before material in the sort key (06 §3.5)
 }
 
+// Draws a skinned mesh asset (a .glb with a skin, JOINTS_0 and WEIGHTS_0) at the entity's interpolated
+// GlobalTransform, bent by its joints on the GPU: the material's effect draws it with its `Skinned`
+// technique (07 §3.2), fed a palette of up to `SkinMath.MaxBones` joints per draw (issue #117).
+//
+// Where the joints are: until an animator poses the skeleton (#118's `Animator`), the mesh's own rest
+// pose from the file, which draws the model as it was modelled. An empty Material means
+// sage:lit_default, whose effect (lit.fx) has the `Skinned` technique.
+[Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // skeletal animation (#115)
+[Component("sage:skinned_mesh_renderer")]
+public struct SkinnedMeshRenderer : IComponent
+{
+    [AssetKind("mesh")] public AssetPath Mesh;
+    [RecordRef("material")] public RecordId Material;
+    public byte Layer;   // sort layer (0..15), as MeshRenderer's
+}
+
+// "skinned_mesh": { "mesh": "models/goblin.glb", "material": "goblin_skin" }
+//
+// A skinned model. A part rather than the component alone because the mesh is not optional: a
+// skinned renderer with no mesh is a prefab mistake, reported when the prefab spawns. #118's animator
+// part will sit beside it and pose it.
+[Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // skeletal animation (#115)
+[PrefabPart("skinned_mesh", Plugin = RegistrationOwners.Core)]
+public sealed class SkinnedMeshPart : IPrefabPart
+{
+    [AssetKind("mesh")]
+    [Property(Tooltip = "A .glb with a skin (JOINTS_0 and WEIGHTS_0)")]
+    public AssetPath Mesh;
+    [Property(Tooltip = "Empty = sage:lit_default; its effect needs a Skinned technique")]
+    public RecordRef<MaterialRecord> Material;
+    [Property(Min = 0, Max = 15, Tooltip = "Sort layer, drawn in order before material")]
+    public byte Layer;
+
+    public void Apply(in PrefabPartContext ctx)
+    {
+        if (Mesh.IsEmpty) { ctx.Error("needs a \"mesh\""); return; }
+        ctx.World.Add(ctx.Entity, new SkinnedMeshRenderer { Mesh = Mesh, Material = Material.Id, Layer = Layer });
+    }
+}
+
 // World resource: sky, sun, ambient and fog for everything drawn in this world (06 §3.9). Every World
 // has one with defaults; games change it (later: from an environment record, and time of day).
 // Colours are linear RGB 0..1.
