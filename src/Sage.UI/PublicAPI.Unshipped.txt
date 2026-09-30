@@ -102,6 +102,8 @@ Sage.UI.ITextMeasure.LineHeight.get -> float
 Sage.UI.ITextMeasure.Measure(string! text, float scale) -> System.Numerics.Vector2
 Sage.UI.IViewModel
 Sage.UI.IViewModel.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.UI.IViewModel.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.IViewModel.Back(in Sage.UI.UiBindContext context) -> bool
 Sage.UI.IWidgetVisitor
 Sage.UI.IWidgetVisitor.Enter(Sage.UI.Widget! widget) -> bool
 Sage.UI.IWidgetVisitor.Leave(Sage.UI.Widget! widget) -> void
@@ -321,6 +323,7 @@ Sage.UI.UiScreen
 Sage.UI.UiScreen.Builds.get -> int
 Sage.UI.UiScreen.Close() -> void
 Sage.UI.UiScreen.Context.get -> Sage.UI.UiBindContext
+Sage.UI.UiScreen.Handle(in Sage.UI.UiResult result) -> bool
 Sage.UI.UiScreen.Context.set -> void
 Sage.UI.UiScreen.Id.get -> Sage.Core.RecordId
 Sage.UI.UiScreen.IsOpen.get -> bool
@@ -352,6 +355,7 @@ Sage.UI.UiScreenStack.FocusSeconds.set -> void
 Sage.UI.UiScreenStack.IsOpen.get -> bool
 Sage.UI.UiScreenStack.Layers.get -> System.Collections.Generic.IReadOnlyList<Sage.UI.UiLayer!>!
 Sage.UI.UiScreenStack.Open(Sage.Core.RecordId screen, Sage.UI.UiBindContext context = default(Sage.UI.UiBindContext)) -> Sage.UI.UiLayer!
+Sage.UI.UiScreenStack.OpenHud(Sage.Core.RecordId screen, Sage.UI.UiBindContext context = default(Sage.UI.UiBindContext)) -> Sage.UI.UiLayer!
 Sage.UI.UiScreenStack.OpenActions.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionId>!
 Sage.UI.UiScreenStack.OpenEase.get -> Sage.Simulation.Ease
 Sage.UI.UiScreenStack.OpenEase.set -> void
@@ -546,3 +550,4 @@ virtual Sage.UI.Widget.OnChildAdded(Sage.UI.Widget! child) -> void
 virtual Sage.UI.Widget.OnChildRemoved(Sage.UI.Widget! child) -> void
 virtual Sage.UI.Widget.OnDescendantActivated(Sage.UI.Widget! widget) -> void
 virtual Sage.UI.Widget.OnDescendantFocused(Sage.UI.Widget! widget) -> void
+static Sage.UI.UiScreen.RowOf(Sage.UI.Widget? widget) -> object?

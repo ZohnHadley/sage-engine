@@ -1,1 +1,38 @@
 #nullable enable
+const Sage.Kits.Rpg.MapView.MinimumRange = 20 -> float
+const Sage.Kits.Rpg.MapView.RangeStep = 10 -> float
+Sage.Kits.Rpg.JournalView
+Sage.Kits.Rpg.JournalView.Active.get -> int
+Sage.Kits.Rpg.JournalView.Empty.get -> bool
+Sage.Kits.Rpg.JournalView.Finished.get -> int
+Sage.Kits.Rpg.JournalView.JournalView() -> void
+Sage.Kits.Rpg.JournalView.Line
+Sage.Kits.Rpg.JournalView.Line.Done.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Line() -> void
+Sage.Kits.Rpg.JournalView.Line.Objective.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Progress.get -> string!
+Sage.Kits.Rpg.JournalView.Line.Quest.get -> bool
+Sage.Kits.Rpg.JournalView.Line.QuestId.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.JournalView.Line.Stage.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Text.get -> string!
+Sage.Kits.Rpg.JournalView.Lines.get -> System.Collections.Generic.List<Sage.Kits.Rpg.JournalView.Line!>!
+Sage.Kits.Rpg.JournalView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.MapMarker
+Sage.Kits.Rpg.MapMarker.Label -> string!
+Sage.Kits.Rpg.MapMarker.MapMarker() -> void
+Sage.Kits.Rpg.MapMarker.Style -> string!
+Sage.Kits.Rpg.MapView
+Sage.Kits.Rpg.MapView.Count.get -> int
+Sage.Kits.Rpg.MapView.HasPlayer.get -> bool
+Sage.Kits.Rpg.MapView.MapView() -> void
+Sage.Kits.Rpg.MapView.Marker
+Sage.Kits.Rpg.MapView.Marker.Distance.get -> int
+Sage.Kits.Rpg.MapView.Marker.Entity.get -> Sage.Simulation.Entity
+Sage.Kits.Rpg.MapView.Marker.Label.get -> string!
+Sage.Kits.Rpg.MapView.Marker.Marker() -> void
+Sage.Kits.Rpg.MapView.Marker.Style.get -> string?
+Sage.Kits.Rpg.MapView.Marker.X.get -> float
+Sage.Kits.Rpg.MapView.Marker.Y.get -> float
+Sage.Kits.Rpg.MapView.Markers.get -> System.Collections.Generic.List<Sage.Kits.Rpg.MapView.Marker!>!
+Sage.Kits.Rpg.MapView.Range.get -> int
+Sage.Kits.Rpg.MapView.Refresh(in Sage.UI.UiBindContext context) -> void

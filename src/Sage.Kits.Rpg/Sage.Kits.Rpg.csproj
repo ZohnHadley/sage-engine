@@ -17,7 +17,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
+    <!-- The retained UI (issue #95/#96): the journal, map and shop are view-models over it, built from
+         ui_layout and screen records (issue #99). -->
+    <ProjectReference Include="..\Sage.UI\Sage.UI.csproj" />
   </ItemGroup>
+
+  <!-- Experimental API (docs/MAKING_A_GAME.md §10b): the screens are Sage.UI's (SAGE0125). -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0125</NoWarn>
+  </PropertyGroup>
 
   <!-- The layers below, for every file. -->
   <ItemGroup>

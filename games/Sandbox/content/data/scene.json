@@ -81,7 +81,8 @@
     // armours it. `"animation": "idle"` is inherited, and is a clip *name*: clip 0 is whichever name
     // sorts first, which for a Daggerfall sheet is "attack" (12 §3).
     "type": "prefab", "id": "watcher", "base": "creature", "name": "watcher",
-    "components": { "ai_state": { "schedule": "sage:idle" } },
+    "components": { "ai_state": { "schedule": "sage:idle" },
+                    "rpg:map_marker": { "label": "@sandbox.map.watcher", "style": "sandbox:map_danger" } },
     "parts": {
       "character": { "layer": "enemy" },
       "attributes": {},
@@ -217,6 +218,8 @@
     // Somebody to talk to: a billboard with a body so `Use` can reach him, and a dialogue that says
     // what he has to say. No `AIState`, so he stands there \u2014 an NPC is not a creature with a spear.
     "type": "prefab", "id": "hermit", "base": "creature", "name": "hermit",
+    // On the map (issue #99): the RPG kit's marker component, a label and the style its dot is drawn in.
+    "components": { "rpg:map_marker": { "label": "@sandbox.map.stranger", "style": "sandbox:map_person" } },
     "parts": {
       "body": { "size": [0.6, 1.8, 0.6] },
       "attributes": {},
@@ -370,6 +373,7 @@
     // Something that hums on its own (11 §3): a campfire, as data. Nothing in the simulation knows it
     // makes a noise — the component says which sound, and the client's audio system follows it.
     "type": "prefab", "id": "campfire", "name": "campfire",
+    "components": { "rpg:map_marker": { "label": "@sandbox.map.campfire", "style": "sandbox:map_place" } },
     "parts": {
       "audio": { "sound": "fire_loop", "loop": true, "volume": 0.8 },
       "particles": { "effect": "embers" }
@@ -695,6 +699,7 @@
     // cut from I/O"): walking into it cuts to `hut_cam` for three seconds, once. What it does is the
     // placement's wiring, below.
     "type": "prefab", "id": "hut_path", "name": "hut path",
+    "components": { "rpg:map_marker": { "label": "@sandbox.map.hut", "style": "sandbox:map_place" } },
     "parts": { "body": { "size": [5, 3, 3], "trigger": true, "layer": "player_zone" } }
   },
   {

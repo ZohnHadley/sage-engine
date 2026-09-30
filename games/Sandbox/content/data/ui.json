@@ -56,5 +56,131 @@
       "close":      { "widget": "button", "parent": "buttons", "text": "@sandbox.status.close", "style": "ui_button" }
     } },
 
-  { "type": "screen", "id": "status", "layout": "status", "viewModel": "sandbox_status" }
+  { "type": "screen", "id": "status", "layout": "status", "viewModel": "sandbox_status" },
+
+  // ---- the HUD (issue #99) -------------------------------------------------------------------------
+  // What SandboxHud used to place by hand, as a layout over the `sandbox_hud` view-model
+  // (Sandbox/HudView.cs). SandboxClientModule opens it as a HUD layer (UiScreenStack.OpenHud): drawn under
+  // every window, never taking a key. Anchored to the corners in virtual units (1280×720), so it sits the
+  // same on any screen. The first-person hands are still drawn by SandboxHud: a sprite sheet's frame, not
+  // a widget.
+  { "type": "ui_style", "id": "hud_text", "textScale": 2, "textColour": "#FFFFFF" },
+  { "type": "ui_style", "id": "hud_message", "base": "hud_text" },
+  { "type": "ui_style", "id": "hud_good", "base": "hud_text", "textColour": "#78E68C" },
+  { "type": "ui_style", "id": "hud_bad", "base": "hud_text", "textColour": "#F0786E" },
+  { "type": "ui_style", "id": "hud_fading", "base": "hud_text", "textColour": "#FFFFFF60" },
+  { "type": "ui_style", "id": "hud_hands", "base": "hud_text", "textColour": "#D7D7D7E6" },
+  { "type": "ui_style", "id": "hud_prompt", "base": "hud_text", "textColour": "#F5F0C8EB" },
+  { "type": "ui_style", "id": "hud_hint", "base": "hud_text", "textColour": "#D7D7D7AA" },
+  { "type": "ui_style", "id": "hud_bar", "background": "#0000008C", "fill": "#50C85AEB", "border": "#000000C8", "borderWidth": 1 },
+  { "type": "ui_style", "id": "hud_bar_low", "base": "hud_bar", "fill": "#DC3C46EB" },
+
+  { "type": "ui_layout", "id": "hud", "style": "hud_text",
+    "nodes": {
+      "health":     { "widget": "stack", "direction": "Row", "spacing": 10, "anchors": "bottom_left", "margin": [24, 0, 0, 54],
+                      "bindings": { "visible": "hasPlayer" } },
+      "healthBar":  { "widget": "bar", "parent": "health", "bind": "health", "bindings": { "max": "maxHealth", "style": "healthStyle" },
+                      "style": "hud_bar", "minSize": [220, 16], "vAlign": "Center" },
+      "healthText": { "widget": "label", "parent": "health", "bind": "healthText" },
+      "hands":      { "widget": "label", "bind": "hands", "style": "hud_hands", "anchors": "bottom_left", "margin": [24, 0, 0, 26] },
+      "messages":   { "widget": "stack", "bind": "messages", "anchors": "bottom_left", "margin": [24, 0, 0, 96] },
+      "message":    { "widget": "label", "parent": "messages", "bind": "text", "bindings": { "style": "style" } },
+      "prompt":     { "widget": "label", "bind": "prompt", "args": { "item": "promptItem" }, "style": "hud_prompt",
+                      "anchors": "center", "margin": [0, 80, 0, 0], "bindings": { "visible": "hasPrompt" } },
+      "viewHint":   { "widget": "label", "bind": "viewHint", "style": "hud_hint", "anchors": "top_right", "margin": [0, 24, 24, 0],
+                      "bindings": { "visible": "hasViewHint" } }
+    } },
+  { "type": "screen", "id": "hud", "layout": "hud", "viewModel": "sandbox_hud" },
+
+  // ---- the journal (issue #99) ---------------------------------------------------------------------
+  // The RPG kit's journal view-model (`rpg_journal`, Sage.Kits.Rpg/JournalView.cs) in this game's look:
+  // one line per quest, its stage's text and its objectives under it. J opens and closes it.
+  { "type": "ui_style", "id": "journal_quest", "base": "ui_text", "textColour": "#F0D890" },
+
+  { "type": "ui_layout", "id": "journal", "style": "ui_text",
+    "nodes": {
+      "window":    { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10, "minSize": [640, 0] },
+      "title":     { "widget": "label", "parent": "window", "text": "@sandbox.journal.title", "style": "ui_title" },
+      "summary":   { "widget": "label", "parent": "window", "text": "@sandbox.journal.summary",
+                     "args": { "count": "active", "finished": "finished" }, "style": "ui_dim" },
+      "empty":     { "widget": "label", "parent": "window", "text": "@sandbox.journal.empty", "style": "ui_dim",
+                     "bindings": { "visible": "empty" } },
+      "page":      { "widget": "scroll", "parent": "window", "style": "ui_inset", "minSize": [0, 320] },
+      "lines":     { "widget": "item_list", "parent": "page", "bind": "lines" },
+      "line":      { "widget": "stack", "parent": "lines", "direction": "Row", "spacing": 10, "style": "ui_row" },
+      "quest":     { "widget": "label", "parent": "line", "bind": "text", "style": "journal_quest", "bindings": { "visible": "quest" } },
+      "done":      { "widget": "label", "parent": "line", "text": "@sandbox.journal.done", "style": "ui_dim", "bindings": { "visible": "done" } },
+      "stage":     { "widget": "label", "parent": "line", "bind": "text", "margin": [16, 0, 0, 0], "bindings": { "visible": "stage" } },
+      "objective": { "widget": "label", "parent": "line", "bind": "text", "margin": [32, 0, 0, 0], "expand": 1,
+                     "bindings": { "visible": "objective" } },
+      "progress":  { "widget": "label", "parent": "line", "bind": "progress", "style": "ui_dim", "textAlign": "End",
+                     "bindings": { "visible": "objective" } },
+
+      "buttons":   { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10, "hAlign": "End" },
+      "hint":      { "widget": "label", "parent": "buttons", "text": "@sandbox.journal.hint", "style": "ui_dim", "textScale": 1, "vAlign": "Center" },
+      "close":     { "widget": "button", "parent": "buttons", "text": "@sandbox.status.close", "style": "ui_button" }
+    } },
+  { "type": "screen", "id": "journal", "layout": "journal", "viewModel": "rpg_journal" },
+
+  // ---- the map (issue #99) -------------------------------------------------------------------------
+  // Markers only (the kit's `rpg_map`, Sage.Kits.Rpg/MapView.cs): whatever content gave an
+  // `rpg:map_marker`, placed round you — in the middle, north up — by the `x` and `y` bindings, in a
+  // square so a metre is as long across as down. N opens and closes it.
+  { "type": "ui_style", "id": "map_area", "background": "#0A0C14E6", "border": "#3A3E52", "borderWidth": 1 },
+  { "type": "ui_style", "id": "map_label", "base": "ui_text", "textColour": "#D8D8E0" },
+  { "type": "ui_style", "id": "map_dot", "background": "#F0D890" },
+  { "type": "ui_style", "id": "map_you", "background": "#60C0FF" },
+  { "type": "ui_style", "id": "map_place", "background": "#C8A060" },
+  { "type": "ui_style", "id": "map_person", "background": "#80E080" },
+  { "type": "ui_style", "id": "map_danger", "background": "#E06060" },
+
+  { "type": "ui_layout", "id": "map", "style": "ui_text",
+    "nodes": {
+      "window":   { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10 },
+      "title":    { "widget": "label", "parent": "window", "text": "@sandbox.map.title", "style": "ui_title" },
+      "area":     { "widget": "box", "parent": "window", "style": "map_area", "minSize": [440, 440], "hAlign": "Center" },
+      "you":      { "widget": "stack", "parent": "area", "direction": "Row", "spacing": 4, "anchors": "center" },
+      "youDot":   { "widget": "label", "parent": "you", "text": "", "style": "map_you", "minSize": [10, 10], "vAlign": "Center" },
+      "youName":  { "widget": "label", "parent": "you", "text": "@sandbox.map.you", "style": "map_label" },
+      "markers":  { "widget": "box", "parent": "area", "anchors": "fill", "bindings": { "rows": "markers" } },
+      "marker":   { "widget": "stack", "parent": "markers", "direction": "Row", "spacing": 4, "bindings": { "x": "x", "y": "y" } },
+      "dot":      { "widget": "label", "parent": "marker", "text": "", "style": "map_dot", "minSize": [8, 8], "vAlign": "Center",
+                    "bindings": { "style": "style" } },
+      "name":     { "widget": "label", "parent": "marker", "bind": "label", "style": "map_label" },
+
+      "footer":   { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
+      "range":    { "widget": "label", "parent": "footer", "text": "@sandbox.map.range", "args": { "range": "range", "count": "count" },
+                    "style": "ui_dim", "expand": 1, "vAlign": "Center" },
+      "hint":     { "widget": "label", "parent": "footer", "text": "@sandbox.map.hint", "style": "ui_dim", "textScale": 1, "vAlign": "Center" },
+      "close":    { "widget": "button", "parent": "footer", "text": "@sandbox.status.close", "style": "ui_button" }
+    } },
+  { "type": "screen", "id": "map", "layout": "map", "viewModel": "rpg_map" },
+
+  // ---- the main menu (issue #99) -------------------------------------------------------------------
+  // Resume, Save and Quit, and every save there is to load (SaveSystem.Slots) over the `sandbox_main_menu`
+  // view-model (Sandbox/MainMenuView.cs). F10 opens it; choosing a save loads it and closes the menu.
+  { "type": "ui_layout", "id": "main_menu", "style": "ui_text",
+    "nodes": {
+      "window":   { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10, "minSize": [520, 0] },
+      "title":    { "widget": "label", "parent": "window", "text": "@sandbox.menu.title", "style": "ui_title" },
+      "buttons":  { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
+      "resume":   { "widget": "button", "parent": "buttons", "text": "@sandbox.menu.resume", "style": "ui_button" },
+      "save":     { "widget": "button", "parent": "buttons", "text": "@sandbox.menu.save", "style": "ui_button" },
+      "quit":     { "widget": "button", "parent": "buttons", "text": "@sandbox.menu.quit", "style": "ui_button" },
+
+      "savesTitle": { "widget": "label", "parent": "window", "text": "@sandbox.menu.saves", "args": { "count": "slotCount" }, "style": "ui_dim" },
+      "none":     { "widget": "label", "parent": "window", "text": "@sandbox.menu.no_saves", "style": "ui_dim",
+                    "bindings": { "visible": "noSaves" } },
+      "list":     { "widget": "scroll", "parent": "window", "style": "ui_inset", "minSize": [0, 220], "bindings": { "visible": "hasSaves" } },
+      "slots":    { "widget": "item_list", "parent": "list", "bind": "slots" },
+      "slot":     { "widget": "stack", "parent": "slots", "direction": "Row", "spacing": 10, "style": "ui_row" },
+      "slotName": { "widget": "label", "parent": "slot", "bind": "name", "expand": 1 },
+      "unreadable": { "widget": "label", "parent": "slot", "text": "@sandbox.menu.unreadable", "style": "ui_dim",
+                    "bindings": { "visible": "cannotLoad" } },
+      "slotWhen": { "widget": "label", "parent": "slot", "bind": "when", "style": "ui_dim", "textAlign": "End" },
+
+      "message":  { "widget": "label", "parent": "window", "bind": "message", "args": { "slot": "messageSlot" }, "style": "ui_dim" },
+      "hint":     { "widget": "label", "parent": "window", "text": "@sandbox.menu.hint", "style": "ui_dim", "textScale": 1 }
+    } },
+  { "type": "screen", "id": "main_menu", "layout": "main_menu", "viewModel": "sandbox_main_menu" }
 ]

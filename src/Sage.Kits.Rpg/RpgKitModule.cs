@@ -27,8 +27,9 @@ public sealed class RpgKitModule : IModule
 
     private ActionRegistry? _actions;
 
-    // Spells need abilities, the bag needs items; both bring attributes and combat with them.
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(AbilitiesModule), typeof(ItemsModule) };
+    // Spells need abilities, the bag needs items; both bring attributes and combat with them. The
+    // screens need sage.ui (a kit brings the base plugins it needs, even past game.json's `plugins`).
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AbilitiesModule), typeof(ItemsModule), typeof(Sage.UI.UiModule) };
 
     public void Init(ModuleContext ctx)
     {
