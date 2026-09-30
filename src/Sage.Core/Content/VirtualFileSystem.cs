@@ -114,6 +114,88 @@ public sealed class FolderMount : IMount
     public override string ToString() => $"{Name} ({Root})";
 }
 
+// A plugin's content, carried in its assembly as embedded resources (issue #98, PluginContentAttribute):
+// every resource whose logical name starts with `content/` is a file at the rest of the name. Read-only
+// and with no file on disk, so it neither hot reloads nor is written by the editor — a game changes it
+// with a patch in its own mount, which is what a kit's content is for. Case-insensitive, like a folder.
+public sealed class AssemblyContentMount : IMount
+{
+    public const string Prefix = "content/";
+
+    private readonly System.Reflection.Assembly _assembly;
+    private readonly SortedDictionary<string, string> _files = new(StringComparer.Ordinal);   // virtual path -> resource
+
+    public AssemblyContentMount(string name, System.Reflection.Assembly assembly, string recordNamespace)
+    {
+        Name = name;
+        _assembly = assembly;
+        RecordNamespace = recordNamespace;
+        foreach (string resource in assembly.GetManifestResourceNames())
+        {
+            // Windows' MSBuild writes %(RecursiveDir) with backslashes.
+            string logical = resource.Replace('\\', '/');
+            if (!logical.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) || logical.Length == Prefix.Length) continue;
+            _files[VirtualPath.Parse(logical[Prefix.Length..]).Value] = resource;
+        }
+    }
+
+    public string Name { get; }
+    public string RecordNamespace { get; }
+
+    // How many files it carries.
+    public int Count => _files.Count;
+
+    public bool Exists(VirtualPath path) => _files.ContainsKey(path.Value);
+
+    public Stream Open(VirtualPath path) =>
+        _files.TryGetValue(path.Value, out var resource) && _assembly.GetManifestResourceStream(resource) is { } stream
+            ? stream
+            : throw new FileNotFoundException($"'{path}' not found in mount {Name}");
+
+    public string? PhysicalPath(VirtualPath path) => null;
+
+    public string? WritablePath(VirtualPath path) => null;
+
+    public IEnumerable<VirtualPath> Enumerate(VirtualPath? directory, string searchPattern, bool recursive)
+    {
+        string prefix = directory is { } d ? d.Value + "/" : "";
+        foreach (string file in _files.Keys)
+        {
+            if (!file.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            string rest = file[prefix.Length..];
+            if (!recursive && rest.Contains('/')) continue;
+            if (Matches(rest[(rest.LastIndexOf('/') + 1)..], searchPattern)) yield return VirtualPath.Parse(file);
+        }
+    }
+
+    // `*` and `?` against a file name, ignoring case, as Directory.EnumerateFiles matches.
+    private static bool Matches(string name, string pattern)
+    {
+        if (pattern is "*" or "*.*") return true;
+        return Match(name.AsSpan(), pattern.AsSpan());
+
+        static bool Match(ReadOnlySpan<char> s, ReadOnlySpan<char> p)
+        {
+            while (p.Length > 0)
+            {
+                if (p[0] == '*')
+                {
+                    p = p[1..];
+                    for (int i = 0; i <= s.Length; i++)
+                        if (Match(s[i..], p)) return true;
+                    return false;
+                }
+                if (s.Length == 0 || (p[0] != '?' && char.ToLowerInvariant(p[0]) != char.ToLowerInvariant(s[0]))) return false;
+                s = s[1..];
+                p = p[1..];
+            }
+            return s.Length == 0;
+        }
+    }
+
+    public override string ToString() => $"{Name} ({_assembly.GetName().Name}.dll, {Count} file(s))";
+}
+
 // Mounts in priority order: later mounts shadow earlier ones for the same path (05 §3.1).
 // Mount order: engine content → framework content → game.json mounts → mods (load order).
 public sealed class VirtualFileSystem

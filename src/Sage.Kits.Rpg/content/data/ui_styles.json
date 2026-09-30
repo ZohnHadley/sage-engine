@@ -1,0 +1,25 @@
+[
+  // The RPG kit's look (issue #98): what its screens' layouts name. A game restyles them with a patch
+  // in its own mount — `{ "type": "ui_style", "id": "rpg:panel", "patch": true, "background": "#101830E0" }`.
+  { "type": "ui_style", "id": "panel", "padding": 8, "background": "#141414E0", "border": "#5A4A30", "borderWidth": 1,
+    "textColour": "#E0D8C8", "states": { "disabled": { "textColour": "#707070" } } },
+  { "type": "ui_style", "id": "title", "base": "panel", "background": "#00000000", "borderWidth": 0, "textScale": 1.5,
+    "padding": [0, 2], "textColour": "#F0E0B0" },
+  { "type": "ui_style", "id": "text", "base": "panel", "background": "#00000000", "borderWidth": 0, "padding": 0 },
+  { "type": "ui_style", "id": "hint", "base": "text", "textColour": "#908878" },
+  { "type": "ui_style", "id": "warning", "base": "text", "textColour": "#E07050" },
+  { "type": "ui_style", "id": "button", "base": "panel", "padding": [6, 3], "background": "#2A2620",
+    "states": { "hover": { "background": "#3A3428" }, "focused": { "background": "#5A4A30", "border": "#F0E0B0" },
+                "pressed": { "background": "#806A40" } } },
+  { "type": "ui_style", "id": "weight_bar", "base": "panel", "padding": 0, "background": "#202020", "fill": "#B09050" },
+
+  // A square of an inventory grid: empty, with a stack on it, or with the stack in the hand on it.
+  { "type": "ui_style", "id": "cell", "base": "button", "padding": 2, "background": "#1C1A16", "border": "#3A3428",
+    "textScale": 0.75 },
+  { "type": "ui_style", "id": "cell_item", "base": "cell", "background": "#3A3020", "textColour": "#F0E8D8" },
+  { "type": "ui_style", "id": "cell_held", "base": "cell", "background": "#4A5A30", "border": "#C0F080" },
+
+  // A topic, before and after it was asked (Morrowind greys what you have heard).
+  { "type": "ui_style", "id": "topic", "base": "button", "background": "#00000000", "borderWidth": 0, "textColour": "#F0D890" },
+  { "type": "ui_style", "id": "topic_asked", "base": "topic", "textColour": "#A09880" }
+]

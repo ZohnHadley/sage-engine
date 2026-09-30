@@ -44,6 +44,23 @@ public sealed class RequiresPluginAttribute : Attribute
     public string Range { get; }
 }
 
+// Content a plugin ships inside its assembly (issue #98): the embedded resources whose logical names
+// start with `content/`, mounted as one read-only mount (AssemblyContentMount) with this record
+// namespace — after engine content and before the game's mounts, so a game patches a kit's records and
+// strings as it patches the engine's. Mounted only while the plugin is loaded. The project embeds them:
+//
+//   <EmbeddedResource Include="content/**/*" LogicalName="content/%(RecursiveDir)%(Filename)%(Extension)" />
+//
+//   [Plugin("sage.kits.rpg", "0.1.0"), PluginContent("rpg")]
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class PluginContentAttribute : Attribute
+{
+    public PluginContentAttribute(string recordNamespace) { RecordNamespace = recordNamespace; }
+
+    // What a bare record id in the plugin's content means: `inventory` in it is `rpg:inventory`.
+    public string RecordNamespace { get; }
+}
+
 // major.minor.patch. A missing minor or patch is 0 ("1.2" is 1.2.0). Pre-release and build suffixes
 // are accepted and ignored for ordering, which is all the loader needs today.
 public readonly record struct SemVersion(int Major, int Minor, int Patch) : IComparable<SemVersion>

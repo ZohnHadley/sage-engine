@@ -1,0 +1,45 @@
+{
+  // The RPG kit's words (issue #98): `@rpg.<key>`. A game retranslates or rewords any line with
+  // strings/<lang>/rpg.json in its own mount; a later mount's key wins.
+  "inventory": {
+    "title": "Inventory",
+    "weight": "Weight {current} / {max} kg",
+    "weight_unlimited": "Weight {current} kg",
+    "hint": "D-pad: move    A: pick up / put down    B: put back, close"
+  },
+  "grid": {
+    "stack": "{item} ×{count}",
+    "tooltip": { "one": "{item}, {weight} kg", "other": "{count} {item}, {weight} kg" },
+    "holding": "Moving {item}",
+    "no_room": "There is no room for {item} there.",
+    "too_heavy": "{item} is too heavy: that would be {total} of {capacity} kg.",
+    "cannot_hold": "{who} cannot carry anything.",
+    "gone": "{item} is not there any more."
+  },
+  "loot": {
+    "title": "{who}",
+    "yours": "Yours",
+    "empty": "Nothing left.",
+    "take_all": "Take all",
+    "left": { "one": "Left {item}: too heavy.", "other": "Left {count} things, {item} among them: too heavy." },
+    "hint": "A: pick up / put down    Take all: everything that fits    B: close"
+  },
+  "equipment": {
+    "title": "Equipment",
+    "slot": "{slot}: {item}",
+    "empty_slot": "{slot}: nothing",
+    "candidate": "{item} ({slot})",
+    "wearable": "Could wear",
+    "hint": "A on a slot: take it off    A on an item: put it on    B: close"
+  },
+  "slots": {
+    "mainhand": "Main hand",
+    "offhand": "Off hand"
+  },
+  "topics": {
+    "title": "{who}",
+    "none": "They have nothing to talk about.",
+    "no_answer": "They have nothing to say about that.",
+    "hint": "A: ask    B: leave"
+  }
+}
