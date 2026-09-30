@@ -970,7 +970,8 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
-| 3 — Carve the base | **Done** (#23). the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), and public API files, SemVer from git tags and `sage` ranges (#31, [RELEASING](RELEASING.md)), each with an "As built" note. **Next: Stage B, phase 4a** |
+| 3 — Carve the base | **Done** (#23). the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), and public API files, SemVer from git tags and `sage` ranges (#31, [RELEASING](RELEASING.md)), each with an "As built" note |
+| 4a — Cameras as components | **Done** (#75: #76–#81). Cameras are entities with a director, rigs for first and third person with the V toggle, scripted cuts from entity I/O, several views and named render targets, and the editor's free camera and viewport on them; both exit criteria run in the Sandbox with tests. **Next: 4b and 4c** |
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|
@@ -990,7 +991,7 @@ test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *acti
 
 | Phase | Work | Exit criterion |
 |---|---|---|
-| **4a** | **Cameras as components**: perspective (and ortho, cheap to include); rigs for first-person (moved out of Gameplay), third-person over-the-shoulder with collision and 1P/3P toggle, fixed/cinematic for scripted scenes; several views per snapshot; render targets | switch 1P↔3P mid-fight; a scripted camera cut from I/O |
+| **4a** | **Done** (#75). **Cameras as components**: perspective (and ortho, cheap to include); rigs for first-person (moved out of Gameplay), third-person over-the-shoulder with collision and 1P/3P toggle, fixed/cinematic for scripted scenes; several views per snapshot; render targets | switch 1P↔3P mid-fight; a scripted camera cut from I/O |
 | **4b** | **Timers, tweens, state machines**; the **conditions/actions vocabulary** (§4.3 stage 2); logic entities and bridge I/O (stage 3). This is HL1's scripted sequences and Morrowind's dialogue conditions in one mechanism | an HL1-style sequence (door, lift, NPC line, counter) and a conditional dialogue topic, built in data only |
 | **4c** | **UI toolkit** (retained widgets, layout, focus and gamepad, style/layout records, localisation keys). First consumers are RPG screens: HUD, inventory **grid with weight** (S.T.A.L.K.E.R.), equipment, container/loot, shop, dialogue topics, journal, map, and a main menu with save/load | inventory, loot and dialogue screens built from records over headless view-models, with tests |
 | **4d** | **Skeletal animation** [F9–F12]: glTF skins, clips, blending, anim state machine as data, animation events replacing the `attack`/`hit`/`idle` names, **first-person arms and viewmodels**, simple IK for aiming and feet | an NPC walks, runs, aims and attacks, blended; first-person arms reload a weapon |
@@ -1051,6 +1052,28 @@ now wire entity I/O (a placement's `outputs`), because only `.map`s could, and a
 another namespace's prefab. `tests/games/camera-cut` proves it with no C#
 (test: ATriggerCutsToANamedCameraAndBack_InAGameWithNoCode). Details: docs/design/06 "As built (scripted
 cameras from entity I/O)".
+
+*As built, 4a (issue #81, 2026-09-29): the host and the editor on camera views; phase 4a done.* The
+editor's free camera is a camera entity (`DebugCamera`): below every other camera, so it has the screen
+only where nothing else draws, and above every other while `cam_free` is on. The director has no special
+case any more, the host no longer writes `ActiveCamera`, and `ActiveCamera.RigEnabled`/`DrivenByRig` are
+obsolete and inert (kept one release, having shipped in 0.1.0). Audio, weather, `fx_play` and `ent_spawn`
+place things by `world.TryGetMainView`; `ActiveCamera` stays the mirror (D1). The editor viewport
+(`ed_viewport`) draws the free camera into the render target `editor` and shows it in an ImGui window,
+the prerequisite for §4.6's editor host. The Sandbox shows the exit criteria: V on the HUD for 1P↔3P
+mid-fight (test: ToggleView_MidMeleeInTheSandbox_SwitchesWithinAFrame_AndCombatIsUnaffected), and a
+scripted cut when the player walks up the path to the hut, wired in its scene
+(test: TheSandboxCutsToTheHut_WhenThePlayerWalksUpThePath_AndBack). SAGE0123 stays experimental until 4b
+and 4c use it. Details: docs/design/06 "As built (the editor's cameras, and phase 4a's exit)".
+
+**Phase 4a summary.** Six issues (#76–#81) turned the camera from a resource the host and one rig wrote
+into entities the engine resolves: a `Camera` component and `CameraDirector` writing `CameraViews`
+(#76); a renderer drawing every view, into named render targets or the screen, with one world on the
+screen (#77); the player's first-person rig (#78) and a third-person rig with collision and the V toggle
+(#79) on a camera entity per player; scripted cuts from entity I/O, wired in data (#80); and the editor
+on the same terms (#81). `ActiveCamera` survived as a mirror (D1); rigs are components on camera entities
+(D2); render targets are named and fixed-size (D3). Left for later phases: blends (4b), render targets in
+UI widgets (4c), the editor's own world and picking (phase 10).
 
 ### Stage C: prove it on the action-RPG family, then build your game
 

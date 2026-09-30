@@ -13,7 +13,7 @@ The Sage editor is a **separate host** (`Sage.Editor` exe) that loads the same e
 - **Documents are the source of truth; the edit world is derived.** Opening a map loads its files into a document model (per-sector entity lists with prefab + overrides, 09 §3.4). An **edit world** is built from it (the "bake" step, v1: plain instantiation). Edits change the *document*; the affected entities in the edit world are re-instantiated.
 - **Command log:** every change is a command with `Do`/`Undo` and a description (`Move 3 entities`, `Set Health.Max 100 → 120`). Undo/redo stacks per document; dirty tracking; save writes JSON. Commands are also the unit of "recent changes" and future collaboration.
 - **Panels (ImGui):**
-  - viewport (the editor camera rig: today's `DevCamera` behaviour on `Move`/`Look` actions in the `Editor` context, 08);
+  - viewport (the editor camera rig: today's `DevCamera` behaviour on `Move`/`Look` actions in the `Editor` context, 08). *Stub since #81:* `ed_viewport` shows the free camera — a `DebugCamera` entity — drawn into the render target `editor` in an ImGui window (06 "As built (the editor's cameras)");
   - outliner (spaces → sectors → entities);
   - inspector (generated metadata, 09 §3.2: typed editors, ranges, categories, prefab-override highlighting, "revert to prefab");
   - record browser/editor (form view + raw JSON, showing which mod/file each field came from, 05);

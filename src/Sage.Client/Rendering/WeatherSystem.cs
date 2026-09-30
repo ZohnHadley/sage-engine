@@ -20,7 +20,7 @@ internal sealed class WeatherSystem : ISystem
     private readonly Particles _particles;
     private readonly RenderEnvironment _environment;
     private readonly RenderEnvironment _clearSky;      // the game's own light, before weather touched it
-    private readonly ActiveCamera _camera;
+    private readonly World _world;           // its main view is where the weather falls around (#81)
     private readonly AudioMixer _audio;
     private readonly RecordStore _records;
     private readonly CVar<bool> _enabled;
@@ -35,7 +35,7 @@ internal sealed class WeatherSystem : ISystem
         _weather = world.Resources.Get<Weather>();
         _particles = world.Resources.Get<Particles>();
         _environment = world.Resources.Get<RenderEnvironment>();
-        _camera = world.Resources.Get<ActiveCamera>();
+        _world = world;
         _audio = world.Resources.Get<AudioMixer>();
         _records = records;
         _enabled = enabled;
@@ -98,7 +98,7 @@ internal sealed class WeatherSystem : ISystem
 
         // Above the camera and around it, in the weather's volume rather than the effect's: how wide the
         // rain is belongs to the weather, how a drop behaves belongs to the effect.
-        var at = _camera.Position + new Vector3(0, record.Ceiling, 0);
+        var at = Eye() + new Vector3(0, record.Ceiling, 0);
         _particles.Emit(record.Particles, effect, at, -Vector3.UnitY, count, volume: record.Volume);
     }
 
@@ -117,10 +117,13 @@ internal sealed class WeatherSystem : ISystem
         if (wanted.IsEmpty) return;
 
         _records.TryGet(wanted, out SoundRecord sound);
-        _voice = _audio.Play(wanted, sound, _camera.Position, positional: false,
+        _voice = _audio.Play(wanted, sound, Eye(), positional: false,
                              volume: record.SoundVolume, loop: true);
         _playing = wanted;
     }
+
+    // Where the screen's view is this frame (the camera it shows, or ActiveCamera without one).
+    private Vector3 Eye() => _world.TryGetMainView(out var view) ? view.Position : Vector3.Zero;
 
     private void Silence()
     {

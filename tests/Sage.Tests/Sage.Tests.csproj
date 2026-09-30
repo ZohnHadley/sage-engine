@@ -10,6 +10,13 @@
     <RootNamespace>Sage.Tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
+    <!-- No background GC in the test process (runtimeconfig System.GC.Concurrent=false). The zero-
+         allocation tests read GC.GetAllocatedBytesForCurrentThread, and a background GC started by any
+         thread clears this thread's allocation context without taking its unused bytes off the count
+         (dotnet/runtime#134724), so a window that allocated nothing reads up to 8 KB more. That was the
+         Windows-only flake in #81 (2016, 7408, 3816 and 32 bytes, a different test each run). Blocking
+         collections account correctly; AllocationProbeTests prove it, and fail if this is turned off. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>

@@ -7,8 +7,8 @@ namespace Sage.Simulation;
 // of what it follows, at display rate, from the interpolated pose and the view angles the last command
 // carried (06 §3.3, 16 §3.2). Issue #78: this was FirstPersonCameraSystem, which wrote ActiveCamera
 // directly and flagged it DrivenByRig; now it is one camera entity's rig among others, and the director
-// decides whether that camera draws the screen (and mirrors it into ActiveCamera, and stands aside for
-// cam_free). The character plugin installs it. Allocates nothing.
+// decides whether that camera draws the screen (and mirrors it into ActiveCamera; `cam_free`'s debug camera
+// outranks it, #81). The character plugin installs it. Allocates nothing.
 [Experimental("SAGE0123")]
 [System(Id, Phase.FrameUpdate, Before = new[] { CameraDirector.Id })]
 public sealed class FirstPersonRigSystem : ISystem

@@ -50,7 +50,13 @@ public sealed class SandboxHud : ISystem
 
         float x = 24f, bottom = height - 28f;
         DrawMessages(x, bottom - 86f);
-        if (!screenOpen) DrawPrompt(world, width * 0.5f, height * 0.5f + 28f);
+        // What Use would do and what V does belong to the player's own view: not to a scripted cut, nor
+        // to the editor's free camera (engine issue #81).
+#pragma warning disable SAGE0123   // cameras as entities are experimental; this game follows them
+        bool ownView = world.MainViewRig() != CameraRigKind.None;
+#pragma warning restore SAGE0123
+        if (!screenOpen && ownView) DrawPrompt(world, width * 0.5f, height * 0.5f + 28f);
+        if (!screenOpen && ownView) DrawViewHint(world, width - 24f, 28f);
 
         foreach (var player in _players.Entities)
         {
@@ -167,6 +173,24 @@ public sealed class SandboxHud : ISystem
         }
         var size = _ui.Measure(_promptText);
         _ui.Text(centreX - size.X * 0.5f, y, _promptText, new Color(245, 240, 200, 235));
+    }
+
+    // What V does (engine issue #79's ToggleView, REDESIGN phase 4a's "switch 1P↔3P mid-fight"): a
+    // key nobody finds is a feature nobody has. Only while the player's rig has the screen — not during
+    // a scripted cut or with the editor's free camera — and constant strings, so nothing is allocated.
+    private void DrawViewHint(World world, float right, float y)
+    {
+#pragma warning disable SAGE0123   // cameras as entities are experimental; this game follows them
+        string? hint = world.MainViewRig() switch
+        {
+            CameraRigKind.FirstPerson => "V   third person",
+            CameraRigKind.ThirdPerson => "V   first person",
+            _ => null,
+        };
+#pragma warning restore SAGE0123
+        if (hint == null) return;
+        var size = _ui.Measure(hint);
+        _ui.Text(right - size.X, y, hint, new Color(215, 215, 215, 170));
     }
 
     // Newest at the bottom, fading out as they age (13 §3).

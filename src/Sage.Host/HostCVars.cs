@@ -8,6 +8,8 @@ internal sealed class HostCVars
     public CVar<float> TimeScale { get; }
     public CVar<bool> VSync { get; }
     public CVar<float> ExitAfter { get; }
+    public CVar<int> Width { get; }
+    public CVar<int> Height { get; }
 
     public HostCVars(CVarRegistry r)
     {
@@ -21,5 +23,9 @@ internal sealed class HostCVars
             "Wait for the display's vertical sync.");
         ExitAfter = r.Register("host_exitafter", 0f, CVarFlags.DevOnly,
             "Quit after this many seconds of real time and log frame/tick counts (0 = off). For automated smoke runs.", 0f, 86400f);
+        // The window's size in pixels (issue #81): saved in config.cfg, or given on the command line as
+        // `+vid_width 1600 +vid_height 900`. Applied when it changes.
+        Width = r.Register("vid_width", 800, CVarFlags.Archive, "Window width in pixels.", 320, 7680);
+        Height = r.Register("vid_height", 410, CVarFlags.Archive, "Window height in pixels.", 200, 4320);
     }
 }

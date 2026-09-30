@@ -468,6 +468,51 @@ public class CameraIOTests
         Assert.Contains(Said(world), m => m == "Back to you.");
     }
 
+    // Phase 4a's exit criterion in the Sandbox itself (#81): walking up the path to the hut's door cuts
+    // to the hut camera for three seconds and back to the player's view, once. The path's trigger is on a
+    // layer only the player touches, so the creatures wandering the scene never fire it.
+    [Fact]
+    public void TheSandboxCutsToTheHut_WhenThePlayerWalksUpThePath_AndBack()
+    {
+        using var app = HeadlessApp.ForGame(SandboxGame, new global::Sandbox.SandboxModule()).WithEngineContent().Boot();
+        var world = app.World;
+        var views = world.Resources.Get<CameraViews>();
+        var hutCam = world.FindByName("hut_cam");
+        var path = world.FindByName("hut path");
+        var player = Scenes.Player(world);
+        Assert.False(hutCam.IsNull || path.IsNull || player.IsNull);
+        Assert.False(world.Get<Camera>(hutCam).Enabled);
+
+        // Two seconds of the scene as it starts — creatures wander, crates fall — and no cut.
+        Step(world, 120);
+        Assert.False(world.Get<Camera>(hutCam).Enabled);
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
+
+        // The player walks onto the path (teleported to it): the cut lands within a few ticks.
+        world.Teleport(player, Transform.At(world.Get<GlobalTransform>(path).Current.Position));
+        int waited = 0;
+        while (!world.Get<Camera>(hutCam).Enabled && waited < 30) { Step(world); waited++; }
+        Assert.True(world.Get<Camera>(hutCam).Enabled, "walking up the path did not cut to the hut camera");
+        Assert.Equal(hutCam, views.Main.Entity);
+        Assert.Equal(CameraRigKind.None, world.MainViewRig());
+        Step(world);                                              // its OnCameraOn says what it shows
+        Assert.Contains(Said(world), m => m.StartsWith("A hut on the hill", StringComparison.Ordinal));
+
+        int hold = 1;
+        while (world.Get<Camera>(hutCam).Enabled && hold < 400) { Step(world); hold++; }
+        Assert.Equal(180, hold);                                  // three seconds, to the tick
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
+
+        // Once: walking off the path and back on does not cut again.
+        world.Teleport(player, Transform.At(world.Get<GlobalTransform>(path).Current.Position + new Vector3(0, 0, 8)));
+        Step(world, 10);
+        world.Teleport(player, Transform.At(world.Get<GlobalTransform>(path).Current.Position));
+        Step(world, 30);
+        Assert.False(world.Get<Camera>(hutCam).Enabled);
+    }
+
+    private static string SandboxGame => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
+
     private static string[] Said(World world) => world.Messages().Messages.ToArray().Select(m => m.Text).ToArray();
 }
 
@@ -497,14 +542,7 @@ public class CameraIOAllocationTests
         }
         for (int i = 0; i < 5; i++) { world.RunFixed(1f / 60f); Profiler.EndFrame(); }   // warm up
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 200; i++)
-        {
-            world.RunFixed(1f / 60f);
-            Profiler.EndFrame();
-        }
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        Assert.Equal(0, allocated);
+        AllocationProbe.AssertNone(200, () => { world.RunFixed(1f / 60f); Profiler.EndFrame(); });
         Assert.True(world.Get<ScriptedCamera>(last).Remaining > 0f);
     }
 }

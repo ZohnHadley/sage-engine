@@ -50,7 +50,7 @@ internal static class WorldConsoleCommands
                 position = new Vector3(x, y, z);
                 if (a.Count >= 5 && float.TryParse(a[4], out float given)) yaw = given;
             }
-            else if (!world.Resources.TryGet<ActiveCamera>(out var camera) || camera == null)
+            else if (!world.TryGetMainView(out var camera))   // in front of the screen's view (#81)
             {
                 Log.Warn(LogCat.Console, "ent_spawn: this world has no camera to spawn in front of; give x y z");
                 return;

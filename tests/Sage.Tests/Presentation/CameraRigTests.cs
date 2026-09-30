@@ -108,9 +108,11 @@ public class CameraRigTests
         Near(EyeOf(app, player), world.Resources.Get<CameraViews>().Main.Position);
     }
 
-    // cam_free still flies the editor camera over the player's, and gives the screen back.
+    // cam_free flies the editor camera over the player's, and gives the screen back (#81: the editor's
+    // free camera is a DebugCamera, driven the way DevTools drives it, and the director has no special case).
+    // The player's rig goes on running underneath, and its body is drawn from the free camera.
     [Fact]
-    public void CamFree_FliesOverThePlayersCamera_AndGivesTheScreenBack()
+    public void TheEditorsFreeCamera_FliesOverThePlayersCamera_AndGivesTheScreenBack()
     {
         using var app = SceneOnly();
         var world = app.World;
@@ -118,21 +120,24 @@ public class CameraRigTests
         var camera = Assert.Single(PlayerCameras(world));
         var active = world.Resources.Get<ActiveCamera>();
         var views = world.Resources.Get<CameraViews>();
-#pragma warning disable CS0618   // RigEnabled is cam_free's switch until the editor camera is an entity (#81)
-        active.RigEnabled = false;                    // what DevTools does for cam_free
-        active.Position = new Vector3(0, 50, 0);      // and where the free camera is
+        var free = DebugCamera.Spawn(world, "editor free camera");
+        DebugCamera.Drive(world, free, new Vector3(0, 50, 0), Quaternion.Identity, overriding: false);
         Step(world);
-        Assert.True(views.Main.FromActiveCamera);
+        Assert.Equal(camera, views.Main.Entity);                 // idle: the player's camera outranks it
+
+        DebugCamera.Drive(world, free, new Vector3(0, 50, 0), Quaternion.Identity, overriding: true);   // cam_free 1
+        Step(world);
+        Assert.Equal(free, views.Main.Entity);
         Assert.Equal(new Vector3(0, 50, 0), active.Position);
         Assert.Equal(CameraRigKind.None, world.MainViewRig());   // no crosshair, no hands
-        Assert.False(active.DrivenByRig);
+        Assert.True(CameraRigs.HiddenBy(world, views.Main.Entity).IsNull);   // the player's body is seen
+        Assert.False(world.Get<CameraPose>(camera).Position == Vector3.Zero, "the player's rig stopped running");
 
-        active.RigEnabled = true;
+        DebugCamera.Drive(world, free, new Vector3(0, 50, 0), Quaternion.Identity, overriding: false);  // cam_free 0
         Step(world);
         Assert.Equal(camera, views.Main.Entity);
         Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
-        Assert.True(active.DrivenByRig);
-#pragma warning restore CS0618
+        Assert.Equal(views.Main.Position, active.Position);
     }
 
     // A camera of higher priority takes the screen (a cutscene, a fixed camera): the crosshair's question
@@ -463,16 +468,11 @@ public class CameraRigAllocationTests
         for (int i = 0; i < 5; i++) { CameraRigTests.Step(world); Profiler.EndFrame(); }   // warm up, and the spawn
 
         var views = world.Resources.Get<CameraViews>();
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 200; i++)
-        {
-            world.RunFrame(1f / 60f, i / 200f);
-            Profiler.EndFrame();
-        }
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        int frame = 0;
+        var allocated = AllocationProbe.Measure(200, () => { world.RunFrame(1f / 60f, frame++ / 200f); Profiler.EndFrame(); });
         Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
         Assert.False(views.Main.FromActiveCamera);
-        Assert.Equal(0, allocated);
+        Assert.True(allocated.Bytes == 0, allocated.Text);
     }
 
     // And over the shoulder, with the probe sweeping every frame against a wall that keeps it pulled in.
@@ -486,15 +486,10 @@ public class CameraRigAllocationTests
         world.Spawn(new RecordId("sceneonly", "wall"), new Vector3(eye.X, eye.Y - 2f, eye.Z + 1.5f));
         for (int i = 0; i < 5; i++) { CameraRigTests.Step(world); Profiler.EndFrame(); }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 200; i++)
-        {
-            world.RunFrame(1f / 60f, i / 200f);
-            Profiler.EndFrame();
-        }
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        int frame = 0;
+        var allocated = AllocationProbe.Measure(200, () => { world.RunFrame(1f / 60f, frame++ / 200f); Profiler.EndFrame(); });
         Assert.Equal(CameraRigKind.ThirdPerson, world.MainViewRig());
         Assert.True(CameraRigTests.Boom(app) < ThirdPersonRig.DefaultDistance, "the probe is not finding the wall");
-        Assert.Equal(0, allocated);
+        Assert.True(allocated.Bytes == 0, allocated.Text);
     }
 }

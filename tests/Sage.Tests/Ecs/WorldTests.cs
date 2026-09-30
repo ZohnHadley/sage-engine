@@ -165,9 +165,7 @@ public class WorldTests
             }
         }
         Step();
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int k = 0; k < 50; k++) Step();
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        AllocationProbe.AssertNone(50, Step);
     }
 
     [Fact]

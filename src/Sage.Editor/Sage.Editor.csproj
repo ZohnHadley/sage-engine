@@ -6,6 +6,11 @@
     <SageBaseAssembly>true</SageBaseAssembly>
   </PropertyGroup>
 
+  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the editor's free camera and viewport are camera entities drawing into a render target (SAGE0123, issue #81). -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0123</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.DesktopGL" />
   </ItemGroup>

@@ -22,7 +22,6 @@ internal sealed class ParticleSystem : ISystem
     private readonly Particles _particles;
     private readonly FloatingTexts _texts;
     private readonly RecordStore _records;
-    private readonly ActiveCamera _camera;
     private readonly CVar<bool> _enabled;
     private readonly CVar<bool> _numbers;
 
@@ -35,7 +34,6 @@ internal sealed class ParticleSystem : ISystem
         _particles = world.Resources.Get<Particles>();
         _texts = world.Resources.Get<FloatingTexts>();
         _records = records;
-        _camera = world.Resources.Get<ActiveCamera>();
         _enabled = enabled;
         _numbers = numbers;
 

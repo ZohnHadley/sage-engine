@@ -20,7 +20,6 @@ internal sealed class AudioSystem : ISystem
     private readonly AudioMixer _mixer;
     private readonly IAudioBackend _backend;
     private readonly RecordStore _records;
-    private readonly ActiveCamera _camera;
     private readonly CVar<bool> _enabled;
 
     private readonly EventReader<CueTriggered> _cues;
@@ -41,7 +40,6 @@ internal sealed class AudioSystem : ISystem
         _mixer = world.Resources.Get<AudioMixer>();
         _backend = world.Resources.Get<IAudioBackend>();
         _records = records;
-        _camera = world.Resources.Get<ActiveCamera>();
         _enabled = enabled;
 
         // **Fixed, not Frame**, although this system runs per frame: an event belongs to the queue of
@@ -61,7 +59,9 @@ internal sealed class AudioSystem : ISystem
     {
         var world = ctx.World;
 
-        _mixer.SetListener(_camera.Position, _camera.Rotation);
+        // The ears are where the screen's view is (#81): the player's camera, a scripted cut, or the
+        // editor's free camera — the same view ActiveCamera mirrors, asked for by name.
+        if (world.TryGetMainView(out var listener)) _mixer.SetListener(listener.Position, listener.Rotation);
         _mixer.Update(ctx.Frame.RealTime);
 
         // Turning the sound off stops what is already playing, rather than leaving a loop running
