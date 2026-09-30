@@ -134,11 +134,18 @@ public static class ContentValidation
 
         public void Write(in LogEntry entry)
         {
-            if (entry.ThreadId != _thread || entry.Level < LogLevel.Warn) return;
+            if (entry.ThreadId != _thread || entry.Level < LogLevel.Warn || IsRepeatNote(entry)) return;
             lock (_entries) _entries.Add(entry);
         }
 
         public void Flush() { }
         public void Dispose() { }
     }
+
+    // The log folds a message repeated back to back into one, and later adds "(previous message repeated
+    // N more times)" from whichever thread is draining the queue then — during this thread's Flush on a
+    // slow machine, on the writer thread otherwise. The report is a list of distinct problems, so the note
+    // is never one: counting it made the report depend on timing (a mod test failed in CI this way).
+    internal static bool IsRepeatNote(in LogEntry entry) =>
+        entry.File == null && entry.Message.StartsWith("(previous message repeated ", StringComparison.Ordinal);
 }
