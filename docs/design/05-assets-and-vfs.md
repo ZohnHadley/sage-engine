@@ -327,9 +327,8 @@ it is MAKING_A_GAME §3, "Editing records in VS Code".
   handed back *the same instance*, so reloading one would have destroyed the live asset. There is no
   `ContentManager` any more — every asset is a file the engine reads itself — so textures, effects and
   the font all reload, and "rebuild the content to change it" went with the thing it described. **One
-  refusal is left, and it is honest about itself:** a sound, because the mixer holds instances of it
-  (see the table). `asset_reload` on one says it is loaded but cannot be swapped, rather than claiming
-  it was never loaded.
+  refusal was left:** a sound, because the mixer holds instances of it. Issue 4h-3 removed it (see
+  "As built (hot reload of meshes, sounds and shaders, issue 4h-3)" below).
 - **A font is a texture, and reloads as one.** `LoadFont` goes through `LoadTexture`, so a font's path
   is always a texture entry too and always takes the texture branch of `Reload`; that branch drops the
   `BitmapFont` wrapper with it, and `UiRenderSystem` asks for the font every frame instead of holding
@@ -337,6 +336,38 @@ it is MAKING_A_GAME §3, "Editing records in VS Code".
   old wrapper draws from a **disposed** texture, which GL renders as black boxes where the text was,
   with nothing logged anywhere.
 - **Not done here:** the asset *server* with scopes, async loading and ref-counting (§3.3).
+
+### As built (hot reload of meshes, sounds and shaders, issue 4h-3)
+
+- **Meshes reload in place.** `Renderer.ReloadMesh` reads the `.glb` again and puts the new `MeshData` in
+  the *same slot* of the mesh table, so every id in a material, a component or an extracted item draws
+  the new geometry; the old buffers are disposed. A file that cannot be read keeps the old mesh. Reload
+  runs in FrameUpdate, before Extract and Render, so no snapshot holds an index into the old parts.
+  `ContentService.Reload` hands a `.glb` to the renderer through `ModelReloader`. Proved by the smoke
+  run: `+asset_reload models/pistol.glb` on the Sandbox logs `Reloaded model`.
+- **Sounds reload, and their voices follow.** Disposing a `SoundEffect` disposes the instances made from
+  it, so `ContentService.Reload` raises `SoundReplacing` first: each world's backend drops the instances
+  made from that file (`IAudioBackend.Release`) and its mixer calls `AudioMixer.Invalidate(path)`. The
+  mixer's rule is the testable part: voices on that file stop if they are one-shots (restarting a
+  footstep would replay a sound nobody asked for), loops are marked not started so the backend begins
+  them again from the new file, and voices on other files are untouched (test:
+  ReplacingAFileStopsItsOneShotsRestartsItsLoopsAndLeavesOthersAlone). A sound that fails to load keeps
+  the old one. The backend half needs an audio device: the smoke run has none, so the MonoGame side is
+  checked by reading, not by a run.
+- **Shader source recompiles where mgfxc can run.** `ShaderRecompiler` watches a game's `shaders/` folder
+  and, in a checkout, `engine_content/shaders/` (found by walking up from the executable; the build does
+  not copy sources). After 200 ms of quiet it works out which effects are affected from the `#include`
+  lines (`ShaderIncludes.Dependents`: a changed `.fxh` recompiles every `.fx` that reaches it, through
+  nested includes and `..`, comments ignored, cycles end) (test: AChangedHeaderRecompilesEveryEffectThatReachesIt)
+  (test: IncludesAreReadFromTheLinesThatAreNotComments) (test: AnIncludeCycleEnds), runs `dotnet mgfxc` on a
+  background task, one compile at a time, into a temporary file, and moves it over the `.mgfxo` the VFS
+  serves. `AssetHotReload` already watches `.mgfxo`, so the swap is the path every other effect takes. A
+  compile error logs mgfxc's output under `Shaders` and keeps the old shader.
+- **Where mgfxc cannot run** (Linux and macOS without `MGFXC_WINE_PATH`) it logs once under `Shaders`
+  ("Shader source changed but mgfxc needs Wine ...") and does nothing else; touching `common.fxh`
+  repeatedly during a smoke run logs it once.
+- **Switching it on:** `asset_hotreload` (default on only with `developer 1` in a dev build) gates all of
+  this, and `.glb` and `.wav` are now in the watcher's extensions.
 
 ### What can be hot reloaded, and what formats load
 
@@ -347,8 +378,9 @@ loading one of each through the sprite pipeline.
 |---|---|---|---|
 | Texture | `.png` `.jpg` `.bmp` `.tga` `.gif` `.psd` `.hdr` | yes | `Texture2D.FromStream`. GIF gives frame 0; HDR is tone-mapped to 8-bit; 16-bit PNG is truncated to 8 |
 | Compiled effect | `.mgfxo` | yes | the engine mount *is* where `dotnet-mgfxc` writes, so recompiling swaps the shader |
-| Model | `.glb` | not yet | `GltfLoader` (SharpGLTF) reads it off the mount; the renderer caches meshes by path and does not re-resolve one yet. Text `.gltf` is not read at all |
-| Sound | `.wav` | **no** | `SoundEffect.FromStream` (11 §3). `AudioBackend` keeps a `SoundEffectInstance` per voice and MonoGame disposes those with their `SoundEffect`, so swapping one means teaching the mixer to drop its voices first (F32). `asset_list` says so rather than offering it |
+| Model | `.glb` | yes (issue 4h-3) | `GltfLoader` (SharpGLTF) reads it off the mount; the renderer swaps the mesh in its own slot, so every id already handed out draws the new geometry. Text `.gltf` is not read at all |
+| Sound | `.wav` | yes (issue 4h-3) | `SoundEffect.FromStream` (11 §3). The backends drop their instances first and the mixers stop one-shots and restart loops (see "As built (hot reload of meshes, sounds and shaders, issue 4h-3)") |
+| Shader source | `.fx` `.fxh` | yes, where mgfxc runs | recompiled to the `.mgfxo` the VFS serves, which then reloads as a compiled effect; a changed header recompiles the effects that include it |
 | Font | `.png` atlas | yes | a texture with a glyph grid over it (13 §3), so reloading the image reloads the font |
 | `.tif` `.dds` `.webp` | — | — | **no runtime decoder** in StbImageSharp; convert to PNG (there is no MGCB left to take them through) |
 

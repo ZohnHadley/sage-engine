@@ -16,6 +16,10 @@ internal interface IAudioBackend : IDisposable
     void Apply(AudioMixer mixer);
 
     int Playing { get; }
+
+    // The sound behind `asset` is about to be disposed (hot reload, issue 4h-3): drop every instance
+    // made from it. The mixer decides what happens to the voices (`AudioMixer.Invalidate`).
+    void Release(AssetPath asset);
 }
 
 // Nothing at all: a headless host, a test, or `snd_enabled 0`. The mixer still runs, so everything
@@ -24,6 +28,8 @@ internal interface IAudioBackend : IDisposable
 internal sealed class NullAudioBackend : IAudioBackend
 {
     public int Playing => 0;
+
+    public void Release(AssetPath asset) { }
 
     public void Apply(AudioMixer mixer) => Drain(mixer);
 
@@ -51,6 +57,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
 {
     private readonly ContentService _content;
     private readonly Dictionary<int, SoundEffectInstance> _instances = new();
+    private readonly Dictionary<int, AssetPath> _assets = new();   // which file each instance was made from
     private readonly List<int> _finished = new();
 
     // Set the first time MonoGame reports there is no audio device (a server, a CI runner, a machine
@@ -61,6 +68,19 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
     public MonoGameAudioBackend(ContentService content) => _content = content;
 
     public int Playing => _instances.Count;
+
+    public void Release(AssetPath asset)
+    {
+        _finished.Clear();
+        foreach (var (id, from) in _assets)
+            if (from == asset) _finished.Add(id);
+        foreach (int id in _finished)
+        {
+            if (_instances.Remove(id, out var instance)) { instance.Stop(immediate: true); instance.Dispose(); }
+            _assets.Remove(id);
+        }
+        _finished.Clear();
+    }
 
     public void Apply(AudioMixer mixer)
     {
@@ -76,6 +96,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
                                    "`snd_enabled 0` turns it off on purpose.");
             foreach (var instance in _instances.Values) instance.Dispose();
             _instances.Clear();
+            _assets.Clear();
             NullAudioBackend.Drain(mixer);
         }
     }
@@ -93,6 +114,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
                     stopping.Stop(immediate: true);
                     stopping.Dispose();
                 }
+                _assets.Remove(voice.Handle.Id);
                 _finished.Add(voice.Handle.Id);
                 continue;
             }
@@ -106,6 +128,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
                 var instance = effect.CreateInstance();
                 instance.IsLooped = voice.Loop;
                 _instances[voice.Handle.Id] = instance;
+                _assets[voice.Handle.Id] = voice.Asset;
                 Push(instance, voice);
                 instance.Play();
                 continue;
@@ -119,6 +142,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
             {
                 live.Dispose();
                 _instances.Remove(voice.Handle.Id);
+                _assets.Remove(voice.Handle.Id);
                 _finished.Add(voice.Handle.Id);
                 continue;
             }
@@ -140,5 +164,6 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
     {
         foreach (var instance in _instances.Values) { instance.Stop(immediate: true); instance.Dispose(); }
         _instances.Clear();
+        _assets.Clear();
     }
 }
