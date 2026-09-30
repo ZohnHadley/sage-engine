@@ -137,7 +137,10 @@ public sealed class AnimationModule : IModule
     public void OnWorldCreated(World world)
     {
         world.AddSystem(new SpriteAnimationSystem(world, _records!));
+        world.AddSystem(new SpriteGraphSystem(world, _records!));   // sprites played by a graph (issue #119)
         world.AddSystem(new FootIkSystem(world));   // feet on the ground (issue #120), through IPhysicsWorld
+        // The animator's clip events become AnimationEvents (issue #119).
+        world.Resources.Replace<IAnimationEventSink>(new AnimationEventBus());
     }
 }
 

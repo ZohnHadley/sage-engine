@@ -735,3 +735,16 @@ Sage.Simulation.SaveSystem.Rescan() -> void
 Sage.Simulation.SaveSystem.Slots.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SaveSlot!>!
 Sage.Simulation.SaveSystem.SlotsVersion.get -> int
 override Sage.Simulation.SaveSlot.ToString() -> string!
+const Sage.Simulation.Animators.AnimEventOutput = "OnAnimEvent" -> string!
+Sage.Simulation.AnimEventEntry
+Sage.Simulation.AnimEventEntry.AnimEventEntry() -> void
+Sage.Simulation.AnimEventEntry.Name -> string!
+Sage.Simulation.AnimEventEntry.Time -> float
+Sage.Simulation.AnimEventsRecord
+Sage.Simulation.AnimEventsRecord.AnimEventsRecord() -> void
+Sage.Simulation.AnimEventsRecord.Clips -> System.Collections.Generic.Dictionary<string!, System.Collections.Generic.List<Sage.Simulation.AnimEventEntry!>!>!
+Sage.Simulation.AnimEventsRecord.Model -> Sage.Core.AssetPath
+Sage.Simulation.IAnimationEventSink
+Sage.Simulation.IAnimationEventSink.Raise(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name) -> void
+static Sage.Simulation.Animators.TryGetClip(Sage.Simulation.World! world, Sage.Simulation.Entity entity, out string? clip, out float time, string? layer = null) -> bool
+static Sage.Simulation.Animators.SpriteSwingGraph(Sage.Core.RecordStore! records, string! idle, string! swing, string! trigger) -> Sage.Core.RecordId

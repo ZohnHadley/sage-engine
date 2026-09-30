@@ -59,11 +59,27 @@ public sealed class GltfAnimationReader
 {
     private readonly VirtualFileSystem _vfs;
     private readonly Dictionary<AssetPath, AnimationSet?> _cache = new();
+    private RecordStore? _events;
 
     public GltfAnimationReader(VirtualFileSystem vfs)
     {
         ArgumentNullException.ThrowIfNull(vfs);
         _vfs = vfs;
+    }
+
+    // The engine's reader gives the clips it loads the events of the `anim_events` records for their
+    // model (issue #119), and gives them again after every records reload.
+    internal void UseEvents(RecordStore records)
+    {
+        _events = records;
+        records.Reloaded += ApplyEventsToAll;
+    }
+
+    private void ApplyEventsToAll()
+    {
+        if (_events == null) return;
+        foreach (var (path, set) in _cache)
+            if (set != null) AnimEvents.Apply(_events, path, set);
     }
 
     // Paths asked for so far, including those that failed.
@@ -75,6 +91,7 @@ public sealed class GltfAnimationReader
     {
         if (_cache.TryGetValue(path, out var cached)) return cached;
         var set = ReadFromVfs(path);
+        if (set != null && _events != null) AnimEvents.Apply(_events, path, set);
         _cache[path] = set;
         return set;
     }

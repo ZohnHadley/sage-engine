@@ -26,6 +26,7 @@ public sealed class Engine : IDisposable
         Components = new ComponentSchema(Records.Json);
         Saves = new SaveSystem(this);
         Animations = new GltfAnimationReader(Vfs);
+        Animations.UseEvents(Records);                        // anim_events records (issue #119)
         // Every registry records who registered what (issue #12).
         CVars.Ledger = Registrations;
         Records.Ledger = Registrations;
@@ -49,6 +50,8 @@ public sealed class Engine : IDisposable
         Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Parts), (key, body, _) => PrefabChecks.BodyType(Prefabs, key, body));
         // Sockets name a model and a joint (issue #120).
         Records.AddCheck<SkeletonSocketsRecord>(BoneAttachments.Check);
+        // Clip events name a model, and each a time and a name (issue #119).
+        Records.AddCheck<AnimEventsRecord>(AnimEvents.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the

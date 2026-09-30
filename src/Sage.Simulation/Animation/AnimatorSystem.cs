@@ -23,6 +23,8 @@ internal sealed class AnimatorPoses
         public long SampledTick = -1;
         public int Interval = 1;                                 // animation LOD: sampled every Interval ticks
         public AnimationSet? Set;
+        public SpriteSheetRecord? Sheet;                         // a sprite's animator (no model): the sheet it plays
+        public object? SheetClips;                               // and the sheet's clips it was resolved against
         public SkeletonPose? Pose;                               // what readers get: rewritten from Sampled every tick
         public SkeletonPose? Sampled;                            // the graph's output, at the LOD's rate
         public int ResolvedVersion;                              // the compiled graph Clips and Masks are for
@@ -151,6 +153,7 @@ internal static class AnimatorStepper
                 s.Time = 0f;
                 s.Phase = 0f;
                 s.From = null;
+                s.Entered = true;
             }
             else s.State = layer.Names[s.Index];
             s.FromIndex = s.From == null ? -1 : layer.IndexOf(s.From);
@@ -177,7 +180,19 @@ internal static class AnimatorStepper
         var set = instance.Set;
         instance.Clips = new AnimationClip?[g.ClipNames.Length];
         instance.Masks = new JointMask?[g.Layers.Length];
-        if (set == null) return;
+        if (set == null)
+        {
+            // A sprite's graph (issue #119): its leaves are the sheet's clips, which have no joints.
+            if (instance.Sheet is not { } sheet) return;
+            for (int c = 0; c < g.ClipNames.Length; c++)
+            {
+                instance.Clips[c] = SpriteClips.Find(sheet, g.ClipNames[c]);
+                if (instance.Clips[c] == null)
+                    Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-sprite-clip:{a.Graph}:{g.ClipNames[c]}",
+                        $"Animator {a.Graph} at {World.Describe(entity)}: its sprite sheet has no clip '{g.ClipNames[c]}'; states that play it hold still");
+            }
+            return;
+        }
         for (int c = 0; c < g.ClipNames.Length; c++)
         {
             instance.Clips[c] = set.FindClip(g.ClipNames[c]);
@@ -200,14 +215,48 @@ internal static class AnimatorStepper
 
     // ---- logic: every tick, whatever the LOD ---------------------------------------------------------
 
-    // Params from the body, then each layer's clock and transitions. A transition's `then` goes on
-    // `then` (run by the caller once no component is held by ref: actions may change the world).
+    // Params from the body, then every layer's clock (raising the clip events it crosses), then every
+    // layer's transitions. A transition's `then` goes on `then` (run by the caller once no component is
+    // held by ref: actions may change the world).
+    //
+    // A state entered by a transition plays the tick it is entered on (issue #119): its clip advances by
+    // this tick's dt at once and raises the events that crosses, as a clip started by Play before the
+    // step does — so a trigger set in Gameplay and a clip played there start on the same tick. `Time`
+    // (what `after` reads) and the cross-fade still start at 0, as #118 has them.
     public static void Step(World world, Entity entity, ref Animator a, AnimGraphRecord.Compiled g, AnimatorPoses.Instance instance, float dt,
-                            List<(Entity, StateTransition)>? then)
+                            List<(Entity, StateTransition)>? then, IAnimationEventSink? sink = null)
     {
         Resolve(entity, ref a, g);
         var values = a.Params!;
         if (g.HasSources) Drive(world, entity, g, values, instance, dt);
+        var events = new EventContext(world, entity, g, values, instance, sink);
+
+        for (int l = 0; l < g.Layers.Length; l++)
+        {
+            var layer = g.Layers[l];
+            ref var s = ref a.Layers![l];
+            if (s.Index < 0) continue;
+            bool raise = l == 0 || layer.Weight > 0f;
+
+            s.Time += dt;
+            var state = layer.States[s.Index];
+            float before = s.Phase;
+            bool entered = s.Entered;
+            s.Entered = false;
+            s.Phase = Advance(state, before, dt, values, instance);
+            if (raise) Raise(in events, state, before, s.Phase, entered, pending: false);
+            if (s.Fading)
+            {
+                var from = layer.States[s.FromIndex];
+                float fromBefore = s.FromPhase;
+                s.FromPhase = Advance(from, fromBefore, dt, values, instance);
+                s.Fade += dt;
+                if (s.Fade + Epsilon >= s.FadeDuration) EndFade(ref s);
+                // The state being left raises its events while it still shows more than the one entered.
+                else if (raise && Easing.Apply(s.FadeEase, s.Fade / s.FadeDuration) < 0.5f)
+                    Raise(in events, from, fromBefore, s.FromPhase, entered: false, pending: false);
+            }
+        }
 
         var context = new ConditionContext(world, entity, entity);
         for (int l = 0; l < g.Layers.Length; l++)
@@ -216,28 +265,108 @@ internal static class AnimatorStepper
             ref var s = ref a.Layers![l];
             if (s.Index < 0) continue;
 
-            s.Time += dt;
-            s.Phase = Advance(layer.States[s.Index], s.Phase, dt, values, instance);
-            if (s.Fading)
-            {
-                s.FromPhase = Advance(layer.States[s.FromIndex], s.FromPhase, dt, values, instance);
-                s.Fade += dt;
-                if (s.Fade + Epsilon >= s.FadeDuration) EndFade(ref s);
-            }
-
             StateTransition? taken = null;
             for (int p = 0; p < values.Length && taken == null; p++)
-                if (g.ParamKinds[p] == AnimParamKind.Trigger && values[p].Value != 0f)
+                if (g.ParamKinds[p] == AnimParamKind.Trigger && values[p].Value == TriggerSet)
                     taken = Pick(layer, s.Index, g.ParamNames[p], s.Time, in context);
             taken ??= Pick(layer, s.Index, null, s.Time, in context);
             if (taken == null) continue;
             Change(g, layer, ref s, layer.Target(taken));
+            if (s.Index >= 0)
+            {
+                var entered = layer.States[s.Index];
+                s.Entered = false;
+                s.Phase = Advance(entered, 0f, dt, values, instance);
+                if (l == 0 || layer.Weight > 0f) Raise(in events, entered, 0f, s.Phase, entered: true, pending: true);
+            }
             if (then != null && taken.Then is { Count: > 0 }) then.Add((entity, taken));
         }
 
-        // Triggers are used up by the tick after they were set, taken or not.
+        // Triggers are used up by the tick after they were set, taken or not; one an event set while a
+        // state was being entered, after the transitions had been tried, is there for the next tick.
         for (int p = 0; p < values.Length; p++)
-            if (g.ParamKinds[p] == AnimParamKind.Trigger) values[p].Value = 0f;
+            if (g.ParamKinds[p] == AnimParamKind.Trigger) values[p].Value = values[p].Value == TriggerPending ? TriggerSet : 0f;
+    }
+
+    // A trigger's value: set (a transition may take it this tick), or set by an event after this tick's
+    // transitions were tried (it is set from the next one).
+    private const float TriggerSet = 1f;
+    private const float TriggerPending = 2f;
+
+    // What raising a clip event needs, gathered once a step.
+    private readonly struct EventContext
+    {
+        public readonly World World;
+        public readonly Entity Entity;
+        public readonly AnimGraphRecord.Compiled Graph;
+        public readonly AnimatorParam[] Values;
+        public readonly AnimatorPoses.Instance Instance;
+        public readonly IAnimationEventSink? Sink;
+
+        public EventContext(World world, Entity entity, AnimGraphRecord.Compiled graph, AnimatorParam[] values,
+                            AnimatorPoses.Instance instance, IAnimationEventSink? sink)
+        {
+            World = world;
+            Entity = entity;
+            Graph = graph;
+            Values = values;
+            Instance = instance;
+            Sink = sink;
+        }
+    }
+
+    // Raises the events of the clip `state` shows (a blend: its heaviest clip) that the phase crossed
+    // going from `before` to `after`: before < t <= after, and from the very start (0 <= t) when the
+    // state was just entered. A loop that went round (the phase came down) crossed before..1 and 0..after.
+    // A one-shot parked at its end crosses nothing, so each event fires once a pass. Allocation-free.
+    private static void Raise(in EventContext e, AnimGraphRecord.State state, float before, float after, bool entered, bool pending)
+    {
+        int c = HeaviestClip(state, e.Values);
+        var clips = e.Instance.Clips;
+        if (c < 0 || c >= clips.Length || clips[c] is not { } clip) return;
+        var list = clip.Events;
+        if (list.Count == 0) return;
+        float duration = clip.Duration;
+        bool forward = state.Speed >= 0f;
+        bool wrapped = state.Loop && (forward ? after < before : after > before);
+        for (int i = 0; i < list.Count; i++)
+        {
+            var ev = list[i];
+            float t = duration > 0f ? Math.Clamp(ev.Time / duration, 0f, 1f) : 0f;
+            if (duration > 0f && ev.Time > duration) continue;          // past the end: never reached
+            bool crossed;
+            if (!forward)
+                crossed = wrapped ? (t < before || t >= after) : (after <= t && (t < before || (entered && t <= before)));
+            else if (wrapped)
+                crossed = t > before || t <= after;
+            else
+                crossed = t <= after && (t > before || (entered && t >= before));
+            if (crossed) Fire(in e, ev.Name, pending);
+        }
+    }
+
+    private static void Fire(in EventContext e, string name, bool pending)
+    {
+        e.Sink?.Raise(e.World, e.Entity, name);
+        e.World.FireOutput(e.Entity, Animators.AnimEventOutput, e.Entity, name);
+        // Events drive transitions: one sets the trigger param of its name, if the graph has one.
+        int p = e.Graph.ParamIndex(name);
+        if (p >= 0 && e.Graph.ParamKinds[p] == AnimParamKind.Trigger && e.Values[p].Value != TriggerSet)
+            e.Values[p].Value = pending ? TriggerPending : TriggerSet;
+    }
+
+    // The clip a state shows most: its clip, or the heaviest point of its blend at the params now (the
+    // first of equals). -1 for a state that plays nothing.
+    internal static int HeaviestClip(AnimGraphRecord.State state, AnimatorParam[] values)
+    {
+        if (state.Clip >= 0) return state.Clip;
+        if (!state.IsBlend) return -1;
+        Span<float> weights = stackalloc float[Animators.MaxBlendPoints];
+        int n = Weights(state, values, weights);
+        int best = -1;
+        for (int i = 0; i < n; i++)
+            if (best < 0 || weights[i] > weights[best]) best = i;
+        return best < 0 ? -1 : state.PointClips[best];
     }
 
     private static StateTransition? Pick(AnimGraphRecord.Layer layer, int current, string? input, float time, in ConditionContext context)
@@ -285,6 +414,7 @@ internal static class AnimatorStepper
         s.Index = to;
         s.Time = 0f;
         s.Phase = 0f;
+        s.Entered = true;
     }
 
     private static void EndFade(ref AnimatorLayer s)
@@ -513,6 +643,7 @@ internal sealed class AnimatorSystem : ISystem
     private readonly AnimatorPoses _poses;
     private readonly SkeletonPoses _registered;
     private readonly GltfAnimationReader? _reader;
+    private readonly RecordStore? _records;
     private readonly CVar<float>? _lodDistance;
     private readonly List<Entity> _step = new();
     private readonly List<(Entity, StateTransition)> _then = new();
@@ -526,6 +657,7 @@ internal sealed class AnimatorSystem : ISystem
         // #120's seam (the engine installs it over #117's SkinPoses): IK, attachments and skinning read it.
         _registered = world.Resources.GetOrAdd(() => new SkeletonPoses(world.Resources.GetOrAdd(static () => new SkinPoses())));
         world.Resources.TryGet(out _reader);
+        world.Resources.TryGet(out _records);
         _lodDistance = world.Engine?.CVars.Find(Animators.LodDistanceCVar) as CVar<float>;
     }
 
@@ -538,6 +670,7 @@ internal sealed class AnimatorSystem : ISystem
 
         float dt = ctx.Tick.Dt;
         long tick = _world.Tick;
+        _world.Resources.TryGet<IAnimationEventSink>(out var sink);   // Sage.Gameplay's: sends AnimationEvent
         bool haveCamera = false;
         Vector3 camera = default;
         float lod = _lodDistance?.Value ?? 0f;
@@ -561,9 +694,9 @@ internal sealed class AnimatorSystem : ISystem
                 continue;
             }
 
-            Model(ref a, instance);
+            Model(ref a, entity, instance);
             AnimatorStepper.ResolveClips(_world, entity, in a, g, instance);
-            AnimatorStepper.Step(_world, entity, ref a, g, instance, dt, _then);
+            AnimatorStepper.Step(_world, entity, ref a, g, instance, dt, _then, sink);
             if ((g.AimPitchParam >= 0 || g.AimYawParam >= 0) && _world.Has<AimIk>(entity))
             {
                 ref var aim = ref _world.Get<AimIk>(entity);
@@ -605,9 +738,14 @@ internal sealed class AnimatorSystem : ISystem
 
     // The instance's model: from the reader's cache (a tick never reads a file), except the first time
     // an animator with no set asks — a load in a new session, which spawned nothing through the part.
-    private void Model(ref Animator a, AnimatorPoses.Instance instance)
+    private void Model(ref Animator a, Entity entity, AnimatorPoses.Instance instance)
     {
-        if (_reader == null || a.Model.IsEmpty) return;
+        if (a.Model.IsEmpty)
+        {
+            Sheet(entity, instance);
+            return;
+        }
+        if (_reader == null) return;
         if (!_reader.TryGet(a.Model, out var set))
         {
             if (instance.Set != null || instance.LoadTried) return;
@@ -622,6 +760,21 @@ internal sealed class AnimatorSystem : ISystem
         instance.Sampled = new SkeletonPose(set.Skeleton);
         instance.ResolvedVersion = 0;
         instance.SampledTick = -1;
+    }
+
+    // An animator with no model on a sprite (issue #119) plays its sheet's clips: resolved again when
+    // the sheet changes or a records reload gives it new clips. Allocation-free when neither did.
+    private void Sheet(Entity entity, AnimatorPoses.Instance instance)
+    {
+        SpriteSheetRecord? sheet = null;
+        if (_records != null && _world.TryGet<SpriteRenderer>(entity, out var sprite) && !sprite.Sheet.IsEmpty
+            && _records.TryGet(sprite.Sheet, out SpriteSheetRecord found))
+            sheet = found;
+        object? clips = sheet?.Animations;
+        if (ReferenceEquals(sheet, instance.Sheet) && ReferenceEquals(clips, instance.SheetClips)) return;
+        instance.Sheet = sheet;
+        instance.SheetClips = clips;
+        instance.ResolvedVersion = 0;
     }
 
     private AnimatorScratch Scratch(Skeleton skeleton)
