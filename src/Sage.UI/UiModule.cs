@@ -51,6 +51,33 @@ public sealed class UiModule : IModule
             Screens.RebuildAll();
         };
 
+        // Opening a widget screen by hand (#97): what a key bound with UiScreenStack.Bind does, for any
+        // screen record, in every world — the subject its bindings and conditions ask about is the
+        // local player, when there is one.
+        ctx.Engine.CVars.RegisterCommand("ui_open", CVarFlags.None,
+            "ui_open <screen>: open a screen record (a ui_layout over its view-model) on top of the world's widget screens.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "ui_open <screen>"); return; }
+            var id = ctx.Engine.Records.Resolve("screen", a[0]);
+            if (id.IsEmpty) return;
+            foreach (var world in ctx.Engine.Worlds)
+                if (world.Resources.TryGet<UiScreenStack>(out var stack) && stack != null)
+                {
+                    stack.Open(id, new UiBindContext(world, LocalPlayer(world)));
+                    Log.Info(LogCat.Console, $"'{world.Name}': {id} open ({stack.Layers.Count} layer(s))");
+                }
+        });
+        ctx.Engine.CVars.RegisterCommand("ui_close", CVarFlags.None,
+            "ui_close [all]: close the top widget screen (all: every layer, at once).", a =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+                if (world.Resources.TryGet<UiScreenStack>(out var stack) && stack != null)
+                {
+                    if (a.Count > 0 && string.Equals(a[0], "all", StringComparison.OrdinalIgnoreCase)) stack.CloseAll();
+                    else stack.CloseTop();
+                }
+        });
+
         ctx.Engine.Records.AddCheck<UiLayoutRecord>(UiContentChecks.Layout);
         ctx.Engine.Records.AddCheck<ScreenRecord>((screen, check) => UiContentChecks.ScreenViewModel(screen, check, viewModels));
 
@@ -83,6 +110,15 @@ public sealed class UiModule : IModule
         world.Resources.Add(Localisation);
         world.Resources.Add(Styles);
         world.Resources.Add(Screens);
+        // The widget screens this world has open (#97): headless here, drawn and fed by the client.
+        world.Resources.Add(new UiScreenStack(Screens, Styles));
+    }
+
+    // The entity a screen opened from the console is about: the first player-controlled one.
+    private static Entity LocalPlayer(World world)
+    {
+        foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities) return entity;
+        return default;
     }
 
     private void ContentChanged()

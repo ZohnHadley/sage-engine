@@ -20,6 +20,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sage.Tests" />
+    <!-- The render plan, nine-slice arithmetic and the device-to-UiInput mapping are the client's
+         business and nobody else's (#97): internal, and headless so a test can check them. -->
+    <InternalsVisibleTo Include="Sage.Client" />
   </ItemGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->

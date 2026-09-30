@@ -7,3 +7,7 @@ Sage.Client.Renderer.FindTarget(string! name) -> Microsoft.Xna.Framework.Graphic
 Sage.Client.Renderer.ReleaseTarget(string! name) -> bool
 Sage.Client.Renderer.ScreenWorld.get -> Sage.Simulation.World?
 Sage.Client.Renderer.ScreenWorld.set -> void
+Sage.Client.UiDraw.ClipDepth.get -> int
+Sage.Client.UiDraw.NineSlice(Microsoft.Xna.Framework.Graphics.Texture2D! texture, float x, float y, float width, float height, float insetLeft, float insetTop, float insetRight, float insetBottom, Microsoft.Xna.Framework.Color colour, float cornerScale = 1) -> void
+Sage.Client.UiDraw.PopClip() -> void
+Sage.Client.UiDraw.PushClip(float x, float y, float width, float height) -> void

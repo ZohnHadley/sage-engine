@@ -4759,9 +4759,12 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id (none is registered).",
+      "description": "A view_model by id: sandbox_status.",
       "type": "string",
-      "enum": []
+      "enum": [
+        "SandboxStatus",
+        "sandbox_status"
+      ]
     },
     "view_model": {
       "description": "A view_model: its id, or { \"viewModel\": \"<id>\", … } with its settings.",
@@ -4778,6 +4781,62 @@
           },
           "required": [
             "viewModel"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "sandbox_status",
+                      "SandboxStatus"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "health": {
+                    "description": "(float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "healthText": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "itemCount": {
+                    "description": "(int, default 0)",
+                    "default": 0,
+                    "type": "integer"
+                  },
+                  "maxHealth": {
+                    "description": "(float, default 100)",
+                    "default": 100,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "viewModel": {
+                    "description": "The view_model: sandbox_status.",
+                    "enum": [
+                      "sandbox_status",
+                      "SandboxStatus"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'sandbox_status' (StatusView)."
+              }
+            }
           ]
         }
       ]

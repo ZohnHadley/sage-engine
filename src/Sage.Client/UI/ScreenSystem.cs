@@ -2,16 +2,21 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Sage.UI;
 using Color = Microsoft.Xna.Framework.Color;
 
 namespace Sage.Client;
 
 // Drawing screens and reading their input (docs/design/13 §3, TODO F38; decision D8 = our own).
 //
-// What a screen *is* lives in the engine (`Screen`, `ScreenStack`), because a panel of rows and what
-// Enter does to the world are simulation. Where its parts are is `PanelLayout`, also in the engine,
-// because the mouse and the drawing must agree about it. This is what is left: the buttons, the
-// cursor, and the box.
+// Two kinds of screen, one system (issue #97):
+// - **Panel screens** (`Screen`, `ScreenStack`): what a screen *is* lives in the engine, because a panel
+//   of rows and what Enter does to the world are simulation, and where its parts are is `PanelLayout`,
+//   also in the engine, because the mouse and the drawing must agree about it. This draws the box.
+// - **Widget screens** (Sage.UI's `UiScreenStack`: `screen` records over view-models, or trees a game
+//   built): the stack decides focus, Back, click-outside and the fade, headless; this fills its
+//   `UiInput` from the same `ui` input context and the mouse and draws each layer (WidgetRenderer).
+//   While a widget screen is open it is on top and takes the input; the panel under it waits.
 //
 // It runs in **Overlay, before the UI is rendered**, not in FrameUpdate: a game's HUD queues its own
 // drawing in FrameUpdate and the last thing queued is the thing on top, so a screen has to queue after
@@ -21,23 +26,43 @@ namespace Sage.Client;
 internal sealed class ScreenSystem : ISystem
 {
     private readonly ScreenStack _stack;
+    private readonly UiScreenStack? _widgets;
+    private readonly UiStyles? _styles;
+    private readonly Localisation? _text;
+    private readonly ContentService _content;
     private readonly UiDraw _ui;
     private readonly InputActions _actions;
     private readonly InputDevices _devices;
     private readonly Query<Transform> _players;
+    private double _lastRealTime = -1d;
 
-    private readonly ActionId _up, _down, _confirm, _alternate, _back;
+    private readonly ActionId _up, _down, _left, _right, _tab, _confirm, _alternate, _back;
 
-    public ScreenSystem(World world, InputActions actions, InputDevices devices, ActionRegistry registry)
+    public ScreenSystem(World world, InputActions actions, InputDevices devices, ActionRegistry registry, ContentService content)
     {
         _devices = devices;
+        _content = content;
         _stack = world.Resources.Get<ScreenStack>();
         _ui = world.Resources.Get<UiDraw>();
         _actions = actions;
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
 
+        // Sage.UI is a base plugin, so every world a client makes has these; a host without it (a
+        // trimmed test host) simply has no widget screens.
+        if (world.Resources.TryGet<UiScreenStack>(out var widgets) && widgets != null
+            && world.Resources.TryGet<UiStyles>(out var styles) && world.Resources.TryGet<Localisation>(out var text))
+        {
+            _widgets = widgets;
+            _styles = styles;
+            _text = text;
+            _widgets.Text = BitmapFontMeasure.Instance;   // layout in the engine font's pixels (#97)
+        }
+
         _up = registry.Get("MenuUp");
         _down = registry.Get("MenuDown");
+        _left = registry.Get("MenuLeft");
+        _right = registry.Get("MenuRight");
+        _tab = registry.Get("MenuTab");
         _confirm = registry.Get("MenuConfirm");
         _alternate = registry.Get("MenuAlternate");
         _back = registry.Get("MenuBack");
@@ -49,6 +74,13 @@ internal sealed class ScreenSystem : ISystem
         Entity player = default;
         foreach (var entity in _players.Entities) { player = entity; break; }   // one local player
 
+        // Frame time, not simulation time: the UI's transitions run on what the player sees, and keep
+        // running with the game paused or slowed (`host_timescale`). Clamped so a hitch does not skip
+        // a whole fade.
+        double now = ctx.Frame.RealTime;
+        float dt = _lastRealTime < 0d ? 0f : (float)Math.Clamp(now - _lastRealTime, 0d, 0.1d);
+        _lastRealTime = now;
+
         // Opening and closing. Checked with nothing open too, which is how a screen gets opened at
         // all; while one is open the same press closes it.
         //
@@ -56,31 +88,84 @@ internal sealed class ScreenSystem : ISystem
         // letters. Naming a spell "Misty Bind" would otherwise open the inventory on the way. A screen
         // with a field is left by Escape, which is not a letter.
         if (_stack.Top?.Field == null)
-            foreach (var opener in _stack.OpenActions)
-                if (_actions.Pressed(opener) && _stack.Toggle(opener, world, player)) break;
+        {
+            bool toggled = false;
+            if (_widgets != null)
+            {
+                var openers = _widgets.OpenActions;
+                for (int i = 0; i < openers.Count && !toggled; i++)
+                    if (_actions.Pressed(openers[i])) toggled = _widgets.Toggle(openers[i], new UiBindContext(world, player));
+            }
+            if (!toggled && !(_widgets?.IsOpen ?? false))
+                foreach (var opener in _stack.OpenActions)
+                    if (_actions.Pressed(opener) && _stack.Toggle(opener, world, player)) break;
+        }
+
+        bool widgetsOpen = _widgets?.IsOpen ?? false;
 
         // The UI context is active exactly while something is open, so the gameplay bindings are
         // consumed and nobody walks about behind an open inventory (08 §3.3).
-        _actions.SetActive(InputContext.UI, _stack.IsOpen);
+        _actions.SetActive(InputContext.UI, _stack.IsOpen || widgetsOpen);
 
-        var screen = _stack.Top;
-        if (screen == null) return;
+        // The panel screens: driven only while no widget screen is over them, drawn either way.
+        if (_stack.Top != null) Panels(world, player, acceptInput: !widgetsOpen);
 
-        if (_actions.Pressed(_back)) { _stack.Close(); return; }
+        if (_widgets == null) return;
+        _widgets.SetViewport(new System.Numerics.Vector2(_ui.Size.X, _ui.Size.Y));
+        var controls = widgetsOpen ? Controls(dt) : new UiControls { DeltaTime = dt };
+        _widgets.Update(UiInputMap.From(in controls));
+        WidgetRenderer.Draw(_ui, _widgets, _styles!, _text!, _content);
+    }
 
-        // `UiWantsKeyboard` is ImGui's: the dev console subscribes to the same window event, so
-        // without this a character typed into the console would also land in an open screen's field.
-        var field = screen.Field;
-        if (field != null && !_actions.UiWantsKeyboard && _devices.Typed.Length > 0 && field.Type(_devices.Typed))
-            screen.Typed(world, player);
+    // What the `ui` context's buttons and the mouse say this frame (issue #97). Menu* are the panel
+    // screens' actions, gamepad bindings and all; MenuLeft/MenuRight walk a grid's rows and MenuTab
+    // goes round the tab order (Shift: backwards).
+    private UiControls Controls(float dt)
+    {
+        var mouse = _devices.Mouse;
+        var keyboard = _devices.Keyboard;
+        return new UiControls
+        {
+            Up = _actions.Pressed(_up),
+            Down = _actions.Pressed(_down),
+            Left = _actions.Pressed(_left),
+            Right = _actions.Pressed(_right),
+            Tab = _actions.Pressed(_tab),
+            Shift = keyboard.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift) || keyboard.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift),
+            Confirm = _actions.Pressed(_confirm),
+            ConfirmHeld = _actions.Held(_confirm),
+            Back = _actions.Pressed(_back),
+            Pointer = new System.Numerics.Vector2(mouse.Position.X, mouse.Position.Y),
+            PointerMoved = mouse.IsMoving,
+            PointerPressed = mouse.IsButtonPressed(MouseButton.LEFT),
+            PointerDown = mouse.IsButtonDown(MouseButton.LEFT),
+            Wheel = mouse.ScrollWheelDelta,
+            PointerTaken = _actions.UiWantsMouse,   // ImGui has the cursor: a dev window is under it
+            DeltaTime = dt,
+        };
+    }
 
-        if (_actions.Pressed(_down)) _stack.Move(1);
-        if (_actions.Pressed(_up)) _stack.Move(-1);
+    private void Panels(World world, Entity player, bool acceptInput)
+    {
+        var screen = _stack.Top!;
+        if (acceptInput)
+        {
+            if (_actions.Pressed(_back)) { _stack.Close(); return; }
 
-        Mouse(world, player, screen, Layout(screen));
+            // `UiWantsKeyboard` is ImGui's: the dev console subscribes to the same window event, so
+            // without this a character typed into the console would also land in an open screen's field.
+            var field = screen.Field;
+            if (field != null && !_actions.UiWantsKeyboard && _devices.Typed.Length > 0 && field.Type(_devices.Typed))
+                screen.Typed(world, player);
 
-        if (_actions.Pressed(_confirm)) _stack.Activate(world, player);
-        else if (_actions.Pressed(_alternate)) _stack.Alternate(world, player);
+            if (_actions.Pressed(_down)) _stack.Move(1);
+            if (_actions.Pressed(_up)) _stack.Move(-1);
+
+            Mouse(world, player, screen, Layout(screen));
+
+            if (_actions.Pressed(_confirm)) _stack.Activate(world, player);
+            else if (_actions.Pressed(_alternate)) _stack.Alternate(world, player);
+        }
 
         // Laid out again after acting: dropping a row changes how many there are, and drawing the list
         // as it was a moment ago would show the thing that is gone.

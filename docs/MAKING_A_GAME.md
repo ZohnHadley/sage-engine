@@ -392,7 +392,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `dialogue_topic` — a keyword and its answers; `quest` — stages and objectives |
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
-| **Screens** (13, §7) | `ui_style` — colours, padding, a font, colours per state; `ui_layout` — widgets by name, each naming its parent, with bindings; `screen` — a layout and its view-model |
+| **Screens** (13, §7) | `ui_style` — colours, padding, a font, colours per state, a nine-sliced `image`; `ui_layout` — widgets by name, each naming its parent, with bindings; `screen` — a layout and its view-model |
 | **Your game's words** (§3, below) | `gameplay_conventions` — which attribute is life, which tag is death, the default attack, damage type, profiles and AI schedules, the player's faction, what spells cost, the action names |
 
 ### Your game's words: `gameplay_conventions`
@@ -1208,10 +1208,28 @@ record hot reload rebuilds every open screen. Three record types, from the `sage
   }
   ```
 
-  `ctx.Get<UiScreens>()` (or `world.Resources.Get<UiScreens>()`) opens one:
-  `var screen = screens.OpenScreen(new RecordId("mygame", "bag"), new UiBindContext(world, player));`
-  then `uiRoot.Content.Add(screen.Root)` and `screen.Refresh()` each frame. Drawing it is the client's
-  (#97, not built yet). Declare view-models in your game's simulation half, so `sage validate` knows them.
+  Declare view-models in your game's simulation half, so `sage validate` knows them.
+- **Showing it** (#97): every world has a `UiScreenStack`, which the client draws and feeds the `ui`
+  input context (D-pad or arrows, Tab, Enter, Escape, the mouse). Bind a key to the screen in your
+  client module, as a panel screen is bound — the key that opens it closes it — or open it by hand:
+
+  ```csharp
+  var widgets = world.Resources.Get<UiScreenStack>();
+  widgets.Bind(actions.Get("Bag"), new RecordId("mygame", "bag"));
+  widgets.TooltipStyle = "mygame:tooltip";
+  widgets.Activated += (layer, widget) => { if (widget.Name == "close") widgets.Close(layer); };
+  ```
+
+  `ui_open bag` does the same from the console. A screen opens with its first button focused, fades
+  in, and closes on Escape (gamepad B) or a click outside it. `widgets.Push(tree, modal: false)` shows a
+  tree you built in C# — a HUD — without taking any input. The Sandbox's `sandbox:status` (`C`) is a
+  complete example: `games/Sandbox/content/data/ui.json` and `games/Sandbox/StatusView.cs`.
+- **How a style draws** (13 "As built (drawing)"): its `background`, then its `image` (nine-sliced by
+  `slice`, in texture pixels, and multiplied by `tint`), then a `border` `borderWidth` wide, then the
+  widget's content. Text sizes are in font pixels: `"textScale": 2` is an 18-unit line. A node without a
+  style inherits its parent's text colour and scale, but a style's background, image, border and padding
+  are drawn only where the style is applied — give a window its style and its labels a text style, and
+  the frame is drawn once, round the window.
 - **Text is a key**, `@ns.key`, into `strings/<lang>/*.json` (05 §3.7): `strings/en/mygame.json` holds
   `{ "bag": { "title": "Bag", "weight": "{current} / {max} kg" } }`, plural forms are
   `{ "one": "{count} arrow", "other": "{count} arrows" }`, and the `lang` cvar picks the language
@@ -1525,7 +1543,7 @@ names their types needs the opt-in.
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
 | SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
-| SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel`, `ViewModelAttribute`, `Localisation`, `PluralCategory` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
+| SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel`, `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack`, `UiLayer`, `UiTween` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 

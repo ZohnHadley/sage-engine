@@ -27,6 +27,8 @@ public sealed class UiStyle
         TextScale = record.TextScale;
         Padding = record.Padding;
         BorderWidth = record.BorderWidth;
+        Image = record.Image;
+        Slice = record.Slice;
         var normal = new UiStyleColours(record.TextColour, record.Background, record.Border, record.Fill, record.Tint);
         _colours[(int)UiState.Normal] = normal;
         _colours[(int)UiState.Hover] = Over(normal, record.States.Hover);
@@ -40,6 +42,10 @@ public sealed class UiStyle
     public float TextScale { get; }
     public Thickness Padding { get; }
     public float BorderWidth { get; }
+
+    // Drawn behind the content, nine-sliced by Slice when it is set (the renderer's, #97).
+    public AssetPath Image { get; }
+    public Thickness Slice { get; }
 
     public UiStyleColours Colours(UiState state) => _colours[(int)state];
 

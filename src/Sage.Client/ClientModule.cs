@@ -69,6 +69,10 @@ public sealed class ClientModule : IModule
         // Spellmaker, Journal), so a game only says which screen a key opens.
         actions.Register("MenuUp", ActionKind.Button);
         actions.Register("MenuDown", ActionKind.Button);
+        // Widget screens walk grids and tab order too (issue #97): D-pad left/right and a tab button.
+        actions.Register("MenuLeft", ActionKind.Button);
+        actions.Register("MenuRight", ActionKind.Button);
+        actions.Register("MenuTab", ActionKind.Button);
         actions.Register("MenuConfirm", ActionKind.Button);
         actions.Register("MenuAlternate", ActionKind.Button);
         actions.Register("MenuBack", ActionKind.Button);
@@ -326,7 +330,7 @@ public sealed class ClientModule : IModule
         world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!, _renderer!, _rendererCVars!.TestView));
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
-        world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!));
+        world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!));
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _assetHotReload!));
     }
 

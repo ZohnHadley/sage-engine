@@ -59,6 +59,12 @@ public sealed class UiStyleRecord
     [JsonConverter(typeof(ColourJsonConverter)), Property(Tooltip = "What an image is multiplied by; white leaves it as drawn")]
     public uint Tint = ColourJsonConverter.Pack(255, 255, 255);
 
+    [AssetKind("texture"), Property(Tooltip = "A picture drawn behind the widget's content, over its background and multiplied by its tint: a window's frame, a button's plate (#97)")]
+    public AssetPath Image;
+
+    [Property(Tooltip = "Nine-slice insets in texture pixels — the corners that keep their size while the middle stretches — for the style's image and an image widget's picture; 0: stretched whole. 4, [h, v] or [left, top, right, bottom]")]
+    public Thickness Slice;
+
     [Property(Tooltip = "Colours that change with the widget's state: hover, focused, pressed, disabled")]
     public UiStyleStates States = new();
 }
