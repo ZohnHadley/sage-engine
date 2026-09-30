@@ -113,17 +113,21 @@ public sealed class AnimatorPart : IPrefabPart
 // engine (Engine's constructor, sage.core), like state machines.
 //
 // **The pose, for #117 (skinning) and #120 (attachments, IK):** AnimatorSystem ("sage.animation.animator",
-// Phase.Animation) samples each animator into a pooled SkeletonPose and leaves its ModelSpace filled.
-// `TryGetPose` hands it out. A system that changes the pose (IK, a look-at) runs in Phase.Animation
-// `After = new[] { Animators.SystemId }`, edits `Local` and calls PoseSampler.ToModelSpace again; one
-// that only reads it (skinning extract, sockets) reads it any time after. The pose belongs to the
-// world's AnimatorPoses: never keep it past the tick, never Dispose it.
+// Phase.Animation) rewrites each animator's pooled SkeletonPose from scratch every tick (from its last
+// sample: LOD samples distant ones less often), fills its ModelSpace and registers it in SkeletonPoses,
+// which passes it to SkinPoses. IK and attachments adjust it in Phase.Late, so they never compound.
+// `TryGetPose` hands it out. The pose belongs to the world's AnimatorPoses: never keep it past the tick,
+// never Dispose it.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
 public static class Animators
 {
     public const string SystemId = "sage.animation.animator";
     public const string SetParamInput = "SetAnimParam";
     public const string TriggerInput = "AnimTrigger";
+
+    // Params copied into the entity's AimIk (#120) every tick, degrees to radians, when both exist.
+    public const string AimPitchParam = "aim_pitch";
+    public const string AimYawParam = "aim_yaw";
 
     // The base layer's name in saves, anim_debug and StateOf.
     public const string BaseLayer = "base";

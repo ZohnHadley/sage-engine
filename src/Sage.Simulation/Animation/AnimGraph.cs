@@ -97,6 +97,7 @@ public sealed class AnimGraphRecord
         public readonly AnimParamSource[] ParamSources;
         public readonly float[] ParamDefaults;
         public readonly bool HasSources;
+        public readonly int AimPitchParam, AimYawParam;           // -1: the graph has none (#120's AimIk)
         public readonly string[] ClipNames;
         private readonly Dictionary<string, int> _paramIndex = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, int> _clipIndex = new(StringComparer.Ordinal);
@@ -127,6 +128,9 @@ public sealed class AnimGraphRecord
                 _paramIndex.TryAdd(name, p);
                 p++;
             }
+
+            AimPitchParam = ParamIndex(Animators.AimPitchParam);
+            AimYawParam = ParamIndex(Animators.AimYawParam);
 
             var clips = new List<string>();
             Layers = new Layer[1 + _layers.Count];

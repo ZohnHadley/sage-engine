@@ -51,24 +51,26 @@ internal sealed class AnimatorPoses
     }
 
     // Hands back every slot whose animator was not seen on `tick` (destroyed, or its Animator removed),
-    // taking its pose out of the renderer's SkinPoses first (only if it is still this pose: an entity id
-    // may have been reused by an animator that set its own).
-    public void Sweep(long tick, SkinPoses skin)
+    // taking its pose out of SkeletonPoses (#120; and through it #117's SkinPoses) first.
+    public void Sweep(long tick, SkeletonPoses registered)
     {
         for (int i = 1; i < _slots.Count; i++)
         {
             if (_slots[i] is not { } instance || instance.Seen == tick) continue;
-            Release(instance, skin);
+            Release(instance, registered);
             _slots[i] = null;
             _free.Push(i);
         }
     }
 
-    // Takes the instance's pose out of SkinPoses (when it is the one there) and returns its arrays.
-    public static void Release(Instance instance, SkinPoses skin)
+    // Takes the instance's pose out of SkeletonPoses (when it is the one registered for its entity) and
+    // returns its arrays.
+    public static void Release(Instance instance, SkeletonPoses registered)
     {
         if (instance.Pose is not { } pose) return;
-        if (skin.TryGet(instance.Owner.Id, out var shown) && ReferenceEquals(shown, pose)) skin.Remove(instance.Owner);
+        // A destroyed entity reads as null, so TryGet no longer finds it; Remove still matches its handle
+        // (never an entity that reused the id). A live one is left alone if another source registered it.
+        if (!registered.TryGet(instance.Owner, out var shown) || ReferenceEquals(shown, pose)) registered.Remove(instance.Owner);
         pose.Dispose();
         instance.Pose = null;
         instance.Sampled?.Dispose();
@@ -494,19 +496,22 @@ internal static class AnimatorStepper
 
 // Phase.Animation (issue #118): every animator steps its params, clocks and transitions each tick, then
 // is sampled into its pose — every tick near the main camera, less often far from it (animation LOD,
-// anim_lod_distance). Each sampled pose is handed to #117's skinned renderers through SkinPoses (Set
-// after each sample, Removed before the pose goes back to the pool). Runs after sprite animation; #120's
-// IK and attachments run After it (Animators.SystemId).
+// anim_lod_distance). Every tick the readers' pose is rewritten from the last sample and registered in
+// #120's SkeletonPoses (which passes it to #117's SkinPoses), and Removed before it goes back to the
+// pool; `aim_pitch`/`aim_yaw` params (degrees) go to the entity's AimIk (radians). Runs after sprite
+// animation; #120's foot IK, aim IK and attachments adjust the pose in Phase.Late.
 // Animators are gathered in the query and stepped after it, because a transition's `then` may change
 // the world.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
 [System(Animators.SystemId, Phase.Animation, After = new[] { "?sage.animation.sprites" })]
 internal sealed class AnimatorSystem : ISystem
 {
+    private const float DegToRad = MathF.PI / 180f;
+
     private readonly World _world;
     private readonly Query<Animator> _animators;
     private readonly AnimatorPoses _poses;
-    private readonly SkinPoses _skin;
+    private readonly SkeletonPoses _registered;
     private readonly GltfAnimationReader? _reader;
     private readonly CVar<float>? _lodDistance;
     private readonly List<Entity> _step = new();
@@ -518,7 +523,8 @@ internal sealed class AnimatorSystem : ISystem
         _world = world;
         _animators = world.Query<Animator>();
         _poses = world.Resources.GetOrAdd(static () => new AnimatorPoses());
-        _skin = world.Resources.GetOrAdd(static () => new SkinPoses());   // #117's seam: what skinned renderers draw
+        // #120's seam (the engine installs it over #117's SkinPoses): IK, attachments and skinning read it.
+        _registered = world.Resources.GetOrAdd(() => new SkeletonPoses(world.Resources.GetOrAdd(static () => new SkinPoses())));
         world.Resources.TryGet(out _reader);
         _lodDistance = world.Engine?.CVars.Find(Animators.LodDistanceCVar) as CVar<float>;
     }
@@ -558,6 +564,12 @@ internal sealed class AnimatorSystem : ISystem
             Model(ref a, instance);
             AnimatorStepper.ResolveClips(_world, entity, in a, g, instance);
             AnimatorStepper.Step(_world, entity, ref a, g, instance, dt, _then);
+            if ((g.AimPitchParam >= 0 || g.AimYawParam >= 0) && _world.Has<AimIk>(entity))
+            {
+                ref var aim = ref _world.Get<AimIk>(entity);
+                if (g.AimPitchParam >= 0) aim.Pitch = a.Params![g.AimPitchParam].Value * DegToRad;
+                if (g.AimYawParam >= 0) aim.Yaw = a.Params![g.AimYawParam].Value * DegToRad;
+            }
 
             if (instance.Pose == null) continue;
             instance.Interval = haveCamera && _world.TryGet<GlobalTransform>(entity, out var at) ? Interval(Vector3.Distance(camera, at.Current.Position), lod) : 1;
@@ -570,10 +582,10 @@ internal sealed class AnimatorSystem : ISystem
             // post-process (#120's IK) did to it last tick never compounds.
             instance.Sampled!.Local.CopyTo(instance.Pose.Local);
             PoseSampler.ToModelSpace(instance.Pose.Skeleton, instance.Pose);
-            _skin.Set(entity, instance.Pose);                   // #117 draws it (an overwrite: no allocation)
+            _registered.Set(entity, instance.Pose, a.Model);    // an overwrite: no allocation
         }
         _step.Clear();
-        _poses.Sweep(tick, _skin);
+        _poses.Sweep(tick, _registered);
 
         for (int i = 0; i < _then.Count; i++)
         {
@@ -604,7 +616,7 @@ internal sealed class AnimatorSystem : ISystem
             if (set == null) return;
         }
         if (ReferenceEquals(set, instance.Set)) return;
-        AnimatorPoses.Release(instance, _skin);
+        AnimatorPoses.Release(instance, _registered);
         instance.Set = set;
         instance.Pose = new SkeletonPose(set.Skeleton);
         instance.Sampled = new SkeletonPose(set.Skeleton);

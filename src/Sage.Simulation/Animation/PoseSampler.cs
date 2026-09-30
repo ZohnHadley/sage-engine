@@ -92,6 +92,26 @@ public static class PoseSampler
         }
     }
 
+    // The same for `firstJoint` and every joint after it only: what IK calls after moving a joint, since
+    // parents come first, a joint before `firstJoint` is untouched and a later one finds its parent's
+    // matrix already current (issue #120). ModelSpace must already be current before `firstJoint`.
+    public static void ToModelSpace(Skeleton skeleton, SkeletonPose pose, int firstJoint)
+    {
+        ArgumentNullException.ThrowIfNull(skeleton);
+        ArgumentNullException.ThrowIfNull(pose);
+        if (pose.JointCount != skeleton.JointCount)
+            throw new ArgumentException($"A pose of {pose.JointCount} joints is not one of this skeleton's {skeleton.JointCount}");
+        var parents = skeleton.Parents;
+        var local = pose.Local;
+        var model = pose.ModelSpace;
+        for (int j = Math.Max(firstJoint, 0); j < model.Length; j++)
+        {
+            var m = Compose(in local[j]);
+            int parent = parents[j];
+            model[j] = parent < 0 ? m : m * model[parent];
+        }
+    }
+
     // Scale, then rotate, then translate, written out: the three-product form costs two full matrix
     // multiplies per joint.
     internal static Matrix4x4 Compose(in Pose p)

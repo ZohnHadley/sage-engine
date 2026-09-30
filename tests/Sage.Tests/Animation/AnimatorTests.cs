@@ -338,10 +338,13 @@ public class AnimatorTests
             Assert.Equal(AssetPath.Intern("models/rig.glb"), world.Get<Animator>(e).Model);
             var skin = world.Resources.Get<SkinPoses>();
             Walk(world, e, 3f, 5);
+            Assert.True(world.Resources.Get<SkeletonPoses>().TryGet(e, out var registered, out var model));   // #120's seam
+            Assert.Equal(AssetPath.Intern("models/rig.glb"), model);
 
             Assert.True(skin.TryGet(e.Id, out var shown));
             Assert.True(Animators.TryGetPose(world, e, out var pose));
             Assert.Same(pose, shown);
+            Assert.Same(pose, registered);
             var inverseBind = pose.Skeleton.InverseBind;
             var before = new Matrix4x4[pose.JointCount];
             SkinMath.Palette(shown.ModelSpace, inverseBind, before);
@@ -357,6 +360,44 @@ public class AnimatorTests
             world.Destroy(e);
             Tick(world, 2);
             Assert.False(skin.TryGet(e.Id, out _));
+            Assert.False(world.Resources.Get<SkeletonPoses>().TryGet(e, out _));
+        }
+    }
+
+    // #120's aim IK: the graph's aim_pitch and aim_yaw params (degrees) are copied into the entity's
+    // AimIk (radians) every tick, and the Late phase's aim IK turns the pose the animator rewrote.
+    [Fact]
+    public void AimParamsDriveTheEntitysAimIk()
+    {
+        var (app, _) = NewGame("""
+        [
+          { "type": "anim_graph", "id": "aimer", "initial": "idle",
+            "params": { "aim_pitch": {}, "aim_yaw": {} },
+            "states": { "idle": { "clip": "idle" } } },
+          { "type": "prefab", "id": "hero",
+            "parts": { "animator": { "graph": "aimer", "model": "models/rig.glb" },
+                       "aim_ik": { "joints": [ { "joint": "mid", "weight": 1, "pitchLimit": 90, "yawLimit": 90 } ], "weight": 1 } } }
+        ]
+        """);
+        using (app)
+        {
+            var world = app.World;
+            var e = Spawn(world);
+            Tick(world);
+            Assert.Equal(0f, world.Get<AimIk>(e).Pitch);
+            var unaimed = Pose(world, e).Local[1].Rotation;
+
+            Animators.SetParam(world, e, "aim_pitch", 30f);
+            Animators.SetParam(world, e, "aim_yaw", -45f);
+            Tick(world);
+            Assert.Equal(30f * MathF.PI / 180f, world.Get<AimIk>(e).Pitch, 4);
+            Assert.Equal(-45f * MathF.PI / 180f, world.Get<AimIk>(e).Yaw, 4);
+            var aimed = Pose(world, e).Local[1].Rotation;
+            Assert.True(MathF.Abs(Quaternion.Dot(unaimed, aimed)) < 0.99f, "aim IK should have turned mid");
+
+            // The next tick starts from the graph again: the turn is the same, not twice as much.
+            Tick(world);
+            Near(aimed, Pose(world, e).Local[1].Rotation);
         }
     }
 

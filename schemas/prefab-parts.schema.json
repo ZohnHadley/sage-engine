@@ -19,6 +19,14 @@
         }
       ]
     },
+    "aim_ik": {
+      "description": "Prefab part 'aim_ik' (AimIkPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/aim_ik"
+        }
+      ]
+    },
     "animator": {
       "description": "Prefab part 'animator' (AnimatorPart).",
       "allOf": [
@@ -48,6 +56,19 @@
       "allOf": [
         {
           "$ref": "#/definitions/body"
+        }
+      ]
+    },
+    "bone_attachment": {
+      "description": "Prefab part 'bone_attachment' (BoneAttachmentPart). A bare value is its \"socket\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/bone_attachment"
+        },
+        {
+          "description": "A socket of the parent's model (skeleton_sockets); empty = follow `bone`. (string, default \"\")",
+          "default": "",
+          "type": "string"
         }
       ]
     },
@@ -127,6 +148,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/first_person_rig"
+        }
+      ]
+    },
+    "foot_ik": {
+      "description": "Prefab part 'foot_ik' (FootIkPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/foot_ik"
         }
       ]
     },
@@ -329,6 +358,116 @@
       "additionalProperties": false,
       "description": "Prefab part 'abilities' (AbilitiesPart)."
     },
+    "aim_ik": {
+      "type": "object",
+      "properties": {
+        "joints": {
+          "description": "The joints that turn, from the hips up. (List<AimIkJoint>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints+": {
+          "description": "Adds to \"joints\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints-": {
+          "description": "Removes these from \"joints\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "weight": {
+          "description": "How much of the aim to apply over the animation. Range: 0 to 1. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'aim_ik' (AimIkPart)."
+    },
     "animator": {
       "type": "object",
       "properties": {
@@ -442,6 +581,51 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'body' (BodyPart)."
+    },
+    "bone_attachment": {
+      "type": "object",
+      "properties": {
+        "socket": {
+          "description": "A socket of the parent's model (skeleton_sockets); empty = follow `bone`. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "bone": {
+          "description": "A joint by name, when there is no socket. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "offset": {
+          "description": "Where this sits in the socket's space. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "angles": {
+          "description": "How this is turned in the socket's space: pitch, yaw, roll. Unit: deg. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'bone_attachment' (BoneAttachmentPart)."
     },
     "box_mesh": {
       "type": "object",
@@ -654,6 +838,87 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'first_person_rig' (FirstPersonRigPart)."
+    },
+    "foot_ik": {
+      "type": "object",
+      "properties": {
+        "pelvis": {
+          "description": "The joint lowered so both feet reach (usually the hips); empty = none. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "left": {
+          "description": "The left leg: hip, knee and foot joints. (FootIkLeg)",
+          "type": "object",
+          "properties": {
+            "hip": {
+              "description": "The thigh (the chain's root) (string)",
+              "type": "string"
+            },
+            "knee": {
+              "description": "The shin (where the leg bends) (string)",
+              "type": "string"
+            },
+            "foot": {
+              "description": "The ankle (what is placed on the ground) (string)",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "right": {
+          "description": "The right leg: hip, knee and foot joints. (FootIkLeg)",
+          "type": "object",
+          "properties": {
+            "hip": {
+              "description": "The thigh (the chain's root) (string)",
+              "type": "string"
+            },
+            "knee": {
+              "description": "The shin (where the leg bends) (string)",
+              "type": "string"
+            },
+            "foot": {
+              "description": "The ankle (what is placed on the ground) (string)",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "footHeight": {
+          "description": "How far the ankle joint sits above the sole. Unit: m. At least 0. (float, default 0.08)",
+          "default": 0.08,
+          "type": "number",
+          "minimum": 0
+        },
+        "rayAbove": {
+          "description": "The ray starts this far above the animated foot (how high a step it finds) Unit: m. At least 0. (float, default 0.5)",
+          "default": 0.5,
+          "type": "number",
+          "minimum": 0
+        },
+        "rayBelow": {
+          "description": "And looks this far below it (how deep a dip it reaches into) Unit: m. At least 0. (float, default 0.5)",
+          "default": 0.5,
+          "type": "number",
+          "minimum": 0
+        },
+        "maxPelvisDrop": {
+          "description": "The most the pelvis may drop. Unit: m. At least 0. (float, default 0.4)",
+          "default": 0.4,
+          "type": "number",
+          "minimum": 0
+        },
+        "weight": {
+          "description": "How much of the correction to apply over the animation. Range: 0 to 1. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'foot_ik' (FootIkPart)."
     },
     "hop": {
       "type": "object",

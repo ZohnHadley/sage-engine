@@ -28,6 +28,14 @@
         }
       ]
     },
+    "aim_ik": {
+      "description": "The component sage:aim_ik (AimIk), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:aim_ik"
+        }
+      ]
+    },
     "animator": {
       "description": "The component sage:animator (Animator), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -49,6 +57,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:audio_source"
+        }
+      ]
+    },
+    "bone_attachment": {
+      "description": "The component sage:bone_attachment (BoneAttachment), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:bone_attachment"
         }
       ]
     },
@@ -121,6 +137,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:first_person_rig"
+        }
+      ]
+    },
+    "foot_ik": {
+      "description": "The component sage:foot_ik (FootIk), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:foot_ik"
         }
       ]
     },
@@ -412,6 +436,14 @@
         }
       ]
     },
+    "sage:aim_ik": {
+      "description": "Component sage:aim_ik (AimIk).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:aim_ik"
+        }
+      ]
+    },
     "sage:animator": {
       "description": "Component sage:animator (Animator).",
       "allOf": [
@@ -433,6 +465,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:audio_source"
+        }
+      ]
+    },
+    "sage:bone_attachment": {
+      "description": "Component sage:bone_attachment (BoneAttachment).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:bone_attachment"
         }
       ]
     },
@@ -505,6 +545,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:first_person_rig"
+        }
+      ]
+    },
+    "sage:foot_ik": {
+      "description": "Component sage:foot_ik (FootIk).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:foot_ik"
         }
       ]
     },
@@ -1358,6 +1406,126 @@
       "additionalProperties": false,
       "description": "Component sage:ai_state (AIState)."
     },
+    "sage:aim_ik": {
+      "type": "object",
+      "properties": {
+        "pitch": {
+          "description": "Where to aim: up (+) or down (-) from the character's forward. Unit: rad. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "yaw": {
+          "description": "Where to aim: left (+) or right (-) of the character's forward. Unit: rad. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "weight": {
+          "description": "How much of the aim to apply over the animation. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "joints": {
+          "description": "(List<AimIkJoint>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints+": {
+          "description": "Adds to \"joints\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints-": {
+          "description": "Removes these from \"joints\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:aim_ik (AimIk)."
+    },
     "sage:animator": {
       "type": "object",
       "properties": {
@@ -1720,6 +1888,52 @@
       },
       "additionalProperties": false,
       "description": "Component sage:audio_source (AudioSource)."
+    },
+    "sage:bone_attachment": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "description": "Whose skeleton to follow; none = this entity's parent. (Entity)"
+        },
+        "socket": {
+          "description": "A socket of the target's model (skeleton_sockets); empty = follow `bone`. (string)",
+          "type": "string"
+        },
+        "bone": {
+          "description": "A joint by name, when there is no socket. (string)",
+          "type": "string"
+        },
+        "offset": {
+          "description": "Where this sits in the socket's space. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "angles": {
+          "description": "How this is turned in the socket's space: pitch, yaw, roll. Unit: deg. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:bone_attachment (BoneAttachment)."
     },
     "sage:camera": {
       "type": "object",
@@ -2192,6 +2406,101 @@
       },
       "additionalProperties": false,
       "description": "Component sage:first_person_rig (FirstPersonRig)."
+    },
+    "sage:foot_ik": {
+      "type": "object",
+      "properties": {
+        "pelvis": {
+          "description": "The joint lowered so both feet reach (usually the hips); empty = none. (string)",
+          "type": "string"
+        },
+        "left": {
+          "description": "(FootIkLeg)",
+          "type": "object",
+          "properties": {
+            "hip": {
+              "description": "The thigh (the chain's root) (string)",
+              "type": "string"
+            },
+            "knee": {
+              "description": "The shin (where the leg bends) (string)",
+              "type": "string"
+            },
+            "foot": {
+              "description": "The ankle (what is placed on the ground) (string)",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "right": {
+          "description": "(FootIkLeg)",
+          "type": "object",
+          "properties": {
+            "hip": {
+              "description": "The thigh (the chain's root) (string)",
+              "type": "string"
+            },
+            "knee": {
+              "description": "The shin (where the leg bends) (string)",
+              "type": "string"
+            },
+            "foot": {
+              "description": "The ankle (what is placed on the ground) (string)",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "footHeight": {
+          "description": "How far the ankle joint sits above the sole. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "rayAbove": {
+          "description": "The ray starts this far above the animated foot (how high a step it finds) Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "rayBelow": {
+          "description": "And looks this far below it (how deep a dip it reaches into) Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "maxPelvisDrop": {
+          "description": "The most the pelvis may drop. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "weight": {
+          "description": "How much of the correction to apply over the animation. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pelvisDrop": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "leftGrounded": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "rightGrounded": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:foot_ik (FootIk)."
     },
     "sage:from_map": {
       "type": "object",
