@@ -45,6 +45,7 @@ public class DeclarationTests
             ["prefab"] = RegistrationOwners.Core, ["placements"] = RegistrationOwners.Core,
             ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
             ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
+            ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)

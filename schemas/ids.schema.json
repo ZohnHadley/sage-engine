@@ -334,6 +334,11 @@
         "yard"
       ]
     },
+    "record:screen": {
+      "description": "The id of a screen record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:sound": {
       "description": "The id of a sound record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -389,6 +394,16 @@
         "state.dead",
         "state.invulnerable"
       ]
+    },
+    "record:ui_layout": {
+      "description": "The id of a ui_layout record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "record:ui_style": {
+      "description": "The id of a ui_style record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "record:weather": {
       "description": "The id of a weather record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -730,6 +745,11 @@
         "yard"
       ]
     },
+    "base:screen": {
+      "description": "The id of a screen record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "base:sound": {
       "description": "Another sound record to inherit every field from, abstract or not.",
       "type": "string",
@@ -785,6 +805,16 @@
         "state.dead",
         "state.invulnerable"
       ]
+    },
+    "base:ui_layout": {
+      "description": "The id of a ui_layout record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "base:ui_style": {
+      "description": "The id of a ui_style record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:weather": {
       "description": "Another weather record to inherit every field from, abstract or not.",

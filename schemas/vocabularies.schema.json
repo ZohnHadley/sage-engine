@@ -4438,6 +4438,30 @@
           ]
         }
       ]
+    },
+    "view_model:id": {
+      "description": "A view_model by id (none is registered).",
+      "type": "string",
+      "enum": []
+    },
+    "view_model": {
+      "description": "A view_model: its id, or { \"viewModel\": \"<id>\", … } with its settings.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/view_model:id"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "viewModel": {
+              "$ref": "#/definitions/view_model:id"
+            }
+          },
+          "required": [
+            "viewModel"
+          ]
+        }
+      ]
     }
   }
 }

@@ -48,8 +48,9 @@ public class AssemblyLayeringTests
     }
 
     // Simulation ← UI ← Client (issue #95): the client references the widgets it draws, read from its
-    // built file like the kit check below, and the UI declares no plugin, record or component of its own
-    // — it is a library a screen builds trees with, not a module.
+    // built file like the kit check below. Since #96 the UI is one plugin, `sage.ui` (UiModule), which
+    // owns its records and nothing else — no component, no system: it is a library a screen builds trees
+    // with, plus the content that describes them.
     [Fact]
     public void TheClientSitsOnTheRetainedUi()
     {
@@ -67,10 +68,11 @@ public class AssemblyLayeringTests
         }
 
         var ui = EngineAssemblies.UI;
-        Assert.DoesNotContain(ui.GetTypes(), t => typeof(IModule).IsAssignableFrom(t));
+        Assert.Equal(new[] { typeof(Sage.UI.UiModule) }, ui.GetTypes().Where(t => typeof(IModule).IsAssignableFrom(t)));
         var generated = new GeneratedRegistrations();
         generated.Include(ui);
-        Assert.Empty(generated.Owners);
+        Assert.Equal(new[] { Sage.UI.UiModule.Id }, generated.Owners);
+        Assert.DoesNotContain(ui.GetTypes(), t => Metadata.DeclarationOf(t) is { Kind: not DeclarationKind.Record });
     }
 
     // The same for the two base assemblies the tests cannot reference, read from their built files: the

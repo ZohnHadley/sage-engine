@@ -14,7 +14,9 @@ internal static class UiApi
 
 // Space around a widget (Margin, outside its rect) or inside it (Padding, between its rect and its
 // content), in virtual units.
+// In a record: 4, [h, v] or [left, top, right, bottom] (ThicknessJsonConverter, issue #96).
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
+[System.Text.Json.Serialization.JsonConverter(typeof(ThicknessJsonConverter))]
 public readonly record struct Thickness(float Left, float Top, float Right, float Bottom)
 {
     public Thickness(float all) : this(all, all, all, all) { }
@@ -35,7 +37,9 @@ public readonly record struct Thickness(float Left, float Top, float Right, floa
 // edge, 1 = its right/bottom edge). When MinX == MaxX the child keeps its measured width and that
 // fraction of it sits on the anchor line (0 grows right, 0.5 centres, 1 grows left); when they differ it
 // stretches between the two lines. The same for Y. Margins push in from the anchor lines.
+// In a record: a preset's name ("bottom_right") or [minX, minY, maxX, maxY] (AnchorsJsonConverter).
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
+[System.Text.Json.Serialization.JsonConverter(typeof(AnchorsJsonConverter))]
 public readonly record struct Anchors(float MinX, float MinY, float MaxX, float MaxY)
 {
     public static Anchors TopLeft => new(0f, 0f, 0f, 0f);

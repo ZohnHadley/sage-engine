@@ -124,7 +124,8 @@ public class SageAppTests
     public void TheSimulationModulesAreTheEngineOnesAndEveryGameplayModule()
     {
         var expected = new[] { typeof(PhysicsModule), typeof(StreamingModule), typeof(MapModule) }
-            .Concat(GameplayModules.All().Select(m => m.GetType()));
+            .Concat(GameplayModules.All().Select(m => m.GetType()))
+            .Append(typeof(Sage.UI.UiModule));   // the UI's records and text (#96), headless like the rest
         Assert.Equal(expected, BasePlugins.All().Select(m => m.GetType()));
     }
 
