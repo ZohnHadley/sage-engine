@@ -11,7 +11,9 @@
     "actions": {
       "Spellbook":     [ { "key": "B" } ],
       "Spellmaker":    [ { "key": "M" } ],
-      "Journal":       [ { "key": "J" } ]
+      "Journal":       [ { "key": "J" } ],
+      // The Sandbox's own widget screen (issue #97): SandboxModule registers the action.
+      "Status":        [ { "key": "C" } ]
     }
   },
   {
@@ -21,7 +23,8 @@
     "actions": {
       "Spellbook":     [ { "key": "B" } ],
       "Spellmaker":    [ { "key": "M" } ],
-      "Journal":       [ { "key": "J" } ]
+      "Journal":       [ { "key": "J" } ],
+      "Status":        [ { "key": "C" } ]
     }
   }
 ]

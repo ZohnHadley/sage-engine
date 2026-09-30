@@ -58,34 +58,40 @@ internal sealed class LayoutBuilder
     public UiView Build(RecordId id, UiLayoutRecord layout)
     {
         var tree = new LayoutTree(layout);
+        // The root is the whole screen and carries no style of its own: the layout's style is what its
+        // nodes inherit, and a background there would otherwise be painted over the whole screen (#97).
         var root = new Box { Name = id.Name, Anchors = Anchors.Fill };
         var style = layout.Style.Id;
-        if (!style.IsEmpty) root.Style = style.ToString();
         var bound = new BoundNode(root, null);
-        BuildChildren(tree, "", root, bound, style);
+        BuildChildren(tree, "", root, bound, style, top: true);
         return new UiView(id, bound);
     }
 
-    private void BuildChildren(LayoutTree tree, string parent, Widget host, BoundNode bound, RecordId style)
+    private void BuildChildren(LayoutTree tree, string parent, Widget host, BoundNode bound, RecordId style, bool top = false)
     {
         var children = new List<BoundNode>();
         foreach (var (name, node) in tree.ChildrenOf(parent))
         {
-            var child = BuildNode(tree, name, node, style);
+            var child = BuildNode(tree, name, node, style, top);
             Attach(host, child.Widget);
             if (child.Dynamic) children.Add(child);
         }
         bound.SetChildren(children);
     }
 
-    internal BoundNode BuildNode(LayoutTree tree, string name, UiNode node, RecordId inherited)
+    // `top`: a node of the layout's root box, which has no style, so the layout's style is applied here.
+    internal BoundNode BuildNode(LayoutTree tree, string name, UiNode node, RecordId inherited, bool top = false)
     {
         var widget = WidgetTypes.Create(node.Widget) ?? new Box();
         widget.Name = name;
         var styleId = node.Style.IsEmpty ? inherited : node.Style.Id;
         var style = _styles.Get(styleId);
         if (!styleId.IsEmpty) widget.Style = styleId.ToString();
-        Apply(widget, node, style);
+        // A style's padding, like the box the renderer draws for it (background, image, border), belongs
+        // where the style is applied — where it differs from the parent's — not to every node inheriting
+        // it: a window's padding goes round the window, not again round each row inside (#97). Its
+        // text scale and colours are inherited.
+        Apply(widget, node, style, owns: top || styleId != inherited);
 
         var bound = new BoundNode(widget, node);
         Bind(bound, node, tree, name, styleId);
@@ -103,11 +109,11 @@ internal sealed class LayoutBuilder
         }
     }
 
-    private void Apply(Widget w, UiNode n, UiStyle style)
+    private void Apply(Widget w, UiNode n, UiStyle style, bool owns)
     {
         w.MinSize = n.MinSize;
         w.Margin = n.Margin;
-        w.Padding = n.Padding ?? style.Padding;
+        w.Padding = n.Padding ?? (owns ? style.Padding : Thickness.Zero);
         if (n.HAlign is { } h) w.HAlign = h;
         if (n.VAlign is { } v) w.VAlign = v;
         w.Expand = n.Expand;

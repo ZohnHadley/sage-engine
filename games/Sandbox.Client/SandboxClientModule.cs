@@ -51,6 +51,19 @@ public sealed class SandboxClientModule : IModule
         // Binding them to a key is still the game's call.
         screens.Bind(_actions!.Get("Spellmaker"), _screens!.Create(RpgKitClientModule.Spellmaker)!);
         screens.Bind(_actions!.Get("Journal"), _screens!.Create(RpgKitClientModule.Journal)!);
+
+        // The widget screen (13 "As built (drawing)", issue #97): `sandbox:status`, built from records in
+        // content/data/ui.json over the StatusView view-model. C opens and closes it; its Close button
+        // is the one thing the layout cannot say, so it is said here.
+#pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
+        var widgets = world.Resources.Get<Sage.UI.UiScreenStack>();
+        widgets.Bind(_actions!.Get("Status"), new RecordId("sandbox", "status"));
+        widgets.TooltipStyle = "sandbox:ui_tooltip";
+        widgets.Activated += (layer, widget) =>
+        {
+            if (widget.Name == "close") widgets.Close(layer);
+        };
+#pragma warning restore SAGE0125
     }
 }
 

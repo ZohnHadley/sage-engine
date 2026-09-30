@@ -31,6 +31,12 @@ public struct UiInput
     // The primary button went down this frame: focus and activate what is under the pointer.
     public bool PointerPressed;
 
+    // The primary button is held (this frame included): the widget under it draws pressed (#97).
+    public bool PointerDown;
+
+    // Confirm is held: the focused widget draws pressed (#97).
+    public bool ConfirmHeld;
+
     // Wheel notches this frame, positive away from the user (scrolls up).
     public float Wheel;
 

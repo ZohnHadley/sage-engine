@@ -15,6 +15,9 @@
     <SageSimulationOnly>true</SageSimulationOnly>
     <!-- Don't copy MonoGame/Friflo etc. next to the game dll: the host already has them loaded. -->
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- Its widget screen's view-model (StatusView, issue #97) is Phase 4c's experimental UI, SAGE0125
+         (docs/MAKING_A_GAME.md §10b) — and so is the code generated to declare it. -->
+    <NoWarn>$(NoWarn);SAGE0125</NoWarn>
   </PropertyGroup>
 
   <!-- The RPG kit it is built on (game.json "kits", issue #27). Compile-time only, like the base: the

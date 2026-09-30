@@ -32,6 +32,9 @@ public sealed class SandboxModule : IGameModule
         // The campfire's embers, likewise the client's (06 §3.12). Missing until prefab bodies were
         // checked at load (issue #22): only a headless spawn of the campfire ever said so.
         ctx.Engine.Prefabs.Optional("particles");
+        // What opens the Sandbox's widget screen, `sandbox:status` (13 "As built (drawing)", #97). An
+        // action like any other, so a headless server has the same ids; C is bound in content.
+        ctx.Engine.Actions.Register("Status", ActionKind.Button);
     }
 
     public void Start(ModuleContext ctx)
