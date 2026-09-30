@@ -15,7 +15,8 @@
         "ember_bolt",
         "fireball",
         "sandbox:ember_bolt",
-        "sandbox:fireball"
+        "sandbox:fireball",
+        "weapons:fireball"
       ]
     },
     "record:ai_profile": {
@@ -58,10 +59,12 @@
       "enum": [
         "arms",
         "creature",
+        "dummy",
         "npc",
         "sandbox:arms",
         "sandbox:creature",
-        "skeletal:npc"
+        "skeletal:npc",
+        "weapons:dummy"
       ]
     },
     "record:attack": {
@@ -77,7 +80,10 @@
         "sandbox:crossbow_shot",
         "sandbox:pistol_shot",
         "sandbox:sword_swing",
-        "sword_swing"
+        "sword_swing",
+        "weapons:crossbow_shot",
+        "weapons:pistol_shot",
+        "weapons:sword_swing"
       ]
     },
     "record:attribute": {
@@ -95,7 +101,8 @@
         "sage:mana",
         "sage:stamina",
         "skeletal:armor_head",
-        "stamina"
+        "stamina",
+        "weapons:armor_head"
       ]
     },
     "record:cue": {
@@ -153,7 +160,9 @@
         "ember_cooldown",
         "ember_font",
         "fireball_cooldown",
+        "helmet",
         "mend",
+        "padding",
         "sage:burning",
         "sage:damage",
         "sage:mend",
@@ -165,7 +174,9 @@
         "sandbox:tough_hide",
         "spend_mana",
         "tough_hide",
-        "vigour"
+        "vigour",
+        "weapons:helmet",
+        "weapons:padding"
       ]
     },
     "record:faction": {
@@ -194,9 +205,11 @@
       "description": "The id of a hit_location record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "arm",
         "arm_l",
         "arm_r",
         "head",
+        "leg",
         "leg_l",
         "leg_r",
         "skeletal:arm_l",
@@ -205,7 +218,11 @@
         "skeletal:leg_l",
         "skeletal:leg_r",
         "skeletal:torso",
-        "torso"
+        "torso",
+        "weapons:arm",
+        "weapons:head",
+        "weapons:leg",
+        "weapons:torso"
       ]
     },
     "record:hitboxes": {
@@ -213,7 +230,8 @@
       "type": "string",
       "enum": [
         "mannequin",
-        "skeletal:mannequin"
+        "skeletal:mannequin",
+        "weapons:mannequin"
       ]
     },
     "record:input_map": {
@@ -239,13 +257,20 @@
         "bolt",
         "crossbow",
         "pistol",
+        "pistol_round",
         "pistol_rounds",
         "practice_sword",
         "sandbox:bolt",
         "sandbox:crossbow",
         "sandbox:pistol",
         "sandbox:pistol_rounds",
-        "sandbox:practice_sword"
+        "sandbox:practice_sword",
+        "sword",
+        "weapons:bolt",
+        "weapons:crossbow",
+        "weapons:pistol",
+        "weapons:pistol_round",
+        "weapons:sword"
       ]
     },
     "record:map": {
@@ -265,6 +290,8 @@
         "bunny",
         "crate",
         "door",
+        "dummy",
+        "dummy_helmeted",
         "error",
         "floor",
         "gunmetal",
@@ -306,6 +333,9 @@
         "terrain_default",
         "unlit_default",
         "wall",
+        "weapons:dummy",
+        "weapons:dummy_helmeted",
+        "weapons:floor",
         "wood"
       ]
     },
@@ -368,6 +398,7 @@
         "crate",
         "crossbow_pickup",
         "door",
+        "dummy",
         "fence",
         "ferryman",
         "finale",
@@ -376,6 +407,7 @@
         "floor",
         "gate",
         "hello:player",
+        "helmeted_dummy",
         "hermit",
         "hopper",
         "hut_path",
@@ -456,7 +488,11 @@
         "trigger_zone",
         "trooper",
         "walker",
-        "watcher"
+        "watcher",
+        "weapons:dummy",
+        "weapons:floor",
+        "weapons:helmeted_dummy",
+        "weapons:player"
       ]
     },
     "record:quest": {
@@ -472,7 +508,8 @@
       "type": "string",
       "enum": [
         "pistol_recoil",
-        "sandbox:pistol_recoil"
+        "sandbox:pistol_recoil",
+        "weapons:pistol_recoil"
       ]
     },
     "record:rpg_conventions": {
@@ -495,6 +532,7 @@
         "hall",
         "hello:main",
         "main",
+        "range",
         "sandbox:main",
         "sceneonly:shed",
         "sceneonly:yard",
@@ -502,6 +540,7 @@
         "shed",
         "skeletal:yard",
         "topicsgame:ferry",
+        "weapons:range",
         "yard"
       ]
     },
@@ -564,7 +603,8 @@
       "type": "string",
       "enum": [
         "pistol_spread",
-        "sandbox:pistol_spread"
+        "sandbox:pistol_spread",
+        "weapons:pistol_spread"
       ]
     },
     "record:sprite_sheet": {
@@ -762,7 +802,8 @@
         "ember_bolt",
         "fireball",
         "sandbox:ember_bolt",
-        "sandbox:fireball"
+        "sandbox:fireball",
+        "weapons:fireball"
       ]
     },
     "base:ai_profile": {
@@ -805,10 +846,12 @@
       "enum": [
         "arms",
         "creature",
+        "dummy",
         "npc",
         "sandbox:arms",
         "sandbox:creature",
-        "skeletal:npc"
+        "skeletal:npc",
+        "weapons:dummy"
       ]
     },
     "base:attack": {
@@ -824,7 +867,10 @@
         "sandbox:crossbow_shot",
         "sandbox:pistol_shot",
         "sandbox:sword_swing",
-        "sword_swing"
+        "sword_swing",
+        "weapons:crossbow_shot",
+        "weapons:pistol_shot",
+        "weapons:sword_swing"
       ]
     },
     "base:attribute": {
@@ -842,7 +888,8 @@
         "sage:mana",
         "sage:stamina",
         "skeletal:armor_head",
-        "stamina"
+        "stamina",
+        "weapons:armor_head"
       ]
     },
     "base:cue": {
@@ -900,7 +947,9 @@
         "ember_cooldown",
         "ember_font",
         "fireball_cooldown",
+        "helmet",
         "mend",
+        "padding",
         "sage:burning",
         "sage:damage",
         "sage:mend",
@@ -912,7 +961,9 @@
         "sandbox:tough_hide",
         "spend_mana",
         "tough_hide",
-        "vigour"
+        "vigour",
+        "weapons:helmet",
+        "weapons:padding"
       ]
     },
     "base:faction": {
@@ -941,9 +992,11 @@
       "description": "Another hit_location record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "arm",
         "arm_l",
         "arm_r",
         "head",
+        "leg",
         "leg_l",
         "leg_r",
         "skeletal:arm_l",
@@ -952,7 +1005,11 @@
         "skeletal:leg_l",
         "skeletal:leg_r",
         "skeletal:torso",
-        "torso"
+        "torso",
+        "weapons:arm",
+        "weapons:head",
+        "weapons:leg",
+        "weapons:torso"
       ]
     },
     "base:hitboxes": {
@@ -960,7 +1017,8 @@
       "type": "string",
       "enum": [
         "mannequin",
-        "skeletal:mannequin"
+        "skeletal:mannequin",
+        "weapons:mannequin"
       ]
     },
     "base:input_map": {
@@ -986,13 +1044,20 @@
         "bolt",
         "crossbow",
         "pistol",
+        "pistol_round",
         "pistol_rounds",
         "practice_sword",
         "sandbox:bolt",
         "sandbox:crossbow",
         "sandbox:pistol",
         "sandbox:pistol_rounds",
-        "sandbox:practice_sword"
+        "sandbox:practice_sword",
+        "sword",
+        "weapons:bolt",
+        "weapons:crossbow",
+        "weapons:pistol",
+        "weapons:pistol_round",
+        "weapons:sword"
       ]
     },
     "base:map": {
@@ -1012,6 +1077,8 @@
         "bunny",
         "crate",
         "door",
+        "dummy",
+        "dummy_helmeted",
         "error",
         "floor",
         "gunmetal",
@@ -1053,6 +1120,9 @@
         "terrain_default",
         "unlit_default",
         "wall",
+        "weapons:dummy",
+        "weapons:dummy_helmeted",
+        "weapons:floor",
         "wood"
       ]
     },
@@ -1116,6 +1186,7 @@
         "creature",
         "crossbow_pickup",
         "door",
+        "dummy",
         "fence",
         "ferryman",
         "finale",
@@ -1124,6 +1195,7 @@
         "floor",
         "gate",
         "hello:player",
+        "helmeted_dummy",
         "hermit",
         "hopper",
         "hut_path",
@@ -1205,7 +1277,11 @@
         "trigger_zone",
         "trooper",
         "walker",
-        "watcher"
+        "watcher",
+        "weapons:dummy",
+        "weapons:floor",
+        "weapons:helmeted_dummy",
+        "weapons:player"
       ]
     },
     "base:quest": {
@@ -1221,7 +1297,8 @@
       "type": "string",
       "enum": [
         "pistol_recoil",
-        "sandbox:pistol_recoil"
+        "sandbox:pistol_recoil",
+        "weapons:pistol_recoil"
       ]
     },
     "base:rpg_conventions": {
@@ -1244,6 +1321,7 @@
         "hall",
         "hello:main",
         "main",
+        "range",
         "sandbox:main",
         "sceneonly:shed",
         "sceneonly:yard",
@@ -1251,6 +1329,7 @@
         "shed",
         "skeletal:yard",
         "topicsgame:ferry",
+        "weapons:range",
         "yard"
       ]
     },
@@ -1313,7 +1392,8 @@
       "type": "string",
       "enum": [
         "pistol_spread",
-        "sandbox:pistol_spread"
+        "sandbox:pistol_spread",
+        "weapons:pistol_spread"
       ]
     },
     "base:sprite_sheet": {

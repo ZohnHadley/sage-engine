@@ -1,0 +1,58 @@
+[
+  // Training dummies (engine issue #139): the box mannequin (make_mannequin.py) standing still, with
+  // health, armour and hitboxes. It has no capsule: where a strike lands is its boxes alone, a head, a
+  // torso, an arm or a leg, and a strike that meets none of them misses it.
+  { "type": "material", "id": "dummy", "base": "sage:lit_default", "params": { "AlbedoColor": [0.72, 0.6, 0.42, 1] } },
+  { "type": "material", "id": "dummy_helmeted", "base": "dummy", "params": { "AlbedoColor": [0.5, 0.52, 0.58, 1] } },
+
+  // Stands at rest: the only clip it plays is idle (the rig's; a graph with one state).
+  { "type": "anim_graph", "id": "dummy", "initial": "idle", "states": { "idle": { "clip": "idle" } } },
+
+  // Armour is attributes: `armor` is what sage:physical's resist reads, `fire_resist` sage:fire's, and
+  // `armor_head` what the head's hit_location reads. A dummy's padding and a helmet are effects that add
+  // them for as long as they last (for ever); a helmet as an item a dummy wears would need a `Head`
+  // equipment slot, which only C# can register today.
+  { "type": "attribute", "id": "armor_head", "start": 0, "min": 0, "max": 95 },
+  { "type": "effect", "id": "padding", "duration": "Infinite",
+    "modifiers": [ { "attribute": "sage:armor", "op": "Add", "value": 20 }, { "attribute": "sage:fire_resist", "op": "Add", "value": 50 } ] },
+  { "type": "effect", "id": "helmet", "duration": "Infinite",
+    "modifiers": [ { "attribute": "armor_head", "op": "Add", "value": 50 } ] },
+
+  { "type": "hit_location", "id": "head", "damageMultiplier": 2, "resist": "armor_head" },
+  { "type": "hit_location", "id": "torso", "damageMultiplier": 1 },
+  { "type": "hit_location", "id": "arm", "damageMultiplier": 0.5 },
+  { "type": "hit_location", "id": "leg", "damageMultiplier": 0.75 },
+
+  {
+    // The mannequin's boxes (as tests/games/skeletal's), each following its bone.
+    "type": "hitboxes",
+    "id": "mannequin",
+    "model": "models/mannequin.glb",
+    "boxes": {
+      "head":        { "location": "head",  "bone": "head",        "size": [0.22, 0.32, 0.26], "offset": [0, 0.08, 0] },
+      "chest":       { "location": "torso", "bone": "chest",       "size": [0.40, 0.52, 0.26], "offset": [0, -0.025, 0] },
+      "pelvis":      { "location": "torso", "bone": "pelvis",      "size": [0.34, 0.18, 0.22] },
+      "upper_arm_l": { "location": "arm",   "bone": "upper_arm_l", "size": [0.12, 0.31, 0.12], "offset": [-0.01, -0.145, 0] },
+      "forearm_l":   { "location": "arm",   "bone": "forearm_l",   "size": [0.10, 0.40, 0.10], "offset": [-0.005, -0.20, 0] },
+      "upper_arm_r": { "location": "arm",   "bone": "upper_arm_r", "size": [0.12, 0.31, 0.12], "offset": [0.01, -0.145, 0] },
+      "forearm_r":   { "location": "arm",   "bone": "forearm_r",   "size": [0.10, 0.40, 0.10], "offset": [0.005, -0.20, 0] },
+      "thigh_l":     { "location": "leg",   "bone": "thigh_l",     "size": [0.16, 0.44, 0.16], "offset": [0, -0.21, 0] },
+      "shin_l":      { "location": "leg",   "bone": "shin_l",      "size": [0.13, 0.50, 0.14], "offset": [0, -0.25, 0] },
+      "thigh_r":     { "location": "leg",   "bone": "thigh_r",     "size": [0.16, 0.44, 0.16], "offset": [0, -0.21, 0] },
+      "shin_r":      { "location": "leg",   "bone": "shin_r",      "size": [0.13, 0.50, 0.14], "offset": [0, -0.25, 0] }
+    }
+  },
+
+  {
+    "type": "prefab", "id": "dummy", "name": "dummy",
+    "parts": {
+      "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "dummy" },
+      "animator": { "graph": "dummy" },
+      "attributes": {},
+      "effects": ["padding"],
+      "hitboxes": {}
+    }
+  },
+  { "type": "prefab", "id": "helmeted_dummy", "base": "dummy", "name": "helmeted dummy",
+    "parts": { "skinned_mesh": { "material": "dummy_helmeted" }, "effects": ["padding", "helmet"] } }
+]

@@ -6,7 +6,7 @@ model here is *generated* — boxes, each skinned wholly to the joint it hangs f
 written straight out as `.glb`. Crude on purpose, but a rig and clips a real character can replace
 joint for joint and clip for clip.
 
-**mannequin.glb** (tests/games/skeletal/content/models): an 18-joint humanoid in the engine's model
+**mannequin.glb** (tests/games/skeletal/content/models, tests/games/weapons/content/models): an 18-joint humanoid in the engine's model
 space — +Y up, facing -Z, its right hand on +X, feet on y = 0 — every rest rotation identity:
 
   root
@@ -53,7 +53,7 @@ round a grip — in **view space**, the camera's own: the eye at the origin, x r
 **viewmodel_sword.glb** (games/Sandbox/content/models): a rigid blade along +Y from a grip at the
 origin; the `hand_r` socket (content/data/viewmodel.json) tilts it forward.
 
-**slab.glb** (tests/games/skeletal/content/models): the skeletal test game's floor, a 40 x 1 x 40 m box
+**slab.glb** (tests/games/skeletal/content/models, tests/games/weapons/content/models): the skeletal test game's floor, a 40 x 1 x 40 m box
 centred on its origin, like the `body` it is drawn for.
 
 Clip events are not in glTF: they are `anim_events` records beside the graphs (engine issue #119).
@@ -68,6 +68,7 @@ import struct
 HERE = os.path.dirname(os.path.abspath(__file__))
 SANDBOX_MODELS = os.path.join(HERE, '..', 'content', 'models')
 SKELETAL_MODELS = os.path.join(HERE, '..', '..', '..', 'tests', 'games', 'skeletal', 'content', 'models')
+WEAPONS_MODELS = os.path.join(HERE, '..', '..', '..', 'tests', 'games', 'weapons', 'content', 'models')
 GENERATOR = 'sage-engine make_mannequin.py'
 
 # Per face: the normal, and the four corners as (x, y, z) sign multipliers, counter-clockwise from outside.
@@ -529,6 +530,8 @@ def slab_mesh():
 def main():
     write_skinned(os.path.join(SKELETAL_MODELS, 'mannequin.glb'), 'mannequin', MANNEQUIN, mannequin_mesh(), mannequin_clips())
     write_rigid(os.path.join(SKELETAL_MODELS, 'slab.glb'), 'slab', slab_mesh())
+    write_skinned(os.path.join(WEAPONS_MODELS, 'mannequin.glb'), 'mannequin', MANNEQUIN, mannequin_mesh(), mannequin_clips())
+    write_rigid(os.path.join(WEAPONS_MODELS, 'slab.glb'), 'slab', slab_mesh())
     write_skinned(os.path.join(SANDBOX_MODELS, 'arms.glb'), 'arms', ARMS, arms_mesh(), arms_clips())
     write_rigid(os.path.join(SANDBOX_MODELS, 'viewmodel_sword.glb'), 'sword', sword_mesh())
 

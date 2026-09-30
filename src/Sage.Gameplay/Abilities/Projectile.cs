@@ -195,7 +195,7 @@ internal sealed class ProjectileSystem : ISystem
         // A projectile outlives its caster: a fireball thrown by something that dies mid-flight still
         // lands. The payload credits a dead caster, which the death seam already copes with.
         if (!_records.TryGet(arrival.Ability, out AbilityRecord record)) return;
-        _payload.Deliver(world, arrival.Caster, arrival.Ability, record, arrival.Point, arrival.Struck);
+        _payload.Deliver(world, arrival.Caster, arrival.Ability, record, arrival.Point, arrival.Struck, arrival.Location);
 
         if (!_debugCasts.Value) return;
         if (record.Radius > 0f) _debug.Sphere(arrival.Point, record.Radius, DebugColour.Magenta, 1.5f);

@@ -1,0 +1,16 @@
+{
+  // Phase 4e's exit (engine issue #139, REDESIGN §5): a sword, a crossbow, a pistol and a fireball, each
+  // defined by records only, hitting armoured dummies on the one hit pipeline (docs/design/16 "As built
+  // (the weapons exit game)"). No C#: the RPG kit brings the two hands the weapons are held in and the
+  // Cast button that throws the readied spell; everything else is the base engine's.
+  // The mannequin and the floor are generated (games/Sandbox/tools/make_mannequin.py).
+  // CI validates it and runs it in the real host (tools/smoke_run.sh); tests/Sage.Tests/Games/WeaponsExitTests.cs
+  // boots it headlessly and fires every weapon.
+  "name": "Weapons range",
+  "id": "weapons",
+  "plugins": ["sage.gameplay.character", "sage.gameplay.animation", "sage.gameplay.attributes",
+              "sage.gameplay.combat", "sage.gameplay.items", "sage.gameplay.abilities"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "range"
+}

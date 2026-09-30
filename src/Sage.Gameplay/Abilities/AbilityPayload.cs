@@ -24,8 +24,11 @@ internal sealed class AbilityPayload
     public IReadOnlyList<Entity> Targets => _targets;
 
     // Applies the ability at `point`. `direct` is the one thing it hit, if it hit something — a burst
-    // ignores it and takes everything near instead. Returns how many it affected.
-    public int Deliver(World world, Entity caster, RecordId abilityId, AbilityRecord record, Vector3 point, Entity direct)
+    // ignores it and takes everything near instead. `location` is the hit_location of the hitbox it struck
+    // (issue #139), if it struck one: the damage lands there on `direct`, as an attack's bolt does, and a
+    // burst's other targets stay on the body. Returns how many it affected.
+    public int Deliver(World world, Entity caster, RecordId abilityId, AbilityRecord record, Vector3 point, Entity direct,
+        RecordId location = default)
     {
         _targets.Clear();
 
@@ -50,8 +53,11 @@ internal sealed class AbilityPayload
             // then a Damaged event. Its riders go with it, so a target that shrugs off the whole thing
             // shrugs off the burning too — the way a poisoned blade already works.
             if (record.Damage > 0f)
-                Combat.ApplyDamage(world, new DamageInfo(caster, target, record.DamageType, record.Damage,
-                    point, Direction(world, target, point)), record.Effects);
+            {
+                var damage = new DamageInfo(caster, target, record.DamageType, record.Damage, point, Direction(world, target, point));
+                if (target == direct && !location.IsEmpty) damage = damage with { Location = location };
+                Combat.ApplyDamage(world, damage, record.Effects);
+            }
             else
                 foreach (var effect in record.Effects)
                     Effects.Apply(world, target, effect, caster, record.Magnitude);

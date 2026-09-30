@@ -21,6 +21,7 @@ public class HitLocationTests
     private static readonly RecordId ArmL = new("skeletal", "arm_l");
     private static readonly RecordId Pistol = new("hits", "pistol");
     private static readonly RecordId Bolt = new("hits", "bolt");
+    private static readonly RecordId Fireball = new("hits", "fireball");
 
     // A pistol, a helmet that is only data (an item whose effect adds armor_head while it is worn) and a
     // mannequin with a capsule round it as well as its hitboxes.
@@ -31,6 +32,8 @@ public class HitLocationTests
          { "type": "attack", "id": "bolt", "delivery": "projectile", "damage": 10, "range": 60, "radius": 0.02,
            "projectileSpeed": 50, "windupTime": 0, "recoverTime": 0.1, "cooldown": 1 },
          { "type": "attack", "id": "piercing_bolt", "base": "bolt", "projectilePierce": 1 },
+         { "type": "ability", "id": "fireball", "targeting": "Projectile", "damage": 10, "radius": 0,
+           "projectileSpeed": 30, "range": 40 },
          { "type": "effect", "id": "helmet_armor", "duration": "Infinite",
            "modifiers": [ { "attribute": "skeletal:armor_head", "op": "Add", "value": 50 } ] },
          { "type": "item", "id": "helmet", "slot": "Head", "effects": ["helmet_armor"] },
@@ -38,9 +41,13 @@ public class HitLocationTests
            "parts": { "body": { "shape": "Capsule", "radius": 0.4, "height": 1.9 } } }]
         """;
 
-    internal static HeadlessApp Yard()
+    // The skeletal game has combat and no magic, so a bolt flies on the carrier combat adds (issue #138);
+    // `abilities` adds the abilities plugin, for a fireball.
+    internal static HeadlessApp Yard(bool abilities = false)
     {
-        var app = HeadlessApp.ForGame(NpcLocomotionTests.Game("skeletal")).WithEngineContent()
+        var builder = HeadlessApp.ForGame(NpcLocomotionTests.Game("skeletal")).WithEngineContent();
+        if (abilities) builder.With(new AbilitiesModule());
+        var app = builder
             .OnRegistered(a => a.Engine.Modules.Modules.OfType<ItemsModule>().Single().Slots.Register("Head"))
             .File("data/hits.json", Records, "hits").Boot();
         Assert.Equal(0, app.Records.ErrorCount);
@@ -237,6 +244,30 @@ public class HitLocationTests
         Assert.Equal(2, damage.All.Count);
         Assert.Equal(target, damage.All[1].Hit.Target);
         Assert.Equal(new RecordId("skeletal", "torso"), damage.All[1].Location);
+    }
+
+    // Acceptance (issue #139): an ability's projectile lands through the same hitbox resolution as an
+    // attack's bolt, and its damage lands at the hitbox's hit_location: a fireball at the head is twice
+    // its damage, on `head`.
+    [Xunit.Fact]
+    public void AFireballAtTheHeadLandsOnHead()
+    {
+        using var app = Yard(abilities: true);
+        var world = app.World;
+        var target = Npc(world, new Vector3(12, 0, 14));
+        var shooter = world.Create(Transform.At(new Vector3(0, 0, 30)), "shooter");
+        NpcLocomotionTests.Step(world, 5);
+        var damage = new EventProbe<Damaged>(world);
+        var record = world.Resources.Get<RecordStore>().Get<AbilityRecord>(Fireball);
+
+        var fireball = world.Launch(shooter, Fireball, record, new Vector3(12f, 1.62f, 19f), -Vector3.UnitZ);
+        for (int i = 0; i < 20; i++) world.RunFixed(Dt);
+        var hit = Assert.Single(damage.All);
+        Assert.Equal(target, hit.Hit.Target);
+        Assert.Equal(shooter, hit.Hit.Attacker);
+        Assert.Equal(Head, hit.Location);
+        Assert.Equal(20f, hit.Applied, 3);
+        Assert.False(world.IsAlive(fireball));
     }
 
     // Hitboxes follow the bones (the Late phase's attachments) and the body (composed in PrePhysics from
