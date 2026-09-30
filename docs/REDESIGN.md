@@ -1080,7 +1080,7 @@ test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *acti
 | **4b** | **Done** (#87). **Timers, tweens, state machines**; the **conditions/actions vocabulary** (§4.3 stage 2); logic entities and bridge I/O (stage 3). This is HL1's scripted sequences and Morrowind's dialogue conditions in one mechanism | an HL1-style sequence (door, lift, NPC line, counter) and a conditional dialogue topic, built in data only |
 | **4c** | **Done** (#88). **UI toolkit** (retained widgets, layout, focus and gamepad, style/layout records, localisation keys). First consumers are RPG screens: HUD, inventory **grid with weight** (S.T.A.L.K.E.R.), equipment, container/loot, shop, dialogue topics, journal, map, and a main menu with save/load | inventory, loot and dialogue screens built from records over headless view-models, with tests |
 | **4d** | **Done** (#115). **Skeletal animation** [F9–F12]: glTF skins, clips, blending, anim state machine as data, animation events replacing the `attack`/`hit`/`idle` names, **first-person arms and viewmodels**, simple IK for aiming and feet | an NPC walks, runs, aims and attacks, blended; first-person arms reload a weapon |
-| **4e** | **Weapons and combat generalised**: one damage pipeline for melee, projectile and **hitscan**; ammo, magazines, reload; spread and recoil as records; hit locations (head/limbs) from colliders; armour by location; the existing melee and spells re-expressed on it | the same pipeline drives a sword, a crossbow, a pistol and a fireball, each defined by records only |
+| **4e** | **In progress** (#132; the hit pipeline, #133, is built). **Weapons and combat generalised**: one damage pipeline for melee, projectile and **hitscan**; ammo, magazines, reload; spread and recoil as records; hit locations (head/limbs) from colliders; armour by location; the existing melee and spells re-expressed on it | the same pipeline drives a sword, a crossbow, a pistol and a fireball, each defined by records only |
 | **4f** | **RPG progression and economy (generic)**: skills that rise with use or with XP (both as rules), levelling, perks as effects; containers, loot tables, shops and barter, item "use" (§4.3 `ItemUse`), durability and weight | a Morrowind-style "use a skill, it rises" and a S.T.A.L.K.E.R.-style trader, both in data |
 | **4g** | **Open world, part 2**: entities stream by sector (not only terrain), **interior cells** with load doors, fast travel, **time of day** (sun, sky, lighting, NPC schedules), and **off-screen simulation** (A-Life-lite: coarse movement and fights for unloaded NPCs, reconciled when they stream in) | walk from an exterior into a dungeon and back; an NPC keeps its schedule across a day while you are away |
 | **4h** | **Rendering for these worlds**: render pass registry and public `RenderContext` (§4.7), sun shadows, fog, day/night lighting, post-processing; mesh, sound and `.fx` hot reload | a dusk-to-night transition with shadows in a streamed exterior |
@@ -1264,6 +1264,16 @@ The Sandbox's arms reload the sword with `mag_out` then `mag_in` (test: FirstPer
 fifty NPCs allocate nothing per tick (test: FiftyNpcsAllocateNothingPerTick). CI validates, schemas and
 smoke-runs the game. Ragdolls (F11) are a follow-up. SAGE0126. Details: docs/design/12 "As built (phase
 4d's exit)".
+
+*As built, 4e (issue #133, 2026-09-30): one hit pipeline.* Phase 4e (#132) starts with the pipeline every
+weapon goes through: a `HitRequest` (attacker, eye, aim, attack), the attack's `hit_delivery` — `sweep`
+(the swing, moved out of the melee system), `ray` (hitscan) or `projectile` (abilities' carrier) — and
+`Combat.ApplyHit`, of which `ApplyDamage` is now a thin wrapper. A pistol's ray hurts a target 30 m away on
+the first tick after the press (test: ARayAttackDamagesATargetThirtyMetresAwayInOneTick); the melee system
+keeps its id, `sage:melee` and its timing, and the existing combat tests pass unchanged
+(test: ASpriteGoblinAndASkinnedNpcLandOnHitOnTheSameTickAsBefore); twenty attackers allocate nothing
+(test: TwentyAttackersAllocateNothingOver600Ticks). SAGE0127. Details: docs/design/16 "As built (the hit
+pipeline)".
 
 ### Stage C: prove it on the action-RPG family, then build your game
 
