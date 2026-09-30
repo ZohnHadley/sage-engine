@@ -146,6 +146,46 @@
         }
       ]
     },
+    "logic_branch": {
+      "description": "Prefab part 'logic_branch' (LogicBranchPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/logic_branch"
+        }
+      ]
+    },
+    "logic_compare": {
+      "description": "Prefab part 'logic_compare' (LogicComparePart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/logic_compare"
+        }
+      ]
+    },
+    "logic_counter": {
+      "description": "Prefab part 'logic_counter' (LogicCounterPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/logic_counter"
+        }
+      ]
+    },
+    "logic_relay": {
+      "description": "Prefab part 'logic_relay' (LogicRelayPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/logic_relay"
+        }
+      ]
+    },
+    "math_remap": {
+      "description": "Prefab part 'math_remap' (MathRemapPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/math_remap"
+        }
+      ]
+    },
     "melee": {
       "description": "Prefab part 'melee' (MeleePart).",
       "allOf": [
@@ -175,6 +215,22 @@
       "allOf": [
         {
           "$ref": "#/definitions/pickup"
+        }
+      ]
+    },
+    "quest_watch": {
+      "description": "Prefab part 'quest_watch' (QuestWatchPart). A bare value is its \"quest\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/quest_watch"
+        },
+        {
+          "description": "The quest it listens to: OnStageChanged when it moves. Names a quest record. (RecordRef<QuestRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:quest"
+            }
+          ]
         }
       ]
     },
@@ -684,6 +740,177 @@
       "additionalProperties": false,
       "description": "Prefab part 'light' (LightPart)."
     },
+    "logic_branch": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "True or false to start with. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'logic_branch' (LogicBranchPart)."
+    },
+    "logic_compare": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The value it starts with. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "compareValue": {
+          "description": "What the value is compared with. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'logic_compare' (LogicComparePart)."
+    },
+    "logic_counter": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "description": "The count it starts at, and where Reset puts it. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "min": {
+          "description": "The lowest it goes; OnHitMin when it gets there (limits only when max > min) (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "max": {
+          "description": "The highest it goes; OnHitMax when it gets there (limits only when max > min) (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "startDisabled": {
+          "description": "Starts disabled: nothing changes it until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'logic_counter' (LogicCounterPart)."
+    },
+    "logic_relay": {
+      "type": "object",
+      "properties": {
+        "requires": {
+          "description": "Trigger does nothing unless this holds, asked of the activator (subject) and the relay (other) (ICondition)",
+          "allOf": [
+            {
+              "$ref": "vocabularies.schema.json#/definitions/condition"
+            }
+          ]
+        },
+        "then": {
+          "description": "Done on Trigger, before OnTrigger fires: the activator is the subject, the relay the other. (List<IAction>)",
+          "type": "array",
+          "items": {
+            "$ref": "vocabularies.schema.json#/definitions/action"
+          }
+        },
+        "then+": {
+          "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "vocabularies.schema.json#/definitions/action"
+          }
+        },
+        "then-": {
+          "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "vocabularies.schema.json#/definitions/action"
+          }
+        },
+        "startDisabled": {
+          "description": "Starts disabled: Trigger does nothing until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "sameTick": {
+          "description": "OnTrigger's wires with no delay arrive in the same tick rather than the next. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'logic_relay' (LogicRelayPart)."
+    },
+    "math_remap": {
+      "type": "object",
+      "properties": {
+        "inMin": {
+          "description": "The input range's start: maps to outMin. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "inMax": {
+          "description": "The input range's end: maps to outMax. (float, default 1)",
+          "default": 1,
+          "type": "number"
+        },
+        "outMin": {
+          "description": "What inMin becomes. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "outMax": {
+          "description": "What inMax becomes. (float, default 1)",
+          "default": 1,
+          "type": "number"
+        },
+        "clamp": {
+          "description": "Keep the result between outMin and outMax, whatever comes in. (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "ease": {
+          "description": "The curve between the ends (Linear, QuadInOut, …) (Ease, default \"Linear\")",
+          "default": "Linear",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'math_remap' (MathRemapPart)."
+    },
     "melee": {
       "type": "object",
       "properties": {
@@ -778,6 +1005,21 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'pickup' (PickupPart)."
+    },
+    "quest_watch": {
+      "type": "object",
+      "properties": {
+        "quest": {
+          "description": "The quest it listens to: OnStageChanged when it moves. Names a quest record. (RecordRef<QuestRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:quest"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'quest_watch' (QuestWatchPart)."
     },
     "scripted_camera": {
       "type": "object",

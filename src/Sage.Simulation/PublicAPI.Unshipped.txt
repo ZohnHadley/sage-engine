@@ -8,6 +8,18 @@ const Sage.Simulation.CameraMath.MaxFovY = 3.1241393 -> float
 const Sage.Simulation.DebugCamera.IdlePriority = -2147483647 -> int
 const Sage.Simulation.DebugCamera.OverridePriority = 2147483647 -> int
 const Sage.Simulation.FirstPersonRigSystem.Id = "sage.camera.first_person" -> string!
+const Sage.Simulation.LogicEntities.OnChanged = "OnChanged" -> string!
+const Sage.Simulation.LogicEntities.OnEqual = "OnEqual" -> string!
+const Sage.Simulation.LogicEntities.OnFalse = "OnFalse" -> string!
+const Sage.Simulation.LogicEntities.OnGetValue = "OnGetValue" -> string!
+const Sage.Simulation.LogicEntities.OnGreater = "OnGreater" -> string!
+const Sage.Simulation.LogicEntities.OnHitMax = "OnHitMax" -> string!
+const Sage.Simulation.LogicEntities.OnHitMin = "OnHitMin" -> string!
+const Sage.Simulation.LogicEntities.OnLess = "OnLess" -> string!
+const Sage.Simulation.LogicEntities.OnNotEqual = "OnNotEqual" -> string!
+const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
+const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
+const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
 const Sage.Simulation.StateMachines.OnStateChanged = "OnStateChanged" -> string!
 const Sage.Simulation.StateMachines.SetStateInput = "SetState" -> string!
@@ -146,6 +158,7 @@ Sage.Simulation.ConditionContext.Subject.init -> void
 Sage.Simulation.ConditionContext.World.get -> Sage.Simulation.World!
 Sage.Simulation.ConditionContext.World.init -> void
 Sage.Simulation.Conditions
+Sage.Simulation.Connection.Requires -> Sage.Simulation.ICondition?
 Sage.Simulation.DebugCamera
 Sage.Simulation.Ease
 Sage.Simulation.Ease.BackIn = 19 -> Sage.Simulation.Ease
@@ -179,8 +192,13 @@ Sage.Simulation.Ease.SineOut = 14 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmootherStep = 29 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmoothStep = 28 -> Sage.Simulation.Ease
 Sage.Simulation.Easing
+Sage.Simulation.EntityInputs.ComponentsTaking(string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.EntityInputs.Register<T>(string! name, Sage.Simulation.EntityInput! handler) -> void
+Sage.Simulation.EntityInputs.Takes(Sage.Simulation.Entity entity, string! name) -> bool
 Sage.Simulation.EntityIO.AfterLoad(Sage.Simulation.World! world) -> void
 Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
+Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
+Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
 Sage.Simulation.EntityIO.Now.get -> double
 Sage.Simulation.EntityIO.FireInput(string! targetName, string! input, string! parameter = "", float delay = 0, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity), Sage.Simulation.Entity caller = default(Sage.Simulation.Entity)) -> void
 Sage.Simulation.FirstPersonRig
@@ -200,6 +218,53 @@ Sage.Simulation.IAction
 Sage.Simulation.IAction.Run(in Sage.Simulation.ActionContext context) -> void
 Sage.Simulation.ICondition
 Sage.Simulation.ICondition.Test(in Sage.Simulation.ConditionContext context, out string! why) -> bool
+Sage.Simulation.LogicBranch
+Sage.Simulation.LogicBranch.LogicBranch() -> void
+Sage.Simulation.LogicBranch.Value -> bool
+Sage.Simulation.LogicBranchPart
+Sage.Simulation.LogicBranchPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicBranchPart.LogicBranchPart() -> void
+Sage.Simulation.LogicBranchPart.Value -> bool
+Sage.Simulation.LogicCompare
+Sage.Simulation.LogicCompare.CompareValue -> float
+Sage.Simulation.LogicCompare.LogicCompare() -> void
+Sage.Simulation.LogicCompare.Value -> float
+Sage.Simulation.LogicComparePart
+Sage.Simulation.LogicComparePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicComparePart.CompareValue -> float
+Sage.Simulation.LogicComparePart.LogicComparePart() -> void
+Sage.Simulation.LogicComparePart.Value -> float
+Sage.Simulation.LogicCounter
+Sage.Simulation.LogicCounter.Disabled -> bool
+Sage.Simulation.LogicCounter.IsLimited() -> bool
+Sage.Simulation.LogicCounter.LogicCounter() -> void
+Sage.Simulation.LogicCounter.Max -> float
+Sage.Simulation.LogicCounter.Min -> float
+Sage.Simulation.LogicCounter.Start -> float
+Sage.Simulation.LogicCounter.Value -> float
+Sage.Simulation.LogicCounterPart
+Sage.Simulation.LogicCounterPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicCounterPart.LogicCounterPart() -> void
+Sage.Simulation.LogicCounterPart.Max -> float
+Sage.Simulation.LogicCounterPart.Min -> float
+Sage.Simulation.LogicCounterPart.Start -> float
+Sage.Simulation.LogicCounterPart.StartDisabled -> bool
+Sage.Simulation.LogicEntities
+Sage.Simulation.LogicRelay
+Sage.Simulation.LogicRelay.Disabled -> bool
+Sage.Simulation.LogicRelay.LogicRelay() -> void
+Sage.Simulation.LogicRelay.SameTick -> bool
+Sage.Simulation.LogicRelayPart
+Sage.Simulation.LogicRelayPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicRelayPart.LogicRelayPart() -> void
+Sage.Simulation.LogicRelayPart.Requires -> Sage.Simulation.ICondition?
+Sage.Simulation.LogicRelayPart.SameTick -> bool
+Sage.Simulation.LogicRelayPart.StartDisabled -> bool
+Sage.Simulation.LogicRelayPart.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Simulation.LogicRelayScript
+Sage.Simulation.LogicRelayScript.LogicRelayScript() -> void
+Sage.Simulation.LogicRelayScript.Requires -> Sage.Simulation.ICondition?
+Sage.Simulation.LogicRelayScript.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>?
 Sage.Simulation.LogicTimer
 Sage.Simulation.LogicTimer.Activator -> Sage.Simulation.Entity
 Sage.Simulation.LogicTimer.Interval -> float
@@ -224,6 +289,24 @@ Sage.Simulation.MachineState.MachineState() -> void
 Sage.Simulation.MachineState.Tags -> System.Collections.Generic.List<string!>!
 Sage.Simulation.MachineState.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
 Sage.Simulation.MainViewExtensions
+Sage.Simulation.MathRemap
+Sage.Simulation.MathRemap.Clamp -> bool
+Sage.Simulation.MathRemap.Ease -> Sage.Simulation.Ease
+Sage.Simulation.MathRemap.InMax -> float
+Sage.Simulation.MathRemap.InMin -> float
+Sage.Simulation.MathRemap.MathRemap() -> void
+Sage.Simulation.MathRemap.OutMax -> float
+Sage.Simulation.MathRemap.OutMin -> float
+Sage.Simulation.MathRemap.Value -> float
+Sage.Simulation.MathRemapPart
+Sage.Simulation.MathRemapPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.MathRemapPart.Clamp -> bool
+Sage.Simulation.MathRemapPart.Ease -> Sage.Simulation.Ease
+Sage.Simulation.MathRemapPart.InMax -> float
+Sage.Simulation.MathRemapPart.InMin -> float
+Sage.Simulation.MathRemapPart.MathRemapPart() -> void
+Sage.Simulation.MathRemapPart.OutMax -> float
+Sage.Simulation.MathRemapPart.OutMin -> float
 Sage.Simulation.PlayerCamera
 Sage.Simulation.PlayerCamera.PlayerCamera() -> void
 Sage.Simulation.PlayerCameraSystem
@@ -367,6 +450,9 @@ static Sage.Simulation.Easing.IsMonotonic(Sage.Simulation.Ease ease) -> bool
 static Sage.Simulation.Easing.Lerp(Sage.Simulation.Ease ease, float a, float b, float t) -> float
 static Sage.Simulation.Easing.TryParse(System.ReadOnlySpan<char> text, out Sage.Simulation.Ease ease) -> bool
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
+static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
+static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
+static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem

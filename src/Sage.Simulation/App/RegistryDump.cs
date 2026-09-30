@@ -117,9 +117,26 @@ public static class RegistryDump
             }))),
         }));
 
-        root["entityInputs"] = Array(engine.Inputs.Names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Select(n => new JsonObject
+        // An input routed to components (issue #91) lists them, each with its own owner; `owner` is the
+        // global handler's, or the first component's when there is none.
+        root["entityInputs"] = Array(engine.Inputs.Names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Select(n =>
         {
-            ["name"] = n, ["owner"] = ledger.OwnerOf("entity input", n),
+            var components = engine.Inputs.ComponentsTaking(n);
+            var entry = new JsonObject
+            {
+                ["name"] = n,
+                ["owner"] = ledger.OwnerOf("entity input", n)
+                            ?? (components.Count > 0 ? ledger.OwnerOf("entity input", $"{n}@{components[0]}") : null),
+            };
+            if (components.Count > 0)
+            {
+                entry["global"] = engine.Inputs.HasGlobal(n);
+                entry["components"] = Array(components.Select(c => new JsonObject
+                {
+                    ["component"] = c, ["owner"] = ledger.OwnerOf("entity input", $"{n}@{c}"),
+                }));
+            }
+            return entry;
         }));
         root["entityOutputs"] = Array(engine.Outputs.Names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Select(n => new JsonObject
         {
