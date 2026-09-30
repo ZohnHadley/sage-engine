@@ -1089,6 +1089,20 @@ on the same terms (#81). `ActiveCamera` survived as a mirror (D1); rigs are comp
 (D2); render targets are named and fixed-size (D3). Left for later phases: blends (4b), render targets in
 UI widgets (4c), the editor's own world and picking (phase 10).
 
+*As built, 4b (issue #90, 2026-09-30): timers, tweens and a saved entity I/O queue.* `Easing` (an `Ease`
+enum of Penner's curves and `Easing.Apply`, pure maths; merged first because 4c needs it) drives a
+`sage:tween` (a transform's position, rotation or scale, from `TweenTo`, firing `OnTweenDone`) and camera
+blends (`CameraOn [hold [blend [ease]]]`; a cut stays the default); a `sage:timer` fires `OnTimer` every
+interval, give or take a saved random spread (`TimerStart`/`TimerStop`/`TimerReset`, prefab
+`sage:logic_timer`). All three are the engine's (`sage.core`), like cameras. Entity I/O is the
+`entity_io` saved resource: pending inputs (target by persistent id, else name) and each wire's fired
+count, and a scene's wires come back with a load; old saves load as nothing pending (no format change).
+The I/O clock moves at the start of the tick, so a trigger's delay counts from the tick it fired in
+(test: ATriggerWiresDelayCountsFromTheSameTickAsADispatchWires)
+(test: ADelayedInputSavedHalfWayArrivesOnTheTickItWould_AndItsWireStaysSpent)
+(test: TweensAreDeterministicAndSurviveASave). Experimental as SAGE0124 (phase 4b's logic) and SAGE0123
+(the blend). Details: docs/design/04 §3.4b and 06 "As built (camera blends)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |

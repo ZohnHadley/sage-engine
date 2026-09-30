@@ -499,8 +499,10 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `pickup` | makes it something you can pick up — `item`, `count` |
 | `faction` | who it belongs to |
 | `dialogue` | something to say |
+| `timer` | a timer that fires `OnTimer` — `interval`, `spread` (± seconds, at random), `repeat`, `startOn`, `seed` (issue #90) |
+| `tween` | something a `TweenTo` wire moves, turns or scales — `channel`, `target`, `relative`, `duration`, `ease` (issue #90) |
 
-Fifteen, and that is all of them. `ent_types` in the console lists each with its options, the plugin
+Seventeen here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -708,9 +710,11 @@ something that happens (§5, "Wiring"):
 ```
 
 `CameraOn` takes the screen for the parameter's seconds (none: until a `CameraOff`); the camera fires
-`OnCameraOn` and `OnCameraOff` as it changes. It is a cut; blends wait for tweens (phase 4b). Your own
-kind is a prefab with the two parts, `camera` (`"enabled": false` and a priority above your rig's) and
-`scripted_camera` (`holdTime`, the default hold; `lockInput`). `tests/games/camera-cut` is a game with
+`OnCameraOn` and `OnCameraOff` as it changes. It is a cut unless you ask for a blend: `"parameter": "3 1.5
+SineInOut"` holds for three seconds and eases in from the view the screen had over the first one and a
+half (issue #90). Your own kind is a prefab with the two parts, `camera` (`"enabled": false` and a
+priority above your rig's) and `scripted_camera` (`holdTime`, the default hold; `lockInput`; `blendTime`
+and `blendEase`, the default blend, which is none). `tests/games/camera-cut` is a game with
 no C# that does both kinds of cut.
 The Sandbox has one too: the path to the hut (`hut_path` and `hut_cam` in its `scene.json`), on a physics
 layer only the player touches so nothing else fires it.
@@ -805,8 +809,9 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`,
-`OnCameraOn` / `OnCameraOff`.
-Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff` — `io_list` prints the live lists, and
+`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`.
+Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
+`TimerStop` / `TimerReset`, `TweenTo` / `TweenStop` — `io_list` prints the live lists, and
 your own modules can register more inputs (`engine.Inputs.Register`) and declare the outputs they fire
 (`engine.Outputs.Declare(name, what it means)`), which puts them in the FGD. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
 
@@ -829,8 +834,29 @@ prefab by its full id, `"classname" "sage:scripted_camera"`.
 | `Say` | the text | Puts a line in the message log |
 | `Fire` | an output's name | Fires one of the entity's own outputs (a relay) |
 | `Open` / `Close` / `Toggle` | | Moves a `mover` (a door, a lift) |
-| `CameraOn` | a hold, in seconds (optional) | Turns a camera on, so it wins the screen at its priority; with a hold, off again after it (none: the entity's `scripted_camera.holdTime`, 0 = until `CameraOff`). Fires `OnCameraOn` if it was off |
+| `CameraOn` | `hold [blend [ease]]`, all optional | Turns a camera on, so it wins the screen at its priority; with a hold, off again after it (none: the entity's `scripted_camera.holdTime`, 0 = until `CameraOff`). With a blend time the screen eases into it from the view it had, along the named curve (none: the entity's `blendTime`, 0 = a cut). Fires `OnCameraOn` if it was off |
 | `CameraOff` | | Turns a camera off; the screen goes back to the next camera, or the player's view. Fires `OnCameraOff` if it was on |
+| `TimerStart` | an interval, in seconds (optional) | Starts a `timer` counting from a full wait; it fires `OnTimer` when the wait runs out, every interval if it repeats |
+| `TimerStop` / `TimerReset` | | Stops it; or starts its wait again from full, running or not |
+| `TweenTo` | `[position\|rotation\|scale\|offset\|turn] [x y z] [seconds] [ease]`, all optional | Moves, turns or scales a `tween` from where it is to the goal (metres; degrees of pitch, yaw, roll; factors); `offset` and `turn` are *by* rather than *to*. Left out, the tween's own `target`, `duration` and `ease`. Fires `OnTweenDone` on arrival |
+| `TweenStop` | | Stops a tween where it is |
+
+**Time.** A delay counts from the tick the output fired in, wherever in the tick that was (a trigger's
+and a relay's arrive together), and stands still while the game is paused. A `timer` fires on the tick
+a delay of the same length would arrive; a `tween` is a pure function of its elapsed time, so it plays
+the same every run. The engine's `sage:logic_timer` prefab is a timer and nothing else, stopped until
+`TimerStart`:
+
+```json
+{ "prefab": "sage:logic_timer", "name": "gusts",
+  "outputs": [ { "output": "OnTimer", "target": "flag", "input": "TweenTo", "parameter": "turn 0 20 0 0.4 SineInOut" } ] },
+{ "prefab": "yourgame:lift", "name": "lift",
+  "outputs": [ { "output": "OnTweenDone", "target": "lift_bell", "input": "Say", "parameter": "Ding." } ] }
+```
+
+Parameters are separated by spaces, never commas, because a `.map` wire's fields are comma-separated.
+Curves are named the way you would expect — `QuadInOut`, `ease_out_bounce`, `SmoothStep`, `Linear`: every
+`Ease` value, case and underscores as you like.
 
 ---
 
@@ -1062,6 +1088,11 @@ named, and that component keeps what the prefab gave it — rather than quietly 
 is what used to happen. To change a component's *id*, list the old one in `FormerNames`. The build checks
 an upgrader's signature and version (`SAGE0007`). The same `Version` and `[Upgrade]` work on a
 `[SavedResource]`.
+
+**Entity I/O is saved too** (issue #90): an input still on its way arrives on the tick it would have
+(its target found by persistent id, else by name), and a wire with `times` keeps its count — the wiring
+itself is the level's and comes back with it. Timers, tweens and camera blends are components, saved
+with their entities. A save from before this loads with nothing on its way and every wire unfired.
 
 Saves from an older engine are upgraded as they load (their `formatVersion` is older); one from a newer
 engine is refused. The engine's tests keep a save from each format in `tests/Sage.Tests/Content/Saves`
@@ -1321,8 +1352,8 @@ names their types needs the opt-in.
 | SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs. **Moved in 0.2 (issue #89):** `ICondition`, `IAction`, `ConditionAttribute`, `ActionAttribute`, `ConditionContext` and `ActionContext` are in `Sage.Simulation` now, not `Sage.Gameplay` — add `using Sage.Simulation;` (a game project already has it); content ids are unchanged | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
-| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
-| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`, and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`) | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
+| SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
+| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`, and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 

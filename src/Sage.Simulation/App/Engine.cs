@@ -60,6 +60,10 @@ public sealed class Engine : IDisposable
             // And by hand, what has no declaration yet: the camera inputs and outputs (issue #80; the
             // engine's like the camera itself, so a data-only game can wire a cut — see CameraIO).
             CameraIO.Register(this);
+            // Timers and tweens (issue #90): the engine's for the same reason; their outputs need the
+            // I/O plugin to reach a wire, as every output does.
+            Timers.Register(this);
+            Tweens.Register(this);
         }
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
@@ -134,6 +138,9 @@ public sealed class Engine : IDisposable
             world.AddSystem(new CameraDirector(world));
             world.AddSystem(new ScriptedCameraSystem(world));     // holds run out (issue #80)
             world.AddSystem(new CameraInputLockSystem(world));    // a cut may hold the player still
+            world.AddSystem(new CameraBlendSystem(world));        // CameraOn with a blend time (issue #90)
+            world.AddSystem(new LogicTimerSystem(world));         // sage:timer and sage:tween (issue #90)
+            world.AddSystem(new TweenSystem(world));
         }
         finally { Registrations.Owner = "host"; }
 

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace Sage.Simulation;
 
@@ -129,7 +130,8 @@ public sealed class Connection
 }
 
 // [Transient]: a level's wiring comes from the map, the same as the walls do, and holds resolved entity
-// handles that mean nothing in another session.
+// handles that mean nothing in another session. How often each wire has fired is saved all the same, by
+// the `entity_io` saved resource (EntityIO), against the entity and the wire's index (issue #90).
 [Transient]
 [Component("sage:io_connections")]
 public struct IOConnections : IComponent
@@ -138,9 +140,25 @@ public struct IOConnections : IComponent
 }
 
 // The queue, per world. Firing an output puts deliveries in it; the `EntityIO` phase takes them out.
-public sealed class EntityIO
+//
+// **Saved** (issue #90) as the `entity_io` resource: every input still on its way, with the time it has
+// left and its target by persistent id (and by name, for an entity a map or a placements document put
+// there, which has none), and every wire's `Fired` count, so a save taken half-way through a sequence
+// finishes the sequence and a `times: 1` wire stays spent. A save from before #90 has no `entity_io`,
+// and loads as a world with nothing on its way and every wire unfired — what it would have been then.
+//
+// **The clock** is this world's unpaused ticks. It moves on at the start of a tick, the first time
+// anything in the tick asks it (an output fired in PostPhysics, the dispatch in EntityIO), so every delay
+// is measured from the tick it was fired in wherever in the tick that was: a trigger's wire and a wire
+// fired by an input arrive on the same tick for the same delay (it used to move only in the dispatch,
+// so an output fired before it measured its delay from the previous tick; #80's note). A paused world's
+// clock stands still, as the dispatch does.
+//
+// A load *replaces* this resource (SaveSystem), so hold `world.IO()` for a call, not across ticks.
+[SavedResource("entity_io", Plugin = "sage.gameplay.io")]
+public sealed class EntityIO : ISavedResource
 {
-    private struct Pending
+    private struct Queued
     {
         public double Due;
         public long Order;                  // ties broken by when it was queued, so a tick is deterministic
@@ -152,23 +170,34 @@ public sealed class EntityIO
         public string TargetName;           // for late binding when the handle is dead
     }
 
-    private readonly List<Pending> _pending = new();
-    private readonly List<Pending> _due = new();
+    // A delay of N ticks' worth of seconds is due on the Nth tick, not one later for float dust: a tick's
+    // time is a sum of float steps, and 60 of 1/60 s is a hair either side of 1.
+    private const double DueEpsilon = 1e-6;
+
+    private readonly List<Queued> _pending = new();
+    private readonly List<Queued> _due = new();
     private long _order;
     private double _time;
+    private long _clockTick = -1;
+    private World? _world;
     private bool _warnedBudget;
 
-    public int PendingCount => _pending.Count;
-    public int DispatchedLastTick { get; private set; }
+    [Transient] public int PendingCount => _pending.Count;
+    [Transient] public int DispatchedLastTick { get; private set; }
 
     // How many inputs one tick may deliver. A wire that fires itself is a level bug, not an engine one,
-    // but it must cost a warning rather than the process (04 §3.4).
-    public int Budget = 256;
-    public bool Trace;
+    // but it must cost a warning rather than the process (04 §3.4). Settings, not state: not saved, and
+    // carried over to the resource a load puts in this one's place (EntityIOSystem).
+    [Transient] public int Budget = 256;
+    [Transient] public bool Trace;
+
+    // Seconds of unpaused ticks this world has run, as entity I/O counts them (see the class comment).
+    [Transient] public double Now => Clock(_world);
 
     // Fires an output: every wire on the entity with that name queues its input.
     public void Fire(World world, Entity source, string output, Entity activator = default)
     {
+        _world ??= world;
         if (source.IsNull || !source.HasComponent<IOConnections>()) return;
 
         var wires = source.GetComponent<IOConnections>().Wires;
@@ -190,12 +219,22 @@ public sealed class EntityIO
                           Entity activator = default, Entity caller = default) =>
         Queue(target, input, parameter, delay, activator, caller, "");
 
+    // Fires one input at an entity by name, found when it arrives rather than now (a wire's late
+    // binding, 04 §3.4): what a delayed `fire` action (#89) or a wire aims at may be spawned, or
+    // respawned, in the meantime. Nothing by that name when it arrives: nothing happens (logged at Debug).
+    public void FireInput(string targetName, string input, string parameter = "", float delay = 0f,
+                          Entity activator = default, Entity caller = default)
+    {
+        var target = _world != null ? _world.FindByName(targetName) : default;
+        Queue(target, input, parameter, delay, activator, caller, targetName ?? "");
+    }
+
     private void Queue(Entity target, string input, string parameter, float delay,
                        Entity activator, Entity caller, string targetName)
     {
-        _pending.Add(new Pending
+        _pending.Add(new Queued
         {
-            Due = _time + Math.Max(0f, delay),
+            Due = Clock(_world) + Math.Max(0f, delay),
             Order = _order++,
             Target = target,
             Input = input,
@@ -204,6 +243,20 @@ public sealed class EntityIO
             Caller = caller,
             TargetName = targetName,
         });
+    }
+
+    // The clock, brought up to this tick: one step for a tick that is new and not paused. Asked at least
+    // once every unpaused tick (by the dispatch), so it never has more than one tick to catch up.
+    private double Clock(World? world)
+    {
+        if (world == null) return _time;
+        long tick = world.Tick;
+        if (tick != _clockTick)
+        {
+            if (_clockTick >= 0 && !world.Paused) _time += world.LastTick.Dt;
+            _clockTick = tick;
+        }
+        return _time;
     }
 
     // `!self`, `!activator` and `!caller` are resolved when the wire fires, because they are *about* this
@@ -222,9 +275,10 @@ public sealed class EntityIO
     }
 
     // Called by the dispatch system once a tick.
-    internal void Run(World world, float dt, EntityInputs inputs)
+    internal void Run(World world, EntityInputs inputs)
     {
-        _time += dt;
+        _world ??= world;
+        double now = Clock(world);
         DispatchedLastTick = 0;
         if (_pending.Count == 0) return;
 
@@ -234,7 +288,7 @@ public sealed class EntityIO
         _due.Clear();
         for (int i = _pending.Count - 1; i >= 0; i--)
         {
-            if (_pending[i].Due > _time) continue;
+            if (_pending[i].Due > now + DueEpsilon) continue;
             _due.Add(_pending[i]);
             _pending.RemoveAt(i);
         }
@@ -294,6 +348,171 @@ public sealed class EntityIO
         _due.Clear();
         _warnedBudget = false;
     }
+
+    // The settings a load's replacement keeps (they are cvars', not the save's).
+    internal void AdoptSettings(EntityIO previous)
+    {
+        Budget = previous.Budget;
+        Trace = previous.Trace;
+    }
+
+    internal void Bind(World world) => _world = world;
+
+    // ---- Saving (issue #90) ---------------------------------------------------------------------------
+
+    // One input on its way, as a save writes it. `Remaining` rather than a due time, because the clock is
+    // this session's: a load counts it down from the tick it loads on. Entities are written by persistent
+    // id (SaveJson's entity converter), and null when they have none — which is why the target's name is
+    // written too.
+    internal sealed class SavedInput
+    {
+        public double Remaining;
+        public Entity Target;
+        public string TargetName = "";
+        public string Input = "";
+        public string Parameter = "";
+        public Entity Activator;
+        public Entity Caller;
+    }
+
+    // How often one wire has fired: the entity it is on (by persistent id, else by name), the wire's
+    // index in its IOConnections and, as a check that it is still the same wire, its output and input.
+    internal sealed class SavedWire
+    {
+        public Entity Entity;
+        public string Name = "";
+        public int Wire;
+        public string Output = "";
+        public string Input = "";
+        public int Fired;
+    }
+
+    private List<SavedInput>? _loadedPending;
+    private List<SavedWire>? _loadedWires;
+
+    // What a save writes, made when it is asked for (SaveSystem reads the resource at a tick boundary) and
+    // taken back when a load hands it over; AfterLoad applies it once the world's entities are all back.
+    [JsonInclude]
+    internal List<SavedInput> Pending
+    {
+        get
+        {
+            var list = new List<SavedInput>(_pending.Count);
+            if (_pending.Count == 0) return list;
+            var world = _world;
+            double now = Clock(world);
+            var sorted = new List<Queued>(_pending);
+            sorted.Sort(static (a, b) => a.Due != b.Due ? a.Due.CompareTo(b.Due) : a.Order.CompareTo(b.Order));
+            foreach (var p in sorted)
+            {
+                bool alive = world != null && !p.Target.IsNull && world.IsAlive(p.Target);
+                list.Add(new SavedInput
+                {
+                    Remaining = Math.Max(0.0, p.Due - now),
+                    Target = alive ? p.Target : default,
+                    TargetName = p.TargetName.Length > 0 ? p.TargetName : alive ? p.Target.Name ?? "" : "",
+                    Input = p.Input,
+                    Parameter = p.Parameter,
+                    Activator = world != null && world.IsAlive(p.Activator) ? p.Activator : default,
+                    Caller = world != null && world.IsAlive(p.Caller) ? p.Caller : default,
+                });
+            }
+            return list;
+        }
+        set => _loadedPending = value;
+    }
+
+    [JsonInclude]
+    internal List<SavedWire> Wires
+    {
+        get
+        {
+            var list = new List<SavedWire>();
+            if (_world is not { } world) return list;
+            foreach (var entity in world.Query<IOConnections>().Entities)
+            {
+                var wires = entity.GetComponent<IOConnections>().Wires;
+                if (wires == null) continue;
+                for (int i = 0; i < wires.Length; i++)
+                {
+                    if (wires[i].Fired == 0) continue;
+                    list.Add(new SavedWire
+                    {
+                        Entity = entity,
+                        Name = entity.Name ?? "",
+                        Wire = i,
+                        Output = wires[i].Output,
+                        Input = wires[i].Input,
+                        Fired = wires[i].Fired,
+                    });
+                }
+            }
+            return list;
+        }
+        set => _loadedWires = value;
+    }
+
+    // A load: this resource is new (the one before it went with the world it belonged to). Every wire in
+    // the world starts unfired and unresolved — a map's entities outlive a load, and what they counted
+    // was the game being left — and then the save's counts and inputs are put back.
+    public void AfterLoad(World world)
+    {
+        _world = world;
+        _clockTick = -1;
+        Clock(world);
+
+        foreach (var entity in world.Query<IOConnections>().Entities)
+        {
+            var wires = entity.GetComponent<IOConnections>().Wires;
+            if (wires == null) continue;
+            foreach (var wire in wires)
+            {
+                wire.Fired = 0;
+                wire.Resolved = default;
+            }
+        }
+
+        if (_loadedWires != null)
+        {
+            foreach (var saved in _loadedWires)
+            {
+                if (saved == null) continue;
+                var entity = !saved.Entity.IsNull && world.IsAlive(saved.Entity) ? saved.Entity : world.FindByName(saved.Name);
+                if (entity.IsNull || !entity.TryGetComponent<IOConnections>(out var io) || io.Wires == null
+                    || saved.Wire < 0 || saved.Wire >= io.Wires.Length
+                    || !string.Equals(io.Wires[saved.Wire].Output, saved.Output, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(io.Wires[saved.Wire].Input, saved.Input, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Warn(LogCat.Save, $"entity_io: wire {saved.Wire} ({saved.Output} → {saved.Input}) of "
+                                        + $"'{saved.Name}' is not in the world any more; how often it fired is dropped");
+                    continue;
+                }
+                io.Wires[saved.Wire].Fired = Math.Max(0, saved.Fired);
+            }
+            _loadedWires = null;
+        }
+
+        _pending.Clear();
+        if (_loadedPending != null)
+        {
+            foreach (var saved in _loadedPending)
+            {
+                if (saved == null || string.IsNullOrEmpty(saved.Input)) continue;
+                _pending.Add(new Queued
+                {
+                    Due = _time + Math.Max(0.0, saved.Remaining),
+                    Order = _order++,
+                    Target = saved.Target,
+                    Input = saved.Input,
+                    Parameter = saved.Parameter ?? "",
+                    Activator = saved.Activator,
+                    Caller = saved.Caller,
+                    TargetName = saved.TargetName ?? "",
+                });
+            }
+            _loadedPending = null;
+        }
+    }
 }
 
 public static class EntityIOExtensions
@@ -338,7 +557,7 @@ internal sealed class EntityIOSystem : ISystem
 {
     private readonly World _world;
     private readonly EntityInputs _inputs;
-    private readonly EntityIO _io;
+    private EntityIO _io;
 
     public EntityIOSystem(World world, EntityInputs inputs)
     {
@@ -347,7 +566,17 @@ internal sealed class EntityIOSystem : ISystem
         _io = world.Resources.Get<EntityIO>();
     }
 
-    public void Run(in SystemContext ctx) => _io.Run(_world, ctx.Tick.Dt, _inputs);
+    public void Run(in SystemContext ctx)
+    {
+        // A load replaces the resource (it is saved, issue #90): the new one keeps the cvars' settings.
+        if (!_world.Resources.TryGet<EntityIO>(out var io) || io == null) return;
+        if (!ReferenceEquals(io, _io))
+        {
+            io.AdoptSettings(_io);
+            _io = io;
+        }
+        io.Run(_world, _inputs);
+    }
 }
 
 // Physics triggers become `OnStartTouch` / `OnEndTouch`. A trigger volume in a map is the oldest level
@@ -456,11 +685,13 @@ public sealed class EntityIOModule : IModule
     public void OnWorldCreated(World world)
     {
         var io = new EntityIO();
+        io.Bind(world);
         world.Resources.Add(io);
         if (_trace != null) io.Trace = _trace.Value;
         if (_budget != null) io.Budget = _budget.Value;
-        if (_trace != null) _trace.Changed += _ => io.Trace = _trace.Value;
-        if (_budget != null) _budget.Changed += _ => io.Budget = _budget.Value;
+        // The world's resource at the time, not this one: a load replaces it (issue #90).
+        if (_trace != null) _trace.Changed += _ => { if (world.Resources.TryGet<EntityIO>(out var now) && now != null) now.Trace = _trace.Value; };
+        if (_budget != null) _budget.Changed += _ => { if (world.Resources.TryGet<EntityIO>(out var now) && now != null) now.Budget = _budget.Value; };
 
         world.AddSystem(new TriggerOutputSystem(world));
         world.AddSystem(new EntityIOSystem(world, _inputs!));

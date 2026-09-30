@@ -119,6 +119,12 @@ public static class OriginExtensions
             var span = poses.Span;
             for (int i = 0; i < span.Length; i++) span[i].Position += offset;
         }
+        // And where a camera blend began (issue #90), which is a position until the blend ends.
+        foreach (var (blends, _) in world.Query<CameraBlend>().Chunks)
+        {
+            var span = blends.Span;
+            for (int i = 0; i < span.Length; i++) span[i].FromPosition += offset;
+        }
         if (world.Resources.TryGet<CameraViews>(out var views) && views != null) views.Rebase(offset);
 
         // Last, with the world consistent: anything holding a position of its own (the editor's free

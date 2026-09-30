@@ -3,6 +3,11 @@
   { "type": "prefab", "id": "trigger_zone", "name": "trigger zone", "parts": { "body": { "size": [4, 3, 2], "trigger": true } } },
   { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
   { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } },
+  // A beacon that turns a quarter every two seconds: a timer wired to its own tween (issue #90).
+  {
+    "type": "prefab", "id": "beacon", "name": "beacon",
+    "parts": { "timer": { "interval": 2, "startOn": true }, "tween": { "channel": "Rotation", "duration": 1, "ease": "SineInOut" } }
+  },
   {
     "type": "prefab",
     "id": "player",
@@ -42,7 +47,13 @@
         ]
       },
       { "prefab": "sage:scripted_camera", "at": [10, 6, 8], "name": "yard_cam" },
-      { "prefab": "crate", "at": [10, 4, 0], "name": "falling crate" }
+      { "prefab": "crate", "at": [10, 4, 0], "name": "falling crate" },
+
+      // Time: a beacon that turns itself, on a timer, through a tween.
+      {
+        "prefab": "beacon", "at": [-6, 1, 0], "name": "beacon",
+        "outputs": [ { "output": "OnTimer", "target": "!self", "input": "TweenTo", "parameter": "turn 0 90 0" } ]
+      }
     ]
   }
 ]

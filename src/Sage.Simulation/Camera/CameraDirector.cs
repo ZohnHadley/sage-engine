@@ -20,7 +20,8 @@ namespace Sage.Simulation;
 // **Resolution.** For each target ("" = the screen), the enabled camera with the highest priority wins
 // (a tie: the lower entity id, so it is stable). Its pose is its CameraPose when a rig drives it, else
 // its GlobalTransform interpolated to this frame. Out-of-range values resolve to the defaults (see
-// Camera), so every view is usable as it stands.
+// Camera), so every view is usable as it stands. A winner with a CameraBlend running is eased from the
+// pose the blend began at (issue #90, CameraBlend) before the screen is mirrored.
 //
 // **ActiveCamera (decision D1).** ActiveCamera stays, as a mirror of the screen view that only the
 // director writes once a camera entity draws to the screen: its position, rotation, field of view and
@@ -47,6 +48,7 @@ public sealed class CameraDirector : ISystem
     private readonly CameraViews _views;
     private readonly Query<Camera, CameraPose> _rigged;
     private readonly Query<Camera, GlobalTransform> _placed;
+    private readonly Query<Camera, CameraBlend> _blending;
     private ActiveCamera? _active;
 
     public CameraDirector(World world)
@@ -55,6 +57,7 @@ public sealed class CameraDirector : ISystem
         _views = world.Resources.GetOrAdd(() => new CameraViews());
         _rigged = world.Query<Camera, CameraPose>();
         _placed = world.Query<Camera, GlobalTransform>().WithoutComponent<CameraPose>();
+        _blending = world.Query<Camera, CameraBlend>();
     }
 
     public void Run(in SystemContext ctx)
@@ -85,6 +88,20 @@ public sealed class CameraDirector : ISystem
                 if (!c[i].Enabled) continue;
                 var pose = g[i].Interpolated(alpha);
                 _views.Offer(Resolve(c[i], entities.EntityAt(i), pose.Position, pose.Rotation));
+            }
+        }
+
+        // Blends (issue #90): a camera that won its target and is blending in has its view eased from
+        // where the screen was, before anything — ActiveCamera included — reads it.
+        foreach (var (cameras, blends, entities) in _blending.Chunks)
+        {
+            var c = cameras.Span;
+            var b = blends.Span;
+            for (int i = 0; i < c.Length; i++)
+            {
+                if (!c[i].Enabled || !b[i].Active) continue;
+                int at = _views.IndexOf(entities.EntityAt(i));
+                if (at >= 0) CameraBlends.Apply(b[i], ref _views.At(at), alpha);
             }
         }
 

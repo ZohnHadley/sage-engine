@@ -13,8 +13,15 @@ const Sage.Simulation.ThirdPersonRig.DefaultDistance = 3 -> float
 const Sage.Simulation.ThirdPersonRig.DefaultProbeRadius = 0.25 -> float
 const Sage.Simulation.ThirdPersonRig.DefaultSmoothing = 0.3 -> float
 const Sage.Simulation.ThirdPersonRigSystem.Id = "sage.camera.third_person" -> string!
+const Sage.Simulation.Timers.OnTimer = "OnTimer" -> string!
+const Sage.Simulation.Timers.ResetInput = "TimerReset" -> string!
+const Sage.Simulation.Timers.StartInput = "TimerStart" -> string!
+const Sage.Simulation.Timers.StopInput = "TimerStop" -> string!
 const Sage.Simulation.ToggleViewSystem.Action = "ToggleView" -> string!
 const Sage.Simulation.ToggleViewSystem.Id = "sage.camera.toggle_view" -> string!
+const Sage.Simulation.Tweens.OnTweenDone = "OnTweenDone" -> string!
+const Sage.Simulation.Tweens.StopInput = "TweenStop" -> string!
+const Sage.Simulation.Tweens.ToInput = "TweenTo" -> string!
 override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
 override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
@@ -42,6 +49,18 @@ Sage.Simulation.Camera.Priority -> int
 Sage.Simulation.Camera.Projection -> Sage.Simulation.CameraProjection
 Sage.Simulation.Camera.Target -> string!
 Sage.Simulation.Camera.Viewport -> Sage.Simulation.CameraViewport
+Sage.Simulation.CameraBlend
+Sage.Simulation.CameraBlend.Active.get -> bool
+Sage.Simulation.CameraBlend.Amount(float alpha) -> float
+Sage.Simulation.CameraBlend.CameraBlend() -> void
+Sage.Simulation.CameraBlend.Duration -> float
+Sage.Simulation.CameraBlend.Ease -> Sage.Simulation.Ease
+Sage.Simulation.CameraBlend.Elapsed -> float
+Sage.Simulation.CameraBlend.FromFovY -> float
+Sage.Simulation.CameraBlend.FromPosition -> System.Numerics.Vector3
+Sage.Simulation.CameraBlend.FromRotation -> System.Numerics.Quaternion
+Sage.Simulation.CameraBlend.PreviousElapsed -> float
+Sage.Simulation.CameraBlends
 Sage.Simulation.CameraDirector
 Sage.Simulation.CameraDirector.CameraDirector(Sage.Simulation.World! world) -> void
 Sage.Simulation.CameraDirector.Run(in Sage.Simulation.SystemContext ctx) -> void
@@ -158,6 +177,9 @@ Sage.Simulation.Ease.SineOut = 14 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmootherStep = 29 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmoothStep = 28 -> Sage.Simulation.Ease
 Sage.Simulation.Easing
+Sage.Simulation.EntityIO.AfterLoad(Sage.Simulation.World! world) -> void
+Sage.Simulation.EntityIO.Now.get -> double
+Sage.Simulation.EntityIO.FireInput(string! targetName, string! input, string! parameter = "", float delay = 0, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity), Sage.Simulation.Entity caller = default(Sage.Simulation.Entity)) -> void
 Sage.Simulation.FirstPersonRig
 Sage.Simulation.FirstPersonRig.Enabled -> bool
 Sage.Simulation.FirstPersonRig.FirstPersonRig() -> void
@@ -175,12 +197,33 @@ Sage.Simulation.IAction
 Sage.Simulation.IAction.Run(in Sage.Simulation.ActionContext context) -> void
 Sage.Simulation.ICondition
 Sage.Simulation.ICondition.Test(in Sage.Simulation.ConditionContext context, out string! why) -> bool
+Sage.Simulation.LogicTimer
+Sage.Simulation.LogicTimer.Activator -> Sage.Simulation.Entity
+Sage.Simulation.LogicTimer.Interval -> float
+Sage.Simulation.LogicTimer.LogicTimer() -> void
+Sage.Simulation.LogicTimer.Random -> uint
+Sage.Simulation.LogicTimer.Remaining -> float
+Sage.Simulation.LogicTimer.Repeat -> bool
+Sage.Simulation.LogicTimer.Running -> bool
+Sage.Simulation.LogicTimer.Spread -> float
+Sage.Simulation.LogicTimerPart
+Sage.Simulation.LogicTimerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicTimerPart.Interval -> float
+Sage.Simulation.LogicTimerPart.LogicTimerPart() -> void
+Sage.Simulation.LogicTimerPart.Repeat -> bool
+Sage.Simulation.LogicTimerPart.Seed -> uint
+Sage.Simulation.LogicTimerPart.Spread -> float
+Sage.Simulation.LogicTimerPart.StartOn -> bool
 Sage.Simulation.MainViewExtensions
 Sage.Simulation.PlayerCamera
 Sage.Simulation.PlayerCamera.PlayerCamera() -> void
 Sage.Simulation.PlayerCameraSystem
 Sage.Simulation.PlayerCameraSystem.PlayerCameraSystem(Sage.Simulation.World! world) -> void
 Sage.Simulation.PlayerCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
+Sage.Simulation.ScriptedCamera.BlendTime -> float
+Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
+Sage.Simulation.ScriptedCameraPart.BlendTime -> float
 Sage.Simulation.ThirdPersonRig
 Sage.Simulation.ThirdPersonRig.Boom -> float
 Sage.Simulation.ThirdPersonRig.Collision.get -> Sage.Simulation.LayerMask
@@ -205,6 +248,7 @@ Sage.Simulation.ThirdPersonRigPart.ThirdPersonRigPart() -> void
 Sage.Simulation.ThirdPersonRigSystem
 Sage.Simulation.ThirdPersonRigSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.ThirdPersonRigSystem.ThirdPersonRigSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
+Sage.Simulation.Timers
 Sage.Simulation.ToggleViewSystem
 Sage.Simulation.ToggleViewSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.ToggleViewSystem.ToggleViewSystem(Sage.Simulation.World! world, Sage.Simulation.ActionRegistry! actions) -> void
@@ -216,6 +260,37 @@ Sage.Simulation.Vars.Set(string! name, double value) -> void
 Sage.Simulation.Vars.Values.get -> System.Collections.Generic.Dictionary<string!, double>!
 Sage.Simulation.Vars.Values.set -> void
 Sage.Simulation.Vars.Vars() -> void
+Sage.Simulation.Tween
+Sage.Simulation.Tween.Activator -> Sage.Simulation.Entity
+Sage.Simulation.Tween.Channel -> Sage.Simulation.TweenChannel
+Sage.Simulation.Tween.Duration -> float
+Sage.Simulation.Tween.Ease -> Sage.Simulation.Ease
+Sage.Simulation.Tween.Elapsed -> float
+Sage.Simulation.Tween.From -> System.Numerics.Vector3
+Sage.Simulation.Tween.FromRotation -> System.Numerics.Quaternion
+Sage.Simulation.Tween.Playing -> bool
+Sage.Simulation.Tween.PlayingChannel -> Sage.Simulation.TweenChannel
+Sage.Simulation.Tween.PlayingDuration -> float
+Sage.Simulation.Tween.PlayingEase -> Sage.Simulation.Ease
+Sage.Simulation.Tween.Progress.get -> float
+Sage.Simulation.Tween.Relative -> bool
+Sage.Simulation.Tween.Target -> System.Numerics.Vector3
+Sage.Simulation.Tween.To -> System.Numerics.Vector3
+Sage.Simulation.Tween.ToRotation -> System.Numerics.Quaternion
+Sage.Simulation.Tween.Tween() -> void
+Sage.Simulation.TweenChannel
+Sage.Simulation.TweenChannel.Position = 0 -> Sage.Simulation.TweenChannel
+Sage.Simulation.TweenChannel.Rotation = 1 -> Sage.Simulation.TweenChannel
+Sage.Simulation.TweenChannel.Scale = 2 -> Sage.Simulation.TweenChannel
+Sage.Simulation.TweenPart
+Sage.Simulation.TweenPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.TweenPart.Channel -> Sage.Simulation.TweenChannel
+Sage.Simulation.TweenPart.Duration -> float
+Sage.Simulation.TweenPart.Ease -> Sage.Simulation.Ease
+Sage.Simulation.TweenPart.Relative -> bool
+Sage.Simulation.TweenPart.Target -> System.Numerics.Vector3
+Sage.Simulation.TweenPart.TweenPart() -> void
+Sage.Simulation.Tweens
 static readonly Sage.Simulation.PlayerCameraSystem.Prefab -> Sage.Core.RecordId
 Sage.Simulation.Placement.Outputs -> System.Collections.Generic.List<Sage.Simulation.Connection!>!
 Sage.Simulation.ScriptedCamera
@@ -231,6 +306,8 @@ Sage.Simulation.ScriptedCameraPart.LockInput -> bool
 Sage.Simulation.ScriptedCameraPart.ScriptedCameraPart() -> void
 static Sage.Simulation.Camera.Orthographic(float height = 10, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.Camera.Perspective(float fovYDegrees = 45, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
+static Sage.Simulation.CameraBlends.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity camera, in Sage.Simulation.CameraView from, float seconds, Sage.Simulation.Ease ease) -> void
+static Sage.Simulation.CameraBlends.End(Sage.Simulation.World! world, Sage.Simulation.Entity camera) -> void
 static Sage.Simulation.CameraMath.Aspect(int targetWidth, int targetHeight, in Sage.Simulation.CameraViewport viewport) -> float
 static Sage.Simulation.CameraMath.Forward(System.Numerics.Quaternion rotation) -> System.Numerics.Vector3
 static Sage.Simulation.CameraMath.Orthographic(float height, float aspect, float near, float far) -> System.Numerics.Matrix4x4
@@ -265,6 +342,11 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 Sage.Simulation.MaterialParam.RenderTarget -> string?
 static Sage.Simulation.ThirdPersonRig.Create(Sage.Simulation.Entity follow = default(Sage.Simulation.Entity), bool enabled = true) -> Sage.Simulation.ThirdPersonRig
 static Sage.Simulation.ThirdPersonRig.DefaultShoulderOffset.get -> System.Numerics.Vector3
+static Sage.Simulation.Timers.NextWait(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> float
+static Sage.Simulation.Timers.Start(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> void
 static Sage.Simulation.ToggleViewSystem.Toggle(Sage.Simulation.World! world) -> void
 static Sage.Simulation.Vars.Of(Sage.Simulation.World! world) -> Sage.Simulation.Vars!
 static Sage.Simulation.Vars.ValueOf(Sage.Simulation.World! world, string! name) -> double
+static Sage.Simulation.Tweens.Apply(in Sage.Simulation.Tween tween, ref Sage.Simulation.Transform transform) -> void
+static Sage.Simulation.Tweens.Begin(ref Sage.Simulation.Tween tween, in Sage.Simulation.Transform transform, Sage.Simulation.TweenChannel channel, System.Numerics.Vector3 goal, bool relative, float seconds, Sage.Simulation.Ease ease) -> void
+static Sage.Simulation.Tweens.TryRead(System.ReadOnlySpan<char> parameter, in Sage.Simulation.Tween tween, out Sage.Simulation.TweenChannel channel, out System.Numerics.Vector3 goal, out bool relative, out float seconds, out Sage.Simulation.Ease ease) -> bool
