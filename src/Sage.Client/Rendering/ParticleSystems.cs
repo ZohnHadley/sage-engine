@@ -169,6 +169,7 @@ internal sealed class ParticleExtract : ISystem
         for (int v = 0; v < _snapshot.Views.Count; v++)
         {
             var view = _snapshot.Views[v];
+            if (view.ShadowCaster) continue;   // particles cast no shadow (4h-4)
             foreach (var group in _particles.Groups)
             {
                 if (group.Count == 0) continue;

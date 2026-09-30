@@ -97,6 +97,11 @@
       "default": true,
       "type": "boolean"
     },
+    "castShadows": {
+      "description": "Meshes drawn with it cast sun shadows (opaque materials only) (bool, default true)",
+      "default": true,
+      "type": "boolean"
+    },
     "sampler": {
       "description": "(SamplerDesc)",
       "type": "object",

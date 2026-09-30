@@ -29,6 +29,10 @@ const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
 const Sage.Simulation.RenderStages.Count = 8 -> int
+const Sage.Simulation.ShadowMath.DefaultCasterReach = 200 -> float
+const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
+const Sage.Simulation.ShadowMath.DefaultSize = 2048 -> int
+const Sage.Simulation.ShadowMath.MinElevation = 0.01 -> float
 const Sage.Simulation.SkinMath.Influences = 4 -> int
 const Sage.Simulation.SkinMath.MaxBones = 64 -> int
 const Sage.Simulation.StateMachines.OnStateChanged = "OnStateChanged" -> string!
@@ -470,6 +474,7 @@ Sage.Simulation.MachineState.MachineState() -> void
 Sage.Simulation.MachineState.Tags -> System.Collections.Generic.List<string!>!
 Sage.Simulation.MachineState.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
 Sage.Simulation.MainViewExtensions
+Sage.Simulation.MaterialRecord.CastShadows -> bool
 Sage.Simulation.MathRemap
 Sage.Simulation.MathRemap.Clamp -> bool
 Sage.Simulation.MathRemap.Ease -> Sage.Simulation.Ease
@@ -576,6 +581,20 @@ Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCameraPart.BlendTime -> float
+Sage.Simulation.ShadowFit
+Sage.Simulation.ShadowFit.Center.get -> System.Numerics.Vector3
+Sage.Simulation.ShadowFit.DepthBias.get -> float
+Sage.Simulation.ShadowFit.DepthRange.get -> float
+Sage.Simulation.ShadowFit.MinX.get -> double
+Sage.Simulation.ShadowFit.MinY.get -> double
+Sage.Simulation.ShadowFit.Projection.get -> System.Numerics.Matrix4x4
+Sage.Simulation.ShadowFit.Radius.get -> float
+Sage.Simulation.ShadowFit.ShadowFit() -> void
+Sage.Simulation.ShadowFit.Size.get -> int
+Sage.Simulation.ShadowFit.TexelSize.get -> float
+Sage.Simulation.ShadowFit.View.get -> System.Numerics.Matrix4x4
+Sage.Simulation.ShadowFit.ViewProj.get -> System.Numerics.Matrix4x4
+Sage.Simulation.ShadowMath
 Sage.Simulation.SkinMath
 Sage.Simulation.SkinnedMeshPart
 Sage.Simulation.SkinnedMeshPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
@@ -880,6 +899,14 @@ static Sage.Simulation.PrefabExtensions.Spawn(this Sage.Simulation.World! world,
 static Sage.Simulation.RenderStages.IsPerView(Sage.Simulation.RenderStage stage) -> bool
 static Sage.Simulation.RenderStages.Of(Sage.Simulation.RenderPass pass) -> Sage.Simulation.RenderStage
 static Sage.Simulation.RenderStages.SortKeyPass(Sage.Simulation.RenderStage stage) -> int
+static Sage.Simulation.ShadowMath.Casts(Sage.Simulation.RenderPass pass, bool castShadows) -> bool
+static Sage.Simulation.ShadowMath.Contains(in Sage.Simulation.ShadowFit fit, System.Numerics.Vector3 relative) -> bool
+static Sage.Simulation.ShadowMath.Fit(System.Numerics.Vector3 camera, System.Numerics.Vector3 forward, float centerDistance, float radius, System.Numerics.Vector3 sunDirection, int size, System.Numerics.Vector3 origin, float casterReach = 200) -> Sage.Simulation.ShadowFit
+static Sage.Simulation.ShadowMath.OrthographicSlice(float near, float far, float halfWidth, float halfHeight) -> (float CenterDistance, float Radius)
+static Sage.Simulation.ShadowMath.PerspectiveSlice(float near, float far, float tanX, float tanY) -> (float CenterDistance, float Radius)
+static Sage.Simulation.ShadowMath.Strength(float environment, System.Numerics.Vector3 sunDirection) -> float
+static Sage.Simulation.ShadowMath.TexelOf(in Sage.Simulation.ShadowFit fit, System.Numerics.Vector3 relative) -> System.Numerics.Vector2
+static Sage.Simulation.ShadowMath.ToClip(in Sage.Simulation.ShadowFit fit, System.Numerics.Vector3 relative) -> System.Numerics.Vector3
 static Sage.Simulation.SkinMath.Blend(System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Matrix4x4
 static Sage.Simulation.SkinMath.Palette(System.ReadOnlySpan<System.Numerics.Matrix4x4> modelJoints, System.ReadOnlySpan<System.Numerics.Matrix4x4> inverseBind, System.Span<System.Numerics.Matrix4x4> palette) -> void
 static Sage.Simulation.SkinMath.SkinNormal(System.Numerics.Vector3 normal, System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Vector3
