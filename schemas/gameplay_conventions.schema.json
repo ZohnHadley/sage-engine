@@ -188,7 +188,7 @@
           "type": "string"
         },
         "reload": {
-          "description": "The button that reloads: plays the first-person arms' reload (ammunition is the game's) (string)",
+          "description": "The button that reloads: plays the first-person arms' reload and refills the magazine of an attack with `ammo` (issue #135) (string)",
           "type": "string"
         }
       },
@@ -216,6 +216,10 @@
         },
         "reload": {
           "description": "The trigger the Reload button sets on the first-person arms' anim_graph (a swing sets `attackTrigger`) (string)",
+          "type": "string"
+        },
+        "magIn": {
+          "description": "The clip event that puts the magazine in: a reload completes on it, else after the attack's reloadTime (issue #135) (string)",
           "type": "string"
         }
       },

@@ -268,6 +268,14 @@
         }
       ]
     },
+    "magazine": {
+      "description": "The component sage:magazine (Magazine), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:magazine"
+        }
+      ]
+    },
     "map_geometry": {
       "description": "The component sage:map_geometry (MapGeometry), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -657,6 +665,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:logic_relay_script"
+        }
+      ]
+    },
+    "sage:magazine": {
+      "description": "Component sage:magazine (Magazine).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:magazine"
         }
       ]
     },
@@ -3009,6 +3025,100 @@
       },
       "additionalProperties": false,
       "description": "Component sage:logic_relay_script (LogicRelayScript)."
+    },
+    "sage:magazine": {
+      "type": "object",
+      "properties": {
+        "loaded": {
+          "description": "Rounds loaded, by attack. (List<MagazineSlot>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "attack": {
+                "description": "The attack these rounds are loaded for. Names a attack record. (RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:attack"
+                  }
+                ]
+              },
+              "rounds": {
+                "description": "Rounds loaded. At least 0. (int)",
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "loaded+": {
+          "description": "Adds to \"loaded\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "attack": {
+                "description": "The attack these rounds are loaded for. Names a attack record. (RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:attack"
+                  }
+                ]
+              },
+              "rounds": {
+                "description": "Rounds loaded. At least 0. (int)",
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "loaded-": {
+          "description": "Removes these from \"loaded\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "attack": {
+                "description": "The attack these rounds are loaded for. Names a attack record. (RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:attack"
+                  }
+                ]
+              },
+              "rounds": {
+                "description": "Rounds loaded. At least 0. (int)",
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "reloading": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "timer": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "reloads": {
+          "description": "Not saved. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:magazine (Magazine)."
     },
     "sage:map_geometry": {
       "type": "object",
