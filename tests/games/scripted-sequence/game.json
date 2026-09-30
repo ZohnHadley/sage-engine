@@ -1,0 +1,15 @@
+{
+  // A scripted sequence with no C# (issue #94, REDESIGN §5 phase 4b's exit criterion): a trigger opens a
+  // door, the door's OnFullyOpen raises a lift, the lift's OnFullyOpen has an NPC speak, and a logic_counter
+  // that every step feeds reaches 3 and fires a relay. All of it is wiring in the scene's own placements.
+  // CI validates it and runs it in the real host (tools/smoke_run.sh): a crate falls through the trigger
+  // as the game starts, so the chain runs with nobody at the keys.
+  // tests/Sage.Tests/Games/ExitGameTests.cs boots it headlessly.
+  "name": "Scripted sequence",
+  "id": "scriptedsequence",
+  // A player to walk about as (physics comes with it), movers for the door and lift, entity I/O for the
+  // wires and dialogue for the NPC.
+  "plugins": ["sage.gameplay.character", "sage.gameplay.io", "sage.gameplay.movers", "sage.gameplay.dialogue"],
+  "mounts": ["content"],
+  "scene": "hall"
+}

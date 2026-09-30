@@ -260,6 +260,45 @@ public class StrictContentTests
         }
     }
 
+    // The log's "(previous message repeated N more times)" note comes from whichever thread drains the
+    // queue at the time, so a validation report that counted it depended on timing: the mod test below
+    // failed in CI with a third line. The note is never a problem of its own. (Which thread the probe's
+    // own note comes from is just as much a matter of timing, so every captured entry is checked.)
+    [Fact]
+    public void Validate_NeverCountsTheLogsRepeatNoteAsAProblem()
+    {
+        var sink = new CapturingSink();
+        Log.Flush();
+        Log.AddSink(sink);
+        try
+        {
+            // Another test's line landing between the two breaks the fold, so try a few times.
+            for (int i = 0; i < 20 && !sink.Entries.Any(IsNote); i++)
+            {
+                string message = "repeat-note probe " + System.Guid.NewGuid().ToString("N");
+                Log.Error(LogCat.Records, message);
+                Log.Error(LogCat.Records, message);
+                Log.Flush();   // emits a pending note, from this thread or the writer's
+            }
+        }
+        finally { Log.RemoveSink(sink); }
+
+        var entries = sink.Entries;
+        Assert.Contains(entries, IsNote);
+        Assert.All(entries, e => Assert.Equal(IsNote(e), ContentValidation.IsRepeatNote(e)));
+
+        static bool IsNote(LogEntry e) => e.Message.StartsWith("(previous message repeated ", System.StringComparison.Ordinal);
+    }
+
+    private sealed class CapturingSink : ILogSink
+    {
+        private readonly List<LogEntry> _entries = new();
+        public LogLevel MinLevel => LogLevel.Warn;
+        public IReadOnlyList<LogEntry> Entries { get { lock (_entries) return _entries.ToArray(); } }
+        public void Write(in LogEntry entry) { lock (_entries) _entries.Add(entry); }
+        public void Flush() { }
+    }
+
     [Fact]
     public void Validate_AModMountWithMistakesFails_NamingEachOne()
     {

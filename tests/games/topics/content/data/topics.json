@@ -1,0 +1,13 @@
+[
+  { "type": "dialogue", "id": "ferryman_talk",
+    "nodes": [ { "id": "hello", "text": "Well?", "options": [
+      { "text": "Tell me about...", "topics": true },
+      { "text": "Goodbye.", "end": true } ] } ] },
+  {
+    "type": "dialogue_topic", "id": "the_river", "keyword": "the river", "known": true,
+    "infos": [
+      { "requires": { "var": "river_high", "eq": 1 }, "text": "Too high to cross today.", "then": [ { "add_var": "warned" } ] },
+      { "text": "Shallow. Cross when you like." }
+    ]
+  }
+]
