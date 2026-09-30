@@ -570,6 +570,7 @@ Sage.Simulation.RenderStage.Shadow = 0 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStage.Sky = 3 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStage.Transparent = 4 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStages
+Sage.Simulation.PrefabRecord.Persist -> bool
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease

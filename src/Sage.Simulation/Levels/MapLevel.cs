@@ -418,7 +418,7 @@ internal static class MapLoader
             float yaw = entity.GetFloat("angle") - 90f;
 
             // With the entity's own values for the prefab's fields (`"light.range" "12"`, PrefabKeys).
-            var spawnedEntity = world.Spawn(prefab, at, yaw, entity.Keys, $"{level.Source}:{entity.Line}");
+            var spawnedEntity = world.SpawnWithoutId(prefab, at, yaw, entity.Keys, $"{level.Source}:{entity.Line}");
             if (spawnedEntity.IsNull) continue;
 
             MapEntityIO.Attach(world, spawnedEntity,
@@ -476,7 +476,7 @@ internal static class MapLoader
         // a solid means which way it *moves* rather than which way it faces, and nothing reads it yet.
         var prefab = ClassPrefab(level, className);
         var entity = engine.Records.Exists(prefab)
-            ? world.Spawn(prefab, at, 0f, solid.Source.Keys, where)
+            ? world.SpawnWithoutId(prefab, at, 0f, solid.Source.Keys, where)
             : world.Create(Transform.At(at), className.Length > 0 ? className : "brush entity");
 
         if (entity.IsNull) return;

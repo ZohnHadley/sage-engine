@@ -211,6 +211,30 @@ because no upgrader existed.
 - **Fixed on the way:** an entity saved with a name but no prefab threw on load (Friflo's `Name` setter
   needs the component to exist). No test had saved one; the golden save's lamp is one.
 
+### As built (runtime spawns persist, issue 4i-4, 2026-09-30)
+
+A save kept only what a scene, a map or `MakePersistent` had given an id, so a dropped sword, a
+summoned imp or an `ent_spawn` crate vanished on load.
+
+- **`world.Spawn` of a prefab gives the entity a new `PersistentId`**, unless the prefab says
+  `"persist": false` (`PrefabRecord.Persist`, in the schema; SAGE0131). Test: APrefabThatSaysPersistFalseIsNotSaved
+  (the saved world file names the crate and not the spark). `ent_spawn` and the summon effect go through
+  `Spawn`, so both are saved (tests: AnEntSpawnedCrateSurvivesASave, ASummonedCreatureSurvivesASave).
+- **Dropped items and pickups** (`Items.SpawnPickup`, which `Drop` uses) are made with `Create`, so they
+  call `MakePersistent` themselves (test: ADroppedItemSurvivesASave). Projectiles already did.
+- **A prefab's children never get an id of their own**: only the root of a spawn does; the children it
+  placed (`FromParentPrefab`) are re-spawned by the parent on load, so saving twice and loading twice
+  leaves one cart and its two lamps (test: APrefabsChildrenAreNotDuplicatedByASaveAndLoad).
+- **Spawns that get their identity elsewhere skip it**: a scene's placements and player, a placements
+  document, a map's entities, the player camera and a saved entity on load use an internal
+  `SpawnWithoutId`, so nothing is saved twice and no stale id is indexed. Adding a `Persistent` to an
+  entity that already has one (`world.Add`) now replaces the id and re-indexes it, where it used to be an
+  Ensure failure, because a game that spawns then names its entity is common.
+- **Side effect**: a pawn spawned at runtime is saved now, so its player camera (whose id derives from the
+  pawn's) is too; a pawn that should not be saved says `"persist": false`.
+- Cue and particle effects are not prefab spawns in the base engine; a game's effect prefab opts out with
+  `"persist": false`. A load does not yet remove an unsaved entity that is in the world already (4i-3).
+
 ### As built (a load that cannot half-happen, issue 4i-2, 2026-09-30)
 
 REDESIGN §4.5 found three ways a load lost a playthrough: it destroyed and rebuilt one world while the
