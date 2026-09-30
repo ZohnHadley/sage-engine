@@ -1,0 +1,49 @@
+[
+  // The four weapons (engine issue #139), each only records: an `attack` with a `delivery` from the
+  // hit_delivery vocabulary, and the item that puts it in hand; the fireball is an `ability` the Cast
+  // button throws. Every one of them lands through Combat.ApplyHit: the hit location's multiplier, then
+  // its armour, then the damage type's resist (sage:physical reads `armor`, sage:fire `fire_resist`).
+  //
+  // Against a dummy (dummies.json: 100 health, armor 20, fire_resist 50), on the torso:
+  //   sword     25 physical, a `sweep`                       -> 20 a swing, dead in 5
+  //   pistol    20 physical, a `ray`, 8 in a magazine         -> 16 a shot,  dead in 7   (a head: 32)
+  //   crossbow  45 physical, a `projectile` that falls, 1 bolt -> 36 a bolt,  dead in 3
+  //   fireball  40 fire, a projectile ability                 -> 20 a cast,  dead in 5
+
+  {
+    "type": "attack", "id": "sword_swing", "damage": 25, "damageType": "sage:physical",
+    "reach": 2.4, "radius": 0.35, "arcDegrees": 90,
+    "windupTime": 0.2, "recoverTime": 0.2, "cooldown": 0.5
+  },
+  {
+    "type": "attack", "id": "pistol_shot", "delivery": "ray", "damage": 20, "damageType": "sage:physical", "range": 60,
+    "windupTime": 0, "recoverTime": 0.08, "cooldown": 0.25,
+    "ammo": "pistol_round", "magazine": 8, "reloadTime": 1.0,
+    "spread": "pistol_spread", "recoil": "pistol_recoil"
+  },
+  // A pistol this accurate at ten metres: a cone of 0.2° that opens by 0.1° a shot, and a small kick that
+  // returns quickly, so aimed shots land where they are aimed.
+  { "type": "spread", "id": "pistol_spread", "baseDegrees": 0.2, "growthPerShot": 0.1, "maxDegrees": 1, "recoveryPerSecond": 4 },
+  { "type": "recoil", "id": "pistol_recoil", "pitchMinDegrees": 0.3, "pitchMaxDegrees": 0.5, "yawMinDegrees": -0.1, "yawMaxDegrees": 0.1, "returnSpeedDegrees": 20 },
+  {
+    "type": "attack", "id": "crossbow_shot", "delivery": "projectile", "damage": 45, "damageType": "sage:physical",
+    "range": 60, "radius": 0.03, "projectileSpeed": 45, "projectileGravity": 9.81,
+    "windupTime": 0, "recoverTime": 0.1, "cooldown": 0.3,
+    "ammo": "bolt", "magazine": 1, "reloadTime": 1.0
+  },
+
+  { "type": "item", "id": "sword", "label": "sword", "slot": "MainHand", "attack": "sword_swing", "weight": 3 },
+  { "type": "item", "id": "pistol", "label": "pistol", "slot": "MainHand", "attack": "pistol_shot", "weight": 1 },
+  { "type": "item", "id": "crossbow", "label": "crossbow", "slot": "MainHand", "attack": "crossbow_shot", "weight": 4 },
+  { "type": "item", "id": "pistol_round", "label": "pistol rounds", "maxStack": 100, "weight": 0.01 },
+  { "type": "item", "id": "bolt", "label": "bolts", "maxStack": 50, "weight": 0.05 },
+
+  {
+    // Thrown, not instant: it flies on the carrier the crossbow's bolt flies on, and where it strikes a
+    // dummy's hitbox it burns that place (a head for double). No burst radius, so it is one target's.
+    "type": "ability", "id": "fireball", "name": "Fireball",
+    "targeting": "Projectile", "range": 40, "projectileSpeed": 30,
+    "damage": 40, "damageType": "sage:fire",
+    "cost": 5
+  }
+]

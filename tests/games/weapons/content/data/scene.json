@@ -1,0 +1,37 @@
+[
+  { "type": "material", "id": "floor", "base": "sage:lit_default", "params": { "AlbedoColor": [0.46, 0.50, 0.44, 1] } },
+  {
+    "type": "prefab", "id": "floor", "name": "floor",
+    "components": { "mesh_renderer": { "mesh": "models/slab.glb", "material": "floor" } },
+    "parts": { "body": { "size": [40, 1, 40] } }
+  },
+
+  {
+    // The player carries all four (engine issue #139): three weapons and their ammunition in the bag, to
+    // be equipped in the main hand (the RPG kit's), and the fireball known, readied for the Cast button.
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "melee": {},
+      "inventory": { "items": [
+        { "item": "sword" }, { "item": "pistol" }, { "item": "crossbow" },
+        { "item": "pistol_round", "count": 24 }, { "item": "bolt", "count": 10 } ] },
+      "abilities": ["fireball"]
+    }
+  },
+
+  {
+    // The range, watched from the south: the player at the firing line, three dummies ten metres up
+    // it facing back (yaw 180 faces +Z), the right-hand one in a helmet.
+    "type": "scene",
+    "id": "range",
+    "player": { "prefab": "player", "at": [0, 0.1, 10] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+      { "prefab": "dummy", "at": [-3, 0, 0], "yaw": 180, "name": "left dummy" },
+      { "prefab": "dummy", "at": [0, 0, 0], "yaw": 180, "name": "middle dummy" },
+      { "prefab": "helmeted_dummy", "at": [3, 0, 0], "yaw": 180, "name": "helmeted dummy" }
+    ]
+  }
+]
