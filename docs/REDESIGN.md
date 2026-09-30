@@ -1055,7 +1055,8 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | 3 — Carve the base | **Done** (#23). the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), and public API files, SemVer from git tags and `sage` ranges (#31, [RELEASING](RELEASING.md)), each with an "As built" note |
 | 4a — Cameras as components | **Done** (#75: #76–#81). Cameras are entities with a director, rigs for first and third person with the V toggle, scripted cuts from entity I/O, several views and named render targets, and the editor's free camera and viewport on them; both exit criteria run in the Sandbox with tests |
 | 4b — Timers, tweens, state machines, logic | **Done** (#87: #89–#94). One condition/action language in the base; timers, tweens and a saved I/O queue; dialogue topics; state machines as data; logic entities, routed inputs, conditional wires and bridges; the exit games `tests/games/scripted-sequence` and `tests/games/topics` run with no C# |
-| 4c — UI toolkit and RPG screens | **Done** (#88: #95–#99). `Sage.UI`, style/layout/screen records, localisation, drawing, input and transitions; the inventory grid with weight, equipment, loot and topics screens from the kit's records, and the HUD, journal, map, shop shell and a main menu that loads save slots, each with its exit test. **Next: 4d** |
+| 4c — UI toolkit and RPG screens | **Done** (#88: #95–#99). `Sage.UI`, style/layout/screen records, localisation, drawing, input and transitions; the inventory grid with weight, equipment, loot and topics screens from the kit's records, and the HUD, journal, map, shop shell and a main menu that loads save slots, each with its exit test |
+| 4d — Skeletal animation | **Done** (#115: #116–#122). Skeletons, clips and headless sampling; GPU skinning; sockets, attachments, aim and foot IK; `anim_graph` records with blend spaces, layers and cross-fades; clip events replacing the `attack`/`hit`/`idle` names; first-person arms; the exit game `tests/games/skeletal`, where generated box mannequins walk, run, aim and attack, blended, with no C#, and the Sandbox's arms reload. **Next: 4e** |
 
 | Phase | Theme | Main work | Exit criterion |
 |---|---|---|---|
@@ -1078,7 +1079,7 @@ test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *acti
 | **4a** | **Done** (#75). **Cameras as components**: perspective (and ortho, cheap to include); rigs for first-person (moved out of Gameplay), third-person over-the-shoulder with collision and 1P/3P toggle, fixed/cinematic for scripted scenes; several views per snapshot; render targets | switch 1P↔3P mid-fight; a scripted camera cut from I/O |
 | **4b** | **Done** (#87). **Timers, tweens, state machines**; the **conditions/actions vocabulary** (§4.3 stage 2); logic entities and bridge I/O (stage 3). This is HL1's scripted sequences and Morrowind's dialogue conditions in one mechanism | an HL1-style sequence (door, lift, NPC line, counter) and a conditional dialogue topic, built in data only |
 | **4c** | **Done** (#88). **UI toolkit** (retained widgets, layout, focus and gamepad, style/layout records, localisation keys). First consumers are RPG screens: HUD, inventory **grid with weight** (S.T.A.L.K.E.R.), equipment, container/loot, shop, dialogue topics, journal, map, and a main menu with save/load | inventory, loot and dialogue screens built from records over headless view-models, with tests |
-| **4d** | **Skeletal animation** [F9–F12]: glTF skins, clips, blending, anim state machine as data, animation events replacing the `attack`/`hit`/`idle` names, **first-person arms and viewmodels**, simple IK for aiming and feet | an NPC walks, runs, aims and attacks, blended; first-person arms reload a weapon |
+| **4d** | **Done** (#115). **Skeletal animation** [F9–F12]: glTF skins, clips, blending, anim state machine as data, animation events replacing the `attack`/`hit`/`idle` names, **first-person arms and viewmodels**, simple IK for aiming and feet | an NPC walks, runs, aims and attacks, blended; first-person arms reload a weapon |
 | **4e** | **Weapons and combat generalised**: one damage pipeline for melee, projectile and **hitscan**; ammo, magazines, reload; spread and recoil as records; hit locations (head/limbs) from colliders; armour by location; the existing melee and spells re-expressed on it | the same pipeline drives a sword, a crossbow, a pistol and a fireball, each defined by records only |
 | **4f** | **RPG progression and economy (generic)**: skills that rise with use or with XP (both as rules), levelling, perks as effects; containers, loot tables, shops and barter, item "use" (§4.3 `ItemUse`), durability and weight | a Morrowind-style "use a skill, it rises" and a S.T.A.L.K.E.R.-style trader, both in data |
 | **4g** | **Open world, part 2**: entities stream by sector (not only terrain), **interior cells** with load doors, fast travel, **time of day** (sun, sky, lighting, NPC schedules), and **off-screen simulation** (A-Life-lite: coarse movement and fights for unloaded NPCs, reconciled when they stream in) | walk from an exterior into a dungeon and back; an NPC keeps its schedule across a day while you are away |
@@ -1250,6 +1251,19 @@ sprite fighter from before is upgraded to a graph that plays them (test:
 ASpriteGoblinAndASkinnedNpcLandOnHitOnTheSameTickAsBefore) (test: AGameNamesTheSpriteClipsCombatPlays).
 Nothing allocates per tick (test: RaisingEventsAllocatesNothingPerTick). SAGE0126, TODO F10. Details:
 docs/design/12 "As built (animation events)".
+
+*As built, 4d (issue #122, 2026-09-30): the exit.* Phase 4d's exit criterion runs headlessly. A generator
+(`games/Sandbox/tools/make_mannequin.py`) writes an 18-joint box mannequin with idle, walk, run, three aim
+poses, attack and reload, and new first-person arms for the Sandbox. `tests/games/skeletal` is a game with
+no C#: an `anim_graph` blends walk and run on `speed` and, on an upper-body layer, aims by `aim_pitch`
+(with aim IK up the spine) and plays attack and reload; `anim_events` put `hit`, `mag_out` and `mag_in`
+where the art does; foot IK plants the feet; state machines patrol three NPCs at their own paces with
+tweens and have a trooper and a sentry aim, strike and reload
+(test: AnNpcWalksRunsAimsAndAttacks_Blended) (test: TheYardsNpcsPatrolAtTheirOwnPaces_AimStrikeAndReload).
+The Sandbox's arms reload the sword with `mag_out` then `mag_in` (test: FirstPersonArmsReloadAWeapon), and
+fifty NPCs allocate nothing per tick (test: FiftyNpcsAllocateNothingPerTick). CI validates, schemas and
+smoke-runs the game. Ragdolls (F11) are a follow-up. SAGE0126. Details: docs/design/12 "As built (phase
+4d's exit)".
 
 ### Stage C: prove it on the action-RPG family, then build your game
 
