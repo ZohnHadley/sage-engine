@@ -101,6 +101,37 @@ public class RpgScreenTests
 
     private static string Text(UiScreen screen, string node) => screen.View.Find<Label>(node)!.Text;
 
+    // The shop shell (issue #99): the merchant's goods beside the bag, the hand between them, and a move
+    // across priced by the stub rule — an item's value to buy, half to sell — into the balance.
+    [Fact]
+    public void AShopPricesAMoveAcrossByTheStubRuleAndKeepsTheBalance()
+    {
+        using var app = Boot("""[ { "type": "item", "id": "sword", "patch": true, "value": 40 } ]""");
+        var world = app.World;
+        var hero = Carrier(world, "hero", 20f, ("bread", 2));
+        var merchant = Carrier(world, "merchant", 0f, ("sword", 1));
+        Assert.Equal(40, StubPriceRule.Instance.Price(world, Id("sword"), 1, buying: true));
+        Assert.Equal(20, StubPriceRule.Instance.Price(world, Id("sword"), 1, buying: false));
+        Assert.Equal(2, StubPriceRule.Instance.Price(world, Id("bread"), 2, buying: false));   // worthless: 1 a piece
+
+        var shop = Open(app, new RecordId("rpg", "shop"), hero, merchant);
+        var view = Assert.IsType<ShopView>(shop.Screen.ViewModel);
+        Assert.Equal("merchant's goods", Text(shop.Screen, "stock_title"));
+        Assert.Same(view.Stock.CellAt(0, 0), shop.Focused);
+        shop.A();                                                                       // pick the sword up
+        Assert.True(view.HeldIsStock);
+        Assert.Equal(40, view.HeldPrice);
+        Assert.Equal("Buying sword for 40", Text(shop.Screen, "buying"));
+        shop.NavUntil(UiNavigation.Right, p => p.Focused is GridCell c && c.Grid == view.Bag && c.Item == null);
+        shop.A();                                                                       // put it in the bag: bought
+        Assert.Equal("", view.Message);
+        Assert.Equal(1, world.CountOf(hero, Id("sword")));
+        Assert.Equal(0, world.CountOf(merchant, Id("sword")));
+        Assert.Equal(40, view.Balance);
+        Assert.Equal("You owe 40", Text(shop.Screen, "balance"));
+        Assert.Equal(0, view.HeldPrice);
+    }
+
     // The acceptance test of issue #98 (phase 4c's exit): with gamepad input only, a stack is moved on the
     // inventory grid, a move from a corpse that would go over the weight limit is refused, the corpse is
     // looted, and a topic is asked — on three screens built from the kit's screen and ui_layout records.

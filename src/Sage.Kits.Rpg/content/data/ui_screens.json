@@ -95,5 +95,36 @@
       "none":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.topics.none",
                    "bindings": { "visible": "noTopics" } },
       "hint":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.topics.hint" }
+    } },
+
+  // ---- shop: the shell of #99 — the merchant's goods beside the bag, each move across priced by a stub
+  // rule (ShopView.Prices) and added to a balance; barter proper is phase 4f ---------------------------
+  { "type": "screen", "id": "shop", "layout": "shop", "viewModel": "rpg_shop" },
+  { "type": "ui_layout", "id": "shop", "style": "panel",
+    "nodes": {
+      "window":      { "widget": "stack", "anchors": "center", "spacing": 6 },
+      "sides":       { "widget": "stack", "parent": "window", "direction": "row", "spacing": 16 },
+
+      "stock":       { "widget": "stack", "parent": "sides", "spacing": 4 },
+      "stock_title": { "widget": "label", "parent": "stock", "style": "title", "text": "@rpg.shop.title",
+                       "args": { "who": "merchantName" } },
+      "stock_cells": { "widget": "grid", "parent": "stock", "bind": "stock.cells",
+                       "bindings": { "columns": "stock.columns" }, "uniform": true, "spacing": 2 },
+      "stock_cell":  { "widget": "button", "parent": "stock_cells", "style": "cell", "bind": "label",
+                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+
+      "yours":       { "widget": "stack", "parent": "sides", "spacing": 4 },
+      "your_title":  { "widget": "label", "parent": "yours", "style": "title", "text": "@rpg.shop.yours" },
+      "your_cells":  { "widget": "grid", "parent": "yours", "bind": "bag.cells",
+                       "bindings": { "columns": "bag.columns" }, "uniform": true, "spacing": 2 },
+      "your_cell":   { "widget": "button", "parent": "your_cells", "style": "cell", "bind": "label",
+                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+
+      "buying":      { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.buy",
+                       "args": { "item": "heldLabel", "price": "heldPrice" }, "bindings": { "visible": "heldIsStock" } },
+      "balance":     { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.balance",
+                       "args": { "balance": "balance" } },
+      "message":     { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
+      "hint":        { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.shop.hint" }
     } }
 ]

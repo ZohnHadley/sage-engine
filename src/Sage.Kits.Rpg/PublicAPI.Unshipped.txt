@@ -9,6 +9,8 @@ const Sage.Kits.Rpg.TopicsView.AskedStyle = "rpg:topic_asked" -> string!
 const Sage.Kits.Rpg.TopicsView.TopicStyle = "rpg:topic" -> string!
 override Sage.Kits.Rpg.LootView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
 override Sage.Kits.Rpg.LootView.Refresh(in Sage.UI.UiBindContext context) -> void
+override Sage.Kits.Rpg.ShopView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+override Sage.Kits.Rpg.ShopView.Refresh(in Sage.UI.UiBindContext context) -> void
 Sage.Kits.Rpg.EquipmentView
 Sage.Kits.Rpg.EquipmentView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
 Sage.Kits.Rpg.EquipmentView.CandidateRow
@@ -58,6 +60,8 @@ Sage.Kits.Rpg.GridPlacement.Y -> int
 Sage.Kits.Rpg.InventoryView
 Sage.Kits.Rpg.InventoryView.Bag.get -> Sage.Kits.Rpg.ItemGrid!
 Sage.Kits.Rpg.InventoryView.InventoryView() -> void
+Sage.Kits.Rpg.IPriceRule
+Sage.Kits.Rpg.IPriceRule.Price(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, bool buying) -> int
 Sage.Kits.Rpg.ItemGrid
 Sage.Kits.Rpg.ItemGrid.Capacity.get -> float
 Sage.Kits.Rpg.ItemGrid.CellAt(int x, int y) -> Sage.Kits.Rpg.GridCell?
@@ -101,6 +105,19 @@ Sage.Kits.Rpg.RpgItemRecord
 Sage.Kits.Rpg.RpgItemRecord.Footprint.get -> (int Width, int Height)
 Sage.Kits.Rpg.RpgItemRecord.Grid -> System.Numerics.Vector2
 Sage.Kits.Rpg.RpgItemRecord.RpgItemRecord() -> void
+Sage.Kits.Rpg.ShopView
+Sage.Kits.Rpg.ShopView.Bag.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.ShopView.Balance.get -> int
+Sage.Kits.Rpg.ShopView.HeldIsStock.get -> bool
+Sage.Kits.Rpg.ShopView.HeldPrice.get -> int
+Sage.Kits.Rpg.ShopView.MerchantName.get -> string!
+Sage.Kits.Rpg.ShopView.Prices.get -> Sage.Kits.Rpg.IPriceRule!
+Sage.Kits.Rpg.ShopView.Prices.set -> void
+Sage.Kits.Rpg.ShopView.ShopView() -> void
+Sage.Kits.Rpg.ShopView.Stock.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.StubPriceRule
+Sage.Kits.Rpg.StubPriceRule.Price(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, bool buying) -> int
+Sage.Kits.Rpg.StubPriceRule.StubPriceRule() -> void
 Sage.Kits.Rpg.TopicsView
 Sage.Kits.Rpg.TopicsView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
 Sage.Kits.Rpg.TopicsView.Answer.get -> string!
@@ -122,6 +139,7 @@ static readonly Sage.Kits.Rpg.RpgKitModule.EquipmentScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.InventoryScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.LootScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.TopicsScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.StubPriceRule.Instance -> Sage.Kits.Rpg.StubPriceRule!
 static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, out string! reason) -> bool
 static Sage.Kits.Rpg.RpgItemRecord.Of(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> (int Width, int Height)
 virtual Sage.Kits.Rpg.ItemGridView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
