@@ -392,13 +392,13 @@ result with the file each field came from.
 
 ### Every record type there is
 
-Thirty, and a game may use as few as it likes. Their fields are documented in the design doc named
+Thirty-one, and a game may use as few as it likes. Their fields are documented in the design doc named
 beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
 |---|---|
 | **Things that exist** (05) | `prefab` — components and parts; `scene` — where things start; `tag` |
-| **Look** (06, 07) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events |
+| **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows |
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
 | **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step; `physics_layers` — what collides with what |
@@ -526,6 +526,9 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` |
 | `skinned_mesh` | a skinned model, bent by its joints on the GPU — `mesh` (a `.glb` with a skin), `material` (empty: `sage:lit_default`; its effect needs a `Skinned` technique), `layer` (issue #117) |
+| `bone_attachment` | follows a socket of its parent's skeleton — `socket` (a bare value: `"bone_attachment": "hand_r"`), or `bone` (a joint by name), `offset`, `angles`; sockets are `skeleton_sockets` records (issue #120) |
+| `aim_ik` | turns the spine, neck and head toward `AimIk.Pitch`/`Yaw` after the animation — `joints` (hips up: `joint`, `weight`, `pitchLimit`, `yawLimit` in degrees), `weight` (issue #120) |
+| `foot_ik` | plants the feet on the ground under them and lowers the hips — `pelvis`, `left`/`right` (`hip`, `knee`, `foot`), `footHeight`, `rayAbove`, `rayBelow`, `maxPelvisDrop`, `weight` (issue #120) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity` (06 §3.9) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
@@ -548,7 +551,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Twenty-five here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Twenty-eight here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -1580,7 +1583,7 @@ names their types needs the opt-in.
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
 | SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack` (with `OpenHud`, issue #99), `UiLayer`, `UiTween`; and the RPG kit's view-models (issues #98, #99): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `ShopView`, `IPriceRule`, `StubPriceRule` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98), the HUD, journal, map, menu and shop (#99) |
-| SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones` | Phase 4d builds on it: animation graphs, layers and the `Animator` (#118), clip events (#119), sockets and IK (#120) |
+| SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; sockets and IK (issue #120): `SkeletonPoses`, `TwoBoneIk`, `AimChainIk`, `AimJoint`, `PoseSampler.ToModelSpace(…, firstJoint)`, `SkeletonSocketsRecord`, `SkeletonSocket`, `BoneAttachment`, `BoneAttachmentPart`, `BoneAttachments`, `AimIk`, `AimIkJoint`, `AimIkPart`, and in Gameplay `FootIk`, `FootIkLeg`, `FootIkPart` | Phase 4d builds on it: animation graphs, layers and the `Animator` (#118), clip events (#119) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
@@ -1599,7 +1602,11 @@ Worth knowing before you plan around it:
   blended and put in model space headlessly (SAGE0126, issue #116); a skinned `.glb` draws with the
   `skinned_mesh` part and is skinned on the GPU, up to 64 joints a draw (issue #117). Nothing plays a clip
   on an entity yet, so a skinned model stands in the pose it was modelled in until the animator (#118)
-  arrives. `r_testskin 1` shows a generated one bending.
+  arrives. `r_testskin 1` shows a generated one bending. Sockets, bone attachments and IK are in
+  (issue #120): a sword with `"bone_attachment": "hand_r"`, parented to a character, follows the hand of
+  whatever pose is registered for it in `SkeletonPoses`; `aim_ik` turns the spine toward a pitch and yaw;
+  `foot_ik` plants the feet on slopes through the physics world. Until #118 a game registers and samples
+  the pose itself (docs/design/12 "As built (attachments and IK)").
 - **Lighting indoors is lamps, not lightmaps.** A `light` entity lights a room, and four of them light
   any one surface (the strongest four, chosen per draw). That is enough for a hut; a level the size of a
   town wants light baked into the geometry, and lightmaps are still to come. Nothing casts a shadow.

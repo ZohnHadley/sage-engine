@@ -100,7 +100,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 - [ ] **F9. Skeletal animation pipeline.** glTF skins/clips via SharpGLTF; sim-side pose sampling; GPU skinning technique. *Skins, clips and headless sampling done (#116, SAGE0126); GPU skinning is #117.* → `12`
 - [ ] **F10. Animation blending + state machine.** Crossfades, layers, blend spaces, directional attack/block sets. → `12`
 - [ ] **F11. Ragdolls + physical animation.** Ragdoll on death/knockdown, blend back to animation. Depends on F6. → `10`, `12`
-- [ ] **F12. Attachment points.** Weapons, shields and riders on bones. → `12`
+- [~] **F12. Attachment points.** Weapons, shields and riders on bones. *Done 2026-09-30 (#120, SAGE0126): `skeleton_sockets` records keyed by model, the `bone_attachment` component and part (a child follows its parent's socket, or any entity's by `Target`) and `AttachmentSystem` in Phase.Late; with it simple IK: `TwoBoneIk`, `AimChainIk` (`aim_ik`) and foot IK through `IPhysicsWorld` (`foot_ik`). Left: poses from the Animator (#118), feet tilted to the ground's normal, pelvis smoothing, socket joints checked at load.* → `12`
 
 #### Phase 4 — World
 - [X] **F13. Heightmap terrain (v1: one sector, no LOD).** *Done 2026-09-22 (collision landed with F6): `Terrain` world resource, `Heightfield` (129×129 per 1024 m sector), game-provided `ITerrainGenerator`, chunk meshes through `Renderer.CreateMesh` + `MeshHandle`, `sage:terrain_default`, and `HeightAt`/`OnGround` for standing on the ground. Collision is one static Bepu mesh per sector (F6). LOD, splat materials and streaming are F14.* 129×129 grid per 1024 m sector, game-provided `ITerrainGenerator`, meshes + collision; LOD and splat materials later. → `14`

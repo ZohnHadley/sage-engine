@@ -50,6 +50,7 @@
             "rpg_item",
             "scene",
             "screen",
+            "skeleton_sockets",
             "sound",
             "sprite_sheet",
             "state_machine",
@@ -449,6 +450,21 @@
           },
           "then": {
             "$ref": "screen.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "skeleton_sockets"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "skeleton_sockets.schema.json"
           }
         },
         {

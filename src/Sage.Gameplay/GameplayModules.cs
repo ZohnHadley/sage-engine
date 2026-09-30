@@ -134,8 +134,11 @@ public sealed class AnimationModule : IModule
         _records = ctx.Engine.Records;
     }
 
-    public void OnWorldCreated(World world) =>
+    public void OnWorldCreated(World world)
+    {
         world.AddSystem(new SpriteAnimationSystem(world, _records!));
+        world.AddSystem(new FootIkSystem(world));   // feet on the ground (issue #120), through IPhysicsWorld
+    }
 }
 
 // Lamps (06 §3.9, F2). One part and nothing else, which is what a module the size of a feature looks

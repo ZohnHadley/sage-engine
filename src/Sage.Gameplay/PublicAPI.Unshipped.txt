@@ -50,6 +50,35 @@ Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Sim
 Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Simulation.ICondition!>!
 Sage.Gameplay.DialogueOption.Topics -> bool
 Sage.Gameplay.DialogueTopics
+Sage.Gameplay.FootIk
+Sage.Gameplay.FootIk.FootHeight -> float
+Sage.Gameplay.FootIk.FootIk() -> void
+Sage.Gameplay.FootIk.Left -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIk.LeftGrounded -> bool
+Sage.Gameplay.FootIk.MaxPelvisDrop -> float
+Sage.Gameplay.FootIk.Pelvis -> string!
+Sage.Gameplay.FootIk.PelvisDrop -> float
+Sage.Gameplay.FootIk.RayAbove -> float
+Sage.Gameplay.FootIk.RayBelow -> float
+Sage.Gameplay.FootIk.Right -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIk.RightGrounded -> bool
+Sage.Gameplay.FootIk.Weight -> float
+Sage.Gameplay.FootIkLeg
+Sage.Gameplay.FootIkLeg.Foot -> string!
+Sage.Gameplay.FootIkLeg.FootIkLeg() -> void
+Sage.Gameplay.FootIkLeg.Hip -> string!
+Sage.Gameplay.FootIkLeg.Knee -> string!
+Sage.Gameplay.FootIkPart
+Sage.Gameplay.FootIkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.FootIkPart.FootHeight -> float
+Sage.Gameplay.FootIkPart.FootIkPart() -> void
+Sage.Gameplay.FootIkPart.Left -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIkPart.MaxPelvisDrop -> float
+Sage.Gameplay.FootIkPart.Pelvis -> string!
+Sage.Gameplay.FootIkPart.RayAbove -> float
+Sage.Gameplay.FootIkPart.RayBelow -> float
+Sage.Gameplay.FootIkPart.Right -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIkPart.Weight -> float
 Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?

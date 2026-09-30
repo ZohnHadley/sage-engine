@@ -53,6 +53,31 @@ Sage.Simulation.ActionContext.Subject.get -> Sage.Simulation.Entity
 Sage.Simulation.ActionContext.Subject.init -> void
 Sage.Simulation.ActionContext.World.get -> Sage.Simulation.World!
 Sage.Simulation.ActionContext.World.init -> void
+Sage.Simulation.AimChainIk
+Sage.Simulation.AimIk
+Sage.Simulation.AimIk.AimIk() -> void
+Sage.Simulation.AimIk.Joints -> System.Collections.Generic.List<Sage.Simulation.AimIkJoint!>?
+Sage.Simulation.AimIk.Pitch -> float
+Sage.Simulation.AimIk.Weight -> float
+Sage.Simulation.AimIk.Yaw -> float
+Sage.Simulation.AimIkJoint
+Sage.Simulation.AimIkJoint.AimIkJoint() -> void
+Sage.Simulation.AimIkJoint.Joint -> string!
+Sage.Simulation.AimIkJoint.PitchLimit -> float
+Sage.Simulation.AimIkJoint.Weight -> float
+Sage.Simulation.AimIkJoint.YawLimit -> float
+Sage.Simulation.AimIkPart
+Sage.Simulation.AimIkPart.AimIkPart() -> void
+Sage.Simulation.AimIkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.AimIkPart.Joints -> System.Collections.Generic.List<Sage.Simulation.AimIkJoint!>!
+Sage.Simulation.AimIkPart.Weight -> float
+Sage.Simulation.AimJoint
+Sage.Simulation.AimJoint.AimJoint() -> void
+Sage.Simulation.AimJoint.AimJoint(int joint, float weight, float maxPitch, float maxYaw) -> void
+Sage.Simulation.AimJoint.Joint.get -> int
+Sage.Simulation.AimJoint.MaxPitch.get -> float
+Sage.Simulation.AimJoint.MaxYaw.get -> float
+Sage.Simulation.AimJoint.Weight.get -> float
 Sage.Simulation.AnimationClip
 Sage.Simulation.AnimationClip.AddEvent(float time, string! name) -> void
 Sage.Simulation.AnimationClip.Animates(int joint) -> bool
@@ -74,6 +99,21 @@ Sage.Simulation.AnimationSet.Clips.get -> System.Collections.Generic.IReadOnlyLi
 Sage.Simulation.AnimationSet.FindClip(string! name) -> Sage.Simulation.AnimationClip?
 Sage.Simulation.AnimationSet.Skeleton.get -> Sage.Simulation.Skeleton!
 Sage.Simulation.AnimationSet.Source.get -> string!
+Sage.Simulation.BoneAttachment
+Sage.Simulation.BoneAttachment.Angles -> System.Numerics.Vector3
+Sage.Simulation.BoneAttachment.Bone -> string!
+Sage.Simulation.BoneAttachment.BoneAttachment() -> void
+Sage.Simulation.BoneAttachment.Offset -> System.Numerics.Vector3
+Sage.Simulation.BoneAttachment.Socket -> string!
+Sage.Simulation.BoneAttachment.Target -> Sage.Simulation.Entity
+Sage.Simulation.BoneAttachmentPart
+Sage.Simulation.BoneAttachmentPart.Angles -> System.Numerics.Vector3
+Sage.Simulation.BoneAttachmentPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.BoneAttachmentPart.Bone -> string!
+Sage.Simulation.BoneAttachmentPart.BoneAttachmentPart() -> void
+Sage.Simulation.BoneAttachmentPart.Offset -> System.Numerics.Vector3
+Sage.Simulation.BoneAttachmentPart.Socket -> string!
+Sage.Simulation.BoneAttachments
 Sage.Simulation.Camera
 Sage.Simulation.Camera.Camera() -> void
 Sage.Simulation.Camera.Enabled -> bool
@@ -390,6 +430,22 @@ Sage.Simulation.SkeletonPose.ModelSpace.get -> System.Span<System.Numerics.Matri
 Sage.Simulation.SkeletonPose.ResetToRest() -> void
 Sage.Simulation.SkeletonPose.Skeleton.get -> Sage.Simulation.Skeleton!
 Sage.Simulation.SkeletonPose.SkeletonPose(Sage.Simulation.Skeleton! skeleton) -> void
+Sage.Simulation.SkeletonPoses
+Sage.Simulation.SkeletonPoses.Count.get -> int
+Sage.Simulation.SkeletonPoses.Remove(Sage.Simulation.Entity entity) -> bool
+Sage.Simulation.SkeletonPoses.Set(Sage.Simulation.Entity entity, Sage.Simulation.SkeletonPose! pose, Sage.Core.AssetPath model = default(Sage.Core.AssetPath)) -> void
+Sage.Simulation.SkeletonPoses.SkeletonPoses() -> void
+Sage.Simulation.SkeletonPoses.TryGet(Sage.Simulation.Entity entity, out Sage.Simulation.SkeletonPose? pose) -> bool
+Sage.Simulation.SkeletonPoses.TryGet(Sage.Simulation.Entity entity, out Sage.Simulation.SkeletonPose? pose, out Sage.Core.AssetPath model) -> bool
+Sage.Simulation.SkeletonSocket
+Sage.Simulation.SkeletonSocket.Angles -> System.Numerics.Vector3
+Sage.Simulation.SkeletonSocket.Joint -> string!
+Sage.Simulation.SkeletonSocket.Offset -> System.Numerics.Vector3
+Sage.Simulation.SkeletonSocket.SkeletonSocket() -> void
+Sage.Simulation.SkeletonSocketsRecord
+Sage.Simulation.SkeletonSocketsRecord.Model -> Sage.Core.AssetPath
+Sage.Simulation.SkeletonSocketsRecord.SkeletonSocketsRecord() -> void
+Sage.Simulation.SkeletonSocketsRecord.Sockets -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.SkeletonSocket!>!
 Sage.Simulation.StateMachine
 Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
 Sage.Simulation.StateMachine.Machine -> Sage.Core.RecordId
@@ -441,6 +497,7 @@ Sage.Simulation.Timers
 Sage.Simulation.ToggleViewSystem
 Sage.Simulation.ToggleViewSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.ToggleViewSystem.ToggleViewSystem(Sage.Simulation.World! world, Sage.Simulation.ActionRegistry! actions) -> void
+Sage.Simulation.TwoBoneIk
 Sage.Simulation.Vars
 Sage.Simulation.Vars.Add(string! name, double amount) -> double
 Sage.Simulation.Vars.Get(string! name) -> double
@@ -493,6 +550,11 @@ Sage.Simulation.ScriptedCameraPart.Apply(in Sage.Simulation.PrefabPartContext ct
 Sage.Simulation.ScriptedCameraPart.HoldTime -> float
 Sage.Simulation.ScriptedCameraPart.LockInput -> bool
 Sage.Simulation.ScriptedCameraPart.ScriptedCameraPart() -> void
+static Sage.Simulation.AimChainIk.Solve(Sage.Simulation.SkeletonPose! pose, System.ReadOnlySpan<Sage.Simulation.AimJoint> chain, float pitch, float yaw, float weight = 1) -> void
+static Sage.Simulation.BoneAttachments.Attach(Sage.Simulation.World! world, Sage.Simulation.Entity child, Sage.Simulation.Entity owner, string! socket, System.Numerics.Vector3 offset = default(System.Numerics.Vector3), System.Numerics.Vector3 angles = default(System.Numerics.Vector3)) -> void
+static Sage.Simulation.BoneAttachments.AttachToBone(Sage.Simulation.World! world, Sage.Simulation.Entity child, Sage.Simulation.Entity owner, string! bone, System.Numerics.Vector3 offset = default(System.Numerics.Vector3), System.Numerics.Vector3 angles = default(System.Numerics.Vector3)) -> void
+static Sage.Simulation.BoneAttachments.OffsetMatrix(System.Numerics.Vector3 offset, System.Numerics.Vector3 angles) -> System.Numerics.Matrix4x4
+static Sage.Simulation.BoneAttachments.TryFindSocket(Sage.Core.RecordStore! records, Sage.Core.AssetPath model, string! name, out Sage.Simulation.SkeletonSocket? socket) -> bool
 static Sage.Simulation.Camera.Orthographic(float height = 10, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.Camera.Perspective(float fovYDegrees = 45, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.CameraBlends.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity camera, in Sage.Simulation.CameraView from, float seconds, Sage.Simulation.Ease ease) -> void
@@ -543,6 +605,7 @@ static Sage.Simulation.PoseSampler.Blend(Sage.Simulation.SkeletonPose! a, Sage.S
 static Sage.Simulation.PoseSampler.ClipTime(Sage.Simulation.AnimationClip! clip, float time, bool loop) -> float
 static Sage.Simulation.PoseSampler.Sample(Sage.Simulation.AnimationClip! clip, float time, bool loop, Sage.Simulation.SkeletonPose! pose) -> void
 static Sage.Simulation.PoseSampler.ToModelSpace(Sage.Simulation.Skeleton! skeleton, Sage.Simulation.SkeletonPose! pose) -> void
+static Sage.Simulation.PoseSampler.ToModelSpace(Sage.Simulation.Skeleton! skeleton, Sage.Simulation.SkeletonPose! pose, int firstJoint) -> void
 static Sage.Simulation.StateMachines.FirstTransition(System.Collections.Generic.IReadOnlyList<Sage.Simulation.StateTransition!>? transitions, string? input, float timeInState, in Sage.Simulation.ConditionContext context) -> Sage.Simulation.StateTransition?
 static Sage.Simulation.StateMachines.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
 static Sage.Simulation.StateMachines.SetState(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity)) -> bool
@@ -552,6 +615,8 @@ static Sage.Simulation.ThirdPersonRig.DefaultShoulderOffset.get -> System.Numeri
 static Sage.Simulation.Timers.NextWait(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> float
 static Sage.Simulation.Timers.Start(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> void
 static Sage.Simulation.ToggleViewSystem.Toggle(Sage.Simulation.World! world) -> void
+static Sage.Simulation.TwoBoneIk.Solve(Sage.Simulation.SkeletonPose! pose, int root, int mid, int tip, System.Numerics.Vector3 target) -> bool
+static Sage.Simulation.TwoBoneIk.Solve(Sage.Simulation.SkeletonPose! pose, int root, int mid, int tip, System.Numerics.Vector3 target, System.Numerics.Vector3 pole, float weight = 1, bool keepTipRotation = false) -> bool
 static Sage.Simulation.Vars.Of(Sage.Simulation.World! world) -> Sage.Simulation.Vars!
 static Sage.Simulation.Vars.ValueOf(Sage.Simulation.World! world, string! name) -> double
 static Sage.Simulation.Tweens.Apply(in Sage.Simulation.Tween tween, ref Sage.Simulation.Transform transform) -> void
