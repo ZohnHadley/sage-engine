@@ -124,7 +124,7 @@
 
   // ---- the map (issue #99) -------------------------------------------------------------------------
   // Markers only (the kit's `rpg_map`, Sage.Kits.Rpg/MapView.cs): whatever content gave an
-  // `rpg:map_marker`, placed round you — in the middle, north up — by the `x` and `y` bindings, in a
+  // `map_marker`, placed round you — in the middle, north up — by the `x` and `y` bindings, in a
   // square so a metre is as long across as down. N opens and closes it.
   { "type": "ui_style", "id": "map_area", "background": "#0A0C14E6", "border": "#3A3E52", "borderWidth": 1 },
   { "type": "ui_style", "id": "map_label", "base": "ui_text", "textColour": "#D8D8E0" },

@@ -9,10 +9,10 @@ namespace Sage.Kits.Rpg;
 // Something the map shows (issue #99): a place, a person, a door. The map draws markers and nothing
 // else — no terrain, no picture of the ground — so what is on it is exactly what content marked:
 //
-//   "components": { "rpg:map_marker": { "label": "@sandbox.map.hut", "style": "sandbox:map_place" } }
+//   "components": { "map_marker": { "label": "@sandbox.map.hut", "style": "sandbox:map_place" } }
 //
 // Saved like any component of a persistent entity; a plain field set, so no save format change.
-[Component("rpg:map_marker")]
+[Component("sage:map_marker")]   // the engine's namespace, as the kit is the engine's own: content writes it bare, `map_marker`
 public struct MapMarker : IComponent
 {
     [Property(Tooltip = "What the map calls it: text, or a localisation key (@ns.key)")]

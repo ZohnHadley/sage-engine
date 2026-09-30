@@ -207,7 +207,7 @@ public class SandboxScreensTests
         Assert.Equal(1, journal.Finished);
     }
 
-    // The map: markers only, from `rpg:map_marker`, placed round the player — east is right, north (−Z) up.
+    // The map: markers only, from the `map_marker` component, placed round the player — east is right, north (−Z) up.
     [Fact]
     public void TheMapPlacesEachMarkerRoundThePlayerNorthUp()
     {

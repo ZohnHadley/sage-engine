@@ -244,6 +244,14 @@
         }
       ]
     },
+    "map_marker": {
+      "description": "The component sage:map_marker (MapMarker), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:map_marker"
+        }
+      ]
+    },
     "map_solid": {
       "description": "The component sage:map_solid (MapSolid), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -593,6 +601,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:map_geometry"
+        }
+      ]
+    },
+    "sage:map_marker": {
+      "description": "Component sage:map_marker (MapMarker).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:map_marker"
         }
       ]
     },
@@ -2329,6 +2345,21 @@
       },
       "additionalProperties": false,
       "description": "Component sage:map_geometry (MapGeometry)."
+    },
+    "sage:map_marker": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "What the map calls it: text, or a localisation key (@ns.key) (string)",
+          "type": "string"
+        },
+        "style": {
+          "description": "The ui_style id its marker is drawn in (ns:name); empty: the map layout's own. (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:map_marker (MapMarker)."
     },
     "sage:map_solid": {
       "type": "object",

@@ -4759,18 +4759,28 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_loot, rpg_topics, sandbox_status.",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status.",
       "type": "string",
       "enum": [
         "RpgEquipment",
         "RpgInventory",
+        "RpgJournal",
         "RpgLoot",
+        "RpgMap",
+        "RpgShop",
         "RpgTopics",
+        "SandboxHud",
+        "SandboxMainMenu",
         "SandboxStatus",
         "rpg_equipment",
         "rpg_inventory",
+        "rpg_journal",
         "rpg_loot",
+        "rpg_map",
+        "rpg_shop",
         "rpg_topics",
+        "sandbox_hud",
+        "sandbox_main_menu",
         "sandbox_status"
       ]
     },
@@ -4854,6 +4864,35 @@
                 "properties": {
                   "viewModel": {
                     "enum": [
+                      "rpg_journal",
+                      "RpgJournal"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_journal.",
+                    "enum": [
+                      "rpg_journal",
+                      "RpgJournal"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_journal' (JournalView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
                       "rpg_loot",
                       "RpgLoot"
                     ]
@@ -4883,6 +4922,68 @@
                 "properties": {
                   "viewModel": {
                     "enum": [
+                      "rpg_map",
+                      "RpgMap"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_map.",
+                    "enum": [
+                      "rpg_map",
+                      "RpgMap"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_map' (MapView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_shop",
+                      "RpgShop"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "prices": {
+                    "description": "(IPriceRule)",
+                    "type": "object"
+                  },
+                  "viewModel": {
+                    "description": "The view_model: rpg_shop.",
+                    "enum": [
+                      "rpg_shop",
+                      "RpgShop"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_shop' (ShopView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
                       "rpg_topics",
                       "RpgTopics"
                     ]
@@ -4905,6 +5006,124 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'rpg_topics' (TopicsView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "sandbox_hud",
+                      "SandboxHud"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "aiming": {
+                    "description": "(bool, default false)",
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "hands": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "hasPlayer": {
+                    "description": "(bool, default false)",
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "hasPrompt": {
+                    "description": "(bool, default false)",
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "hasViewHint": {
+                    "description": "(bool, default false)",
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "health": {
+                    "description": "(float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "healthStyle": {
+                    "description": "(string, default \"sandbox:hud_bar\")",
+                    "default": "sandbox:hud_bar",
+                    "type": "string"
+                  },
+                  "healthText": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "maxHealth": {
+                    "description": "(float, default 100)",
+                    "default": 100,
+                    "type": "number"
+                  },
+                  "prompt": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "promptItem": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "viewHint": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "viewModel": {
+                    "description": "The view_model: sandbox_hud.",
+                    "enum": [
+                      "sandbox_hud",
+                      "SandboxHud"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'sandbox_hud' (HudView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "sandbox_main_menu",
+                      "SandboxMainMenu"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: sandbox_main_menu.",
+                    "enum": [
+                      "sandbox_main_menu",
+                      "SandboxMainMenu"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'sandbox_main_menu' (MainMenuView)."
               }
             },
             {
