@@ -207,6 +207,7 @@ public sealed class CombatModule : IModule
     {
         // Combat resolves before effects tick, so a blow struck this tick is felt this tick: the
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
+        world.AddSystem(new ReloadSystem(world, _records!, _actions!));   // ammunition (issue #135)
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
         // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);

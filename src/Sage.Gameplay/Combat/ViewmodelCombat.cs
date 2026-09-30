@@ -11,7 +11,7 @@ namespace Sage.Gameplay;
 // comes off — and the arms' anim_graph hears about the fight: a swing that started this tick sets its
 // trigger — the attack's own `trigger`, else the conventions' `animations.attackTrigger`, the one the
 // fighter's own animator gets (issue #119) — and the Reload button its `reload` trigger (`animations.reload`).
-// Reload only plays: ammunition is phase 4e's, and a game's. A graph without the trigger ignores it.
+// The arms only play the reload; the rounds move in ReloadSystem (issue #135, Ammunition.cs). A graph without the trigger ignores it.
 // The arms' clip events (`mag_out`, `mag_in`, `hit`) are raised by the animator like any other's
 // (docs/design/12 "As built (animation events)"), on the arms entity.
 //

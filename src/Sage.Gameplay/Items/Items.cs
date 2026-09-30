@@ -316,6 +316,8 @@ public static class Items
         if (records.TryGet(item, out ItemRecord record))
         {
             foreach (var effect in record.Effects) Effects.Remove(world, entity, effect);
+            // The rounds loaded for it go back in the bag (issue #135).
+            if (!record.Attack.IsEmpty) Ammunition.Unload(world, entity, record.Attack.Id);
             // Back to bare hands (or whatever the creature was born with).
             if (!record.Attack.IsEmpty && world.Has<Melee>(entity))
             {
