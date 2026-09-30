@@ -470,6 +470,9 @@ internal sealed class RowsSlot
             else row = _builder.BuildNode(_tree, _name, _template, _style);
             _host.Add(row.Widget);
             _rows.Add(row);
+            // Room kept aside now, while rows are being made anyway, for all of them to be put aside
+            // later: a list emptying (a HUD's messages ageing out) must not grow this then (#99).
+            if (_spare.Capacity < _rows.Count + _spare.Count) _spare.Capacity = _rows.Count + _spare.Count;
         }
         while (_rows.Count > count)
         {
