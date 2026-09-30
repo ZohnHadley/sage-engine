@@ -101,6 +101,38 @@ Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> b
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
 Sage.Simulation.DebugCamera
+Sage.Simulation.Ease
+Sage.Simulation.Ease.BackIn = 19 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.BackInOut = 21 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.BackOut = 20 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.BounceIn = 25 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.BounceInOut = 27 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.BounceOut = 26 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.CubicIn = 4 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.CubicInOut = 6 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.CubicOut = 5 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.ElasticIn = 22 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.ElasticInOut = 24 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.ElasticOut = 23 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.ExpoIn = 16 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.ExpoInOut = 18 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.ExpoOut = 17 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.Linear = 0 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuadIn = 1 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuadInOut = 3 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuadOut = 2 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuartIn = 7 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuartInOut = 9 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuartOut = 8 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuintIn = 10 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuintInOut = 12 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.QuintOut = 11 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.SineIn = 13 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.SineInOut = 15 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.SineOut = 14 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.SmootherStep = 29 -> Sage.Simulation.Ease
+Sage.Simulation.Ease.SmoothStep = 28 -> Sage.Simulation.Ease
+Sage.Simulation.Easing
 Sage.Simulation.FirstPersonRig
 Sage.Simulation.FirstPersonRig.Enabled -> bool
 Sage.Simulation.FirstPersonRig.FirstPersonRig() -> void
@@ -178,6 +210,10 @@ static Sage.Simulation.CameraViewport.operator !=(Sage.Simulation.CameraViewport
 static Sage.Simulation.CameraViewport.operator ==(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
 static Sage.Simulation.DebugCamera.Drive(Sage.Simulation.World! world, Sage.Simulation.Entity camera, System.Numerics.Vector3 position, System.Numerics.Quaternion rotation, bool overriding) -> void
 static Sage.Simulation.DebugCamera.Spawn(Sage.Simulation.World! world, string! name, string! target = "") -> Sage.Simulation.Entity
+static Sage.Simulation.Easing.Apply(Sage.Simulation.Ease ease, float t) -> float
+static Sage.Simulation.Easing.IsMonotonic(Sage.Simulation.Ease ease) -> bool
+static Sage.Simulation.Easing.Lerp(Sage.Simulation.Ease ease, float a, float b, float t) -> float
+static Sage.Simulation.Easing.TryParse(System.ReadOnlySpan<char> text, out Sage.Simulation.Ease ease) -> bool
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem
