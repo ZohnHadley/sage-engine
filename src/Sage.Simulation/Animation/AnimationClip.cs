@@ -18,7 +18,9 @@ public enum AnimationInterpolation
     CubicSpline,
 }
 
-// A named moment in a clip (issue #119 fills these from files and sends them as events; #116 leaves room).
+// A named moment in a clip: "the blow lands here", "the magazine comes out here". Filled from
+// `anim_events` records (issue #119) or by code (AddEvent); the animator raises one each time its time is
+// crossed (docs/design/12 "As built (animation events)").
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
 public readonly struct ClipEvent
 {
@@ -44,6 +46,7 @@ public sealed class AnimationClip
     private readonly Track[] _rotation;
     private readonly Track[] _scale;
     private readonly List<ClipEvent> _events = new();
+    private readonly List<bool> _fromRecords = new();       // parallel to _events: put there by anim_events
 
     public AnimationClip(string name, int jointCount, float duration)
     {
@@ -64,16 +67,32 @@ public sealed class AnimationClip
     // In seconds: the last key's time in a clip read from glTF.
     public float Duration { get; }
 
-    // Sorted by time; empty until #119 reads them. Two events may share a time.
+    // Sorted by time, in seconds from the clip's start. Two events may share a time.
     public IReadOnlyList<ClipEvent> Events => _events;
 
     // Keeps Events sorted (a later event at an equal time goes after the earlier ones).
-    public void AddEvent(float time, string name)
+    public void AddEvent(float time, string name) => Insert(time, name, fromRecords: false);
+
+    // The events `anim_events` records give this clip, replacing the ones they gave it before (a
+    // records reload); events added by code stay.
+    internal void SetRecordEvents(List<ClipEvent> events)
+    {
+        for (int i = _events.Count - 1; i >= 0; i--)
+        {
+            if (!_fromRecords[i]) continue;
+            _events.RemoveAt(i);
+            _fromRecords.RemoveAt(i);
+        }
+        foreach (var e in events) Insert(e.Time, e.Name, fromRecords: true);
+    }
+
+    private void Insert(float time, string name, bool fromRecords)
     {
         ArgumentNullException.ThrowIfNull(name);
         int at = _events.Count;
         while (at > 0 && _events[at - 1].Time > time) at--;
         _events.Insert(at, new ClipEvent(time, name));
+        _fromRecords.Insert(at, fromRecords);
     }
 
     // `times` ascending; `values` one per key, or three per key for CubicSpline (in tangent, value, out

@@ -56,8 +56,8 @@ public sealed class GameplayConventionsRecord
     // (Sage.Kits.Rpg's `rpg_conventions`, issue #27).
     public ActionConventions Actions = new();
 
-    // The sprite clips and frame events combat plays and listens for, by name (12 §3, issue #27): the
-    // Daggerfall sheet's words until skeletal animation events replace them.
+    // The words combat and animation share (12 §3, issues #27, #119): the trigger a swing sets on the
+    // fighter's animator and the clip event that lands it. Clip names are the anim_graph's now.
     public AnimationConventions Animations = new();
 
     // The one well-known instance: what the engine reads, and what a game patches. The only
@@ -104,15 +104,24 @@ public sealed class ActionConventions
     };
 }
 
+// Since issue #119 combat names no clip: a swing sets a trigger on the fighter's animator, whose
+// anim_graph picks the clip (a skinned model's or a sprite sheet's), and the blow lands on the clip's
+// `hit` event. `Attack` and `Idle` were the clip names combat played; they are kept, obsolete, so old
+// content still loads, and read only by the upgrade: a fighter drawn as an animated sprite with no graph
+// of its own is given one that plays them (SpriteFighterUpgrade).
 public sealed class AnimationConventions
 {
-    [Property(Tooltip = "The clip a swing plays when its attack names none")]
+    [Obsolete("Clip names are the anim_graph's since issue #119: a swing sets AttackTrigger. Read only by the upgrade of a sprite fighter with no graph.")]
+    [Property(Tooltip = "Obsolete (#119): the clip a sprite fighter with no anim_graph of its own swings with")]
     public string Attack = "attack";
-    [Property(Tooltip = "The frame event in a swing's clip that lands the blow; without one the attack's windup time does")]
+    [Property(Tooltip = "The clip event that lands a blow (anim_events, a sprite sheet's frame events); without one the attack's windup time does")]
     public string Hit = "hit";
-    [Property(Tooltip = "The clip a fighter goes back to when a swing is over")]
+    [Obsolete("Clip names are the anim_graph's since issue #119. Read only by the upgrade of a sprite fighter with no graph.")]
+    [Property(Tooltip = "Obsolete (#119): the clip a sprite fighter with no anim_graph of its own stands in")]
     public string Idle = "idle";
-    [Property(Tooltip = "The trigger the Reload button sets on the first-person arms' anim_graph (a swing sets `attack`'s)")]
+    [Property(Tooltip = "The trigger param a swing sets on the fighter's animator when its attack names none (Animators.SetTrigger)")]
+    public string AttackTrigger = "attack";
+    [Property(Tooltip = "The trigger the Reload button sets on the first-person arms' anim_graph (a swing sets `attackTrigger`)")]
     public string Reload = "reload";
 }
 
@@ -132,6 +141,13 @@ public static class GameplayConventions
     // does nothing, silently (08 §3.2).
     internal static void CheckActions(ActionRegistry actions, GameplayConventionsRecord conventions, RecordCheck check)
     {
+#pragma warning disable CS0618 // the obsolete clip names: said once, where they are written
+        var animations = conventions.Animations;
+        if (animations != null && (animations.Attack != "attack" || animations.Idle != "idle"))
+            check.Warn("Animations", $"`attack` and `idle` are obsolete since issue #119 (clip names are an anim_graph's): a sprite fighter with no graph " +
+                                     $"of its own is given one that plays '{animations.Idle}' and swings with '{animations.Attack}'; " +
+                                     "give its `sprite` part a `graph` to say so yourself");
+#pragma warning restore CS0618
         foreach (var (field, name) in conventions.Actions.All())
         {
             if (string.IsNullOrEmpty(name)) continue;
@@ -141,6 +157,27 @@ public static class GameplayConventions
             else if (info.Kind != ActionKind.Button)
                 check.Error($"Actions.{field}", $"input action '{name}' is {info.Kind}, not a button");
         }
+    }
+}
+
+// The upgrade (issue #119): until then combat played the conventions' `attack` clip on a sprite when a
+// swing started and their `idle` clip when it ended. A fighter drawn as an animated sprite that has no
+// animator of its own is given one running a graph that does just that (Animators.SpriteSwingGraph):
+// it stands in the idle clip, plays the attack clip once on the conventions' AttackTrigger, and goes back
+// when the clip is done. So content from before #119 swings, and lands on its `hit` frame, on the same
+// ticks as before. Called where a swing starts, before its trigger is set.
+internal static class SpriteFighterUpgrade
+{
+    public static void Apply(World world, Entity entity, GameplayConventionsRecord conventions, RecordStore records)
+    {
+        if (world.Has<Animator>(entity) || !world.Has<SpriteAnimator>(entity) || !world.Has<SpriteRenderer>(entity)) return;
+        var animations = conventions.Animations;
+        if (animations == null || string.IsNullOrEmpty(animations.AttackTrigger)) return;
+#pragma warning disable CS0618 // what the upgrade reads
+        if (string.IsNullOrEmpty(animations.Attack)) return;
+        var graph = Animators.SpriteSwingGraph(records, animations.Idle ?? "", animations.Attack, animations.AttackTrigger);
+#pragma warning restore CS0618
+        world.Add(entity, new Animator { Graph = graph });
     }
 }
 

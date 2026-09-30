@@ -20,6 +20,10 @@ public struct SpriteAnimator : IComponent
 
 // A named moment in a clip (12 §3): "the blow lands here", "a foot hits the ground here". Gameplay
 // reacts to the name, so the timing of a swing lives with the art instead of being guessed at in code.
+// Sent by SpriteAnimationSystem for a sprite that plays its clips itself, and — through the
+// IAnimationEventSink this module installs — by the animator for every clip event its graph crosses,
+// a sprite sheet's or a skinned model's (anim_events, issue #119). Raised in Phase.Animation, so a
+// Gameplay reader sees it on the next tick.
 [GameEvent]
 public readonly record struct AnimationEvent(Entity Entity, string Name);
 
@@ -40,7 +44,14 @@ public static class SpriteAnimationExtensions
     }
 }
 
-// Animation phase (Fixed): advances every playing clip and raises the events its frames carry.
+// Where the animator's clip events go in a world with gameplay (issue #119): the AnimationEvent bus.
+internal sealed class AnimationEventBus : IAnimationEventSink
+{
+    public void Raise(World world, Entity entity, string name) => world.Events.Send(new AnimationEvent(entity, name));
+}
+
+// Animation phase (Fixed): advances every playing clip and raises the events its frames carry. A sprite
+// with an animator is not its business: its graph plays it (SpriteGraphSystem).
 [System("sage.animation.sprites", Phase.Animation)]
 internal sealed class SpriteAnimationSystem : ISystem
 {
@@ -67,7 +78,7 @@ internal sealed class SpriteAnimationSystem : ISystem
             var r = renderers.Span;
             for (int n = 0; n < a.Length; n++)
             {
-                if (!a[n].Playing) continue;
+                if (!a[n].Playing || entities.EntityAt(n).HasComponent<Animator>()) continue;
                 float before = a[n].Time;
                 a[n].Time = before + dt * (a[n].Speed == 0f ? 1f : a[n].Speed);
 
@@ -98,6 +109,55 @@ internal sealed class SpriteAnimationSystem : ISystem
             foreach (var e in clip.Events)
                 if (e.Frame == index && !string.IsNullOrEmpty(e.Name))
                     _events.Send(new AnimationEvent(entity, e.Name));
+        }
+    }
+}
+
+// Sprites are graph leaves (issue #119): an entity with an Animator and a sprite has no model, and its
+// graph's clips are its sheet's (AnimatorSystem plays them, raising their frame events). This copies what
+// the graph shows — the base layer's clip, or the heaviest of its blend, and how far into it — into the
+// SpriteAnimator the renderer reads, after the graph has stepped. Sprites do not cross-fade: the state
+// being entered shows at once. Allocation-free.
+[System("sage.animation.sprite_graph", Phase.Animation, After = new[] { "?" + Animators.SystemId })]
+internal sealed class SpriteGraphSystem : ISystem
+{
+    private readonly World _world;
+    private readonly Query<Animator, SpriteRenderer> _sprites;
+    private readonly RecordStore _records;
+
+    public SpriteGraphSystem(World world, RecordStore records)
+    {
+        _world = world;
+        _sprites = world.Query<Animator, SpriteRenderer>();
+        _records = records;
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        if (_records.TypeNameOf(typeof(SpriteSheetRecord)) == null) return;   // headless: the client's records
+        foreach (var (animators, renderers, entities) in _sprites.Chunks)
+        {
+            var a = animators.Span;
+            var r = renderers.Span;
+            for (int n = 0; n < a.Length; n++)
+            {
+                if (!a[n].Model.IsEmpty) continue;                     // a skinned model's, drawn by its pose
+                var entity = entities.EntityAt(n);
+                if (!entity.HasComponent<SpriteAnimator>()) continue;
+                if (!Animators.TryGetClip(_world, entity, out var clip, out float time)) continue;
+                if (!_records.TryGet(r[n].Sheet, out SpriteSheetRecord sheet)) continue;
+                int index = sheet.ClipIndex(clip);
+                if (index < 0 || sheet.Clip(index) is not { } animation) continue;
+                // A one-shot at its end holds its last frame, whatever the sheet says about looping.
+                int frames = animation.Dirs.Count > 0 ? animation.Dirs[0].Count : 0;
+                float fps = MathF.Max(animation.Fps, 0.0001f);
+                if (frames > 0) time = MathF.Min(time, (frames - 0.5f) / fps);
+                ref var animator = ref entity.GetComponent<SpriteAnimator>();
+                animator.Clip = index;
+                animator.Time = time;
+                animator.Speed = 1f;
+                animator.Playing = false;                              // the graph advances it, not SpriteAnimationSystem
+            }
         }
     }
 }

@@ -109,3 +109,6 @@ static Sage.Gameplay.DialogueTopics.Available(Sage.Simulation.World! world, Sage
 static Sage.Gameplay.DialogueTopics.Knows(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
 static Sage.Gameplay.DialogueTopics.Learn(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
 static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.RecordId quest, string! stage) -> bool
+Sage.Gameplay.AnimationConventions.AttackTrigger -> string!
+Sage.Gameplay.AttackRecord.Trigger -> string!
+Sage.Gameplay.SpritePart.Graph -> Sage.Core.RecordRef<Sage.Simulation.AnimGraphRecord!>

@@ -1453,6 +1453,14 @@
           "description": "A clip name to play; empty = don't animate. (string, default \"\")",
           "default": "",
           "type": "string"
+        },
+        "graph": {
+          "description": "An anim_graph whose clips are this sheet's: it picks the clip, and its clip events land blows (issue #119) Names a anim_graph record. (RecordRef<AnimGraphRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:anim_graph"
+            }
+          ]
         }
       },
       "additionalProperties": false,

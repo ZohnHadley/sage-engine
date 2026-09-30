@@ -47,11 +47,15 @@ public sealed class AttackRecord
     public float Reach = 2f;                // metres, from the attacker's eye
     public float Radius = 0.35f;            // the swing's thickness: how forgiving it is
     public float ArcDegrees = 120f;         // how far off-centre a target may be
-    public float WindupTime = 0.25f;        // swing -> hit, unless the animation says when (12 §3)
+    public float WindupTime = 0.25f;        // swing -> hit, unless the animation's `hit` event says when (12 §3)
     public float RecoverTime = 0.2f;        // hit -> able to do anything else
     public float Cooldown = 0.5f;           // and how long before the next swing
-    public string Animation = "";           // clip to play; empty = the game's (gameplay_conventions
-                                            // `animations.attack`), and its `animations.hit` event lands the blow
+    [Obsolete("Clip names are the anim_graph's since issue #119: an attack sets its Trigger on the wielder's animator, and the graph picks the clip. Ignored.")]
+    public string Animation = "";           // obsolete (#119), ignored: clip names are the graph's
+    // The trigger param the swing sets on the wielder's animator (issue #119); empty = the game's
+    // (gameplay_conventions `animations.attackTrigger`). The graph picks the clip, and the clip's `hit`
+    // event (`animations.hit`) lands the blow.
+    public string Trigger = "";
     // Raised where the swing starts (16 §3.3), so a weapon can be heard leaving its scabbard and seen
     // trailing without combat knowing what either looks like. The *hit* is the damage type's business:
     // one entry for fire covers a fireball and a torch, and a blade's own noise is this.
@@ -160,11 +164,14 @@ public struct Melee : IComponent
 internal sealed class MeleeCombatSystem : ISystem
 {
     private readonly Query<Transform, PawnIntent, CharacterController, Melee> _fighters;
+    private readonly Query<Viewmodel> _cameras;             // a first-person pawn's arms (issue #121)
     private readonly RecordStore _records;
     private readonly IPhysicsWorld _space;
     private readonly EventReader<AnimationEvent> _animation;
     private readonly List<AnimationEvent> _fired = new();   // the previous tick's animation events,
                                                             // drained once so Lands can ask per entity
+    private readonly List<(Entity Fighter, string Trigger)> _swings = new();   // swings started this tick:
+                        // their animators are told after the loop (the upgrade may add one, R14)
     private readonly ActionId _attack;
     private readonly DebugDraw _debug;
     private readonly CVar<bool> _debugSwings;
@@ -176,6 +183,7 @@ internal sealed class MeleeCombatSystem : ISystem
         _debug = world.Debug();
         _debugSwings = debugSwings;
         _fighters = world.Query<Transform, PawnIntent, CharacterController, Melee>();
+        _cameras = world.Query<Viewmodel>();
         _records = records;
         _space = world.Resources.Get<IPhysicsWorld>();
         _animation = world.Events.Reader<AnimationEvent>(this);
@@ -216,7 +224,8 @@ internal sealed class MeleeCombatSystem : ISystem
                             m[n].Phase = MeleePhase.Windup;
                             m[n].Timer = 0f;
                             m[n].Swung = false;
-                            PlayAnimation(world, entity, attack.Animation.Length > 0 ? attack.Animation : conventions.Animations.Attack);
+                            // The animator's graph picks the clip (issue #119): combat names none.
+                            _swings.Add((entity, string.IsNullOrEmpty(attack.Trigger) ? conventions.Animations.AttackTrigger : attack.Trigger));
                             // The swing, not the hit: a blow that misses still made a noise, and a
                             // creature winding up behind you is the warning you get.
                             if (!attack.SwingCue.IsEmpty)
@@ -235,7 +244,7 @@ internal sealed class MeleeCombatSystem : ISystem
                             m[n].Swung = true;
                             break;
                         }
-                        if (!Lands(entity, attack, m[n].Timer, conventions.Animations.Hit)) break;
+                        if (!Lands(world, entity, attack, m[n].Timer, conventions.Animations.Hit)) break;
                         _pending.Add((Resolve(world, entity, in t[n], in i[n], in c[n], attack), attack));
                         m[n].Swung = true;
                         m[n].Timer = 0f;
@@ -245,9 +254,7 @@ internal sealed class MeleeCombatSystem : ISystem
                     case MeleePhase.Recover:
                         m[n].Timer += dt;
                         if (m[n].Timer < attack.RecoverTime) break;
-                        // Or it stands frozen mid-swing. A sheet without the idle clip keeps whatever it
-                        // was playing, which is the best a system this simple can do.
-                        PlayAnimation(world, entity, conventions.Animations.Idle);
+                        // Going back to standing is the graph's (a transition when the clip is done).
                         m[n].Phase = MeleePhase.Ready;
                         m[n].Timer = 0f;
                         m[n].Cooldown = attack.Cooldown;
@@ -255,6 +262,17 @@ internal sealed class MeleeCombatSystem : ISystem
                 }
             }
         }
+
+        // Same tick as the press, before the Animation phase: the graph enters its swing this tick, as a
+        // sprite clip played here used to (12 "As built (animation events)").
+        for (int k = 0; k < _swings.Count; k++)
+        {
+            var (fighter, trigger) = _swings[k];
+            if (!world.IsAlive(fighter) || string.IsNullOrEmpty(trigger)) continue;
+            SpriteFighterUpgrade.Apply(world, fighter, conventions, _records);
+            Animators.SetTrigger(world, fighter, trigger);   // false without an animator: a body with no art still fights
+        }
+        _swings.Clear();
 
         foreach (var (hit, attack) in _pending.Drain())
         {
@@ -278,10 +296,20 @@ internal sealed class MeleeCombatSystem : ISystem
 
     // When the blow lands: on the animation's hit event (the conventions name it: "hit" in the engine's)
     // if the clip has one, otherwise on the record's windup time. The event is raised in the Animation
-    // phase, which runs after this one, so a sprite's hit lands one tick (16 ms) after the frame that
-    // shows it — not worth a phase shuffle.
-    private bool Lands(Entity entity, AttackRecord attack, float timer, string hit) =>
-        (hit.Length > 0 && Fired(entity, hit)) || timer >= attack.WindupTime;
+    // phase, which runs after this one, so a hit lands one tick (16 ms) after the frame that shows it —
+    // a sprite's frame event and a skinned clip's anim_events alike (issue #119 kept that timing).
+    // A first-person pawn's arms (issue #121) are an animator of their own: their clip's `hit` lands the
+    // pawn's blow too, so a swing seen in first person connects when the arms show it connecting.
+    private bool Lands(World world, Entity entity, AttackRecord attack, float timer, string hit)
+    {
+        if (timer >= attack.WindupTime) return true;
+        if (hit.Length == 0 || _fired.Count == 0) return false;
+        if (Fired(entity, hit)) return true;
+        var camera = Viewmodels.CameraOf(world, _cameras, entity);
+        if (camera.IsNull) return false;
+        var arms = Viewmodels.ArmsOf(world, camera);
+        return !arms.IsNull && Fired(arms, hit);
+    }
 
     private bool Fired(Entity entity, string name)
     {
@@ -338,9 +366,4 @@ internal sealed class MeleeCombatSystem : ISystem
         _debug.Sphere(eye + aim * attack.Reach, attack.Radius, colour, 0.6f);
         if (!info.Target.IsNull) _debug.Cross(info.Point, 0.25f, DebugColour.Yellow, 0.6f);
     }
-
-    // Plays a clip by name if the fighter has a sheet with one (a first-person player has no sprite
-    // at all). Combat driving animation directly is v1: an AnimationStateSystem picking clips from
-    // gameplay state is 12 §3's job once there is more than "swinging" and "not swinging".
-    private void PlayAnimation(World world, Entity entity, string name) => world.PlayClip(entity, name, _records);
 }

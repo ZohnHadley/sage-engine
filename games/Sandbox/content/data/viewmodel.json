@@ -26,9 +26,17 @@
     "sockets": { "hand_r": { "joint": "hand_r", "offset": [0, 0, -0.05], "angles": [-50, 0, 0] } }
   },
   {
+    // The arms' clip events (engine issue #119): the magazine comes out 0.3 s into the reload and goes
+    // back in at 0.9 s. The animator raises each once as an AnimationEvent on the arms (and as their
+    // OnAnimEvent output), which is where a sound or an ammunition count would listen.
+    "type": "anim_events",
+    "id": "arms",
+    "model": "models/arms.glb",
+    "clips": { "reload": [ { "time": 0.3, "name": "mag_out" }, { "time": 0.9, "name": "mag_in" } ] }
+  },
+  {
     // A swing sets `attack` and the Reload button (R) sets `reload` (gameplay_conventions `animations`);
-    // each plays its clip once and goes back to idle. The reload's `mag_out`/`mag_in` events come with
-    // clip events (engine issue #119): 0.3 s and 0.9 s into its clip.
+    // each plays its clip once and goes back to idle.
     "type": "anim_graph",
     "id": "arms",
     "initial": "idle",

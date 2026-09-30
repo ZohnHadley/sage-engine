@@ -524,7 +524,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 |---|---|
 | `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end) |
 | `character` | the kinematic character controller, and with it the ability to walk |
-| `sprite` | a billboard sprite from a `sprite_sheet` |
+| `sprite` | a billboard sprite from a `sprite_sheet` — `sheet`, `material`, `size`, `animation` (a clip to loop), or `graph` (an `anim_graph` whose clips are the sheet's: combat's trigger and `hit` event work through it, issue #119) |
 | `skinned_mesh` | a skinned model, bent by its joints on the GPU — `mesh` (a `.glb` with a skin), `material` (empty: `sage:lit_default`; its effect needs a `Skinned` technique), `layer` (issue #117) |
 | `animator` | plays an `anim_graph` on a skinned model's skeleton — `graph`, `model` (a skinned `.glb`; left out, the `skinned_mesh` part's `mesh`) (issue #118; §5 "Animation graphs") |
 | `bone_attachment` | follows a socket of its parent's skeleton — `socket` (a bare value: `"bone_attachment": "hand_r"`), or `bone` (a joint by name), `offset`, `angles`; sockets are `skeleton_sockets` records (issue #120) |
@@ -882,7 +882,7 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`,
-`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`, the logic entities' (below) and
+`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
 `TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState`, the logic entities' and gameplay's
@@ -1005,6 +1005,36 @@ jump`. `aim_pitch` and `aim_yaw` params (degrees) drive the entity's `aim_ik`. A
 times and params are saved by name; a state the graph has lost goes back to its layer's `initial` with a
 warning. `anim_debug` in the console shows every animator; `anim_lod_distance` sets how far from the
 camera animators start sampling at half and quarter rate.
+
+**Animation events** (issue #119, SAGE0126) are named moments in a clip — the blow lands here, a foot
+lands here, the magazine comes out here. A skinned model's come from an `anim_events` record keyed by the
+model; a sprite sheet's clips carry theirs (`"events": [ { "frame": 1, "name": "hit" } ]`):
+
+```json
+{ "type": "anim_events", "id": "soldier", "model": "models/soldier.glb",
+  "clips": { "attack": [ { "time": 0.35, "name": "hit" } ], "walk": [ { "time": 0.1, "name": "footstep" } ] } }
+```
+
+The animator raises each once every time its clip crosses it (a loop's wrap included) as the
+`AnimationEvent` game event, as its `OnAnimEvent` output, and by setting the graph's trigger param of the
+same name, so `{ "to": "reload_end", "on": "mag_in" }` follows the art. **Combat names no clip**: a swing sets
+its attack's `trigger` (default: the conventions' `animations.attackTrigger`, "attack") and lands on the
+`hit` event, or on `windupTime` when the clip has none. A sprite plays through a graph too — give its
+`sprite` part a `graph`; the sheet's clips are the states' clips — and `{ "anim_finished": "base" }` takes
+a one-shot back to idle when its clip is done:
+
+```json
+{ "type": "anim_graph", "id": "goblin", "initial": "idle", "fade": 0,
+  "params": { "attack": { "kind": "Trigger" } },
+  "states": { "idle": { "clip": "idle" },
+              "attack": { "clip": "attack", "loop": false,
+                          "transitions": [ { "to": "idle", "when": { "anim_finished": "base" } } ] } },
+  "transitions": [ { "to": "attack", "on": "attack" } ] },
+{ "type": "prefab", "id": "goblin", "parts": { "sprite": { "sheet": "goblin", "graph": "goblin" }, "melee": { "attack": "claws" } } }
+```
+
+The conventions' old `animations.attack` and `animations.idle` (and an attack's `animation`) are obsolete:
+a sprite fighter with an `animation` and no graph is given one that plays them when it first swings.
 
 Curves are named the way you would expect — `QuadInOut`, `ease_out_bounce`, `SmoothStep`, `Linear`: every
 `Ease` value, case and underscores as you like.
@@ -1631,7 +1661,7 @@ names their types needs the opt-in.
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
 | SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack` (with `OpenHud`, issue #99), `UiLayer`, `UiTween`; and the RPG kit's view-models (issues #98, #99): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `ShopView`, `IPriceRule`, `StubPriceRule` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98), the HUD, journal, map, menu and shop (#99) |
-| SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; sockets and IK (issue #120): `SkeletonPoses`, `TwoBoneIk`, `AimChainIk`, `AimJoint`, `PoseSampler.ToModelSpace(…, firstJoint)`, `SkeletonSocketsRecord`, `SkeletonSocket`, `BoneAttachment`, `BoneAttachmentPart`, `BoneAttachments`, `AimIk`, `AimIkJoint`, `AimIkPart`, and in Gameplay `FootIk`, `FootIkLeg`, `FootIkPart`; animation graphs (issue #118): `AnimGraphRecord`, `AnimState`, `AnimBlendSpace`, `AnimBlendPoint`, `AnimLayer`, `AnimParam`, `AnimParamKind`, `AnimParamSource`, `Animator`, `AnimatorLayer`, `AnimatorParam`, `AnimatorPart`, `Animators` (`SetParam`, `SetTrigger`, `GetParam`, `StateOf`, `HasTag`, `ClipWeight`, `Play`, `TryGetPose`, `Describe`), `Engine.Animations`; first-person arms (issue #121): `ViewmodelRecord`, `Viewmodel`, `ViewmodelPart`, `ViewmodelLayer`, `Viewmodels` (`Show`, `ArmsOf`, `WeaponOf`, `CameraOf`, `IsDrawn`), and in Gameplay `AttackRecord.Arms` | Phase 4d builds on it: clip events (#119) |
+| SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; sockets and IK (issue #120): `SkeletonPoses`, `TwoBoneIk`, `AimChainIk`, `AimJoint`, `PoseSampler.ToModelSpace(…, firstJoint)`, `SkeletonSocketsRecord`, `SkeletonSocket`, `BoneAttachment`, `BoneAttachmentPart`, `BoneAttachments`, `AimIk`, `AimIkJoint`, `AimIkPart`, and in Gameplay `FootIk`, `FootIkLeg`, `FootIkPart`; animation graphs (issue #118): `AnimGraphRecord`, `AnimState`, `AnimBlendSpace`, `AnimBlendPoint`, `AnimLayer`, `AnimParam`, `AnimParamKind`, `AnimParamSource`, `Animator`, `AnimatorLayer`, `AnimatorParam`, `AnimatorPart`, `Animators` (`SetParam`, `SetTrigger`, `GetParam`, `StateOf`, `HasTag`, `ClipWeight`, `Play`, `TryGetPose`, `Describe`), `Engine.Animations`; first-person arms (issue #121): `ViewmodelRecord`, `Viewmodel`, `ViewmodelPart`, `ViewmodelLayer`, `Viewmodels` (`Show`, `ArmsOf`, `WeaponOf`, `CameraOf`, `IsDrawn`), and in Gameplay `AttackRecord.Arms`; clip events (issue #119): `AnimEventsRecord`, `AnimEventEntry`, `IAnimationEventSink`, `Animators.TryGetClip`, `Animators.SpriteSwingGraph`, `Animators.AnimEventOutput` | Phase 4d builds on it |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
@@ -1655,7 +1685,9 @@ Worth knowing before you plan around it:
   whatever pose is registered for it in `SkeletonPoses`; `aim_ik` turns the spine toward a pitch and yaw;
   `foot_ik` plants the feet on slopes through the physics world. The animator registers its pose there
   (docs/design/12 "As built (attachments and IK)"). First-person arms holding a weapon are a `viewmodel`
-  record an attack names, drawn over the world in first person only (issue #121).
+  record an attack names, drawn over the world in first person only (issue #121). Clip events
+  (`anim_events`, issue #119) land blows and drive transitions, for skinned clips and sprite sheets alike
+  (docs/design/12 "As built (animation events)").
 - **Lighting indoors is lamps, not lightmaps.** A `light` entity lights a room, and four of them light
   any one surface (the strongest four, chosen per draw). That is enough for a hut; a level the size of a
   town wants light baked into the geometry, and lightmaps are still to come. Nothing casts a shadow.
