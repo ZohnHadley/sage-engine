@@ -828,6 +828,14 @@
         }
       ]
     },
+    "sage:save_placeholder": {
+      "description": "Component sage:save_placeholder (SavePlaceholder).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:save_placeholder"
+        }
+      ]
+    },
     "sage:scripted_camera": {
       "description": "Component sage:scripted_camera (ScriptedCamera).",
       "allOf": [
@@ -908,6 +916,14 @@
         }
       ]
     },
+    "sage:unknown_saved_data": {
+      "description": "Component sage:unknown_saved_data (UnknownSavedData).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:unknown_saved_data"
+        }
+      ]
+    },
     "sage:viewmodel": {
       "description": "Component sage:viewmodel (Viewmodel).",
       "allOf": [
@@ -929,6 +945,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sandbox:hop"
+        }
+      ]
+    },
+    "save_placeholder": {
+      "description": "The component sage:save_placeholder (SavePlaceholder), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:save_placeholder"
         }
       ]
     },
@@ -1009,6 +1033,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:tween"
+        }
+      ]
+    },
+    "unknown_saved_data": {
+      "description": "The component sage:unknown_saved_data (UnknownSavedData), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:unknown_saved_data"
         }
       ]
     },
@@ -3699,6 +3731,25 @@
       "additionalProperties": false,
       "description": "Component sage:rigid_body (RigidBody)."
     },
+    "sage:save_placeholder": {
+      "type": "object",
+      "properties": {
+        "prefab": {
+          "description": "The prefab the save named, which this game does not have. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        },
+        "saved": {
+          "description": "The saved entity as the save wrote it (JSON), written back unchanged by the next save. (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:save_placeholder (SavePlaceholder)."
+    },
     "sage:scripted_camera": {
       "type": "object",
       "properties": {
@@ -4270,6 +4321,21 @@
       },
       "additionalProperties": false,
       "description": "Component sage:tween (Tween)."
+    },
+    "sage:unknown_saved_data": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "description": "Components by id, each { \"version\", \"data\" } as saved (a JSON object) (string)",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tag ids as saved (a JSON array) (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:unknown_saved_data (UnknownSavedData)."
     },
     "sage:viewmodel": {
       "type": "object",
