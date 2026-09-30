@@ -19,7 +19,8 @@ public class StaleAssemblyTests : IDisposable
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "sage-stale-" + Guid.NewGuid().ToString("N"));
 
     public StaleAssemblyTests() => Directory.CreateDirectory(_dir);
-    public void Dispose() { try { Directory.Delete(_dir, true); } catch (IOException) { } }
+    // On Windows a loaded dll can't be deleted until the process ends, so what's left stays in temp.
+    public void Dispose() { try { Directory.Delete(_dir, true); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
 
     private static readonly MetadataReference[] Platform =
         ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
