@@ -69,6 +69,10 @@ public sealed class DialogueOption
     public DialogueRequirement? Requires;
     public DialogueOutcome? Then;
     public string Refusal = "";                 // what the row says when it is greyed out
+    // Opens the speaker's topics (issue #93, Topics.cs): picking it does what it does, keeps the
+    // conversation on this node and sets `Conversation.Topics`, which a screen reads to show the list.
+    // `goto` and `end` are ignored on such an option.
+    public bool Topics;
 
     // Conditions and actions by name (issue #28), asked and done after what `requires` and `then` say —
     // which are shorthand for the engine's own entries (DialogueSugar).
@@ -128,6 +132,9 @@ public sealed class Conversation
     public Entity Listener;         // and who they are talking to (the player)
     public RecordId Record;
     public string Node = "";
+    // An option with `topics: true` was picked: the screen shows the speaker's topics
+    // (DialogueTopics.Available) until the next Start, Pick or Stop.
+    public bool Topics;
 
     public bool Running => !Record.IsEmpty;
 
@@ -135,6 +142,7 @@ public sealed class Conversation
     {
         Record = default;
         Node = "";
+        Topics = false;
         Speaker = default;
         Listener = default;
     }
@@ -173,6 +181,7 @@ public static class DialogueRules
         conversation.Listener = listener;
         conversation.Record = dialogue.Record;
         conversation.Node = node.Id;
+        conversation.Topics = false;
         world.Events.Send(new Spoke(speaker, listener, node.Id));
         return true;
     }
@@ -217,6 +226,15 @@ public static class DialogueRules
         if (!CanPick(world, listener, option, out _)) return false;
 
         Apply(world, listener, conversation.Speaker, option);
+        conversation.Topics = false;
+
+        if (option.Topics)
+        {
+            // Stays where it is: the node's line is still what was said, and the topics are asked of
+            // the same speaker (DialogueTopics). A conversation the option's actions ended stays ended.
+            if (conversation.Running) conversation.Topics = true;
+            return true;
+        }
 
         var records = world.Resources.Get<RecordStore>();
         if (option.End || option.Goto.Length == 0 || !records.TryGet(conversation.Record, out DialogueRecord record))

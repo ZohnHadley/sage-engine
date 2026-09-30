@@ -726,6 +726,14 @@ numbered (test: AQuestConditionAsksHowFarAlongItIs). Dialogue's `requires`/`then
 reads a `requires` besides dialogue — wires, relays, state machines, topics — is the rest of phase 4b
 (#91–#93). Details: 16 "As built (one condition and action language)".
 
+As built (issue #93): **topics** are the language's first reader besides node options. A
+`dialogue_topic` is a keyword and ordered infos, each one `requires` condition, a `then` and a line; the
+first that holds answers (test: ATopicAnswersByStandingQuestStageAndAVar). The listener's learnt topics
+are the saved `sage:known_topics`, taught by the dialogue plugin's `add_topic` action
+(test: ATopicLearntFromOneNpcIsAskedOfAnother) (test: KnownTopicsSurviveSaveAndLoad), and
+`DialogueTopics.Available`/`Ask` are the headless view model 4c's screen reads (#98). Details: 16 "As
+built (dialogue topics)".
+
 **Stage 3: entity I/O as the level-logic backbone.**
 - Add logic entities: `logic_relay`, `logic_counter`, `logic_timer`, `logic_compare`, `logic_branch` and
   `math_*`.

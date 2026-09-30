@@ -27,6 +27,35 @@
 *REMOVED*Sage.Gameplay.IAction.Run(in Sage.Gameplay.ActionContext context) -> void
 *REMOVED*Sage.Gameplay.ICondition
 *REMOVED*Sage.Gameplay.ICondition.Test(in Sage.Gameplay.ConditionContext context, out string! why) -> bool
+Sage.Gameplay.AvailableTopic
+Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
+Sage.Gameplay.AvailableTopic.AvailableTopic(Sage.Core.RecordId Topic, string! Keyword) -> void
+Sage.Gameplay.AvailableTopic.Keyword.get -> string!
+Sage.Gameplay.AvailableTopic.Keyword.init -> void
+Sage.Gameplay.AvailableTopic.Topic.get -> Sage.Core.RecordId
+Sage.Gameplay.AvailableTopic.Topic.init -> void
+Sage.Gameplay.Conversation.Topics -> bool
 Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Simulation.ICondition!>!
+Sage.Gameplay.DialogueOption.Topics -> bool
+Sage.Gameplay.DialogueTopics
+Sage.Gameplay.KnownTopics
+Sage.Gameplay.KnownTopics.KnownTopics() -> void
+Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
+Sage.Gameplay.TopicInfo
+Sage.Gameplay.TopicInfo.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.TopicInfo.Text -> string!
+Sage.Gameplay.TopicInfo.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Gameplay.TopicInfo.TopicInfo() -> void
+Sage.Gameplay.TopicRecord
+Sage.Gameplay.TopicRecord.Infos -> System.Collections.Generic.List<Sage.Gameplay.TopicInfo!>!
+Sage.Gameplay.TopicRecord.Keyword -> string!
+Sage.Gameplay.TopicRecord.KeywordOf(Sage.Core.RecordId id) -> string!
+Sage.Gameplay.TopicRecord.Known -> bool
+Sage.Gameplay.TopicRecord.TopicRecord() -> void
+static Sage.Gameplay.DialogueTopics.Answer(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> Sage.Gameplay.TopicInfo?
+static Sage.Gameplay.DialogueTopics.Ask(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> Sage.Gameplay.TopicInfo?
+static Sage.Gameplay.DialogueTopics.Available(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, System.Collections.Generic.List<Sage.Gameplay.AvailableTopic>! into) -> int
+static Sage.Gameplay.DialogueTopics.Knows(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
+static Sage.Gameplay.DialogueTopics.Learn(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
 static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.RecordId quest, string! stage) -> bool
