@@ -953,6 +953,59 @@ Time of day, the light over a day, and weather on top of it, all headless: the c
   in post (4h-6) read these values; weather's blend is advanced by the client's system, so a headless world
   with a sky holds its weather where it is unless something calls `Weather.Advance`.
 
+### As built (sun shadows, 2026-09-30 — issue 4h-4)
+The first Shadow-stage pass on the registry: one stable shadow map from the sun, fitted to the screen's
+main view (decision 1: R32F, 2048², 60 m, manual PCF; cascades later). Where the map sits is decided
+headless; the client only draws it. Experimental, SAGE0130 (MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Simulation/Rendering/ShadowMath.cs` (headless: `ShadowMath`, `ShadowFit`),
+  `src/Sage.Client/Rendering/ShadowPass.cs` (`sage:shadow`), `Renderer.DrawShadowCasters`, the caster
+  rule in the mesh and skinned extracts, `EffectBinding.SetFrame`'s shadow parameters, and in the shaders
+  `common.fxh` (`ShadowViewProj`, `ShadowParams`, `ShadowMap`/`ShadowSampler`, `ShadowLit`) and `lit.fx`
+  (`ShadowCaster`, `ShadowCasterSkinned`). Tests: `tests/Sage.Tests/Presentation/ShadowTests.cs`.
+- **Switched on with `r_shadows 1`** (off by default: the Sandbox turns it on in 4h-7); `r_shadow_size`
+  (texels a side, 256–4096, default 2048) and `r_shadow_distance` (metres of the view the map covers,
+  5–500, default 60). `r_stats` adds `shadow casters N` (`RenderStats.ShadowCasters`).
+- **The caster view.** `sage:shadow`'s Extract (before the other extracts) adds one view flagged
+  `ShadowCaster`: the sun's orthographic view, camera-relative to the main view's camera, into the render
+  target `sage:shadow` (`SurfaceFormat.Single` with a depth buffer). The mesh and skinned extracts put
+  into it only what `ShadowMath.Casts` says — an **opaque** material with `castShadows` (a new
+  `material` field, on by default) — culled against the map's box; terrain chunks are meshes, so they
+  cast. Sprites, particles, lights and debug lines skip the view, the viewmodel never reaches it, and a
+  first-person body still casts (test: OnlyOpaqueMaterialsThatSaySoCastShadows). The renderer's view
+  loop skips it; its Draw renders those items into the map with `lit.fx`'s `ShadowCaster` (or
+  `ShadowCasterSkinned`, with the item's palette) whatever each material's effect is, cull none, depth in
+  [0, 1] cleared to 1.
+- **The fit** (`ShadowMath.Fit`): a sphere around the view's slice from its near plane to
+  `r_shadow_distance` (`PerspectiveSlice`, or `OrthographicSlice` for an orthographic camera), so turning
+  the camera never changes the map's size, and the map contains the whole slice (test:
+  TheFitContainsTheViewSlice). One texel is spare, so snapping never cuts the sphere.
+- **No shimmer.** The map's corner snaps to whole texels **in absolute light space**: the origin sector's
+  corner (`Origin.ToAbsolute(0)`) is added back in double before snapping, so a camera move of less than a
+  texel slides nothing (test: ASubTexelCameraMoveKeepsTheTexelGrid) and neither does an origin rebase,
+  which changes every number in memory by a sector (test: AnOriginRebaseKeepsTheTexelGrid). A moving sun
+  still rotates the grid (not quantised yet).
+- **Casters between the sun and the view are kept:** the map's depth reaches 200 m
+  (`ShadowMath.DefaultCasterReach`) past the sphere toward the sun, so a cliff behind the camera still
+  shades the path at dusk; things beyond that, behind the slice or beside it are not drawn (test:
+  CastersBetweenTheSunAndTheViewAreKept).
+- **Strength** is `RenderEnvironment.ShadowStrength` — the sky's `shadow` key, softened by weather
+  (4h-2) — and **0 once the sun is at or below the horizon**, whatever set the environment
+  (`ShadowMath.Strength`; test: ShadowStrengthIsZeroBelowTheHorizon). A world with **no sky** keeps the
+  environment's default of 1: full shadows under the default sun. At strength 0 no caster view is made
+  and nothing is drawn.
+- **In the shaders:** the lit techniques `Default`, `AlphaTest` and `Skinned` multiply the sun's light
+  (only the sun's: ambient and lamps are untouched) by `ShadowLit`, a manual 2×2 PCF over point samples
+  (compare four texels, blend the answers bilinearly), with a depth bias of a texel and a half plus 5 cm,
+  more on surfaces turned from the sun. It is computed in the pixel shader from the camera-relative
+  position, so the vertex shaders gain no constants: `Skinned` keeps its 64 bones in 192 of vs_3_0's
+  256. The sampler is `register(s1)`, so an effect's own sampler keeps s0 and the material's sampler
+  state. Off the map, or at strength 0, the sun is unshadowed.
+- **Not yet:** cascades; alpha-tested casters (leaves; no clip in the caster); a custom effect's own
+  vertex deformation in its shadow (casters draw with `lit.fx`); quantising the sun's direction so the
+  grid holds still while the sun moves; shadows in views of worlds that do not draw to the screen.
+  Checked on a GPU only by the Windows shader compile and the smoke run (`+r_shadows 1`).
+
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
 

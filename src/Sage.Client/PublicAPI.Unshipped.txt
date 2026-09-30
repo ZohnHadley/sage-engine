@@ -23,6 +23,7 @@ Sage.Client.RenderContext.World.get -> Sage.Simulation.World!
 Sage.Client.Renderer.DeclareTarget(string! name, int width, int height, Microsoft.Xna.Framework.Graphics.SurfaceFormat format, Microsoft.Xna.Framework.Graphics.DepthFormat depth) -> Microsoft.Xna.Framework.Graphics.RenderTarget2D!
 Sage.Client.RenderPasses
 Sage.Client.RenderPasses.RenderPasses() -> void
+Sage.Client.RenderStats.ShadowCasters -> int
 Sage.Client.RenderStats.TargetViews -> int
 Sage.Client.RenderStats.Views -> int
 Sage.Client.Renderer.DeclareTarget(string! name, int width, int height) -> Microsoft.Xna.Framework.Graphics.RenderTarget2D!

@@ -17,6 +17,7 @@ internal sealed class EffectBinding
         "ViewProj", "SunDir", "SunColor", "AmbientSky", "AmbientGround", "FogColor", "FogParams", "Time",
         "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount",
         "Bones",   // the skinned draw's palette (issue #117), set per draw
+        "ShadowViewProj", "ShadowParams", "ShadowMap",   // the sun's shadow map (issue 4h-4), frame tier
     };
 
     public EffectBinding(Effect effect)
@@ -29,6 +30,9 @@ internal sealed class EffectBinding
         World = P("World"); Tint = P("Tint"); FogEnabled = P("FogEnabled");
         LightPositions = P("LightPositions"); LightColors = P("LightColors"); LightCount = P("LightCount");
         Bones = P("Bones");
+        ShadowViewProj = P("ShadowViewProj"); ShadowParams = P("ShadowParams"); ShadowMap = P("ShadowMap");
+        ShadowCaster = effect.Techniques["ShadowCaster"];
+        ShadowCasterSkinned = effect.Techniques["ShadowCasterSkinned"];
     }
 
     public Effect Effect { get; }
@@ -36,6 +40,8 @@ internal sealed class EffectBinding
     public readonly EffectParameter? ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time, World, Tint, FogEnabled;
     public readonly EffectParameter? LightPositions, LightColors, LightCount;
     public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
+    public readonly EffectParameter? ShadowViewProj, ShadowParams, ShadowMap;   // issue 4h-4
+    public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
 
     // The four lights this draw is lit by (06 §3.9). Reused arrays: this is set per item, and a frame
     // with a thousand items would otherwise allocate two arrays a thousand times (02 §4.6).
@@ -59,7 +65,7 @@ internal sealed class EffectBinding
         LightColors?.SetValue(_colours);
     }
 
-    public void SetFrame(in RenderView view, in EnvironmentParams env)
+    public void SetFrame(in RenderView view, in EnvironmentParams env, in ShadowFrame shadow, Texture2D? shadowMap, Texture2D none)
     {
         ViewProj?.SetValue(view.ViewProj);
         SunDir?.SetValue(env.SunDirection);
@@ -69,6 +75,24 @@ internal sealed class EffectBinding
         FogColor?.SetValue(env.FogColor);
         FogParams?.SetValue(env.FogParams);
         Time?.SetValue(env.Time);
+        if (ShadowParams == null) return;   // an effect that reads no shadow
+
+        // The sun's shadow map (issue 4h-4). It was drawn relative to the main view's camera; this view's
+        // positions are relative to its own, so the difference goes in front. Strength 0 (no map this
+        // frame, `r_shadows 0`, night) makes the shader ignore what it samples, and it samples a real
+        // texture anyway rather than whatever the slot last held.
+        bool on = shadow.Drawn && shadowMap != null && env.ShadowStrength > 0f;
+        if (on)
+        {
+            ShadowViewProj?.SetValue(Matrix.CreateTranslation(view.CameraPosition - shadow.Camera) * shadow.ViewProj);
+            ShadowParams.SetValue(new Vector4(env.ShadowStrength, 1f / shadow.Size, shadow.Bias, shadow.Size));
+        }
+        else
+        {
+            ShadowViewProj?.SetValue(Matrix.Identity);
+            ShadowParams.SetValue(new Vector4(0f, 1f, 0f, 1f));
+        }
+        ShadowMap?.SetValue(on ? shadowMap : none);
     }
 }
 
@@ -81,6 +105,7 @@ internal sealed class MaterialRuntime
     public required EffectTechnique Technique;
     public EffectTechnique? Skinned;   // the effect's `Skinned` technique, for skinned meshes (issue #117)
     public bool WarnedNoSkin;
+    public bool CastShadows;           // the record's `castShadows` (issue 4h-4; ShadowMath.Casts)
     public required (EffectParameter Parameter, MaterialParam Value, Texture2D? Texture)[] Params;
     public required RenderPass Pass;
     public required BlendState Blend;
@@ -282,6 +307,7 @@ internal sealed class MaterialCache : IDisposable
                 _ => SamplerState.LinearWrap,
             },
             Fog = record.Fog ? 1f : 0f,
+            CastShadows = record.CastShadows,
             Albedo = effect.Parameters["Albedo"],
             SampledTargets = sampled,
         };

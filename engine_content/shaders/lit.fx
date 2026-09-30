@@ -1,6 +1,8 @@
 // Meshes (docs/design/07 §3.2): techniques Default (sun + hemispheric ambient + up to four point lights
 // + fog), AlphaTest (Default + clip at AlphaCutoff), Unlit (albedo + fog) and Skinned (Default, with the
-// vertices bent by up to four of the draw's `Bones` each; issue #117).
+// vertices bent by up to four of the draw's `Bones` each; issue #117). The sun is shadowed by the sun's
+// shadow map in Default, AlphaTest and Skinned; ShadowCaster and ShadowCasterSkinned draw a caster into
+// that map (issue 4h-4).
 #include "common.fxh"
 
 texture Albedo;
@@ -60,7 +62,8 @@ float4 Shade(VSOutput input, float lit)
 {
     float4 albedo = tex2D(AlbedoSampler, input.UV) * AlbedoColor * Tint;
     float3 n = normalize(input.Normal);
-    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) + SunLight(n) + PointLights(n, input.Relative), lit);
+    float3 sun = SunLight(n) * ShadowLit(input.Relative, n);
+    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) + sun + PointLights(n, input.Relative), lit);
     float3 color = ApplyFog(albedo.rgb * light, length(input.Relative));
     return float4(color, albedo.a);
 }
@@ -82,6 +85,39 @@ float4 PSUnlit(VSOutput input) : COLOR0
     return Shade(input, 0);
 }
 
+// ---- Shadow casters (issue 4h-4): depth into the sun's map ----
+//
+// ViewProj is the sun's (the renderer sets it for these draws). The depth goes out through a
+// TEXCOORD, as computed here: the map compares against the same number ShadowLit computes, whatever
+// the platform later does to the position's z.
+struct VSShadowOutput
+{
+    float4 Position : POSITION0;
+    float Depth     : TEXCOORD0;
+};
+
+VSShadowOutput VSShadow(VSInput input)
+{
+    VSShadowOutput output;
+    output.Position = mul(mul(input.Position, World), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    return output;
+}
+
+VSShadowOutput VSShadowSkinned(VSSkinnedInput input)
+{
+    VSShadowOutput output;
+    float4x3 skin = SkinMatrix(input.Indices, input.Weights);
+    output.Position = mul(mul(SkinPosition(input.Position, skin), World), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    return output;
+}
+
+float4 PSShadow(VSShadowOutput input) : COLOR0
+{
+    return float4(input.Depth, 0, 0, 1);
+}
+
 technique Default
 {
     pass P0 { VertexShader = compile vs_3_0 VS(); PixelShader = compile ps_3_0 PSDefault(); }
@@ -100,4 +136,14 @@ technique Unlit
 technique Skinned
 {
     pass P0 { VertexShader = compile vs_3_0 VSSkinned(); PixelShader = compile ps_3_0 PSDefault(); }
+}
+
+technique ShadowCaster
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadow(); PixelShader = compile ps_3_0 PSShadow(); }
+}
+
+technique ShadowCasterSkinned
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadowSkinned(); PixelShader = compile ps_3_0 PSShadow(); }
 }

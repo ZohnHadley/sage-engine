@@ -98,6 +98,7 @@ public sealed class ClientModule : IModule
         // The engine's render passes, on the registry like anyone's (issue 4h-1): a game orders its own
         // against these ids. Provided here, in Init, so a module that depends on this one adds its
         // passes in its own Init.
+        Passes.Add(new ShadowPass(_rendererCVars));   // the sun's shadow map (issue 4h-4)
         Passes.Add(new OpaquePass());
         Passes.Add(new AlphaTestedPass());
         Passes.Add(new TransparentPass());
