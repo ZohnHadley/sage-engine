@@ -370,6 +370,7 @@ public static class Items
 
         var entity = world.Create(Transform.At(position), record.Describe(item));
         Decorate(world, entity, item, count, record);
+        world.MakePersistent(entity);   // a dropped item survives a save (phase 4i)
         return entity;
     }
 

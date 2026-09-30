@@ -536,6 +536,7 @@ Sage.Simulation.PrefabOverrides.IsEmpty.get -> bool
 Sage.Simulation.PrefabOverrides.Parts -> System.Text.Json.Nodes.JsonObject?
 Sage.Simulation.PrefabOverrides.PrefabOverrides() -> void
 Sage.Simulation.PrefabRecord.Children -> System.Collections.Generic.List<Sage.Simulation.PrefabChild!>!
+Sage.Simulation.PrefabRecord.Persist -> bool
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease

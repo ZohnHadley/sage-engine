@@ -395,7 +395,7 @@ public sealed class SaveSystem
             // intent were never in the save because the prefab puts them there (F31).
             Entity entity = default;
             if (prefab.IsEmpty) entity = world.Create(Transform.Identity);
-            else if (_engine.Records.TryGet(prefab, out PrefabRecord _)) entity = world.Spawn(prefab);
+            else if (_engine.Records.TryGet(prefab, out PrefabRecord _)) entity = world.SpawnWithoutId(prefab);
 
             if (entity.IsNull)
             {

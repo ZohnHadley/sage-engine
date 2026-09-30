@@ -87,7 +87,7 @@ public static class PlacementExtensions
         foreach (var placement in record.Place)
         {
             var at = world.PlacementPosition(placement, record.Origin, record.RelativeTo);
-            var entity = world.Spawn(placement.Prefab.Id, at, placement.Yaw, placement.Overrides, $"placements {document}");
+            var entity = world.SpawnWithoutId(placement.Prefab.Id, at, placement.Yaw, placement.Overrides, $"placements {document}");
             if (entity.IsNull) continue;
 
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;

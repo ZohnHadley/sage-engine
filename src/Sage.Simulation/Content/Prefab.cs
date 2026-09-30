@@ -39,6 +39,13 @@ public sealed class PrefabRecord
     public List<string> Tags = new();
     public JsonObject? Parts;
 
+    // Whether a runtime `Spawn` of this prefab is kept by a save (phase 4i): true by default, so a dropped
+    // item, a summon or an `ent_spawn` crate comes back; false for what is only for the eye (a cue, a
+    // particle) or is rebuilt by something else.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
+    [Property(Tooltip = "Whether an entity spawned from this prefab at runtime is saved; false for effects and other things nothing needs back")]
+    public bool Persist = true;
+
     // Prefabs placed inside this one, parented to it and destroyed with it (phase 4i, F31). A prefab
     // that contains itself, or nests deeper than 8, is a load error.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
@@ -365,34 +372,53 @@ public static class PrefabExtensions
     public static Entity Spawn(this World world, RecordId prefab, Vector3 position = default, float yawDegrees = 0f) =>
         Spawn(world, prefab, position, yawDegrees, keys: null, where: null);
 
+    // The spawns that give the entity its own identity afterwards (a scene's placements, a saved entity on
+    // load) or that are rebuilt by whatever asked for them (a level's entities, the player camera): no
+    // runtime PersistentId, so nothing is saved twice.
+    internal static Entity SpawnWithoutId(this World world, RecordId prefab, Vector3 position = default, float yawDegrees = 0f,
+                                          IReadOnlyDictionary<string, string>? keys = null, string? where = null) =>
+        SpawnKeyed(world, prefab, position, yawDegrees, keys, where, persist: false);
+
+    internal static Entity SpawnWithoutId(this World world, RecordId prefab, Vector3 position, float yawDegrees,
+                                          PrefabOverrides? overrides, string? where) =>
+        SpawnPlaced(world, prefab, position, yawDegrees, overrides, where, persist: false);
+
     // The same, with per-entity values from a map (`"light.range" "12"`): the keys PrefabKeys offers for
     // this prefab, read as overrides of this one entity (issue #18; since phase 4i the same overrides a
     // placement writes). `where` names the map line.
     public static Entity Spawn(this World world, RecordId prefab, Vector3 position, float yawDegrees,
-                               IReadOnlyDictionary<string, string>? keys, string? where)
+                               IReadOnlyDictionary<string, string>? keys, string? where) =>
+        SpawnKeyed(world, prefab, position, yawDegrees, keys, where, persist: true);
+
+    private static Entity SpawnKeyed(World world, RecordId prefab, Vector3 position, float yawDegrees,
+                                     IReadOnlyDictionary<string, string>? keys, string? where, bool persist)
     {
         PrefabOverrides? overrides = null;
         if (keys != null && keys.Count > 0 && world.Engine is { } engine && engine.Records.TryGet(prefab, out PrefabRecord record))
             overrides = PrefabKeys.Overrides(engine, prefab, record, keys, where ?? prefab.ToString());
-        return Spawn(world, prefab, position, yawDegrees, overrides, where);
+        return SpawnPlaced(world, prefab, position, yawDegrees, overrides, where, persist);
     }
 
     // The same, with a placement's overrides (phase 4i, F31): component and part bodies merged into a
     // copy of the prefab for this one entity. The prefab's `children` are spawned with it, parented to it.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
     public static Entity Spawn(this World world, RecordId prefab, Vector3 position, float yawDegrees,
-                               PrefabOverrides? overrides, string? where = null)
+                               PrefabOverrides? overrides, string? where = null) =>
+        SpawnPlaced(world, prefab, position, yawDegrees, overrides, where, persist: true);
+
+    private static Entity SpawnPlaced(World world, RecordId prefab, Vector3 position, float yawDegrees,
+                                      PrefabOverrides? overrides, string? where, bool persist)
     {
         var placed = Transform.At(position);
         placed.LocalRotation = SageMath.RotationFromYaw(yawDegrees * MathF.PI / 180f);
-        var entity = SpawnTree(world, prefab, placed, overrides, where, default, 0);
+        var entity = SpawnTree(world, prefab, placed, overrides, where, default, 0, persist);
         if (!entity.IsNull) SnapGlobals(world, entity);
         return entity;
     }
 
     // One prefab and its children. `parent` is null for the root; a child is placed in its frame.
     private static Entity SpawnTree(World world, RecordId prefab, in Transform placed, PrefabOverrides? overrides,
-                                    string? where, Entity parent, int depth)
+                                    string? where, Entity parent, int depth, bool persist = false)
     {
         var engine = world.Engine;
         if (engine is null)
@@ -419,6 +445,9 @@ public static class PrefabExtensions
             world.SetParent(entity, parent);
             entity.AddTag<FromParentPrefab>();   // dies with it (World.Destroy)
         }
+        // Only the root of a runtime spawn: a child is re-spawned by its parent on load, so an id of its
+        // own would duplicate it (FromParentPrefab, #161).
+        if (persist && parent.IsNull && record.Persist) world.MakePersistent(entity);
         if (overrides is { IsEmpty: false })
             world.Add(entity, new PrefabOverridden { Overrides = overrides.Clone() });   // for ent_dump and the editor
         Populate(world, entity, record, prefab);
