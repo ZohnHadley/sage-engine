@@ -411,6 +411,11 @@
         "thin_the_wood"
       ]
     },
+    "record:recoil": {
+      "description": "The id of a recoil record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
       "type": "string",
@@ -494,6 +499,11 @@
         "sandbox:swing",
         "swing"
       ]
+    },
+    "record:spread": {
+      "description": "The id of a spread record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "record:sprite_sheet": {
       "description": "The id of a sprite_sheet record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -1078,6 +1088,11 @@
         "thin_the_wood"
       ]
     },
+    "base:recoil": {
+      "description": "The id of a recoil record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "base:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
       "type": "string",
@@ -1161,6 +1176,11 @@
         "sandbox:swing",
         "swing"
       ]
+    },
+    "base:spread": {
+      "description": "The id of a spread record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:sprite_sheet": {
       "description": "Another sprite_sheet record to inherit every field from, abstract or not.",

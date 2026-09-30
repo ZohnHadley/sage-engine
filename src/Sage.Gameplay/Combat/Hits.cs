@@ -66,6 +66,15 @@ public readonly ref struct HitContext
     // Set when `combat_debug` draws strikes (with `r_debugdraw 1`); null otherwise.
     public DebugDraw? Debug { get; init; }
     internal Deferred<PendingHit>? Landed { get; init; }
+    // The attack's spread (issue #136): the half-angle in radians its shots may stray within (0: they
+    // fly true), and this shot's number for the deterministic random.
+    public float Cone { get; init; }
+    public uint Shot { get; init; }
+
+    // Where pellet `pellet` of this shot flies: the aim, turned within the cone by ShotRandom — the
+    // same directions for the same tick, shooter and shot, on every run.
+    public Vector3 PelletAim(int pellet) =>
+        Spread.Deflect(Request.Aim, Cone, World.Tick, Request.Attacker.Id, Shot, pellet);
 
     // It reached `result`: dealt after every delivery this tick has run.
     public void Land(in HitResult result) => Landed?.Add(new PendingHit(Request, result, Attack));
@@ -244,8 +253,8 @@ internal sealed class SweepDelivery : IHitDelivery
 }
 
 // Hitscan: a ray from the eye along the aim for the attack's `range`, landing on the surface it meets —
-// instantly, with no flight time. `pellets` rays per shot (spread arrives with issue #136, so today they
-// all fly the same line and each lands its own hit). Scenery stops it and is not hurt.
+// instantly, with no flight time. `pellets` rays per shot, each within the attack's spread cone (issue
+// #136; with no spread they all fly the same line) and each landing its own hit. Scenery stops it and is not hurt.
 [HitDelivery("ray", Plugin = "sage.gameplay.combat")]
 internal sealed class RayDelivery : IHitDelivery
 {
@@ -255,7 +264,7 @@ internal sealed class RayDelivery : IHitDelivery
         int pellets = Math.Max(1, hit.Attack.Pellets);
         for (int p = 0; p < pellets; p++)
         {
-            bool found = Hits.Ray(hit.Space, request.Attacker, request.Origin, request.Aim, hit.Attack.Range, out var result);
+            bool found = Hits.Ray(hit.Space, request.Attacker, request.Origin, hit.PelletAim(p), hit.Attack.Range, out var result);
             bool hurts = found && Hits.CanBeHurt(hit.World, result.Target);
             hit.Debug?.Line(request.Origin, result.Point, hurts ? DebugColour.Green : DebugColour.Red, 0.6f);
             if (hurts) hit.Land(result);
@@ -271,6 +280,7 @@ internal sealed class ProjectileHitDelivery : IHitDelivery
     public void Deliver(in HitContext hit)
     {
         int pellets = Math.Max(1, hit.Attack.Pellets);
-        for (int p = 0; p < pellets; p++) Hits.Launch(hit.World, hit.Request, hit.Attack);
+        for (int p = 0; p < pellets; p++)
+            Hits.Launch(hit.World, hit.Request with { Aim = hit.PelletAim(p) }, hit.Attack);
     }
 }

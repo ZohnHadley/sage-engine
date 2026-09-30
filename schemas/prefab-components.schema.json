@@ -900,6 +900,14 @@
         }
       ]
     },
+    "sage:weapon_state": {
+      "description": "Component sage:weapon_state (WeaponState).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:weapon_state"
+        }
+      ]
+    },
     "sandbox:hop": {
       "description": "Component sandbox:hop (Hop).",
       "allOf": [
@@ -993,6 +1001,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:viewmodel"
+        }
+      ]
+    },
+    "weapon_state": {
+      "description": "The component sage:weapon_state (WeaponState), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:weapon_state"
         }
       ]
     }
@@ -4259,6 +4275,64 @@
       },
       "additionalProperties": false,
       "description": "Component sage:viewmodel (Viewmodel)."
+    },
+    "sage:weapon_state": {
+      "type": "object",
+      "properties": {
+        "bloom": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "recovery": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "shots": {
+          "description": "(uint, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "kickPitch": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "kickYaw": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "returnSpeed": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "appliedPitch": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "appliedYaw": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "lastPitch": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "lastYaw": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:weapon_state (WeaponState)."
     },
     "sandbox:hop": {
       "type": "object",

@@ -48,6 +48,8 @@ Sage.Gameplay.AttackRecord.Projectile -> Sage.Core.RecordRef<Sage.Simulation.Pre
 Sage.Gameplay.AttackRecord.ProjectileGravity -> float
 Sage.Gameplay.AttackRecord.ProjectilePierce -> int
 Sage.Gameplay.AttackRecord.Range -> float
+Sage.Gameplay.AttackRecord.Recoil -> Sage.Core.RecordRef<Sage.Gameplay.RecoilRecord!>
+Sage.Gameplay.AttackRecord.Spread -> Sage.Core.RecordRef<Sage.Gameplay.SpreadRecord!>
 Sage.Gameplay.AvailableTopic
 Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
 Sage.Gameplay.AvailableTopic.AvailableTopic(Sage.Core.RecordId Topic, string! Keyword) -> void
@@ -96,12 +98,17 @@ Sage.Gameplay.FootIkPart.Weight -> float
 Sage.Gameplay.HitContext
 Sage.Gameplay.HitContext.Attack.get -> Sage.Gameplay.AttackRecord!
 Sage.Gameplay.HitContext.Attack.init -> void
+Sage.Gameplay.HitContext.Cone.get -> float
+Sage.Gameplay.HitContext.Cone.init -> void
 Sage.Gameplay.HitContext.Debug.get -> Sage.Simulation.DebugDraw?
 Sage.Gameplay.HitContext.Debug.init -> void
 Sage.Gameplay.HitContext.HitContext() -> void
 Sage.Gameplay.HitContext.Land(in Sage.Gameplay.HitResult result) -> void
+Sage.Gameplay.HitContext.PelletAim(int pellet) -> System.Numerics.Vector3
 Sage.Gameplay.HitContext.Request.get -> Sage.Gameplay.HitRequest
 Sage.Gameplay.HitContext.Request.init -> void
+Sage.Gameplay.HitContext.Shot.get -> uint
+Sage.Gameplay.HitContext.Shot.init -> void
 Sage.Gameplay.HitContext.Space.get -> Sage.Simulation.IPhysicsWorld!
 Sage.Gameplay.HitContext.Space.init -> void
 Sage.Gameplay.HitContext.World.get -> Sage.Simulation.World!
@@ -150,6 +157,23 @@ Sage.Gameplay.QuestWatchPart
 Sage.Gameplay.QuestWatchPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Gameplay.QuestWatchPart.Quest -> Sage.Core.RecordRef<Sage.Gameplay.QuestRecord!>
 Sage.Gameplay.QuestWatchPart.QuestWatchPart() -> void
+Sage.Gameplay.RecoilRecord
+Sage.Gameplay.RecoilRecord.PitchMaxDegrees -> float
+Sage.Gameplay.RecoilRecord.PitchMinDegrees -> float
+Sage.Gameplay.RecoilRecord.RecoilRecord() -> void
+Sage.Gameplay.RecoilRecord.ReturnSpeedDegrees -> float
+Sage.Gameplay.RecoilRecord.YawMaxDegrees -> float
+Sage.Gameplay.RecoilRecord.YawMinDegrees -> float
+Sage.Gameplay.ShotRandom
+Sage.Gameplay.Spread
+Sage.Gameplay.SpreadRecord
+Sage.Gameplay.SpreadRecord.BaseDegrees -> float
+Sage.Gameplay.SpreadRecord.CrouchingMultiplier -> float
+Sage.Gameplay.SpreadRecord.GrowthPerShot -> float
+Sage.Gameplay.SpreadRecord.MaxDegrees -> float
+Sage.Gameplay.SpreadRecord.MovingMultiplier -> float
+Sage.Gameplay.SpreadRecord.RecoveryPerSecond -> float
+Sage.Gameplay.SpreadRecord.SpreadRecord() -> void
 Sage.Gameplay.TopicInfo
 Sage.Gameplay.TopicInfo.Requires -> Sage.Simulation.ICondition?
 Sage.Gameplay.TopicInfo.Text -> string!
@@ -161,6 +185,18 @@ Sage.Gameplay.TopicRecord.Keyword -> string!
 Sage.Gameplay.TopicRecord.KeywordOf(Sage.Core.RecordId id) -> string!
 Sage.Gameplay.TopicRecord.Known -> bool
 Sage.Gameplay.TopicRecord.TopicRecord() -> void
+Sage.Gameplay.WeaponState
+Sage.Gameplay.WeaponState.AppliedPitch -> float
+Sage.Gameplay.WeaponState.AppliedYaw -> float
+Sage.Gameplay.WeaponState.Bloom -> float
+Sage.Gameplay.WeaponState.KickPitch -> float
+Sage.Gameplay.WeaponState.KickYaw -> float
+Sage.Gameplay.WeaponState.LastPitch -> float
+Sage.Gameplay.WeaponState.LastYaw -> float
+Sage.Gameplay.WeaponState.Recovery -> float
+Sage.Gameplay.WeaponState.ReturnSpeed -> float
+Sage.Gameplay.WeaponState.Shots -> uint
+Sage.Gameplay.WeaponState.WeaponState() -> void
 static Sage.Gameplay.Combat.ApplyHit(Sage.Simulation.World! world, in Sage.Gameplay.DamageInfo damage, in Sage.Gameplay.HitResult result, System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>? alsoApply = null) -> float
 static Sage.Gameplay.Combat.ApplyHit(Sage.Simulation.World! world, in Sage.Gameplay.HitRequest request, in Sage.Gameplay.HitResult result, Sage.Gameplay.AttackRecord! attack) -> float
 static Sage.Gameplay.DialogueTopics.Answer(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> Sage.Gameplay.TopicInfo?
@@ -215,3 +251,7 @@ Sage.Gameplay.WeaponFired.Shooter.get -> Sage.Simulation.Entity
 Sage.Gameplay.WeaponFired.Shooter.init -> void
 Sage.Gameplay.WeaponFired.WeaponFired() -> void
 Sage.Gameplay.WeaponFired.WeaponFired(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
+static Sage.Gameplay.ShotRandom.Hash(long tick, int entity, uint shot, uint salt) -> ulong
+static Sage.Gameplay.ShotRandom.Value(long tick, int entity, uint shot, uint salt) -> float
+static Sage.Gameplay.Spread.ConeOf(Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Gameplay.SpreadRecord! spread) -> float
+static Sage.Gameplay.Spread.Deflect(System.Numerics.Vector3 aim, float coneRadians, long tick, int entity, uint shot, int pellet) -> System.Numerics.Vector3
