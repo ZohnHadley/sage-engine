@@ -740,7 +740,8 @@ The player's camera shows them (its `viewmodel` part: `fovY`, `near`, `far` of t
 person, drawn after the world with depth cleared, so they never sink into a wall. A swing sets the graph's
 `attack` trigger and the `Reload` action (R) its `reload` trigger; ammunition is yours. An attack with no
 `arms` keeps its sprite `viewmodel`, which the game's HUD draws (`Viewmodels.IsDrawn(world)` says when
-not to). The Sandbox's `tools/make_viewmodel_arms.py` generates a placeholder pair.
+not to). The Sandbox's `tools/make_mannequin.py` generates a placeholder pair (and the box mannequin of §5's
+"Animation graphs").
 To place something where the player is looking from — a sound, an effect, a spawn in front of them —
 ask `world.TryGetMainView(out var view)`: the screen's view this frame (the player's camera, a cut, the
 editor's free camera), with its position, rotation and projection. `ActiveCamera` holds the same pose.

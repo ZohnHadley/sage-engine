@@ -142,7 +142,10 @@ public class NpcLocomotionTests
         Move(world, npc, 3f, 2);
         Assert.Equal(1f, Animators.ClipWeight(world, npc, "aim_down", "upper"), 3);
 
-        // The attack: a strike on the upper layer, the legs still jogging, then back to aiming.
+        // The attack: a strike on the upper layer, the legs still jogging, its `hit` raised once (the
+        // mannequin's anim_events: 0.4 s in), then back to aiming when the clip is done.
+        var events = new EventProbe<AnimationEvent>(world);
+        string[] Heard() => events.All.Where(e => e.Entity == npc).Select(e => e.Name).ToArray();
         Animators.SetParam(world, npc, "aim_pitch", 0f);
         Assert.True(Animators.SetTrigger(world, npc, "attack"));
         Move(world, npc, 3f, 1);
@@ -152,9 +155,24 @@ public class NpcLocomotionTests
         Assert.Equal(0.5f, Animators.ClipWeight(world, npc, "walk"), 2);
         Move(world, npc, 3f, 14);                                        // a quarter of a second in: arms up and back
         Assert.True(Elevation(Pose(world, npc), "upper_arm_r", "forearm_r") > 45f, "the strike did not raise the arm");
-        Move(world, npc, 3f, 36);                                        // past its 0.8 s
+        Assert.Empty(Heard());
+        Move(world, npc, 3f, 12);                                        // past 0.4 s: the blow connects
+        Assert.Equal(new[] { "hit" }, Heard());
+        Move(world, npc, 3f, 26);                                        // past its 0.8 s
         Assert.Equal("aim", Animators.StateOf(world, npc, "upper"));
         Assert.False(Animators.HasTag(world, npc, "attacking"));
+        Assert.Equal(new[] { "hit" }, Heard());
+
+        // A reload on the same layer: mag_out, then mag_in, then back to aiming.
+        Assert.True(Animators.SetTrigger(world, npc, "reload"));
+        Move(world, npc, 3f, 1);
+        Assert.Equal("reload", Animators.StateOf(world, npc, "upper"));
+        Move(world, npc, 3f, 30);
+        Assert.Equal(new[] { "hit", "mag_out" }, Heard());
+        Move(world, npc, 3f, 30);
+        Assert.Equal(new[] { "hit", "mag_out", "mag_in" }, Heard());
+        Move(world, npc, 3f, 30);
+        Assert.Equal("aim", Animators.StateOf(world, npc, "upper"));
 
         // Lowering the aim and stopping: the upper layer lets the base show, and the base goes to idle.
         Animators.SetParam(world, npc, "aiming", false);
@@ -243,9 +261,8 @@ public class NpcLocomotionTests
         Assert.True(app.Engine.Animations.TryGet(AssetPath.Intern("models/arms.glb"), out var set));
         var reloadClip = set.FindClip("reload")!;
         Assert.Equal(1.2f, reloadClip.Duration, 3);
-        // Until clip events come from records (#119), they are added to the clip here, where the art puts them.
-        reloadClip.AddEvent(0.3f, "mag_out");
-        reloadClip.AddEvent(0.9f, "mag_in");
+        // The events come from the Sandbox's anim_events record for the arms (viewmodel.json), not from code.
+        Assert.Equal(new[] { "mag_out", "mag_in" }, reloadClip.Events.Select(e => e.Name));
         var events = new EventProbe<AnimationEvent>(world);
         Assert.Equal("idle", Animators.StateOf(world, arms));
 

@@ -20,7 +20,8 @@
     // The `upper` layer, over the spine's branch (spine, chest, neck, head and both arms; the legs keep
     // walking under it): nothing until `aiming`, then `aim` — a blend space on `aim_pitch` from aim_down
     // (-60°) through aim (0°) to aim_up (60°) — and from any state `attack` strikes and `reload` reloads,
-    // each once, back to aim (and to nothing, the tick after, if the NPC has stopped aiming).
+    // each once, back to aim when its clip is done (anim_finished; and to nothing the tick after, if the
+    // NPC has stopped aiming).
     //
     // `aim_pitch` also turns the spine, chest, neck and head through the prefab's aim IK (the animator
     // copies it there every tick), which is why the aim clips pitch the arms by only half of it.
@@ -52,12 +53,25 @@
           "aim": { "blend": { "x": "aim_pitch", "points": [ { "clip": "aim_down", "x": -60 }, { "clip": "aim", "x": 0 }, { "clip": "aim_up", "x": 60 } ] },
                    "tags": ["aiming"],
                    "transitions": [ { "to": "none", "when": { "anim_param": "aiming", "eq": 0 } } ] },
-          "attack": { "clip": "attack", "loop": false, "fade": 0.1, "tags": ["attacking"], "transitions": [ { "to": "aim", "after": 0.8 } ] },
-          "reload": { "clip": "reload", "loop": false, "fade": 0.15, "tags": ["reloading"], "transitions": [ { "to": "aim", "after": 1.4 } ] }
+          "attack": { "clip": "attack", "loop": false, "fade": 0.1, "tags": ["attacking"], "transitions": [ { "to": "aim", "when": { "anim_finished": "upper" } } ] },
+          "reload": { "clip": "reload", "loop": false, "fade": 0.15, "tags": ["reloading"], "transitions": [ { "to": "aim", "when": { "anim_finished": "upper" } } ] }
         },
         "transitions": [ { "to": "attack", "on": "attack" }, { "to": "reload", "on": "reload" } ]
       }
     ]
+  },
+
+  {
+    // The mannequin's clip events (engine issue #119), where the art puts them: the strike connects 0.4 s
+    // into `attack`, and the magazine comes out 0.3 s into `reload` and goes back in at 0.9 s. The animator
+    // raises each once as an AnimationEvent on the NPC and on its OnAnimEvent output.
+    "type": "anim_events",
+    "id": "mannequin",
+    "model": "models/mannequin.glb",
+    "clips": {
+      "attack": [ { "time": 0.4, "name": "hit" } ],
+      "reload": [ { "time": 0.3, "name": "mag_out" }, { "time": 0.9, "name": "mag_in" } ]
+    }
   },
 
   {
