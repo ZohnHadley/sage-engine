@@ -100,6 +100,16 @@
         "sandbox:hermit_talk"
       ]
     },
+    "record:dialogue_topic": {
+      "description": "The id of a dialogue_topic record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "sandbox:the_lanterns",
+        "sandbox:the_watchers",
+        "the_lanterns",
+        "the_watchers"
+      ]
+    },
     "record:effect": {
       "description": "The id of a effect record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -496,6 +506,16 @@
       "enum": [
         "hermit_talk",
         "sandbox:hermit_talk"
+      ]
+    },
+    "base:dialogue_topic": {
+      "description": "Another dialogue_topic record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "sandbox:the_lanterns",
+        "sandbox:the_watchers",
+        "the_lanterns",
+        "the_watchers"
       ]
     },
     "base:effect": {

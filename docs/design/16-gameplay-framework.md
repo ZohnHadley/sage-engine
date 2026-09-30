@@ -453,6 +453,41 @@ Creatures walk round things instead of into them.
   so an input sent at a name that does not exist yet is dropped (a wire's late binding would need
   `EntityIO` to take a name; #90 owns that file). Vars hold numbers only.
 
+### As built (dialogue topics, issue #93, 2026-09-30)
+- **A topic is a keyword whose answer depends on who asks, whom and when** (Morrowind's topics, beside
+  the node tree, which is unchanged). `dialogue_topic` (`TopicRecord`, `src/Sage.Gameplay/Narrative/Topics.cs`,
+  plugin `sage.gameplay.dialogue`) is a `keyword`, a `known` flag and an ordered list of `infos`; an info
+  is `requires` — **one** condition of #89's language, `{ "all": [ … ] }` for several, the way any
+  `requires` reads — a `then` (a list of actions) and its `text`. **The first info whose `requires` holds
+  is the answer**, asked with the listener as the subject and the speaker as the other, so one topic
+  answers by standing, by how far a quest has got and by a var (test: ATopicAnswersByStandingQuestStageAndAVar).
+  `keyword` and `text` are stored as written; a raw `@key` is resolved by 4c where it is shown.
+- **The dialogue plugin's two words:** `add_topic` teaches the action's subject a topic
+  (`{ "add_topic": "the_toll" }`), and `speaker` holds when the other has that `sage:dialogue` record,
+  entity `name` or `prefab` — Morrowind's speaker filter, so an info can be one NPC's.
+- **What a listener knows is saved on it:** `sage:known_topics` (`KnownTopics`), the learnt ids in the
+  order learnt, written `"sage:known_topics": { "version": 1, "data": { "Topics": ["ns:topic", …] } }`
+  (test: KnownTopicsSurviveSaveAndLoad). A `known: true` topic is everyone's from the start and is never
+  written down. A topic learnt from one NPC is asked of another, and a list only shows the topics this
+  speaker has an answer for (test: ATopicLearntFromOneNpcIsAskedOfAnother).
+- **The view model, frozen on #93 for #98's screen** (SAGE0124): `DialogueTopics.Available(world,
+  speaker, listener, into)` clears and fills a caller's `List<AvailableTopic>` (id and keyword), sorted
+  by keyword, and allocates nothing once the list has room (test: ListingTopicsAllocatesNothing);
+  `Answer` finds the answering info without doing anything; `Ask` runs its `then` and returns it, null
+  exactly when `Answer` is (R17); `Knows` and `Learn`.
+- **Into the node tree:** an option with `"topics": true` does what it does, keeps the conversation on
+  its node and sets `Conversation.Topics`, which a screen reads to show the list
+  (test: ANodeOptionOpensTheTopics). The kit's screen for it is #98; until then the Sandbox's two topics
+  (`games/Sandbox/content/data/topics.json`) are read by the validator, the schemas and the API only.
+- **Without the dialogue plugin** `dialogue_topic` records are skipped with a warning, as any record of
+  an unregistered type, and nothing is an error; `add_topic` and `speaker` are not registered, so a
+  record of another plugin that names them is a load error at its line (the language's rule), never a
+  crash; and the API answers "nothing to say": `Available` fills nothing, `Answer`/`Ask` are null,
+  `Learn` false (test: WithoutTheDialoguePluginTopicsSayNothing). A save's `sage:known_topics` still loads.
+- **Not built:** topics found in an answer's text (Morrowind's hyperlinks: write `add_topic` instead),
+  greetings and per-speaker "known" lists, and a `TopicAsked` event for `talk` objectives (an info's
+  `then` can `set_stage` already).
+
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
 - **Ids are indices.** `attribute` and `tag` records become small indices (`GameplayRegistries`), so components hold numbers, not strings: attribute values are parallel arrays, tags a 64-bit set. More than 64 tags is reported rather than silently truncated.

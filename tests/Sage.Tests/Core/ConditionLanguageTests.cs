@@ -229,7 +229,8 @@ public class ConditionLanguageTests
         Assert.Contains(("condition", "has_item", "sage.gameplay.items"), owners);
         Assert.Contains(("condition", "standing", "sage.gameplay.factions"), owners);
         Assert.Contains(("action", "apply_effect", "sage.gameplay.attributes"), owners);
-        Assert.DoesNotContain(owners, o => o.Owner == "sage.gameplay.dialogue");
+        // Dialogue owns only its own words, the topic ones (#93): nothing the rest of gameplay asks.
+        Assert.Equal(new[] { "add_topic", "speaker" }, owners.Where(o => o.Owner == "sage.gameplay.dialogue").Select(o => o.Id).OrderBy(i => i, System.StringComparer.Ordinal));
 
         var world = app.CreateWorld("door");
         var player = world.Create(Transform.At(Vector3.Zero), "player");
