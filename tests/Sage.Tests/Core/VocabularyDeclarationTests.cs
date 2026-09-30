@@ -94,7 +94,9 @@ public class VocabularyDeclarationTests
 
         Assert.Contains(("quest_objective", "kill", "sage.gameplay.quests"), owners);
         Assert.Contains(("quest_objective", "reach", "sage.gameplay.quests"), owners);
-        Assert.Contains(("condition", "has_item", "sage.gameplay.dialogue"), owners);
+        Assert.Contains(("condition", "has_item", "sage.gameplay.items"), owners);
+        Assert.Contains(("condition", "all", "sage.core"), owners);            // the language is the base's (#89)
+        Assert.Contains(("action", "fire", "sage.core"), owners);
         Assert.Contains(("action", "start_quest", "sage.gameplay.quests"), owners);
         Assert.Contains(("ability_delivery", "touch_area", "sage.gameplay.abilities"), owners);
         Assert.Contains(("effect_execution", "dispel", "sage.gameplay.attributes"), owners);
@@ -104,11 +106,15 @@ public class VocabularyDeclarationTests
         Assert.Equal(11, vocabularies.Of<IAICondition>().Entries.Count);
     }
 
-    // A plugin switched off takes its entries with it: no quests, no `reach`.
+    // A plugin switched off takes its entries with it: no quests, no `reach`. What is left is the base's
+    // own condition and action language (issue #89), which every game has.
     [Fact]
     public void APluginThatIsNotLoadedRegistersNoEntries()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Empty(app.Engine.Vocabularies.All.SelectMany(v => v.Entries));
+        var entries = app.Engine.Vocabularies.All.SelectMany(v => v.Entries.Select(e => (v.Name, e.Id, e.Owner))).ToList();
+        Assert.All(entries, e => Assert.Equal("sage.core", e.Owner));
+        Assert.Equal(new[] { "action:add_var", "action:fire", "action:set_var", "condition:all", "condition:any", "condition:not", "condition:var" },
+                     entries.Select(e => $"{e.Name}:{e.Id}").OrderBy(e => e, System.StringComparer.Ordinal));
     }
 }

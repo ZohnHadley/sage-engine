@@ -1,65 +1,27 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Gameplay;
 
-// What a line of dialogue may require and what saying it does, as open vocabularies (docs/REDESIGN.md
-// §4.3, issue #28). They were two fixed classes, `DialogueRequirement` and `DialogueOutcome`; those stay
-// as the shorthand content already writes (`requires`, `then`) and mean exactly these entries — so a
-// conversation can now also say what a game declares:
+// The conditions and actions that need gameplay (docs/REDESIGN.md §4.3, issues #28 and #89): items,
+// tags, factions, effects and quests. The language itself — `ICondition`, `IAction`, `all`, `any`,
+// `not`, `var`, `fire` — is the base's (src/Sage.Simulation/Logic/Conditions.cs); these are entries of
+// it, each registered by the plugin that owns what it asks about, so a game with items and no dialogue
+// can still ask `{ "has_item": "key_iron" }` from a trigger or a state machine.
 //
-//   "conditions": [{ "condition": "is_night" }, { "condition": "has_item", "item": "key_iron" }],
-//   "actions":    [{ "action": "heal", "amount": 20 }, { "action": "start_quest", "quest": "thin_the_wood" }]
+//   "conditions": [{ "condition": "has_item", "item": "key_iron" }, { "quest": "thin_the_wood", "atLeast": "b" }],
+//   "actions":    [{ "give_item": "gold", "count": 20 }, { "action": "start_quest", "quest": "thin_the_wood" }]
 //
-// The engine's conditions and actions belong to the dialogue plugin, the quest ones to the quests
-// plugin. They are the seed of stage 2's shared condition and action language (§4.3): nothing about
-// them is dialogue's except where they are read today.
+// Dialogue's `requires` and `then` fields stay as the shorthand content already writes, and mean
+// exactly these entries (DialogueSugar, at the end).
 
-// Something that must hold. `why` is what a greyed-out row says when it does not (R17), unless the
-// option writes its own `refusal`.
-[Vocabulary("condition", Key = "condition")]
-[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
-public interface ICondition
-{
-    bool Test(in ConditionContext context, out string why);
-}
+// ---- gameplay's conditions ----------------------------------------------------------------------
 
-// Something that happens.
-[Vocabulary("action", Key = "action")]
-[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
-public interface IAction
-{
-    void Run(in ActionContext context);
-}
-
-[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
-public sealed class ConditionAttribute : VocabularyEntryAttribute<ICondition>
-{
-    public ConditionAttribute(string id) : base(id) { }
-}
-
-[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
-public sealed class ActionAttribute : VocabularyEntryAttribute<IAction>
-{
-    public ActionAttribute(string id) : base(id) { }
-}
-
-// Who a condition is asked about: `Subject` is the one it is about (the player, in a conversation) and
-// `Other` whoever else is involved (the speaker), or nobody.
-[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
-public readonly record struct ConditionContext(World World, Entity Subject, Entity Other = default);
-
-[Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
-public readonly record struct ActionContext(World World, Entity Subject, Entity Other = default);
-
-// ---- the engine's conditions ----------------------------------------------------------------------
-
-[Condition("has_tag", Plugin = "sage.gameplay.dialogue")]
+[Condition("has_tag", Plugin = "sage.gameplay.attributes")]
 internal sealed class HasTagCondition : ICondition
 {
-    public RecordRef<TagRecord> Tag;
+    [EntryValue] public RecordRef<TagRecord> Tag;
 
     public bool Test(in ConditionContext c, out string why)
     {
@@ -68,10 +30,10 @@ internal sealed class HasTagCondition : ICondition
     }
 }
 
-[Condition("lacks_tag", Plugin = "sage.gameplay.dialogue")]
+[Condition("lacks_tag", Plugin = "sage.gameplay.attributes")]
 internal sealed class LacksTagCondition : ICondition
 {
-    public RecordRef<TagRecord> Tag;
+    [EntryValue] public RecordRef<TagRecord> Tag;
 
     public bool Test(in ConditionContext c, out string why)
     {
@@ -80,10 +42,10 @@ internal sealed class LacksTagCondition : ICondition
     }
 }
 
-[Condition("has_item", Plugin = "sage.gameplay.dialogue")]
+[Condition("has_item", Plugin = "sage.gameplay.items")]
 internal sealed class HasItemCondition : ICondition
 {
-    public RecordRef<ItemRecord> Item;
+    [EntryValue] public RecordRef<ItemRecord> Item;
     [Property(Min = 1)] public int Count = 1;
 
     public bool Test(in ConditionContext c, out string why)
@@ -94,10 +56,10 @@ internal sealed class HasItemCondition : ICondition
 }
 
 // Standing with a faction inside [min, max]; 0 in a game without factions (issue #26).
-[Condition("standing", Plugin = "sage.gameplay.dialogue")]
+[Condition("standing", Plugin = "sage.gameplay.factions")]
 internal sealed class StandingCondition : ICondition
 {
-    public RecordRef<FactionRecord> Faction;
+    [EntryValue] public RecordRef<FactionRecord> Faction;
     public float Min = float.NegativeInfinity;
     public float Max = float.PositiveInfinity;
 
@@ -110,13 +72,16 @@ internal sealed class StandingCondition : ICondition
     }
 }
 
-// Where the player is in a quest: `notStarted`, `finished` or `active`, and/or at `stage`. Nobody is on
-// any quest in a game without the quests plugin (issue #26).
+// Where the player is in a quest: `notStarted`, `finished` or `active`, and/or at `stage`, and/or at
+// least as far as `atLeast` — that stage or one after it in the quest's list, or finished (issue #89;
+// Morrowind's "journal ≥ 30"). Nobody is on any quest in a game without the quests plugin (issue #26).
 [Condition("quest", Plugin = "sage.gameplay.quests")]
 internal sealed class QuestCondition : ICondition
 {
-    public RecordRef<QuestRecord> Quest;
+    [EntryValue] public RecordRef<QuestRecord> Quest;
     public string Stage = "";
+    [Property(Tooltip = "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished")]
+    public string AtLeast = "";
     public bool Active;
     public bool Finished;
     public bool NotStarted;
@@ -131,16 +96,18 @@ internal sealed class QuestCondition : ICondition
         else if (Active) ok = Quests.IsActive(c.World, Quest);
         if (ok && Stage.Length > 0)
             ok = Quests.StageOf(c.World, Quest) == Stage && Quests.IsActive(c.World, Quest);
+        if (ok && AtLeast.Length > 0)
+            ok = Quests.HasReached(c.World, Quest, AtLeast);
         return ok;
     }
 }
 
-// ---- the engine's actions -------------------------------------------------------------------------
+// ---- gameplay's actions -------------------------------------------------------------------------
 
-[Action("give_item", Plugin = "sage.gameplay.dialogue")]
+[Action("give_item", Plugin = "sage.gameplay.items")]
 internal sealed class GiveItemAction : IAction
 {
-    public RecordRef<ItemRecord> Item;
+    [EntryValue] public RecordRef<ItemRecord> Item;
     [Property(Min = 1)] public int Count = 1;
 
     public void Run(in ActionContext c)
@@ -149,10 +116,10 @@ internal sealed class GiveItemAction : IAction
     }
 }
 
-[Action("take_item", Plugin = "sage.gameplay.dialogue")]
+[Action("take_item", Plugin = "sage.gameplay.items")]
 internal sealed class TakeItemAction : IAction
 {
-    public RecordRef<ItemRecord> Item;
+    [EntryValue] public RecordRef<ItemRecord> Item;
     [Property(Min = 1)] public int Count = 1;
 
     public void Run(in ActionContext c)
@@ -162,10 +129,10 @@ internal sealed class TakeItemAction : IAction
 }
 
 // An effect on the subject: a blessing, a curse, a disease.
-[Action("apply_effect", Plugin = "sage.gameplay.dialogue")]
+[Action("apply_effect", Plugin = "sage.gameplay.attributes")]
 internal sealed class ApplyEffectAction : IAction
 {
-    public RecordRef<EffectRecord> Effect;
+    [EntryValue] public RecordRef<EffectRecord> Effect;
     public float Magnitude = 1f;
 
     public void Run(in ActionContext c)
@@ -174,10 +141,10 @@ internal sealed class ApplyEffectAction : IAction
     }
 }
 
-[Action("change_standing", Plugin = "sage.gameplay.dialogue")]
+[Action("change_standing", Plugin = "sage.gameplay.factions")]
 internal sealed class ChangeStandingAction : IAction
 {
-    public RecordRef<FactionRecord> Faction;
+    [EntryValue] public RecordRef<FactionRecord> Faction;
     public float Amount;
 
     public void Run(in ActionContext c)
@@ -189,7 +156,7 @@ internal sealed class ChangeStandingAction : IAction
 [Action("start_quest", Plugin = "sage.gameplay.quests")]
 internal sealed class StartQuestAction : IAction
 {
-    public RecordRef<QuestRecord> Quest;
+    [EntryValue] public RecordRef<QuestRecord> Quest;
 
     public void Run(in ActionContext c)
     {
@@ -200,7 +167,7 @@ internal sealed class StartQuestAction : IAction
 [Action("set_stage", Plugin = "sage.gameplay.quests")]
 internal sealed class SetStageAction : IAction
 {
-    public RecordRef<QuestRecord> Quest;
+    [EntryValue] public RecordRef<QuestRecord> Quest;
     public string Stage = "";
 
     public void Run(in ActionContext c)
@@ -213,7 +180,7 @@ internal sealed class SetStageAction : IAction
 [Action("finish_quest", Plugin = "sage.gameplay.quests")]
 internal sealed class FinishQuestAction : IAction
 {
-    public RecordRef<QuestRecord> Quest;
+    [EntryValue] public RecordRef<QuestRecord> Quest;
 
     public void Run(in ActionContext c)
     {
