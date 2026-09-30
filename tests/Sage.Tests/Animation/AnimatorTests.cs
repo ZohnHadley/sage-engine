@@ -321,6 +321,45 @@ public class AnimatorTests
         }
     }
 
+    // #117's seam: the animator hands its pose to skinned renderers through SkinPoses, so the palette a
+    // skinned_mesh is drawn with moves as the animation plays; the animator part takes the skinned
+    // mesh's model when it names none; and a destroyed animator's pose is taken out again.
+    [Fact]
+    public void TheAnimatorPosesItsSkinnedMesh_AndThePaletteChangesOverTicks()
+    {
+        var (app, _) = NewGame(Hero.TrimEnd()[..^1] + """
+            , { "type": "prefab", "id": "skinned", "name": "skinned",
+                "parts": { "skinned_mesh": { "mesh": "models/rig.glb" }, "animator": { "graph": "hero" } } } ]
+            """);
+        using (app)
+        {
+            var world = app.World;
+            var e = world.Spawn(new RecordId("game", "skinned"));
+            Assert.Equal(AssetPath.Intern("models/rig.glb"), world.Get<Animator>(e).Model);
+            var skin = world.Resources.Get<SkinPoses>();
+            Walk(world, e, 3f, 5);
+
+            Assert.True(skin.TryGet(e.Id, out var shown));
+            Assert.True(Animators.TryGetPose(world, e, out var pose));
+            Assert.Same(pose, shown);
+            var inverseBind = pose.Skeleton.InverseBind;
+            var before = new Matrix4x4[pose.JointCount];
+            SkinMath.Palette(shown.ModelSpace, inverseBind, before);
+
+            Walk(world, e, 3f, 10);
+            var after = new Matrix4x4[pose.JointCount];
+            Assert.True(skin.TryGet(e.Id, out shown));
+            SkinMath.Palette(shown.ModelSpace, inverseBind, after);
+            Assert.NotEqual(before[1], after[1]);                             // mid swings with the walk↔run blend
+            var inSkinOrder = new Matrix4x4[pose.JointCount];
+            Assert.True(SkinPoses.ToSkinOrder(shown, inSkinOrder));
+
+            world.Destroy(e);
+            Tick(world, 2);
+            Assert.False(skin.TryGet(e.Id, out _));
+        }
+    }
+
     // SetAnimParam through entity I/O: "name value" for floats and bools, a trigger by name; the
     // anim_param condition reads them; a param with no such name is a warning.
     [Fact]

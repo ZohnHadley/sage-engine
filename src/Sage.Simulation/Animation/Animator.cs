@@ -76,14 +76,15 @@ public struct AnimatorParam
 }
 
 // "animator": { "graph": "soldier", "model": "models/soldier.glb" }. Reads the model when it is applied
-// (content time, never a tick), and says which clips the graph names that the model lacks.
-[PrefabPart("animator", Plugin = RegistrationOwners.Core)]
+// (content time, never a tick), and says which clips the graph names that the model lacks. With no
+// `model`, the skinned_mesh part's mesh (#117) beside it: the skeleton it draws is the one it poses.
+[PrefabPart("animator", Plugin = RegistrationOwners.Core, After = new[] { "skinned_mesh" })]
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
 public sealed class AnimatorPart : IPrefabPart
 {
     [RecordRef("anim_graph"), Property(Tooltip = "The anim_graph record it runs")]
     public RecordId Graph;
-    [AssetKind("mesh"), Property(Tooltip = "The skinned .glb whose skeleton and clips it plays")]
+    [AssetKind("mesh"), Property(Tooltip = "The skinned .glb whose skeleton and clips it plays; left out, the skinned_mesh part's mesh")]
     public AssetPath Model;
 
     public void Apply(in PrefabPartContext ctx)
@@ -93,15 +94,17 @@ public sealed class AnimatorPart : IPrefabPart
             ctx.Warn("an animator part needs a \"graph\" (an anim_graph record)");
             return;
         }
-        if (Model.IsEmpty) ctx.Warn("an animator part needs a \"model\" (a skinned .glb); it will stand still");
-        ctx.World.Add(ctx.Entity, new Animator { Graph = Graph, Model = Model });
-        if (Model.IsEmpty || !ctx.World.Resources.TryGet<GltfAnimationReader>(out var reader) || reader == null) return;
-        if (reader.Load(Model) is not { } set) return;
+        var model = Model;
+        if (model.IsEmpty && ctx.World.TryGet<SkinnedMeshRenderer>(ctx.Entity, out var skinned)) model = skinned.Mesh;
+        if (model.IsEmpty) ctx.Warn("an animator part needs a \"model\" (a skinned .glb) or a skinned_mesh beside it; it will stand still");
+        ctx.World.Add(ctx.Entity, new Animator { Graph = Graph, Model = model });
+        if (model.IsEmpty || !ctx.World.Resources.TryGet<GltfAnimationReader>(out var reader) || reader == null) return;
+        if (reader.Load(model) is not { } set) return;
         if (!ctx.World.Resources.TryGet<RecordStore>(out var records) || records == null) return;
         if (!records.TryGet(Graph, out AnimGraphRecord graph)) return;
         foreach (var clip in graph.Compile().ClipNames)
             if (set.FindClip(clip) == null)
-                Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-clip:{Graph}:{Model}:{clip}",
+                Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-clip:{Graph}:{model}:{clip}",
                     $"{ctx.Where}: anim_graph {Graph} plays '{clip}', which {set.Source} has no clip called; that state stands at rest");
     }
 }

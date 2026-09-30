@@ -49,23 +49,27 @@ internal sealed class AnimatorPoses
         return instance;
     }
 
-    // Hands back every slot whose animator was not seen on `tick` (destroyed, or its Animator removed).
-    public void Sweep(long tick)
+    // Hands back every slot whose animator was not seen on `tick` (destroyed, or its Animator removed),
+    // taking its pose out of the renderer's SkinPoses first (only if it is still this pose: an entity id
+    // may have been reused by an animator that set its own).
+    public void Sweep(long tick, SkinPoses skin)
     {
         for (int i = 1; i < _slots.Count; i++)
         {
             if (_slots[i] is not { } instance || instance.Seen == tick) continue;
-            instance.Pose?.Dispose();
+            Release(instance, skin);
             _slots[i] = null;
             _free.Push(i);
         }
     }
 
-    public void Clear()
+    // Takes the instance's pose out of SkinPoses (when it is the one there) and returns its arrays.
+    public static void Release(Instance instance, SkinPoses skin)
     {
-        for (int i = 1; i < _slots.Count; i++) _slots[i]?.Pose?.Dispose();
-        _slots.RemoveRange(1, _slots.Count - 1);
-        _free.Clear();
+        if (instance.Pose is not { } pose) return;
+        if (skin.TryGet(instance.Owner.Id, out var shown) && ReferenceEquals(shown, pose)) skin.Remove(instance.Owner);
+        pose.Dispose();
+        instance.Pose = null;
     }
 }
 
@@ -488,7 +492,9 @@ internal static class AnimatorStepper
 
 // Phase.Animation (issue #118): every animator steps its params, clocks and transitions each tick, then
 // is sampled into its pose — every tick near the main camera, less often far from it (animation LOD,
-// anim_lod_distance). Runs after sprite animation; #120's IK and attachments run After it (Animators.SystemId).
+// anim_lod_distance). Each sampled pose is handed to #117's skinned renderers through SkinPoses (Set
+// after each sample, Removed before the pose goes back to the pool). Runs after sprite animation; #120's
+// IK and attachments run After it (Animators.SystemId).
 // Animators are gathered in the query and stepped after it, because a transition's `then` may change
 // the world.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
@@ -498,6 +504,7 @@ internal sealed class AnimatorSystem : ISystem
     private readonly World _world;
     private readonly Query<Animator> _animators;
     private readonly AnimatorPoses _poses;
+    private readonly SkinPoses _skin;
     private readonly GltfAnimationReader? _reader;
     private readonly CVar<float>? _lodDistance;
     private readonly List<Entity> _step = new();
@@ -509,6 +516,7 @@ internal sealed class AnimatorSystem : ISystem
         _world = world;
         _animators = world.Query<Animator>();
         _poses = world.Resources.GetOrAdd(static () => new AnimatorPoses());
+        _skin = world.Resources.GetOrAdd(static () => new SkinPoses());   // #117's seam: what skinned renderers draw
         world.Resources.TryGet(out _reader);
         _lodDistance = world.Engine?.CVars.Find(Animators.LodDistanceCVar) as CVar<float>;
     }
@@ -554,9 +562,10 @@ internal sealed class AnimatorSystem : ISystem
             if (instance.SampledTick >= 0 && tick - instance.SampledTick < instance.Interval) continue;
             instance.SampledTick = tick;
             AnimatorStepper.Sample(in a, g, instance, Scratch(instance.Pose.Skeleton));
+            _skin.Set(entity, instance.Pose);                   // #117 draws it (an overwrite: no allocation)
         }
         _step.Clear();
-        _poses.Sweep(tick);
+        _poses.Sweep(tick, _skin);
 
         for (int i = 0; i < _then.Count; i++)
         {
@@ -587,7 +596,7 @@ internal sealed class AnimatorSystem : ISystem
             if (set == null) return;
         }
         if (ReferenceEquals(set, instance.Set)) return;
-        instance.Pose?.Dispose();
+        AnimatorPoses.Release(instance, _skin);
         instance.Set = set;
         instance.Pose = new SkeletonPose(set.Skeleton);
         instance.ResolvedVersion = 0;
