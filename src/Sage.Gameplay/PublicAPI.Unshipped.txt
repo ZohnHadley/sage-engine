@@ -27,6 +27,16 @@
 *REMOVED*Sage.Gameplay.IAction.Run(in Sage.Gameplay.ActionContext context) -> void
 *REMOVED*Sage.Gameplay.ICondition
 *REMOVED*Sage.Gameplay.ICondition.Test(in Sage.Gameplay.ConditionContext context, out string! why) -> bool
+const Sage.Gameplay.BridgeIO.ApplyEffect = "ApplyEffect" -> string!
+const Sage.Gameplay.BridgeIO.GiveItem = "GiveItem" -> string!
+const Sage.Gameplay.BridgeIO.OnDamaged = "OnDamaged" -> string!
+const Sage.Gameplay.BridgeIO.OnDeath = "OnDeath" -> string!
+const Sage.Gameplay.BridgeIO.OnPickedUp = "OnPickedUp" -> string!
+const Sage.Gameplay.BridgeIO.OnQuestFinished = "OnQuestFinished" -> string!
+const Sage.Gameplay.BridgeIO.OnStageChanged = "OnStageChanged" -> string!
+const Sage.Gameplay.BridgeIO.SetFaction = "SetFaction" -> string!
+const Sage.Gameplay.BridgeIO.SetStage = "SetStage" -> string!
+const Sage.Gameplay.BridgeIO.StartDialogue = "StartDialogue" -> string!
 Sage.Gameplay.AvailableTopic
 Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
 Sage.Gameplay.AvailableTopic.AvailableTopic(Sage.Core.RecordId Topic, string! Keyword) -> void
@@ -34,6 +44,7 @@ Sage.Gameplay.AvailableTopic.Keyword.get -> string!
 Sage.Gameplay.AvailableTopic.Keyword.init -> void
 Sage.Gameplay.AvailableTopic.Topic.get -> Sage.Core.RecordId
 Sage.Gameplay.AvailableTopic.Topic.init -> void
+Sage.Gameplay.BridgeIO
 Sage.Gameplay.Conversation.Topics -> bool
 Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Simulation.ICondition!>!
@@ -42,6 +53,13 @@ Sage.Gameplay.DialogueTopics
 Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
+Sage.Gameplay.QuestWatch
+Sage.Gameplay.QuestWatch.Quest -> Sage.Core.RecordId
+Sage.Gameplay.QuestWatch.QuestWatch() -> void
+Sage.Gameplay.QuestWatchPart
+Sage.Gameplay.QuestWatchPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.QuestWatchPart.Quest -> Sage.Core.RecordRef<Sage.Gameplay.QuestRecord!>
+Sage.Gameplay.QuestWatchPart.QuestWatchPart() -> void
 Sage.Gameplay.TopicInfo
 Sage.Gameplay.TopicInfo.Requires -> Sage.Simulation.ICondition?
 Sage.Gameplay.TopicInfo.Text -> string!

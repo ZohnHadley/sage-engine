@@ -17,8 +17,8 @@ namespace Sage.Simulation;
 //            TimerReset             begin the wait again from full, running or not
 //   output   OnTimer                the wait ran out; the activator is whoever started the timer
 //
-// The input names say `Timer` because the input table is one global namespace (EntityInputs): `Toggle`
-// is movers', `Start` would be anybody's. (#91 plans inputs routed by component; these names stay.)
+// The input names say `Timer` because the input table was one global namespace (EntityInputs): `Toggle`
+// is movers', `Start` would be anybody's. (#91 routed inputs by component since; these names stay global.)
 //
 // **When it fires.** The countdown runs in the EntityIO phase *before* the dispatch, so OnTimer's wires
 // with no delay arrive the same tick, and a timer of N seconds started on tick D fires on the tick an

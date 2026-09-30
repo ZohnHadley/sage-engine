@@ -188,6 +188,46 @@
         }
       ]
     },
+    "logic_branch": {
+      "description": "The component sage:logic_branch (LogicBranch), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_branch"
+        }
+      ]
+    },
+    "logic_compare": {
+      "description": "The component sage:logic_compare (LogicCompare), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_compare"
+        }
+      ]
+    },
+    "logic_counter": {
+      "description": "The component sage:logic_counter (LogicCounter), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_counter"
+        }
+      ]
+    },
+    "logic_relay": {
+      "description": "The component sage:logic_relay (LogicRelay), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_relay"
+        }
+      ]
+    },
+    "logic_relay_script": {
+      "description": "The component sage:logic_relay_script (LogicRelayScript), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_relay_script"
+        }
+      ]
+    },
     "map_geometry": {
       "description": "The component sage:map_geometry (MapGeometry), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -201,6 +241,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:map_solid"
+        }
+      ]
+    },
+    "math_remap": {
+      "description": "The component sage:math_remap (MathRemap), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:math_remap"
         }
       ]
     },
@@ -289,6 +337,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:projectile"
+        }
+      ]
+    },
+    "quest_watch": {
+      "description": "The component sage:quest_watch (QuestWatch), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:quest_watch"
         }
       ]
     },
@@ -476,6 +532,46 @@
         }
       ]
     },
+    "sage:logic_branch": {
+      "description": "Component sage:logic_branch (LogicBranch).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_branch"
+        }
+      ]
+    },
+    "sage:logic_compare": {
+      "description": "Component sage:logic_compare (LogicCompare).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_compare"
+        }
+      ]
+    },
+    "sage:logic_counter": {
+      "description": "Component sage:logic_counter (LogicCounter).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_counter"
+        }
+      ]
+    },
+    "sage:logic_relay": {
+      "description": "Component sage:logic_relay (LogicRelay).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_relay"
+        }
+      ]
+    },
+    "sage:logic_relay_script": {
+      "description": "Component sage:logic_relay_script (LogicRelayScript).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:logic_relay_script"
+        }
+      ]
+    },
     "sage:map_geometry": {
       "description": "Component sage:map_geometry (MapGeometry).",
       "allOf": [
@@ -489,6 +585,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:map_solid"
+        }
+      ]
+    },
+    "sage:math_remap": {
+      "description": "Component sage:math_remap (MathRemap).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:math_remap"
         }
       ]
     },
@@ -577,6 +681,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:projectile"
+        }
+      ]
+    },
+    "sage:quest_watch": {
+      "description": "Component sage:quest_watch (QuestWatch).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:quest_watch"
         }
       ]
     },
@@ -1841,6 +1953,14 @@
               "times": {
                 "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
+              },
+              "requires": {
+                "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                "allOf": [
+                  {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -1876,6 +1996,14 @@
               "times": {
                 "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
+              },
+              "requires": {
+                "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                "allOf": [
+                  {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -1911,6 +2039,14 @@
               "times": {
                 "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
+              },
+              "requires": {
+                "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                "allOf": [
+                  {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -1948,6 +2084,120 @@
       "additionalProperties": false,
       "description": "Component sage:known_topics (KnownTopics)."
     },
+    "sage:logic_branch": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "True or false; Test fires OnTrue or OnFalse by it. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:logic_branch (LogicBranch)."
+    },
+    "sage:logic_compare": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The value compared (SetValue, SetValueCompare) (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "compareValue": {
+          "description": "What it is compared with (SetCompareValue) (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:logic_compare (LogicCompare)."
+    },
+    "sage:logic_counter": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The count now. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "start": {
+          "description": "Where Reset puts it. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "min": {
+          "description": "The lowest it goes; OnHitMin when it gets there (limits only when max > min) (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "max": {
+          "description": "The highest it goes; OnHitMax when it gets there (limits only when max > min) (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "disabled": {
+          "description": "Ignores Add, Subtract, SetValue and Reset until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:logic_counter (LogicCounter)."
+    },
+    "sage:logic_relay": {
+      "type": "object",
+      "properties": {
+        "disabled": {
+          "description": "Ignores Trigger until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "sameTick": {
+          "description": "OnTrigger's wires with no delay arrive in the same tick, not the next. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:logic_relay (LogicRelay)."
+    },
+    "sage:logic_relay_script": {
+      "type": "object",
+      "properties": {
+        "requires": {
+          "description": "(ICondition)",
+          "allOf": [
+            {
+              "$ref": "vocabularies.schema.json#/definitions/condition"
+            }
+          ]
+        },
+        "then": {
+          "description": "(List<IAction>)",
+          "type": "array",
+          "items": {
+            "$ref": "vocabularies.schema.json#/definitions/action"
+          }
+        },
+        "then+": {
+          "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "vocabularies.schema.json#/definitions/action"
+          }
+        },
+        "then-": {
+          "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "vocabularies.schema.json#/definitions/action"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:logic_relay_script (LogicRelayScript)."
+    },
     "sage:map_geometry": {
       "type": "object",
       "properties": {
@@ -1982,6 +2232,80 @@
       },
       "additionalProperties": false,
       "description": "Component sage:map_solid (MapSolid)."
+    },
+    "sage:math_remap": {
+      "type": "object",
+      "properties": {
+        "inMin": {
+          "description": "The input range's start: maps to outMin. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "inMax": {
+          "description": "The input range's end: maps to outMax. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "outMin": {
+          "description": "What inMin becomes. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "outMax": {
+          "description": "What inMax becomes. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "clamp": {
+          "description": "Keep the result between outMin and outMax, whatever comes in. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "ease": {
+          "description": "The curve between the ends (Linear, QuadInOut, …) (Ease, default \"Linear\")",
+          "default": "Linear",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
+        },
+        "value": {
+          "description": "The last value it sent. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:math_remap (MathRemap)."
     },
     "sage:melee": {
       "type": "object",
@@ -2312,6 +2636,21 @@
       },
       "additionalProperties": false,
       "description": "Component sage:projectile (Projectile)."
+    },
+    "sage:quest_watch": {
+      "type": "object",
+      "properties": {
+        "quest": {
+          "description": "The quest it listens to. Names a quest record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:quest"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:quest_watch (QuestWatch)."
     },
     "sage:rigid_body": {
       "type": "object",

@@ -109,11 +109,12 @@ public sealed class MoverModule : IModule
         ctx.Engine.Outputs.Declare("OnFullyOpen", "This mover finished opening.");
         ctx.Engine.Outputs.Declare("OnFullyClosed", "This mover finished closing.");
 
-        inputs.Register("Open", static (World world, in IOContext io) => Set(world, io.Self, +1));
-        inputs.Register("Close", static (World world, in IOContext io) => Set(world, io.Self, -1));
-        inputs.Register("Toggle", static (World world, in IOContext io) =>
+        // Routed to the mover (issue #91): `Toggle` is a mover's here and a branch's on a logic_branch,
+        // and a game may still register a global `Open` for things that are not movers.
+        inputs.Register<Mover>("Open", static (World world, in IOContext io) => Set(world, io.Self, +1));
+        inputs.Register<Mover>("Close", static (World world, in IOContext io) => Set(world, io.Self, -1));
+        inputs.Register<Mover>("Toggle", static (World world, in IOContext io) =>
         {
-            if (!io.Self.HasComponent<Mover>()) return;
             ref var mover = ref io.Self.GetComponent<Mover>();
 
             // Half way through opening, "toggle" means shut it — what it is *doing* matters more than

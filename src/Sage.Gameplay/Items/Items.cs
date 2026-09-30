@@ -451,6 +451,8 @@ internal sealed class InteractionSystem : ISystem
                 string what = $"{(pickup.Count > 1 ? pickup.Count + "x " : "")}{record?.Describe(pickup.Item) ?? pickup.Item.Name}";
                 Log.Info(LogCat.Gameplay, $"{World.Describe(interaction.User)} picks up {what}");
                 world.Say($"Picked up {what}", MessageKind.Good, 3f);
+                // Its wires hear it before it goes (issue #91): firing reads them now and only queues.
+                world.FireOutput(interaction.Target, BridgeIO.OnPickedUp, interaction.User);
                 world.Destroy(interaction.Target);
             }
 

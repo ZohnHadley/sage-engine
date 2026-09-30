@@ -185,6 +185,14 @@
               "times": {
                 "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
+              },
+              "requires": {
+                "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                "allOf": [
+                  {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -220,6 +228,14 @@
               "times": {
                 "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
+              },
+              "requires": {
+                "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                "allOf": [
+                  {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -255,6 +271,14 @@
               "times": {
                 "description": "How many times it may fire; -1 = every time. (int)",
                 "type": "integer"
+              },
+              "requires": {
+                "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                "allOf": [
+                  {
+                    "$ref": "vocabularies.schema.json#/definitions/condition"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -340,6 +364,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -375,6 +407,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -410,6 +450,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -496,6 +544,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -531,6 +587,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -566,6 +630,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -652,6 +724,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -687,6 +767,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -722,6 +810,14 @@
                 "times": {
                   "description": "How many times it may fire; -1 = every time. (int)",
                   "type": "integer"
+                },
+                "requires": {
+                  "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                  "allOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/condition"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false

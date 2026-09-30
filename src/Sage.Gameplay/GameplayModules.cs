@@ -82,6 +82,9 @@ public sealed class AttributesModule : IModule
         var actions = ctx.Engine.Actions;
         _records.AddCheck<GameplayConventionsRecord>((conventions, check) => GameplayConventions.CheckActions(actions, conventions, check));
 
+        // ApplyEffect and OnDeath (issue #91): a level wires to effects and deaths like to a door.
+        BridgeIO.RegisterAttributes(ctx.Engine);
+
         // Saves write attribute values and tags by name, not by the index records loaded in.
         ctx.Engine.Saves.AddConverter((world, records) => new AttributeSetSaveConverter(world, records));
         ctx.Engine.Saves.AddConverter((world, records) => new GameplayTagsSaveConverter(world, records));
@@ -115,6 +118,7 @@ public sealed class AttributesModule : IModule
         world.AddSystem(new EffectSystem(world, _records!));
         world.AddSystem(new EffectExecutionSystem(world));   // summons and dispels, after the tick (issue #28)
         world.AddSystem(new DeathRulesSystem(world));
+        world.AddSystem(new DeathOutputSystem(world));       // OnDeath (issue #91)
     }
 }
 
@@ -164,6 +168,7 @@ public sealed class CombatModule : IModule
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
         _actions.Register("Attack", ActionKind.Button);   // the engine's name; gameplay_conventions picks which one swings
+        BridgeIO.RegisterCombat(ctx.Engine);              // OnDamaged (issue #91)
 
         // Registered here, once, rather than in the systems: systems are per world (review #57).
         _combatDebug = ctx.Engine.CVars.Register("combat_debug", false, CVarFlags.DevOnly,
@@ -188,10 +193,13 @@ public sealed class CombatModule : IModule
         });
     }
 
-    public void OnWorldCreated(World world) =>
+    public void OnWorldCreated(World world)
+    {
         // Combat resolves before effects tick, so a blow struck this tick is felt this tick: the
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
+        world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
+    }
 }
 
 // Carrying, wielding and picking up (16 §3.2, F19).
@@ -210,6 +218,7 @@ public sealed class ItemsModule : IModule
 
     public void Init(ModuleContext ctx)
     {
+        BridgeIO.RegisterItems(ctx.Engine);         // GiveItem, OnPickedUp (issue #91)
         _records = ctx.Engine.Records;
         _actions = ctx.Engine.Actions;
         _actions.Register("Use", ActionKind.Button);
@@ -542,6 +551,7 @@ public sealed class FactionsModule : IModule
     {
         // The faction record, the saved Reputation and the `faction` prefab part are this plugin's by
         // their attributes (Plugin = "sage.gameplay.factions"); generated code registers them (#16, #17).
+        BridgeIO.RegisterFactions(ctx.Engine);      // SetFaction (issue #91)
 
         ctx.Engine.CVars.RegisterCommand("rep", CVarFlags.None,
             "What every faction thinks of you, and what that makes them.", _ =>
