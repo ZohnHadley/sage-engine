@@ -158,7 +158,7 @@ public class PrefabPartTests
         using var app = HeadlessApp.ForGame(SandboxDirectory, new Sandbox.SandboxModule()).Build();
         var expected = new Dictionary<string, string>
         {
-            ["abilities"] = "sage.gameplay.abilities", ["attributes"] = "sage.gameplay.attributes",
+            ["abilities"] = "sage.gameplay.abilities", ["animator"] = "sage.core", ["attributes"] = "sage.gameplay.attributes",
             ["body"] = "sage.physics3d", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
             ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
             ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
@@ -181,6 +181,7 @@ public class PrefabPartTests
         Assert.True(order.IndexOf("attributes") < order.IndexOf("effects"));
         Assert.True(order.IndexOf("sprite") < order.IndexOf("pickup"));
         Assert.True(order.IndexOf("body") < order.IndexOf("pickup"));
+        Assert.True(order.IndexOf("skinned_mesh") < order.IndexOf("animator"));
         Assert.Equal(new[] { "abilities", "attributes", "body", "camera", "character" }, order.Take(5));
     }
 

@@ -114,7 +114,7 @@ public class VocabularyDeclarationTests
         using var app = HeadlessApp.Bare().Build();
         var entries = app.Engine.Vocabularies.All.SelectMany(v => v.Entries.Select(e => (v.Name, e.Id, e.Owner))).ToList();
         Assert.All(entries, e => Assert.Equal("sage.core", e.Owner));
-        Assert.Equal(new[] { "action:add_var", "action:fire", "action:set_var", "condition:all", "condition:any", "condition:not", "condition:var" },
+        Assert.Equal(new[] { "action:add_var", "action:fire", "action:set_var", "condition:all", "condition:anim_param", "condition:any", "condition:not", "condition:var" },
                      entries.Select(e => $"{e.Name}:{e.Id}").OrderBy(e => e, System.StringComparer.Ordinal));
     }
 }

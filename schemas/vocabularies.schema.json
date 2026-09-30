@@ -2269,10 +2269,11 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, var.",
+      "description": "A condition by id: all, anim_param, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, var.",
       "type": "string",
       "enum": [
         "All",
+        "AnimParam",
         "Any",
         "HasItem",
         "HasTag",
@@ -2283,6 +2284,7 @@
         "Standing",
         "Var",
         "all",
+        "anim_param",
         "any",
         "has_item",
         "has_tag",
@@ -2364,6 +2366,59 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'all' (AllCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "anim_param",
+                      "AnimParam"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: anim_param.",
+                    "enum": [
+                      "anim_param",
+                      "AnimParam"
+                    ]
+                  },
+                  "eq": {
+                    "description": "The value it must equal (leave out for any) (float?)",
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max": {
+                    "description": "The most it may be. (float)",
+                    "type": "number"
+                  },
+                  "min": {
+                    "description": "The least it may be. (float)",
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "The animator param to test. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'anim_param' (AnimParamCondition)."
               }
             },
             {
@@ -2947,6 +3002,152 @@
           },
           "required": [
             "All"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "anim_param": {
+              "anyOf": [
+                {
+                  "description": "The animator param to test. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The animator param to test. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "eq": {
+                      "description": "The value it must equal (leave out for any) (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "The least it may be. (float)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "The most it may be. (float)",
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'anim_param' (AnimParamCondition), in shorthand."
+            },
+            "eq": {
+              "description": "The value it must equal (leave out for any) (float?)",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "max": {
+              "description": "The most it may be. (float)",
+              "type": "number"
+            },
+            "min": {
+              "description": "The least it may be. (float)",
+              "type": "number"
+            },
+            "name": {
+              "description": "The animator param to test. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "anim_param"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "AnimParam": {
+              "anyOf": [
+                {
+                  "description": "The animator param to test. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "The animator param to test. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "eq": {
+                      "description": "The value it must equal (leave out for any) (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "The least it may be. (float)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "The most it may be. (float)",
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'anim_param' (AnimParamCondition), in shorthand."
+            },
+            "eq": {
+              "description": "The value it must equal (leave out for any) (float?)",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "max": {
+              "description": "The most it may be. (float)",
+              "type": "number"
+            },
+            "min": {
+              "description": "The least it may be. (float)",
+              "type": "number"
+            },
+            "name": {
+              "description": "The animator param to test. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "AnimParam"
           ],
           "additionalProperties": false
         },
