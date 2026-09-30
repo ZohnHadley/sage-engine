@@ -11,7 +11,7 @@ namespace Sage.Generators;
 // SAGE0020: a registration made after the Register stage (docs/REDESIGN.md §3.4, issue #19).
 //
 // A module registers what it adds — cvars, commands, input actions, entity inputs, record types, prefab
-// parts, saved resources — in Init. SageApp seals each registry at the stage after which registering
+// parts, saved resources, render passes (issue 4h-1) — in Init. SageApp seals each registry at the stage after which registering
 // would be too late (RegistrationSeal, issue #12), so a late one already throws at run time; this moves
 // the plain cases to the build:
 //
@@ -55,6 +55,8 @@ public sealed class RegistrationStageAnalyzer : DiagnosticAnalyzer
             "vocabularies are sealed when content loads, and the records naming it were read without it"),
         (SageTypes.ModuleManager, "Add", "a module",
             "modules are sealed once Init has run, so it would never run Init"),
+        (SageTypes.RenderPassRegistry, "Add", "a render pass",
+            "render passes are sealed and ordered when the client starts, so it would never draw"),
     };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Late);

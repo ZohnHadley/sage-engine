@@ -87,6 +87,28 @@ public class AnalyzerTests
         Assert.Contains(diagnostics, d => d.GetMessage().Contains("SaveSystem.RegisterResource registers a saved resource in Probe.Run"));
     }
 
+    // A render pass (issue 4h-1) is ordered when the client starts: added in Start it would never draw.
+    // The client's RenderPasses derives from the registry, which is what the rule names.
+    [Fact]
+    public void AddingARenderPassAfterInitIsABuildError()
+    {
+        var diagnostics = Analyze(Usings + "\n" + """
+            #pragma warning disable SAGE0130
+            public sealed class Passes : RenderPassRegistry<object> { }
+            [RenderPass("game:outline", RenderStage.Opaque)] public sealed class Outline { }
+            public sealed class M : IModule
+            {
+                private readonly Passes _passes = new();
+                public void Init(ModuleContext ctx) => _passes.Add(new Outline());
+                public void Start(ModuleContext ctx) => _passes.Add(new Outline());
+            }
+            """, new RegistrationStageAnalyzer());
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("SAGE0020", d.Id);
+        Assert.Contains("RenderPassRegistry.Add registers a render pass in M.Start", d.GetMessage());
+        Assert.Contains("render passes are sealed and ordered when the client starts", d.GetMessage());
+    }
+
     [Fact]
     public void RegisteringInInitIsNotAnError()
     {
