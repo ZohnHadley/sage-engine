@@ -21,7 +21,7 @@ public class SchemaTests
 
     private static SchemaValidator Validator() => new(Committed);
 
-    // What `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut` writes, less the client halves'
+    // What `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics` writes, less the client halves'
     // parts: the tests cannot load Sage.Client (it is MonoGame), so its `audio` and `particles` and the Sandbox's
     // `box_mesh` are named but not described here.
     private static SortedDictionary<string, string> Generate(params (string Directory, string Namespace)[] mounts)
@@ -31,7 +31,9 @@ public class SchemaTests
         foreach (var (game, module) in new (string, IGameModule?)[] { ("games/Sandbox", new Sandbox.SandboxModule()),
                                                                       ("games/Hello", new Hello.HelloModule()),
                                                                       ("tests/games/scene-only", null),
-                                                                      ("tests/games/camera-cut", null) })
+                                                                      ("tests/games/camera-cut", null),
+                                                                      ("tests/games/scripted-sequence", null),
+                                                                      ("tests/games/topics", null) })
         {
             var report = ContentValidation.Run(new ValidateOptions
             {
@@ -215,7 +217,7 @@ public class SchemaTests
             string disk = File.ReadAllText(Path.Combine(Committed, name));
             if (name != RecordSchemas.Parts)
             {
-                Assert.True(disk == text, $"schemas/{name} is stale: run `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut --out schemas` (README)");
+                Assert.True(disk == text, $"schemas/{name} is stale: run `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics --out schemas` (README)");
                 continue;
             }
             // The parts file differs only by the client parts this process cannot read.

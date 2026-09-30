@@ -595,7 +595,7 @@ with every id the content loaded — mods included when you mount them:
 
 ```bash
 dotnet build Sage.sln -c Development -p:SageSkipShaders=true
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut --out schemas   # this repository's
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics --out schemas   # this repository's
 src/Sage.Cli/bin/Development/net8.0/sage schema games/YourGame --mounts mods/better_swords=swords --out schemas
 ```
 
@@ -742,6 +742,13 @@ half (issue #90). Your own kind is a prefab with the two parts, `camera` (`"enab
 priority above your rig's) and `scripted_camera` (`holdTime`, the default hold; `lockInput`; `blendTime`
 and `blendEase`, the default blend, which is none). `tests/games/camera-cut` is a game with
 no C# that does both kinds of cut.
+
+Two more games with no C# show phase 4b's logic. `tests/games/scripted-sequence` is a Half-Life-style
+sequence written only as wiring in a scene: a trigger opens a door (`Open`), the door's `OnFullyOpen`
+raises a lift, the lift's `OnFullyOpen` fires `StartDialogue` at an NPC and every step `Add`s to a
+`logic_counter` whose `OnHitMax` (at 3) fires a `logic_relay` that runs its `then` and says a line.
+`tests/games/topics` has one conditional `dialogue_topic`: the first `info` whose `requires` holds
+answers, and a relay in the scene raises the var that changes the answer. Copy either as a start.
 The Sandbox has one too: the path to the hut (`hut_path` and `hut_cam` in its `scene.json`), on a physics
 layer only the player touches so nothing else fires it.
 

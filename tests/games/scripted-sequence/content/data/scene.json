@@ -1,0 +1,71 @@
+[
+  { "type": "prefab", "id": "trigger_zone", "name": "trigger zone", "parts": { "body": { "size": [4, 3, 2], "trigger": true } } },
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } },
+  { "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } },
+
+  // The door slides two metres aside over a second; the lift rises three over two seconds.
+  { "type": "prefab", "id": "door", "name": "door", "parts": { "body": { "size": [2, 3, 0.2] }, "mover": { "open": [2, 0, 0], "seconds": 1 } } },
+  { "type": "prefab", "id": "lift", "name": "lift", "parts": { "body": { "size": [2, 0.2, 2] }, "mover": { "open": [0, 3, 0], "seconds": 2 } } },
+
+  // The NPC: a speaker with a dialogue record, which StartDialogue opens.
+  { "type": "prefab", "id": "keeper", "name": "keeper", "parts": { "dialogue": "keeper_talk" } },
+  {
+    "type": "dialogue", "id": "keeper_talk",
+    "nodes": [ { "id": "greet", "text": "The way up is open.", "options": [ { "text": "Thanks.", "end": true } ] } ]
+  },
+
+  // A counter that stops at three, and a relay that notes, in a var, that it fired.
+  { "type": "prefab", "id": "steps", "name": "steps", "parts": { "logic_counter": { "min": 0, "max": 3 } } },
+  { "type": "prefab", "id": "finale", "name": "finale", "parts": { "logic_relay": { "then": [ { "add_var": "sequence_done" } ] } } },
+
+  {
+    "type": "scene",
+    "id": "hall",
+    "player": { "prefab": "player", "at": [0, 0.1, 12] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+
+      // 1. The trigger: a crate falls through it as the game starts. It opens the door and counts a step.
+      {
+        "prefab": "trigger_zone", "at": [10, 1.5, 0], "name": "plate",
+        "outputs": [
+          { "output": "OnStartTouch", "target": "door", "input": "Open", "times": 1 },
+          { "output": "OnStartTouch", "target": "steps", "input": "Add", "times": 1 }
+        ]
+      },
+      { "prefab": "crate", "at": [10, 4, 0], "name": "falling crate" },
+
+      // 2. The door opens; its OnFullyOpen chains to the lift and counts a step.
+      {
+        "prefab": "door", "at": [-6, 1.5, 0], "name": "door",
+        "outputs": [
+          { "output": "OnFullyOpen", "target": "lift", "input": "Open" },
+          { "output": "OnFullyOpen", "target": "steps", "input": "Add" }
+        ]
+      },
+
+      // 3. The lift rises; arriving, it has the keeper speak and counts the third step.
+      {
+        "prefab": "lift", "at": [-10, 0.1, 0], "name": "lift",
+        "outputs": [
+          { "output": "OnFullyOpen", "target": "keeper", "input": "StartDialogue" },
+          { "output": "OnFullyOpen", "target": "steps", "input": "Add" }
+        ]
+      },
+
+      // 4. The NPC.
+      { "prefab": "keeper", "at": [-10, 3.2, 0], "name": "keeper" },
+
+      // 5. The counter reaches 3 and fires the relay, which says so.
+      {
+        "prefab": "steps", "at": [0, 0, 0], "name": "steps",
+        "outputs": [ { "output": "OnHitMax", "target": "finale", "input": "Trigger" } ]
+      },
+      {
+        "prefab": "finale", "at": [0, 0, 0], "name": "finale",
+        "outputs": [ { "output": "OnTrigger", "target": "!self", "input": "Say", "parameter": "The sequence is done." } ]
+      }
+    ]
+  }
+]
