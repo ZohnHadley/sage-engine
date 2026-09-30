@@ -46,6 +46,8 @@ public sealed class Engine : IDisposable
         Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Components), (key, body, ns) =>
             Components.TryResolveComponent(key, ns, out var type, out _) ? type : null);
         Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Parts), (key, body, _) => PrefabChecks.BodyType(Prefabs, key, body));
+        // Sockets name a model and a joint (issue #120).
+        Records.AddCheck<SkeletonSocketsRecord>(BoneAttachments.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the
@@ -147,6 +149,11 @@ public sealed class Engine : IDisposable
             world.AddSystem(new LogicTimerSystem(world));         // sage:timer and sage:tween (issue #90)
             world.AddSystem(new TweenSystem(world));
             world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
+            // Skeletal poses and what follows them (issue #120): whoever animates a skeleton registers
+            // its pose here; aim IK and bone attachments adjust and follow it in the Late phase.
+            world.Resources.Add(new SkeletonPoses());
+            world.AddSystem(new AimIkSystem(world));
+            world.AddSystem(new AttachmentSystem(world));
         }
         finally { Registrations.Owner = "host"; }
 
