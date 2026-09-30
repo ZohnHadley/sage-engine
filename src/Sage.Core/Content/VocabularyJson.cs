@@ -9,7 +9,8 @@ namespace Sage.Core;
 // Reads a vocabulary entry from content (issue #28): a bare id (`"consume"`) or an object naming it
 // under the vocabulary's key with its settings beside it (`{ "use": "heal", "amount": 25 }`). The rest
 // of the object is read as the registered type, with the same strictness as any record: a field the
-// entry does not have is an error that says the nearest one it does (issue #22).
+// entry does not have is an error that says the nearest one it does (issue #22). A vocabulary with
+// `Shorthand` also reads `{ "<id>": value, …settings }` (issue #89, Vocabulary.Expand).
 //
 // The Engine adds one of these to the record store's options, over its own Vocabularies, so every
 // field typed as a vocabulary (an interface or abstract class marked [Vocabulary]) reads this way.
@@ -47,6 +48,8 @@ internal sealed class VocabularyJsonConverter<TEntry> : JsonConverter<TEntry> wh
         }
 
         var obj = (JsonObject)JsonNode.Parse(ref reader)!;
+        // `{ "has_item": "key_iron" }`: the shorthand, read as its long form (issue #89).
+        if (_vocabulary.Expand(obj) is { } expanded) obj = expanded;
         string? id;
         string? keyName = null;
         foreach (var (name, _) in obj)
@@ -59,8 +62,7 @@ internal sealed class VocabularyJsonConverter<TEntry> : JsonConverter<TEntry> wh
         }
         else
         {
-            id = _vocabulary.Default
-                 ?? throw new JsonException($"a {_vocabulary.Name} needs \"{_vocabulary.Key}\": one of {string.Join(", ", _vocabulary.Ids)}");
+            id = _vocabulary.Default ?? throw new JsonException(_vocabulary.NoEntry(obj));
         }
 
         var entry = Find(id!);
