@@ -32,6 +32,7 @@
             "cue",
             "damage_type",
             "dialogue",
+            "dialogue_topic",
             "effect",
             "faction",
             "gameplay_conventions",
@@ -176,6 +177,21 @@
           },
           "then": {
             "$ref": "dialogue.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "dialogue_topic"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "dialogue_topic.schema.json"
           }
         },
         {

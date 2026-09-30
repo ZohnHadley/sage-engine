@@ -186,9 +186,10 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_var, apply_effect, change_standing, finish_quest, fire, give_item, set_stage, set_var, start_quest, take_item.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, finish_quest, fire, give_item, set_stage, set_var, start_quest, take_item.",
       "type": "string",
       "enum": [
+        "AddTopic",
         "AddVar",
         "ApplyEffect",
         "ChangeStanding",
@@ -199,6 +200,7 @@
         "SetVar",
         "StartQuest",
         "TakeItem",
+        "add_topic",
         "add_var",
         "apply_effect",
         "change_standing",
@@ -228,6 +230,43 @@
             "action"
           ],
           "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "add_topic",
+                      "AddTopic"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: add_topic.",
+                    "enum": [
+                      "add_topic",
+                      "AddTopic"
+                    ]
+                  },
+                  "topic": {
+                    "description": "The topic the listener learns. Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'add_topic' (AddTopicAction)."
+              }
+            },
             {
               "if": {
                 "properties": {
@@ -643,6 +682,94 @@
               }
             }
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "add_topic": {
+              "anyOf": [
+                {
+                  "description": "The topic the listener learns. Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "topic": {
+                      "description": "The topic the listener learns. Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'add_topic' (AddTopicAction), in shorthand."
+            },
+            "topic": {
+              "description": "The topic the listener learns. Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                }
+              ]
+            }
+          },
+          "required": [
+            "add_topic"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "AddTopic": {
+              "anyOf": [
+                {
+                  "description": "The topic the listener learns. Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "topic": {
+                      "description": "The topic the listener learns. Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'add_topic' (AddTopicAction), in shorthand."
+            },
+            "topic": {
+              "description": "The topic the listener learns. Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                }
+              ]
+            }
+          },
+          "required": [
+            "AddTopic"
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -2142,7 +2269,7 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, any, has_item, has_tag, lacks_tag, not, quest, standing, var.",
+      "description": "A condition by id: all, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, var.",
       "type": "string",
       "enum": [
         "All",
@@ -2152,6 +2279,7 @@
         "LacksTag",
         "Not",
         "Quest",
+        "Speaker",
         "Standing",
         "Var",
         "all",
@@ -2161,6 +2289,7 @@
         "lacks_tag",
         "not",
         "quest",
+        "speaker",
         "standing",
         "var"
       ]
@@ -2511,6 +2640,56 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'quest' (QuestCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "speaker",
+                      "Speaker"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: speaker.",
+                    "enum": [
+                      "speaker",
+                      "Speaker"
+                    ]
+                  },
+                  "dialogue": {
+                    "description": "The speaker's dialogue record (its sage:dialogue component) Names a dialogue record. (RecordRef<DialogueRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:dialogue"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "description": "Or the speaker's entity name. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "prefab": {
+                    "description": "Or the prefab it was spawned from. Names a prefab record. (RecordRef<PrefabRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:prefab"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'speaker' (SpeakerCondition)."
               }
             },
             {
@@ -3454,6 +3633,146 @@
           },
           "required": [
             "Quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dialogue": {
+              "description": "The speaker's dialogue record (its sage:dialogue component) Names a dialogue record. (RecordRef<DialogueRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:dialogue"
+                }
+              ]
+            },
+            "name": {
+              "description": "Or the speaker's entity name. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "prefab": {
+              "description": "Or the prefab it was spawned from. Names a prefab record. (RecordRef<PrefabRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:prefab"
+                }
+              ]
+            },
+            "speaker": {
+              "anyOf": [
+                {
+                  "description": "The speaker's dialogue record (its sage:dialogue component) Names a dialogue record. (RecordRef<DialogueRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:dialogue"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "dialogue": {
+                      "description": "The speaker's dialogue record (its sage:dialogue component) Names a dialogue record. (RecordRef<DialogueRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:dialogue"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "description": "Or the speaker's entity name. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "prefab": {
+                      "description": "Or the prefab it was spawned from. Names a prefab record. (RecordRef<PrefabRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:prefab"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'speaker' (SpeakerCondition), in shorthand."
+            }
+          },
+          "required": [
+            "speaker"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Speaker": {
+              "anyOf": [
+                {
+                  "description": "The speaker's dialogue record (its sage:dialogue component) Names a dialogue record. (RecordRef<DialogueRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:dialogue"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "dialogue": {
+                      "description": "The speaker's dialogue record (its sage:dialogue component) Names a dialogue record. (RecordRef<DialogueRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:dialogue"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "description": "Or the speaker's entity name. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "prefab": {
+                      "description": "Or the prefab it was spawned from. Names a prefab record. (RecordRef<PrefabRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:prefab"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'speaker' (SpeakerCondition), in shorthand."
+            },
+            "dialogue": {
+              "description": "The speaker's dialogue record (its sage:dialogue component) Names a dialogue record. (RecordRef<DialogueRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:dialogue"
+                }
+              ]
+            },
+            "name": {
+              "description": "Or the speaker's entity name. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "prefab": {
+              "description": "Or the prefab it was spawned from. Names a prefab record. (RecordRef<PrefabRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:prefab"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Speaker"
           ],
           "additionalProperties": false
         },

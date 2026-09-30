@@ -1,0 +1,25 @@
+// Topics, Morrowind's way of talking (docs/design/16 "As built (dialogue topics)", issue #93): a keyword
+// whose answer is the first info whose `requires` holds, asked of whoever you talk to. The RPG kit's
+// topics screen is #98; until it lands these are content the validator and `sage schema` read, and
+// DialogueTopics answers headlessly.
+[
+  {
+    "type": "dialogue_topic",
+    "id": "the_watchers",
+    "keyword": "the watchers",
+    "known": true,
+    "infos": [
+      { "requires": { "quest": "thin_the_wood", "finished": true }, "text": "Quieter, since you went down there." },
+      { "requires": { "standing": "hermits", "min": 40 }, "text": "They hunt by the lanterns. Stay out of the light.",
+        "then": [ { "add_topic": "the_lanterns" } ] },
+      { "requires": { "speaker": "hermit_talk" }, "text": "Beasts. Leave them be, or thin them." },
+      { "text": "I would not go into the wood." }
+    ]
+  },
+  {
+    "type": "dialogue_topic",
+    "id": "the_lanterns",
+    "keyword": "the lanterns",
+    "infos": [ { "requires": { "speaker": "hermit_talk" }, "text": "Somebody lit them. Not me." } ]
+  }
+]

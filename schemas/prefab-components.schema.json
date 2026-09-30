@@ -172,6 +172,14 @@
         }
       ]
     },
+    "known_topics": {
+      "description": "The component sage:known_topics (KnownTopics), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:known_topics"
+        }
+      ]
+    },
     "map_geometry": {
       "description": "The component sage:map_geometry (MapGeometry), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -441,6 +449,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:io_connections"
+        }
+      ]
+    },
+    "sage:known_topics": {
+      "description": "Component sage:known_topics (KnownTopics).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:known_topics"
         }
       ]
     },
@@ -1762,6 +1778,34 @@
       },
       "additionalProperties": false,
       "description": "Component sage:io_connections (IOConnections)."
+    },
+    "sage:known_topics": {
+      "type": "object",
+      "properties": {
+        "topics": {
+          "description": "The dialogue_topic records it has learnt. (List<RecordId>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        },
+        "topics+": {
+          "description": "Adds to \"topics\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        },
+        "topics-": {
+          "description": "Removes these from \"topics\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:known_topics (KnownTopics)."
     },
     "sage:map_geometry": {
       "type": "object",

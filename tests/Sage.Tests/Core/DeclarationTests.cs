@@ -37,7 +37,7 @@ public class DeclarationTests
             ["effect"] = "sage.gameplay.attributes", ["gameplay_conventions"] = "sage.gameplay.attributes",
             ["movement_profile"] = "sage.gameplay.character",
             ["attack"] = "sage.gameplay.combat", ["damage_type"] = "sage.gameplay.combat",
-            ["dialogue"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
+            ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
             ["map"] = "sage.maps",
