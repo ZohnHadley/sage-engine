@@ -24,7 +24,7 @@ Not in scope: pass order and sorting (06), loading `.mgfxo` files as assets (05)
 ### 3.1 Source layout and compile
 ```
 engine_content/shaders/
-  common.fxh          frame params, lighting, fog, alpha test, (later) skinning, billboard expansion
+  common.fxh          frame params, lighting, fog, alpha test, skinning (#117), (later) billboard expansion
   lit.fx              meshes and terrain: techniques Default, AlphaTest, Unlit
   sprite.fx           billboard sprites: techniques Unlit, Lit (both alpha-tested), UnlitBlend
   debug.fx            DebugDraw lines/shapes (vertex colour)
@@ -39,7 +39,7 @@ Instead of compiling permutations from a define matrix, each `.fx` declares a **
 
 | Effect | Techniques (v1) | Later |
 |---|---|---|
-| `lit.fx` | `Default` (lit, opaque), `AlphaTest`, `Unlit` | `Lightmapped`, `Skinned`, `Instanced` |
+| `lit.fx` | `Default` (lit, opaque), `AlphaTest`, `Unlit`; `Skinned` since #117 (§3.7) | `Lightmapped`, `Instanced` |
 | `sprite.fx` | `Unlit` (alpha-tested, fog), `Lit` (alpha-tested, nearest lights + fog), `UnlitBlend` (transparent) | `Instanced` |
 
 Fog isn't a variant: it's always evaluated, and `r_fog 0` or a material's `fog: false` sets its density to 0. That's one multiply-add per pixel, cheaper than doubling the technique count.
@@ -80,7 +80,7 @@ Three tiers, all resolved **once** into cached `EffectParameter` references (nev
 |---|---|---|
 | Frame / view | `ViewProj`, `Time`, `FogColor`, `FogParams`, `SunDir`, `SunColor`, `AmbientSky`, `AmbientGround`, `CameraRight`, `CameraUp` | once per effect per view (when the effect first appears in the sorted list) |
 | Material | the material's `params` (textures, scalars) | when the material changes between draws (sorting keeps this rare) |
-| Object | `World`, `Tint`, `LightPositions[4]`, `LightColors[4]`, `LightCount` | per draw (or per instance, later) |
+| Object | `World`, `Tint`, `LightPositions[4]`, `LightColors[4]`, `LightCount`; `Bones[64]` for skinned draws (§3.7) | per draw (or per instance, later) |
 
 `MaterialRuntime` (client) is built from a material record plus its loaded effect:
 - the resolved `EffectTechnique`;
@@ -95,7 +95,8 @@ The shared include defines:
 - the frame/object parameter names above, so all engine and game effects bind the same way;
 - `ApplyFog(color, viewDepth)`, `HemiAmbient(normal)`, `SunLight(normal)`, `PointLights(normal, relative)` — `relative` being the camera-relative position the lights are given in, so the distance costs one subtraction;
 - `AlphaTest(alpha)` (calls `clip`);
-- later: `SkinPosition` and billboard corner expansion (for instancing).
+- `SkinMatrix(indices, weights)`, `SkinPosition(position, skin)` and `SkinNormal(normal, skin)` over the object-tier `Bones` palette (§3.7);
+- later: billboard corner expansion (for instancing).
 
 Game shaders that include it get lighting and fog consistent with engine materials.
 
@@ -111,6 +112,12 @@ Game shaders that include it get lighting and fog consistent with engine materia
   - **`AlbedoColor`:** `lit.fx` has a material-tier `AlbedoColor` that multiplies the texture (so materials can tint without a texture).
   - **Point lights (2026-09-24):** `LightPositions`/`LightColors`/`LightCount` are object-tier, set per draw by `EffectBinding.SetLights` from the four `LightRules.Nearest` picked (06 §3.9). `LightColors.a` carries the range, so one `float4` array does the work of two. An effect without the parameters (`debug.fx`) simply has nothing set — `SetLights` returns when `LightCount` is absent, which is how the same draw loop serves lit and unlit effects. `lit.fx`'s `Default` and `AlphaTest` techniques use them; `sprite.fx`'s `Lit` does not yet.
 - **Textures:** `.png`/`.jpg` load through the VFS with `Texture2D.FromStream` and are premultiplied on load (§13). A missing one becomes a magenta/black checker, with a warning.
+
+### 3.7 As built (GPU skinning, issue #117)
+- **Technique:** `lit.fx` `Skinned` is `Default` with a skinning vertex shader (`VSSkinned`): the vertex's four `BLENDINDICES0` joints' palette entries blended by `BLENDWEIGHT0`, then `World` and `ViewProj` as for any mesh; the pixel shader is `PSDefault`, so a skinned mesh is lit and fogged exactly like a rigid one. It compiles with mgfxc under Wine on Linux and natively on Windows CI.
+- **Palette:** `float4x3 Bones[64]` in `common.fxh` — 192 of vs_3_0's 256 constant registers, the reason a draw takes at most `SkinMath.MaxBones` = 64 joints; a skin with more is drawn with its first 64 and a warning (test: MoreJointsThanADrawTakes_AreCutToMaxBones_WithAWarning). `Bones` is an engine parameter (`EffectBinding.EngineParams`), set per skinned draw from `RenderSnapshot.Bones`; materials never supply it.
+- **Which technique:** a skinned item draws with its material's effect's `Skinned` technique (`MaterialRuntime.Skinned`), whatever technique the material names, so `sage:lit_default` and every material based on it skin with no change. An effect without `Skinned` draws the mesh in its bind pose with the material's own technique (the skinned vertex starts with the rigid vertex's three elements), logged once per material.
+- **Maths:** `SkinMath` (Sage.Simulation) is the shader's maths on the CPU: `palette[j] = inverseBind[j] * modelJoint[j]` in row-vector order (test: Palette_IsInverseBindThenJoint_InRowVectorOrder), an identity palette in the bind pose (test: TheBindPose_GivesAnIdentityPalette), and `SkinPosition`/`SkinNormal` as `SkinMatrix`/`SkinPosition`/`SkinNormal` compute them (test: AJointTurned90Degrees_CarriesItsVertices_AroundIt). The rest is in 12 §3 "As built (GPU skinning)".
 
 ## 4. Public API sketch
 
@@ -198,7 +205,7 @@ dev:     .fx saved ─► watcher runs dotnet-mgfxc ─► success: Effect repla
   - `MaterialCache` with three-tier binding;
   - hot reload;
   - validation of missing params.
-- **Later:** `Lightmapped`, `Skinned`, `Instanced` techniques; point-lit sprites; terrain splat shader (with 14); per-entity parameter blocks; DirectX/Vulkan profiles when switching MonoGame backends.
+- **Later:** `Lightmapped`, `Instanced` techniques (`Skinned` is built, §3.7); point-lit sprites; terrain splat shader (with 14); per-entity parameter blocks; DirectX/Vulkan profiles when switching MonoGame backends.
 
 ## 12. Multiplayer-later notes
 None. Materials are client-only.
