@@ -39,7 +39,7 @@ lost or changed something, or a record, component or save format changed without
 ## 2. The public API is declared
 
 Every assembly a game, kit or mod compiles against — `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D`,
-`Sage.Gameplay`, `Sage.Client`, `Sage.Kits.Rpg`, `Sage.Kits.Rpg.Client` — keeps its public API in two
+`Sage.Gameplay`, `Sage.UI`, `Sage.Client`, `Sage.Kits.Rpg`, `Sage.Kits.Rpg.Client` — keeps its public API in two
 files beside its `.csproj`:
 
 - **`PublicAPI.Shipped.txt`**: what a released version had.

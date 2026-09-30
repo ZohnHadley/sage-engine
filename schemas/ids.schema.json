@@ -258,7 +258,9 @@
       "description": "The id of a prefab record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "beacon",
         "bunny",
+        "cameracut:beacon",
         "cameracut:crate",
         "cameracut:floor",
         "cameracut:player",
@@ -654,7 +656,9 @@
       "description": "Another prefab record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "beacon",
         "bunny",
+        "cameracut:beacon",
         "cameracut:crate",
         "cameracut:floor",
         "cameracut:player",
