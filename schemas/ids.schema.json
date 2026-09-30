@@ -96,8 +96,12 @@
       "description": "The id of a dialogue record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "ferryman_talk",
         "hermit_talk",
-        "sandbox:hermit_talk"
+        "keeper_talk",
+        "sandbox:hermit_talk",
+        "scriptedsequence:keeper_talk",
+        "topicsgame:ferryman_talk"
       ]
     },
     "record:dialogue_topic": {
@@ -107,7 +111,9 @@
         "sandbox:the_lanterns",
         "sandbox:the_watchers",
         "the_lanterns",
-        "the_watchers"
+        "the_river",
+        "the_watchers",
+        "topicsgame:the_river"
       ]
     },
     "record:effect": {
@@ -279,6 +285,8 @@
         "crate",
         "door",
         "fence",
+        "ferryman",
+        "finale",
         "fireball_bolt",
         "firebug",
         "floor",
@@ -287,6 +295,8 @@
         "hermit",
         "hopper",
         "hut_path",
+        "keeper",
+        "lift",
         "light",
         "logic_branch",
         "logic_compare",
@@ -296,6 +306,7 @@
         "math_remap",
         "player",
         "player_camera",
+        "rain",
         "sage:logic_branch",
         "sage:logic_compare",
         "sage:logic_counter",
@@ -324,7 +335,20 @@
         "sceneonly:floor",
         "sceneonly:player",
         "scripted_camera",
+        "scriptedsequence:crate",
+        "scriptedsequence:door",
+        "scriptedsequence:finale",
+        "scriptedsequence:floor",
+        "scriptedsequence:keeper",
+        "scriptedsequence:lift",
+        "scriptedsequence:player",
+        "scriptedsequence:steps",
+        "scriptedsequence:trigger_zone",
+        "steps",
         "sword_pickup",
+        "topicsgame:ferryman",
+        "topicsgame:player",
+        "topicsgame:rain",
         "tree",
         "trigger_zone",
         "watcher"
@@ -349,12 +373,16 @@
       "enum": [
         "cameracut:courtyard",
         "courtyard",
+        "ferry",
+        "hall",
         "hello:main",
         "main",
         "sandbox:main",
         "sceneonly:shed",
         "sceneonly:yard",
+        "scriptedsequence:hall",
         "shed",
+        "topicsgame:ferry",
         "yard"
       ]
     },
@@ -534,8 +562,12 @@
       "description": "Another dialogue record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "ferryman_talk",
         "hermit_talk",
-        "sandbox:hermit_talk"
+        "keeper_talk",
+        "sandbox:hermit_talk",
+        "scriptedsequence:keeper_talk",
+        "topicsgame:ferryman_talk"
       ]
     },
     "base:dialogue_topic": {
@@ -545,7 +577,9 @@
         "sandbox:the_lanterns",
         "sandbox:the_watchers",
         "the_lanterns",
-        "the_watchers"
+        "the_river",
+        "the_watchers",
+        "topicsgame:the_river"
       ]
     },
     "base:effect": {
@@ -718,6 +752,8 @@
         "creature",
         "door",
         "fence",
+        "ferryman",
+        "finale",
         "fireball_bolt",
         "firebug",
         "floor",
@@ -726,6 +762,8 @@
         "hermit",
         "hopper",
         "hut_path",
+        "keeper",
+        "lift",
         "light",
         "logic_branch",
         "logic_compare",
@@ -735,6 +773,7 @@
         "math_remap",
         "player",
         "player_camera",
+        "rain",
         "sage:logic_branch",
         "sage:logic_compare",
         "sage:logic_counter",
@@ -764,7 +803,20 @@
         "sceneonly:floor",
         "sceneonly:player",
         "scripted_camera",
+        "scriptedsequence:crate",
+        "scriptedsequence:door",
+        "scriptedsequence:finale",
+        "scriptedsequence:floor",
+        "scriptedsequence:keeper",
+        "scriptedsequence:lift",
+        "scriptedsequence:player",
+        "scriptedsequence:steps",
+        "scriptedsequence:trigger_zone",
+        "steps",
         "sword_pickup",
+        "topicsgame:ferryman",
+        "topicsgame:player",
+        "topicsgame:rain",
         "tree",
         "trigger_zone",
         "watcher"
@@ -789,12 +841,16 @@
       "enum": [
         "cameracut:courtyard",
         "courtyard",
+        "ferry",
+        "hall",
         "hello:main",
         "main",
         "sandbox:main",
         "sceneonly:shed",
         "sceneonly:yard",
+        "scriptedsequence:hall",
         "shed",
+        "topicsgame:ferry",
         "yard"
       ]
     },

@@ -1156,6 +1156,16 @@ reload that names a state the machine has lost goes back to `initial` with a war
 (test: StateMachinesAllocateNothingPerTick). `StateTransition` and `StateMachines.FirstTransition` are
 the rules 4d's animation graph can step with. SAGE0124. Details: docs/design/04 §3.4c.
 
+*As built, 4b (issue #94, 2026-09-30): the exit games.* Phase 4b's exit criterion, "an HL1-style sequence
+(door, lift, NPC line, counter) and a conditional dialogue topic, built in data only", runs in two
+games with no C#, both loaded headlessly by tests. `tests/games/scripted-sequence`: a trigger's
+`OnStartTouch` opens a door, its `OnFullyOpen` raises a lift, the lift's `OnFullyOpen` fires
+`StartDialogue` at an NPC, and every step `Add`s to a `logic_counter` (`max` 3) whose `OnHitMax` fires a
+`logic_relay` (test: ATriggerDoorLiftNpcCounterAndRelayRun_InAGameWithNoCode). `tests/games/topics`: one
+`dialogue_topic` answered by a var a relay sets (test: AConditionalTopicAnswersByAVar_InAGameWithNoCode).
+No engine change was needed. CI validates, schemas and smoke-runs both. Details: docs/design/04 §3.4e
+and 16 "As built (phase 4b's exit games)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |

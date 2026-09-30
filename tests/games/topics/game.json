@@ -1,0 +1,10 @@
+{
+  // One conditional topic with no C# (issue #94, REDESIGN §5 phase 4b): a ferryman answers "the river"
+  // by what the world is like, chosen by the first info whose `requires` holds. A relay in the scene
+  // raises the river (a var), and the answer changes. tests/Sage.Tests/Games/ExitGameTests.cs asks it.
+  "name": "Topics",
+  "id": "topicsgame",
+  "plugins": ["sage.gameplay.character", "sage.gameplay.io", "sage.gameplay.dialogue"],
+  "mounts": ["content"],
+  "scene": "ferry"
+}
