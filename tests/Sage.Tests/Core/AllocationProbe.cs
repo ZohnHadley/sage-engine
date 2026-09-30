@@ -18,6 +18,11 @@ using Assert = Xunit.Assert;
 // failure the message names the scopes that allocated, what was allocated outside every scope, the
 // iterations that allocated, and whether a garbage collection ran meanwhile. Nothing is allocated by
 // the probe between the two readings: the per-iteration buffer is made before, the report after.
+//
+// **The reading is only exact without background GC** (Sage.Tests.csproj turns it off): a background
+// collection started by any thread drops this thread's allocation context without taking its unused
+// bytes off the count (dotnet/runtime#134724), and a loop that allocated nothing reads up to 8 KB.
+// Measure refuses to run in a process that has it on, rather than report such bytes as the code's.
 internal static class AllocationProbe
 {
     public static void AssertNone(int iterations, Action step)
@@ -26,8 +31,14 @@ internal static class AllocationProbe
         if (report.Bytes != 0) Assert.Fail(report.ToString());
     }
 
+    // Workstation GC reports Interactive only when concurrent (background) GC is on.
+    public static bool BackgroundGC => System.Runtime.GCSettings.LatencyMode == System.Runtime.GCLatencyMode.Interactive;
+
     public static Report Measure(int iterations, Action step)
     {
+        if (BackgroundGC)
+            Assert.Fail("Background GC is on in this process, so GC.GetAllocatedBytesForCurrentThread can count bytes nobody " +
+                        "allocated (dotnet/runtime#134724). The test project sets ConcurrentGarbageCollection=false; keep it.");
         var perIteration = new long[iterations];
         var baseline = Profiler.All.ToDictionary(e => e, e => e.AllocatedBytes);
         int gen0 = GC.CollectionCount(0), gen1 = GC.CollectionCount(1), gen2 = GC.CollectionCount(2);
