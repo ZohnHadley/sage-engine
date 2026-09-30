@@ -44,6 +44,7 @@ public class DeclarationTests
             ["physics_layers"] = "sage.physics3d",
             ["prefab"] = RegistrationOwners.Core, ["placements"] = RegistrationOwners.Core,
             ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
+            ["state_machine"] = RegistrationOwners.Core,   // the engine's, like timers (#92)
             ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
             ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
         };
@@ -57,7 +58,7 @@ public class DeclarationTests
     public void APluginThatIsNotLoadedRegistersNothing()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Equal(new[] { "placements", "prefab", "scene" }, app.Records.TypeNames);
+        Assert.Equal(new[] { "placements", "prefab", "scene", "state_machine" }, app.Records.TypeNames);
     }
 
     // Plugin ids on declarations are strings, and one naming a plugin in another assembly (the client)

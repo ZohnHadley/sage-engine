@@ -61,10 +61,20 @@ public sealed class EntityInputs
             Ledger?.Record("entity input", name);
     }
 
-    public bool Has(string name) => _inputs.ContainsKey(name);
+    // A registered input, or a name content listens for (a state machine's `on`, issue #92): what a
+    // wire may send without being an unknown input.
+    public bool Has(string name) => _inputs.ContainsKey(name) || (Heard != null && Heard(name));
     public bool TryGet(string name, out EntityInput handler) => _inputs.TryGetValue(name, out handler!);
     public IEnumerable<string> Names => _inputs.Keys;
+
+    // Inputs content listens for rather than code (issue #92): whether some record hears the name, for
+    // Has; and, as each input arrives, whether the entity it arrives at heard it — called after the
+    // registered handler, if there is one. Set by the engine (StateMachines.Register).
+    internal Func<string, bool>? Heard;
+    internal InputListener? Listener;
 }
+
+internal delegate bool InputListener(World world, string input, in IOContext io);
 
 // Every output the engine and its plugins fire, by name, with what it means (issue #18). An output is
 // a name a wire listens for, so nothing *needs* this list to work — but a mapper does: the FGD, the
@@ -195,7 +205,12 @@ public sealed class EntityIO : ISavedResource
     [Transient] public double Now => Clock(_world);
 
     // Fires an output: every wire on the entity with that name queues its input.
-    public void Fire(World world, Entity source, string output, Entity activator = default)
+    public void Fire(World world, Entity source, string output, Entity activator = default) =>
+        Fire(world, source, output, activator, "");
+
+    // Fires an output with a value: a wire with no parameter of its own hands the value to its input
+    // (Source's rule), so `OnStateChanged` tells a wire the state it changed to (issue #92).
+    public void Fire(World world, Entity source, string output, Entity activator, string value)
     {
         _world ??= world;
         if (source.IsNull || !source.HasComponent<IOConnections>()) return;
@@ -210,7 +225,7 @@ public sealed class EntityIO : ISavedResource
             wire.Fired++;
 
             var target = Resolve(world, wire, source, activator);
-            Queue(target, wire.Input, wire.Parameter, wire.Delay, activator, source, wire.Target);
+            Queue(target, wire.Input, wire.Parameter.Length > 0 ? wire.Parameter : value ?? "", wire.Delay, activator, source, wire.Target);
         }
     }
 
@@ -320,7 +335,8 @@ public sealed class EntityIO : ISavedResource
                 continue;
             }
 
-            if (!inputs.TryGet(pending.Input, out var handler))
+            bool registered = inputs.TryGet(pending.Input, out var handler);
+            if (!registered && inputs.Listener == null)
             {
                 // Logged at load too, but a `ent_fire` typo arrives here.
                 Log.Warn(LogCat.Events, $"I/O: no input called '{pending.Input}' ({World.Describe(target)})");
@@ -332,13 +348,19 @@ public sealed class EntityIO : ISavedResource
                                       + $"{pending.Input}({pending.Parameter})");
 
             DispatchedLastTick++;
-            handler(world, new IOContext
+            var context = new IOContext
             {
                 Self = target,
                 Activator = pending.Activator,
                 Caller = pending.Caller,
                 Parameter = pending.Parameter,
-            });
+            };
+            if (registered) handler(world, context);
+
+            // And whatever listens on the entity (a state machine's `on`, issue #92), if it is still there.
+            bool heard = inputs.Listener != null && world.IsAlive(target) && inputs.Listener(world, pending.Input, in context);
+            if (!registered && !heard)
+                Log.Warn(LogCat.Events, $"I/O: no input called '{pending.Input}' ({World.Describe(target)})");
         }
     }
 
@@ -525,6 +547,12 @@ public static class EntityIOExtensions
     public static void FireOutput(this World world, Entity source, string output, Entity activator = default)
     {
         if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator);
+    }
+
+    // With a value, which a wire with no parameter of its own passes on (EntityIO.Fire).
+    public static void FireOutput(this World world, Entity source, string output, Entity activator, string value)
+    {
+        if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator, value);
     }
 
     // Whether an entity has a wire for this output. What makes a door usable is that using it *does*

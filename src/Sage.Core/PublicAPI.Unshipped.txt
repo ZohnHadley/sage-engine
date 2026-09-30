@@ -9,3 +9,4 @@ Sage.Core.Vocabulary.Shorthand.get -> bool
 Sage.Core.VocabularyAttribute.Shorthand.get -> bool
 Sage.Core.VocabularyAttribute.Shorthand.set -> void
 static Sage.Core.Vocabulary.ValueFieldName(System.Type! type) -> string?
+Sage.Core.RecordStore.Latest<T>() -> System.Collections.Generic.IReadOnlyList<T!>!

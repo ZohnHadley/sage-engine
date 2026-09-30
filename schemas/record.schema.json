@@ -51,6 +51,7 @@
             "screen",
             "sound",
             "sprite_sheet",
+            "state_machine",
             "tag",
             "ui_layout",
             "ui_style",
@@ -462,6 +463,21 @@
           },
           "then": {
             "$ref": "sprite_sheet.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "state_machine"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "state_machine.schema.json"
           }
         },
         {
