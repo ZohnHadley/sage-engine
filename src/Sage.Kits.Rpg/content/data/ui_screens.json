@@ -1,6 +1,6 @@
 [
   // The RPG kit's screens (issue #98): each a `screen` naming its layout and its view-model (the kit's
-  // C#, src/Sage.Kits.Rpg/RpgViewModels.cs), and each layout a flat tree of named nodes (13 "As built
+  // C#, src/Sage.Kits.Rpg/*View.cs), and each layout a flat tree of named nodes (13 "As built
   // (style and layout records)"). A game moves, restyles, retranslates or adds to any node with a patch:
   //   { "type": "ui_layout", "id": "rpg:inventory", "patch": true, "nodes": { "hint": { "visible": false } } }
   //

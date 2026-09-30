@@ -1,0 +1,10 @@
+{
+  // The Sandbox's text (05 §3.7): `@sandbox.<key>` in any record. English only for now.
+  "status": {
+    "title": "Status",
+    "health": "Health",
+    "carrying": { "zero": "Carrying nothing", "one": "Carrying {count} thing", "other": "Carrying {count} things" },
+    "close": "Close",
+    "hint": "Arrows or D-pad move, Enter picks, Esc or C closes"
+  }
+}

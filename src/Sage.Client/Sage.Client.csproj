@@ -25,8 +25,9 @@
     <Using Include="Sage.Physics3D" />
     <Using Include="Sage.Gameplay" />
   </ItemGroup>
-  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the client draws brush maps (SAGE0122, MapLevels) and the views of camera entities (SAGE0123, CameraViews). -->
+  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the client draws brush maps (SAGE0122, MapLevels) and the views of camera entities (SAGE0123, CameraViews),
+       and widget screens (SAGE0125, Sage.UI; #97), whose transitions ease with 4b's curves (SAGE0124). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0122;SAGE0123</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0122;SAGE0123;SAGE0124;SAGE0125</NoWarn>
   </PropertyGroup>
 </Project>

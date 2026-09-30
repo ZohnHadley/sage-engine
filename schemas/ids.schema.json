@@ -367,11 +367,6 @@
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
-    "record:rpg_item": {
-      "description": "The id of a rpg_item record (none is loaded).",
-      "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
-    },
     "record:scene": {
       "description": "The id of a scene record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -395,14 +390,8 @@
       "description": "The id of a screen record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
-        "equipment",
-        "inventory",
-        "loot",
-        "rpg:equipment",
-        "rpg:inventory",
-        "rpg:loot",
-        "rpg:topics",
-        "topics"
+        "sandbox:status",
+        "status"
       ]
     },
     "record:sound": {
@@ -470,44 +459,32 @@
       "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
-        "equipment",
-        "inventory",
-        "loot",
-        "rpg:equipment",
-        "rpg:inventory",
-        "rpg:loot",
-        "rpg:topics",
-        "topics"
+        "sandbox:status",
+        "status"
       ]
     },
     "record:ui_style": {
       "description": "The id of a ui_style record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
-        "button",
-        "cell",
-        "cell_held",
-        "cell_item",
-        "hint",
-        "panel",
-        "rpg:button",
-        "rpg:cell",
-        "rpg:cell_held",
-        "rpg:cell_item",
-        "rpg:hint",
-        "rpg:panel",
-        "rpg:text",
-        "rpg:title",
-        "rpg:topic",
-        "rpg:topic_asked",
-        "rpg:warning",
-        "rpg:weight_bar",
-        "text",
-        "title",
-        "topic",
-        "topic_asked",
-        "warning",
-        "weight_bar"
+        "sandbox:ui_bar",
+        "sandbox:ui_button",
+        "sandbox:ui_dim",
+        "sandbox:ui_inset",
+        "sandbox:ui_row",
+        "sandbox:ui_text",
+        "sandbox:ui_title",
+        "sandbox:ui_tooltip",
+        "sandbox:ui_window",
+        "ui_bar",
+        "ui_button",
+        "ui_dim",
+        "ui_inset",
+        "ui_row",
+        "ui_text",
+        "ui_title",
+        "ui_tooltip",
+        "ui_window"
       ]
     },
     "record:weather": {
@@ -883,11 +860,6 @@
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
-    "base:rpg_item": {
-      "description": "The id of a rpg_item record (none is loaded).",
-      "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
-    },
     "base:scene": {
       "description": "Another scene record to inherit every field from, abstract or not.",
       "type": "string",
@@ -911,14 +883,8 @@
       "description": "Another screen record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
-        "equipment",
-        "inventory",
-        "loot",
-        "rpg:equipment",
-        "rpg:inventory",
-        "rpg:loot",
-        "rpg:topics",
-        "topics"
+        "sandbox:status",
+        "status"
       ]
     },
     "base:sound": {
@@ -986,44 +952,32 @@
       "description": "Another ui_layout record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
-        "equipment",
-        "inventory",
-        "loot",
-        "rpg:equipment",
-        "rpg:inventory",
-        "rpg:loot",
-        "rpg:topics",
-        "topics"
+        "sandbox:status",
+        "status"
       ]
     },
     "base:ui_style": {
       "description": "Another ui_style record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
-        "button",
-        "cell",
-        "cell_held",
-        "cell_item",
-        "hint",
-        "panel",
-        "rpg:button",
-        "rpg:cell",
-        "rpg:cell_held",
-        "rpg:cell_item",
-        "rpg:hint",
-        "rpg:panel",
-        "rpg:text",
-        "rpg:title",
-        "rpg:topic",
-        "rpg:topic_asked",
-        "rpg:warning",
-        "rpg:weight_bar",
-        "text",
-        "title",
-        "topic",
-        "topic_asked",
-        "warning",
-        "weight_bar"
+        "sandbox:ui_bar",
+        "sandbox:ui_button",
+        "sandbox:ui_dim",
+        "sandbox:ui_inset",
+        "sandbox:ui_row",
+        "sandbox:ui_text",
+        "sandbox:ui_title",
+        "sandbox:ui_tooltip",
+        "sandbox:ui_window",
+        "ui_bar",
+        "ui_button",
+        "ui_dim",
+        "ui_inset",
+        "ui_row",
+        "ui_text",
+        "ui_title",
+        "ui_tooltip",
+        "ui_window"
       ]
     },
     "base:weather": {

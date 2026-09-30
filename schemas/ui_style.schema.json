@@ -202,6 +202,26 @@
         }
       ]
     },
+    "image": {
+      "description": "A picture drawn behind the widget's content, over its background and multiplied by its tint: a window's frame, a button's plate (#97) A texture path. (AssetPath)",
+      "type": "string"
+    },
+    "slice": {
+      "description": "Nine-slice insets in texture pixels — the corners that keep their size while the middle stretches — for the style's image and an image widget's picture; 0: stretched whole. 4, [h, v] or [left, top, right, bottom]. (Thickness)",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 1,
+          "maxItems": 4
+        }
+      ]
+    },
     "states": {
       "description": "Colours that change with the widget's state: hover, focused, pressed, disabled. (UiStyleStates)",
       "type": "object",

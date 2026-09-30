@@ -203,13 +203,34 @@ Sage.UI.UiBindContext.World.init -> void
 Sage.UI.UiInput
 Sage.UI.UiInput.Back -> bool
 Sage.UI.UiInput.Confirm -> bool
+Sage.UI.UiInput.ConfirmHeld -> bool
 Sage.UI.UiInput.DeltaTime -> float
 Sage.UI.UiInput.Navigate -> Sage.UI.UiNavigation
 Sage.UI.UiInput.Pointer -> System.Numerics.Vector2
+Sage.UI.UiInput.PointerDown -> bool
 Sage.UI.UiInput.PointerMoved -> bool
 Sage.UI.UiInput.PointerPressed -> bool
 Sage.UI.UiInput.UiInput() -> void
 Sage.UI.UiInput.Wheel -> float
+Sage.UI.UiLayer
+Sage.UI.UiLayer.Activated -> System.Action<Sage.UI.UiLayer!, Sage.UI.Widget!>?
+Sage.UI.UiLayer.Backdrop.get -> uint
+Sage.UI.UiLayer.Backdrop.set -> void
+Sage.UI.UiLayer.CloseOnBack.get -> bool
+Sage.UI.UiLayer.CloseOnBack.set -> void
+Sage.UI.UiLayer.CloseOnClickOutside.get -> bool
+Sage.UI.UiLayer.CloseOnClickOutside.set -> void
+Sage.UI.UiLayer.Content.get -> Sage.UI.Widget!
+Sage.UI.UiLayer.FocusBlend.get -> float
+Sage.UI.UiLayer.IsClosed.get -> bool
+Sage.UI.UiLayer.IsClosing.get -> bool
+Sage.UI.UiLayer.Modal.get -> bool
+Sage.UI.UiLayer.Offset.get -> float
+Sage.UI.UiLayer.Opacity.get -> float
+Sage.UI.UiLayer.Pressed.get -> Sage.UI.Widget?
+Sage.UI.UiLayer.PreviousFocus.get -> Sage.UI.Widget?
+Sage.UI.UiLayer.Root.get -> Sage.UI.UiRoot!
+Sage.UI.UiLayer.Screen.get -> Sage.UI.UiScreen?
 Sage.UI.UiLayoutRecord
 Sage.UI.UiLayoutRecord.Nodes -> System.Collections.Generic.Dictionary<string!, Sage.UI.UiNode!>!
 Sage.UI.UiLayoutRecord.Style -> Sage.Core.RecordRef<Sage.UI.UiStyleRecord!>
@@ -317,6 +338,43 @@ Sage.UI.UiScreens
 Sage.UI.UiScreens.BuildLayout(Sage.Core.RecordId layout) -> Sage.UI.UiView!
 Sage.UI.UiScreens.Open.get -> System.Collections.Generic.IReadOnlyList<Sage.UI.UiScreen!>!
 Sage.UI.UiScreens.OpenScreen(Sage.Core.RecordId screen, Sage.UI.UiBindContext context = default(Sage.UI.UiBindContext)) -> Sage.UI.UiScreen!
+Sage.UI.UiScreenStack
+Sage.UI.UiScreenStack.Activated -> System.Action<Sage.UI.UiLayer!, Sage.UI.Widget!>?
+Sage.UI.UiScreenStack.Backdrop.get -> uint
+Sage.UI.UiScreenStack.Backdrop.set -> void
+Sage.UI.UiScreenStack.Bind(Sage.Simulation.ActionId action, Sage.Core.RecordId screen) -> void
+Sage.UI.UiScreenStack.Close(Sage.UI.UiLayer! layer) -> void
+Sage.UI.UiScreenStack.CloseAll() -> void
+Sage.UI.UiScreenStack.CloseEase.get -> Sage.Simulation.Ease
+Sage.UI.UiScreenStack.CloseEase.set -> void
+Sage.UI.UiScreenStack.CloseSeconds.get -> float
+Sage.UI.UiScreenStack.CloseSeconds.set -> void
+Sage.UI.UiScreenStack.CloseTop() -> bool
+Sage.UI.UiScreenStack.FocusEase.get -> Sage.Simulation.Ease
+Sage.UI.UiScreenStack.FocusEase.set -> void
+Sage.UI.UiScreenStack.FocusSeconds.get -> float
+Sage.UI.UiScreenStack.FocusSeconds.set -> void
+Sage.UI.UiScreenStack.IsOpen.get -> bool
+Sage.UI.UiScreenStack.Layers.get -> System.Collections.Generic.IReadOnlyList<Sage.UI.UiLayer!>!
+Sage.UI.UiScreenStack.Open(Sage.Core.RecordId screen, Sage.UI.UiBindContext context = default(Sage.UI.UiBindContext)) -> Sage.UI.UiLayer!
+Sage.UI.UiScreenStack.OpenActions.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionId>!
+Sage.UI.UiScreenStack.OpenEase.get -> Sage.Simulation.Ease
+Sage.UI.UiScreenStack.OpenEase.set -> void
+Sage.UI.UiScreenStack.OpenSeconds.get -> float
+Sage.UI.UiScreenStack.OpenSeconds.set -> void
+Sage.UI.UiScreenStack.Push(Sage.UI.Widget! content, bool modal = true) -> Sage.UI.UiLayer!
+Sage.UI.UiScreenStack.SetViewport(System.Numerics.Vector2 pixels) -> void
+Sage.UI.UiScreenStack.SlideDistance.get -> float
+Sage.UI.UiScreenStack.SlideDistance.set -> void
+Sage.UI.UiScreenStack.Text.get -> Sage.UI.ITextMeasure!
+Sage.UI.UiScreenStack.Text.set -> void
+Sage.UI.UiScreenStack.Toggle(Sage.Simulation.ActionId action, Sage.UI.UiBindContext context = default(Sage.UI.UiBindContext)) -> bool
+Sage.UI.UiScreenStack.TooltipStyle.get -> string?
+Sage.UI.UiScreenStack.TooltipStyle.set -> void
+Sage.UI.UiScreenStack.Top.get -> Sage.UI.UiLayer?
+Sage.UI.UiScreenStack.UiScreenStack() -> void
+Sage.UI.UiScreenStack.Update(in Sage.UI.UiInput input) -> Sage.UI.UiResult
+Sage.UI.UiScreenStack.Viewport.get -> System.Numerics.Vector2
 Sage.UI.UiState
 Sage.UI.UiState.Disabled = 4 -> Sage.UI.UiState
 Sage.UI.UiState.Focused = 2 -> Sage.UI.UiState
@@ -328,7 +386,9 @@ Sage.UI.UiStyle.BorderWidth.get -> float
 Sage.UI.UiStyle.Colours(Sage.UI.UiState state) -> Sage.UI.UiStyleColours
 Sage.UI.UiStyle.Font.get -> Sage.Core.AssetPath
 Sage.UI.UiStyle.Id.get -> Sage.Core.RecordId
+Sage.UI.UiStyle.Image.get -> Sage.Core.AssetPath
 Sage.UI.UiStyle.Padding.get -> Sage.UI.Thickness
+Sage.UI.UiStyle.Slice.get -> Sage.UI.Thickness
 Sage.UI.UiStyle.TextScale.get -> float
 Sage.UI.UiStyleColours
 Sage.UI.UiStyleColours.Background.get -> uint
@@ -349,7 +409,9 @@ Sage.UI.UiStyleRecord.Border -> uint
 Sage.UI.UiStyleRecord.BorderWidth -> float
 Sage.UI.UiStyleRecord.Fill -> uint
 Sage.UI.UiStyleRecord.Font -> Sage.Core.AssetPath
+Sage.UI.UiStyleRecord.Image -> Sage.Core.AssetPath
 Sage.UI.UiStyleRecord.Padding -> Sage.UI.Thickness
+Sage.UI.UiStyleRecord.Slice -> Sage.UI.Thickness
 Sage.UI.UiStyleRecord.States -> Sage.UI.UiStyleStates!
 Sage.UI.UiStyleRecord.TextColour -> uint
 Sage.UI.UiStyleRecord.TextScale -> float
@@ -376,6 +438,18 @@ Sage.UI.UiStyleStates.Focused -> Sage.UI.UiStyleState?
 Sage.UI.UiStyleStates.Hover -> Sage.UI.UiStyleState?
 Sage.UI.UiStyleStates.Pressed -> Sage.UI.UiStyleState?
 Sage.UI.UiStyleStates.UiStyleStates() -> void
+Sage.UI.UiTween
+Sage.UI.UiTween.Advance(float seconds) -> float
+Sage.UI.UiTween.Done.get -> bool
+Sage.UI.UiTween.Ease -> Sage.Simulation.Ease
+Sage.UI.UiTween.Elapsed -> float
+Sage.UI.UiTween.From -> float
+Sage.UI.UiTween.Progress.get -> float
+Sage.UI.UiTween.Seconds -> float
+Sage.UI.UiTween.To -> float
+Sage.UI.UiTween.UiTween() -> void
+Sage.UI.UiTween.UiTween(float from, float to, float seconds, Sage.Simulation.Ease ease) -> void
+Sage.UI.UiTween.Value.get -> float
 Sage.UI.UiView
 Sage.UI.UiView.Find(string! name) -> Sage.UI.Widget?
 Sage.UI.UiView.Find<T>(string! name) -> T?
@@ -465,6 +539,7 @@ static Sage.UI.UiInput.Scroll(System.Numerics.Vector2 pointer, float notches) ->
 static Sage.UI.UiInput.Wait(float seconds) -> Sage.UI.UiInput
 static Sage.UI.UiStyles.Default.get -> Sage.UI.UiStyle!
 static Sage.UI.UiStyles.StateOf(Sage.UI.Widget! widget, bool pressed = false) -> Sage.UI.UiState
+static Sage.UI.UiTween.At(float value) -> Sage.UI.UiTween
 static Sage.UI.Widget.MeasureChild(Sage.UI.Widget! child, System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
 static Sage.UI.WidgetTypes.Create(string! typeName) -> Sage.UI.Widget?
 static Sage.UI.WidgetTypes.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!

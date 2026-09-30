@@ -52,28 +52,27 @@ public class RpgScreenTests
         return entity;
     }
 
-    // A screen in a UiRoot, and a gamepad: each press is one UiRoot.Update, handed to the screen, which
-    // is read again and laid out — what the client does each frame (#97).
+    // A screen on the world's UiScreenStack (#97), and a gamepad: each press is one UiScreenStack.Update —
+    // the top layer takes it, the view-model acts on it (UiScreen.Handle) — then an idle frame, in which
+    // the screen reads its view-model again and lays out: what the client does frame by frame.
     internal sealed class Pad
     {
-        public Pad(UiScreen screen)
+        public Pad(UiScreenStack stack, UiLayer layer)
         {
-            Screen = screen;
-            Root = new UiRoot(new MonospaceTextMeasure(8f, 10f));
-            Root.Content.Add(screen.Root);
-            Root.Layout();
+            Stack = stack;
+            Layer = layer;
         }
 
-        public UiRoot Root { get; }
-        public UiScreen Screen { get; }
+        public UiScreenStack Stack { get; }
+        public UiLayer Layer { get; }
+        public UiRoot Root => Layer.Root;
+        public UiScreen Screen => Layer.Screen!;
         public object? Focused => UiScreen.RowOf(Root.Focused);
 
         public UiResult Press(UiInput input)
         {
-            var result = Root.Update(input);
-            Screen.Handle(in result);
-            Screen.Refresh();
-            Root.Layout();
+            var result = Stack.Update(input);
+            Stack.Update(UiInput.Wait(0f));
             return result;
         }
 
@@ -93,8 +92,12 @@ public class RpgScreenTests
         }
     }
 
-    private static Pad Open(HeadlessApp app, RecordId screen, Entity subject, Entity other = default) =>
-        new(app.World.Resources.Get<UiScreens>().OpenScreen(screen, new UiBindContext(app.World, subject, other)));
+    private static Pad Open(HeadlessApp app, RecordId screen, Entity subject, Entity other = default)
+    {
+        var stack = app.World.Resources.Get<UiScreenStack>();
+        stack.CloseAll();
+        return new Pad(stack, stack.Open(screen, new UiBindContext(app.World, subject, other)));
+    }
 
     private static string Text(UiScreen screen, string node) => screen.View.Find<Label>(node)!.Text;
 
@@ -124,8 +127,7 @@ public class RpgScreenTests
         Assert.Same(sword, inventory.Bag.ItemAt(0, 2));
         Assert.Equal("bread ×2", inventory.Bag.CellAt(1, 0)!.Label);                        // 1×1 by default, next to it
 
-        bag.Nav(UiNavigation.Right);                                                        // focus lands on the first square
-        Assert.Same(inventory.Bag.CellAt(0, 0), bag.Focused);
+        Assert.Same(inventory.Bag.CellAt(0, 0), bag.Focused);                               // a screen opens focused
         bag.A();                                                                            // pick the sword up
         Assert.Same(sword, inventory.Held);
         Assert.Equal(GridCell.HeldStyle, cells.Child(0).Style);
@@ -139,14 +141,17 @@ public class RpgScreenTests
         Assert.Equal(GridCell.EmptyStyle, cells.Child(0).Style);
         Assert.Equal(GridCell.ItemStyle, cells.Child(3).Style);
         Assert.Contains(world.Get<ItemGridPlacements>(hero).Placed!, p => p.Item == Id("sword") && p.X == 3 && p.Y == 0);
-        Assert.False(bag.Screen.Handle(new UiResult { Back = true }));                       // nothing held: Back closes
-        bag.Screen.Close();
+        bag.A();                                                                            // pick the sword up again,
+        bag.B();                                                                            // and B puts it back
+        Assert.Null(inventory.Held);
+        Assert.False(bag.Layer.IsClosing);                                                  // the view-model used that B
+        bag.B();                                                                            // nothing held: B closes
+        Assert.True(bag.Layer.IsClosing);
 
         // ---- loot: the anvil is too heavy, take all takes the rest ----------------------------------
         var loot = Open(app, RpgKitModule.LootScreen, hero, bandit);
         var view = Assert.IsType<LootView>(loot.Screen.ViewModel);
         Assert.Equal("bandit", Text(loot.Screen, "their_title"));
-        loot.Nav(UiNavigation.Right);
         Assert.Same(view.Container.CellAt(0, 0), loot.Focused);
         loot.A();                                                                           // pick the anvil up
         Assert.Equal(Id("anvil"), view.Held!.Item);
@@ -169,14 +174,12 @@ public class RpgScreenTests
         Assert.Single(view.Container.Items);
         Assert.Equal(7.5f, view.Bag.Weight, 3);
         Assert.Equal("Weight 7.5 / 20 kg", Text(loot.Screen, "weight"));
-        loot.Screen.Close();
 
         // ---- topics: ask about the bridge, and the toll it teaches ----------------------------------
         var talk = Open(app, RpgKitModule.TopicsScreen, hero, guard);
         var topics = Assert.IsType<TopicsView>(talk.Screen.ViewModel);
         Assert.Equal("guard", Text(talk.Screen, "title"));
         Assert.Equal(new[] { "the bridge" }, topics.Topics.Select(t => t.Keyword));
-        talk.Nav(UiNavigation.Down);
         Assert.Same(topics.Topics[0], talk.Focused);
         talk.A();                                                                           // ask it
         Assert.Equal("Closed. Ask me about the toll.", Text(talk.Screen, "answer"));
@@ -322,25 +325,20 @@ public class RpgScreenAllocationTests
         var guard = world.Create(Transform.At(Vector3.Zero), "guard");
         Assert.True(world.Systems.Disable("sage.physics.step"));   // Bepu's own bytes a tick are not the screens'
 
-        var screens = world.Resources.Get<UiScreens>();
-        var root = new UiRoot(new MonospaceTextMeasure(8f, 10f));
-        var open = new[]
-        {
-            screens.OpenScreen(RpgKitModule.InventoryScreen, new UiBindContext(world, hero)),
-            screens.OpenScreen(RpgKitModule.EquipmentScreen, new UiBindContext(world, hero)),
-            screens.OpenScreen(RpgKitModule.LootScreen, new UiBindContext(world, hero, bandit)),
-            screens.OpenScreen(RpgKitModule.TopicsScreen, new UiBindContext(world, hero, guard)),
-        };
-        foreach (var screen in open) root.Content.Add(screen.Root);
+        // All four on the world's screen stack (#97), the topics screen on top taking the (idle) input.
+        var stack = world.Resources.Get<UiScreenStack>();
+        stack.Open(RpgKitModule.InventoryScreen, new UiBindContext(world, hero));
+        stack.Open(RpgKitModule.EquipmentScreen, new UiBindContext(world, hero));
+        stack.Open(RpgKitModule.LootScreen, new UiBindContext(world, hero, bandit));
+        stack.Open(RpgKitModule.TopicsScreen, new UiBindContext(world, hero, guard));
 
         void Frame()
         {
             world.RunFixed(1f / 60f);
-            foreach (var screen in open) screen.Refresh();
-            root.Update(UiInput.Wait(1f / 60f));
+            stack.Update(UiInput.Wait(1f / 60f));   // every layer's view-model read, bound and laid out
             Profiler.EndFrame();
         }
-        for (int i = 0; i < 10; i++) Frame();   // warm: readers compiled, rows made
+        for (int i = 0; i < 30; i++) Frame();   // warm: readers compiled, rows made, the fades done
 
         AllocationProbe.AssertNone(300, Frame);
     }

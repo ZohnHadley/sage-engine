@@ -66,7 +66,8 @@ internal sealed class UiRenderSystem : ISystem
         // cam_free). In third person too: the over-the-shoulder camera looks along the pawn's aim, so
         // the centre is where the swing goes, a shoulder-width to the side. With a screen open there is
         // nothing to aim at, and a cross floating over an inventory looks like a bug.
-        bool screenOpen = ctx.World.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen;
+        bool screenOpen = ctx.World.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen
+                       || ctx.World.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) && widgets!.IsOpen;
         var rig = ctx.World.MainViewRig();
         bool aiming = rig == CameraRigKind.FirstPerson || rig == CameraRigKind.ThirdPerson;
         if (_crosshair.Value && aiming && !screenOpen)
@@ -87,9 +88,7 @@ internal sealed class UiRenderSystem : ISystem
             _ui.Image(map, at, Color.White);
         }
 
-        _shared.Batch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.PointClamp);
-        _ui.Draw(_shared.Batch, _shared.White);
-        _shared.Batch.End();
+        _ui.Draw(_shared.Batch, _shared.White, _shared.Scissor);
         _ui.Clear();
     }
 }
@@ -100,6 +99,9 @@ internal sealed class UiResources : IDisposable
 {
     public SpriteBatch Batch { get; }
     public Texture2D White { get; }
+
+    // What a clipped stretch of the queue is drawn with (UiDraw.PushClip): the scissor test on.
+    public RasterizerState Scissor { get; } = new() { CullMode = CullMode.None, ScissorTestEnable = true };
 
     public UiResources(GraphicsDevice device)
     {
@@ -112,5 +114,6 @@ internal sealed class UiResources : IDisposable
     {
         Batch.Dispose();
         White.Dispose();
+        Scissor.Dispose();
     }
 }

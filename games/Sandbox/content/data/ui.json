@@ -1,0 +1,60 @@
+[
+  // The Sandbox's widget screen (docs/design/13 "As built (drawing)", issue #97): `C` (the Status
+  // action, content/data/input.json) or `ui_open status` opens it. Styles, a layout and a screen over
+  // the `sandbox_status` view-model (Sandbox/StatusView.cs) — restyling it or moving its parts is an
+  // edit here, hot reloaded, with no C#.
+
+  // ---- styles -------------------------------------------------------------------------------------
+  // Text is in font pixels: the engine font is 5×7 in a 6×9 cell, so textScale 2 is 18 virtual units
+  // a line (1280×720 design size).
+  { "type": "ui_style", "id": "ui_text", "textScale": 2, "textColour": "#D8D8E0" },
+  { "type": "ui_style", "id": "ui_dim", "base": "ui_text", "textColour": "#9098A8" },
+  { "type": "ui_style", "id": "ui_title", "base": "ui_text", "textScale": 3, "textColour": "#F0D890" },
+  // A window: a dark fill, and textures/ui_frame.png nine-sliced over it (8 px corners that keep their
+  // size, drawn two screen pixels per texture pixel at 720p) and tinted.
+  { "type": "ui_style", "id": "ui_window", "base": "ui_text", "padding": 18,
+    "background": "#101018EC", "image": "textures/ui_frame.png", "slice": 8, "tint": "#8C94B4" },
+  { "type": "ui_style", "id": "ui_bar", "background": "#3A1A1A", "fill": "#C84040", "border": "#000000", "borderWidth": 1 },
+  { "type": "ui_style", "id": "ui_inset", "background": "#00000070", "border": "#3A3E52", "borderWidth": 1, "padding": 4 },
+  // A list row: nothing until the pointer or focus is on it. Focus eases in (the renderer's tween).
+  { "type": "ui_style", "id": "ui_row", "base": "ui_text", "padding": [8, 3], "textColour": "#C8C8D0",
+    "states": {
+      "hover":   { "background": "#262C3C" },
+      "focused": { "background": "#34466E", "textColour": "#FFFFFF" },
+      "pressed": { "background": "#5068A8", "textColour": "#FFFFFF" }
+    } },
+  { "type": "ui_style", "id": "ui_button", "base": "ui_row", "padding": [14, 5], "background": "#1E2432",
+    "border": "#50587A", "borderWidth": 1,
+    "states": {
+      "focused": { "border": "#F0D890" },
+      "pressed": { "border": "#F0D890" }
+    } },
+  { "type": "ui_style", "id": "ui_tooltip", "base": "ui_text", "background": "#000000E6", "border": "#808080",
+    "borderWidth": 1, "padding": [6, 3], "textColour": "#F0F0F0" },
+
+  // ---- the status window ---------------------------------------------------------------------------
+  { "type": "ui_layout", "id": "status", "style": "ui_text",
+    "nodes": {
+      "window":     { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10, "minSize": [440, 0] },
+      "title":      { "widget": "label", "parent": "window", "text": "@sandbox.status.title", "style": "ui_title" },
+      "name":       { "widget": "label", "parent": "window", "bind": "name", "style": "ui_dim" },
+
+      "healthRow":  { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
+      "healthName": { "widget": "label", "parent": "healthRow", "text": "@sandbox.status.health", "minSize": [80, 0] },
+      "health":     { "widget": "bar", "parent": "healthRow", "bind": "health", "bindings": { "max": "maxHealth" },
+                      "style": "ui_bar", "minSize": [180, 14], "expand": 1, "vAlign": "Center" },
+      "healthText": { "widget": "label", "parent": "healthRow", "bind": "healthText", "minSize": [96, 0], "textAlign": "End" },
+
+      "carrying":   { "widget": "label", "parent": "window", "text": "@sandbox.status.carrying", "args": { "count": "itemCount" }, "style": "ui_dim" },
+      "bag":        { "widget": "scroll", "parent": "window", "style": "ui_inset", "minSize": [0, 150] },
+      "items":      { "widget": "item_list", "parent": "bag", "bind": "items" },
+      "item":       { "widget": "button", "parent": "items", "bind": "label", "bindings": { "tooltip": "detail" },
+                      "style": "ui_row", "textAlign": "Start" },
+
+      "buttons":    { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10, "hAlign": "End" },
+      "hint":       { "widget": "label", "parent": "buttons", "text": "@sandbox.status.hint", "style": "ui_dim", "textScale": 1, "vAlign": "Center" },
+      "close":      { "widget": "button", "parent": "buttons", "text": "@sandbox.status.close", "style": "ui_button" }
+    } },
+
+  { "type": "screen", "id": "status", "layout": "status", "viewModel": "sandbox_status" }
+]

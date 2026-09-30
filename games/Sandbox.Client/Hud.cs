@@ -46,7 +46,10 @@ public sealed class SandboxHud : ISystem
 
         // With a screen open the health bar and the message log stay — you want to read them while
         // deciding what to equip — but the things that belong to *aiming* do not (13 §3, F38).
-        bool screenOpen = world.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen;
+        bool screenOpen = world.Resources.TryGet<ScreenStack>(out var screens) && screens!.IsOpen
+#pragma warning disable SAGE0125   // widget screens (#97) are experimental
+                       || world.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) && widgets!.IsOpen;
+#pragma warning restore SAGE0125
 
         float x = 24f, bottom = height - 28f;
         DrawMessages(x, bottom - 86f);

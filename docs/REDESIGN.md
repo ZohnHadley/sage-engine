@@ -918,6 +918,15 @@ because it edits the live play world (`DevTools.cs:84-87`).
     and rebuilt on hot reload; `strings/<lang>/*.json` tables with placeholders and plural forms resolved
     from `@ns.key` by `Localisation`, and the `lang` cvar (docs/design/13 "As built (style and layout
     records)", 05 §3.7). Drawing them is #97; `PanelView` and the HUD still draw as before.
+  - *As built (issue #97, 2026-09-30).* Widget screens are drawn and driven: a headless render plan
+    (per style and state: backgrounds, nine-sliced style images, borders, bar fills, pictures, text;
+    `Scroll` clips pushed and popped) cached against the tree's, the styles' and the string tables'
+    versions and replayed into `UiDraw` (which gained a scissor stack and nine-slice); a `UiScreenStack`
+    in every world that hosts screen records and code-built trees beside the panel screens in
+    `ScreenSystem`, with Back, click-outside, focus on open, `Bind`/`ui_open`, and fades, slides and a
+    focus highlight eased on frame time with 4b's `Easing`; the `Menu*` actions plus
+    `MenuLeft`/`MenuRight`/`MenuTab` as its input. The Sandbox's status screen (`C`) is the demo
+    (docs/design/13 "As built (drawing)"). The panel screens and the HUD move onto it in #98/#99.
   - *As built (issue #98, 2026-09-30).* The first consumers: the RPG kit's inventory grid (with weight
     and item footprints), equipment, loot and topics screens are records in the kit's own content
     (`[PluginContent("rpg")]`) over headless view-models that act through `UiScreen.Handle`, and one test

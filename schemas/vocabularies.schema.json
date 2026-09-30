@@ -4759,17 +4759,11 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_loot, rpg_topics.",
+      "description": "A view_model by id: sandbox_status.",
       "type": "string",
       "enum": [
-        "RpgEquipment",
-        "RpgInventory",
-        "RpgLoot",
-        "RpgTopics",
-        "rpg_equipment",
-        "rpg_inventory",
-        "rpg_loot",
-        "rpg_topics"
+        "SandboxStatus",
+        "sandbox_status"
       ]
     },
     "view_model": {
@@ -4794,8 +4788,8 @@
                 "properties": {
                   "viewModel": {
                     "enum": [
-                      "rpg_equipment",
-                      "RpgEquipment"
+                      "sandbox_status",
+                      "SandboxStatus"
                     ]
                   }
                 },
@@ -4806,103 +4800,41 @@
               "then": {
                 "type": "object",
                 "properties": {
+                  "health": {
+                    "description": "(float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "healthText": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "itemCount": {
+                    "description": "(int, default 0)",
+                    "default": 0,
+                    "type": "integer"
+                  },
+                  "maxHealth": {
+                    "description": "(float, default 100)",
+                    "default": 100,
+                    "type": "number"
+                  },
+                  "name": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
                   "viewModel": {
-                    "description": "The view_model: rpg_equipment.",
+                    "description": "The view_model: sandbox_status.",
                     "enum": [
-                      "rpg_equipment",
-                      "RpgEquipment"
+                      "sandbox_status",
+                      "SandboxStatus"
                     ]
                   }
                 },
                 "additionalProperties": false,
-                "description": "view_model 'rpg_equipment' (EquipmentView)."
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "viewModel": {
-                    "enum": [
-                      "rpg_inventory",
-                      "RpgInventory"
-                    ]
-                  }
-                },
-                "required": [
-                  "viewModel"
-                ]
-              },
-              "then": {
-                "type": "object",
-                "properties": {
-                  "viewModel": {
-                    "description": "The view_model: rpg_inventory.",
-                    "enum": [
-                      "rpg_inventory",
-                      "RpgInventory"
-                    ]
-                  }
-                },
-                "additionalProperties": false,
-                "description": "view_model 'rpg_inventory' (InventoryView)."
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "viewModel": {
-                    "enum": [
-                      "rpg_loot",
-                      "RpgLoot"
-                    ]
-                  }
-                },
-                "required": [
-                  "viewModel"
-                ]
-              },
-              "then": {
-                "type": "object",
-                "properties": {
-                  "viewModel": {
-                    "description": "The view_model: rpg_loot.",
-                    "enum": [
-                      "rpg_loot",
-                      "RpgLoot"
-                    ]
-                  }
-                },
-                "additionalProperties": false,
-                "description": "view_model 'rpg_loot' (LootView)."
-              }
-            },
-            {
-              "if": {
-                "properties": {
-                  "viewModel": {
-                    "enum": [
-                      "rpg_topics",
-                      "RpgTopics"
-                    ]
-                  }
-                },
-                "required": [
-                  "viewModel"
-                ]
-              },
-              "then": {
-                "type": "object",
-                "properties": {
-                  "viewModel": {
-                    "description": "The view_model: rpg_topics.",
-                    "enum": [
-                      "rpg_topics",
-                      "RpgTopics"
-                    ]
-                  }
-                },
-                "additionalProperties": false,
-                "description": "view_model 'rpg_topics' (TopicsView)."
+                "description": "view_model 'sandbox_status' (StatusView)."
               }
             }
           ]
