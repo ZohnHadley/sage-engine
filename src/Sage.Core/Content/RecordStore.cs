@@ -167,6 +167,19 @@ public sealed class RecordStore
                        .Select(kv => (T)kv.Value).ToList();
     }
 
+    // The records of a type as the content now stands: while a load's checks run (AddCheck), the ones
+    // being loaded, which `All` does not have yet; otherwise the loaded ones, as `All`. For a check of
+    // one type that depends on another's records — a wire naming an input only a state machine
+    // listens for (issue #92) — whichever order the types are checked in.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // state machines (#92): may change before 1.0
+    public IReadOnlyList<T> Latest<T>() where T : class
+    {
+        if (_checking == null) return All<T>();
+        string type = TypeName<T>();
+        return _checking.Where(kv => kv.Key.Item1 == type).OrderBy(kv => kv.Key.Item2.ToString(), StringComparer.Ordinal)
+                        .Select(kv => (T)kv.Value).ToList();
+    }
+
     public IEnumerable<RecordId> Ids(string type) =>
         _records.Keys.Where(k => k.Type == type).Select(k => k.Id).OrderBy(i => i.ToString(), StringComparer.Ordinal);
 

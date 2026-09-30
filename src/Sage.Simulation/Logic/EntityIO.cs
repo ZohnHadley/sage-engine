@@ -94,7 +94,8 @@ public sealed class EntityInputs
     public RegistrationSeal Seal { get; } = new("entity input", "a level's wiring may already have been checked without it");
 
     // Who registered each input (issue #12); set by the Engine. A routed one is recorded as
-    // `name@component` ("Trigger@sage:logic_relay"), so each has an owner of its own.
+    // `name@component` ("Trigger@sage:logic_relay"), so each has an owner of its own, and under its name
+    // too when it is the first of that name.
     public RegistrationLedger? Ledger { get; set; }
 
     // A global handler: the only one for this name, for any entity it is sent at.
@@ -132,10 +133,14 @@ public sealed class EntityInputs
         routes[^1] = new Route(typeof(T), component, static e => e.HasComponent<T>(), handler);
         entry.Routes = routes;
         Ledger?.Record("entity input", $"{name}@{component}");
+        // And the name, for the first to register it (a global handler registered later takes it over),
+        // so "who owns SetState" still has an answer.
+        if (Ledger != null && Ledger.OwnerOf("entity input", name) == null) Ledger.Record("entity input", name);
     }
 
-    // Whether anything takes this name, globally or on some component.
-    public bool Has(string name) => _inputs.ContainsKey(name);
+    // Whether anything takes this name, globally or on some component, or content listens for it (a
+    // state machine's `on`, issue #92): what a wire may send without being an unknown input.
+    public bool Has(string name) => _inputs.ContainsKey(name) || (Heard != null && Heard(name));
 
     // The *global* handler for a name. A name only components take has none: send it with EntityIO,
     // which routes it (Deliver).
@@ -181,20 +186,29 @@ public sealed class EntityInputs
     // lookup, a walk of a small array and the handlers themselves.
     internal Delivery Deliver(World world, string name, in IOContext io)
     {
-        if (!_inputs.TryGetValue(name, out var entry)) return Delivery.NoSuchInput;
+        bool known = _inputs.TryGetValue(name, out var entry);
         bool took = false;
-        var routes = entry.Routes;
-        for (int i = 0; i < routes.Length; i++)
+        if (known)
         {
-            // Asked afresh for each: an earlier handler may have added or removed a component.
-            if (!world.IsAlive(io.Self) || !routes[i].Has(io.Self)) continue;
-            took = true;
-            routes[i].Handler(world, in io);
+            var routes = entry!.Routes;
+            for (int i = 0; i < routes.Length; i++)
+            {
+                // Asked afresh for each: an earlier handler may have added or removed a component.
+                if (!world.IsAlive(io.Self) || !routes[i].Has(io.Self)) continue;
+                took = true;
+                routes[i].Handler(world, in io);
+            }
+            if (!took && entry.Global != null)
+            {
+                took = true;
+                entry.Global(world, in io);
+            }
         }
-        if (took) return Delivery.Delivered;
-        if (entry.Global == null) return Delivery.NobodyTookIt;
-        entry.Global(world, in io);
-        return Delivery.Delivered;
+
+        // And whatever listens on the entity (a state machine's `on`, issue #92), if it is still there.
+        bool heard = Listener != null && world.IsAlive(io.Self) && Listener(world, name, in io);
+        if (took || heard) return Delivery.Delivered;
+        return known ? Delivery.NobodyTookIt : Delivery.NoSuchInput;
     }
 
     private Entry EntryFor(string name)
@@ -205,7 +219,15 @@ public sealed class EntityInputs
 
     private static string ComponentId(Type type) =>
         System.Reflection.CustomAttributeExtensions.GetCustomAttribute<ComponentAttribute>(type)?.Id ?? type.Name;
+
+    // Inputs content listens for rather than code (issue #92): whether some record hears the name, for
+    // Has; and, as each input arrives, whether the entity it arrives at heard it — called after the
+    // handlers, if there are any (Deliver). Set by the engine (StateMachines.Register).
+    internal Func<string, bool>? Heard;
+    internal InputListener? Listener;
 }
+
+internal delegate bool InputListener(World world, string input, in IOContext io);
 
 // Every output the engine and its plugins fire, by name, with what it means (issue #18). An output is
 // a name a wire listens for, so nothing *needs* this list to work — but a mapper does: the FGD, the
@@ -349,15 +371,20 @@ public sealed class EntityIO : ISavedResource
     public void Fire(World world, Entity source, string output, Entity activator = default) =>
         Fire(world, source, output, activator, null, 0f, false, false);
 
-    // Fires an output with a value (issue #91): a wire with no parameter of its own hands the value on,
-    // as Source's do — a counter's `OnChanged` to a comparison's `SetValue`. `sameTick`: its wires with
-    // no delay arrive in this tick's dispatch rather than the next (a same-tick relay).
+    // Fires an output with a value: a wire with no parameter of its own hands the value to its input
+    // (Source's rule), so `OnStateChanged` tells a wire the state it changed to (issue #92) and a
+    // counter's `OnChanged` a comparison the count (issue #91).
+    public void Fire(World world, Entity source, string output, Entity activator, string value) =>
+        Fire(world, source, output, activator, value ?? "", 0f, false, false);
+
+    // The same, and `sameTick` (issue #91): its wires with no delay arrive in this tick's dispatch
+    // rather than the next (a same-tick relay).
     [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
-    public void Fire(World world, Entity source, string output, Entity activator, string? value, bool sameTick = false) =>
+    public void Fire(World world, Entity source, string output, Entity activator, string? value, bool sameTick) =>
         Fire(world, source, output, activator, value, 0f, false, sameTick);
 
-    // The same with a number, written out only if a wire hands it on (and then without allocating for a
-    // whole number up to a thousand or so, so a counter's outputs cost nothing per tick).
+    // With a number, written out only if a wire hands it on (and then without allocating for a whole
+    // number up to a thousand or so, so a counter's outputs cost nothing per tick).
     [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
     public void Fire(World world, Entity source, string output, Entity activator, float value, bool sameTick = false) =>
         Fire(world, source, output, activator, null, value, true, sameTick);
@@ -726,8 +753,14 @@ public static class EntityIOExtensions
         if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator);
     }
 
-    // With a value a wire with no parameter hands on (issue #91): `OnChanged` with the counter's value,
-    // `OnDamaged` with the damage done.
+    // With a value, which a wire with no parameter of its own passes on (EntityIO.Fire; #92, #91).
+    public static void FireOutput(this World world, Entity source, string output, Entity activator, string value)
+    {
+        if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator, value);
+    }
+
+    // With a number (`OnChanged` with the counter's value, `OnDamaged` with the damage done), and a
+    // same-tick option (issue #91).
     [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
     public static void FireOutput(this World world, Entity source, string output, Entity activator, float value, bool sameTick = false)
     {
@@ -735,7 +768,7 @@ public static class EntityIOExtensions
     }
 
     [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // logic entities (#91)
-    public static void FireOutput(this World world, Entity source, string output, Entity activator, string? value, bool sameTick = false)
+    public static void FireOutput(this World world, Entity source, string output, Entity activator, string? value, bool sameTick)
     {
         if (world.Resources.TryGet<EntityIO>(out var io) && io != null) io.Fire(world, source, output, activator, value, sameTick);
     }

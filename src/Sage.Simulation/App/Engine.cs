@@ -66,6 +66,9 @@ public sealed class Engine : IDisposable
             Tweens.Register(this);
             // Relays, counters, comparisons, branches and remaps (issue #91), the same way.
             LogicEntities.Register(this);
+            // State machines (issue #92): the engine's too; SetState, OnStateChanged and the `on` names
+            // content listens for.
+            StateMachines.Register(this);
         }
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
@@ -143,6 +146,7 @@ public sealed class Engine : IDisposable
             world.AddSystem(new CameraBlendSystem(world));        // CameraOn with a blend time (issue #90)
             world.AddSystem(new LogicTimerSystem(world));         // sage:timer and sage:tween (issue #90)
             world.AddSystem(new TweenSystem(world));
+            world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
         }
         finally { Registrations.Owner = "host"; }
 

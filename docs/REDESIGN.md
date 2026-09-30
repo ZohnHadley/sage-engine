@@ -764,7 +764,7 @@ relay may deliver in the same tick (test: SameTickRelaysRunAChainInOneTick). The
 (test: ABridgeInputChangesAQuestStage_AndAQuestWatchSaysSo), `StartDialogue`, `GiveItem`, `ApplyEffect`,
 `SetFaction` and `OnStageChanged`, `OnDeath` (test: DeathAndDamageAreOutputs), `OnDamaged`,
 `OnPickedUp`, each registered by its plugin. `logic_timer` was #90's. Per-entity map keys were already
-there (§5 of MAKING_A_GAME: `"logic_counter.max" "3"`). Details: 04 §3.4c.
+there (§5 of MAKING_A_GAME: `"logic_counter.max" "3"`). Details: 04 §3.4d.
 
 **Stage 4: AI as data behaviour trees.**
 - Leaves are the existing `IAITask`s, and today's schedules become a `sequence` node.
@@ -1141,6 +1141,20 @@ The I/O clock moves at the start of the tick, so a trigger's delay counts from t
 (test: ADelayedInputSavedHalfWayArrivesOnTheTickItWould_AndItsWireStaysSpent)
 (test: TweensAreDeterministicAndSurviveASave). Experimental as SAGE0124 (phase 4b's logic) and SAGE0123
 (the blend). Details: docs/design/04 §3.4b and 06 "As built (camera blends)".
+
+*As built, 4b (issue #92, 2026-09-30): state machines as data (decision D4: a record and a small
+component).* A `state_machine` record is an `initial` state and named `states`, each with `enter`/`exit`
+actions, free `tags` and transitions that go `to` a state `on` an input (any name, registered or not),
+`when` a condition holds or `after` seconds in the state — first match wins, the state's own before the
+machine's from-any-state ones. `sage:state_machine` (part `state_machine`) saves the state by name and the
+time in it; `SetState` jumps and `OnStateChanged` hands its wires the new state's name. A save or a hot
+reload that names a state the machine has lost goes back to `initial` with a warning. The engine's
+(`sage.core`), like timers; stepped in the EntityIO phase with no allocation
+(test: AGuardIdlesGrowsAlertAttacksAfterATimeoutAndCalmsDownOnAnInput)
+(test: StateAndTimeInItSurviveSaveAndLoad)
+(test: HotReloadKeepsAStateThatIsStillThere_AndSendsOneThatIsGoneToInitialWithAWarning)
+(test: StateMachinesAllocateNothingPerTick). `StateTransition` and `StateMachines.FirstTransition` are
+the rules 4d's animation graph can step with. SAGE0124. Details: docs/design/04 §3.4c.
 
 ### Stage C: prove it on the action-RPG family, then build your game
 

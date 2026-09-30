@@ -732,6 +732,14 @@
         }
       ]
     },
+    "sage:state_machine": {
+      "description": "Component sage:state_machine (StateMachine).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:state_machine"
+        }
+      ]
+    },
     "sage:third_person_rig": {
       "description": "Component sage:third_person_rig (ThirdPersonRig).",
       "allOf": [
@@ -801,6 +809,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:sprite_renderer"
+        }
+      ]
+    },
+    "state_machine": {
+      "description": "The component sage:state_machine (StateMachine), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:state_machine"
         }
       ]
     },
@@ -2847,6 +2863,34 @@
       },
       "additionalProperties": false,
       "description": "Component sage:sprite_renderer (SpriteRenderer)."
+    },
+    "sage:state_machine": {
+      "type": "object",
+      "properties": {
+        "machine": {
+          "description": "The state_machine record it runs. Names a state_machine record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:state_machine"
+            }
+          ]
+        },
+        "state": {
+          "description": "The state it is in, by name; empty until its first tick puts it in the initial state. (string)",
+          "type": "string"
+        },
+        "timeInState": {
+          "description": "Seconds it has been in that state. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "activator": {
+          "description": "Not saved. (Entity)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:state_machine (StateMachine)."
     },
     "sage:third_person_rig": {
       "type": "object",

@@ -154,6 +154,38 @@ public class LogicEntityTests
         Assert.Contains(log.Entries, e => e.Message.Contains(name) && e.Message.Contains("sage:logic_relay"));
     }
 
+    // With state machines (#92): SetState is routed to the machine, and a machine's `on` hears an input
+    // after the handlers of the entity's other components — a relay that is also a machine does both.
+    [Fact]
+    public void AStateMachineHearsAnInputBesideTheComponentsThatTakeIt()
+    {
+        var log = new Heard();
+        using var app = WithLog(HeadlessApp.Bare().With(new PhysicsModule(), new EntityIOModule()).File("data/switch.json", """
+            [ { "type": "state_machine", "id": "lamp", "initial": "off",
+                "states": { "off": { "transitions": [ { "to": "on", "on": "Trigger" } ] }, "on": {} } },
+              { "type": "prefab", "id": "lamp_relay", "name": "lamp relay",
+                "parts": { "logic_relay": { }, "state_machine": { "machine": "lamp" } } } ]
+            """), log).Boot("io");
+        var world = app.World;
+        var sink = world.Create(Transform.At(Vector3.Zero), "sink");
+        sink.Name = "sink";
+        var lamp = world.Spawn(new RecordId("sage", "lamp_relay"));
+        world.Add(lamp, new IOConnections { Wires = new[] { new Connection { Output = "OnTrigger", Target = "sink", Input = "Record", Parameter = "relayed" } } });
+        Tick(world);
+
+        world.IO().FireInput(lamp, "Trigger");
+        Tick(world, 3);
+        Assert.Equal(new[] { "relayed" }, log.Parameters);
+        Assert.Equal("on", world.Get<StateMachine>(lamp).State);
+
+        Assert.Equal(new[] { "sage:state_machine" }, app.Engine.Inputs.ComponentsTaking("SetState"));
+        string name = TestEnv.Unique("no machine");
+        using var capture = new CaptureSink();
+        world.IO().FireInput(world.Create(Transform.At(Vector3.Zero), name), "SetState", "on");
+        Tick(world);
+        Assert.Contains(capture.Entries, e => e.Message.Contains(name) && e.Message.Contains("sage:state_machine"));
+    }
+
     // ---- the logic entities, driven with ent_fire ---------------------------------------------------
 
     [Fact]

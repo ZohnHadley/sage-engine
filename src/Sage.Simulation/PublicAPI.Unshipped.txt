@@ -21,6 +21,8 @@ const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
+const Sage.Simulation.StateMachines.OnStateChanged = "OnStateChanged" -> string!
+const Sage.Simulation.StateMachines.SetStateInput = "SetState" -> string!
 const Sage.Simulation.ThirdPersonRig.DefaultDistance = 3 -> float
 const Sage.Simulation.ThirdPersonRig.DefaultProbeRadius = 0.25 -> float
 const Sage.Simulation.ThirdPersonRig.DefaultSmoothing = 0.3 -> float
@@ -194,8 +196,9 @@ Sage.Simulation.EntityInputs.ComponentsTaking(string! name) -> System.Collection
 Sage.Simulation.EntityInputs.Register<T>(string! name, Sage.Simulation.EntityInput! handler) -> void
 Sage.Simulation.EntityInputs.Takes(Sage.Simulation.Entity entity, string! name) -> bool
 Sage.Simulation.EntityIO.AfterLoad(Sage.Simulation.World! world) -> void
+Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
 Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
-Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick = false) -> void
+Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
 Sage.Simulation.EntityIO.Now.get -> double
 Sage.Simulation.EntityIO.FireInput(string! targetName, string! input, string! parameter = "", float delay = 0, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity), Sage.Simulation.Entity caller = default(Sage.Simulation.Entity)) -> void
 Sage.Simulation.FirstPersonRig
@@ -279,6 +282,12 @@ Sage.Simulation.LogicTimerPart.Repeat -> bool
 Sage.Simulation.LogicTimerPart.Seed -> uint
 Sage.Simulation.LogicTimerPart.Spread -> float
 Sage.Simulation.LogicTimerPart.StartOn -> bool
+Sage.Simulation.MachineState
+Sage.Simulation.MachineState.Enter -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Simulation.MachineState.Exit -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Simulation.MachineState.MachineState() -> void
+Sage.Simulation.MachineState.Tags -> System.Collections.Generic.List<string!>!
+Sage.Simulation.MachineState.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
 Sage.Simulation.MainViewExtensions
 Sage.Simulation.MathRemap
 Sage.Simulation.MathRemap.Clamp -> bool
@@ -307,6 +316,29 @@ Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCameraPart.BlendTime -> float
+Sage.Simulation.StateMachine
+Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
+Sage.Simulation.StateMachine.Machine -> Sage.Core.RecordId
+Sage.Simulation.StateMachine.State -> string?
+Sage.Simulation.StateMachine.StateMachine() -> void
+Sage.Simulation.StateMachine.TimeInState -> float
+Sage.Simulation.StateMachinePart
+Sage.Simulation.StateMachinePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.StateMachinePart.Machine -> Sage.Core.RecordId
+Sage.Simulation.StateMachinePart.StateMachinePart() -> void
+Sage.Simulation.StateMachineRecord
+Sage.Simulation.StateMachineRecord.Initial -> string!
+Sage.Simulation.StateMachineRecord.StateMachineRecord() -> void
+Sage.Simulation.StateMachineRecord.States -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.MachineState!>!
+Sage.Simulation.StateMachineRecord.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
+Sage.Simulation.StateMachines
+Sage.Simulation.StateTransition
+Sage.Simulation.StateTransition.After -> float
+Sage.Simulation.StateTransition.On -> string!
+Sage.Simulation.StateTransition.StateTransition() -> void
+Sage.Simulation.StateTransition.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Simulation.StateTransition.To -> string!
+Sage.Simulation.StateTransition.When -> Sage.Simulation.ICondition?
 Sage.Simulation.ThirdPersonRig
 Sage.Simulation.ThirdPersonRig.Boom -> float
 Sage.Simulation.ThirdPersonRig.Collision.get -> Sage.Simulation.LayerMask
@@ -417,8 +449,9 @@ static Sage.Simulation.Easing.Apply(Sage.Simulation.Ease ease, float t) -> float
 static Sage.Simulation.Easing.IsMonotonic(Sage.Simulation.Ease ease) -> bool
 static Sage.Simulation.Easing.Lerp(Sage.Simulation.Ease ease, float a, float b, float t) -> float
 static Sage.Simulation.Easing.TryParse(System.ReadOnlySpan<char> text, out Sage.Simulation.Ease ease) -> bool
+static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
-static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick = false) -> void
+static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
 static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
@@ -426,6 +459,10 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.FirstPersonCameraSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.MaterialParam.RenderTarget -> string?
+static Sage.Simulation.StateMachines.FirstTransition(System.Collections.Generic.IReadOnlyList<Sage.Simulation.StateTransition!>? transitions, string? input, float timeInState, in Sage.Simulation.ConditionContext context) -> Sage.Simulation.StateTransition?
+static Sage.Simulation.StateMachines.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
+static Sage.Simulation.StateMachines.SetState(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity)) -> bool
+static Sage.Simulation.StateMachines.StateOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> string?
 static Sage.Simulation.ThirdPersonRig.Create(Sage.Simulation.Entity follow = default(Sage.Simulation.Entity), bool enabled = true) -> Sage.Simulation.ThirdPersonRig
 static Sage.Simulation.ThirdPersonRig.DefaultShoulderOffset.get -> System.Numerics.Vector3
 static Sage.Simulation.Timers.NextWait(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> float

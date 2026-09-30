@@ -401,6 +401,11 @@
         "tree"
       ]
     },
+    "record:state_machine": {
+      "description": "The id of a state_machine record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:tag": {
       "description": "The id of a tag record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -835,6 +840,11 @@
         "sword_fp",
         "tree"
       ]
+    },
+    "base:state_machine": {
+      "description": "The id of a state_machine record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:tag": {
       "description": "Another tag record to inherit every field from, abstract or not.",

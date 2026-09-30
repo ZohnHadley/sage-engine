@@ -205,7 +205,62 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   (test: TimersTweensAndEntityIOAllocateNothingPerTick)
 - **Camera blends:** `CameraOn [hold [blend [ease]]]`; see 06 "As built (camera blends)".
 
-### 3.4c As built (logic entities and bridge I/O, 2026-09-30, issue #91)
+### 3.4c As built (state machines, 2026-09-30, issue #92)
+- **A record and a small component (decision D4).** A `state_machine` record (`StateMachineRecord`,
+  `src/Sage.Simulation/Logic/StateMachines.cs`, owned by `sage.core` like timers) is an `initial` state,
+  `states` by name — each `enter` and `exit` actions, `transitions` and free `tags` — and top-level
+  `transitions` from any state. `sage:state_machine` (`StateMachine`, part `state_machine: { "machine" }`)
+  names the record and holds the state **by name** and the seconds spent in it; that is what a save writes
+  (`"sage:state_machine": { "version": 1, "data": { "Machine": "ns:guard", "State": "alert", "TimeInState": 0.5 } }`),
+  so a save survives renumbering, and a load goes on counting from where it was
+  (test: StateAndTimeInItSurviveSaveAndLoad). A machine that has never run enters `initial` on its first
+  tick, running its `enter` without an `OnStateChanged`.
+- **Transitions:** `to` a state when every trigger it names holds — `on` (that input arrived at the
+  entity), `when` (a condition of #89's language) and `after` (seconds in the state); none of them means
+  at once. The state's own are tried in order, then the machine's from-any-state ones (never to the state
+  it is in); **the first that matches wins**, and a machine changes at most once a tick or per input. A
+  change runs the old state's `exit`, the transition's `then`, the new state's `enter`, then fires
+  `OnStateChanged`. Actions and conditions are asked with the activator (who sent the input that moved
+  it) as the subject and the machine as the other, so `fire` at `!self` reaches the machine.
+  (test: AGuardIdlesGrowsAlertAttacksAfterATimeoutAndCalmsDownOnAnInput)
+- **Timing is timers':** the machines step in the EntityIO phase after `sage.logic.timers` and before the
+  dispatch, so `after: 1` fires on the 60th tick in the state (at 60 Hz) — the tick a one-second wire sent
+  on the entering tick arrives — and `OnStateChanged`'s wires with no delay arrive the same tick. A change
+  made by an input fires outputs that arrive next tick, as any output an input fires does.
+- **Any input name.** `on` may name any input — a registered one (`Open`, `TimerStart`) or one no plugin
+  registers (`Calm`). Two small hooks on `EntityInputs` make that work without a registration per name:
+  `Has` also answers for names some machine's `on` uses (asked against the content being loaded,
+  `RecordStore.Latest`, so a scene checked before the machines is right), which is what lets a wire or
+  `ent_fire` send one; and the dispatch offers every delivered input to the machine on its target after
+  the registered handler, so "no input called" is said only when neither took it. A name a machine
+  listens for arriving in a state that does not is ignored quietly.
+  (test: AMachineIsCheckedAtLoad_AndAWireMaySendANameAMachineListensFor)
+- **`SetState <state>`** goes there at once (exit, enter, `OnStateChanged`); already there, nothing; an
+  unknown state is a warning naming the nearest. **`OnStateChanged`** hands a wire with no parameter of
+  its own the new state's name — Source's rule for an output's value, now `EntityIO.Fire(…, value)` /
+  `world.FireOutput(…, value)` — and a wire with a parameter keeps it.
+  (test: SetStateGoesThereAtOnce_AndAWireWithItsOwnParameterKeepsIt)
+- **Hot reload:** the record keeps its instance and recompiles when its states change; a machine whose
+  state is still there stays in it with its time and follows the new transitions; one whose state is gone
+  goes to `initial` (its `enter`, an `OnStateChanged`) with a warning naming the state. A removed record
+  stands its machines still, said once.
+  (test: HotReloadKeepsAStateThatIsStillThere_AndSendsOneThatIsGoneToInitialWithAWarning)
+- **Checked at load:** `initial` and every `to` are states (with the nearest name), names are unique
+  ignoring case, `after` is a time; a transition to its own state, or from any state, with no trigger is
+  a warning, because it is taken every tick.
+- **The engine's**, with no plugins (test: StateMachinesAreTheEngines_InAGameWithNoPlugins), and no
+  allocation per tick with machines changing state, hearing inputs and firing outputs
+  (test: StateMachinesAllocateNothingPerTick).
+- **For 4d:** nothing here knows guards or doors. `StateTransition` and `StateMachines.FirstTransition`
+  (first match, `on`/`when`/`after`) are public so an animation graph's record — states carrying a clip
+  and a blend instead of actions — steps with the same rules, animation events arriving as `on` names;
+  `tags` and `StateMachines.HasTag` let a HUD or a layer read a state without knowing its name
+  (test: FirstTransitionTakesTheFirstThatMatches).
+- **Not built:** `during`/`update` actions each tick, per-state outputs (`enter` can `fire` instead),
+  nested or parallel states, a saved activator (it is a handle, as a timer's is), and an engine prefab
+  (placements cannot override a part's `machine` yet, so a game writes its own prefab with the part).
+
+### 3.4d As built (logic entities and bridge I/O, 2026-09-30, issue #91)
 - **Inputs routed by component.** The design above says "the input must exist on some component of the
   target"; now it can. `EntityInputs.Register<T>(name, handler)` registers a handler for one component
   (one per name and component), beside the global `Register(name, handler)`. An input arriving at an
@@ -273,8 +328,12 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   (test: DeathAndDamageAreOutputs) (test: APickupSaysItWasPickedUp)
 - **No allocation per tick** with a timer driving a counter, a comparison, a branch, a same-tick relay, a
   conditional wire and a remap. (test: LogicEntitiesAllocateNothingPerTick)
-- **For state machines (#92):** register `SetState` with `Register<StateMachine>` and fire
-  `OnStateChanged` with the state as its value; a machine's `Enable`/`Disable` can be its own.
+- **With state machines (#92):** `SetState` is routed to `sage:state_machine`, so at an entity without
+  one it is refused naming the component. A machine's `on` names (the `Heard`/`Listener` hooks of 3.4c)
+  are asked after an input's handlers, routed or global, and an input a machine heard counts as delivered;
+  a name only a machine listens for is still a known input at load. `OnStateChanged` hands the state on
+  through the same values as the logic entities' outputs.
+  (test: AStateMachineHearsAnInputBesideTheComponentsThatTakeIt)
 
 ### 3.5 Engine signals in detail
 `EngineSignals` (on `Engine`, 01) holds plain C# events, raised on the main thread at the start of a frame (never inside a tick):

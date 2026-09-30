@@ -449,7 +449,7 @@ Creatures walk round things instead of into them.
 - **Asking allocates nothing:** lists are read once at load and walked by index; every reason is a
   constant (test: EvaluatingConditionsAllocatesNothing).
 - **Not built:** nothing but a game's own code and dialogue read a `requires` yet — conditional wires and
-  relays with `then` are #91, state machines #92, topics #93. `fire` looks its target up when it runs,
+  relays with `then` are #91, state machines #92 (built: see "As built (state machines)"), topics #93. `fire` looks its target up when it runs,
   so an input sent at a name that does not exist yet is dropped (a wire's late binding would need
   `EntityIO` to take a name; #90 owns that file). Vars hold numbers only.
 
@@ -487,6 +487,18 @@ Creatures walk round things instead of into them.
 - **Not built:** topics found in an answer's text (Morrowind's hyperlinks: write `add_topic` instead),
   greetings and per-speaker "known" lists, and a `TopicAsked` event for `talk` objectives (an info's
   `then` can `set_stage` already).
+
+### As built (state machines, issue #92, 2026-09-30)
+- **The language's second reader in the base:** a `state_machine` record's transitions ask a `when`
+  condition every tick and its states run `enter`/`exit` actions (and a transition its `then`), with the
+  activator as the subject and the machine as the other — the same contexts a wire's `fire` uses. A guard
+  that grows alert on `{ "var": "alarm", "eq": 1 }`, attacks after a second and calms down on an input is
+  data only (test: AGuardIdlesGrowsAlertAttacksAfterATimeoutAndCalmsDownOnAnInput). The mechanism —
+  `sage:state_machine`, `SetState`, `OnStateChanged`, `on` any input name, saves and hot reload — is
+  entity I/O's, in 04 §3.4c.
+- **For AI and animation:** a state's `tags` (`StateMachines.HasTag`) are how gameplay code reads a
+  machine without knowing its state names; `StateTransition` and `StateMachines.FirstTransition` are the
+  rules 4d's animation graph steps with.
 
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
