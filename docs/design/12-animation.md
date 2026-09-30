@@ -44,6 +44,16 @@ public struct SpriteAnimator { public int Clip; public float Time; public float 
 - Bone **attachments** (weapons, riders), **IK** (feet, look-at), **root motion** optional.
 - **Ragdoll hand-off** with physics (10) and blend-back to get up (Lugaru).
 
+### As built (GPU skinning, #117, 2026-09-30)
+Phase 4d's drawing half (#115): a skinned glTF drawn on the GPU. Posing it is #116 (skeletons, clips, sampling) and #118 (the animator); until then a skinned mesh stands in its rest pose.
+- **Loading:** `GltfLoader` reads a node with a skin into `VertexSkinned` vertices (position, normal, uv, `Byte4` joint indices, `Vector4` weights) **left in the skin's bind space** — glTF ignores a skinned node's own transform, so none is baked in — plus the skin's inverse bind matrices and each joint's rest-pose matrix in model space. Influences are cleaned per vertex: a joint past the palette or the skin loses its weight, weights are renormalised, and a vertex with none follows joint 0. Rigid primitives in the same file are baked as before. One skin per model (a second is skipped, logged). Culling uses the rest-pose sphere.
+- **Components:** `SkinnedMeshRenderer` (`sage:skinned_mesh_renderer`: `mesh`, `material`, `layer`) beside `MeshRenderer` in `RenderData.cs`, and the `skinned_mesh` prefab part (engine-owned, `sage.core`), which reports a missing `mesh`.
+- **Extract:** `SkinnedMeshExtract` (client) resolves each renderer's mesh, takes its joints from the world's `SkinPoses` resource when something poses the entity and the rest pose otherwise, and hands them to `SkinnedExtract.Emit` (Sage.Simulation, headless). `Emit` writes the renderer's palette **once**, at the first view that sees it, into the pooled `RenderSnapshot.Bones`, and every view that sees it gets items with the same `RenderItem.BoneStart`/`BoneCount`; a renderer no view sees writes nothing (test: EachViewThatSeesARenderer_DrawsFromItsOneRange_WrittenOnce). A mesh without a skin draws rigid through the same path (test: ARendererWithNoSkin_DrawsInEveryViewThatSeesIt_WithNoBones). A frame of 100 skinned renderers in three views allocates nothing (test: ExtractingSkinnedItems_AllocatesNothing).
+- **Drawing:** the `Skinned` technique and the 64-joint palette are 07 §3.7. `r_stats` counts skinned draws and bones written.
+- **Maths:** `SkinMath.Palette(modelJoints, inverseBind, palette)` takes plain `System.Numerics` spans, so it serves #116's `Skeleton` and pose arrays without depending on them; a vertex shared half and half between two joints lands halfway (test: AVertexSharedHalfAndHalf_GoesHalfway).
+- **`r_testskin 1`** (dev, cheat): writes a two-joint column as a `.glb` in memory (SharpGLTF `Schema2`), loads it through the loader's skinned path and bends it ±60° every frame through `SkinPoses`; `r_testskin 0` removes it. CI smoke-runs it; locally with shaders compiled under Wine it draws the column bending at its middle.
+- **For #118:** the animator writes model-space joints for the entity (today `SkinPoses.Write(entity, joints)`, internal; or its own pose component, read by `SkinnedMeshExtract` in its place). Nothing else changes: extract, palette and shader take whatever joints it gives.
+
 ## 4. API sketch
 The sprite API is inline above: the sheet JSON, `SpriteAnimator` and `AnimationEvent`. The skeletal API is sketched when Phase 3 starts.
 

@@ -748,6 +748,14 @@
         }
       ]
     },
+    "sage:skinned_mesh_renderer": {
+      "description": "Component sage:skinned_mesh_renderer (SkinnedMeshRenderer).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:skinned_mesh_renderer"
+        }
+      ]
+    },
     "sage:sprite_animator": {
       "description": "Component sage:sprite_animator (SpriteAnimator).",
       "allOf": [
@@ -825,6 +833,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:sector_owned"
+        }
+      ]
+    },
+    "skinned_mesh_renderer": {
+      "description": "The component sage:skinned_mesh_renderer (SkinnedMeshRenderer), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:skinned_mesh_renderer"
         }
       ]
     },
@@ -2916,6 +2932,32 @@
       },
       "additionalProperties": false,
       "description": "Component sage:sector_owned (SectorOwned)."
+    },
+    "sage:skinned_mesh_renderer": {
+      "type": "object",
+      "properties": {
+        "mesh": {
+          "description": "A mesh path. (AssetPath)",
+          "type": "string"
+        },
+        "material": {
+          "description": "Names a material record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "layer": {
+          "description": "(byte, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:skinned_mesh_renderer (SkinnedMeshRenderer)."
     },
     "sage:sprite_animator": {
       "type": "object",

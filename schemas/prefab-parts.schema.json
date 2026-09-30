@@ -242,6 +242,14 @@
         }
       ]
     },
+    "skinned_mesh": {
+      "description": "Prefab part 'skinned_mesh' (SkinnedMeshPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/skinned_mesh"
+        }
+      ]
+    },
     "sprite": {
       "description": "Prefab part 'sprite' (SpritePart).",
       "allOf": [
@@ -1081,6 +1089,32 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'scripted_camera' (ScriptedCameraPart)."
+    },
+    "skinned_mesh": {
+      "type": "object",
+      "properties": {
+        "mesh": {
+          "description": "A .glb with a skin (JOINTS_0 and WEIGHTS_0) A mesh path. (AssetPath)",
+          "type": "string"
+        },
+        "material": {
+          "description": "Empty = sage:lit_default; its effect needs a Skinned technique. Names a material record. (RecordRef<MaterialRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "layer": {
+          "description": "Sort layer, drawn in order before material. Range: 0 to 15. (byte, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'skinned_mesh' (SkinnedMeshPart)."
     },
     "sprite": {
       "type": "object",

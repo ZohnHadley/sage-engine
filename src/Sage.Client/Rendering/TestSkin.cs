@@ -104,7 +104,7 @@ internal static class TestSkinModel
     }
 }
 
-// FrameUpdate: while `r_testskin` is on, keeps one test column four metres in front of where the
+// FrameUpdate: while `r_testskin` is on, keeps one test column five metres in front of where the
 // screen's camera was when it was turned on, and poses it every frame through `SkinPoses` (what #118's
 // animator will write). Turning it off removes it.
 [System("sage.client.testskin", Phase.FrameUpdate, Condition = RunCondition.DevOnly)]
@@ -144,8 +144,12 @@ internal sealed class TestSkinSystem : ISystem
             }
             var forward = new N.Vector3(eye.Forward.X, 0f, eye.Forward.Z);
             forward = forward.LengthSquared() > 1e-6f ? N.Vector3.Normalize(forward) : -N.Vector3.UnitZ;
-            var foot = eye.Position + forward * 4f - N.Vector3.UnitY * 1f;
-            _column = world.Create(Transform.At(foot), "r_testskin");
+            // Standing on the ground in front of an eye at about a player's height, and turned so its
+            // local Z runs along the view: it bends across the picture, not towards the camera.
+            var foot = eye.Position + forward * 5f - N.Vector3.UnitY * 1.6f;
+            var place = Transform.At(foot);
+            place.LocalRotation = N.Quaternion.CreateFromYawPitchRoll(MathF.Atan2(-forward.X, -forward.Z), 0f, 0f);
+            _column = world.Create(place, "r_testskin");
             world.Add(_column, new SkinnedMeshRenderer { Mesh = TestSkinModel.Path });
             Log.Info(LogCat.Render, $"r_testskin: a skinned column ({TestSkinModel.Joints} joints) at {foot}");
         }
