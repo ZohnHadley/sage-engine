@@ -159,6 +159,14 @@ internal sealed class SaveSerializer
         }
     }
 
+    // Every saved tag off, before a save's are put on an entity content placed (4i-3): a tag the game took
+    // off (a creature no longer hostile) stays off, rather than coming back because the prefab has it.
+    public void ClearTags(Entity entity)
+    {
+        foreach (string id in System.Linq.Enumerable.ToList(_schema.TagsOf(entity)))
+            if (_schema.TryTag(id, out var type) && !IsTransient(type)) _schema.RemoveTag(entity, type);
+    }
+
     public void ReadTags(World world, Entity entity, JsonArray tags, string where, JsonArray? unknown = null)
     {
         foreach (var node in tags)

@@ -233,12 +233,16 @@ internal static class PrefabOverriding
     // A child's own placement, checked where the parent writes it: a prefab, and its overrides.
     public static void CheckChildren(Engine engine, PrefabRecord prefab, RecordCheck check)
     {
+        var names = new HashSet<string>(StringComparer.Ordinal);
         for (int i = 0; i < prefab.Children.Count; i++)
         {
             var child = prefab.Children[i];
             string path = $"Children[{i}]";
             if (child == null) { check.Error(path, "an empty child"); continue; }
             if (child.Prefab.Id.IsEmpty) { check.Error(path, "a child needs a \"prefab\""); continue; }
+            // A child's persistent id is its parent's plus its name (4i-3): two of one name would be one id.
+            if (!string.IsNullOrEmpty(child.Name) && !names.Add(child.Name))
+                check.Error(path + ".Name", $"another child is already named '{child.Name}'; a save could not tell them apart");
             Check(engine, child.Overrides, child.Prefab.Id.Namespace, path + ".Overrides", check);
         }
         CheckNesting(prefab, check);

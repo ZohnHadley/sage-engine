@@ -436,13 +436,17 @@ public static class PrefabExtensions
             Log.Error(LogCat.Records, $"{prefab}: prefabs nest deeper than {PrefabOverriding.MaxDepth}; its children are not spawned");
             return entity;
         }
-        foreach (var child in record.Children)
+        for (int i = 0; i < record.Children.Count; i++)
         {
+            var child = record.Children[i];
             if (child == null || child.Prefab.Id.IsEmpty) continue;
             var local = Transform.At(child.At);
             local.LocalRotation = SageMath.RotationFromYaw(child.Yaw * MathF.PI / 180f);
             var spawned = SpawnTree(world, child.Prefab.Id, local, child.Overrides, $"{prefab}: child {child.Prefab.Id}", entity, depth + 1);
-            if (!spawned.IsNull && !string.IsNullOrEmpty(child.Name)) spawned.Name = child.Name;
+            if (spawned.IsNull) continue;
+            if (!string.IsNullOrEmpty(child.Name)) spawned.Name = child.Name;
+            // Its place in the parent, from which its persistent id is derived (4i-3, ContentIds.Assign).
+            world.Add(spawned, new PrefabChildKey { Key = PrefabChildKeys.Of(i, child) });
         }
         return entity;
     }
