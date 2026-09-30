@@ -85,6 +85,150 @@
           "$ref": "prefab-parts.schema.json"
         }
       ]
+    },
+    "children": {
+      "description": "Prefabs placed inside this one: parented to it and destroyed with it. (List<PrefabChild>)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "prefab": {
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:prefab"
+              }
+            ]
+          },
+          "at": {
+            "description": "Where, in the parent's frame. Unit: m. (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "yaw": {
+            "description": "Degrees about +Y, relative to the parent. Unit: deg. (float)",
+            "type": "number"
+          },
+          "name": {
+            "description": "Optional, so ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "overrides": {
+            "description": "Changes to the child's prefab for this child alone. (PrefabOverrides)",
+            "type": "object",
+            "properties": {
+              "components": {
+                "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+              },
+              "parts": {
+                "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "children+": {
+      "description": "Adds to \"children\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "prefab": {
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:prefab"
+              }
+            ]
+          },
+          "at": {
+            "description": "Where, in the parent's frame. Unit: m. (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "yaw": {
+            "description": "Degrees about +Y, relative to the parent. Unit: deg. (float)",
+            "type": "number"
+          },
+          "name": {
+            "description": "Optional, so ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "overrides": {
+            "description": "Changes to the child's prefab for this child alone. (PrefabOverrides)",
+            "type": "object",
+            "properties": {
+              "components": {
+                "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+              },
+              "parts": {
+                "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "children-": {
+      "description": "Removes these from \"children\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "prefab": {
+            "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:prefab"
+              }
+            ]
+          },
+          "at": {
+            "description": "Where, in the parent's frame. Unit: m. (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "yaw": {
+            "description": "Degrees about +Y, relative to the parent. Unit: deg. (float)",
+            "type": "number"
+          },
+          "name": {
+            "description": "Optional, so ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "overrides": {
+            "description": "Changes to the child's prefab for this child alone. (PrefabOverrides)",
+            "type": "object",
+            "properties": {
+              "components": {
+                "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+              },
+              "parts": {
+                "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false

@@ -40,6 +40,12 @@ public sealed class RecordCheck
     // Whether a record exists in the content being loaded: of `type` ("item"), or of any type when null.
     public bool Exists(string? type, RecordId id) => _store.ExistsWhileChecking(type, id);
 
+    // Another record of the content being loaded, as built: for a check that follows references — a
+    // prefab whose children contain it (phase 4i). Null when there is no such record of that type.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
+    public bool TryGet<T>(RecordId id, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out T? record) where T : class =>
+        _store.TryGetWhileChecking(id, out record);
+
     // Every field `node` writes that `type` has not got, each an error at its path with the nearest
     // real field. False when there was one.
     public bool CheckFields(JsonNode? node, Type type, string path)

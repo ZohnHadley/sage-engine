@@ -201,7 +201,8 @@ public sealed class Scenes
         for (int i = 0; i < scene.Place.Count; i++)
         {
             var placement = scene.Place[i];
-            var entity = world.Spawn(placement.Prefab, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), placement.Yaw);
+            var entity = world.Spawn(placement.Prefab.Id, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), placement.Yaw,
+                                     placement.Overrides, $"scene {id} place[{i}]");
             if (entity.IsNull) continue;   // `Spawn` said why; one bad line costs that line
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
             PlacementWires.Attach(world, entity, placement);
@@ -262,7 +263,8 @@ public sealed class Scenes
         }
 
         var state = world.Resources.Get<ActiveScene>();
-        var entity = world.Spawn(start.Prefab, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), start.Yaw);
+        var entity = world.Spawn(start.Prefab.Id, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), start.Yaw,
+                                 start.Overrides, $"scene {state.Id} player");
         if (entity.IsNull) return entity;
         if (!string.IsNullOrEmpty(start.Name)) entity.Name = start.Name;
         PlacementWires.Attach(world, entity, start);
@@ -335,6 +337,8 @@ public sealed class Scenes
             string path = single ? field : $"{field}[{i}]";
             if (placements[i].Prefab.Id.IsEmpty)
                 check.Error(path, "a placement needs a \"prefab\"");
+            else
+                PrefabOverriding.Check(_engine, placements[i].Overrides, placements[i].Prefab.Id.Namespace, path + ".Overrides", check);
             PlacementWires.Check(_engine, placements[i], path, check);
         }
     }

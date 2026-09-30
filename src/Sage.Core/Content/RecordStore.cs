@@ -663,6 +663,17 @@ public sealed class RecordStore
         type == null ? (_checkingIds?.Contains(id) ?? Exists(id))
                      : (_checking?.ContainsKey((type, id)) ?? Exists(type, id));
 
+    internal bool TryGetWhileChecking<T>(RecordId id, out T? record) where T : class
+    {
+        record = null;
+        if (!_namesByType.TryGetValue(typeof(T), out var type)) return false;
+        object? found = null;
+        if (_checking != null) _checking.TryGetValue((type, id), out found);
+        else _records.TryGetValue((type, id), out found);
+        record = found as T;
+        return record != null;
+    }
+
     internal void CheckValuesWhileChecking(object? value, string path, Func<string, string> at, string what) =>
         CheckValues(value, path, _checking ?? _records, _checkingIds ?? _records.Keys.Select(k => k.Id).ToHashSet(), at, what);
 
