@@ -141,6 +141,36 @@
       "items": {
         "$ref": "ids.schema.json#/definitions/record:effect"
       }
+    },
+    "delivery": {
+      "description": "A registered hit delivery: sweep, ray or projectile; empty = sweep. (string, default \"sweep\")",
+      "default": "sweep",
+      "anyOf": [
+        {
+          "$ref": "vocabularies.schema.json#/definitions/hit_delivery:id"
+        },
+        {
+          "const": ""
+        }
+      ]
+    },
+    "range": {
+      "description": "How far a ray or a projectile reaches; a sweep uses reach. Unit: m. At least 0. (float, default 100)",
+      "default": 100,
+      "type": "number",
+      "minimum": 0
+    },
+    "pellets": {
+      "description": "Rays or projectiles per strike, each landing its own hit. At least 1. (int, default 1)",
+      "default": 1,
+      "type": "integer",
+      "minimum": 1
+    },
+    "projectileSpeed": {
+      "description": "How fast a projectile delivery's carrier flies. Unit: m/s. At least 0. (float, default 60)",
+      "default": 60,
+      "type": "number",
+      "minimum": 0
     }
   },
   "additionalProperties": false

@@ -4593,6 +4593,126 @@
         }
       ]
     },
+    "hit_delivery:id": {
+      "description": "A hit_delivery by id: projectile, ray, sweep.",
+      "type": "string",
+      "enum": [
+        "Projectile",
+        "Ray",
+        "Sweep",
+        "projectile",
+        "ray",
+        "sweep"
+      ]
+    },
+    "hit_delivery": {
+      "description": "A hit_delivery: its id, or { \"kind\": \"<id>\", … } with its settings.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/hit_delivery:id"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "$ref": "#/definitions/hit_delivery:id"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "projectile",
+                      "Projectile"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The hit_delivery: projectile.",
+                    "enum": [
+                      "projectile",
+                      "Projectile"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "hit_delivery 'projectile' (ProjectileHitDelivery)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "ray",
+                      "Ray"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The hit_delivery: ray.",
+                    "enum": [
+                      "ray",
+                      "Ray"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "hit_delivery 'ray' (RayDelivery)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "sweep",
+                      "Sweep"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The hit_delivery: sweep.",
+                    "enum": [
+                      "sweep",
+                      "Sweep"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "hit_delivery 'sweep' (SweepDelivery)."
+              }
+            }
+          ]
+        }
+      ]
+    },
     "item_use:id": {
       "description": "An item_use by id: cast, consume, read.",
       "type": "string",
