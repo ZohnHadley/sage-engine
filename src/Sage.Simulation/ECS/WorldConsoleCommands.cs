@@ -131,6 +131,8 @@ internal static class WorldConsoleCommands
             }
         });
 
+        RegisterClock(cvars, engine);
+
         // Id, type and the plugin that added it (issue #17), plus who replaced or disabled it: the
         // question a mod conflict starts with is "whose is this, and who touched it".
         cvars.RegisterCommand("sys_list", CVarFlags.None,
@@ -253,4 +255,54 @@ internal static class WorldConsoleCommands
         System.Collections.ICollection c => $"{c.Count} item(s)",
         _ => value.ToString() ?? "-",
     };
+
+    // `time`, `time_set` and `time_scale` (issue 4h-2): the world's clock, from the console.
+    private static void RegisterClock(CVarRegistry cvars, Engine engine)
+    {
+        cvars.RegisterCommand("time", CVarFlags.None,
+            "time: the time of day in every world, its speed and its sky.", _ =>
+        {
+            foreach (var world in engine.Worlds)
+            {
+                if (!world.Resources.TryGet<WorldClock>(out var clock) || clock == null) continue;
+                Log.Info(LogCat.Console,
+                    $"'{world.Name}': day {clock.Day} {WorldClock.Format(clock.Hour)} (x{clock.Scale:0.##} game seconds a second)" +
+                    (clock.Sky.IsEmpty ? ", no sky" : $", sky {clock.Sky}"));
+            }
+        });
+
+        cvars.RegisterCommand("time_set", CVarFlags.Cheat,
+            "time_set <hour|hh:mm>: set the time of day in every world (the day does not change).", a =>
+        {
+            if (a.Count == 0 || !WorldClock.TryParseHour(a[0], out double hour) || hour < 0 || hour > 24)
+            {
+                Log.Warn(LogCat.Console, "time_set <hour|hh:mm>, e.g. time_set 18:30 or time_set 18.5");
+                return;
+            }
+            foreach (var world in engine.Worlds)
+            {
+                if (!world.Resources.TryGet<WorldClock>(out var clock) || clock == null) continue;
+                clock.Hour = hour;
+                Log.Info(LogCat.Console, $"'{world.Name}': {WorldClock.Format(clock.Hour)}");
+            }
+        });
+
+        cvars.RegisterCommand("time_scale", CVarFlags.Cheat,
+            "time_scale <n>: game seconds per real second, in every world (60: a minute a second; 0 stops the clock).", a =>
+        {
+            if (a.Count == 0 || !double.TryParse(a[0], System.Globalization.NumberStyles.Float,
+                                                 System.Globalization.CultureInfo.InvariantCulture, out double scale)
+                || scale < 0 || double.IsInfinity(scale) || double.IsNaN(scale))
+            {
+                Log.Warn(LogCat.Console, "time_scale <n>, n >= 0");
+                return;
+            }
+            foreach (var world in engine.Worlds)
+            {
+                if (!world.Resources.TryGet<WorldClock>(out var clock) || clock == null) continue;
+                clock.Scale = scale;
+                Log.Info(LogCat.Console, $"'{world.Name}': x{scale:0.##}");
+            }
+        });
+    }
 }

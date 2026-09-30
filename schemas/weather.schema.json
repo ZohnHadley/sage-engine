@@ -143,6 +143,46 @@
       "default": 1,
       "type": "number"
     },
+    "fogTint": {
+      "description": "With a sky: multiplies the sky's fog colour (a storm's grey is a dark tint) Category: Sky. (Vector3, default [1,1,1])",
+      "default": [
+        1,
+        1,
+        1
+      ],
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "skyTint": {
+      "description": "With a sky: multiplies the sky's horizon and zenith colours. Category: Sky. (Vector3, default [1,1,1])",
+      "default": [
+        1,
+        1,
+        1
+      ],
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "fogStartScale": {
+      "description": "With a sky: multiplies where fog begins (below 1 pulls it in) At least 0. Category: Sky. (float, default 1)",
+      "default": 1,
+      "type": "number",
+      "minimum": 0
+    },
+    "fogEndScale": {
+      "description": "With a sky: multiplies where fog is complete. At least 0. Category: Sky. (float, default 1)",
+      "default": 1,
+      "type": "number",
+      "minimum": 0
+    },
     "sound": {
       "description": "Names a sound record. (RecordRef<SoundRecord>)",
       "allOf": [
