@@ -74,7 +74,10 @@ internal sealed class WeatherSystem : ISystem
             _clearSky.AmbientGround = _environment.AmbientGround;
         }
 
-        WeatherRules.Apply(_records, _weather, _environment, _clearSky);
+        // With a sky, the sky system composes weather into the environment (it is the baseline, and
+        // weather adjusts it); overwriting it here would freeze the dusk (issue 4h-2).
+        bool sky = _world.Resources.TryGet<WorldClock>(out var clock) && SkyRules.Current(_records, clock) != null;
+        if (!sky) WeatherRules.Apply(_records, _weather, _environment, _clearSky);
         _particles.Wind = WeatherRules.WindNow(_records, _weather);
         Sound();
         Fall(dt);
