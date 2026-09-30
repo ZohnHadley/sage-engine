@@ -1,1 +1,32 @@
 #nullable enable
+*REMOVED*Sage.Gameplay.ActionAttribute
+*REMOVED*Sage.Gameplay.ActionAttribute.ActionAttribute(string! id) -> void
+*REMOVED*Sage.Gameplay.ActionContext
+*REMOVED*Sage.Gameplay.ActionContext.ActionContext() -> void
+*REMOVED*Sage.Gameplay.ActionContext.ActionContext(Sage.Simulation.World! World, Sage.Simulation.Entity Subject, Sage.Simulation.Entity Other = default(Sage.Simulation.Entity)) -> void
+*REMOVED*Sage.Gameplay.ActionContext.Other.get -> Sage.Simulation.Entity
+*REMOVED*Sage.Gameplay.ActionContext.Other.init -> void
+*REMOVED*Sage.Gameplay.ActionContext.Subject.get -> Sage.Simulation.Entity
+*REMOVED*Sage.Gameplay.ActionContext.Subject.init -> void
+*REMOVED*Sage.Gameplay.ActionContext.World.get -> Sage.Simulation.World!
+*REMOVED*Sage.Gameplay.ActionContext.World.init -> void
+*REMOVED*Sage.Gameplay.ConditionAttribute
+*REMOVED*Sage.Gameplay.ConditionAttribute.ConditionAttribute(string! id) -> void
+*REMOVED*Sage.Gameplay.ConditionContext
+*REMOVED*Sage.Gameplay.ConditionContext.ConditionContext() -> void
+*REMOVED*Sage.Gameplay.ConditionContext.ConditionContext(Sage.Simulation.World! World, Sage.Simulation.Entity Subject, Sage.Simulation.Entity Other = default(Sage.Simulation.Entity)) -> void
+*REMOVED*Sage.Gameplay.ConditionContext.Other.get -> Sage.Simulation.Entity
+*REMOVED*Sage.Gameplay.ConditionContext.Other.init -> void
+*REMOVED*Sage.Gameplay.ConditionContext.Subject.get -> Sage.Simulation.Entity
+*REMOVED*Sage.Gameplay.ConditionContext.Subject.init -> void
+*REMOVED*Sage.Gameplay.ConditionContext.World.get -> Sage.Simulation.World!
+*REMOVED*Sage.Gameplay.ConditionContext.World.init -> void
+*REMOVED*Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Gameplay.IAction!>!
+*REMOVED*Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Gameplay.ICondition!>!
+*REMOVED*Sage.Gameplay.IAction
+*REMOVED*Sage.Gameplay.IAction.Run(in Sage.Gameplay.ActionContext context) -> void
+*REMOVED*Sage.Gameplay.ICondition
+*REMOVED*Sage.Gameplay.ICondition.Test(in Sage.Gameplay.ConditionContext context, out string! why) -> bool
+Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Simulation.ICondition!>!
+static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.RecordId quest, string! stage) -> bool

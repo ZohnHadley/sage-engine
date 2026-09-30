@@ -430,8 +430,8 @@ entry inside an object; an entry that takes no settings can be written as its ba
 | Vocabulary | Where content uses it | The engine's entries |
 |---|---|---|
 | `quest_objective` (key `kind`, default `kill`) | a quest stage's `objectives` | `kill`, `have`, `reach`, `talk` |
-| `condition` (key `condition`) | a dialogue option's `conditions` | `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest` |
-| `action` (key `action`) | a dialogue option's `actions` | `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest` |
+| `condition` (key `condition`, or its id as a property) | a dialogue option's `conditions`; any `requires` | the base's `all`, `any`, `not`, `var`; gameplay's `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest` |
+| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`; gameplay's `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest` |
 | `ability_delivery` | an ability's `delivery` (its `targeting` still names one) | `self`, `touch`, `touch_area`, `area`, `projectile` |
 | `effect_execution` (key `execution`) | an effect's `executions` | `knockback`, `teleport`, `summon`, `dispel` |
 | `item_use` (key `use`) | an item's `uses`, run in order by `world.UseItem` and `use_item` | `consume`, `read`, `cast` |
@@ -453,6 +453,29 @@ real one (test: AnUnknownEntryIsALoadErrorThatSaysTheNearestName), and `sage sch
 registered name and each entry's settings in `schemas/vocabularies.schema.json`
 (test: TheCommittedSchemasCheckEntriesAndTheirSettings). Dialogue's older `requires` and `then` objects
 still work, and mean exactly the engine's conditions and actions above. §6 says how to add an entry.
+
+**Conditions and actions are one language** (issue #89), the base engine's rather than dialogue's, so a
+game with no gameplay plugins has it too. Combine conditions with `all`, `any` and `not`; keep numbers
+in world variables (`var`, `set_var`, `add_var`: a name nobody set is 0, and they are saved); send an
+entity input with `fire`. Each entry can also be written with its id as the property — its value fills
+the entry's main setting, or is its settings when it is an object:
+
+```jsonc
+"conditions": [ { "all": [ { "has_item": "key_iron" },
+                           { "not": { "var": "alarm", "eq": 1 } },
+                           { "any": [ { "quest": "thin_the_wood", "atLeast": "report" },
+                                      { "var": "guard_bribed", "min": 1 } ] } ] } ],
+"actions":    [ { "fire": "hut_door", "input": "Open", "delay": 0.5 },   // target: a name, !subject or !other
+                { "add_var": "doors_opened" },                           // "amount": 1 unless it says
+                { "set_stage": { "quest": "thin_the_wood", "stage": "report" } },
+                { "action": "give_item", "item": "gold", "count": 20 } ]  // the long form still reads
+```
+
+`quest`'s `atLeast` holds at that stage, any later one in the quest's list, or once it is finished.
+Gameplay's entries come with the plugin that owns what they ask about (`has_item` with items, `standing`
+with factions), not with dialogue (test: GameplayEntriesComeWithTheirPluginsNotWithDialogue). Code asks
+and does with `Conditions.Evaluate(world, subject, requires)` and `Conditions.Run(world, subject, then)`
+(SAGE0124, §10b) (test: AGameWithoutDialogueReadsAndEvaluatesNestedRequires).
 
 ### Every prefab part the engine provides
 
@@ -942,6 +965,11 @@ vocabulary is one `[Vocabulary("name")]` on an interface and one attribute class
 `VocabularyEntryAttribute<T>`; a field of that interface type then reads entries from JSON. Worth
 knowing about each:
 
+- **Conditions and actions** (`[Condition]`, `[Action]`, in `Sage.Simulation` since issue #89) are asked
+  about a `Subject` and an `Other` (`ConditionContext`, `ActionContext`); `why` is what a refusal says, a
+  constant string so asking allocates nothing. Mark the setting the shorthand fills with `[EntryValue]`
+  (`[Condition("is_hour")] class IsHour : ICondition { [EntryValue] public int Hour; … }` reads
+  `{ "is_hour": 21 }`), and read a `requires`/`then` of your own as `ICondition`/`List<IAction>` fields.
 - **AI conditions** keep to 64 in all (a creature's conditions are one 64-bit mask); the engine's eleven
   keep their bits and yours take the rest (test: TheEnginesConditionsKeepTheirBitsAndAGamesTakeTheNextFree).
   A profile's `rules` pick a schedule by them without any selector of your own
@@ -1290,10 +1318,11 @@ names their types needs the opt-in.
 
 | Id | Area | Why it may change |
 |---|---|---|
-| SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
+| SAGE0120 | The open vocabularies' contracts (issue #28): `IAbilityDelivery`, `IEffectExecution`, `IItemUse`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, `ICondition`, `IAction`, their entry attributes and context structs. **Moved in 0.2 (issue #89):** `ICondition`, `IAction`, `ConditionAttribute`, `ActionAttribute`, `ConditionContext` and `ActionContext` are in `Sage.Simulation` now, not `Sage.Gameplay` — add `using Sage.Simulation;` (a game project already has it); content ids are unchanged | One issue old; how an entry reads its settings and what its context carries will move as games write entries |
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
+| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`, and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`) | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.

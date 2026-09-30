@@ -37,6 +37,7 @@ public sealed class Engine : IDisposable
         // registries; bare ids inside one are qualified as the entry's own type.
         Records.Json.Converters.Add(new VocabularyJsonConverterFactory(Vocabularies));
         Records.PolymorphicTypes = Vocabularies.ConcreteTypeOf;
+        Records.PolymorphicShorthand = Vocabularies.Expand;   // `{ "has_item": "key" }` (issue #89)
         // Prefab bodies are checked as content loads (issue #22): components, parts, their fields and
         // what they name, at their lines, rather than at the first spawn.
         Records.AddCheck<PrefabRecord>((prefab, check) => PrefabChecks.Check(this, prefab, check));
@@ -129,6 +130,7 @@ public sealed class Engine : IDisposable
         try
         {
             world.Resources.Add(new CameraViews());
+            world.Resources.Add(new Vars());                     // world variables (issue #89), saved
             world.AddSystem(new CameraDirector(world));
             world.AddSystem(new ScriptedCameraSystem(world));     // holds run out (issue #80)
             world.AddSystem(new CameraInputLockSystem(world));    // a cut may hold the player still

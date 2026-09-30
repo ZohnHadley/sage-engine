@@ -12,4 +12,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Sage.Tests" />
   </ItemGroup>
+  <!-- Experimental API (docs/MAKING_A_GAME.md §10b): the vocabulary shorthand of stage 2's condition and action language (SAGE0124, issue #89) is declared here, and an assembly uses its own experimental API freely. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0124</NoWarn>
+  </PropertyGroup>
 </Project>

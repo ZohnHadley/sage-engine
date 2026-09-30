@@ -27,8 +27,8 @@
     <Using Include="Sage.Core" />
     <Using Include="Sage.Simulation" />
   </ItemGroup>
-  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the open vocabularies (SAGE0120) are declared here; movers place brush-map doors (SAGE0122, MapLevels). -->
+  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the open vocabularies (SAGE0120) are declared here, and its conditions and actions use the base's (SAGE0120, SAGE0124); movers place brush-map doors (SAGE0122, MapLevels). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0120;SAGE0122</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0122;SAGE0124</NoWarn>
   </PropertyGroup>
 </Project>
