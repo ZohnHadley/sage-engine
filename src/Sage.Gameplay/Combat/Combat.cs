@@ -88,10 +88,22 @@ public sealed class AttackRecord
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Min = 1, Tooltip = "Rays or projectiles per strike, each landing its own hit")]
     public int Pellets = 1;
-    // Straight flight for now; the arced carrier, its prefab and gravity are issue #134's.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Min = 0, Unit = "m/s", Tooltip = "How fast a projectile delivery's carrier flies")]
     public float ProjectileSpeed = 60f;
+
+    // ---- the projectile carrier (issue #134) ----
+    // What a `projectile` delivery's bolt looks like (none: invisible, the headless default), how fast it
+    // falls (0: straight flight) and how many targets it passes through before one stops it.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "The prefab a projectile delivery's carrier looks like; empty = invisible")]
+    public RecordRef<PrefabRecord> Projectile;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "m/s²", Tooltip = "How fast a projectile delivery's carrier falls; 0 flies straight (9.81 is Earth)")]
+    public float ProjectileGravity;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Tooltip = "How many targets a projectile delivery's carrier passes through before one stops it")]
+    public int ProjectilePierce;
 
     // ---- ammunition (issue #135; Ammunition.cs) — kept together, away from the hit fields above ----
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]

@@ -114,16 +114,18 @@ public static class Hits
         !entity.IsNull && world.IsAlive(entity) && world.Has<Attributes>(entity);
 
     // Throws an attack's carrier (`sage:projectile`, the one abilities fly on): it lands through
-    // Combat.ApplyHit where it stops (ProjectileSystem). Minimal until issue #134: straight flight at the
-    // attack's `projectileSpeed` for its `range`, as fat as its `radius`, with no prefab (invisible).
+    // Combat.ApplyHit where it stops (ProjectileSystem). It looks like the attack's `projectile` prefab
+    // (none: invisible), flies from just ahead of the eye along the aim at its `projectileSpeed`, falls
+    // at its `projectileGravity` (an arc; issue #134), passes through `projectilePierce` targets and
+    // gives up past its `range`.
     public static Entity Launch(World world, in HitRequest request, AttackRecord attack) =>
-        Carrier(world, request.Attacker, default, request.Attack.Name, request.Origin + request.Aim * 0.4f, request.Aim,
-                attack.ProjectileSpeed, attack.Range, attack.Radius, default, request.Attack);
+        world.Launch(request.Attacker, request.Attack, attack, request.Origin + request.Aim * 0.4f, request.Aim);
 
     // The one projectile carrier, for abilities and attacks alike: the prefab is what it looks like (or
     // a bare entity named `name`), and this adds the flight.
     internal static Entity Carrier(World world, Entity caster, RecordId prefab, string name, Vector3 from, Vector3 direction,
-                                   float speed, float range, float radius, RecordId ability, RecordId attack)
+                                   float speed, float range, float radius, RecordId ability, RecordId attack,
+                                   float gravity = 0f, int pierce = 0)
     {
         var entity = prefab.IsEmpty
             ? world.Create(Transform.At(from), name)
@@ -144,7 +146,12 @@ public static class Hits
             // anything bursts at the far end instead of flying to the edge of the world.
             Life = MathF.Max(range, 1f) / speed + 0.2f,
             Radius = radius,
+            Gravity = MathF.Max(gravity, 0f),
+            Pierce = Math.Max(pierce, 0),
         });
+        // A bolt or a fireball in flight is part of the world a save keeps (issue #134): it comes back
+        // where it was, as fast, still its thrower's, and lands after the load.
+        world.MakePersistent(entity);
         return entity;
     }
 }
@@ -257,7 +264,7 @@ internal sealed class RayDelivery : IHitDelivery
 }
 
 // A carrier that flies (`sage:projectile`, abilities' own) and lands through Combat.ApplyHit where it
-// stops: nothing lands now. One per pellet. Minimal until issue #134 (arcs, a prefab, piercing).
+// stops: nothing lands now. One per pellet, each with the attack's prefab, gravity and pierce (issue #134).
 [HitDelivery("projectile", Plugin = "sage.gameplay.combat")]
 internal sealed class ProjectileHitDelivery : IHitDelivery
 {

@@ -172,6 +172,26 @@
       "type": "number",
       "minimum": 0
     },
+    "projectile": {
+      "description": "The prefab a projectile delivery's carrier looks like; empty = invisible. Names a prefab record. (RecordRef<PrefabRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:prefab"
+        }
+      ]
+    },
+    "projectileGravity": {
+      "description": "How fast a projectile delivery's carrier falls; 0 flies straight (9.81 is Earth) Unit: m/s². At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "projectilePierce": {
+      "description": "How many targets a projectile delivery's carrier passes through before one stops it. At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
     "ammo": {
       "description": "The item this attack spends; empty = infinite ammunition. Names a item record. (RecordRef<ItemRecord>)",
       "allOf": [

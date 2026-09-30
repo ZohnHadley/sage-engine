@@ -44,6 +44,9 @@ Sage.Gameplay.AttackRecord.Arms -> Sage.Core.RecordRef<Sage.Simulation.Viewmodel
 Sage.Gameplay.AttackRecord.Delivery -> string!
 Sage.Gameplay.AttackRecord.Pellets -> int
 Sage.Gameplay.AttackRecord.ProjectileSpeed -> float
+Sage.Gameplay.AttackRecord.Projectile -> Sage.Core.RecordRef<Sage.Simulation.PrefabRecord!>
+Sage.Gameplay.AttackRecord.ProjectileGravity -> float
+Sage.Gameplay.AttackRecord.ProjectilePierce -> int
 Sage.Gameplay.AttackRecord.Range -> float
 Sage.Gameplay.AvailableTopic
 Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
@@ -137,6 +140,9 @@ Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
 Sage.Gameplay.Projectile.Attack -> Sage.Core.RecordId
+Sage.Gameplay.Projectile.Gravity -> float
+Sage.Gameplay.Projectile.Passed -> Sage.Simulation.Entity
+Sage.Gameplay.Projectile.Pierce -> int
 Sage.Gameplay.QuestWatch
 Sage.Gameplay.QuestWatch.Quest -> Sage.Core.RecordId
 Sage.Gameplay.QuestWatch.QuestWatch() -> void
@@ -174,6 +180,7 @@ static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.R
 Sage.Gameplay.AnimationConventions.AttackTrigger -> string!
 Sage.Gameplay.AttackRecord.Trigger -> string!
 Sage.Gameplay.SpritePart.Graph -> Sage.Core.RecordRef<Sage.Simulation.AnimGraphRecord!>
+static Sage.Gameplay.ProjectileExtensions.Launch(this Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Core.RecordId attack, Sage.Gameplay.AttackRecord! record, System.Numerics.Vector3 from, System.Numerics.Vector3 direction) -> Sage.Simulation.Entity
 Sage.Gameplay.AttackRecord.Ammo -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
 Sage.Gameplay.AttackRecord.AmmoPerShot -> int
 Sage.Gameplay.AttackRecord.Automatic -> bool
