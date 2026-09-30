@@ -102,6 +102,7 @@ public sealed class ClientModule : IModule
         Passes.Add(new AlphaTestedPass());
         Passes.Add(new TransparentPass());
         Passes.Add(new DebugLinesPass());
+        Passes.Add(new PostProcessPass());
         Passes.Add(_uiPass = new UiPass(_crosshair, _rendererCVars.TestView));
         ctx.Provide(Passes);
         ctx.Engine.CVars.RegisterCommand("r_passes", CVarFlags.None, "The render passes in draw order: stage, id, and what each draws after or before.", _ =>

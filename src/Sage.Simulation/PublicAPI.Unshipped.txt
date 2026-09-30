@@ -945,3 +945,8 @@ static Sage.Simulation.WorldClock.Format(double hour) -> string!
 static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldClock!
 static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
 Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int
+Sage.Simulation.PostEffectRecord
+Sage.Simulation.PostEffectRecord.Cvar -> string!
+Sage.Simulation.PostEffectRecord.Material -> Sage.Core.RecordId
+Sage.Simulation.PostEffectRecord.Order -> int
+Sage.Simulation.PostEffectRecord.PostEffectRecord() -> void
