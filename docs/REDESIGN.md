@@ -289,6 +289,10 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   it, and it knows nothing of physics, gameplay or a kit (test: NoBaseAssemblyReferencesALayerAboveIt).
   It is in `EngineAssemblies.Base`, so the base-wide checks (declared API, simulation-only, no Friflo)
   read it too; `Sage.Sdk` references it for every game, without a global using.
+  Since #96 it is also a plugin, `sage.ui` (`UiModule`), the last entry of `BasePlugins.All` — which is
+  why `Sage.Gameplay` references it — so a server and `sage validate` read the UI's records as the game
+  does; it owns the `ui_style`, `ui_layout` and `screen` records, the `view_model` vocabulary and the
+  string tables, and no component or system (test: TheClientSitsOnTheRetainedUi).
 - **Friflo builds its schema from every loaded assembly that references it**, the split ones included
   (23 in Simulation and 15 in Gameplay since #30 moved `CharacterController`; none in Physics3D) (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
 - **`InternalsVisibleTo` goes only to `Sage.Tests`**, so what the next layer used became public: the record
@@ -877,6 +881,12 @@ because it edits the live play world (`DevTools.cs:84-87`).
   - A screen can be **declared in a record** bound to a named panel provider, so designers and modders
     can add a screen, or re-lay-out one, without C#.
   - Add localisation keys now, while strings are few.
+  - *As built (issue #96, 2026-09-30).* `ui_style` (colours per state, padding, font), `ui_layout` (a
+    flat widget tree by node name, with bindings into a view-model and `visibleIf` conditions) and
+    `screen` (a layout bound to a `[ViewModel("id")]` class) records, built into #95's widgets headless
+    and rebuilt on hot reload; `strings/<lang>/*.json` tables with placeholders and plural forms resolved
+    from `@ns.key` by `Localisation`, and the `lang` cvar (docs/design/13 "As built (style and layout
+    records)", 05 §3.7). Drawing them is #97; `PanelView` and the HUD still draw as before.
 - **Asset hot reload** for meshes (`.glb`), sounds and `.fx`, in addition to textures and records.
 
 ### 4.8 SDK, packaging, CI and hygiene (developers first)

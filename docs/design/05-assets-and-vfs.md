@@ -432,6 +432,40 @@ than as art.
   **Nothing is built by a content pipeline any more.** `ContentService.Open(path)` hands a mount's bytes to whoever knows the format, which is what lets a mod drop in a model or a game ship art made this morning; `Content.mgcb`, `MonoGame.Content.Builder.Task`, the `dotnet-mgcb*` tools, `VfsContentManager` and every `.xnb` branch are gone, and `dotnet-mgfxc` (07 §3.1) is the only build-time content step left. Everything is cached for the process. `AssetPath` (the interned path, §3.2) exists since step 6 and is what `MeshRenderer` and material records store. `AssetServer`, `AssetRef`, scopes and async loading are still to be built (§14 step 2).
 - **Engine content** is `engine_content/` in the repo. The build copies it into the exe's `Content/`, the `engine` mount (07 §3.6).
 
+### 3.7 Localisation: string tables (decision D3; as built 2026-09-30, issue #96)
+Player-facing text in content is a key, `@ns.key`, not a sentence (§3.5); the text lives in string
+tables, one set per language, and is looked up when it is shown (`Localisation`, `src/Sage.UI`,
+13 "As built (style and layout records)").
+
+- **Files:** `strings/<lang>/**/*.json` in any mount, `<lang>` being what the `lang` cvar says (`en` by
+  default, archived). A file's path under the language folder is its **namespace**:
+  `strings/en/ui.json` holds `@ui.*`, `strings/en/items/weapons.json` holds `@items.weapons.*`. A file is
+  an object; nested objects add to the key:
+  ```json
+  { "inventory": { "title": "Inventory", "weight": "Weight {current} / {max}" },
+    "arrows": { "zero": "no arrows", "one": "{count} arrow", "other": "{count} arrows" } }
+  ```
+  `@ui.inventory.title` is "Inventory". Comments and trailing commas are allowed, as in record files.
+- **Mount order:** every mount's tables are read in order and a later one's key wins, key by key, so a
+  mod retranslates one line without copying the file (test: StringTablesNestFillPlaceholdersAndFallBackToEnglish).
+- **Placeholders** are `{name}`, filled by name (`Localisation.Format(key, ("current", 3))`, or a
+  layout node's `args` from its view-model); `{{` and `}}` are braces; one nobody fills stays as written.
+  Numbers are written invariantly (`3.5`, never `3,5`).
+- **Plural forms:** an object whose keys are CLDR categories — `zero`, `one`, `two`, `few`, `many`,
+  `other`, with `other` required — is one key's forms, chosen by the `count` argument with the
+  language's rule (`PluralRules`: English's "exactly one" unless the language is listed, French's
+  "0 and 1"); `zero`, when a table has it, is used for 0 in any language.
+- **Fallback and missing keys:** a key the language lacks is looked up in English; a key no table has is
+  shown **as the key itself** and logged once (test: AMissingKeyShowsTheKeyItselfAndWarnsOnce), and dev
+  builds and `sage validate` warn about every `@key` any record names that no table has, at its line
+  (test: ValidateWarnsAboutMissingKeys). A language no mount has tables for is English, and says so.
+  `@@` at the start of a text is a literal `@`.
+- **Hot reload:** record hot reload watches `strings/` beside `data/`; the tables are read again with the
+  records, and open screens are rebuilt (test: ChangingARecordReLaysOutAnOpenScreen). `loc <key> [count]`
+  prints what a key shows.
+- **Fonts:** English only for now (D3). The bitmap font covers ASCII; a runtime TTF font (FontStashSharp)
+  waits for the first language that needs glyphs an atlas cannot hold, so no package was added.
+
 ## 4. Public API sketch
 
 ```csharp
@@ -530,7 +564,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 | `.pak` | zip (stored or deflate), paths inside = virtual paths |
 | `data/**/*.json` | record arrays (§3.5) |
 | `*.sheet.json` | sprite sheet: frame rects, pivot, animations, 8-direction frame groups (06, 12) |
-| `strings/<lang>/*.json` | localization tables: key → text |
+| `strings/<lang>/**/*.json` | localisation tables: key → text or plural forms; the file's path is the key's namespace (§3.7) |
 | Cooked formats (later) | `.sgmesh` (binary vertex/index blobs), compressed textures; produced by a cook tool, loaded in `Shipping` when present |
 
 ## 8. Errors and fallbacks
@@ -575,7 +609,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
   - loaders for Texture, SpriteSheet, Mesh (glTF), Effect, Sound (wav), Heightmap;
   - hot reload for folder mounts;
   - `RecordStore` with namespaces, `base`, patch merge, generated validation, hot reload;
-  - localization keys (English table only).
+  - localization keys (English table only) — **built** (§3.7, issue #96).
 - **Later:** `.pak` mounts, `.uid` sidecars (if needed), cooked formats + a cook tool (possibly on MonoGame 3.8.5's C# content builder — evaluate then), OGG music streaming, texture compression.
 
 ## 12. Multiplayer-later notes

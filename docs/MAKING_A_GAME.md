@@ -373,7 +373,7 @@ result with the file each field came from.
 
 ### Every record type there is
 
-Twenty-six, and a game may use as few as it likes. Their fields are documented in the design doc named
+Twenty-nine, and a game may use as few as it likes. Their fields are documented in the design doc named
 beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
@@ -390,6 +390,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `quest` — stages and objectives |
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
+| **Screens** (13, §7) | `ui_style` — colours, padding, a font, colours per state; `ui_layout` — widgets by name, each naming its parent, with bindings; `screen` — a layout and its view-model |
 | **Your game's words** (§3, below) | `gameplay_conventions` — which attribute is life, which tag is death, the default attack, damage type, profiles and AI schedules, the player's faction, what spells cost, the action names |
 
 ### Your game's words: `gameplay_conventions`
@@ -1021,6 +1022,59 @@ screen of its own: when somebody with a `dialogue` is used it asks the `ScreenRe
 A game registers its own screens there in its client module's `Init` (`registry.Register("map", () =>
 new MapScreen())`).
 
+### Screens from records, and text in other languages
+
+The retained widgets (`Sage.UI`, 13) can be built from content instead of C#, which is how a screen is
+restyled, re-laid out or translated by a designer or a mod — and a running game follows the edit, since
+record hot reload rebuilds every open screen. Three record types, from the `sage.ui` plugin:
+
+```json
+[
+  { "type": "ui_style", "id": "panel", "padding": 6, "background": "#202020C0", "textColour": "#E0E0E0",
+    "states": { "focused": { "background": "#3050A0" }, "disabled": { "textColour": "#808080" } } },
+
+  { "type": "ui_layout", "id": "bag", "style": "panel",
+    "nodes": {
+      "window": { "widget": "stack", "anchors": "center", "spacing": 4 },
+      "title":  { "widget": "label", "parent": "window", "text": "@mygame.bag.title" },
+      "weight": { "widget": "label", "parent": "window", "text": "@mygame.bag.weight", "args": { "current": "weight", "max": "capacity" } },
+      "items":  { "widget": "item_list", "parent": "window", "bind": "items" },
+      "item":   { "widget": "label", "parent": "items", "bind": "name" },
+      "alarm":  { "widget": "label", "parent": "window", "text": "@mygame.bag.alarm", "visibleIf": { "var": "alarm", "eq": 1 } }
+    } },
+
+  { "type": "screen", "id": "bag", "layout": "bag", "viewModel": "bag" }
+]
+```
+
+- A layout's `nodes` are **flat, by name**; each says its `widget` (`box`, `stack`, `grid`, `label`,
+  `image`, `button`, `item_list`, `bar`, `scroll`) and its `parent`. A patch changes one node by name.
+- `bind` reads the view-model for the widget's main value (a label's text, a bar's value, a list's
+  rows — the list's one child is the template for each row, bound to that row); `bindings` names others
+  (`visible`, `enabled`, `max`, `style`, …); `args` fill `{placeholders}`; `visibleIf`/`enabledIf` are
+  conditions (§3 "What things do").
+- The view-model is a class your plugin declares, whose public fields and properties are the paths:
+
+  ```csharp
+  [ViewModel("bag")]
+  public sealed class BagView : IViewModel
+  {
+      public List<ItemRow> Items { get; } = new();
+      public float Weight, Capacity;
+      public void Refresh(in UiBindContext context) { /* read the player's bag */ }
+  }
+  ```
+
+  `ctx.Get<UiScreens>()` (or `world.Resources.Get<UiScreens>()`) opens one:
+  `var screen = screens.OpenScreen(new RecordId("mygame", "bag"), new UiBindContext(world, player));`
+  then `uiRoot.Content.Add(screen.Root)` and `screen.Refresh()` each frame. Drawing it is the client's
+  (#97, not built yet). Declare view-models in your game's simulation half, so `sage validate` knows them.
+- **Text is a key**, `@ns.key`, into `strings/<lang>/*.json` (05 §3.7): `strings/en/mygame.json` holds
+  `{ "bag": { "title": "Bag", "weight": "{current} / {max} kg" } }`, plural forms are
+  `{ "one": "{count} arrow", "other": "{count} arrows" }`, and the `lang` cvar picks the language
+  (English fills what it lacks). A missing key shows as the key and is a warning; `sage validate` lists
+  every key your records name that no table has.
+
 ---
 
 ## 8. Saving
@@ -1323,7 +1377,7 @@ names their types needs the opt-in.
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
 | SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`, and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`) | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
-| SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
+| SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel`, `ViewModelAttribute`, `Localisation`, `PluralCategory` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
