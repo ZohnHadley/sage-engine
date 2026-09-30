@@ -134,6 +134,7 @@ internal sealed class SpriteGraphSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
+        if (_records.TypeNameOf(typeof(SpriteSheetRecord)) == null) return;   // headless: the client's records
         foreach (var (animators, renderers, entities) in _sprites.Chunks)
         {
             var a = animators.Span;

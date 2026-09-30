@@ -42,10 +42,18 @@
         "sage:melee_attack"
       ]
     },
-    "record:anim_graph": {
-      "description": "The id of a anim_graph record (none is loaded).",
+    "record:anim_events": {
+      "description": "The id of a anim_events record (none is loaded).",
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "record:anim_graph": {
+      "description": "The id of a anim_graph record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "creature",
+        "sandbox:creature"
+      ]
     },
     "record:attack": {
       "description": "The id of a attack record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -644,10 +652,18 @@
         "sage:melee_attack"
       ]
     },
-    "base:anim_graph": {
-      "description": "The id of a anim_graph record (none is loaded).",
+    "base:anim_events": {
+      "description": "The id of a anim_events record (none is loaded).",
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "base:anim_graph": {
+      "description": "Another anim_graph record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "creature",
+        "sandbox:creature"
+      ]
     },
     "base:attack": {
       "description": "Another attack record to inherit every field from, abstract or not.",

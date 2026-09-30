@@ -2269,10 +2269,11 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_param, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, var.",
+      "description": "A condition by id: all, anim_finished, anim_param, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, var.",
       "type": "string",
       "enum": [
         "All",
+        "AnimFinished",
         "AnimParam",
         "Any",
         "HasItem",
@@ -2284,6 +2285,7 @@
         "Standing",
         "Var",
         "all",
+        "anim_finished",
         "anim_param",
         "any",
         "has_item",
@@ -2366,6 +2368,40 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'all' (AllCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "anim_finished",
+                      "AnimFinished"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: anim_finished.",
+                    "enum": [
+                      "anim_finished",
+                      "AnimFinished"
+                    ]
+                  },
+                  "layer": {
+                    "description": "The layer to look at; empty or \"base\": the base layer. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'anim_finished' (AnimFinishedCondition)."
               }
             },
             {
@@ -3002,6 +3038,76 @@
           },
           "required": [
             "All"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "anim_finished": {
+              "anyOf": [
+                {
+                  "description": "The layer to look at; empty or \"base\": the base layer. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "layer": {
+                      "description": "The layer to look at; empty or \"base\": the base layer. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'anim_finished' (AnimFinishedCondition), in shorthand."
+            },
+            "layer": {
+              "description": "The layer to look at; empty or \"base\": the base layer. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "anim_finished"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "AnimFinished": {
+              "anyOf": [
+                {
+                  "description": "The layer to look at; empty or \"base\": the base layer. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "layer": {
+                      "description": "The layer to look at; empty or \"base\": the base layer. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'anim_finished' (AnimFinishedCondition), in shorthand."
+            },
+            "layer": {
+              "description": "The layer to look at; empty or \"base\": the base layer. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "AnimFinished"
           ],
           "additionalProperties": false
         },

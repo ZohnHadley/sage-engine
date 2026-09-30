@@ -49,6 +49,26 @@
     }
   },
   {
+    // What the creature's sprite plays (12 "As built (animation events)", issue #119): sprites are the
+    // leaves of an animation graph like a skinned model's clips. A swing sets the `attack` trigger (the
+    // conventions' attackTrigger) and the graph picks the clip; its "hit" frame lands the blow, and the
+    // creature stands again when the clip is done. No cross-fades: a sprite cannot blend.
+    "type": "anim_graph",
+    "id": "creature",
+    "initial": "idle",
+    "fade": 0,
+    "params": { "attack": { "kind": "Trigger" } },
+    "states": {
+      "idle": { "clip": "idle" },
+      "attack": {
+        "clip": "attack",
+        "loop": false,
+        "transitions": [ { "to": "attack", "on": "attack" }, { "to": "idle", "when": { "anim_finished": "base" } } ]
+      }
+    },
+    "transitions": [ { "to": "attack", "on": "attack" } ]
+  },
+  {
     // One direction, one frame, no animation: a tree always looks the same from every side.
     "type": "sprite_sheet",
     "id": "tree",
@@ -74,12 +94,11 @@
     "type": "prefab",
     "id": "creature",
     "abstract": true,
-    "parts": { "sprite": { "sheet": "creature", "animation": "idle" } }
+    "parts": { "sprite": { "sheet": "creature", "graph": "creature" } }
   },
   {
     // The one that fights: a body the engine moves, attributes, what it swings, and the hide that
-    // armours it. `"animation": "idle"` is inherited, and is a clip *name*: clip 0 is whichever name
-    // sorts first, which for a Daggerfall sheet is "attack" (12 §3).
+    // armours it. The sprite's `graph` is inherited: combat sets its trigger and never names a clip.
     "type": "prefab", "id": "watcher", "base": "creature", "name": "watcher",
     "components": { "ai_state": { "schedule": "sage:idle" },
                     "map_marker": { "label": "@sandbox.map.watcher", "style": "sandbox:map_danger" } },
@@ -231,7 +250,8 @@
   // ---- gameplay (docs/design/16) -----------------------------------------------------------------
   {
     // What the creature swings (16 §3.2). Longer reach and harder than bare hands, but slow: the
-    // player can back out of it. The hit lands on the attack clip's "hit" event.
+    // player can back out of it. The hit lands on the "hit" event of whatever clip the creature's graph
+    // plays on the `attack` trigger.
     "type": "attack",
     "id": "claws",
     "damage": 12,
@@ -241,8 +261,7 @@
     "arcDegrees": 140,
     "windupTime": 0.45,
     "recoverTime": 0.3,
-    "cooldown": 1.2,
-    "animation": "attack"
+    "cooldown": 1.2
   },
   {
     // Creature hide: an infinite effect granting armour, so the player's fists do 60% damage to it.
@@ -652,8 +671,8 @@
     // The same parts as the creature, plus the tag that says the local PlayerCommand drives this one.
     // Where the player starts is the scene's "player" placement, not this record. The sprite is a
     // placeholder body, so the third-person camera (V) has someone to look at; the first-person view
-    // does not draw it (engine issue #79). No "animation": a clip with a "hit" event would time the
-    // player's swings (12 §3), and these stay on the attack record's wind-up.
+    // does not draw it (engine issue #79). No "graph" and no "animation": a clip with a "hit" event would
+    // time the player's swings (12 §3), and these stay on the attack record's wind-up.
     "type": "prefab",
     "id": "player",
     "name": "player",

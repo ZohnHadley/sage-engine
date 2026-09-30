@@ -229,7 +229,7 @@ internal static class AnimatorStepper
         Resolve(entity, ref a, g);
         var values = a.Params!;
         if (g.HasSources) Drive(world, entity, g, values, instance, dt);
-        var events = new EventContext(world, entity, g, values, instance, sink);
+        var events = new EventContext(world, entity, g, values, instance, sink, dt);
 
         for (int l = 0; l < g.Layers.Length; l++)
         {
@@ -302,10 +302,12 @@ internal static class AnimatorStepper
         public readonly AnimatorParam[] Values;
         public readonly AnimatorPoses.Instance Instance;
         public readonly IAnimationEventSink? Sink;
+        public readonly float Dt;
 
         public EventContext(World world, Entity entity, AnimGraphRecord.Compiled graph, AnimatorParam[] values,
-                            AnimatorPoses.Instance instance, IAnimationEventSink? sink)
+                            AnimatorPoses.Instance instance, IAnimationEventSink? sink, float dt)
         {
+            Dt = dt;
             World = world;
             Entity = entity;
             Graph = graph;
@@ -316,9 +318,15 @@ internal static class AnimatorStepper
     }
 
     // Raises the events of the clip `state` shows (a blend: its heaviest clip) that the phase crossed
-    // going from `before` to `after`: before < t <= after, and from the very start (0 <= t) when the
-    // state was just entered. A loop that went round (the phase came down) crossed before..1 and 0..after.
-    // A one-shot parked at its end crosses nothing, so each event fires once a pass. Allocation-free.
+    // going from `before` to `after`, in the order it crossed them: before < t <= after, and from the very
+    // start (0 <= t) when the state was just entered. A loop that went round (the phase came down)
+    // crossed before..1, then 0..after: a pass's end and the next one's start, once each. A one-shot
+    // parked at its end crosses nothing, so each event fires once a pass. Allocation-free.
+    //
+    // Both ends are moved on by a twentieth of a tick (`slack`, in this clip's phase), so an event that
+    // falls exactly on a tick — 0.25 s at 60 Hz — is raised on that tick whichever way float rounding
+    // leaves the accumulated phase, rather than a tick later now and then. Every tick is moved alike, so
+    // the ranges still meet end to end and no event is raised twice or missed.
     private static void Raise(in EventContext e, AnimGraphRecord.State state, float before, float after, bool entered, bool pending)
     {
         int c = HeaviestClip(state, e.Values);
@@ -327,22 +335,58 @@ internal static class AnimatorStepper
         var list = clip.Events;
         if (list.Count == 0) return;
         float duration = clip.Duration;
-        bool forward = state.Speed >= 0f;
-        bool wrapped = state.Loop && (forward ? after < before : after > before);
+        float slack = duration > 0f ? SlackTicks * e.Dt * MathF.Abs(state.Speed) / duration : 0f;
+        if (state.Speed >= 0f)
+        {
+            if (state.Loop && after < before)
+            {
+                Forward(in e, list, duration, before + slack, false, 2f, pending);
+                Forward(in e, list, duration, 0f, true, after + slack, pending);
+            }
+            else Forward(in e, list, duration, entered ? 0f : before + slack, entered, after + slack, pending);
+        }
+        else
+        {
+            if (state.Loop && after > before)
+            {
+                Backward(in e, list, duration, before - slack, false, -1f, pending);
+                Backward(in e, list, duration, 1f, true, after - slack, pending);
+            }
+            else Backward(in e, list, duration, entered ? 1f : before - slack, entered, after - slack, pending);
+        }
+    }
+
+    // The fraction of a tick an event may be early by and still count as reached (see Raise, Advance).
+    private const float SlackTicks = 0.05f;
+
+    // Events with from < t <= to (from <= t when `inclusive`), in time order.
+    private static void Forward(in EventContext e, IReadOnlyList<ClipEvent> list, float duration, float from, bool inclusive, float to, bool pending)
+    {
         for (int i = 0; i < list.Count; i++)
         {
-            var ev = list[i];
-            float t = duration > 0f ? Math.Clamp(ev.Time / duration, 0f, 1f) : 0f;
-            if (duration > 0f && ev.Time > duration) continue;          // past the end: never reached
-            bool crossed;
-            if (!forward)
-                crossed = wrapped ? (t < before || t >= after) : (after <= t && (t < before || (entered && t <= before)));
-            else if (wrapped)
-                crossed = t > before || t <= after;
-            else
-                crossed = t <= after && (t > before || (entered && t >= before));
-            if (crossed) Fire(in e, ev.Name, pending);
+            float t = Phase(list[i], duration);
+            if (t < 0f) continue;
+            if ((inclusive ? t >= from : t > from) && t <= to) Fire(in e, list[i].Name, pending);
         }
+    }
+
+    // Playing backwards: events with to <= t < from (t <= from when `inclusive`), latest first.
+    private static void Backward(in EventContext e, IReadOnlyList<ClipEvent> list, float duration, float from, bool inclusive, float to, bool pending)
+    {
+        for (int i = list.Count - 1; i >= 0; i--)
+        {
+            float t = Phase(list[i], duration);
+            if (t < 0f) continue;
+            if ((inclusive ? t <= from : t < from) && t >= to) Fire(in e, list[i].Name, pending);
+        }
+    }
+
+    // An event's place in its clip's phase; -1 for one past the clip's end (never reached).
+    private static float Phase(in ClipEvent ev, float duration)
+    {
+        if (!(duration > 0f)) return 0f;
+        if (ev.Time > duration) return -1f;
+        return MathF.Max(0f, ev.Time / duration);
     }
 
     private static void Fire(in EventContext e, string name, bool pending)
@@ -464,13 +508,20 @@ internal static class AnimatorStepper
         }
     }
 
-    // A state's phase after dt: its rate is its speed over its (weighted) clip duration.
+    // A state's phase after dt: its rate is its speed over its (weighted) clip duration. A loop coming
+    // forward to within a twentieth of a tick of its end wraps on this tick (issue #119: float rounding
+    // must not put a pass's end, and its events, a tick late).
     private static float Advance(AnimGraphRecord.State state, float phase, float dt, AnimatorParam[] values, AnimatorPoses.Instance instance)
     {
         float duration = Duration(state, values, instance);
         if (!(duration > 0f)) return phase;
-        float p = phase + dt * state.Speed / duration;
-        if (state.Loop) return p - MathF.Floor(p);
+        float step = dt * state.Speed / duration;
+        float p = phase + step;
+        if (state.Loop)
+        {
+            float slack = step > 0f ? SlackTicks * step : 0f;
+            return MathF.Max(0f, p - MathF.Floor(p + slack));
+        }
         return Math.Clamp(p, 0f, 1f);
     }
 
@@ -767,8 +818,9 @@ internal sealed class AnimatorSystem : ISystem
     private void Sheet(Entity entity, AnimatorPoses.Instance instance)
     {
         SpriteSheetRecord? sheet = null;
+        // (Sprite sheets are the client's records: a headless world without them draws no sprite to play.)
         if (_records != null && _world.TryGet<SpriteRenderer>(entity, out var sprite) && !sprite.Sheet.IsEmpty
-            && _records.TryGet(sprite.Sheet, out SpriteSheetRecord found))
+            && _records.TypeNameOf(typeof(SpriteSheetRecord)) != null && _records.TryGet(sprite.Sheet, out SpriteSheetRecord found))
             sheet = found;
         object? clips = sheet?.Animations;
         if (ReferenceEquals(sheet, instance.Sheet) && ReferenceEquals(clips, instance.SheetClips)) return;

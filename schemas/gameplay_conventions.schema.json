@@ -195,15 +195,19 @@
       "type": "object",
       "properties": {
         "attack": {
-          "description": "The clip a swing plays when its attack names none. (string)",
+          "description": "Obsolete (#119): the clip a sprite fighter with no anim_graph of its own swings with. (string)",
           "type": "string"
         },
         "hit": {
-          "description": "The frame event in a swing's clip that lands the blow; without one the attack's windup time does. (string)",
+          "description": "The clip event that lands a blow (anim_events, a sprite sheet's frame events); without one the attack's windup time does. (string)",
           "type": "string"
         },
         "idle": {
-          "description": "The clip a fighter goes back to when a swing is over. (string)",
+          "description": "Obsolete (#119): the clip a sprite fighter with no anim_graph of its own stands in. (string)",
+          "type": "string"
+        },
+        "attackTrigger": {
+          "description": "The trigger param a swing sets on the fighter's animator when its attack names none (Animators.SetTrigger) (string)",
           "type": "string"
         }
       },

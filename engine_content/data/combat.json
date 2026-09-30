@@ -43,7 +43,6 @@
     "arcDegrees": 120,
     "windupTime": 0.18,
     "recoverTime": 0.15,
-    "cooldown": 0.35,
-    "animation": "attack"
+    "cooldown": 0.35
   }
 ]
