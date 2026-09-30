@@ -14,6 +14,8 @@
   <ItemGroup>
     <!-- The base engine it presents: the simulation and every base plugin (issue #24). -->
     <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
+    <!-- The retained widgets it will draw (issue #95; the drawing is #97): Simulation ← UI ← Client. -->
+    <ProjectReference Include="..\Sage.UI\Sage.UI.csproj" />
   </ItemGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->

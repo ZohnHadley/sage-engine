@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    Headless tests. References the base engine only (Sage.Core to Sage.Gameplay): if simulation code
+    Headless tests. References the base engine only (Sage.Core to Sage.Gameplay, and Sage.UI): if simulation code
     ever picks up a MonoGame dependency, this project stops compiling (ARCHITECTURE.md §2 rule 2).
   -->
   <PropertyGroup>
@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\src\Sage.Simulation\Sage.Simulation.csproj" />
     <ProjectReference Include="..\..\src\Sage.Physics3D\Sage.Physics3D.csproj" />
     <ProjectReference Include="..\..\src\Sage.Gameplay\Sage.Gameplay.csproj" />
+    <ProjectReference Include="..\..\src\Sage.UI\Sage.UI.csproj" />
     <!-- The harness every test boots through: HeadlessApp, MountFixture, EventProbe (issue #14). -->
     <ProjectReference Include="..\Sage.Testing\Sage.Testing.csproj" />
     <!-- The generator as a library, not as an analyzer: the tests drive it directly. -->
@@ -52,8 +53,8 @@
     <ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
   </ItemGroup>
   <!-- The tests exercise the experimental API too (issue #31, docs/MAKING_A_GAME.md §10b): the open
-       vocabularies (SAGE0120), scenes and placements (SAGE0121), brush maps (SAGE0122) and cameras (SAGE0123). -->
+       vocabularies (SAGE0120), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras (SAGE0123) and the retained UI (SAGE0125). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123;SAGE0125</NoWarn>
   </PropertyGroup>
 </Project>

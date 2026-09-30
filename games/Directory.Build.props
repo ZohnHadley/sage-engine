@@ -24,13 +24,14 @@
   </ItemGroup>
 
   <!-- The base engine, compile-time only (Private=false): at run time the host's own copies are used,
-       so a game's bin holds its own dll and nothing else. All four by name, because a transitive
+       so a game's bin holds its own dll and nothing else. All of them by name (Sage.UI, issue #95, too; no global using for it), because a transitive
        reference would be copied (issue #24). A game's client half adds Sage.Client itself. -->
   <ItemGroup Condition="'$(UsingSageSdk)' != 'true'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Core\Sage.Core.csproj" Private="false" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Simulation\Sage.Simulation.csproj" Private="false" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Physics3D\Sage.Physics3D.csproj" Private="false" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.Gameplay\Sage.Gameplay.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Sage.UI\Sage.UI.csproj" Private="false" />
   </ItemGroup>
 
   <!-- The declarations generator (issue #16): a game's [Record] types register themselves, and its

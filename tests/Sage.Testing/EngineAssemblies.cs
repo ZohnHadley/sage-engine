@@ -13,6 +13,9 @@ public static class EngineAssemblies
     public static Assembly Physics3D => typeof(PhysicsSpace).Assembly;
     public static Assembly Gameplay => typeof(BasePlugins).Assembly;
 
+    // The retained widgets (issue #95): on the simulation, beside physics, below the client.
+    public static Assembly UI => typeof(Sage.UI.UiRoot).Assembly;
+
     // Kernel first, in reference order.
-    public static IReadOnlyList<Assembly> Base { get; } = new[] { Core, Simulation, Physics3D, Gameplay };
+    public static IReadOnlyList<Assembly> Base { get; } = new[] { Core, Simulation, Physics3D, Gameplay, UI };
 }
