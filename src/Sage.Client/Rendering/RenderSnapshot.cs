@@ -63,6 +63,7 @@ internal struct RenderView
     public int Order;                // within a target, lower draws first (06 §3.4a)
     public int Hidden;               // id of an entity this view does not draw (0: none; ViewSource.HiddenFor)
     public bool DepthOnly;           // clears only depth, over what the target holds: the viewmodel pass (issue #121)
+    public bool ShadowCaster;        // the sun's view (issue 4h-4): opaque casters only, drawn by `sage:shadow`, not as a view
 
     // Written during extract: lights and debug lines are added by one system each, a view at a time,
     // so each view's are contiguous.
@@ -86,6 +87,20 @@ internal struct EnvironmentParams
     public Vector3 AmbientSky;
     public Vector3 AmbientGround;
     public float Time;
+    public float ShadowStrength;     // ShadowMath.Strength: 0 draws no shadow (issue 4h-4)
+}
+
+// The frame's shadow map (issue 4h-4), written by `sage:shadow`: which view holds the casters, and what
+// the lit shaders need to read the map. `Drawn` only once the map has been drawn this frame.
+internal struct ShadowFrame
+{
+    public int View;                 // the caster view, or -1
+    public int Target;               // the map's render target id
+    public Matrix ViewProj;          // relative to `Camera` → the map's clip space
+    public Vector3 Camera;           // origin space: the caster view's camera (the main view's)
+    public float Bias;               // ShadowFit.DepthBias
+    public int Size;
+    public bool Drawn;
 }
 
 // One draw: a mesh part with a material at a camera-relative world matrix (06 §4).
@@ -112,6 +127,7 @@ internal sealed class RenderSnapshot
     public readonly PooledList<RenderView> Views;
     public int MainView = -1;
     public EnvironmentParams Environment;
+    public ShadowFrame Shadow = new() { View = -1 };
     // Every list here is made by `Pool<T>`, which is also what puts it in `_pools` for `Clear()`.
     // Point lights were added as a plain `new(32)` and left out of `Clear()`, and the picture stayed
     // right: the extras were duplicates of the same lamps, so the room looked lit while the list grew
@@ -196,6 +212,8 @@ internal sealed class RenderSnapshot
         foreach (var pool in _pools) pool.Clear();
         Culled = 0;
         MainView = -1;
+        Shadow.View = -1;
+        Shadow.Drawn = false;
     }
 }
 
