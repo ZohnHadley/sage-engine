@@ -387,7 +387,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
 | **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs, as `[{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]` |
-| **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `quest` — stages and objectives |
+| **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `dialogue_topic` — a keyword and its answers; `quest` — stages and objectives |
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
 | **Your game's words** (§3, below) | `gameplay_conventions` — which attribute is life, which tag is death, the default attack, damage type, profiles and AI schedules, the player's faction, what spells cost, the action names |
@@ -430,8 +430,8 @@ entry inside an object; an entry that takes no settings can be written as its ba
 | Vocabulary | Where content uses it | The engine's entries |
 |---|---|---|
 | `quest_objective` (key `kind`, default `kill`) | a quest stage's `objectives` | `kill`, `have`, `reach`, `talk` |
-| `condition` (key `condition`, or its id as a property) | a dialogue option's `conditions`; any `requires` | the base's `all`, `any`, `not`, `var`; gameplay's `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest` |
-| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`; gameplay's `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest` |
+| `condition` (key `condition`, or its id as a property) | a dialogue option's `conditions`; any `requires` | the base's `all`, `any`, `not`, `var`; gameplay's `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest`; dialogue's `speaker` |
+| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`; gameplay's `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest`; dialogue's `add_topic` |
 | `ability_delivery` | an ability's `delivery` (its `targeting` still names one) | `self`, `touch`, `touch_area`, `area`, `projectile` |
 | `effect_execution` (key `execution`) | an effect's `executions` | `knockback`, `teleport`, `summon`, `dispel` |
 | `item_use` (key `use`) | an item's `uses`, run in order by `world.UseItem` and `use_item` | `consume`, `read`, `cast` |
@@ -476,6 +476,24 @@ Gameplay's entries come with the plugin that owns what they ask about (`has_item
 with factions), not with dialogue (test: GameplayEntriesComeWithTheirPluginsNotWithDialogue). Code asks
 and does with `Conditions.Evaluate(world, subject, requires)` and `Conditions.Run(world, subject, then)`
 (SAGE0124, §10b) (test: AGameWithoutDialogueReadsAndEvaluatesNestedRequires).
+
+**Topics** (issue #93) are Morrowind's way of talking: a keyword whose answer is the first of its
+`infos` whose `requires` (one condition; `all` for several) holds, asked about the player with the
+speaker as the other. Put the specific answers first and a catch-all last; `speaker` makes an answer one
+NPC's, and `add_topic` teaches the player another topic, which they can then ask anybody about:
+
+```jsonc
+{ "type": "dialogue_topic", "id": "the_bridge", "keyword": "the bridge", "known": true,   // everyone knows it
+  "infos": [ { "requires": { "standing": "guard", "min": 20 }, "text": "Open to you, friend." },
+             { "requires": { "quest": "toll", "atLeast": "paid" }, "text": "You paid. Go on." },
+             { "requires": { "speaker": "ferryman" }, "text": "Ask the guard.", "then": [ { "add_topic": "toll" } ] },
+             { "text": "Closed." } ] }
+```
+
+What the player has learnt is saved on them (`sage:known_topics`). A node option with `"topics": true`
+opens the speaker's topics. Code (a screen) lists them with `DialogueTopics.Available(world, speaker,
+player, list)` and asks with `DialogueTopics.Ask` (SAGE0124) (test: ATopicLearntFromOneNpcIsAskedOfAnother).
+Without the dialogue plugin the records are skipped with a warning and nobody has anything to say.
 
 ### Every prefab part the engine provides
 
@@ -1322,7 +1340,7 @@ names their types needs the opt-in.
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
-| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`, and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`) | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
+| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`) | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation` | Phase 4c builds on it: records and localisation (#96), drawing and styles (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
