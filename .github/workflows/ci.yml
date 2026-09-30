@@ -163,7 +163,8 @@ jobs:
           # material builds, so nothing is extracted or drawn here: this proves the generated model and the
           # loader. The Skinned technique compiles in the Windows job; the palette maths and extract are
           # the headless tests (SkinningTests).
-          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testskin 1\n+wait 2\n+r_stats\n+r_testskin 0\n+wait 1' \
+          # anim_debug (issue #118) lists the animators, of which the Sandbox has none yet: the command runs.
+          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testskin 1\n+wait 2\n+r_stats\n+anim_debug\n+r_testskin 0\n+wait 1' \
             tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
           # Third person (issue #79): ToggleView puts the player's camera over the shoulder, probing the
           # scenery every frame, and the renderer draws the body the first-person view hid.

@@ -27,6 +27,14 @@
         }
       ]
     },
+    "animator": {
+      "description": "Prefab part 'animator' (AnimatorPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/animator"
+        }
+      ]
+    },
     "attributes": {
       "description": "Prefab part 'attributes' (AttributesPart).",
       "allOf": [
@@ -459,6 +467,25 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'aim_ik' (AimIkPart)."
+    },
+    "animator": {
+      "type": "object",
+      "properties": {
+        "graph": {
+          "description": "The anim_graph record it runs. Names a anim_graph record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:anim_graph"
+            }
+          ]
+        },
+        "model": {
+          "description": "The skinned .glb whose skeleton and clips it plays; left out, the skinned_mesh part's mesh. A mesh path. (AssetPath)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'animator' (AnimatorPart)."
     },
     "attributes": {
       "type": "object",

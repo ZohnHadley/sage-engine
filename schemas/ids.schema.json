@@ -42,6 +42,11 @@
         "sage:melee_attack"
       ]
     },
+    "record:anim_graph": {
+      "description": "The id of a anim_graph record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:attack": {
       "description": "The id of a attack record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -638,6 +643,11 @@
         "sage:idle",
         "sage:melee_attack"
       ]
+    },
+    "base:anim_graph": {
+      "description": "The id of a anim_graph record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:attack": {
       "description": "Another attack record to inherit every field from, abstract or not.",

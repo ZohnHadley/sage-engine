@@ -27,6 +27,7 @@
             "ability",
             "ai_profile",
             "ai_schedule",
+            "anim_graph",
             "attack",
             "attribute",
             "cue",
@@ -105,6 +106,21 @@
           },
           "then": {
             "$ref": "ai_schedule.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "anim_graph"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "anim_graph.schema.json"
           }
         },
         {
