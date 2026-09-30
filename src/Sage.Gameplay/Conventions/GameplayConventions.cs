@@ -94,7 +94,7 @@ public sealed class ActionConventions
     public string Run = "Run";
     [Property(Tooltip = "The button held to crouch")]
     public string Crouch = "Crouch";
-    [Property(Tooltip = "The button that reloads: plays the first-person arms' reload (ammunition is the game's)")]
+    [Property(Tooltip = "The button that reloads: plays the first-person arms' reload and refills the magazine of an attack with `ammo` (issue #135)")]
     public string Reload = "Reload";
 
     internal (string Field, string Name)[] All() => new[]
@@ -123,6 +123,8 @@ public sealed class AnimationConventions
     public string AttackTrigger = "attack";
     [Property(Tooltip = "The trigger the Reload button sets on the first-person arms' anim_graph (a swing sets `attackTrigger`)")]
     public string Reload = "reload";
+    [Property(Tooltip = "The clip event that puts the magazine in: a reload completes on it, else after the attack's reloadTime (issue #135)")]
+    public string MagIn = "mag_in";
 }
 
 public static class GameplayConventions

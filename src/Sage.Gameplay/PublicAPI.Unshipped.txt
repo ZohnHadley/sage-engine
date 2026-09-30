@@ -181,3 +181,37 @@ Sage.Gameplay.AnimationConventions.AttackTrigger -> string!
 Sage.Gameplay.AttackRecord.Trigger -> string!
 Sage.Gameplay.SpritePart.Graph -> Sage.Core.RecordRef<Sage.Simulation.AnimGraphRecord!>
 static Sage.Gameplay.ProjectileExtensions.Launch(this Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Core.RecordId attack, Sage.Gameplay.AttackRecord! record, System.Numerics.Vector3 from, System.Numerics.Vector3 direction) -> Sage.Simulation.Entity
+Sage.Gameplay.AttackRecord.Ammo -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
+Sage.Gameplay.AttackRecord.AmmoPerShot -> int
+Sage.Gameplay.AttackRecord.Automatic -> bool
+Sage.Gameplay.AttackRecord.Magazine -> int
+Sage.Gameplay.AttackRecord.RateOfFire -> float
+Sage.Gameplay.AttackRecord.ReloadTime -> float
+Sage.Gameplay.AnimationConventions.MagIn -> string!
+Sage.Gameplay.Ammunition
+static Sage.Gameplay.Ammunition.Loaded(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId attack) -> int
+Sage.Gameplay.DryFire
+Sage.Gameplay.DryFire.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.DryFire.Attack.init -> void
+Sage.Gameplay.DryFire.DryFire() -> void
+Sage.Gameplay.DryFire.DryFire(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
+Sage.Gameplay.DryFire.Shooter.get -> Sage.Simulation.Entity
+Sage.Gameplay.DryFire.Shooter.init -> void
+Sage.Gameplay.Magazine
+Sage.Gameplay.Magazine.Loaded -> System.Collections.Generic.List<Sage.Gameplay.MagazineSlot>?
+Sage.Gameplay.Magazine.Magazine() -> void
+Sage.Gameplay.Magazine.Reloading -> bool
+Sage.Gameplay.Magazine.Reloads -> Sage.Core.RecordId
+Sage.Gameplay.Magazine.RoundsFor(Sage.Core.RecordId attack) -> int
+Sage.Gameplay.Magazine.Timer -> float
+Sage.Gameplay.MagazineSlot
+Sage.Gameplay.MagazineSlot.Attack -> Sage.Core.RecordId
+Sage.Gameplay.MagazineSlot.MagazineSlot() -> void
+Sage.Gameplay.MagazineSlot.Rounds -> int
+Sage.Gameplay.WeaponFired
+Sage.Gameplay.WeaponFired.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.WeaponFired.Attack.init -> void
+Sage.Gameplay.WeaponFired.Shooter.get -> Sage.Simulation.Entity
+Sage.Gameplay.WeaponFired.Shooter.init -> void
+Sage.Gameplay.WeaponFired.WeaponFired() -> void
+Sage.Gameplay.WeaponFired.WeaponFired(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
