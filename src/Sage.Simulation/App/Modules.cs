@@ -299,7 +299,10 @@ public sealed class ModuleManager
 
     // One of every public IModule in an assembly. An IGameModule is left out: a game has one, in the
     // assembly game.json names in "assembly".
-    private static List<IModule> ModulesIn(Assembly assembly, string from)
+    private static List<IModule> ModulesIn(Assembly assembly, string from) =>
+        Reflecting(assembly, () => ModulesInCore(assembly, from));
+
+    private static List<IModule> ModulesInCore(Assembly assembly, string from)
     {
         var found = assembly.GetExportedTypes()
             .Where(t => typeof(IModule).IsAssignableFrom(t) && !typeof(IGameModule).IsAssignableFrom(t)
@@ -368,12 +371,52 @@ public sealed class ModuleManager
         if (!File.Exists(full))
             throw new FileNotFoundException($"Game assembly not found: {full}. Build the solution (dotnet build Sage.sln) or fix \"assembly\" in game.json.");
         var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(full);
-        var types = assembly.GetExportedTypes()
-            .Where(t => typeof(IGameModule).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false }).ToList();
-        if (types.Count != 1)
-            throw new InvalidOperationException($"{assembly.GetName().Name} must contain exactly one public IGameModule class (found {types.Count}).");
-        var game = (IGameModule)Activator.CreateInstance(types[0])!;
+        var game = Reflecting(assembly, () =>
+        {
+            var types = assembly.GetExportedTypes()
+                .Where(t => typeof(IGameModule).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false }).ToList();
+            if (types.Count != 1)
+                throw new InvalidOperationException($"{assembly.GetName().Name} must contain exactly one public IGameModule class (found {types.Count}).");
+            return (IGameModule)Activator.CreateInstance(types[0])!;
+        });
         Log.Info(LogCat.Modules, $"Game assembly {assembly.GetName().Name} {assembly.GetName().Version} → {game.Name}");
         return game;
+    }
+
+    // Reflecting over a game, kit or module assembly built against an older engine fails deep inside the
+    // loader ("Could not load file or assembly 'Sage.Engine'"), with nothing saying which dll or why.
+    // Turn that into an error that names the dll and the missing assembly and says to rebuild.
+    internal static T Reflecting<T>(Assembly assembly, Func<T> work)
+    {
+        try { return work(); }
+        catch (Exception e) when (e is FileNotFoundException or FileLoadException or TypeLoadException or ReflectionTypeLoadException)
+        {
+            throw new InvalidOperationException(StaleAssemblyMessage(assembly.Location is { Length: > 0 } l ? l : assembly.GetName().Name ?? "?", e), e);
+        }
+    }
+
+    internal static string StaleAssemblyMessage(string dllPath, Exception e)
+    {
+        string full = Path.IsPathRooted(dllPath) ? dllPath : Path.GetFullPath(dllPath);
+        var causes = e switch
+        {
+            ReflectionTypeLoadException r => r.LoaderExceptions.OfType<Exception>().ToList(),
+            _ => new List<Exception> { e },
+        };
+        var missing = causes.Select(c => c switch
+            {
+                FileNotFoundException f => f.FileName,
+                FileLoadException f => f.FileName,
+                _ => null,
+            })
+            .Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
+        string what = missing.Count > 0 ? $"the assembly {string.Join(", ", missing.Select(n => $"'{n}'"))}"
+            : $"a type it needs ({causes.FirstOrDefault()?.Message ?? e.Message})";
+        var m = System.Text.RegularExpressions.Regex.Match(full, @"[\\/]bin[\\/]([^\\/]+)[\\/]");
+        string config = m.Success ? m.Groups[1].Value : "<config>";
+        return $"Can't load {full}: it needs {what}, which this engine doesn't have. " +
+               "The dll is probably stale, built against an older engine (before an assembly split or a rename). " +
+               $"Rebuild it: `dotnet build Sage.sln -c {config}` for a game in this repository (`dotnet run --project src/Sage.Host` builds only the host), " +
+               "or rebuild the game's own project.";
     }
 }
