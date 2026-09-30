@@ -417,6 +417,11 @@
         "topics"
       ]
     },
+    "record:skeleton_sockets": {
+      "description": "The id of a skeleton_sockets record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:sound": {
       "description": "The id of a sound record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1010,6 +1015,11 @@
         "status",
         "topics"
       ]
+    },
+    "base:skeleton_sockets": {
+      "description": "The id of a skeleton_sockets record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:sound": {
       "description": "Another sound record to inherit every field from, abstract or not.",

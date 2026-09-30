@@ -48,7 +48,9 @@ public sealed class SkeletonSocket
 [Record("skeleton_sockets", Plugin = RegistrationOwners.Core)]
 public sealed class SkeletonSocketsRecord
 {
+    [Property(Tooltip = "The skinned model (.glb) whose skeleton these sockets are on")]
     [AssetKind("mesh")] public AssetPath Model;
+    [Property(Tooltip = "Sockets by name (\"hand_r\"): what an attachment's `socket` names")]
     public Dictionary<string, SkeletonSocket> Sockets = new(StringComparer.OrdinalIgnoreCase);
 }
 
