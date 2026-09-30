@@ -3,9 +3,9 @@
 A C#/MonoGame game engine, being redesigned into a base engine for game designers, developers and
 modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3D and 2D.
 
-**Start here:** [`docs/history/handoff-2026-09-29.md`](docs/history/handoff-2026-09-29.md) (where things
+**Start here:** [`docs/history/handoff-2026-09-30.md`](docs/history/handoff-2026-09-30.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
-tracked as GitHub issues: phases #2, #9, #15, #23, each with sub-issues.
+tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), each with sub-issues.
 
 ## Commands
 ```bash
@@ -72,6 +72,8 @@ tools/smoke_run.sh --dotnet-run /tmp/g 3 Shaders Audio  # `dotnet run` a templat
 - Traps worth knowing are in the handoffs' §5 (2026-09-27: `git clean -fdx` deletes new untracked files;
   this clone may be shallow; the 8.0.1xx SDK miscompiles; `RollForward` hides .NET 8 runtime bugs.
   2026-09-28: merge `main` into a branch and re-run everything before merging it; allocation is
-  measured per thread; content mistakes are load errors now).
+  measured per thread; content mistakes are load errors now. 2026-09-30: build the solution before running
+  the host — it doesn't build the game; the log's repeat note comes from any thread; serialise parallel
+  builds with `MSBUILDDISABLENODEREUSE=1 flock -o`).
 - **Parallel work goes in git worktrees**, one branch per issue, each agent with its own SAGE id range;
   the lead merges `main` into each branch and re-verifies before opening and merging its PR.
