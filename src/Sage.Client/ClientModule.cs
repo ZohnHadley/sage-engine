@@ -48,6 +48,12 @@ public sealed class ClientModule : IModule
     // render target it declares here (issue #81). A module asks for it with `ctx.Get<Renderer>()` instead.
     public Renderer? Renderer => _renderer;
 
+    // The render passes (issue 4h-1, REDESIGN §4.7): the engine's own are added here in Init, a game's or
+    // a plugin's in its Init (`ctx.Get<RenderPasses>().Add(new MyPass())`); sealed and ordered in Start.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RenderPasses Passes { get; } = new();
+    private UiPass? _uiPass;
+
     public void Init(ModuleContext ctx)
     {
         _rendererCVars = new RendererCVars(ctx.Engine.CVars);   // here, not in the Renderer: see RendererCVars
@@ -88,6 +94,26 @@ public sealed class ClientModule : IModule
             "Draw debug geometry from the simulation: sweeps, sight cones, colliders (06 §3.2).");
         _crosshair = ctx.Engine.CVars.Register("ui_crosshair", true, CVarFlags.Archive,
             "Draw the crosshair while a camera rig has the view (13 §3).");
+        // The engine's render passes, on the registry like anyone's (issue 4h-1): a game orders its own
+        // against these ids. Provided here, in Init, so a module that depends on this one adds its
+        // passes in its own Init.
+        Passes.Add(new OpaquePass());
+        Passes.Add(new AlphaTestedPass());
+        Passes.Add(new TransparentPass());
+        Passes.Add(new DebugLinesPass());
+        Passes.Add(_uiPass = new UiPass(_crosshair, _rendererCVars.TestView));
+        ctx.Provide(Passes);
+        ctx.Engine.CVars.RegisterCommand("r_passes", CVarFlags.None, "The render passes in draw order: stage, id, and what each draws after or before.", _ =>
+        {
+            if (!Passes.IsSealed) { Log.Info(LogCat.Console, $"{Passes.Count} render pass(es), not ordered until the client starts"); return; }
+            foreach (var pass in Passes.Ordered)
+            {
+                string after = pass.After.Count > 0 ? $" after {string.Join(", ", pass.After)}" : "";
+                string before = pass.Before.Count > 0 ? $" before {string.Join(", ", pass.Before)}" : "";
+                Log.Info(LogCat.Console, $"  {pass.Stage,-12} {pass.Id,-28} {pass.Type.Name} ({pass.Type.Assembly.GetName().Name}){after}{before}");
+            }
+            Log.Info(LogCat.Console, $"{Passes.Count} render pass(es)");
+        });
         _assetHotReload = ctx.Engine.CVars.Register("asset_hotreload", BuildInfo.IsDevBuild && ctx.Engine.Core.Developer.Value >= 1,
             CVarFlags.DevOnly, "Reload textures and compiled effects when they change on disk (05 §3.6).");
 
@@ -263,8 +289,13 @@ public sealed class ClientModule : IModule
         var host = _host = ctx.Get<ClientHost>();
         _records = ctx.Engine.Records;
         _content = new ContentService(host, ctx.Engine.Vfs);
-        _renderer = new Renderer(host, _content, ctx.Engine, _rendererCVars!);
+        // Every module's Init has run, so every pass is in: order them now. A cycle, or an After naming
+        // a pass nobody added, stops the boot here (RenderPassRegistry).
+        Passes.Seal("the client started");
+        _renderer = new Renderer(host, _content, ctx.Engine, _rendererCVars!, Passes);
         _ui = new UiResources(host.GraphicsDevice);
+        _uiPass!.Content = _content;
+        _uiPass.Shared = _ui;
         ctx.Provide(_content);
         ctx.Provide(_renderer);
 
@@ -299,6 +330,7 @@ public sealed class ClientModule : IModule
             world.AddSystem(new MapMeshSystem(world, _renderer!));
         // What the world is drawn from: its views (issue #77; ActiveCamera until camera components).
         world.AddSystem(new CameraExtract(world, _renderer!, new ViewSource(world, _renderer!, _rendererCVars!.TestView)));
+        world.AddSystem(new RenderPassExtract(world, _renderer!));   // the passes' own views and items (issue 4h-1)
         world.AddSystem(new MeshExtract(world, _renderer!));
         // Skinned meshes and their joint palettes (issue #117); `r_testskin` stands a bending column up.
         world.AddSystem(new SkinnedMeshExtract(world, _renderer!));
@@ -331,7 +363,7 @@ public sealed class ClientModule : IModule
             world.AddSystem(new DialogueSystem(world, Screens));
         // Before the HUD is drawn, so a number never sits on top of the health bar.
         world.AddSystem(new FloatingTextSystem(world));
-        world.AddSystem(new UiRenderSystem(world, _host!, _content!, _ui!, _crosshair!, _renderer!, _rendererCVars!.TestView));
+        world.AddSystem(new UiRenderSystem(world, _renderer!));
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
         world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!));

@@ -45,7 +45,7 @@ Pooled; its arrays grow but are never freed during play, so steady-state frames 
 - **Cameras are the exception.** The active camera is updated in `FrameUpdate` at the display rate (so mouse-look is smooth at any refresh rate) and extracted as-is, not interpolated.
 - Everything is made **camera-relative** during extract (subtract the camera position). The view matrix then has no translation, and float precision is best exactly where the player looks. Combined with origin-sector rebasing (14), this keeps precision on Daggerfall-sized maps.
 
-### 3.4 Passes (fixed order)
+### 3.4 Passes (stages; registered passes since 4h-1)
 
 | # | Pass | Contents | Sorting | State |
 |---|---|---|---|---|
@@ -57,6 +57,8 @@ Pooled; its arrays grow but are never freed during play, so steady-state frames 
 | 6 | Overlay | ImGui dev UI, console, game UI (13) | — | 2D |
 
 Shadows (later) would be pass 0 into a shadow map. Lightmaps (later, HL1-style interiors) are a material technique (07), not a pass.
+
+Since issue 4h-1 these rows are **stages**, and what draws in them are registered passes (`Shadow`, then per view `Opaque`, `AlphaTested`, `Sky`, `Transparent`, `Debug`, then `PostProcess`, then `Overlay`); see "As built (render passes)" below.
 
 ### 3.4a Views and render targets
 
@@ -849,6 +851,59 @@ viewmodel is one more view, and the renderer gained one flag.
   (test: TheViewmodelAndItsExtractAllocateNothingPerFrame).
 - **Not yet:** shadows (there are none), a viewmodel in a split-screen partner's view (only the screen's
   main view gets one), and a separate lighting rig for the arms (they are lit by the world's sun and lamps).
+
+### As built (render passes, 2026-09-30 — issue 4h-1)
+REDESIGN §4.7's pass registry and public `RenderContext`, the first piece of phase 4h. The renderer's
+private `Passes` array (opaque, alpha-tested, transparent) is gone; what draws is a list of registered
+passes, ordered headless. All of it is experimental (SAGE0130, MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Simulation/Rendering/RenderPasses.cs` (headless: `RenderStage`, `RenderStages`,
+  `[RenderPass]`, `RenderPassRegistry<TPass>`); `src/Sage.Client/Rendering/RenderPassApi.cs`
+  (`IRenderPass`, `RenderPasses`, `RenderContext`, `RenderViewInfo`), `BuiltInPasses.cs`, and the stage
+  walk in `Renderer.Draw`/`DrawView`/`DrawOverlay`. Tests: `tests/Sage.Tests/Presentation/RenderPassTests.cs`.
+- **Declared, then added in Init:** a pass is a class with `[RenderPass("ns:id", RenderStage.X, After =
+  ..., Before = ...)]`, added with `ctx.Get<RenderPasses>().Add(...)` in a module's `Init`, like a system
+  (decision 4: no generator; the attribute is read when it is added). `ClientModule` adds the engine's
+  and seals the registry in its `Start`, which orders it; the renderer only walks `In(stage)`.
+- **The order:** by stage — `Shadow` once per world; `Opaque`, `AlphaTested`, `Sky`, `Transparent`,
+  `Debug` once per view; `PostProcess` once on the screen; `Overlay` in the Overlay phase — then by
+  `After`/`Before` within a stage, then in the order added (test: PassesDrawByStage_ThenByAfterAndBefore)
+  (test: PassesNothingOrders_KeepTheOrderTheyWereAdded). Ties keep the order added rather than the id
+  order, as systems do: the engine's passes are added first, so a game's pass with no constraint draws
+  after them.
+- **Load errors:** a cycle (test: ACycleIsALoadError_NamingThePasses), an id taken twice or a pass with
+  no `[RenderPass]` (test: ADuplicateIdOrAPassWithoutADeclarationIsALoadError), and an `After`/`Before`
+  naming a pass nobody added or one in another stage — `"?id"` is a soft dependency, as for systems
+  (test: AnAfterNamingNothing_OrAPassInAnotherStage_IsALoadError_UnlessItIsSoft) — throw at the seal,
+  which stops the boot. Adding after the seal throws (test: AddingAfterTheSealThrows), and adding in
+  `Start`, `OnWorldCreated` or a system is SAGE0020 at build time (test: AddingARenderPassAfterInitIsABuildError).
+- **Each scene stage draws one run** of the view's sorted items and sprites: the entries whose sort key
+  starts with `RenderStages.SortKeyPass(stage)` (0, 1, 2 for the sky, 3), the same bits `RenderSortKey`
+  writes for a material's pass (test: EachSceneStageOwnsOneRunOfTheSortKey). `Debug`, `Shadow`,
+  `PostProcess` and `Overlay` draw no run.
+- **The engine's passes:** `sage:opaque`, `sage:alpha_tested`, `sage:transparent` (the stage's run:
+  meshes, then sprites, exactly as the array drew them), `sage:debug` (debug lines) and `sage:ui` (the
+  game's UI: what `UiRenderSystem` drew before; the system now runs the Overlay stage and empties the
+  queue). There is no sky pass yet: the sky is still each target's clear colour (4h-5 adds one). With
+  only these, the frame is the same draws in the same order as before.
+- **`RenderContext`** (one instance, reused): the world, the stage, whether this world draws to the
+  screen, the views (`ViewInfo`: camera-relative matrices, position, viewport, target), and the current
+  view in a per-view stage. In a pass's **Extract** (after `sage.client.extract.camera`, before the other
+  extracts, `RenderPassExtract`): `AddView` (a view the world's meshes, sprites, lights and debug lines are
+  extracted into like any camera's) and `AddItem` (a mesh handle with a material in a view, not culled).
+  In its **Draw**: `Target(name)`, `SetTarget(name)` and `DrawFullScreen(texture, effect, blend)`.
+  After a pass from outside the engine, the renderer re-applies material state and puts back the view's
+  target and viewport (or the screen, in Overlay), so a game's pass cannot leave the next one drawing
+  into the wrong place.
+- **Render targets** take a format and a depth buffer: `Renderer.DeclareTarget(name, w, h, format,
+  depth)`; another format or depth remakes the target like another size. The three-argument form is
+  Color with Depth24, as before.
+- **`r_passes`** lists every pass in draw order: stage, id, type and assembly, and its constraints.
+- **Allocation:** walking the stages allocates nothing (test: WalkingTheStagesAllocatesNothing); the
+  renderer's walk is over the registry's arrays with the one context, built once at the seal.
+- **Not yet:** checked by a headless test only up to the order — the drawing is the client's, checked by
+  the smoke run. Replacing or disabling an engine pass (a game swapping `sage:transparent` for an OIT
+  pass) is not built; nor is the Shadow or PostProcess stage used by the engine (4h-4 and 4h-6).
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

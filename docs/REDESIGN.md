@@ -905,6 +905,15 @@ because it edits the live play world (`DevTools.cs:84-87`).
   ordered `IRenderPass`es, each with an Extract hook and a Draw hook and able to allocate render
   targets. Games and code mods can add post-processing, outlines and similar passes.
 - **Public extract API,** so game code can produce render items without going through `MeshRenderer`.
+  - *As built (issue 4h-1, 2026-09-30).* Passes are declared with `[RenderPass("ns:id", RenderStage.X,
+    After = ...)]` and added in a module's `Init` (`RenderPasses`, SAGE0020 when later), ordered headless
+    by `RenderPassRegistry` when the client starts — by stage (Shadow; per view Opaque, AlphaTested, Sky,
+    Transparent, Debug; PostProcess; Overlay), then `After`/`Before`, then the order added; a cycle, a
+    duplicate or an unknown id is a load error. The fixed array is gone: the engine's own passes
+    (`sage:opaque`, `sage:alpha_tested`, `sage:transparent`, `sage:debug`, `sage:ui`) are on the
+    registry. A pass's Extract and Draw get a public `RenderContext` (add views and items, bind a named
+    target, draw full-screen); render targets gain a format and a depth buffer; `r_passes` lists the
+    order (docs/design/06 "As built (render passes)", SAGE0130).
 - **UI:**
   - Keep `Screen`/`Panel` as view-models.
   - Add `ui_style` and `ui_layout` records (fonts, colours, anchors, templates) used by `PanelView` and

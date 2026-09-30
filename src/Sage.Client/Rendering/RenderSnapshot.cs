@@ -207,7 +207,7 @@ internal static class RenderSortKey
 {
     public static ulong Make(RenderPass pass, int layer, int material, int mesh, float depth, float far)
     {
-        ulong p = pass switch { RenderPass.Opaque => 0UL, RenderPass.AlphaTested => 1UL, _ => 3UL };   // 2 = sky
+        ulong p = (ulong)RenderStages.SortKeyPass(RenderStages.Of(pass));   // 0, 1 or 3; 2 = sky (issue 4h-1)
         float d = Math.Clamp(depth / MathF.Max(far, 0.001f), 0f, 1f);
         ulong key = (p << 60) | ((ulong)(uint)(layer & 0xF) << 56);
         if (pass != RenderPass.Transparent)

@@ -46,17 +46,8 @@ internal sealed class CameraExtract : ISystem
         {
             ref readonly var request = ref _requests[r];
             if (request.Target == RenderViewPlan.Screen && !screen) continue;
-            int index = s.Views.Count;
-            ref var view = ref s.Views.Add();
-            Build(request, _renderer.TargetSize(request.Target), ref view);
+            int index = AddView(s, _renderer, request);
             if (request.Main && request.Target == RenderViewPlan.Screen && s.MainView < 0) s.MainView = index;
-
-            if (!_renderer.FreezeCull || !s.CullValid[index])
-            {
-                s.Frustum(index).Matrix = view.ViewProj;
-                s.CullOrigins[index] = view.CameraPosition;
-                s.CullValid[index] = true;
-            }
         }
 
         var e = _environment;
@@ -69,6 +60,23 @@ internal sealed class CameraExtract : ISystem
         env.AmbientSky = e.AmbientSky;
         env.AmbientGround = e.AmbientGround;
         env.Time = (float)ctx.Frame.RealTime;
+    }
+
+    // One view into the snapshot, with its culling frustum (kept while r_freezecull holds it); its index.
+    // Also what a render pass's `RenderContext.AddView` does. Allocates only when the view count grows.
+    internal static int AddView(RenderSnapshot s, Renderer renderer, in ViewRequest request)
+    {
+        int index = s.Views.Count;
+        s.EnsureViewSlots(index + 1);
+        ref var view = ref s.Views.Add();
+        Build(request, renderer.TargetSize(request.Target), ref view);
+        if (!renderer.FreezeCull || !s.CullValid[index])
+        {
+            s.Frustum(index).Matrix = view.ViewProj;
+            s.CullOrigins[index] = view.CameraPosition;
+            s.CullValid[index] = true;
+        }
+        return index;
     }
 
     // A request in a target of `size` pixels → a camera-relative view. The aspect ratio is the
@@ -346,7 +354,28 @@ internal sealed class RenderSystem : ISystem
         _snapshot = world.Resources.Get<RenderSnapshot>();
     }
 
-    public void Run(in SystemContext ctx) => _renderer.Draw(_snapshot, _renderer.IsScreenWorld(ctx.World));
+    public void Run(in SystemContext ctx) => _renderer.Draw(_snapshot, _renderer.IsScreenWorld(ctx.World), ctx.World);
+}
+
+// Extract, right after the cameras: every render pass's Extract hook (issue 4h-1), so a view a pass adds
+// is one the world's meshes, sprites, lights and debug lines are extracted into like any camera's.
+[System("sage.client.extract.passes", Phase.Extract, After = new[] { "sage.client.extract.camera" }, Before = new[]
+{
+    "sage.client.extract.meshes", "sage.client.extract.skinned", "sage.client.extract.sprites",
+    "sage.client.extract.lights", "sage.client.extract.debug", "?sage.client.extract.particles",
+})]
+internal sealed class RenderPassExtract : ISystem
+{
+    private readonly Renderer _renderer;
+    private readonly RenderSnapshot _snapshot;
+
+    public RenderPassExtract(World world, Renderer renderer)
+    {
+        _renderer = renderer;
+        _snapshot = world.Resources.Get<RenderSnapshot>();
+    }
+
+    public void Run(in SystemContext ctx) => _renderer.ExtractPasses(ctx.World, _snapshot, _renderer.IsScreenWorld(ctx.World));
 }
 
 // Extract: one SpriteInstance per visible billboard (06 §3.8). It picks the direction group from the
