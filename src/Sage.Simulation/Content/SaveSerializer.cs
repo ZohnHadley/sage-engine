@@ -79,7 +79,10 @@ internal sealed class SaveSerializer
         return result;
     }
 
-    public void ReadComponents(World world, Entity entity, JsonObject components, JsonSerializerOptions json, string where)
+    // `unknown` collects, as saved, every entry whose id matches no component here, so the next save
+    // can write it back unchanged (issue 4i-2).
+    public void ReadComponents(World world, Entity entity, JsonObject components, JsonSerializerOptions json, string where,
+                               JsonObject? unknown = null)
     {
         foreach (var (key, node) in components)
         {
@@ -91,9 +94,10 @@ internal sealed class SaveSerializer
             if (declaration is null)
             {
                 // A component from a mod that is no longer loaded, or one since removed. The rest of
-                // the entity still loads (09 §3.6).
+                // the entity still loads (09 §3.6), and the entry is kept, as saved, for the next save.
                 Log.Once(LogCat.Save, LogLevel.Warn, $"unknown-component:{key}",
-                    $"{where}: no component '{key}' any more; its data is skipped");
+                    $"{where}: no component '{key}' in this game; its data is kept for the next save, unused");
+                unknown?.Add(key, node.DeepClone());
                 continue;
             }
             if (OnTheEntity(declaration.Type) || IsTransient(declaration.Type)) continue;
@@ -155,7 +159,7 @@ internal sealed class SaveSerializer
         }
     }
 
-    public void ReadTags(World world, Entity entity, JsonArray tags, string where)
+    public void ReadTags(World world, Entity entity, JsonArray tags, string where, JsonArray? unknown = null)
     {
         foreach (var node in tags)
         {
@@ -167,7 +171,9 @@ internal sealed class SaveSerializer
 
             if (tag is null)
             {
-                Log.Once(LogCat.Save, LogLevel.Warn, $"unknown-tag:{name}", $"{where}: no tag '{name}' any more; skipped");
+                Log.Once(LogCat.Save, LogLevel.Warn, $"unknown-tag:{name}",
+                    $"{where}: no tag '{name}' in this game; kept for the next save, unused");
+                unknown?.Add(name);
                 continue;
             }
             if (IsTransient(tag)) continue;

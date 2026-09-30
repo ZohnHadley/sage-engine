@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -133,6 +134,16 @@ public sealed class SaveSystem
                 ["engineVersion"] = BuildInfo.EngineVersion,
                 ["savedUtc"] = DateTime.UtcNow.ToString("o"),
                 ["worlds"] = new JsonArray(_engine.Worlds.Select(w => (JsonNode)w.Name!).ToArray()),
+                // What made the world it holds (REDESIGN §4.5, issue 4i-2): a load compares these with what
+                // is loaded now and says what differs, and a load menu shows it (SaveSlot.Mismatches).
+                ["plugins"] = new JsonArray(CurrentPlugins().Select(p => (JsonNode)new JsonObject
+                {
+                    ["id"] = p.Id, ["version"] = p.Version,
+                }).ToArray()),
+                ["content"] = new JsonArray(CurrentContent().Select(c => (JsonNode)new JsonObject
+                {
+                    ["mount"] = c.Mount, ["namespace"] = c.Namespace,
+                }).ToArray()),
             };
             File.WriteAllText(Path.Combine(staging, "header.json"), header.ToJsonString(Indented));
 
@@ -167,18 +178,32 @@ public sealed class SaveSystem
         var json = SaveJson.For(world, _engine.Records, _converters);
         var entities = new JsonArray();
 
-        foreach (var entity in world.Query<Persistent>().Entities)
+        // Disabled ones included: a placeholder is disabled so that nothing else sees it (issue 4i-2).
+        foreach (var entity in world.PersistentIncludingDisabled())
         {
             var persistent = entity.GetComponent<Persistent>();
             if (persistent.Id.IsEmpty) continue;
+
+            // An entity whose prefab this game does not have goes back as it came (issue 4i-2).
+            if (world.TryGet<SavePlaceholder>(entity, out var placeholder)
+                && JsonNode.Parse(placeholder.Saved ?? "") is JsonObject kept)
+            {
+                kept["id"] = persistent.Id.ToString();
+                entities.Add(kept);
+                continue;
+            }
 
             var saved = new JsonObject { ["id"] = persistent.Id.ToString() };
             if (world.TryGet<FromPrefab>(entity, out var from) && !from.Prefab.IsEmpty)
                 saved["prefab"] = from.Prefab.ToString();
             if (entity.Name is { Length: > 0 } named)
                 saved["name"] = named;
-            saved["components"] = _serializer.WriteComponents(world, entity, json);
+            var components = _serializer.WriteComponents(world, entity, json);
             var tags = _serializer.WriteTags(world, entity);
+            // What the save said that this game has no component or tag for, back as it was (issue 4i-2).
+            if (world.TryGet<UnknownSavedData>(entity, out var unknown))
+                MergeUnknown(components, tags, unknown);
+            saved["components"] = components;
             if (tags.Count > 0) saved["tags"] = tags;
             entities.Add(saved);
         }
@@ -207,10 +232,34 @@ public sealed class SaveSystem
                 Log.Error(LogCat.Save, $"Saved resource '{kind.Name}' cannot be written: {ex.Message}");
             }
         }
+        // Resources the last load found and this game has no type for (a mod's quest log), back as they were.
+        if (_unknownResources.TryGetValue(world, out var unknownResources))
+            foreach (var (name, entry) in unknownResources)
+                if (!resources.ContainsKey(name) && entry != null) resources[name] = entry.DeepClone();
         if (resources.Count > 0) root["resources"] = resources;
 
         return (root.ToJsonString(Indented), entities.Count);
     }
+
+    private static void MergeUnknown(JsonObject components, JsonArray tags, in UnknownSavedData unknown)
+    {
+        if (!string.IsNullOrEmpty(unknown.Components) && JsonNode.Parse(unknown.Components) is JsonObject kept)
+            foreach (var (id, entry) in kept.ToList())
+            {
+                if (components.ContainsKey(id)) continue;   // the entity has one now: what it has wins
+                kept.Remove(id);
+                components[id] = entry;
+            }
+        if (!string.IsNullOrEmpty(unknown.Tags) && JsonNode.Parse(unknown.Tags) is JsonArray keptTags)
+        {
+            var have = tags.Select(t => (string?)t).ToHashSet(StringComparer.Ordinal);
+            foreach (var tag in keptTags)
+                if ((string?)tag is { Length: > 0 } id && have.Add(id)) tags.Add(id);
+        }
+    }
+
+    // The saved resources a load found that no registered type claims, per world, for the next save.
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<World, JsonObject> _unknownResources = new();
 
     // ---- reading ------------------------------------------------------------------------------------
 
@@ -219,15 +268,23 @@ public sealed class SaveSystem
     // Loads into the engine's existing worlds: every persistent entity is removed and rebuilt from the
     // file. Non-persistent things (terrain chunks, the ground) are the world's own business and are
     // left alone — they are rebuilt by the systems that own them.
+    //
+    // **A load cannot half-happen** (REDESIGN §4.5, issue 4i-2). Every world file is read, parsed and
+    // upgraded, and every entity's id, prefab and name is read, before any world is touched: a save
+    // that is corrupt anywhere is refused whole and the game is left as it was. What is left to do
+    // after that point is laying data that has already been read onto the worlds.
     public bool Load(string slot)
     {
         string directory = SlotDirectory(slot);
         if (!Exists(slot)) { Log.Warn(LogCat.Save, $"No save '{slot}' in {Root}"); return false; }
 
+        JsonObject header;
+        var prepared = new List<PreparedWorld>();
         try
         {
-            var header = JsonNode.Parse(File.ReadAllText(Path.Combine(directory, "header.json"))) as JsonObject;
-            int version = (int?)header?["formatVersion"] ?? 0;
+            header = JsonNode.Parse(File.ReadAllText(Path.Combine(directory, "header.json"))) as JsonObject
+                     ?? throw new InvalidDataException("header.json is not a JSON object");
+            int version = header["formatVersion"] is JsonValue f ? (int)f : 0;
             if (version > FormatVersion || version < OldestReadableFormat)
             {
                 // Newer than this build, or older than any upgrader here: refusing is honest, and
@@ -239,52 +296,60 @@ public sealed class SaveSystem
             if (version < FormatVersion)
                 Log.Info(LogCat.Save, $"Save '{slot}' is format {version}; upgrading it to {FormatVersion} as it loads");
 
-            int total = 0;
             foreach (var world in _engine.Worlds)
             {
                 string file = Path.Combine(directory, $"world_{Sanitise(world.Name)}.json");
                 if (!File.Exists(file)) { Log.Warn(LogCat.Save, $"'{slot}' has nothing for world '{world.Name}'"); continue; }
-                total += ReadWorld(world, File.ReadAllText(file), version, $"{slot}/world_{world.Name}");
+                prepared.Add(Prepare(world, File.ReadAllText(file), version, $"{slot}/world_{world.Name}"));
             }
-
-            foreach (var world in _engine.Worlds)
-                world.Resources.Get<GameRules>().OnLoaded(world);
-
-            Log.Info(LogCat.Save, $"Loaded '{slot}': {total} entities");
-            return true;
         }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        // Wide on purpose, and safe to be: nothing has been changed yet. A malformed record id is a
+        // FormatException, a value of the wrong JSON kind an InvalidOperationException; before 4i-2 the
+        // first escaped the catch half-way through a load.
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidDataException
+                                      or FormatException or InvalidOperationException or ArgumentException
+                                      or NotSupportedException or OverflowException)
         {
-            Log.Error(LogCat.Save, $"Load '{slot}' failed: {ex.Message}");
+            Log.Error(LogCat.Save, $"Load '{slot}' failed, and nothing was changed: {ex.Message}");
             return false;
         }
+
+        // Written by other plugins or content than these: said, and loaded anyway (the placeholders and
+        // the kept data below are what make that safe).
+        var mismatches = Mismatches(header);
+        if (mismatches.Count > 0)
+            Log.Warn(LogCat.Save, $"Save '{slot}' was written with other plugins or content; loading it anyway: " +
+                                  string.Join("; ", mismatches));
+
+        int total = 0;
+        foreach (var world in prepared)
+            total += Apply(world);
+
+        foreach (var world in _engine.Worlds)
+            world.Resources.Get<GameRules>().OnLoaded(world);
+
+        Log.Info(LogCat.Save, $"Loaded '{slot}': {total} entities");
+        return true;
     }
 
-    private int ReadWorld(World world, string json, int format, string where)
+    // One world file, read and upgraded, and nothing done with it yet.
+    private sealed record PreparedWorld(World World, string Where, SectorCoord? Origin, List<PreparedEntity> Entities, JsonObject? Resources);
+
+    private readonly record struct PreparedEntity(PersistentId Id, RecordId Prefab, string? Name, JsonObject Saved);
+
+    // Everything about a world file that can fail, done without touching the world: a problem here
+    // throws, and Load refuses the save.
+    private PreparedWorld Prepare(World world, string json, int format, string where)
     {
         if (JsonNode.Parse(json) is not JsonObject root || root["entities"] is not JsonArray entities)
-        {
-            Log.Error(LogCat.Save, $"{where}: no \"entities\"");
-            return 0;
-        }
+            throw new InvalidDataException($"{where}: no \"entities\"");
         UpgradeWorld(root, format);
 
-        // Back to the frame these positions were written in, *before* anything is placed in it. This
-        // also brings the terrain rings and the physics world along, because that is what a rebase
-        // does — the same path streaming uses when the player walks there (R6).
-        if (root["origin"] is JsonObject savedOrigin)
-            world.Rebase(new SectorCoord((int?)savedOrigin["x"] ?? 0, (int?)savedOrigin["z"] ?? 0));
+        SectorCoord? origin = root["origin"] is JsonObject savedOrigin
+            ? new SectorCoord((int?)savedOrigin["x"] ?? 0, (int?)savedOrigin["z"] ?? 0)
+            : null;
 
-        // Out with the old. Everything persistent is in the file, so anything here that is not was
-        // destroyed before the save was taken — which is what a tombstone would have said.
-        foreach (var entity in world.Query<Persistent>().Entities.ToEntityList())
-            world.Destroy(entity);
-        world.FlushCommands();
-
-        // **Pass one: every entity, with its identity, and nothing else.** Components come after, so
-        // that by the time one mentions another entity that entity exists and the reference resolves
-        // as it is read. Two passes instead of a fix-up list, and nesting comes free.
-        var rebuilt = new List<(Entity Entity, JsonObject Saved)>();
+        var list = new List<PreparedEntity>(entities.Count);
         foreach (var node in entities)
         {
             if (node is not JsonObject saved) continue;
@@ -294,20 +359,62 @@ public sealed class SaveSystem
                 continue;
             }
 
-            var prefab = saved["prefab"] is JsonValue p && (string?)p is { Length: > 0 } text
-                ? RecordId.Parse(text, "sage") : default;
+            var prefab = (string?)saved["prefab"] is { Length: > 0 } text ? RecordId.Parse(text, "sage") : default;
+            list.Add(new PreparedEntity(id, prefab, (string?)saved["name"], saved));
+        }
 
+        return new PreparedWorld(world, where, origin, list, root["resources"] as JsonObject);
+    }
+
+    private int Apply(PreparedWorld file)
+    {
+        var world = file.World;
+        string where = file.Where;
+
+        // Back to the frame these positions were written in, *before* anything is placed in it. This
+        // also brings the terrain rings and the physics world along, because that is what a rebase
+        // does — the same path streaming uses when the player walks there (R6).
+        if (file.Origin is { } origin)
+            world.Rebase(origin);
+
+        // Out with the old. Everything persistent is in the file, so anything here that is not was
+        // destroyed before the save was taken — which is what a tombstone would have said. Disabled
+        // ones too: the last load's placeholders.
+        foreach (var entity in world.PersistentIncludingDisabled().ToEntityList())
+            world.Destroy(entity);
+        world.FlushCommands();
+
+        // **Pass one: every entity, with its identity, and nothing else.** Components come after, so
+        // that by the time one mentions another entity that entity exists and the reference resolves
+        // as it is read. Two passes instead of a fix-up list, and nesting comes free.
+        var rebuilt = new List<(Entity Entity, JsonObject Saved)>();
+        var placeholders = new List<(Entity Entity, JsonObject Saved)>();
+        foreach (var (id, prefab, name, saved) in file.Entities)
+        {
             // Spawned from its prefab so the *parts* come back — a character's capsule, controller and
             // intent were never in the save because the prefab puts them there (F31).
-            var entity = prefab.IsEmpty ? world.Create(Transform.Identity) : world.Spawn(prefab);
-            if (entity.IsNull) { Log.Warn(LogCat.Save, $"{where}: {id} could not be rebuilt from {prefab}"); continue; }
+            Entity entity = default;
+            if (prefab.IsEmpty) entity = world.Create(Transform.Identity);
+            else if (_engine.Records.TryGet(prefab, out PrefabRecord _)) entity = world.Spawn(prefab);
+
+            if (entity.IsNull)
+            {
+                // No such prefab in this game (a mod removed, a prefab renamed), or it could not be
+                // spawned: kept as an inert placeholder rather than dropped (issue 4i-2).
+                Log.Once(LogCat.Save, LogLevel.Warn, $"placeholder:{prefab}",
+                    $"{where}: no prefab '{prefab}' to rebuild {name ?? id.ToString()} from; it is kept, inert, " +
+                    "and written back unchanged by the next save");
+                entity = world.Create(Transform.Identity);
+                world.Add(entity, new SavePlaceholder { Prefab = prefab, Saved = saved.ToJsonString() });
+                placeholders.Add((entity, saved));
+            }
+            else rebuilt.Add((entity, saved));
 
             world.Add(entity, new Persistent { Id = id });
             // Entity.Name adds the name when the entity has none (Friflo's own setter threw on an entity
             // without one, which is every prefab-less entity: a golden save found it, #20).
-            if ((string?)saved["name"] is { Length: > 0 } name)
+            if (name is { Length: > 0 })
                 entity.Name = name;
-            rebuilt.Add((entity, saved));
         }
         world.FlushCommands();
 
@@ -315,20 +422,99 @@ public sealed class SaveSystem
         var dialect = SaveJson.For(world, _engine.Records, _converters);
         foreach (var (entity, saved) in rebuilt)
         {
+            var unknown = new JsonObject();
+            var unknownTags = new JsonArray();
             if (saved["components"] is JsonObject components)
-                _serializer.ReadComponents(world, entity, components, dialect, where);
+                _serializer.ReadComponents(world, entity, components, dialect, where, unknown);
             if (saved["tags"] is JsonArray tags)
-                _serializer.ReadTags(world, entity, tags, where);
+                _serializer.ReadTags(world, entity, tags, where, unknownTags);
+            if (unknown.Count > 0 || unknownTags.Count > 0)
+                world.Add(entity, new UnknownSavedData { Components = unknown.ToJsonString(), Tags = unknownTags.ToJsonString() });
+        }
+
+        // A placeholder stands where the entity stood (for a tool that looks), and then out of sight.
+        foreach (var (entity, saved) in placeholders)
+        {
+            if (saved["components"] is JsonObject components && components["sage:transform"] is JsonNode transform)
+                _serializer.ReadComponents(world, entity, new JsonObject { ["sage:transform"] = transform.DeepClone() }, dialect, where);
+            World.SetEnabled(entity, false);
         }
 
         // What the scene placed is the scene's again, with its wiring (issues #29, #90) — before the
         // resources, because entity I/O's puts back how often each of those wires fired.
         _engine.Scenes.AfterLoad(world);
 
-        ReadResources(world, root["resources"] as JsonObject, dialect, where);
+        ReadResources(world, file.Resources, dialect, where);
 
         world.FlushCommands();
-        return rebuilt.Count;
+        return rebuilt.Count + placeholders.Count;
+    }
+
+    // ---- the header's plugins and content (issue 4i-2) ---------------------------------------------
+
+    // The runtime plugins loaded now: an editor's or a tool's own modules are not part of a game's state.
+    private IEnumerable<SavedPlugin> CurrentPlugins() =>
+        _engine.Modules.Modules
+            .Select(m => _engine.Modules.Plugin(m))
+            .Where(p => p.Kind == ModuleKind.Runtime)
+            .Select(p => new SavedPlugin(p.Id, p.Version.ToString()))
+            .OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase);
+
+    // The content mounted now, in priority order.
+    private IEnumerable<SavedContent> CurrentContent() =>
+        _engine.Vfs.Mounts.Select(m => new SavedContent(m.Name, m.RecordNamespace));
+
+    internal static List<SavedPlugin>? ReadPlugins(JsonObject header)
+    {
+        if (header["plugins"] is not JsonArray list) return null;   // written before 4i-2: nothing to compare
+        var plugins = new List<SavedPlugin>();
+        foreach (var node in list)
+            if (node is JsonObject p && p["id"] is JsonValue id && id.TryGetValue(out string? text) && text is { Length: > 0 })
+                plugins.Add(new SavedPlugin(text, p["version"] is JsonValue v && v.TryGetValue(out string? version) ? version ?? "" : ""));
+        return plugins;
+    }
+
+    internal static List<SavedContent>? ReadContent(JsonObject header)
+    {
+        if (header["content"] is not JsonArray list) return null;
+        var content = new List<SavedContent>();
+        foreach (var node in list)
+            if (node is JsonObject c && c["mount"] is JsonValue m && m.TryGetValue(out string? mount) && mount is { Length: > 0 })
+                content.Add(new SavedContent(mount, c["namespace"] is JsonValue n && n.TryGetValue(out string? ns) ? ns ?? "" : ""));
+        return content;
+    }
+
+    // What differs between the plugins and content a header lists and what is loaded now, one line
+    // each. Empty when they match, or when the header is from before headers listed them.
+    private List<string> Mismatches(JsonObject header) => Mismatches(ReadPlugins(header), ReadContent(header));
+
+    private List<string> Mismatches(IReadOnlyList<SavedPlugin>? plugins, IReadOnlyList<SavedContent>? content)
+    {
+        var result = new List<string>();
+        if (plugins != null)
+        {
+            var now = CurrentPlugins().ToDictionary(p => p.Id, p => p.Version, StringComparer.OrdinalIgnoreCase);
+            var then = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in plugins)
+            {
+                then.Add(p.Id);
+                if (!now.TryGetValue(p.Id, out var version)) result.Add($"plugin '{p.Id}' {p.Version} is not loaded");
+                else if (!string.Equals(version, p.Version, StringComparison.Ordinal))
+                    result.Add($"plugin '{p.Id}' was {p.Version} and is {version}");
+            }
+            foreach (var (id, version) in now)
+                if (!then.Contains(id)) result.Add($"plugin '{id}' {version} was not loaded then");
+        }
+        if (content != null)
+        {
+            var now = CurrentContent().Select(c => c.Mount).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var then = content.Select(c => c.Mount).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in content)
+                if (!now.Contains(c.Mount)) result.Add($"content '{c.Mount}' is not mounted");
+            foreach (var mount in now)
+                if (!then.Contains(mount)) result.Add($"content '{mount}' was not mounted then");
+        }
+        return result;
     }
 
     // Every registered resource is replaced, including the ones the file says nothing about: a load
@@ -336,6 +522,18 @@ public sealed class SaveSystem
     // player never made. Absent in the file means "you had none", not "keep what you have".
     private void ReadResources(World world, JsonObject? saved, JsonSerializerOptions dialect, string where)
     {
+        // What no registered resource claims is kept for the next save (issue 4i-2).
+        var unknown = new JsonObject();
+        if (saved != null)
+            foreach (var (name, entry) in saved)
+                if (!_resources.ContainsKey(name) && entry != null)
+                {
+                    Log.Once(LogCat.Save, LogLevel.Warn, $"unknown-resource:{name}",
+                        $"{where}: no saved resource '{name}' in this game; kept for the next save, unused");
+                    unknown[name] = entry.DeepClone();
+                }
+        _unknownResources.AddOrUpdate(world, unknown);
+
         foreach (var kind in _resources.Values)
         {
             object? value = null;
@@ -473,6 +671,8 @@ public sealed class SaveSystem
             DateTime saved = default;
             int format = 0;
             string game = "", engine = "";
+            List<SavedPlugin>? plugins = null;
+            List<SavedContent>? content = null;
             try
             {
                 if (JsonNode.Parse(File.ReadAllText(headerPath)) is JsonObject header)
@@ -483,13 +683,16 @@ public sealed class SaveSystem
                     format = header["formatVersion"] is JsonValue f && f.TryGetValue(out int n) ? n : 0;
                     game = header["game"] is JsonValue g && g.TryGetValue(out string? id) ? id ?? "" : "";
                     engine = header["engineVersion"] is JsonValue e && e.TryGetValue(out string? v) ? v ?? "" : "";
+                    plugins = ReadPlugins(header);
+                    content = ReadContent(header);
                 }
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException)
             {
                 /* a broken header still lists, as one that cannot be loaded */
             }
-            slots.Add(new SaveSlot(name, saved, format, game, engine));
+            slots.Add(new SaveSlot(name, saved, format, game, engine,
+                plugins ?? new List<SavedPlugin>(), content ?? new List<SavedContent>(), Mismatches(plugins, content)));
         }
         slots.Sort((a, b) =>
         {
@@ -543,13 +746,17 @@ public sealed class SaveSystem
 // One save on disk, as its header describes it (SaveSystem.Slots, issue #99): what a load menu lists.
 public sealed class SaveSlot
 {
-    internal SaveSlot(string name, DateTime savedUtc, int formatVersion, string game, string engineVersion)
+    internal SaveSlot(string name, DateTime savedUtc, int formatVersion, string game, string engineVersion,
+                      IReadOnlyList<SavedPlugin> plugins, IReadOnlyList<SavedContent> content, IReadOnlyList<string> mismatches)
     {
         Name = name;
         SavedUtc = savedUtc;
         FormatVersion = formatVersion;
         Game = game;
         EngineVersion = engineVersion;
+        Plugins = plugins;
+        Content = content;
+        Mismatches = mismatches;
     }
 
     // The slot's name: what Save and Load take.
@@ -565,8 +772,30 @@ public sealed class SaveSlot
     public string Game { get; }
     public string EngineVersion { get; }
 
+    // The runtime plugins (id and version) and the content mounts that were loaded when it was written
+    // (issue 4i-2). Empty for a save from before headers listed them.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public IReadOnlyList<SavedPlugin> Plugins { get; }
+
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public IReadOnlyList<SavedContent> Content { get; }
+
+    // How those differ from what is loaded now, one readable line each ("plugin 'x' 0.1.0 is not
+    // loaded"): what a load warns about, and what a menu can show beside the slot. It still loads.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public IReadOnlyList<string> Mismatches { get; }
+
     // Whether this build reads its format: not newer than FormatVersion, not older than OldestReadableFormat.
     public bool CanLoad => FormatVersion >= SaveSystem.OldestReadableFormat && FormatVersion <= SaveSystem.FormatVersion;
 
     public override string ToString() => Name;
 }
+
+// A plugin as a save's header lists it (issue 4i-2): its id and its version when the save was written.
+[Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+public readonly record struct SavedPlugin(string Id, string Version);
+
+// A content mount as a save's header lists it (issue 4i-2): the mount's name (`engine`, `mygame/data`, a
+// plugin's id) and the record namespace it gave bare ids.
+[Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+public readonly record struct SavedContent(string Mount, string Namespace);
