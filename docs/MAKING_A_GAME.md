@@ -256,7 +256,9 @@ kit needs `sage.ui` — even if `game.json`'s `"plugins"` leaves them out
 
 ### Running it
 
-`dotnet run` in the game folder, or the host by hand with the folder:
+`dotnet run` in the game folder, or the host by hand with the folder. The host doesn't build the game,
+so build it first (`dotnet build Sage.sln -c Development` for a game in this repository, or the game's own
+project); a stale game dll fails with "Could not load file or assembly":
 
 ```bash
 dotnet run --project src/Sage.Host -c Development -- -game games/YourGame +sv_cheats 1 +god 1
