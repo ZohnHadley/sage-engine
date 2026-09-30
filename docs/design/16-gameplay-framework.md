@@ -417,6 +417,42 @@ Creatures walk round things instead of into them.
 - **Caps:** `GameplayTags` holds a 256-bit `TagSet` (it was one ulong) and `ActionMask` two words, 128
   buttons; saves still write tags by name (test: TagsGoPast64) (test: ActionMask_HoldsButtonsPast64).
 
+### As built (one condition and action language, issue #89, 2026-09-30)
+- **The language is the base's** (REDESIGN §4.3 stage 2, decision D2). `ICondition`, `IAction`, their
+  `[Condition]`/`[Action]` attributes and `ConditionContext`/`ActionContext` moved from `Sage.Gameplay`
+  to `Sage.Simulation` (`src/Sage.Simulation/Logic/Conditions.cs`); content ids did not change, and the
+  C# namespace move is allowed because they are SAGE0120 experimental API (MAKING_A_GAME §10b). A context
+  is the world, the `Subject` it is about, the `Other` involved and the world's `Records` — no gameplay
+  type. `Conditions.Test`/`TestAll`/`Evaluate` ask, `Conditions.Run` does (SAGE0124).
+- **The base's words, owned by `sage.core`, so every game has them:** `all`, `any` (none of nothing:
+  an empty `any` never holds), `not`, `var` (`eq`/`min`/`max`), and the actions `fire` (04 §3.4a),
+  `set_var` and `add_var`. A game with no plugins but its own reads
+  `"requires": { "all": [ …, { "not": … } ] }` and asks it (test: AGameWithoutDialogueReadsAndEvaluatesNestedRequires)
+  (test: APluginThatIsNotLoadedRegistersNoEntries).
+- **The shorthand:** an entry is `{ "condition": "has_item", "item": "key" }` or `{ "has_item": "key" }` —
+  the first property that is a registered id names the entry, its value fills the entry's `[EntryValue]`
+  field (or is its settings, as an object, when that field is not itself a condition), and the rest are
+  settings (`VocabularyAttribute.Shorthand`, `Vocabulary.Expand`; also what the namespace qualifier
+  reads, so a bare id in a patch means the patching file's namespace). An unknown id is a load error
+  with the nearest one in either form (test: AnUnknownIdSuggestsTheNearestOne), and `sage schema` writes
+  both forms (test: TheCommittedSchemasReadTheShorthand).
+- **World variables:** `Vars`, the saved resource `vars` every world has — named numbers, 0 when unset,
+  names case-sensitive — written `"vars": { "version": 1, "data": { "Values": { "alarm": 1 } } }`
+  (test: AVarSurvivesSaveAndLoad).
+- **Gameplay's words moved to the plugins they ask about**, out of dialogue: `has_tag`, `lacks_tag` and
+  `apply_effect` are `sage.gameplay.attributes`'; `has_item`, `give_item` and `take_item`
+  `sage.gameplay.items`'; `standing` and `change_standing` `sage.gameplay.factions`'; the quest ones stay
+  `sage.gameplay.quests`', and `quest` gained `atLeast` (that stage, one after it, or finished;
+  `Quests.HasReached`) (test: AQuestConditionAsksHowFarAlongItIs)
+  (test: GameplayEntriesComeWithTheirPluginsNotWithDialogue). Dialogue keeps `requires`/`then` as sugar
+  for them (`src/Sage.Gameplay/GameplayConditions.cs`).
+- **Asking allocates nothing:** lists are read once at load and walked by index; every reason is a
+  constant (test: EvaluatingConditionsAllocatesNothing).
+- **Not built:** nothing but a game's own code and dialogue read a `requires` yet — conditional wires and
+  relays with `then` are #91, state machines #92, topics #93. `fire` looks its target up when it runs,
+  so an input sent at a name that does not exist yet is dropped (a wire's late binding would need
+  `EntityIO` to take a name; #90 owns that file). Vars hold numbers only.
+
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
 - **Ids are indices.** `attribute` and `tag` records become small indices (`GameplayRegistries`), so components hold numbers, not strings: attribute values are parallel arrays, tags a 64-bit set. More than 64 tags is reported rather than silently truncated.
