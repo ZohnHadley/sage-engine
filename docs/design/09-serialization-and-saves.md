@@ -211,6 +211,32 @@ because no upgrader existed.
 - **Fixed on the way:** an entity saved with a name but no prefab threw on load (Friflo's `Name` setter
   needs the component to exist). No test had saved one; the golden save's lamp is one.
 
+### As built (runtime spawns persist, issue 4i-4, 2026-09-30)
+
+A save kept only what a scene, a map or `MakePersistent` had given an id, so a dropped sword, a
+summoned imp or an `ent_spawn` crate vanished on load.
+
+- **`world.Spawn` of a prefab gives the entity a new `PersistentId`**, unless the prefab says
+  `"persist": false` (`PrefabRecord.Persist`, in the schema; SAGE0131). Test: APrefabThatSaysPersistFalseIsNotSaved
+  (the saved world file names the crate and not the spark). `ent_spawn` and the summon effect go through
+  `Spawn`, so both are saved (tests: AnEntSpawnedCrateSurvivesASave, ASummonedCreatureSurvivesASave).
+- **Dropped items and pickups** (`Items.SpawnPickup`, which `Drop` uses) are made with `Create`, so they
+  call `MakePersistent` themselves (test: ADroppedItemSurvivesASave). Projectiles already did.
+- **A prefab's children never get an id of their own**: only the root of a spawn does; the children it
+  placed (`FromParentPrefab`) are re-spawned by the parent on load, so saving twice and loading twice
+  leaves one cart and its two lamps (test: APrefabsChildrenAreNotDuplicatedByASaveAndLoad). Since 4i-3
+  each child has an id *derived* from the root's (never a random one), so its state is saved and a load
+  lays it onto the child the parent re-spawned ("As built (a load that reconciles)").
+- **Spawns that get their identity elsewhere skip it**: a scene's placements and player, a placements
+  document, a map's entities, the player camera and a saved entity on load use an internal
+  `SpawnWithoutId`, so nothing is saved twice and no stale id is indexed. Adding a `Persistent` to an
+  entity that already has one (`world.Add`) now replaces the id and re-indexes it, where it used to be an
+  Ensure failure, because a game that spawns then names its entity is common.
+- **Side effect**: a pawn spawned at runtime is saved now, so its player camera (whose id derives from the
+  pawn's) is too; a pawn that should not be saved says `"persist": false`.
+- Cue and particle effects are not prefab spawns in the base engine; a game's effect prefab opts out with
+  `"persist": false`. A load does not yet remove an unsaved entity that is in the world already (4i-3).
+
 ### As built (a load that cannot half-happen, issue 4i-2, 2026-09-30)
 
 REDESIGN §4.5 found three ways a load lost a playthrough: it destroyed and rebuilt one world while the
@@ -242,6 +268,58 @@ was dropped; and a component or tag with no type here was skipped, then missing 
   file at every save costs too much for what a warning needs.
 - **The format stays 2**: the new header keys are ignored by older readers, and both golden saves load
   unchanged. Format 3 comes with reconciling loads (4i-3). All of this is experimental (SAGE0131).
+
+### As built (a load that reconciles, issue 4i-3, 2026-09-30)
+
+Until this a load destroyed every persistent entity and rebuilt only what the file listed — the v1
+deviation "every persistent entity, in full" above. So a placement added to the content after the save
+was destroyed by the load and never came back; entities from placements documents and `.map`s had no
+id at all, so a map pickup the player had taken was back on the floor after a load (while also in the
+pack), and a map counter's value was lost.
+
+- **Everything content places has a stable id** (`ContentBaseline.cs`, `ContentIds`): a scene
+  placement keeps the formula it always had (`scene:<scene>:<index>:<prefab>`, so the golden saves and
+  any format 2 save still find it); a placements document's is `placements:<doc>:<index>:<prefab>`; a
+  `.map` entity's is its `id` key, else its `targetname` when no other entity in the level shares it,
+  else the level and its index. A placement's authored **`id`** (new, `Placement.Id`) wins over the
+  derived one, so reordering the list moves nothing (test: AnAuthoredIdSurvivesTheContentBeingReordered);
+  a GUID is used as written, other text is scoped to its source. Two placements with one id, or two
+  children of one prefab with one name, are content errors. A **prefab's child** gets its parent's id
+  plus its key (`name:<name>`, else `<index>:<prefab>`, held by the transient `PrefabChildKey`), assigned
+  whenever the parent gets one (`ContentIds.Assign`). No id is shared, before a save or after a load
+  (test: NoPersistentIdIsDuplicated).
+- **By source.** Each id is recorded against what placed it — `scene:<id>`, `placements:<id>`,
+  `map:<id>`, and later a streamed sector (4g) — and a save writes, per source, a **tombstone** for every
+  one the game destroyed. A source that is cleared (a hot reload, `scene_load`, a level unloaded) keeps
+  its dead as pending tombstones, and a source placed again removes its own; a source not placed yet (a
+  level waiting for the ground under it) keeps the save's state for it pending, a save writes that back
+  unchanged, and it is laid on when the level spawns (test:
+  StateForALevelNotYetPlacedWaitsForItAndIsWrittenBack).
+- **A load reconciles.** After the atomic read (4i-2), each world: (1) destroys what the game made
+  (persistent entities no live source placed: the player, drops, placeholders); (2) clears what content
+  placed and places the save's scene again from the content *as it is now* (`Scenes.Replace`), with the
+  save's tombstones waiting for their sources, and spawns every placeable level's entities at once;
+  (3) matches each saved entity by id — one content placed again gets the saved state laid on (its tags
+  exactly the save's, its components over the content's, and its transform through `World.Teleport` so
+  a physics body starts where it was saved); a saved one whose source is live but no longer places it
+  is dropped; everything else is spawned from its prefab as before, and **a prefab's children are found
+  under their parent by their derived ids, never spawned a second time** (test:
+  APrefabsChildrenAreNotSpawnedTwice); (4) the scene's player, then the saved resources and AfterLoad.
+  Tests: AnEntityAddedToTheContentAfterASaveIsThereAfterTheLoad, AKilledPlacedEntityStaysDeadAcrossAReboot
+  (a fresh app), AMapPickupTakenBeforeTheSaveIsNotBack, AMapLogicCounterAtTwoOfThreeIsAtTwoAfterTheLoad.
+- **Hot reload shares the path**: `Scenes.Respawn` is `Scenes.Replace` too, so a reload places the new
+  content and what the game destroyed stays destroyed (test: AHotReloadLeavesTheDeadDead). It does not
+  lay the live state back over the new content: a reload is for seeing an edit, and the old health laid
+  over a prefab whose health was just changed would hide it.
+- **Format 3**: a world file has its `scene`, each content-placed entity its `source`, a prefab child the
+  game spawned its `parent`, and `tombstones` by source. **From2** marks an older file "absent means
+  destroyed" — it listed every persistent entity there was — so a scene placement it does not list is
+  removed after the scene is placed again (a child had no id then, and is not counted); what it lists is
+  found by id (test: AFormat2SaveOfASceneKeepsItsDeadDead). The format 1 and 2 golden saves still load.
+- **Not yet:** components are still written in full, so a rebalance does not reach a placed entity from
+  an existing save (4i-5 writes a diff); a component the save lacks is left as the content made it
+  rather than removed; `sage validate` does not yet warn about index-derived ids (the plan's decision 4),
+  and the FGD does not offer the `id` key.
 
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the

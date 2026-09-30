@@ -19,10 +19,12 @@ namespace Sage.Simulation;
 // 1. *JSON, not tagged binary.* Component ids and field names are the stable identity. Binary is a
 //    format change, which is what the upgrader mechanism (§3.6) exists for, and a save you can read in
 //    a text editor is worth a great deal while the save system is the thing being debugged.
-// 2. *No maps, so no visited-sector rule and no tombstones.* A baseline here is the game's own
-//    records, not map files. v1 writes **every persistent entity in full** and load recreates them,
-//    so a destroyed entity's tombstone is simply its absence. Tombstones come back with maps (§3.4),
-//    because that is when the baseline starts being re-instantiated underneath the save.
+// 2. *No visited-sector rule yet.* Every persistent entity is still written in full (4i-5 writes a diff).
+//    **A load reconciles** (issue 4i-3, format 3): what content places — scenes, placements documents,
+//    `.map`s and the children of their prefabs — is placed again from the content as it is now, the
+//    save's **tombstones** remove what the game destroyed, and the saved state is laid onto what matches
+//    by id (ContentBaseline). Before format 3 a load destroyed everything and rebuilt the file, so a
+//    destroyed entity's tombstone was its absence, and a placement added to the content since was lost.
 // 3. *Reflection, not the generator.* As with records (05 §3.5), and it goes the same way.
 //
 // A world is not only its entities: a `[SavedResource]` singleton (the spellbook, later the quest log)
@@ -42,9 +44,12 @@ namespace Sage.Simulation;
 //
 // Format 1 is what main wrote before issue #20: components keyed by C# type name, and components and
 // resources written bare. Format 2 keys them by stable id and wraps each as `{ "version", "data" }`.
+// Format 3 (4i-3) adds the world's scene, each entity content placed has the `source` that placed it (a
+// prefab's child the game spawned names its `parent`), and `tombstones` lists, by source, what content
+// placed that the game destroyed.
 public sealed class SaveSystem
 {
-    public const int FormatVersion = 2;
+    public const int FormatVersion = 3;
 
     // The oldest format this build upgrades. Format 1 (C# type names) is read for one release after
     // issue #20, then this becomes 2 and `From1` goes (docs/design/09 §11).
@@ -177,6 +182,7 @@ public sealed class SaveSystem
     {
         var json = SaveJson.For(world, _engine.Records, _converters);
         var entities = new JsonArray();
+        world.Resources.TryGet<ContentBaseline>(out var baseline);
 
         // Disabled ones included: a placeholder is disabled so that nothing else sees it (issue 4i-2).
         foreach (var entity in world.PersistentIncludingDisabled())
@@ -194,6 +200,13 @@ public sealed class SaveSystem
             }
 
             var saved = new JsonObject { ["id"] = persistent.Id.ToString() };
+            // What placed it (4i-3): content, which a load places again and lays this onto; or, for a child
+            // its parent's prefab placed, the parent, which brings it back when it is spawned.
+            if (baseline != null && baseline.IsBaseline(persistent.Id) && baseline.TryGetSource(persistent.Id, out var source))
+                saved["source"] = source;
+            else if (entity.Tags.Has<FromParentPrefab>() && !entity.Parent.IsNull
+                     && entity.Parent.TryGetComponent<Persistent>(out var parent) && !parent.Id.IsEmpty)
+                saved["parent"] = parent.Id.ToString();
             if (world.TryGet<FromPrefab>(entity, out var from) && !from.Prefab.IsEmpty)
                 saved["prefab"] = from.Prefab.ToString();
             if (entity.Name is { Length: > 0 } named)
@@ -211,12 +224,28 @@ public sealed class SaveSystem
         // **Which sector these positions are relative to** (R6, 14 §3). Every position in this file is
         // in origin space; without the origin, a save taken a hundred kilometres out would load its
         // entities into the starting sector and put the player under ground that is not theirs.
+        // Saved state for content that is not in the world just now (a level still waiting for its ground),
+        // back as the last load read it (4i-3).
+        if (baseline != null)
+            foreach (var pending in baseline.PendingState) entities.Add(pending.DeepClone());
+
         var sector = world.Origin().Sector;
         var root = new JsonObject
         {
             ["origin"] = new JsonObject { ["x"] = sector.X, ["z"] = sector.Z },
-            ["entities"] = entities,
         };
+        // The scene the world is in, which a load places (4i-3).
+        if (world.Resources.TryGet<ActiveScene>(out var active) && active is { Id.IsEmpty: false })
+            root["scene"] = active.Id.ToString();
+        root["entities"] = entities;
+        // What content placed that the game destroyed, by the source that placed it (4i-3).
+        if (baseline?.Tombstones(world) is { Count: > 0 } tombstones)
+        {
+            var dead = new JsonObject();
+            foreach (var (from, ids) in tombstones)
+                dead[from] = new JsonArray(ids.Select(id => (JsonNode)id).ToArray());
+            root["tombstones"] = dead;
+        }
 
         var resources = new JsonObject();
         foreach (var kind in _resources.Values.OrderBy(r => r.Name, StringComparer.Ordinal))
@@ -265,9 +294,10 @@ public sealed class SaveSystem
 
     public bool Exists(string slot) => File.Exists(Path.Combine(SlotDirectory(slot), "header.json"));
 
-    // Loads into the engine's existing worlds: every persistent entity is removed and rebuilt from the
-    // file. Non-persistent things (terrain chunks, the ground) are the world's own business and are
-    // left alone — they are rebuilt by the systems that own them.
+    // Loads into the engine's existing worlds by reconciling (4i-3): content is placed again as it is now,
+    // the save's tombstones removed from it and its state laid onto what matches by id, and what the game
+    // made is spawned again from the file (Apply). Non-persistent things (terrain chunks, the ground) are
+    // the world's own business and are left alone — they are rebuilt by the systems that own them.
     //
     // **A load cannot half-happen** (REDESIGN §4.5, issue 4i-2). Every world file is read, parsed and
     // upgraded, and every entity's id, prefab and name is read, before any world is touched: a save
@@ -333,9 +363,13 @@ public sealed class SaveSystem
     }
 
     // One world file, read and upgraded, and nothing done with it yet.
-    private sealed record PreparedWorld(World World, string Where, SectorCoord? Origin, List<PreparedEntity> Entities, JsonObject? Resources);
+    private sealed record PreparedWorld(World World, string Where, SectorCoord? Origin, List<PreparedEntity> Entities, JsonObject? Resources,
+                                        RecordId? Scene, Dictionary<string, HashSet<PersistentId>> Tombstones, bool AbsentIsDestroyed);
 
-    private readonly record struct PreparedEntity(PersistentId Id, RecordId Prefab, string? Name, JsonObject Saved);
+    // `Source`: the content that placed it (format 3), else null. `Parent`: for a prefab's child the game
+    // spawned, its parent's id.
+    private readonly record struct PreparedEntity(PersistentId Id, RecordId Prefab, string? Name, JsonObject Saved,
+                                                  string? Source, PersistentId Parent);
 
     // Everything about a world file that can fail, done without touching the world: a problem here
     // throws, and Load refuses the save.
@@ -360,10 +394,26 @@ public sealed class SaveSystem
             }
 
             var prefab = (string?)saved["prefab"] is { Length: > 0 } text ? RecordId.Parse(text, "sage") : default;
-            list.Add(new PreparedEntity(id, prefab, (string?)saved["name"], saved));
+            string? source = (string?)saved["source"] is { Length: > 0 } s ? s : null;
+            PersistentId.TryParse((string?)saved["parent"], out var parent);
+            list.Add(new PreparedEntity(id, prefab, (string?)saved["name"], saved, source, parent));
         }
 
-        return new PreparedWorld(world, where, origin, list, root["resources"] as JsonObject);
+        RecordId? scene = (string?)root["scene"] is { Length: > 0 } sceneText ? RecordId.Parse(sceneText, "sage") : null;
+
+        var tombstones = new Dictionary<string, HashSet<PersistentId>>(StringComparer.Ordinal);
+        if (root["tombstones"] is JsonObject dead)
+            foreach (var (source, ids) in dead)
+            {
+                if (ids is not JsonArray array) throw new InvalidDataException($"{where}: tombstones for '{source}' are not a list");
+                var set = tombstones[source] = new HashSet<PersistentId>();
+                foreach (var node in array)
+                    if (PersistentId.TryParse((string?)node, out var id)) set.Add(id);
+                    else Log.Warn(LogCat.Save, $"{where}: a tombstone for '{source}' is not an id; skipped");
+            }
+
+        bool absentIsDestroyed = root["absentIsDestroyed"] is JsonValue flag && flag.TryGetValue(out bool yes) && yes;
+        return new PreparedWorld(world, where, origin, list, root["resources"] as JsonObject, scene, tombstones, absentIsDestroyed);
     }
 
     private int Apply(PreparedWorld file)
@@ -377,25 +427,74 @@ public sealed class SaveSystem
         if (file.Origin is { } origin)
             world.Rebase(origin);
 
-        // Out with the old. Everything persistent is in the file, so anything here that is not was
-        // destroyed before the save was taken — which is what a tombstone would have said. Disabled
-        // ones too: the last load's placeholders.
+        var baseline = ContentIds.Baseline(world);
+
+        // **Out with what the game made** (4i-3). Everything persistent that content did not place — the
+        // player, what was dropped or summoned, the last load's placeholders (disabled, so asked for by
+        // name) — belonged to the game being left, and the file says what of it to bring back.
         foreach (var entity in world.PersistentIncludingDisabled().ToEntityList())
-            world.Destroy(entity);
+            if (world.IsAlive(entity) && !baseline.IsBaseline(entity.GetComponent<Persistent>().Id))
+                world.Destroy(entity);
         world.FlushCommands();
+
+        // **Content, placed again from what the game has now**: the save's scene (or the world's own, when
+        // the save names none or one this game does not have), its documents and levels, and levels a
+        // person loaded by hand. The save's tombstones wait for their sources, and each source removes its
+        // own as it is placed (ContentBaseline.Finish) — the same path a hot reload takes.
+        var scene = CurrentScene(world);
+        if (file.Scene is { } savedScene)
+        {
+            if (_engine.Records.TryGet(savedScene, out SceneRecord _)) scene = savedScene;
+            else Log.Warn(LogCat.Save, $"{where}: the save's scene '{savedScene}' is not in this game; the world stays in '{scene}'");
+        }
+        _engine.Scenes.Replace(world, scene, () => baseline.Reset(file.Tombstones), levels: true);
+        MapLoader.EnsureEntities(world);
+        world.FlushCommands();
+
+        // A save before format 3 had no tombstones: it wrote every persistent entity, so a scene placement
+        // it does not list is one the game destroyed (a child had no id then, and goes with its parent).
+        if (file.AbsentIsDestroyed)
+        {
+            var listed = file.Entities.Select(e => e.Id).ToHashSet();
+            foreach (var source in baseline.LiveSources.Where(s => s.StartsWith("scene:", StringComparison.Ordinal)).ToList())
+                foreach (var id in baseline.PlacedBy(source).ToList())
+                    if (world.Resolve(id) is { IsNull: false } placed && !listed.Contains(id) && !placed.Tags.Has<FromParentPrefab>())
+                        world.Destroy(placed);
+            world.FlushCommands();
+        }
 
         // **Pass one: every entity, with its identity, and nothing else.** Components come after, so
         // that by the time one mentions another entity that entity exists and the reference resolves
         // as it is read. Two passes instead of a fix-up list, and nesting comes free.
-        var rebuilt = new List<(Entity Entity, JsonObject Saved)>();
+        //
+        // An entity already here by its id is content's, placed again just now: the save is laid onto it
+        // (`matched`). One content placed that is not here was either removed from the content since
+        // (its source is here: it is dropped) or belongs to content not in the world yet (kept, pending).
+        // Anything else the game made, and is spawned again from its prefab — with its prefab's children,
+        // which find their saved state by their derived ids rather than being spawned a second time.
+        var rebuilt = new List<(Entity Entity, JsonObject Saved, bool Matched)>();
         var placeholders = new List<(Entity Entity, JsonObject Saved)>();
-        foreach (var (id, prefab, name, saved) in file.Entities)
+        var children = new List<PreparedEntity>();
+        int dropped = 0;
+        foreach (var entry in file.Entities)
         {
+            var (id, prefab, name, saved, source, parent) = entry;
+            if (!parent.IsEmpty && source is null) { children.Add(entry); continue; }
+
+            var existing = world.Resolve(id);
+            if (!existing.IsNull) { rebuilt.Add((existing, saved, true)); continue; }
+            if (source != null)
+            {
+                if (baseline.IsLive(source)) dropped++;
+                else baseline.AddPendingState(source, saved);
+                continue;
+            }
+
             // Spawned from its prefab so the *parts* come back — a character's capsule, controller and
             // intent were never in the save because the prefab puts them there (F31).
             Entity entity = default;
             if (prefab.IsEmpty) entity = world.Create(Transform.Identity);
-            else if (_engine.Records.TryGet(prefab, out PrefabRecord _)) entity = world.Spawn(prefab);
+            else if (_engine.Records.TryGet(prefab, out PrefabRecord _)) entity = world.SpawnWithoutId(prefab);
 
             if (entity.IsNull)
             {
@@ -408,9 +507,9 @@ public sealed class SaveSystem
                 world.Add(entity, new SavePlaceholder { Prefab = prefab, Saved = saved.ToJsonString() });
                 placeholders.Add((entity, saved));
             }
-            else rebuilt.Add((entity, saved));
+            else rebuilt.Add((entity, saved, false));
 
-            world.Add(entity, new Persistent { Id = id });
+            ContentIds.Assign(world, entity, id);   // and its prefab's children theirs, derived from it
             // Entity.Name adds the name when the entity has none (Friflo's own setter threw on an entity
             // without one, which is every prefab-less entity: a golden save found it, #20).
             if (name is { Length: > 0 })
@@ -418,19 +517,20 @@ public sealed class SaveSystem
         }
         world.FlushCommands();
 
+        // A prefab's children, found under the parents spawned above.
+        foreach (var (id, _, name, saved, _, _) in children)
+        {
+            var child = world.Resolve(id);
+            if (!child.IsNull) rebuilt.Add((child, saved, true));
+            else Log.Debug(LogCat.Save, $"{where}: {name ?? id.ToString()} is not among its parent's prefab's children any more; dropped");
+        }
+        if (dropped > 0)
+            Log.Info(LogCat.Save, $"{where}: {dropped} saved entit(ies) the content no longer places were dropped");
+
         // Pass two: the state.
         var dialect = SaveJson.For(world, _engine.Records, _converters);
-        foreach (var (entity, saved) in rebuilt)
-        {
-            var unknown = new JsonObject();
-            var unknownTags = new JsonArray();
-            if (saved["components"] is JsonObject components)
-                _serializer.ReadComponents(world, entity, components, dialect, where, unknown);
-            if (saved["tags"] is JsonArray tags)
-                _serializer.ReadTags(world, entity, tags, where, unknownTags);
-            if (unknown.Count > 0 || unknownTags.Count > 0)
-                world.Add(entity, new UnknownSavedData { Components = unknown.ToJsonString(), Tags = unknownTags.ToJsonString() });
-        }
+        foreach (var (entity, saved, matched) in rebuilt)
+            LayState(world, entity, saved, matched, dialect, where);
 
         // A placeholder stands where the entity stood (for a tool that looks), and then out of sight.
         foreach (var (entity, saved) in placeholders)
@@ -440,14 +540,57 @@ public sealed class SaveSystem
             World.SetEnabled(entity, false);
         }
 
-        // What the scene placed is the scene's again, with its wiring (issues #29, #90) — before the
-        // resources, because entity I/O's puts back how often each of those wires fired.
+        // The scene's player is the save's, with its wiring (issues #29, #90) — before the resources,
+        // because entity I/O's puts back how often each wire fired.
         _engine.Scenes.AfterLoad(world);
 
         ReadResources(world, file.Resources, dialect, where);
 
         world.FlushCommands();
         return rebuilt.Count + placeholders.Count;
+    }
+
+    private static RecordId CurrentScene(World world) =>
+        world.Resources.TryGet<ActiveScene>(out var active) && active != null ? active.Id : default;
+
+    // One saved entity's state onto an entity that exists. `matched`: content placed it (or its parent's
+    // prefab did), so its tags are the save's exactly — a tag the game took off stays off. Its components
+    // are laid over what content gave it; one the save does not have is left as content made it.
+    private void LayState(World world, Entity entity, JsonObject saved, bool matched, JsonSerializerOptions dialect, string where)
+    {
+        var unknown = new JsonObject();
+        var unknownTags = new JsonArray();
+        var components = saved["components"] as JsonObject;
+        if (components != null)
+            _serializer.ReadComponents(world, entity, components, dialect, where, unknown);
+        if (matched) _serializer.ClearTags(entity);
+        if (saved["tags"] is JsonArray tags)
+            _serializer.ReadTags(world, entity, tags, where, unknownTags);
+        if (unknown.Count > 0 || unknownTags.Count > 0)
+        {
+            world.Remove<UnknownSavedData>(entity);
+            world.Add(entity, new UnknownSavedData { Components = unknown.ToJsonString(), Tags = unknownTags.ToJsonString() });
+        }
+
+        // Where it was, and both poses with it: a teleport, so a physics body made (or moved) from them
+        // starts there rather than where the content put it.
+        if (components?.ContainsKey("sage:transform") == true && world.Has<Transform>(entity))
+            world.Teleport(entity, world.Get<Transform>(entity));
+    }
+
+    // Saved state that waited for its content to be placed (a level that stood on ground not yet
+    // generated when the save loaded): laid onto what that content placed, by id (4i-3). What is not there
+    // is content that no longer places it.
+    internal void LayOnto(World world, IReadOnlyList<JsonObject> entries, string where)
+    {
+        var found = new List<(Entity Entity, JsonObject Saved)>();
+        foreach (var saved in entries)
+            if (PersistentId.TryParse((string?)saved["id"], out var id) && world.Resolve(id) is { IsNull: false } entity)
+                found.Add((entity, saved));
+        if (found.Count == 0) return;
+        var dialect = SaveJson.For(world, _engine.Records, _converters);
+        foreach (var (entity, saved) in found)
+            LayState(world, entity, saved, matched: true, dialect, where);
     }
 
     // ---- the header's plugins and content (issue 4i-2) ---------------------------------------------
@@ -559,6 +702,7 @@ public sealed class SaveSystem
             switch (from)
             {
                 case 1: From1(root); break;
+                case 2: From2(root); break;
             }
         }
     }
@@ -611,6 +755,12 @@ public sealed class SaveSystem
             }
         }
     }
+
+    // Format 2 → 3 (issue 4i-3). A format 2 file lists every persistent entity there was and has no
+    // tombstones: what the scene placed and the file does not list had been destroyed. Marked so, and the
+    // load removes those after placing the scene again. Its entities name no `source`; the ones content
+    // placed are found by their ids all the same (a scene placement's formula has not changed).
+    private static void From2(JsonObject root) => root["absentIsDestroyed"] = true;
 
     // ---- listing ------------------------------------------------------------------------------------
 
