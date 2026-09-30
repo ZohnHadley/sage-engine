@@ -58,6 +58,7 @@
             "tag",
             "ui_layout",
             "ui_style",
+            "viewmodel",
             "weather"
           ]
         }
@@ -571,6 +572,21 @@
           },
           "then": {
             "$ref": "ui_style.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "viewmodel"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "viewmodel.schema.json"
           }
         },
         {

@@ -876,6 +876,14 @@
         }
       ]
     },
+    "sage:viewmodel": {
+      "description": "Component sage:viewmodel (Viewmodel).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:viewmodel"
+        }
+      ]
+    },
     "sandbox:hop": {
       "description": "Component sandbox:hop (Hop).",
       "allOf": [
@@ -961,6 +969,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:tween"
+        }
+      ]
+    },
+    "viewmodel": {
+      "description": "The component sage:viewmodel (Viewmodel), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:viewmodel"
         }
       ]
     }
@@ -4071,6 +4087,45 @@
       },
       "additionalProperties": false,
       "description": "Component sage:tween (Tween)."
+    },
+    "sage:viewmodel": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "What it shows (a viewmodel record); empty = nothing (the HUD may draw sprite hands) Names a viewmodel record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:viewmodel"
+            }
+          ]
+        },
+        "enabled": {
+          "description": "Off: nothing is drawn, though the arms stay and animate. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "fovY": {
+          "description": "Its own vertical field of view; 0 = the camera's. Unit: deg. Range: 0 to 179. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
+        },
+        "near": {
+          "description": "Its own near plane: close, so the arms are never clipped. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "far": {
+          "description": "Its own far plane: only the arms and the weapon are drawn. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:viewmodel (Viewmodel)."
     },
     "sandbox:hop": {
       "type": "object",

@@ -170,6 +170,12 @@ jobs:
           # scenery every frame, and the renderer draws the body the first-person view hid.
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_tap ToggleView\n+wait 5\n+in_tap ToggleView\n+wait 1' \
             tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
+          # First-person arms (issue #121): equipping the practice sword puts its 3D arms on the player's camera,
+          # holding the sword on their hand_r socket; R plays their reload and V hides them in third person and
+          # back. The viewmodel pass is a depth-cleared view after the world; without shaders it draws only its
+          # clear, so this proves the spawn, the graph, the attachment and the pass (ViewmodelTests the rest).
+          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+give practice_sword\n+equip practice_sword\n+wait 1\n+in_tap Reload\n+wait 1\n+anim_debug arms\n+r_stats\n+in_tap ToggleView\n+wait 1\n+in_tap ToggleView\n+wait 1' \
+            tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
           # The editor's cameras (issue #81): `ed_viewport` draws the free camera, a camera entity, into the
           # render target `editor` that an ImGui window shows; `cam_free` puts it over the player's camera.
           # Then the Sandbox's scripted cut: the hut camera its path's wire turns on, for a second.

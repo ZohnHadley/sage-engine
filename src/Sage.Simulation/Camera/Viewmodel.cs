@@ -227,22 +227,25 @@ internal sealed class ViewmodelSystem : ISystem
             var v = viewmodels.Span;
             for (int i = 0; i < v.Length; i++)
             {
-                ref var viewmodel = ref v[i];
-                bool alive = _world.IsAlive(viewmodel.Arms);
-                if (viewmodel.Record == viewmodel.Shown && (alive || viewmodel.Record.IsEmpty)) continue;
-                pending = true;
+                if (Stale(in v[i])) pending = true;
             }
         }
         if (pending) Respawn(records);   // outside the query: it creates and destroys entities
         Sweep();
     }
 
+    // A record other than the one shown (a weapon drawn, a load: Shown is transient), or arms handed out
+    // and no longer alive. A record that could not be shown (no such record) is not tried again until the
+    // record changes.
+    private bool Stale(in Viewmodel viewmodel) =>
+        viewmodel.Record != viewmodel.Shown || (!viewmodel.Arms.IsNull && !_world.IsAlive(viewmodel.Arms));
+
     private void Respawn(RecordStore? records)
     {
         foreach (var camera in _cameras.Entities.ToEntityList())
         {
             ref var viewmodel = ref _world.Get<Viewmodel>(camera);
-            if (viewmodel.Record == viewmodel.Shown && (_world.IsAlive(viewmodel.Arms) || viewmodel.Record.IsEmpty)) continue;
+            if (!Stale(in viewmodel)) continue;
             Despawn(ref viewmodel);
             viewmodel.Shown = viewmodel.Record;
             if (viewmodel.Record.IsEmpty) continue;

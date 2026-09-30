@@ -326,6 +326,14 @@
           "$ref": "#/definitions/tween"
         }
       ]
+    },
+    "viewmodel": {
+      "description": "Prefab part 'viewmodel' (ViewmodelPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/viewmodel"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -1643,6 +1651,45 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'tween' (TweenPart)."
+    },
+    "viewmodel": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "What it shows to start with; empty = nothing until gameplay picks one. Names a viewmodel record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:viewmodel"
+            }
+          ]
+        },
+        "enabled": {
+          "description": "Off: nothing is drawn. (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "fovY": {
+          "description": "Its own vertical field of view; 0 = the camera's. Unit: deg. Range: 0 to 179. (float, default 54)",
+          "default": 54,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
+        },
+        "near": {
+          "description": "Its own near plane. Unit: m. At least 0. (float, default 0.01)",
+          "default": 0.01,
+          "type": "number",
+          "minimum": 0
+        },
+        "far": {
+          "description": "Its own far plane. Unit: m. At least 0. (float, default 10)",
+          "default": 10,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'viewmodel' (ViewmodelPart)."
     }
   }
 }

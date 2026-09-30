@@ -43,9 +43,12 @@
       ]
     },
     "record:anim_graph": {
-      "description": "The id of a anim_graph record (none is loaded).",
+      "description": "The id of a anim_graph record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "arms",
+        "sandbox:arms"
+      ]
     },
     "record:attack": {
       "description": "The id of a attack record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -203,6 +206,7 @@
       "description": "The id of a material record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "arms_skin",
         "bunny",
         "crate",
         "door",
@@ -220,14 +224,17 @@
         "sage:sprite_lit",
         "sage:terrain_default",
         "sage:unlit_default",
+        "sandbox:arms_skin",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
         "sandbox:floor",
         "sandbox:roof",
+        "sandbox:steel",
         "sandbox:wall",
         "sprite_default",
         "sprite_lit",
+        "steel",
         "terrain_default",
         "unlit_default",
         "wall"
@@ -423,9 +430,12 @@
       ]
     },
     "record:skeleton_sockets": {
-      "description": "The id of a skeleton_sockets record (none is loaded).",
+      "description": "The id of a skeleton_sockets record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "arms",
+        "sandbox:arms"
+      ]
     },
     "record:sound": {
       "description": "The id of a sound record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -598,6 +608,14 @@
         "weight_bar"
       ]
     },
+    "record:viewmodel": {
+      "description": "The id of a viewmodel record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "sandbox:sword_arms",
+        "sword_arms"
+      ]
+    },
     "record:weather": {
       "description": "The id of a weather record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -645,9 +663,12 @@
       ]
     },
     "base:anim_graph": {
-      "description": "The id of a anim_graph record (none is loaded).",
+      "description": "Another anim_graph record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "arms",
+        "sandbox:arms"
+      ]
     },
     "base:attack": {
       "description": "Another attack record to inherit every field from, abstract or not.",
@@ -805,6 +826,7 @@
       "description": "Another material record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "arms_skin",
         "bunny",
         "crate",
         "door",
@@ -822,14 +844,17 @@
         "sage:sprite_lit",
         "sage:terrain_default",
         "sage:unlit_default",
+        "sandbox:arms_skin",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
         "sandbox:floor",
         "sandbox:roof",
+        "sandbox:steel",
         "sandbox:wall",
         "sprite_default",
         "sprite_lit",
+        "steel",
         "terrain_default",
         "unlit_default",
         "wall"
@@ -1027,9 +1052,12 @@
       ]
     },
     "base:skeleton_sockets": {
-      "description": "The id of a skeleton_sockets record (none is loaded).",
+      "description": "Another skeleton_sockets record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "arms",
+        "sandbox:arms"
+      ]
     },
     "base:sound": {
       "description": "Another sound record to inherit every field from, abstract or not.",
@@ -1202,6 +1230,14 @@
         "weight_bar"
       ]
     },
+    "base:viewmodel": {
+      "description": "Another viewmodel record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "sandbox:sword_arms",
+        "sword_arms"
+      ]
+    },
     "base:weather": {
       "description": "Another weather record to inherit every field from, abstract or not.",
       "type": "string",
@@ -1228,8 +1264,10 @@
         "sage:player_camera",
         "sage:player_controlled",
         "sage:streaming_source",
+        "sage:viewmodel_layer",
         "sandbox:faces_camera",
-        "streaming_source"
+        "streaming_source",
+        "viewmodel_layer"
       ]
     }
   }
