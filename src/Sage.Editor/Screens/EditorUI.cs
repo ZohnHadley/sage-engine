@@ -15,11 +15,15 @@ internal class EditorUI
     private readonly EditorDocument _document;
     private readonly World _world;
     private readonly List<RecordId> _available = new();
+    private readonly CVar<bool> _camFree;
+    private readonly CVar<bool> _viewport;
 
-    public EditorUI(World world, EditorDocument document)
+    public EditorUI(World world, EditorDocument document, CVar<bool> camFree, CVar<bool> viewport)
     {
         _world = world;
         _document = document;
+        _camFree = camFree;
+        _viewport = viewport;
     }
 
     public void Draw(Game game)
@@ -45,6 +49,14 @@ internal class EditorUI
 
             ImGui.Separator();
             if (ImGui.MenuItem("Exit")) game.Exit();
+            ImGui.EndMenu();
+        }
+
+        // The cameras (issue #81): each item is a cvar, so a script can press it too.
+        if (ImGui.BeginMenu("View"))
+        {
+            if (ImGui.MenuItem("Free camera", "cam_free", _camFree.Value)) _camFree.Value = !_camFree.Value;
+            if (ImGui.MenuItem("Viewport", "ed_viewport", _viewport.Value)) _viewport.Value = !_viewport.Value;
             ImGui.EndMenu();
         }
 

@@ -101,7 +101,7 @@ public struct ThirdPersonRig : IComponent
 [Experimental("SAGE0123")]
 public enum CameraRigKind
 {
-    None,           // no rig drives the screen: a fixed or scripted camera, ActiveCamera (no camera entity), or cam_free
+    None,           // no rig drives the screen: a fixed or scripted camera, ActiveCamera (no camera entity), or the editor's free camera (cam_free, a DebugCamera)
     FirstPerson,
     ThirdPerson,
 }

@@ -19,7 +19,7 @@ namespace Sage.Simulation;
 [Experimental("SAGE0123")]
 public struct CameraView
 {
-    public Entity Entity;               // the camera it came from; null (IsNull) = ActiveCamera (no camera entity, or cam_free)
+    public Entity Entity;               // the camera it came from; null (IsNull) = ActiveCamera (no camera entity)
     public string Target;               // render target name; "" = the screen. Never null.
     public CameraViewport Viewport;     // normalised, clamped, never empty
     public Vector3 Position;            // origin space
@@ -54,8 +54,8 @@ public struct CameraView
 //     no ActiveCamera and no screen camera). With a camera entity on the screen it is that camera's; with
 //     none it is made from ActiveCamera (a null Entity), so a renderer reading only this resource draws
 //     exactly what one reading ActiveCamera did.
-//   - While `cam_free` flies the editor camera (ActiveCamera.RigEnabled is false), the screen view is
-//     ActiveCamera's whatever the camera entities say; off-screen views are unaffected.
+//   - `cam_free` is not a special case (#81): the editor's free camera is a camera entity (DebugCamera)
+//     at a priority above every other, so while it flies the screen view is its view.
 //   - Pooled: the backing array grows and is reused, never shrinks, and a frame allocates nothing.
 //     Hold a view by value, never a span or ref across frames.
 //   - `Version` goes up every time the director resolves, so a reader can tell a fresh list from last
@@ -131,7 +131,7 @@ public sealed class CameraViews
             held = view;
     }
 
-    // The screen's view, whoever offered one: replaces it outright (cam_free, the ActiveCamera fallback).
+    // The screen's view, whoever offered one: replaces it outright (the ActiveCamera fallback).
     internal void SetScreen(in CameraView view)
     {
         int at = IndexOf("");
@@ -168,5 +168,29 @@ public sealed class CameraViews
     internal void Rebase(Vector3 offset)
     {
         for (int i = 0; i < Count; i++) _views[i].Position += offset;
+    }
+}
+
+// "Where is the player looking from?" for the code that places something relative to the screen's view:
+// the audio listener, weather around the eye, `fx_play` and `ent_spawn` in front of it (issue #81).
+[Experimental("SAGE0123")]
+public static class MainViewExtensions
+{
+    // The view on the screen this frame: `CameraViews.Main` once the director has run (from late
+    // FrameUpdate on, and in the next tick), else one made from ActiveCamera (a world whose director is
+    // switched off, or the first frame before it ran), else false (a headless world with neither).
+    // The same pose ActiveCamera mirrors, with the projection it lacks. Allocates nothing.
+    public static bool TryGetMainView(this World world, out CameraView view)
+    {
+        if (world.Resources.TryGet<CameraViews>(out var views) && views != null && views.TryGetMain(out view))
+            return true;
+        if (world.Resources.TryGet<ActiveCamera>(out var active) && active != null)
+        {
+            view = CameraDirector.FromActiveCamera(active);
+            return true;
+        }
+        view = default;
+        view.Target = "";
+        return false;
     }
 }

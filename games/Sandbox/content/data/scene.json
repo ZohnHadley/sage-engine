@@ -683,6 +683,21 @@
     "parts": { "body": { "size": [4, 0.4, 3], "trigger": true } }
   },
   {
+    // A physics layer that only the player's body touches (10 §3): what an HL1 trigger_once is by
+    // default. A trigger on it reports the player walking in and never a creature, a crate or a bolt.
+    // `layers+` appends to the engine's list rather than replacing it; `ignore` merges.
+    "type": "physics_layers", "id": "sage:default", "patch": true,
+    "layers+": ["player_zone"],
+    "ignore": { "player_zone": ["default", "enemy", "projectile", "trigger", "debris", "player_zone"] }
+  },
+  {
+    // The path up to the hut's door (issue #81, REDESIGN §5 phase 4a's exit criterion "a scripted camera
+    // cut from I/O"): walking into it cuts to `hut_cam` for three seconds, once. What it does is the
+    // placement's wiring, below.
+    "type": "prefab", "id": "hut_path", "name": "hut path",
+    "parts": { "body": { "size": [5, 3, 3], "trigger": true, "layer": "player_zone" } }
+  },
+  {
     // Waist high and eight metres long: something a creature can see you over but not walk through, so
     // it has to find its own way round (16 \u00a73.4, F23). No mass, so it is static and stays where it is
     // put; `nav_enabled 0` turns the pathfinding off and it goes back to leaning on it.
@@ -748,7 +763,20 @@
       // way to reach them is round one end (F23). Walk up and watch it commit to a side.
       { "prefab": "hermit",       "at": [5, 0, 5],     "yaw": 200 },
       { "prefab": "fence",        "at": [0, 0.6, -9] },
-      { "prefab": "watcher",      "at": [0, 0, -12],   "yaw": 180, "name": "penned watcher" }
+      { "prefab": "watcher",      "at": [0, 0, -12],   "yaw": 180, "name": "penned watcher" },
+
+      // A scripted camera cut from entity I/O (issue #81): the path in front of the hut's door turns the
+      // engine's `sage:scripted_camera` on for three seconds (CameraOn's parameter), once. It looks at
+      // the door from beside the path, holds the player's input while it has the screen, and says what
+      // the player is looking at through its own output. The hut is the level at (14, -16) from here.
+      {
+        "prefab": "hut_path", "at": [14, 1.5, -9], "name": "hut path",
+        "outputs": [ { "output": "OnStartTouch", "target": "hut_cam", "input": "CameraOn", "parameter": "3", "times": 1 } ]
+      },
+      {
+        "prefab": "sage:scripted_camera", "at": [24, 3.5, -2], "yaw": 46, "name": "hut_cam",
+        "outputs": [ { "output": "OnCameraOn", "target": "!self", "input": "Say", "parameter": "A hut on the hill. Somebody lives here." } ]
+      }
     ]
   }
 ]

@@ -38,7 +38,6 @@ public class Game1 : Game
     private readonly CommandLatch latch = new CommandLatch();
     private ActionId moveAction, lookAction, menuAction, toggleConsoleAction;
     private PlayerInput playerInput = null!;
-    private ActiveCamera activeCamera = null!;
 
 #if SAGE_DEV
     // The console, the overlays, the free camera and the editor — everything a developer sees and a
@@ -78,7 +77,7 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        graphics.PreferredBackBufferWidth = 800;
+        graphics.PreferredBackBufferWidth = 800;    // vid_width / vid_height, once the cvars exist and config.cfg ran
         graphics.PreferredBackBufferHeight = 410;
         graphics.ApplyChanges();
         graphicsDevice = graphics.GraphicsDevice;
@@ -99,6 +98,8 @@ public class Game1 : Game
         // Loop cvars; see docs/design/01 §3.2, §5.2.
         hostCVars = new HostCVars(cvars);
         hostCVars.VSync.Changed += _ => ApplyVSync();
+        hostCVars.Width.Changed += _ => ApplyWindowSize();
+        hostCVars.Height.Changed += _ => ApplyWindowSize();
         recHotReload = cvars.Register("rec_hotreload", engine.Core.Developer.Value >= 1, CVarFlags.DevOnly,
             "Reload record files (data/**/*.json) when they change on disk.");
 
@@ -122,9 +123,10 @@ public class Game1 : Game
         cvars.RegisterCommand("screenshot", CVarFlags.None, "screenshot [delay]: save a frame as a PNG in the user folder's screenshots/, now or after `delay` seconds.", a =>
             screenshotAt = a.Count > 0 && float.TryParse(a[0], out float delay) ? loop.RealTime + delay : 0);
         CrashReporter.AddSection("GPU", () => $"{GraphicsAdapter.DefaultAdapter.Description}, profile {graphics.GraphicsProfile}");
-        Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
         app.Configure();   // config.cfg, now that every cvar and command exists
         ApplyVSync();
+        ApplyWindowSize();
+        Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
 
         // Records, module Start, then the main world (01 §5.1). Modules install their resources and
         // systems in OnWorldCreated; the game spawns its scene there.
@@ -137,7 +139,6 @@ public class Game1 : Game
         app.Start();
         world = app.CreateWorld("main");
 
-        activeCamera = world.Resources.Get<ActiveCamera>();
         // Sampled every frame whether or not anything reads it: a game without the character plugin
         // has no pawn to command, and its PlayerInput is only ever written (issue #13).
         playerInput = world.Resources.GetOrAdd(() => new PlayerInput());
@@ -179,6 +180,18 @@ public class Game1 : Game
     {
         graphics.SynchronizeWithVerticalRetrace = hostCVars.VSync.Value;
         graphics.ApplyChanges();
+    }
+
+    // `vid_width` / `vid_height`: the back buffer follows, and the screen's views with it (each view
+    // takes its aspect from its own viewport, 06 §3.4a).
+    private void ApplyWindowSize()
+    {
+        int width = hostCVars.Width.Value, height = hostCVars.Height.Value;
+        if (graphics.PreferredBackBufferWidth == width && graphics.PreferredBackBufferHeight == height) return;
+        graphics.PreferredBackBufferWidth = width;
+        graphics.PreferredBackBufferHeight = height;
+        graphics.ApplyChanges();
+        Log.Info(LogCat.Render, $"Window {width}x{height}");
     }
 
     protected override void LoadContent()
@@ -241,15 +254,12 @@ public class Game1 : Game
         if (playerInput.TryTakeView(out float wantedYaw, out float wantedPitch))
             latch.SetView(wantedYaw, wantedPitch);
 
-        // The free camera runs at the display rate, not the tick rate (smooth at any refresh rate), and
-        // hands the camera back to a rig that claimed it. Without the dev tools a rig is the only thing
-        // that drives the camera, which is what a played game wants.
+        // The free camera runs at the display rate, not the tick rate (smooth at any refresh rate). It is
+        // a camera entity (issue #81) that draws only where no other camera does, or over all of them
+        // with `cam_free`. Without the dev tools the game's cameras are all there is, which is what a
+        // played game wants.
 #if SAGE_DEV
-        dev.Update(gameTime, activeCamera);
-#else
-#pragma warning disable CS0618   // obsolete for games (issue #76); the host's cam_free switch until #81
-        activeCamera.RigEnabled = true;
-#pragma warning restore CS0618
+        dev.Update(gameTime);
 #endif
         if (recHotReload.Value) recordHotReload?.Poll();
 
