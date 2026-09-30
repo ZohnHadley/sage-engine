@@ -259,17 +259,18 @@ public sealed class ItemGrid
             reason = text.Format("@rpg.grid.cannot_hold", ("who", World.Describe(to.Owner)));
             return false;
         }
-        if (x >= 0 && !to.Fits(item.Width, item.Height, x, y))
-        {
-            reason = text.Format("@rpg.grid.no_room", ("item", item.Label));
-            return false;
-        }
         var inventory = world.Get<Inventory>(to.Owner);
         float now = world.WeightOf(to.Owner);
         if (inventory.Capacity > 0f && now + item.Weight > inventory.Capacity)
         {
             reason = text.Format("@rpg.grid.too_heavy", ("item", item.Label), ("weight", Tenths(item.Weight)),
                                  ("total", Tenths(now + item.Weight)), ("capacity", Tenths(inventory.Capacity)));
+            return false;
+        }
+        // Weight first: no square would make it lighter.
+        if (x >= 0 && !to.Fits(item.Width, item.Height, x, y))
+        {
+            reason = text.Format("@rpg.grid.no_room", ("item", item.Label));
             return false;
         }
 
@@ -326,7 +327,7 @@ public sealed class ItemGrid
             if (_itemPool.Count <= i) _itemPool.Add(new GridItem());
             var item = _itemPool[i];
             var (id, count) = _stacks[i];
-            records.TryGet(id, out ItemRecord? record);
+            records.TryGet(id, out ItemRecord record);
             var (w, h) = RpgItemRecord.Of(records, id);
             float each = record?.Weight ?? 0f;
             if (item.Item != id || item.Count != count || item.Width != w || item.Height != h || item.Weight != each * count || item.Label.Length == 0)

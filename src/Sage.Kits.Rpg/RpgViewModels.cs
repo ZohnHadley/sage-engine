@@ -168,7 +168,7 @@ public sealed class LootView : ItemGridView
         if (context.World != null && context.Other != _named)
         {
             _named = context.Other;
-            ContainerName = context.World.IsAlive(context.Other) ? World.Describe(context.Other) : "";
+            ContainerName = context.World.IsAlive(context.Other) ? context.Other.Name ?? "" : "";
         }
     }
 
@@ -200,7 +200,7 @@ public sealed class LootView : ItemGridView
         var records = world.Records();
         foreach (var (item, count) in _scratch)
         {
-            records.TryGet(item, out ItemRecord? record);
+            records.TryGet(item, out ItemRecord record);
             float weight = (record?.Weight ?? 0f) * count;
             bool fits = world.TryGet<Inventory>(to, out var bag)
                         && (bag.Capacity <= 0f || world.WeightOf(to) + weight <= bag.Capacity);
@@ -281,7 +281,7 @@ public sealed class EquipmentView : IViewModel
     {
         var records = world.Records();
         var text = RpgText.Of(world);
-        var slots = world.Resources.TryGet<EquipSlots>(out var registered) ? registered.Names : (IReadOnlyList<string>)Array.Empty<string>();
+        var slots = world.Resources.TryGet<EquipSlots>(out var registered) && registered != null ? registered.Names : (IReadOnlyList<string>)Array.Empty<string>();
 
         Slots.Clear();
         for (int i = 0; i < slots.Count; i++)
@@ -392,7 +392,7 @@ public sealed class TopicsView : IViewModel
         if (context.Other != _named)
         {
             _named = context.Other;
-            Speaker = world.IsAlive(context.Other) ? World.Describe(context.Other) : "";
+            Speaker = world.IsAlive(context.Other) ? context.Other.Name ?? "" : "";
             _asked.Clear();
             Answer = Asked = "";
         }

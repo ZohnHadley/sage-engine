@@ -37,14 +37,36 @@ public sealed class RpgConventionsRecord
 
 public static class RpgConventions
 {
-    // The game's rpg_conventions, or the defaults. A lookup per call, so a hot reload is seen at once.
+    // The game's rpg_conventions, or the defaults. Found once per content load (a hot reload is seen at
+    // the next call), so a system or a screen can ask every frame without allocating (issue #98).
     public static RpgConventionsRecord Of(RecordStore records)
     {
         if (records.TypeNameOf(typeof(RpgConventionsRecord)) == null) return RpgConventionsRecord.Default;
-        foreach (var id in records.Ids("rpg_conventions").OrderBy(i => i.ToString(), StringComparer.Ordinal))
-            if (records.TryGet(id, out RpgConventionsRecord conventions)) return conventions;
-        return RpgConventionsRecord.Default;
+        var cache = Cached.GetValue(records, static store =>
+        {
+            var made = new Cache();
+            store.Reloaded += () => made.Stale = true;
+            return made;
+        });
+        if (cache.Stale || cache.Count != records.Count)
+        {
+            cache.Found = RpgConventionsRecord.Default;
+            foreach (var id in records.Ids("rpg_conventions").OrderBy(i => i.ToString(), StringComparer.Ordinal))
+                if (records.TryGet(id, out RpgConventionsRecord conventions)) { cache.Found = conventions; break; }
+            cache.Count = records.Count;
+            cache.Stale = false;
+        }
+        return cache.Found;
     }
+
+    private sealed class Cache
+    {
+        public RpgConventionsRecord Found = RpgConventionsRecord.Default;
+        public int Count = -1;
+        public bool Stale = true;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<RecordStore, Cache> Cached = new();
 
     public static RpgConventionsRecord Of(World world) => Of(world.Records());
 

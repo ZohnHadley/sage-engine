@@ -182,7 +182,7 @@ public class RpgScreenTests
         Assert.Equal("Closed. Ask me about the toll.", Text(talk.Screen, "answer"));
         Assert.True(DialogueTopics.Knows(world, hero, Id("toll")));                        // its `then` taught one
         Assert.Equal(new[] { "the bridge", "toll" }, topics.Topics.Select(t => t.Keyword));
-        Assert.Equal(TopicsView.AskedStyle, talk.Screen.View.Find<ItemList>("topics")!.Child(0).Style);
+        Assert.Equal(TopicsView.AskedStyle, talk.Screen.View.Find<ItemList>("list")!.Child(0).Style);
         talk.Nav(UiNavigation.Down);
         talk.A();
         Assert.Equal("Ten gold, friend.", Text(talk.Screen, "answer"));                    // the guard's own answer
@@ -280,6 +280,7 @@ public class RpgScreenTests
         using var app = Boot();
         var world = app.World;
         var hero = Carrier(world, "hero", 0f, ("sword", 1), ("coin", 5));
+        world.MakePersistent(hero);                                                         // what a save writes
         var grid = new ItemGrid(4, 3);
         grid.Refresh(world, hero);
         Assert.Equal((0, 0), (grid.Items[0].X, grid.Items[0].Y));

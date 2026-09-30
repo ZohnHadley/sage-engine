@@ -10,3 +10,18 @@ Sage.Core.VocabularyAttribute.Shorthand.get -> bool
 Sage.Core.VocabularyAttribute.Shorthand.set -> void
 static Sage.Core.Vocabulary.ValueFieldName(System.Type! type) -> string?
 Sage.Core.RecordStore.Latest<T>() -> System.Collections.Generic.IReadOnlyList<T!>!
+const Sage.Core.AssemblyContentMount.Prefix = "content/" -> string!
+Sage.Core.AssemblyContentMount
+Sage.Core.AssemblyContentMount.AssemblyContentMount(string! name, System.Reflection.Assembly! assembly, string! recordNamespace) -> void
+Sage.Core.AssemblyContentMount.Count.get -> int
+Sage.Core.AssemblyContentMount.Enumerate(Sage.Core.VirtualPath? directory, string! searchPattern, bool recursive) -> System.Collections.Generic.IEnumerable<Sage.Core.VirtualPath>!
+Sage.Core.AssemblyContentMount.Exists(Sage.Core.VirtualPath path) -> bool
+Sage.Core.AssemblyContentMount.Name.get -> string!
+Sage.Core.AssemblyContentMount.Open(Sage.Core.VirtualPath path) -> System.IO.Stream!
+Sage.Core.AssemblyContentMount.PhysicalPath(Sage.Core.VirtualPath path) -> string?
+Sage.Core.AssemblyContentMount.RecordNamespace.get -> string!
+Sage.Core.AssemblyContentMount.WritablePath(Sage.Core.VirtualPath path) -> string?
+Sage.Core.PluginContentAttribute
+Sage.Core.PluginContentAttribute.PluginContentAttribute(string! recordNamespace) -> void
+Sage.Core.PluginContentAttribute.RecordNamespace.get -> string!
+override Sage.Core.AssemblyContentMount.ToString() -> string!
