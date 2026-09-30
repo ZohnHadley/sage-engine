@@ -349,9 +349,12 @@
       ]
     },
     "record:screen": {
-      "description": "The id of a screen record (none is loaded).",
+      "description": "The id of a screen record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:status",
+        "status"
+      ]
     },
     "record:sound": {
       "description": "The id of a sound record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -415,14 +418,36 @@
       ]
     },
     "record:ui_layout": {
-      "description": "The id of a ui_layout record (none is loaded).",
+      "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:status",
+        "status"
+      ]
     },
     "record:ui_style": {
-      "description": "The id of a ui_style record (none is loaded).",
+      "description": "The id of a ui_style record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:ui_bar",
+        "sandbox:ui_button",
+        "sandbox:ui_dim",
+        "sandbox:ui_inset",
+        "sandbox:ui_row",
+        "sandbox:ui_text",
+        "sandbox:ui_title",
+        "sandbox:ui_tooltip",
+        "sandbox:ui_window",
+        "ui_bar",
+        "ui_button",
+        "ui_dim",
+        "ui_inset",
+        "ui_row",
+        "ui_text",
+        "ui_title",
+        "ui_tooltip",
+        "ui_window"
+      ]
     },
     "record:weather": {
       "description": "The id of a weather record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -779,9 +804,12 @@
       ]
     },
     "base:screen": {
-      "description": "The id of a screen record (none is loaded).",
+      "description": "Another screen record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:status",
+        "status"
+      ]
     },
     "base:sound": {
       "description": "Another sound record to inherit every field from, abstract or not.",
@@ -845,14 +873,36 @@
       ]
     },
     "base:ui_layout": {
-      "description": "The id of a ui_layout record (none is loaded).",
+      "description": "Another ui_layout record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:status",
+        "status"
+      ]
     },
     "base:ui_style": {
-      "description": "The id of a ui_style record (none is loaded).",
+      "description": "Another ui_style record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:ui_bar",
+        "sandbox:ui_button",
+        "sandbox:ui_dim",
+        "sandbox:ui_inset",
+        "sandbox:ui_row",
+        "sandbox:ui_text",
+        "sandbox:ui_title",
+        "sandbox:ui_tooltip",
+        "sandbox:ui_window",
+        "ui_bar",
+        "ui_button",
+        "ui_dim",
+        "ui_inset",
+        "ui_row",
+        "ui_text",
+        "ui_title",
+        "ui_tooltip",
+        "ui_window"
+      ]
     },
     "base:weather": {
       "description": "Another weather record to inherit every field from, abstract or not.",

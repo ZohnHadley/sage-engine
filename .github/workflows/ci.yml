@@ -165,6 +165,10 @@ jobs:
           # Then the Sandbox's scripted cut: the hut camera its path's wire turns on, for a second.
           SAGE_SMOKE_COMMANDS=$'+ed_viewport 1\n+wait 1\n+cam_free 1\n+wait 1\n+cam_free 0\n+ed_viewport 0\n+sv_cheats 1\n+ent_fire hut_cam CameraOn 1\n+wait 2' \
             tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
+          # A widget screen (issue #97): the Sandbox's status screen opened by its key, walked with the
+          # D-pad actions, closed with Back, then opened and closed from the console, fades and all.
+          SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_tap Status\n+wait 5\n+in_tap MenuDown\n+wait 2\n+in_tap MenuTab\n+wait 2\n+in_tap MenuBack\n+wait 5\n+ui_open status\n+wait 5\n+ui_close all' \
+            tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
           # No plugins at all (issue #13). Records and Input are allowed because engine content still
           # ships every plugin's data in one folder, and says so when the plugin that reads it is absent.
           tools/smoke_run.sh "$host" tests/games/no-plugins 3 Shaders Audio Records Input

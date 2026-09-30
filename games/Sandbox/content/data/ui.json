@@ -39,20 +39,20 @@
       "title":      { "widget": "label", "parent": "window", "text": "@sandbox.status.title", "style": "ui_title" },
       "name":       { "widget": "label", "parent": "window", "bind": "name", "style": "ui_dim" },
 
-      "healthRow":  { "widget": "stack", "parent": "window", "direction": "row", "spacing": 10 },
+      "healthRow":  { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
       "healthName": { "widget": "label", "parent": "healthRow", "text": "@sandbox.status.health", "minSize": [80, 0] },
       "health":     { "widget": "bar", "parent": "healthRow", "bind": "health", "bindings": { "max": "maxHealth" },
-                      "style": "ui_bar", "minSize": [180, 14], "expand": 1, "vAlign": "center" },
-      "healthText": { "widget": "label", "parent": "healthRow", "bind": "healthText", "minSize": [96, 0], "textAlign": "end" },
+                      "style": "ui_bar", "minSize": [180, 14], "expand": 1, "vAlign": "Center" },
+      "healthText": { "widget": "label", "parent": "healthRow", "bind": "healthText", "minSize": [96, 0], "textAlign": "End" },
 
       "carrying":   { "widget": "label", "parent": "window", "text": "@sandbox.status.carrying", "args": { "count": "itemCount" }, "style": "ui_dim" },
       "bag":        { "widget": "scroll", "parent": "window", "style": "ui_inset", "minSize": [0, 150] },
       "items":      { "widget": "item_list", "parent": "bag", "bind": "items" },
       "item":       { "widget": "button", "parent": "items", "bind": "label", "bindings": { "tooltip": "detail" },
-                      "style": "ui_row", "textAlign": "start" },
+                      "style": "ui_row", "textAlign": "Start" },
 
-      "buttons":    { "widget": "stack", "parent": "window", "direction": "row", "spacing": 10, "hAlign": "end" },
-      "hint":       { "widget": "label", "parent": "buttons", "text": "@sandbox.status.hint", "style": "ui_dim", "textScale": 1, "vAlign": "center" },
+      "buttons":    { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10, "hAlign": "End" },
+      "hint":       { "widget": "label", "parent": "buttons", "text": "@sandbox.status.hint", "style": "ui_dim", "textScale": 1, "vAlign": "Center" },
       "close":      { "widget": "button", "parent": "buttons", "text": "@sandbox.status.close", "style": "ui_button" }
     } },
 
