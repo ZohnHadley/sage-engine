@@ -526,6 +526,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` |
 | `skinned_mesh` | a skinned model, bent by its joints on the GPU — `mesh` (a `.glb` with a skin), `material` (empty: `sage:lit_default`; its effect needs a `Skinned` technique), `layer` (issue #117) |
+| `animator` | plays an `anim_graph` on a skinned model's skeleton — `graph`, `model` (a skinned `.glb`; left out, the `skinned_mesh` part's `mesh`) (issue #118; §5 "Animation graphs") |
 | `light` | a lamp — `colour`, `range` in metres, `intensity` (06 §3.9) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
@@ -548,7 +549,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Twenty-five here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Twenty-six here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -904,6 +905,8 @@ prefab by its full id, `"classname" "sage:scripted_camera"`.
 | `TweenTo` | `[position\|rotation\|scale\|offset\|turn] [x y z] [seconds] [ease]`, all optional | Moves, turns or scales a `tween` from where it is to the goal (metres; degrees of pitch, yaw, roll; factors); `offset` and `turn` are *by* rather than *to*. Left out, the tween's own `target`, `duration` and `ease`. Fires `OnTweenDone` on arrival |
 | `TweenStop` | | Stops a tween where it is |
 | `SetState` | a state's name | Sends a `state_machine` to that state now (its exits and enters run, `OnStateChanged` fires); already there, nothing |
+| `SetAnimParam` | `name value` (a number, true/false, on/off; a trigger's name alone) | Sets an `animator`'s param (issue #118) |
+| `AnimTrigger` | a trigger param's name | Sets an `animator`'s trigger: its next tick's transitions with that `on` may take it |
 | `Trigger` | handed on (optional) | A `logic_relay`: if enabled and its `requires` holds (of the activator), runs its `then` and fires `OnTrigger` |
 | `Enable` / `Disable` | | A relay or a counter: takes its other inputs again, or ignores them (a relay also takes `Toggle`) |
 | `Add` / `Subtract` | a number (1 if none) | A `logic_counter`: counts, within `min`..`max`; fires `OnChanged` with the value, and `OnHitMax` / `OnHitMin` on reaching a limit |
@@ -954,6 +957,35 @@ state). Changing runs the old state's `exit`, the transition's `then` and the ne
 fires `OnStateChanged`, whose wires are handed the new state's name when they have no parameter of their
 own. `SetState <name>` jumps. The state is saved by name with the time spent in it; if a save or a hot
 reload names a state the machine no longer has, it goes back to `initial` with a warning.
+
+**Animation graphs** (issue #118, SAGE0126). A skinned character's clips are played by an `anim_graph`
+record through the `animator` part, beside the `skinned_mesh` that draws it:
+
+```json
+{ "type": "anim_graph", "id": "soldier", "initial": "idle", "fade": 0.2,
+  "params": { "speed": { "from": "Speed" }, "jump": { "kind": "Trigger" } },
+  "states": {
+    "idle": { "clip": "idle", "transitions": [ { "to": "move", "when": { "anim_param": "speed", "min": 0.2 } } ] },
+    "move": { "blend": { "x": "speed", "points": [ { "clip": "walk", "x": 1.5 }, { "clip": "run", "x": 4 } ] },
+              "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.1 } } ] },
+    "jump": { "clip": "jump", "loop": false, "fade": 0.1, "transitions": [ { "to": "idle", "after": 0.8 } ] } },
+  "transitions": [ { "to": "jump", "on": "jump" } ],
+  "layers": [ { "name": "upper", "mask": ["spine"], "initial": "none",
+                "states": { "none": {}, "wave": { "clip": "wave" } },
+                "transitions": [ { "to": "wave", "on": "wave" }, { "to": "none", "after": 2 } ] } ] },
+{ "type": "prefab", "id": "soldier",
+  "parts": { "skinned_mesh": { "mesh": "models/soldier.glb" }, "animator": { "graph": "soldier" } } }
+```
+
+A state plays a `clip`, a `blend` of clips over one float param (`x`) or two (`x` and `y`), or nothing.
+Transitions are a state machine's (`on` here is a **trigger** param, `when`, `after`, `then`); entering a
+state cross-fades over its `fade` along its `ease` (else the graph's). Params are floats, bools and
+triggers; `from` fills one from the body every tick (`Speed`, `VerticalSpeed`, `MoveX`, `MoveY`,
+`AimPitch`, `Grounded`, `Crouching`), and wires set them with `SetAnimParam "crouch 1"` and `AnimTrigger
+jump`. A layer blends over the base on the joints its `mask` names and everything below them. States,
+times and params are saved by name; a state the graph has lost goes back to its layer's `initial` with a
+warning. `anim_debug` in the console shows every animator; `anim_lod_distance` sets how far from the
+camera animators start sampling at half and quarter rate.
 
 Curves are named the way you would expect — `QuadInOut`, `ease_out_bounce`, `SmoothStep`, `Linear`: every
 `Ease` value, case and underscores as you like.
@@ -1580,7 +1612,7 @@ names their types needs the opt-in.
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
 | SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack` (with `OpenHud`, issue #99), `UiLayer`, `UiTween`; and the RPG kit's view-models (issues #98, #99): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `ShopView`, `IPriceRule`, `StubPriceRule` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98), the HUD, journal, map, menu and shop (#99) |
-| SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones` | Phase 4d builds on it: animation graphs, layers and the `Animator` (#118), clip events (#119), sockets and IK (#120) |
+| SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; animation graphs (issue #118): `AnimGraphRecord`, `AnimState`, `AnimBlendSpace`, `AnimBlendPoint`, `AnimLayer`, `AnimParam`, `AnimParamKind`, `AnimParamSource`, `Animator`, `AnimatorLayer`, `AnimatorParam`, `AnimatorPart`, `Animators` (`SetParam`, `SetTrigger`, `GetParam`, `StateOf`, `HasTag`, `ClipWeight`, `Play`, `TryGetPose`, `Describe`), `Engine.Animations` | Phase 4d builds on it: clip events (#119), sockets and IK (#120) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
@@ -1597,9 +1629,9 @@ Worth knowing before you plan around it:
 - **Skeletal animation is being built (phase 4d).** Characters are billboard sprites with direction
   groups (the Daggerfall model). Skeletons and clips are read from a skinned `.glb`, and poses sampled,
   blended and put in model space headlessly (SAGE0126, issue #116); a skinned `.glb` draws with the
-  `skinned_mesh` part and is skinned on the GPU, up to 64 joints a draw (issue #117). Nothing plays a clip
-  on an entity yet, so a skinned model stands in the pose it was modelled in until the animator (#118)
-  arrives. `r_testskin 1` shows a generated one bending.
+  `skinned_mesh` part and is skinned on the GPU, up to 64 joints a draw (issue #117); the `animator` part
+  plays an `anim_graph` on it — blend spaces, layers, cross-fades (issue #118). Clip events (#119) and
+  IK (#120) are still to come. `r_testskin 1` shows a generated one bending.
 - **Lighting indoors is lamps, not lightmaps.** A `light` entity lights a room, and four of them light
   any one surface (the strongest four, chosen per draw). That is enough for a hut; a level the size of a
   town wants light baked into the geometry, and lightmaps are still to come. Nothing casts a shadow.

@@ -1206,6 +1206,16 @@ optional per-joint `JointMask` and puts one in model space, allocating nothing
 (test: SamplingAllocatesNothing). `SkinnedModelBuilder` in `tests/Sage.Testing` writes the test rig in
 code. SAGE0126. Details: docs/design/12 "As built (skeletons and sampling)".
 
+*As built, 4d (issue #118, 2026-09-30): the animation graph as data.* The `anim_graph` record (states
+that play a clip, a 1D or 2D blend space, or nothing; float, bool and trigger params, some filled from
+the body's velocity and `PawnIntent`; layers with joint masks) steps with 4b's `StateTransition` and
+`StateMachines.FirstTransition` and cross-fades along 4b's `Easing`. `sage:animator` and the `animator`
+part run it; `AnimatorSystem` (Phase.Animation) samples each into a pooled `SkeletonPose` handed to
+#117's `SkinPoses`, and #120 runs after it. Saved by name; a lost state goes to `initial` with a warning;
+distant animators sample less often (`anim_lod_distance`); `anim_debug` shows them; a hundred allocate
+nothing a tick (test: AHundredAnimatorsAllocateNothingPerTick) (test: WalkAndRunBlendWeightsFollowSpeed).
+SAGE0126. Details: docs/design/12 "As built (the animation graph)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |
