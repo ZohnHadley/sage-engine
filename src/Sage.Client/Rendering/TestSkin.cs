@@ -93,20 +93,13 @@ internal static class TestSkinModel
         accessor.SetVertexData(view, 0, count, new SharpGLTF.Memory.AttributeFormat(dimensions, encoding, false));
         return accessor;
     }
-
-    // The model's two joints in model space at `time`: the root stays put, `bend` swings ±60° about
-    // the column's Z axis, a metre up.
-    public static void Pose(float time, Span<N.Matrix4x4> joints)
-    {
-        joints[0] = N.Matrix4x4.Identity;
-        float angle = MathF.Sin(time * 1.5f) * (MathF.PI / 3f);
-        joints[1] = N.Matrix4x4.CreateRotationZ(angle) * N.Matrix4x4.CreateTranslation(0f, 1f, 0f);
-    }
 }
 
 // FrameUpdate: while `r_testskin` is on, keeps one test column five metres in front of where the
-// screen's camera was when it was turned on, and poses it every frame through `SkinPoses` (what #118's
-// animator will write). Turning it off removes it.
+// screen's camera was when it was turned on, and poses it every frame the way #118's animator will:
+// the file's skeleton read by #116's GltfAnimationReader, a SkeletonPose with `bend` swung ±60° about
+// Z, PoseSampler.ToModelSpace, and the pose handed to the renderer through `SkinPoses`. Turning it off
+// removes it.
 [System("sage.client.testskin", Phase.FrameUpdate, Condition = RunCondition.DevOnly)]
 internal sealed class TestSkinSystem : ISystem
 {
@@ -115,6 +108,8 @@ internal sealed class TestSkinSystem : ISystem
     private readonly SkinPoses _poses;
     private Entity _column;
     private bool _registered;
+    private SkeletonPose? _pose;
+    private int _bend;
 
     public TestSkinSystem(World world, Renderer renderer, CVar<bool> enabled)
     {
@@ -138,8 +133,17 @@ internal sealed class TestSkinSystem : ISystem
             if (!world.TryGetMainView(out var eye)) return;   // nothing to stand it in front of yet
             if (!_registered)
             {
-                using var glb = new MemoryStream(TestSkinModel.Build());
-                _renderer.RegisterMesh(TestSkinModel.Path, glb);
+                var bytes = TestSkinModel.Build();
+                using (var glb = new MemoryStream(bytes)) _renderer.RegisterMesh(TestSkinModel.Path, glb);
+                using (var glb = new MemoryStream(bytes))
+                {
+                    var skeleton = GltfAnimationReader.Read(glb, TestSkinModel.Path.ToString())?.Skeleton;
+                    if (skeleton != null)
+                    {
+                        _pose = new SkeletonPose(skeleton);
+                        _bend = skeleton.IndexOf("bend");
+                    }
+                }
                 _registered = true;
             }
             var forward = new N.Vector3(eye.Forward.X, 0f, eye.Forward.Z);
@@ -154,7 +158,12 @@ internal sealed class TestSkinSystem : ISystem
             Log.Info(LogCat.Render, $"r_testskin: a skinned column ({TestSkinModel.Joints} joints) at {foot}");
         }
 
-        TestSkinModel.Pose((float)ctx.Frame.RealTime, _poses.Write(_column, TestSkinModel.Joints));
+        if (_pose == null || _bend < 0) return;   // the reader warned: drawn in its rest pose
+        _pose.ResetToRest();
+        float angle = MathF.Sin((float)ctx.Frame.RealTime * 1.5f) * (MathF.PI / 3f);
+        _pose.Local[_bend].Rotation = N.Quaternion.CreateFromAxisAngle(N.Vector3.UnitZ, angle);
+        PoseSampler.ToModelSpace(_pose.Skeleton, _pose);
+        _poses.Set(_column, _pose);
     }
 
     private void Remove(World world)

@@ -21,6 +21,11 @@
          the generic constraints need it) and a derived interface needs its base to compile; SAGE0050
          is what keeps them from naming it. -->
     <PackageReference Include="Friflo.Engine.ECS" />
+    <!-- glTF skins and clips (issue #116, docs/design/12 §3): skeletons and clips are simulation-side
+         assets, because the pose is needed headlessly (hit detection, sockets, IK). Plain .NET, no
+         MonoGame, so SAGE0024 allows it; the client's GltfLoader reads meshes through this reference
+         too. No SharpGLTF type appears in the public API: games never need the dll to compile. -->
+    <PackageReference Include="SharpGLTF.Core" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,7 +43,7 @@
   <ItemGroup>
     <Using Include="Sage.Core" />
   </ItemGroup>
-  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the conditions and actions (SAGE0120, moved here from Sage.Gameplay by issue #89), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras as entities (SAGE0123) and phase 4b's logic (SAGE0124: stage 2's condition and action language, easing) and skeletal animation (SAGE0126: GPU skinning's SkinMath and SkinnedMeshRenderer, #117) are declared here, and an assembly uses its own experimental types freely. -->
+  <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the conditions and actions (SAGE0120, moved here from Sage.Gameplay by issue #89), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras as entities (SAGE0123) and phase 4b's logic (SAGE0124: stage 2's condition and action language, easing) and skeletal animation (SAGE0126: skeletons, clips and poses, #116; GPU skinning's SkinMath and SkinnedMeshRenderer, #117) are declared here, and an assembly uses its own experimental types freely. -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123;SAGE0124;SAGE0126</NoWarn>
   </PropertyGroup>

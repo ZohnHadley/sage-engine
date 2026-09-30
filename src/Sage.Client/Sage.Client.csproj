@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.DesktopGL" />
-    <PackageReference Include="SharpGLTF.Core" />
+    <!-- SharpGLTF.Core comes with Sage.Simulation (issue #116), where skeletons and clips are read. -->
   </ItemGroup>
 
   <ItemGroup>

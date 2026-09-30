@@ -61,32 +61,35 @@ internal static class SkinnedExtract
     }
 }
 
-// Model-space joint matrices by entity, for skinned renderers (issue #117). A world resource. What
-// poses a skeleton writes here every frame before extract; a renderer with no entry draws its mesh's
-// rest pose. Today that is only `r_testskin`; #118's AnimatorSystem is meant to be the writer (or to
-// replace this with its own pose component), after which this stays the extract's one question:
-// "where are this entity's joints?".
+// The seam between what poses a skeleton and what draws it (issue #117): a world resource mapping an
+// entity to the `SkeletonPose` (#116) its skinned renderer is drawn in. Whatever animates the entity —
+// #118's AnimatorSystem, in Phase.Animation, or `r_testskin` — samples the pose, calls
+// `PoseSampler.ToModelSpace` and `Set`s it once; SkinnedMeshExtract reads `ModelSpace` every frame.
+// An entity with no pose here draws its mesh's rest pose. The pose is borrowed, not owned: whoever
+// sets it keeps it alive, disposes it, and `Remove`s it first.
 internal sealed class SkinPoses
 {
-    private readonly Dictionary<int, Matrix4x4[]> _byEntity = new();
+    private readonly Dictionary<int, SkeletonPose> _byEntity = new();
 
     public int Count => _byEntity.Count;
 
-    // The entity's joints, `joints` long, to write in place. Allocates only the first time, or when
-    // the skeleton grows.
-    public Span<Matrix4x4> Write(Entity entity, int joints)
-    {
-        if (!_byEntity.TryGetValue(entity.Id, out var pose) || pose.Length < joints)
-            _byEntity[entity.Id] = pose = new Matrix4x4[joints];
-        return pose.AsSpan(0, joints);
-    }
+    public void Set(Entity entity, SkeletonPose pose) => _byEntity[entity.Id] = pose;
 
-    public bool TryGet(int entityId, out ReadOnlySpan<Matrix4x4> joints)
-    {
-        if (_byEntity.TryGetValue(entityId, out var pose)) { joints = pose; return true; }
-        joints = default;
-        return false;
-    }
+    public bool TryGet(int entityId, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out SkeletonPose? pose) =>
+        _byEntity.TryGetValue(entityId, out pose);
 
     public void Remove(Entity entity) => _byEntity.Remove(entity.Id);
+
+    // The pose's model-space matrices in the order of the file's skin — the order JOINTS_0 indexes and
+    // the mesh's inverse bind matrices are in — from the skeleton's parent-first order:
+    // skinJoints[s] = pose.ModelSpace[skeleton.JointOfSkinIndex[s]]. False, writing nothing, when the
+    // skeleton does not have `skinJoints.Length` skin joints (a pose for another model).
+    public static bool ToSkinOrder(SkeletonPose pose, Span<Matrix4x4> skinJoints)
+    {
+        var map = pose.Skeleton.JointOfSkinIndex;
+        if (map.Length != skinJoints.Length) return false;
+        var model = pose.ModelSpace;
+        for (int s = 0; s < map.Length; s++) skinJoints[s] = model[map[s]];
+        return true;
+    }
 }

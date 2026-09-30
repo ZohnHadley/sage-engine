@@ -95,6 +95,40 @@ public class SkinMathTests
     }
 }
 
+// The seam from #116's poses to the palette: a SkeletonPose (parent-first joints) put in the skin's
+// order and skinned, against SkinnedModelBuilder's rig (root → mid → tip, a vertex at each joint).
+public class SkeletonPoseSkinningTests
+{
+    [Fact]
+    public void ASampledPose_InSkinOrder_CarriesEachJointsVertexToThatJoint()
+    {
+        using var glb = new System.IO.MemoryStream(SkinnedModelBuilder.Build());
+        var set = GltfAnimationReader.Read(glb, "rig.glb")!;
+        var skeleton = set.Skeleton;
+        using var pose = new SkeletonPose(skeleton);
+        PoseSampler.Sample(set.FindClip(SkinnedModelBuilder.Walk)!, 0.5f, loop: true, pose);   // mid at 90°, root slid
+        PoseSampler.ToModelSpace(skeleton, pose);
+
+        int n = skeleton.JointCount;
+        var skinJoints = new Matrix4x4[n];
+        var inverseBind = new Matrix4x4[n];   // in skin order, as the mesh loader keeps them
+        for (int s = 0; s < n; s++) inverseBind[s] = skeleton.InverseBind[skeleton.JointOfSkinIndex[s]];
+        Assert.True(SkinPoses.ToSkinOrder(pose, skinJoints));
+        var palette = new Matrix4x4[n];
+        SkinMath.Palette(skinJoints, inverseBind, palette);
+
+        // The vertex at each joint's bind position (0, j, 0) ends where that joint is now.
+        for (int s = 0; s < n; s++)
+        {
+            int joint = skeleton.JointOfSkinIndex[s];
+            var bindAt = new Vector3(0f, joint * SkinnedModelBuilder.BoneLength, 0f);
+            var skinned = SkinMath.SkinPosition(bindAt, palette, new[] { s }, new[] { 1f });
+            Assert.True(Vector3.Distance(pose.ModelSpace[joint].Translation, skinned) < 1e-4f, $"joint {skeleton.NameOf(joint)}: {skinned}");
+        }
+        Assert.False(SkinPoses.ToSkinOrder(pose, new Matrix4x4[n + 1]));   // a pose for another model
+    }
+}
+
 public class SkinnedExtractTests
 {
     // What the client's SkinnedMeshExtract does with Emit, without MonoGame: `seen[v]` stands for the

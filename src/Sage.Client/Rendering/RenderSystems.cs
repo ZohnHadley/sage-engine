@@ -197,9 +197,9 @@ internal sealed class MeshExtract : ISystem
 
 // Extract: skinned meshes (issue #117). As MeshExtract, plus each renderer's joint palette: written once
 // into RenderSnapshot.Bones by `SkinnedExtract.Emit` (headless, tested) at the first view that sees it,
-// and shared by every view's items. The joints are the entity's `SkinPoses` entry when something
-// poses it, else the mesh's rest pose.
-// TODO(#118): the Animator supplies the pose; this system only reads it.
+// and shared by every view's items. The joints are the entity's `SkeletonPose` in `SkinPoses` when
+// something poses it (put in the skin's order, `SkinPoses.ToSkinOrder`), else the mesh's rest pose.
+// Hook for #118: its AnimatorSystem `Set`s each animated entity's pose there; this system only reads it.
 [System("sage.client.extract.skinned", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class SkinnedMeshExtract : ISystem
 {
@@ -207,6 +207,8 @@ internal sealed class SkinnedMeshExtract : ISystem
     private readonly RenderSnapshot _snapshot;
     private readonly SkinPoses _poses;
     private readonly Query<GlobalTransform, SkinnedMeshRenderer> _meshes;
+    private readonly HashSet<int> _mismatched = new();   // entities already warned about
+    private System.Numerics.Matrix4x4[] _skinJoints = new System.Numerics.Matrix4x4[SkinMath.MaxBones];   // grown, never shrunk
 
     public SkinnedMeshExtract(World world, Renderer renderer)
     {
@@ -244,8 +246,18 @@ internal sealed class SkinnedMeshExtract : ISystem
                 if (skin != null)
                 {
                     inverseBind = skin.InverseBind;
-                    if (!_poses.TryGet(id, out joints) || joints.Length < skin.RestJoints.Length) joints = skin.RestJoints;
-                    else joints = joints[..skin.RestJoints.Length];
+                    joints = skin.RestJoints;
+                    if (_poses.TryGet(id, out var pose))
+                    {
+                        int count = skin.RestJoints.Length;
+                        if (_skinJoints.Length < count) _skinJoints = new System.Numerics.Matrix4x4[count];
+                        if (SkinPoses.ToSkinOrder(pose, _skinJoints.AsSpan(0, count))) joints = _skinJoints.AsSpan(0, count);
+                        else if (!_mismatched.Contains(id))
+                        {
+                            _mismatched.Add(id);
+                            Log.Warn(LogCat.Render, $"Entity {id}: its pose has {pose.Skeleton.JointOfSkinIndex.Length} skin joints and '{mesh.Name}' has {count}; drawn in the rest pose");
+                        }
+                    }
                 }
 
                 var draws = new Draws

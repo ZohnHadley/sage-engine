@@ -53,6 +53,27 @@ Sage.Simulation.ActionContext.Subject.get -> Sage.Simulation.Entity
 Sage.Simulation.ActionContext.Subject.init -> void
 Sage.Simulation.ActionContext.World.get -> Sage.Simulation.World!
 Sage.Simulation.ActionContext.World.init -> void
+Sage.Simulation.AnimationClip
+Sage.Simulation.AnimationClip.AddEvent(float time, string! name) -> void
+Sage.Simulation.AnimationClip.Animates(int joint) -> bool
+Sage.Simulation.AnimationClip.AnimationClip(string! name, int jointCount, float duration) -> void
+Sage.Simulation.AnimationClip.Duration.get -> float
+Sage.Simulation.AnimationClip.Events.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ClipEvent>!
+Sage.Simulation.AnimationClip.JointCount.get -> int
+Sage.Simulation.AnimationClip.Name.get -> string!
+Sage.Simulation.AnimationClip.SetRotation(int joint, Sage.Simulation.AnimationInterpolation interpolation, float[]! times, System.Numerics.Quaternion[]! values) -> void
+Sage.Simulation.AnimationClip.SetScale(int joint, Sage.Simulation.AnimationInterpolation interpolation, float[]! times, System.Numerics.Vector3[]! values) -> void
+Sage.Simulation.AnimationClip.SetTranslation(int joint, Sage.Simulation.AnimationInterpolation interpolation, float[]! times, System.Numerics.Vector3[]! values) -> void
+Sage.Simulation.AnimationInterpolation
+Sage.Simulation.AnimationInterpolation.CubicSpline = 2 -> Sage.Simulation.AnimationInterpolation
+Sage.Simulation.AnimationInterpolation.Linear = 1 -> Sage.Simulation.AnimationInterpolation
+Sage.Simulation.AnimationInterpolation.Step = 0 -> Sage.Simulation.AnimationInterpolation
+Sage.Simulation.AnimationSet
+Sage.Simulation.AnimationSet.AnimationSet(string! source, Sage.Simulation.Skeleton! skeleton, Sage.Simulation.AnimationClip![]! clips) -> void
+Sage.Simulation.AnimationSet.Clips.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.AnimationClip!>!
+Sage.Simulation.AnimationSet.FindClip(string! name) -> Sage.Simulation.AnimationClip?
+Sage.Simulation.AnimationSet.Skeleton.get -> Sage.Simulation.Skeleton!
+Sage.Simulation.AnimationSet.Source.get -> string!
 Sage.Simulation.Camera
 Sage.Simulation.Camera.Camera() -> void
 Sage.Simulation.Camera.Enabled -> bool
@@ -147,6 +168,11 @@ Sage.Simulation.CameraViews.this[int index].get -> Sage.Simulation.CameraView
 Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> bool
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
+Sage.Simulation.ClipEvent
+Sage.Simulation.ClipEvent.ClipEvent() -> void
+Sage.Simulation.ClipEvent.ClipEvent(float time, string! name) -> void
+Sage.Simulation.ClipEvent.Name.get -> string!
+Sage.Simulation.ClipEvent.Time.get -> float
 Sage.Simulation.ConditionAttribute
 Sage.Simulation.ConditionAttribute.ConditionAttribute(string! id) -> void
 Sage.Simulation.ConditionContext
@@ -216,10 +242,24 @@ Sage.Simulation.FirstPersonRigPart.ShowBody -> bool
 Sage.Simulation.FirstPersonRigSystem
 Sage.Simulation.FirstPersonRigSystem.FirstPersonRigSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 Sage.Simulation.FirstPersonRigSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.GltfAnimationReader
+Sage.Simulation.GltfAnimationReader.Count.get -> int
+Sage.Simulation.GltfAnimationReader.Forget(Sage.Core.AssetPath path) -> bool
+Sage.Simulation.GltfAnimationReader.GltfAnimationReader(Sage.Core.VirtualFileSystem! vfs) -> void
+Sage.Simulation.GltfAnimationReader.Load(Sage.Core.AssetPath path) -> Sage.Simulation.AnimationSet?
+Sage.Simulation.GltfAnimationReader.TryGet(Sage.Core.AssetPath path, out Sage.Simulation.AnimationSet? set) -> bool
 Sage.Simulation.IAction
 Sage.Simulation.IAction.Run(in Sage.Simulation.ActionContext context) -> void
 Sage.Simulation.ICondition
 Sage.Simulation.ICondition.Test(in Sage.Simulation.ConditionContext context, out string! why) -> bool
+Sage.Simulation.JointMask
+Sage.Simulation.JointMask.JointMask(Sage.Simulation.Skeleton! skeleton, float weight = 0) -> void
+Sage.Simulation.JointMask.SetBranch(int joint, float weight) -> void
+Sage.Simulation.JointMask.SetBranch(string! joint, float weight) -> bool
+Sage.Simulation.JointMask.Skeleton.get -> Sage.Simulation.Skeleton!
+Sage.Simulation.JointMask.this[int joint].get -> float
+Sage.Simulation.JointMask.this[int joint].set -> void
+Sage.Simulation.JointMask.Weights.get -> System.ReadOnlySpan<float>
 Sage.Simulation.LogicBranch
 Sage.Simulation.LogicBranch.LogicBranch() -> void
 Sage.Simulation.LogicBranch.Value -> bool
@@ -314,6 +354,7 @@ Sage.Simulation.PlayerCamera.PlayerCamera() -> void
 Sage.Simulation.PlayerCameraSystem
 Sage.Simulation.PlayerCameraSystem.PlayerCameraSystem(Sage.Simulation.World! world) -> void
 Sage.Simulation.PlayerCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.PoseSampler
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
@@ -330,6 +371,25 @@ Sage.Simulation.SkinnedMeshRenderer.Layer -> byte
 Sage.Simulation.SkinnedMeshRenderer.Material -> Sage.Core.RecordId
 Sage.Simulation.SkinnedMeshRenderer.Mesh -> Sage.Core.AssetPath
 Sage.Simulation.SkinnedMeshRenderer.SkinnedMeshRenderer() -> void
+Sage.Simulation.Skeleton
+Sage.Simulation.Skeleton.IndexOf(string! name) -> int
+Sage.Simulation.Skeleton.InverseBind.get -> System.ReadOnlySpan<System.Numerics.Matrix4x4>
+Sage.Simulation.Skeleton.IsInBranch(int joint, int ancestor) -> bool
+Sage.Simulation.Skeleton.JointCount.get -> int
+Sage.Simulation.Skeleton.JointOfSkinIndex.get -> System.ReadOnlySpan<int>
+Sage.Simulation.Skeleton.NameOf(int joint) -> string!
+Sage.Simulation.Skeleton.Parents.get -> System.ReadOnlySpan<int>
+Sage.Simulation.Skeleton.RestPose.get -> System.ReadOnlySpan<Sage.Simulation.Pose>
+Sage.Simulation.Skeleton.Skeleton(string![]! names, int[]! parents, Sage.Simulation.Pose[]! restPose, System.Numerics.Matrix4x4[]! inverseBind) -> void
+Sage.Simulation.SkeletonPose
+Sage.Simulation.SkeletonPose.CopyFrom(Sage.Simulation.SkeletonPose! other) -> void
+Sage.Simulation.SkeletonPose.Dispose() -> void
+Sage.Simulation.SkeletonPose.JointCount.get -> int
+Sage.Simulation.SkeletonPose.Local.get -> System.Span<Sage.Simulation.Pose>
+Sage.Simulation.SkeletonPose.ModelSpace.get -> System.Span<System.Numerics.Matrix4x4>
+Sage.Simulation.SkeletonPose.ResetToRest() -> void
+Sage.Simulation.SkeletonPose.Skeleton.get -> Sage.Simulation.Skeleton!
+Sage.Simulation.SkeletonPose.SkeletonPose(Sage.Simulation.Skeleton! skeleton) -> void
 Sage.Simulation.StateMachine
 Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
 Sage.Simulation.StateMachine.Machine -> Sage.Core.RecordId
@@ -466,6 +526,7 @@ static Sage.Simulation.Easing.TryParse(System.ReadOnlySpan<char> text, out Sage.
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
+static Sage.Simulation.GltfAnimationReader.Read(System.IO.Stream! stream, string! name) -> Sage.Simulation.AnimationSet?
 static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
@@ -477,6 +538,11 @@ static Sage.Simulation.SkinMath.Blend(System.ReadOnlySpan<System.Numerics.Matrix
 static Sage.Simulation.SkinMath.Palette(System.ReadOnlySpan<System.Numerics.Matrix4x4> modelJoints, System.ReadOnlySpan<System.Numerics.Matrix4x4> inverseBind, System.Span<System.Numerics.Matrix4x4> palette) -> void
 static Sage.Simulation.SkinMath.SkinNormal(System.Numerics.Vector3 normal, System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Vector3
 static Sage.Simulation.SkinMath.SkinPosition(System.Numerics.Vector3 position, System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Vector3
+static Sage.Simulation.PoseSampler.Blend(Sage.Simulation.SkeletonPose! a, Sage.Simulation.SkeletonPose! b, float weight, Sage.Simulation.JointMask? mask) -> void
+static Sage.Simulation.PoseSampler.Blend(Sage.Simulation.SkeletonPose! a, Sage.Simulation.SkeletonPose! b, float weight, Sage.Simulation.JointMask? mask, Sage.Simulation.SkeletonPose! result) -> void
+static Sage.Simulation.PoseSampler.ClipTime(Sage.Simulation.AnimationClip! clip, float time, bool loop) -> float
+static Sage.Simulation.PoseSampler.Sample(Sage.Simulation.AnimationClip! clip, float time, bool loop, Sage.Simulation.SkeletonPose! pose) -> void
+static Sage.Simulation.PoseSampler.ToModelSpace(Sage.Simulation.Skeleton! skeleton, Sage.Simulation.SkeletonPose! pose) -> void
 static Sage.Simulation.StateMachines.FirstTransition(System.Collections.Generic.IReadOnlyList<Sage.Simulation.StateTransition!>? transitions, string? input, float timeInState, in Sage.Simulation.ConditionContext context) -> Sage.Simulation.StateTransition?
 static Sage.Simulation.StateMachines.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
 static Sage.Simulation.StateMachines.SetState(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity)) -> bool
