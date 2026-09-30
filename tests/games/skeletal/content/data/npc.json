@@ -1,0 +1,107 @@
+[
+  // The NPC (issue #122): a box mannequin (models/mannequin.glb: 18 joints, clips idle, walk, run, aim,
+  // aim_up, aim_down, attack and reload) that its graph walks, runs, aims and strikes with, blended.
+  // Gameplay — here, state machines (scene.json) — only moves it and sets params: `speed` is read from
+  // how far it moved, `aiming` and `aim_pitch` arrive by SetAnimParam, `attack` and `reload` by AnimTrigger.
+  {
+    "type": "material",
+    "id": "mannequin",
+    "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.78, 0.72, 0.62, 1] }
+  },
+  { "type": "material", "id": "mannequin_blue", "base": "mannequin", "params": { "AlbedoColor": [0.36, 0.52, 0.80, 1] } },
+  { "type": "material", "id": "mannequin_red", "base": "mannequin", "params": { "AlbedoColor": [0.80, 0.36, 0.32, 1] } },
+  { "type": "material", "id": "mannequin_green", "base": "mannequin", "params": { "AlbedoColor": [0.42, 0.70, 0.40, 1] } },
+
+  {
+    // The base layer: idle, or moving — a 1D blend space on `speed` between the walk (1.5 m/s) and the run
+    // (4.5 m/s), played phase-synced so the feet stay together. Below 1.5 it is all walk, past 4.5 all run.
+    //
+    // The `upper` layer, over the spine's branch (spine, chest, neck, head and both arms; the legs keep
+    // walking under it): nothing until `aiming`, then `aim` — a blend space on `aim_pitch` from aim_down
+    // (-60°) through aim (0°) to aim_up (60°) — and from any state `attack` strikes and `reload` reloads,
+    // each once, back to aim (and to nothing, the tick after, if the NPC has stopped aiming).
+    //
+    // `aim_pitch` also turns the spine, chest, neck and head through the prefab's aim IK (the animator
+    // copies it there every tick), which is why the aim clips pitch the arms by only half of it.
+    "type": "anim_graph",
+    "id": "npc",
+    "initial": "idle",
+    "fade": 0.25,
+    "params": {
+      "speed": { "from": "Speed" },
+      "aim_pitch": {},
+      "aiming": { "kind": "Bool" },
+      "attack": { "kind": "Trigger" },
+      "reload": { "kind": "Trigger" }
+    },
+    "states": {
+      "idle": { "clip": "idle", "tags": ["grounded"],
+                "transitions": [ { "to": "move", "when": { "anim_param": "speed", "min": 0.3 } } ] },
+      "move": { "blend": { "x": "speed", "points": [ { "clip": "walk", "x": 1.5 }, { "clip": "run", "x": 4.5 } ] },
+                "tags": ["grounded", "moving"],
+                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] }
+    },
+    "layers": [
+      {
+        "name": "upper",
+        "mask": ["spine"],
+        "initial": "none",
+        "states": {
+          "none": { "transitions": [ { "to": "aim", "when": { "anim_param": "aiming", "eq": 1 } } ] },
+          "aim": { "blend": { "x": "aim_pitch", "points": [ { "clip": "aim_down", "x": -60 }, { "clip": "aim", "x": 0 }, { "clip": "aim_up", "x": 60 } ] },
+                   "tags": ["aiming"],
+                   "transitions": [ { "to": "none", "when": { "anim_param": "aiming", "eq": 0 } } ] },
+          "attack": { "clip": "attack", "loop": false, "fade": 0.1, "tags": ["attacking"], "transitions": [ { "to": "aim", "after": 0.8 } ] },
+          "reload": { "clip": "reload", "loop": false, "fade": 0.15, "tags": ["reloading"], "transitions": [ { "to": "aim", "after": 1.4 } ] }
+        },
+        "transitions": [ { "to": "attack", "on": "attack" }, { "to": "reload", "on": "reload" } ]
+      }
+    ]
+  },
+
+  {
+    // The NPC: the skinned mannequin, its animator, aim IK up the spine (the head ends up facing the whole
+    // pitch, the chest half of it) and foot IK. The mannequin's clips keep the stance foot on the ground,
+    // so on the flat the feet need nothing; the rays reach only 4 cm under an animated sole (the ankle is
+    // 8 cm above it), so a foot in the air is left alone.
+    "type": "prefab",
+    "id": "npc",
+    "name": "npc",
+    "parts": {
+      "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "mannequin" },
+      "animator": { "graph": "npc" },
+      "aim_ik": {
+        "joints": [
+          { "joint": "spine", "weight": 0.25, "pitchLimit": 30, "yawLimit": 30 },
+          { "joint": "chest", "weight": 0.25, "pitchLimit": 30, "yawLimit": 30 },
+          { "joint": "neck", "weight": 0.2, "pitchLimit": 30, "yawLimit": 40 },
+          { "joint": "head", "weight": 0.3, "pitchLimit": 40, "yawLimit": 50 }
+        ],
+        "weight": 1
+      },
+      "foot_ik": {
+        "pelvis": "pelvis",
+        "left": { "hip": "thigh_l", "knee": "shin_l", "foot": "foot_l" },
+        "right": { "hip": "thigh_r", "knee": "shin_r", "foot": "foot_r" },
+        "footHeight": 0.08, "rayAbove": 0.3, "rayBelow": 0.12, "maxPelvisDrop": 0.3
+      }
+    }
+  },
+
+  // Patrollers: an NPC with a tween that the `patrol` machine sends up and down its lane (scene.json).
+  // How long a leg of the lane takes is the tween's `duration`, so each one's pace is its own: 12 m in 8 s
+  // is a walk (1.5 m/s), in 4 s a jog (3 m/s, half walk and half run), in 2.5 s a run (4.8 m/s).
+  { "type": "prefab", "id": "walker", "base": "npc", "name": "walker",
+    "parts": { "skinned_mesh": { "material": "mannequin_blue" }, "tween": { "duration": 8, "ease": "Linear" }, "state_machine": { "machine": "patrol" } } },
+  { "type": "prefab", "id": "jogger", "base": "npc", "name": "jogger",
+    "parts": { "skinned_mesh": { "material": "mannequin_green" }, "tween": { "duration": 4, "ease": "Linear" }, "state_machine": { "machine": "patrol" } } },
+  { "type": "prefab", "id": "runner", "base": "npc", "name": "runner",
+    "parts": { "skinned_mesh": { "material": "mannequin_red" }, "tween": { "duration": 2.5, "ease": "Linear" }, "state_machine": { "machine": "patrol" } } },
+  // A patroller that aims up its lane and strikes on the way, aiming with its upper body while its legs walk.
+  { "type": "prefab", "id": "trooper", "base": "npc", "name": "trooper",
+    "parts": { "tween": { "duration": 6, "ease": "Linear" }, "state_machine": { "machine": "patrol_armed" } } },
+  // A sentry that stands, aims level, high and low, strikes and reloads (the `sentry` machine).
+  { "type": "prefab", "id": "sentry", "base": "npc", "name": "sentry",
+    "parts": { "skinned_mesh": { "material": "mannequin_red" }, "state_machine": { "machine": "sentry" } } }
+]

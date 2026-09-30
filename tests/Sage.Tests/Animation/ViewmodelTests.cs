@@ -232,7 +232,7 @@ public class ViewmodelTests
         Assert.Equal(2, app.Records.ErrorCount);
     }
 
-    // The Sandbox's own arms (tools/make_viewmodel_arms.py, content/data/viewmodel.json): drawing the
+    // The Sandbox's own arms (tools/make_mannequin.py, content/data/viewmodel.json): drawing the
     // practice sword puts them on the player's camera with the sword on `hand_r`, and R plays the reload
     // clip, which goes back to idle after its 1.2 s.
     [Fact]

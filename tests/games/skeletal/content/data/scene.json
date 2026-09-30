@@ -1,0 +1,92 @@
+[
+  { "type": "material", "id": "floor", "base": "sage:lit_default", "params": { "AlbedoColor": [0.46, 0.50, 0.44, 1] } },
+  {
+    "type": "prefab", "id": "floor", "name": "floor",
+    "components": { "mesh_renderer": { "mesh": "models/slab.glb", "material": "floor" } },
+    "parts": { "body": { "size": [40, 1, 40] } }
+  },
+  { "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } },
+
+  {
+    // Up a lane and back: tween 12 m along +X (the tween's own duration sets the pace), turn round, tween
+    // back, turn round. Each leg ends when its tween does: the placement wires the NPC's OnTweenDone to
+    // its own `Arrived`, which this machine hears.
+    "type": "state_machine",
+    "id": "patrol",
+    "initial": "out",
+    "states": {
+      "out":       { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset 12 0 0" } ],
+                     "transitions": [ { "to": "turn_back", "on": "Arrived" } ] },
+      "turn_back": { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ],
+                     "transitions": [ { "to": "back", "on": "Arrived" } ] },
+      "back":      { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset -12 0 0" } ],
+                     "transitions": [ { "to": "turn_out", "on": "Arrived" } ] },
+      "turn_out":  { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ],
+                     "transitions": [ { "to": "out", "on": "Arrived" } ] }
+    }
+  },
+  {
+    // The same lane, aiming up it on the way out — the upper body aims while the legs walk — with a strike
+    // two seconds in; on the way back it lowers its arms and just walks.
+    "type": "state_machine",
+    "id": "patrol_armed",
+    "initial": "out",
+    "states": {
+      "out":       { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset 12 0 0" },
+                                { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 15" },
+                                { "fire": "!self", "input": "SetAnimParam", "parameter": "aiming 1" },
+                                { "fire": "!self", "input": "AnimTrigger", "parameter": "attack", "delay": 2 } ],
+                     "transitions": [ { "to": "turn_back", "on": "Arrived" } ] },
+      "turn_back": { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aiming 0" },
+                                { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ],
+                     "transitions": [ { "to": "back", "on": "Arrived" } ] },
+      "back":      { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset -12 0 0" } ],
+                     "transitions": [ { "to": "turn_out", "on": "Arrived" } ] },
+      "turn_out":  { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ],
+                     "transitions": [ { "to": "out", "on": "Arrived" } ] }
+    }
+  },
+  {
+    // Standing: rest, aim level, aim high, strike, aim low, reload, and round again.
+    "type": "state_machine",
+    "id": "sentry",
+    "initial": "rest",
+    "states": {
+      "rest":   { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aiming 0" } ],
+                  "transitions": [ { "to": "level", "after": 1.5 } ] },
+      "level":  { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 0" },
+                             { "fire": "!self", "input": "SetAnimParam", "parameter": "aiming 1" } ],
+                  "transitions": [ { "to": "high", "after": 1.5 } ] },
+      "high":   { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 45" } ],
+                  "transitions": [ { "to": "strike", "after": 1.5 } ] },
+      "strike": { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 0" },
+                             { "fire": "!self", "input": "AnimTrigger", "parameter": "attack" } ],
+                  "transitions": [ { "to": "low", "after": 1.2 } ] },
+      "low":    { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch -40" } ],
+                  "transitions": [ { "to": "reload", "after": 1.5 } ] },
+      "reload": { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 0" },
+                             { "fire": "!self", "input": "AnimTrigger", "parameter": "reload" } ],
+                  "transitions": [ { "to": "rest", "after": 2 } ] }
+    }
+  },
+
+  {
+    // Watched from the south: four lanes running east from x = -6, the nearest at z = 1, and the sentry
+    // side-on at the front left. Yaw -90 faces +X (0 faces -Z), up the lane.
+    "type": "scene",
+    "id": "yard",
+    "player": { "prefab": "player", "at": [0, 0.1, 9] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+      { "prefab": "sentry", "at": [-4.5, 0, 4], "yaw": -90, "name": "sentry" },
+      { "prefab": "trooper", "at": [-6, 0, 1], "yaw": -90, "name": "trooper",
+        "outputs": [ { "output": "OnTweenDone", "target": "!self", "input": "Arrived" } ] },
+      { "prefab": "walker", "at": [-6, 0, -2], "yaw": -90, "name": "walker",
+        "outputs": [ { "output": "OnTweenDone", "target": "!self", "input": "Arrived" } ] },
+      { "prefab": "jogger", "at": [-6, 0, -5], "yaw": -90, "name": "jogger",
+        "outputs": [ { "output": "OnTweenDone", "target": "!self", "input": "Arrived" } ] },
+      { "prefab": "runner", "at": [-6, 0, -8], "yaw": -90, "name": "runner",
+        "outputs": [ { "output": "OnTweenDone", "target": "!self", "input": "Arrived" } ] }
+    ]
+  }
+]
