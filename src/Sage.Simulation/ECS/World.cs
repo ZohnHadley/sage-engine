@@ -265,6 +265,14 @@ public sealed class World : IDisposable
     // Every entity (editor, tools, debug commands).
     public Query QueryAll() => new(_store.Query());
 
+    // Every persistent entity, disabled ones included: what a save writes and a load clears. A save's
+    // placeholder (SavePlaceholder, issue 4i-2) is disabled so that no query sees it, and still has to
+    // be written back and cleared.
+    internal QueryEntities PersistentIncludingDisabled() => new(_store.Query<Persistent>().WithDisabled().Entities);
+
+    // Takes an entity out of every query (Friflo's Disabled tag), or puts it back.
+    internal static void SetEnabled(Entity entity, bool enabled) { var raw = entity.Raw; raw.Enabled = enabled; }
+
     // ---- Systems and schedules ---------------------------------------------------------------------
 
     // Adds a declared system (issue #17): its id, phase, order and run condition come from its
