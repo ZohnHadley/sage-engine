@@ -9,7 +9,7 @@ namespace Sage.Gameplay;
 // (GameplayModules.All, R15). **The** list — the host, a headless server, `sage validate` and the
 // tests all pass it as SageAppOptions.AvailablePlugins, so none can ship a set the others don't
 // (ModuleSetTests; the LightsModule bug of 2026-09-25). A game picks from it in game.json. It lives
-// here, the top of the base, because only this assembly can name every one of them.
+// here, the top of the base, because only this assembly can name every one of them (Sage.UI's too).
 public static class BasePlugins
 {
     public static IModule[] All()
@@ -21,6 +21,11 @@ public static class BasePlugins
             new MapModule(),         // brush levels imported from TrenchBroom (15 §3, F16)
         };
         modules.AddRange(GameplayModules.All());
+        // The UI's records, string tables and `lang` (issue #96): headless, so a server and `sage validate`
+        // read and check them as the game does. Sage.UI is experimental (SAGE0125); this line is the opt-in.
+#pragma warning disable SAGE0125
+        modules.Add(new Sage.UI.UiModule());
+#pragma warning restore SAGE0125
         return modules.ToArray();
     }
 }

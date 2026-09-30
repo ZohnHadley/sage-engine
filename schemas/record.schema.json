@@ -48,9 +48,12 @@
             "quest",
             "rpg_conventions",
             "scene",
+            "screen",
             "sound",
             "sprite_sheet",
             "tag",
+            "ui_layout",
+            "ui_style",
             "weather"
           ]
         }
@@ -420,6 +423,21 @@
           "if": {
             "properties": {
               "type": {
+                "const": "screen"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "screen.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "sound"
               }
             },
@@ -459,6 +477,36 @@
           },
           "then": {
             "$ref": "tag.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "ui_layout"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "ui_layout.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "ui_style"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "ui_style.schema.json"
           }
         },
         {

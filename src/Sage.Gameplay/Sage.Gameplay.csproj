@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sage.Physics3D\Sage.Physics3D.csproj" />
+    <!-- For BasePlugins alone, which names UiModule (issue #96); gameplay code never names a widget. -->
+    <ProjectReference Include="..\Sage.UI\Sage.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

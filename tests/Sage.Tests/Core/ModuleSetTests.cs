@@ -40,6 +40,7 @@ public class ModuleSetTests
             typeof(PhysicsModule),      // the host adds it before gameplay: characters sweep the space
             typeof(StreamingModule),    // terrain rings and origin rebasing (R6, F14)
             typeof(MapModule),          // brush levels (F16)
+            typeof(Sage.UI.UiModule),   // the UI's records and text (#96): BasePlugins adds it after gameplay
         };
 
         var defined = EngineAssemblies.Base.SelectMany(a => a.GetTypes())

@@ -6,6 +6,8 @@
     (decision D1): it names no font and no texture (ITextMeasure measures text), so a test lays out,
     navigates and hit-tests a screen without a window, and the client only draws what it arranged (#97).
     A base assembly (SageBaseAssembly), not a kit: every game may use it, and it never references one.
+    Since #96 it is also a plugin, `sage.ui` (UiModule, in BasePlugins.All): the ui_style, ui_layout and
+    screen records, the view_model vocabulary, string tables and the `lang` cvar.
   -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -29,5 +31,7 @@
        (#96 records, #97 drawing, #98 view-models) builds on it; it uses its own types freely. -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);SAGE0125</NoWarn>
+    <!-- visibleIf and enabledIf are conditions (#89's language, SAGE0120 and SAGE0124). -->
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0124</NoWarn>
   </PropertyGroup>
 </Project>
