@@ -2,7 +2,7 @@
   <!--
     The harness the engine's tests boot through, and a game's tests can too (docs/REDESIGN.md §3.2,
     issue #14): HeadlessApp, MountFixture, EventProbe, CaptureSink. A plain library on the base engine
-    (Sage.Gameplay and below) only: no test framework, so a game can use it from xUnit, NUnit or a console app, and no client,
+    (Sage.Gameplay and below, and Sage.UI) only: no test framework, so a game can use it from xUnit, NUnit or a console app, and no client,
     so nothing here can need a window.
   -->
   <PropertyGroup>
@@ -15,7 +15,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sage.Gameplay\Sage.Gameplay.csproj" />
+    <!-- EngineAssemblies names the retained UI too (issue #95), a base assembly beside Physics3D. -->
+    <ProjectReference Include="..\..\src\Sage.UI\Sage.UI.csproj" />
   </ItemGroup>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0125</NoWarn>
+  </PropertyGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
   <ItemGroup>

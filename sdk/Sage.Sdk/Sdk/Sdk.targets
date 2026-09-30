@@ -41,7 +41,9 @@
   </PropertyGroup>
 
   <!-- The engine's namespaces, in every file. The ECS is Sage.Simulation's (Entity, IComponent, Query<…>);
-       naming Friflo, the storage underneath, is SAGE0050. -->
+       naming Friflo, the storage underneath, is SAGE0050. Sage.UI (the retained widgets, issue #95) is
+       referenced but not a global using: Label, Button, Image and Grid are names a game may well have,
+       so a file that builds UI says `using Sage.UI;` (and the project opts in to SAGE0125). -->
   <ItemGroup Condition="'$(SageEngineReferences)' != 'false'">
     <Using Include="Sage.Core" />
     <Using Include="Sage.Simulation" />
@@ -58,6 +60,7 @@
     <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Simulation\Sage.Simulation.csproj" Private="false" />
     <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Physics3D\Sage.Physics3D.csproj" Private="false" />
     <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Gameplay\Sage.Gameplay.csproj" Private="false" />
+    <ProjectReference Include="$(SageRepositoryRoot)src\Sage.UI\Sage.UI.csproj" Private="false" />
     <ProjectReference Include="$(SageRepositoryRoot)src\Sage.Client\Sage.Client.csproj" Private="false"
                       Condition="'$(SageSimulationOnly)' != 'true'" />
   </ItemGroup>
@@ -79,6 +82,7 @@
     <Reference Include="$(SageHostDirectory)Sage.Simulation.dll" Private="false" />
     <Reference Include="$(SageHostDirectory)Sage.Physics3D.dll" Private="false" />
     <Reference Include="$(SageHostDirectory)Sage.Gameplay.dll" Private="false" />
+    <Reference Include="$(SageHostDirectory)Sage.UI.dll" Private="false" />
     <Reference Include="$(SageHostDirectory)Friflo.*.dll;$(SageHostDirectory)Bepu*.dll" Private="false" />
     <Reference Include="$(SageHostDirectory)Sage.Client.dll;$(SageHostDirectory)MonoGame.Framework.dll;$(SageHostDirectory)SharpGLTF.Core.dll;$(SageHostDirectory)NVorbis.dll"
                Private="false" Condition="'$(SageSimulationOnly)' != 'true'" />

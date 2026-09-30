@@ -64,7 +64,7 @@ Gregory's reference stack (survey §2.1) maps onto this directly. "Gameplay foun
 
 ### Dependency rules (enforced by csproj references; details in [01 §3.1](docs/design/01-host-and-modules.md))
 1. **Down only:** game → kit → framework → engine. The engine never references a kit, the framework or game types (a kit: SAGE0025).
-2. **The simulation never references MonoGame or client code.** `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D` and `Sage.Gameplay` (the framework layer) use `System.Numerics` (D2), and the build says so (SAGE0024). Rendering *reads* simulation state through Extract (§4.6); the simulation never calls rendering.
+2. **The simulation never references MonoGame or client code.** `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D`, `Sage.Gameplay` (the framework layer) and `Sage.UI` (the game UI's widgets, #95) use `System.Numerics` (D2), and the build says so (SAGE0024). Rendering *reads* simulation state through Extract (§4.6); the simulation never calls rendering.
 3. **Presentation → simulation only through `PlayerCommand` or command queues.** UI and camera code never write gameplay components directly ([04 §3.1](docs/design/04-events-and-messaging.md)).
 4. **Runtime never references tools or the editor.**
 
@@ -81,6 +81,7 @@ sage-engine/
                             streaming, entity I/O, presentation data   (no MonoGame)
     Sage.Physics3D/         Bepu physics, character controller          (no MonoGame)
     Sage.Gameplay/          optional gameplay modules, simulation side  (no MonoGame)
+    Sage.UI/                retained game-UI widgets, layout, focus; on Simulation, headless (no MonoGame; #95)
     Sage.Kits.Rpg/          the action-RPG kit: spellmaker, readied spell, RPG screens (no MonoGame;
     Sage.Kits.Rpg.Client/   and its client half)   not part of the base: a game names it in game.json (#27)
     Sage.Client/            rendering, materials/shaders, input, audio, dev UI     (MonoGame)
@@ -195,7 +196,7 @@ When the phase starts: a server-authoritative **snapshot** model (not lockstep o
 | Physics | [10](docs/design/10-physics.md) | BepuPhysics v2 per world; components hold handles; triggers → events; **own kinematic character controller** |
 | Audio | [11](docs/design/11-audio.md) | Event-driven presentation; `sound` records; buses; MonoGame backend behind an interface |
 | Animation | [12](docs/design/12-animation.md) | v1 sprite animation with sim-owned time and frame events ("hit" frames); skeletal glTF later |
-| UI | [13](docs/design/13-ui.md) | ImGui for dev/editor only; game UI library decision D8. **A screen’s *contents* are simulation data** (`Panel`/`PanelRow`, F38’s engine half): what to show and whether each row can be used, with the reason taken from the rule that would refuse it — so a screen is testable headlessly and the library choice stays open |
+| UI | [13](docs/design/13-ui.md) | ImGui for dev/editor only; game UI library decision D8. **A screen’s *contents* are simulation data** (`Panel`/`PanelRow`, F38’s engine half): what to show and whether each row can be used, with the reason taken from the rule that would refuse it — so a screen is testable headlessly and the library choice stays open. **Retained widgets, layout and focus** are `Sage.UI` (#95), headless too: a test lays out a grid, moves focus with the D-pad and hit-tests the pointer |
 | World streaming | [14](docs/design/14-world-streaming.md) | 1024 m sectors, origin rebasing, streaming rings (Daggerfall Unity model), separate interior spaces, dormancy |
 | Editor | [15](docs/design/15-editor.md) | Separate host; documents + command log + undo; generated inspector; play-in-editor |
 | Gameplay framework | [16](docs/design/16-gameplay-framework.md) | `GameRules`, Controller/Pawn/`PawnIntent`, GAS-like attributes/effects/abilities, HL1-style AI schedules |
@@ -317,7 +318,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **101 console commands, 27 record types, 889 headless tests.** <!-- counts -->
+and audible: **101 console commands, 27 record types, 910 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
@@ -360,7 +361,7 @@ start, and [`docs/REDESIGN.md`](docs/REDESIGN.md) where the engine is going; [`d
 | D5 | Physics | **BepuPhysics v2** + **own kinematic character controller** |
 | D6 | Level editing | Own editor for terrain/props/entities + **TrenchBroom `.map` import** for brush interiors. **As built (2026-09-24, F16): the import came first** — brushes, hulls, meshes, prefab entities and FGD export, all without the editor, which is the point: a good editor already exists for brushes |
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |
-| D8 | Game UI | **Decided 2026-09-23: our own, on `UiDraw`.** ImGui stays dev/editor only. The engine already produced a screen’s *contents* as data (`Panel`), so what a library would have added was a list, a selection and a box — about 300 lines, against a dependency with its own fonts, stylesheets or external layout editor. Gum and Myra stay reasonable answers if screens outgrow lists ([13](docs/design/13-ui.md)) |
+| D8 | Game UI | **Decided 2026-09-23: our own, on `UiDraw`.** ImGui stays dev/editor only. The engine already produced a screen’s *contents* as data (`Panel`), so what a library would have added was a list, a selection and a box — about 300 lines, against a dependency with its own fonts, stylesheets or external layout editor. Gum and Myra stay reasonable answers if screens outgrow lists ([13](docs/design/13-ui.md)). When they did (grids, gamepad focus; Phase 4c, #95) the answer stayed our own: retained widgets in `Sage.UI`, drawn by the client (#97) |
 | D9 | Engine licence | **MIT** (`LICENSE`), decided 2026-09-27, replacing CC0: short and permissive, the same as MonoGame's other dependencies and Friflo, and a normal licence for code others build commercial games on (CC0 is unusual for code and grants no patent licence). Apache-2.0 was the alternative, for its explicit patent grant. Dependencies keep their own licences, listed in `THIRD_PARTY_NOTICES.md` — including three LGPL-3.0 assemblies that Friflo.Engine.ECS pulls in |
 | D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; MGCB dropped. **As built (2026-09-24, R12): true.** Models read from `.glb` by `GltfLoader`, textures and sounds from streams, the HUD font from a generated glyph atlas (13 §3); `Content.mgcb`, the builder task, the `dotnet-mgcb*` tools and every `.xnb` path are gone. `dotnet-mgfxc` remains, for `.fx` only |
 | D11 | Model format for animation | **glTF 2.0** over FBX |

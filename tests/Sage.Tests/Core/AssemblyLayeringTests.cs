@@ -15,19 +15,22 @@ using Assert = Xunit.Assert;
 // registered from, and that every engine type the generators name still exists where they look.
 public class AssemblyLayeringTests
 {
-    // Core ← Simulation ← Physics3D ← Gameplay, and nothing in the base looks up at the client, the
-    // editor, a host or a kit. A reference the compiler did not need is not recorded, so this is what
-    // the code actually uses.
+    // Core ← Simulation ← Physics3D ← Gameplay, with Simulation ← UI beside physics (issue #95), and
+    // nothing in the base looks up at the client, the editor, a host or a kit. A reference the compiler
+    // did not need is not recorded, so this is what the code actually uses.
     [Fact]
     public void NoBaseAssemblyReferencesALayerAboveIt()
     {
         string[] never = { "MonoGame.Framework", "Sage.Client", "Sage.Editor", "Sage.Host", "Sage.Cli", "Sage.Testing" };
         var above = new Dictionary<Assembly, string[]>
         {
-            [EngineAssemblies.Core] = new[] { "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Friflo.Engine.ECS", "BepuPhysics", "BepuUtilities" },
-            [EngineAssemblies.Simulation] = new[] { "Sage.Physics3D", "Sage.Gameplay", "BepuPhysics", "BepuUtilities" },
-            [EngineAssemblies.Physics3D] = new[] { "Sage.Gameplay" },
+            [EngineAssemblies.Core] = new[] { "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Friflo.Engine.ECS", "BepuPhysics", "BepuUtilities" },
+            [EngineAssemblies.Simulation] = new[] { "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "BepuPhysics", "BepuUtilities" },
+            [EngineAssemblies.Physics3D] = new[] { "Sage.Gameplay", "Sage.UI" },
             [EngineAssemblies.Gameplay] = Array.Empty<string>(),
+            // The widgets know the simulation (Rect) and nothing of physics or gameplay: a screen's data
+            // comes to them from view-models (#98), not by reaching into the world.
+            [EngineAssemblies.UI] = new[] { "Sage.Physics3D", "Sage.Gameplay", "BepuPhysics", "BepuUtilities" },
         };
 
         foreach (var (assembly, forbidden) in above)
@@ -41,6 +44,33 @@ public class AssemblyLayeringTests
             }
         }
         Assert.Contains("Sage.Core", EngineAssemblies.Simulation.GetReferencedAssemblies().Select(r => r.Name));
+        Assert.Contains("Sage.Simulation", EngineAssemblies.UI.GetReferencedAssemblies().Select(r => r.Name));
+    }
+
+    // Simulation ← UI ← Client (issue #95): the client references the widgets it draws, read from its
+    // built file like the kit check below, and the UI declares no plugin, record or component of its own
+    // — it is a library a screen builds trees with, not a module.
+    [Fact]
+    public void TheClientSitsOnTheRetainedUi()
+    {
+        string path = Path.Combine(TestEnv.FolderAbove("Sage.sln"), "src", "Sage.Client", "bin", BuildInfo.ConfigurationName, "net8.0", "Sage.Client.dll");
+        Assert.True(File.Exists(path), $"{path} is not built: build the solution (dotnet build Sage.sln) before the tests");
+        using (var stream = File.OpenRead(path))
+        using (var pe = new System.Reflection.PortableExecutable.PEReader(stream))
+        {
+            var metadata = System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pe);
+            var references = metadata.AssemblyReferences.Select(h => metadata.GetString(metadata.GetAssemblyReference(h).Name)).ToList();
+            // The compiler records a reference only when the code uses it; until the client draws widgets
+            // (#97) the dll beside it is what proves the dependency, so accept either.
+            Assert.True(references.Contains("Sage.UI") || File.Exists(Path.Combine(Path.GetDirectoryName(path)!, "Sage.UI.dll")),
+                        "Sage.Client does not reference Sage.UI");
+        }
+
+        var ui = EngineAssemblies.UI;
+        Assert.DoesNotContain(ui.GetTypes(), t => typeof(IModule).IsAssignableFrom(t));
+        var generated = new GeneratedRegistrations();
+        generated.Include(ui);
+        Assert.Empty(generated.Owners);
     }
 
     // The same for the two base assemblies the tests cannot reference, read from their built files: the

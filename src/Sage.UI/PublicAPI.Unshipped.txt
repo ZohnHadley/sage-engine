@@ -1,0 +1,301 @@
+#nullable enable
+abstract Sage.UI.Widget.TypeName.get -> string!
+override Sage.UI.Bar.TypeName.get -> string!
+override Sage.UI.Box.ArrangeContent(Sage.Simulation.Rect content) -> void
+override Sage.UI.Box.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Box.TypeName.get -> string!
+override Sage.UI.Button.OnActivate() -> void
+override Sage.UI.Button.TypeName.get -> string!
+override Sage.UI.Grid.ArrangeContent(Sage.Simulation.Rect content) -> void
+override Sage.UI.Grid.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Grid.TypeName.get -> string!
+override Sage.UI.Image.ArrangeContent(Sage.Simulation.Rect content) -> void
+override Sage.UI.Image.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Image.TypeName.get -> string!
+override Sage.UI.ItemList.OnChildAdded(Sage.UI.Widget! child) -> void
+override Sage.UI.ItemList.OnChildRemoved(Sage.UI.Widget! child) -> void
+override Sage.UI.ItemList.OnDescendantActivated(Sage.UI.Widget! widget) -> void
+override Sage.UI.ItemList.OnDescendantFocused(Sage.UI.Widget! widget) -> void
+override Sage.UI.ItemList.TypeName.get -> string!
+override Sage.UI.Label.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Label.TypeName.get -> string!
+override Sage.UI.Scroll.ArrangeContent(Sage.Simulation.Rect content) -> void
+override Sage.UI.Scroll.ChildClip.get -> Sage.Simulation.Rect
+override Sage.UI.Scroll.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Scroll.TypeName.get -> string!
+override Sage.UI.Stack.ArrangeContent(Sage.Simulation.Rect content) -> void
+override Sage.UI.Stack.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Stack.TypeName.get -> string!
+override Sage.UI.Tooltip.TypeName.get -> string!
+Sage.UI.Align
+Sage.UI.Align.Center = 2 -> Sage.UI.Align
+Sage.UI.Align.End = 3 -> Sage.UI.Align
+Sage.UI.Align.Fill = 0 -> Sage.UI.Align
+Sage.UI.Align.Start = 1 -> Sage.UI.Align
+Sage.UI.Anchors
+Sage.UI.Anchors.Anchors() -> void
+Sage.UI.Anchors.Anchors(float MinX, float MinY, float MaxX, float MaxY) -> void
+Sage.UI.Anchors.MaxX.get -> float
+Sage.UI.Anchors.MaxX.init -> void
+Sage.UI.Anchors.MaxY.get -> float
+Sage.UI.Anchors.MaxY.init -> void
+Sage.UI.Anchors.MinX.get -> float
+Sage.UI.Anchors.MinX.init -> void
+Sage.UI.Anchors.MinY.get -> float
+Sage.UI.Anchors.MinY.init -> void
+Sage.UI.Bar
+Sage.UI.Bar.Bar() -> void
+Sage.UI.Bar.Direction.get -> Sage.UI.Orientation
+Sage.UI.Bar.Direction.set -> void
+Sage.UI.Bar.FillRect.get -> Sage.Simulation.Rect
+Sage.UI.Bar.Fraction.get -> float
+Sage.UI.Bar.Max.get -> float
+Sage.UI.Bar.Max.set -> void
+Sage.UI.Bar.Min.get -> float
+Sage.UI.Bar.Min.set -> void
+Sage.UI.Bar.Value.get -> float
+Sage.UI.Bar.Value.set -> void
+Sage.UI.Box
+Sage.UI.Box.Box() -> void
+Sage.UI.Button
+Sage.UI.Button.Button() -> void
+Sage.UI.Button.Button(string! text) -> void
+Sage.UI.Button.Pressed -> System.Action<Sage.UI.Button!>?
+Sage.UI.Container
+Sage.UI.Container.Add<T>(T! child) -> T!
+Sage.UI.Container.Clear() -> void
+Sage.UI.Container.Container() -> void
+Sage.UI.Container.Insert<T>(int index, T! child) -> T!
+Sage.UI.Container.Remove(Sage.UI.Widget! child) -> bool
+Sage.UI.Grid
+Sage.UI.Grid.Columns.get -> int
+Sage.UI.Grid.Columns.set -> void
+Sage.UI.Grid.Grid() -> void
+Sage.UI.Grid.Spacing.get -> System.Numerics.Vector2
+Sage.UI.Grid.Spacing.set -> void
+Sage.UI.Grid.Uniform.get -> bool
+Sage.UI.Grid.Uniform.set -> void
+Sage.UI.Grid.UsedColumns.get -> int
+Sage.UI.Grid.UsedRows.get -> int
+Sage.UI.Image
+Sage.UI.Image.Image() -> void
+Sage.UI.Image.Image(string? source, System.Numerics.Vector2 naturalSize) -> void
+Sage.UI.Image.ImageRect.get -> Sage.Simulation.Rect
+Sage.UI.Image.KeepAspect.get -> bool
+Sage.UI.Image.KeepAspect.set -> void
+Sage.UI.Image.NaturalSize.get -> System.Numerics.Vector2
+Sage.UI.Image.NaturalSize.set -> void
+Sage.UI.Image.Source.get -> string?
+Sage.UI.Image.Source.set -> void
+Sage.UI.ItemList
+Sage.UI.ItemList.ItemActivated -> System.Action<Sage.UI.ItemList!, int>?
+Sage.UI.ItemList.ItemList() -> void
+Sage.UI.ItemList.Select(int index) -> void
+Sage.UI.ItemList.Selected.get -> int
+Sage.UI.ItemList.SelectedItem.get -> Sage.UI.Widget?
+Sage.UI.ItemList.SelectionChanged -> System.Action<Sage.UI.ItemList!, int>?
+Sage.UI.ITextMeasure
+Sage.UI.ITextMeasure.LineHeight.get -> float
+Sage.UI.ITextMeasure.Measure(string! text, float scale) -> System.Numerics.Vector2
+Sage.UI.IWidgetVisitor
+Sage.UI.IWidgetVisitor.Enter(Sage.UI.Widget! widget) -> bool
+Sage.UI.IWidgetVisitor.Leave(Sage.UI.Widget! widget) -> void
+Sage.UI.Label
+Sage.UI.Label.Label() -> void
+Sage.UI.Label.Label(string! text) -> void
+Sage.UI.Label.Text.get -> string!
+Sage.UI.Label.Text.set -> void
+Sage.UI.Label.TextAlign.get -> Sage.UI.Align
+Sage.UI.Label.TextAlign.set -> void
+Sage.UI.Label.TextScale.get -> float
+Sage.UI.Label.TextScale.set -> void
+Sage.UI.MonospaceTextMeasure
+Sage.UI.MonospaceTextMeasure.CharacterWidth.get -> float
+Sage.UI.MonospaceTextMeasure.LineHeight.get -> float
+Sage.UI.MonospaceTextMeasure.Measure(string! text, float scale) -> System.Numerics.Vector2
+Sage.UI.MonospaceTextMeasure.MonospaceTextMeasure(float characterWidth, float lineHeight) -> void
+Sage.UI.Orientation
+Sage.UI.Orientation.Column = 1 -> Sage.UI.Orientation
+Sage.UI.Orientation.Row = 0 -> Sage.UI.Orientation
+Sage.UI.Scroll
+Sage.UI.Scroll.Content.get -> Sage.UI.Widget?
+Sage.UI.Scroll.Content.set -> void
+Sage.UI.Scroll.Horizontal.get -> bool
+Sage.UI.Scroll.Horizontal.set -> void
+Sage.UI.Scroll.MaxOffset.get -> System.Numerics.Vector2
+Sage.UI.Scroll.Offset.get -> System.Numerics.Vector2
+Sage.UI.Scroll.Offset.set -> void
+Sage.UI.Scroll.Scroll() -> void
+Sage.UI.Scroll.ScrollBy(System.Numerics.Vector2 delta) -> void
+Sage.UI.Scroll.ScrollIntoView(Sage.UI.Widget! widget) -> void
+Sage.UI.Scroll.Vertical.get -> bool
+Sage.UI.Scroll.Vertical.set -> void
+Sage.UI.Scroll.WheelStep.get -> float
+Sage.UI.Scroll.WheelStep.set -> void
+Sage.UI.Stack
+Sage.UI.Stack.Direction.get -> Sage.UI.Orientation
+Sage.UI.Stack.Direction.set -> void
+Sage.UI.Stack.Spacing.get -> float
+Sage.UI.Stack.Spacing.set -> void
+Sage.UI.Stack.Stack() -> void
+Sage.UI.Stack.Stack(Sage.UI.Orientation direction) -> void
+Sage.UI.Thickness
+Sage.UI.Thickness.Bottom.get -> float
+Sage.UI.Thickness.Bottom.init -> void
+Sage.UI.Thickness.Deflate(Sage.Simulation.Rect rect) -> Sage.Simulation.Rect
+Sage.UI.Thickness.Left.get -> float
+Sage.UI.Thickness.Left.init -> void
+Sage.UI.Thickness.Right.get -> float
+Sage.UI.Thickness.Right.init -> void
+Sage.UI.Thickness.Size.get -> System.Numerics.Vector2
+Sage.UI.Thickness.Thickness() -> void
+Sage.UI.Thickness.Thickness(float all) -> void
+Sage.UI.Thickness.Thickness(float horizontal, float vertical) -> void
+Sage.UI.Thickness.Thickness(float Left, float Top, float Right, float Bottom) -> void
+Sage.UI.Thickness.Top.get -> float
+Sage.UI.Thickness.Top.init -> void
+Sage.UI.Tooltip
+Sage.UI.Tooltip.Delay.get -> float
+Sage.UI.Tooltip.Delay.set -> void
+Sage.UI.Tooltip.Offset.get -> float
+Sage.UI.Tooltip.Offset.set -> void
+Sage.UI.Tooltip.Target.get -> Sage.UI.Widget?
+Sage.UI.UiInput
+Sage.UI.UiInput.Back -> bool
+Sage.UI.UiInput.Confirm -> bool
+Sage.UI.UiInput.DeltaTime -> float
+Sage.UI.UiInput.Navigate -> Sage.UI.UiNavigation
+Sage.UI.UiInput.Pointer -> System.Numerics.Vector2
+Sage.UI.UiInput.PointerMoved -> bool
+Sage.UI.UiInput.PointerPressed -> bool
+Sage.UI.UiInput.UiInput() -> void
+Sage.UI.UiInput.Wheel -> float
+Sage.UI.UiNavigation
+Sage.UI.UiNavigation.Down = 2 -> Sage.UI.UiNavigation
+Sage.UI.UiNavigation.Left = 3 -> Sage.UI.UiNavigation
+Sage.UI.UiNavigation.Next = 5 -> Sage.UI.UiNavigation
+Sage.UI.UiNavigation.None = 0 -> Sage.UI.UiNavigation
+Sage.UI.UiNavigation.Previous = 6 -> Sage.UI.UiNavigation
+Sage.UI.UiNavigation.Right = 4 -> Sage.UI.UiNavigation
+Sage.UI.UiNavigation.Up = 1 -> Sage.UI.UiNavigation
+Sage.UI.UiResult
+Sage.UI.UiResult.Activated -> Sage.UI.Widget?
+Sage.UI.UiResult.Back -> bool
+Sage.UI.UiResult.FocusChanged -> bool
+Sage.UI.UiResult.PointerOverUi -> bool
+Sage.UI.UiResult.UiResult() -> void
+Sage.UI.UiRoot
+Sage.UI.UiRoot.Activate(Sage.UI.Widget! widget) -> Sage.UI.Widget?
+Sage.UI.UiRoot.Content.get -> Sage.UI.Box!
+Sage.UI.UiRoot.DesignSize.get -> System.Numerics.Vector2
+Sage.UI.UiRoot.Focus(Sage.UI.Widget? widget) -> bool
+Sage.UI.UiRoot.FocusChain.get -> System.Collections.Generic.IReadOnlyList<Sage.UI.Widget!>!
+Sage.UI.UiRoot.Focused.get -> Sage.UI.Widget?
+Sage.UI.UiRoot.HitTest(System.Numerics.Vector2 pixels) -> Sage.UI.Widget?
+Sage.UI.UiRoot.HitTestVirtual(System.Numerics.Vector2 point) -> Sage.UI.Widget?
+Sage.UI.UiRoot.Hovered.get -> Sage.UI.Widget?
+Sage.UI.UiRoot.Layout() -> bool
+Sage.UI.UiRoot.Navigate(Sage.UI.UiNavigation direction) -> bool
+Sage.UI.UiRoot.Scale.get -> float
+Sage.UI.UiRoot.SetViewport(System.Numerics.Vector2 pixels) -> void
+Sage.UI.UiRoot.Size.get -> System.Numerics.Vector2
+Sage.UI.UiRoot.Text.get -> Sage.UI.ITextMeasure!
+Sage.UI.UiRoot.Text.set -> void
+Sage.UI.UiRoot.Tooltip.get -> Sage.UI.Tooltip!
+Sage.UI.UiRoot.ToPixels(Sage.Simulation.Rect rect) -> Sage.Simulation.Rect
+Sage.UI.UiRoot.ToPixels(System.Numerics.Vector2 point) -> System.Numerics.Vector2
+Sage.UI.UiRoot.ToVirtual(System.Numerics.Vector2 pixels) -> System.Numerics.Vector2
+Sage.UI.UiRoot.UiRoot(Sage.UI.ITextMeasure! text, System.Numerics.Vector2 designSize = default(System.Numerics.Vector2)) -> void
+Sage.UI.UiRoot.Update(in Sage.UI.UiInput input) -> Sage.UI.UiResult
+Sage.UI.UiRoot.Version.get -> int
+Sage.UI.UiRoot.Viewport.get -> System.Numerics.Vector2
+Sage.UI.UiRoot.Walk<TVisitor>(ref TVisitor visitor) -> void
+Sage.UI.Widget
+Sage.UI.Widget.Anchors.get -> Sage.UI.Anchors
+Sage.UI.Widget.Anchors.set -> void
+Sage.UI.Widget.ArrangeChild(Sage.UI.Widget! child, Sage.Simulation.Rect slot) -> void
+Sage.UI.Widget.ArrangeChildAt(Sage.UI.Widget! child, Sage.Simulation.Rect rect) -> void
+Sage.UI.Widget.CanFocus.get -> bool
+Sage.UI.Widget.Child(int index) -> Sage.UI.Widget!
+Sage.UI.Widget.ChildCount.get -> int
+Sage.UI.Widget.Clip.get -> Sage.Simulation.Rect
+Sage.UI.Widget.Contains(Sage.UI.Widget? widget) -> bool
+Sage.UI.Widget.ContentRect.get -> Sage.Simulation.Rect
+Sage.UI.Widget.Data.get -> object?
+Sage.UI.Widget.Data.set -> void
+Sage.UI.Widget.DesiredSize.get -> System.Numerics.Vector2
+Sage.UI.Widget.Enabled.get -> bool
+Sage.UI.Widget.Enabled.set -> void
+Sage.UI.Widget.Expand.get -> float
+Sage.UI.Widget.Expand.set -> void
+Sage.UI.Widget.Find(string! name) -> Sage.UI.Widget?
+Sage.UI.Widget.Find<T>(string! name) -> T?
+Sage.UI.Widget.Focusable.get -> bool
+Sage.UI.Widget.Focusable.set -> void
+Sage.UI.Widget.HAlign.get -> Sage.UI.Align
+Sage.UI.Widget.HAlign.set -> void
+Sage.UI.Widget.HitTestable.get -> bool
+Sage.UI.Widget.HitTestable.set -> void
+Sage.UI.Widget.IndexOf(Sage.UI.Widget! child) -> int
+Sage.UI.Widget.InvalidateArrange() -> void
+Sage.UI.Widget.InvalidateMeasure() -> void
+Sage.UI.Widget.InvalidateVisual() -> void
+Sage.UI.Widget.IsEnabled.get -> bool
+Sage.UI.Widget.IsFocused.get -> bool
+Sage.UI.Widget.IsHovered.get -> bool
+Sage.UI.Widget.IsVisibleInTree.get -> bool
+Sage.UI.Widget.Margin.get -> Sage.UI.Thickness
+Sage.UI.Widget.Margin.set -> void
+Sage.UI.Widget.MinSize.get -> System.Numerics.Vector2
+Sage.UI.Widget.MinSize.set -> void
+Sage.UI.Widget.Name.get -> string?
+Sage.UI.Widget.Name.set -> void
+Sage.UI.Widget.Padding.get -> Sage.UI.Thickness
+Sage.UI.Widget.Padding.set -> void
+Sage.UI.Widget.Parent.get -> Sage.UI.Widget?
+Sage.UI.Widget.Rect.get -> Sage.Simulation.Rect
+Sage.UI.Widget.Root.get -> Sage.UI.UiRoot?
+Sage.UI.Widget.Style.get -> string?
+Sage.UI.Widget.Style.set -> void
+Sage.UI.Widget.TabIndex.get -> int
+Sage.UI.Widget.TabIndex.set -> void
+Sage.UI.Widget.TooltipText.get -> string?
+Sage.UI.Widget.TooltipText.set -> void
+Sage.UI.Widget.VAlign.get -> Sage.UI.Align
+Sage.UI.Widget.VAlign.set -> void
+Sage.UI.Widget.Visible.get -> bool
+Sage.UI.Widget.Visible.set -> void
+Sage.UI.Widget.Widget() -> void
+Sage.UI.WidgetTypes
+static readonly Sage.UI.UiRoot.DefaultDesignSize -> System.Numerics.Vector2
+static Sage.UI.Anchors.Bottom.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.BottomLeft.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.BottomRight.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.BottomWide.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.Center.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.Fill.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.Left.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.Right.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.Top.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.TopLeft.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.TopRight.get -> Sage.UI.Anchors
+static Sage.UI.Anchors.TopWide.get -> Sage.UI.Anchors
+static Sage.UI.Thickness.Zero.get -> Sage.UI.Thickness
+static Sage.UI.UiInput.Cancel.get -> Sage.UI.UiInput
+static Sage.UI.UiInput.Click(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
+static Sage.UI.UiInput.Move(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
+static Sage.UI.UiInput.Nav(Sage.UI.UiNavigation direction) -> Sage.UI.UiInput
+static Sage.UI.UiInput.Press.get -> Sage.UI.UiInput
+static Sage.UI.UiInput.Scroll(System.Numerics.Vector2 pointer, float notches) -> Sage.UI.UiInput
+static Sage.UI.UiInput.Wait(float seconds) -> Sage.UI.UiInput
+static Sage.UI.Widget.MeasureChild(Sage.UI.Widget! child, System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+static Sage.UI.WidgetTypes.Create(string! typeName) -> Sage.UI.Widget?
+static Sage.UI.WidgetTypes.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
+virtual Sage.UI.Widget.ArrangeContent(Sage.Simulation.Rect content) -> void
+virtual Sage.UI.Widget.ChildClip.get -> Sage.Simulation.Rect
+virtual Sage.UI.Widget.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+virtual Sage.UI.Widget.OnActivate() -> void
+virtual Sage.UI.Widget.OnChildAdded(Sage.UI.Widget! child) -> void
+virtual Sage.UI.Widget.OnChildRemoved(Sage.UI.Widget! child) -> void
+virtual Sage.UI.Widget.OnDescendantActivated(Sage.UI.Widget! widget) -> void
+virtual Sage.UI.Widget.OnDescendantFocused(Sage.UI.Widget! widget) -> void
