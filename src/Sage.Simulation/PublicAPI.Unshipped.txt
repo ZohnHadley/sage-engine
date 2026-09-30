@@ -21,6 +21,8 @@ const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
+const Sage.Simulation.SkinMath.Influences = 4 -> int
+const Sage.Simulation.SkinMath.MaxBones = 64 -> int
 const Sage.Simulation.StateMachines.OnStateChanged = "OnStateChanged" -> string!
 const Sage.Simulation.StateMachines.SetStateInput = "SetState" -> string!
 const Sage.Simulation.ThirdPersonRig.DefaultDistance = 3 -> float
@@ -397,6 +399,18 @@ Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCameraPart.BlendTime -> float
+Sage.Simulation.SkinMath
+Sage.Simulation.SkinnedMeshPart
+Sage.Simulation.SkinnedMeshPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.SkinnedMeshPart.Layer -> byte
+Sage.Simulation.SkinnedMeshPart.Material -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
+Sage.Simulation.SkinnedMeshPart.Mesh -> Sage.Core.AssetPath
+Sage.Simulation.SkinnedMeshPart.SkinnedMeshPart() -> void
+Sage.Simulation.SkinnedMeshRenderer
+Sage.Simulation.SkinnedMeshRenderer.Layer -> byte
+Sage.Simulation.SkinnedMeshRenderer.Material -> Sage.Core.RecordId
+Sage.Simulation.SkinnedMeshRenderer.Mesh -> Sage.Core.AssetPath
+Sage.Simulation.SkinnedMeshRenderer.SkinnedMeshRenderer() -> void
 Sage.Simulation.Skeleton
 Sage.Simulation.Skeleton.IndexOf(string! name) -> int
 Sage.Simulation.Skeleton.InverseBind.get -> System.ReadOnlySpan<System.Numerics.Matrix4x4>
@@ -582,6 +596,10 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.FirstPersonCameraSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.MaterialParam.RenderTarget -> string?
+static Sage.Simulation.SkinMath.Blend(System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Matrix4x4
+static Sage.Simulation.SkinMath.Palette(System.ReadOnlySpan<System.Numerics.Matrix4x4> modelJoints, System.ReadOnlySpan<System.Numerics.Matrix4x4> inverseBind, System.Span<System.Numerics.Matrix4x4> palette) -> void
+static Sage.Simulation.SkinMath.SkinNormal(System.Numerics.Vector3 normal, System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Vector3
+static Sage.Simulation.SkinMath.SkinPosition(System.Numerics.Vector3 position, System.ReadOnlySpan<System.Numerics.Matrix4x4> palette, System.ReadOnlySpan<int> joints, System.ReadOnlySpan<float> weights) -> System.Numerics.Vector3
 static Sage.Simulation.PoseSampler.Blend(Sage.Simulation.SkeletonPose! a, Sage.Simulation.SkeletonPose! b, float weight, Sage.Simulation.JointMask? mask) -> void
 static Sage.Simulation.PoseSampler.Blend(Sage.Simulation.SkeletonPose! a, Sage.Simulation.SkeletonPose! b, float weight, Sage.Simulation.JointMask? mask, Sage.Simulation.SkeletonPose! result) -> void
 static Sage.Simulation.PoseSampler.ClipTime(Sage.Simulation.AnimationClip! clip, float time, bool loop) -> float
