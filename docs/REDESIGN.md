@@ -914,6 +914,11 @@ because it edits the live play world (`DevTools.cs:84-87`).
     registry. A pass's Extract and Draw get a public `RenderContext` (add views and items, bind a named
     target, draw full-screen); render targets gain a format and a depth buffer; `r_passes` lists the
     order (docs/design/06 "As built (render passes)", SAGE0130).
+  - *As built (issue 4h-4, 2026-09-30).* The first Shadow-stage pass, `sage:shadow`: one stable sun
+    shadow map (R32F, `r_shadow_size`, over `r_shadow_distance` of the main view) fitted and texel-snapped
+    headless by `ShadowMath`, drawn from a caster view that keeps opaque meshes, terrain and skinned
+    meshes only (a material's `castShadows`), read by the lit shaders with a 2×2 PCF; strength from the
+    sky (docs/design/06 "As built (sun shadows)", SAGE0130).
 - **UI:**
   - Keep `Screen`/`Panel` as view-models.
   - Add `ui_style` and `ui_layout` records (fonts, colours, anchors, templates) used by `PanelView` and

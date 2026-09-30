@@ -396,6 +396,14 @@
         }
       ]
     },
+    "prefab_child_key": {
+      "description": "The component sage:prefab_child_key (PrefabChildKey), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:prefab_child_key"
+        }
+      ]
+    },
     "prefab_overridden": {
       "description": "The component sage:prefab_overridden (PrefabOverridden), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -809,6 +817,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:point_light"
+        }
+      ]
+    },
+    "sage:prefab_child_key": {
+      "description": "Component sage:prefab_child_key (PrefabChildKey).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:prefab_child_key"
         }
       ]
     },
@@ -3629,6 +3645,17 @@
       },
       "additionalProperties": false,
       "description": "Component sage:point_light (PointLight)."
+    },
+    "sage:prefab_child_key": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "description": "(string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:prefab_child_key (PrefabChildKey)."
     },
     "sage:prefab_overridden": {
       "type": "object",

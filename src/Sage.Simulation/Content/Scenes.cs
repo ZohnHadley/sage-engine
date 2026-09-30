@@ -148,6 +148,10 @@ public sealed class Scenes
     {
         if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null) return 0;
 
+        // Before anything goes (4i-3): what the game destroyed is noted, so that placing this scene again
+        // (a hot reload, a `scene_load` back to it) leaves it destroyed.
+        if (!state.Id.IsEmpty) ContentIds.Forget(world, ContentIds.SceneSource(state.Id));
+
         int removed = 0;
         foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList())
         {
@@ -170,19 +174,23 @@ public sealed class Scenes
 
     // Records reloaded: every world's scene placed again, from the new records, without duplicating
     // anything and without losing the player (05 §3.6, issue #29).
+    //
+    // **The same reconcile a load does** (4i-3): the scene is cleared and placed again from the new
+    // records, and what the game destroyed stays destroyed (Clear notes it, Place removes it again). What
+    // a reload does *not* do is lay the live state back over the new content: the point of a reload is
+    // to see the edit, and laying the old health over a prefab whose health was just changed would hide it.
     private void Respawn()
     {
         foreach (var world in _engine.Worlds)
         {
             if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null || state.Id.IsEmpty) continue;
             var id = state.Id;
-            Clear(world);
-            if (!_engine.Records.TryGet(id, out SceneRecord scene))
+            if (!Replace(world, id))
             {
                 Log.Warn(LogCat.World, $"Scene '{id}' is gone after the reload: '{world.Name}' is left empty");
                 continue;
             }
-            Place(world, id, scene);
+            var scene = Scene(world)!;
 
             // A player the rules spawned stays where it is, with what it has. One that is gone — or never
             // was, because the scene only now has a start — comes back.
@@ -192,29 +200,47 @@ public sealed class Scenes
         }
     }
 
+    // The reconcile path a load and a hot reload share (4i-3): what the world's scene placed is cleared, and
+    // `id` placed again from the content as it is now. `cleared` runs in between, when nothing the scene
+    // placed is left: a load puts the save's tombstones in place there. Levels a person loaded with
+    // `map_load` are not the scene's; with `levels` their entities are placed again as well. Returns false
+    // when there is no such scene (the world is then left with none).
+    internal bool Replace(World world, RecordId id, Action? cleared = null, bool levels = false)
+    {
+        Clear(world);
+        if (levels && world.Resources.TryGet<MapLevels>(out var loaded) && loaded != null)
+            foreach (var level in loaded.Loaded) MapLoader.ForgetEntities(world, level);
+        cleared?.Invoke();
+
+        if (id.IsEmpty || !_engine.Records.TryGet(id, out SceneRecord scene)) return false;
+        Place(world, id, scene);
+        return true;
+    }
+
     private void Place(World world, RecordId id, SceneRecord scene)
     {
         var state = world.Resources.Get<ActiveScene>();
         state.Id = id;
+        string source = ContentIds.SceneSource(id);
 
         int placed = 0;
         for (int i = 0; i < scene.Place.Count; i++)
         {
             var placement = scene.Place[i];
-            var entity = world.Spawn(placement.Prefab.Id, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), placement.Yaw,
+            var entity = world.SpawnWithoutId(placement.Prefab.Id, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), placement.Yaw,
                                      placement.Overrides, $"scene {id} place[{i}]");
             if (entity.IsNull) continue;   // `Spawn` said why; one bad line costs that line
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
             PlacementWires.Attach(world, entity, placement);
             entity.AddTag<FromScene>();
 
-            // A stable identity, so a save can find this *same* thing next run (09 §3.5, F27). Derived
-            // from the placement rather than authored, because a scene's entries do not want GUIDs in
-            // them — but it does mean that reordering `place` moves identities, which a real map file
-            // (with ids in it) will not.
-            world.Add(entity, new Persistent { Id = PlacementId(id, i, placement) });
+            // A stable identity, so a save can find this *same* thing next run (09 §3.5, F27, 4i-3): the
+            // placement's authored `id`, else derived from where it is in `place` — which moves when the
+            // list is reordered, and is why an authored id wins.
+            ContentIds.Place(world, source, entity, ContentIds.ScenePlacement(id, i, placement));
             placed++;
         }
+        ContentIds.Finish(world, source);
 
         foreach (var document in scene.Placements)
         {
@@ -263,7 +289,7 @@ public sealed class Scenes
         }
 
         var state = world.Resources.Get<ActiveScene>();
-        var entity = world.Spawn(start.Prefab.Id, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), start.Yaw,
+        var entity = world.SpawnWithoutId(start.Prefab.Id, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), start.Yaw,
                                  start.Overrides, $"scene {state.Id} player");
         if (entity.IsNull) return entity;
         if (!string.IsNullOrEmpty(start.Name)) entity.Name = start.Name;
@@ -290,23 +316,15 @@ public sealed class Scenes
 
     // ---- Saves --------------------------------------------------------------------------------------
 
-    // A save has just rebuilt the world's persistent entities (09 §3.5). `FromScene` is not saved, so the
-    // ones that came from the scene are found by their identities and tagged again — or the next reload
-    // would place a second copy of each beside the loaded ones. The player likewise. Their wiring is not
-    // saved either (IOConnections is the scene's, like the walls are a map's), so it is attached again
-    // from the scene; how often each wire had fired comes back with entity I/O's saved resource (#90).
+    // A save has just been laid over the world (09 §3.5, 4i-3). What the scene placed was placed again by
+    // the load itself, tagged and wired; the player is the save's, spawned from it, so it is the scene's
+    // player again here, and its wiring (IOConnections is not saved: it is the scene's, like the walls are a
+    // map's) is attached again. How often each wire had fired comes back with entity I/O's resource (#90).
     internal void AfterLoad(World world)
     {
         if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null || state.Id.IsEmpty) return;
         if (!_engine.Records.TryGet(state.Id, out SceneRecord scene)) return;
 
-        for (int i = 0; i < scene.Place.Count; i++)
-        {
-            var entity = world.Resolve(PlacementId(state.Id, i, scene.Place[i]));
-            if (entity.IsNull) continue;
-            if (!entity.Tags.Has<FromScene>()) entity.AddTag<FromScene>();
-            if (!entity.HasComponent<IOConnections>()) PlacementWires.Attach(world, entity, scene.Place[i]);
-        }
         var player = world.Resolve(PlayerId(state.Id));
         if (!player.IsNull)
         {
@@ -314,9 +332,6 @@ public sealed class Scenes
             if (scene.Player != null && !player.HasComponent<IOConnections>()) PlacementWires.Attach(world, player, scene.Player);
         }
     }
-
-    private static PersistentId PlacementId(RecordId scene, int index, Placement placement) =>
-        PersistentId.FromName($"scene:{scene}:{index}:{placement.Prefab}");
 
     private static PersistentId PlayerId(RecordId scene) => PersistentId.FromName($"scene:{scene}:player");
 
@@ -332,9 +347,13 @@ public sealed class Scenes
     // input nobody registered would do nothing, and says so here (issue #80).
     private void CheckPlacements(IReadOnlyList<Placement> placements, string field, RecordCheck check, bool single = false)
     {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
         for (int i = 0; i < placements.Count; i++)
         {
             string path = single ? field : $"{field}[{i}]";
+            // An authored id is the placement's identity in saves (4i-3): two of one id would be one entity.
+            if (!string.IsNullOrWhiteSpace(placements[i].Id) && !ids.Add(placements[i].Id.Trim()))
+                check.Error(path + ".Id", $"another placement already has the id '{placements[i].Id}'");
             if (placements[i].Prefab.Id.IsEmpty)
                 check.Error(path, "a placement needs a \"prefab\"");
             else

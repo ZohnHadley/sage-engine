@@ -73,7 +73,7 @@ internal static class ScaleConsoleCommands
             float y = terrain?.HeightAt(x, z) ?? 0f;
             var at = new Vector3(x, y, z);
 
-            var entity = prefab.IsEmpty ? world.Create(Transform.At(at), "scale") : world.Spawn(prefab, at);
+            var entity = prefab.IsEmpty ? world.Create(Transform.At(at), "scale") : world.SpawnWithoutId(prefab, at);
             if (entity.IsNull) break;      // a bad prefab: stop rather than log the same failure N times
             made++;
         }

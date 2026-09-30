@@ -25,6 +25,9 @@ public struct RenderStats
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int Skinned;
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0126", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int Bones;
 
+    // Items in the sun's caster view this frame (issue 4h-4), drawn into its shadow map: 0 with `r_shadows 0` or at night.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int ShadowCasters;
+
     // Full-screen draws of the post-processing chain this frame (issue 4h-6): 0 while it is off.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int PostSteps;
 }
@@ -142,7 +145,8 @@ public sealed class Renderer : IDisposable
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  views {LastFrame.Views} ({LastFrame.TargetViews} into render targets, {_targets.Count} target(s)), items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
-                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones); " +
+                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), " +
+                                     $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}; " +
                                      $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials" + PostStats()));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
@@ -216,6 +220,7 @@ public sealed class Renderer : IDisposable
     public bool ReleaseTarget(string name) => _targets.Release(name);
 
     internal int DeclareTargetId(string name, int width, int height) => _targets.Declare(name, width, height);
+    internal int DeclareTargetId(string name, int width, int height, SurfaceFormat format, DepthFormat depth) => _targets.Declare(name, width, height, format, depth);
     internal int TargetId(string name) => _targets.Id(name);
     internal string TargetName(int target) => _targets.Name(target);
 
@@ -476,6 +481,8 @@ public sealed class Renderer : IDisposable
         _wire = _wireframe.Value;
         var clear = new Color(s.Environment.ClearColor);   // the sky: a clear colour until a Sky pass draws one (4h-5)
         var ctx = Begin(world, s, screen, extracting: false);
+        _shadow.Drawn = false;   // until `sage:shadow` draws this world's map
+        _shadowMap = null;
 
         // Post-processing (issue 4h-6): with the chain on, the screen's views draw into `sage:scene`
         // (at the render scale's size) instead of the back buffer; PostProcess draws it out below.
@@ -483,7 +490,7 @@ public sealed class Renderer : IDisposable
         // post-processed twice.
         _toScene = screen && PreparePost();
 
-        // Shadow: once, before any view (4h-4's shadow map). A pass there binds its own target.
+        // Shadow: once, before any view (`sage:shadow`, issue 4h-4). A pass there binds its own target.
         _bound = NotBound;
         _passBound = false;
         RunFrameStage(ctx, RenderStage.Shadow);
@@ -494,6 +501,7 @@ public sealed class Renderer : IDisposable
             int index = s.DrawOrder[k];
             ref var view = ref s.Views[index];
             if (view.Target == RenderViewPlan.Screen && !screen) continue;   // CameraExtract already drops these
+            if (view.ShadowCaster) continue;                                  // drawn by `sage:shadow`, in the Shadow stage
             if (view.Target != _bound || _passBound) Bind(view.Target, clear);
             DrawView(ctx, s, index, clear);
             _stats.Views++;
@@ -838,6 +846,73 @@ public sealed class Renderer : IDisposable
 
     private int _current;   // the material currently applied to the device
 
+    // ---- Sun shadows (issue 4h-4) ----
+
+    // This frame's shadow map, for the lit shaders (EffectBinding.SetFrame): set by DrawShadowCasters,
+    // cleared at the start of each Draw so a world without one reads strength 0.
+    private ShadowFrame _shadow = new() { View = -1 };
+    private Texture2D? _shadowMap;
+
+    // `sage:shadow`'s Draw: the caster view's items into the map, with lit.fx's ShadowCaster (or
+    // ShadowCasterSkinned) whatever each item's material is: a caster only needs its depth. The map holds
+    // light-space depth in [0, 1], cleared to 1 (nothing in the way).
+    internal void DrawShadowCasters(RenderContext ctx)
+    {
+        var s = ctx.Snapshot;
+        if (s.Shadow.View < 0) return;
+        ref var view = ref s.Views[s.Shadow.View];
+        _stats.ShadowCasters += view.ItemCount;   // what the caster view holds, drawn or not (r_stats)
+
+        // A default material that could not be built (no shaders: Linux CI) is already reported, under Shaders.
+        var material = Materials.Get(Materials.Resolve(MaterialRecord.Default));
+        if (material == null || material.IsError) return;
+        var caster = material.Effect;
+        if (caster.ShadowCaster == null)
+        {
+            Log.Once(LogCat.Shaders, LogLevel.Warn, "no-shadow-caster", $"{MaterialRecord.Default}'s effect has no ShadowCaster technique; no sun shadows");
+            return;
+        }
+
+        SetTarget(s.Shadow.Target);
+        _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Vector4.One, 1f, 0);
+        _device.BlendState = BlendState.Opaque;
+        _device.DepthStencilState = DepthStencilState.Default;
+        _device.RasterizerState = RasterizerState.CullNone;   // open meshes (terrain) cast from either side
+        var effect = caster.Effect;
+        caster.ViewProj?.SetValue(view.ViewProj);
+        caster.FrameStamp = -1;   // the next view sets its own frame parameters on this effect
+        _current = -1;
+
+        for (int k = view.ItemStart; k < view.ItemStart + view.ItemCount; k++)
+        {
+            ref var item = ref s.Items[s.Order[k]];
+            var technique = caster.ShadowCaster;
+            if (item.BoneCount > 0 && caster.ShadowCasterSkinned != null && caster.Bones != null)
+            {
+                var palette = s.Bones.AsSpan().Slice(item.BoneStart, item.BoneCount);
+                for (int i = 0; i < palette.Length; i++) _bones[i] = palette[i];   // System.Numerics → MonoGame (implicit)
+                caster.Bones.SetValue(_bones);
+                technique = caster.ShadowCasterSkinned;
+            }
+            caster.World?.SetValue(item.World);
+            effect.CurrentTechnique = technique;
+            var part = _meshes[item.Mesh].Parts[item.Part];
+            _device.SetVertexBuffer(part.VertexBuffer);
+            _device.Indices = part.IndexBuffer;
+            foreach (var pass in technique.Passes)
+            {
+                pass.Apply();
+                _device.DrawIndexedPrimitives(PrimitiveType.TriangleList, part.VertexOffset, part.StartIndex, part.PrimitiveCount);
+                _stats.DrawCalls++;
+                _stats.Triangles += part.PrimitiveCount;
+            }
+        }
+
+        s.Shadow.Drawn = true;
+        _shadow = s.Shadow;
+        _shadowMap = _targets.Texture(s.Shadow.Target);
+    }
+
     // The pooled planning arrays grow with the scene and are never shrunk (06 §3.2).
     private static void Grow(int count, ref ulong[] keys, ref int[] other)
     {
@@ -868,7 +943,7 @@ public sealed class Renderer : IDisposable
         }
         if (m.Effect.FrameStamp != _viewStamp)
         {
-            m.Effect.SetFrame(view, env);
+            m.Effect.SetFrame(view, env, _shadow, _shadowMap, Materials.MissingTexture);
             m.Effect.FrameStamp = _viewStamp;
         }
         if (material != _current)
@@ -1028,6 +1103,9 @@ internal sealed class RendererCVars
     public readonly CVar<bool> DebugThroughWalls;
     public readonly CVar<int> TestView;
     public readonly CVar<bool> TestSkin;
+    public readonly CVar<bool> Shadows;
+    public readonly CVar<int> ShadowSize;
+    public readonly CVar<float> ShadowDistance;
 
     // Post-processing (issue 4h-6): the post_effect chain, the engine's two effects' switches, and the
     // render scale (06 §3.9), which works with the chain off too.
@@ -1050,6 +1128,12 @@ internal sealed class RendererCVars
             "2 draws a top-down map into the render target 'testview' and shows it in a corner.", 0, 2);
         TestSkin = cvars.Register("r_testskin", false, CVarFlags.DevOnly | CVarFlags.Cheat,
             "Draw a generated skinned model in front of the camera, bending (issue #117): GPU skinning with no content.");
+        Shadows = cvars.Register("r_shadows", false, CVarFlags.None,
+            "Sun shadows (issue 4h-4): one stable shadow map over the nearest r_shadow_distance metres of the view.");
+        ShadowSize = cvars.Register("r_shadow_size", ShadowMath.DefaultSize, CVarFlags.None,
+            "The sun's shadow map, in texels a side.", 256, 4096);
+        ShadowDistance = cvars.Register("r_shadow_distance", ShadowMath.DefaultDistance, CVarFlags.None,
+            "How far from the camera the sun's shadows reach, in metres (the map covers this slice of the view).", 5f, 500f);
         Post = cvars.Register("r_post", false, CVarFlags.Archive,
             "Post-processing (issue 4h-6): the screen is drawn into sage:scene and through the post_effect chain (colour grade, vignette) before the UI.");
         Scale = cvars.Register("r_scale", 1f, CVarFlags.Archive,

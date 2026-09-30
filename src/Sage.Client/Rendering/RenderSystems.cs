@@ -60,6 +60,7 @@ internal sealed class CameraExtract : ISystem
         env.AmbientSky = e.AmbientSky;
         env.AmbientGround = e.AmbientGround;
         env.Time = (float)ctx.Frame.RealTime;
+        env.ShadowStrength = ShadowMath.Strength(e.ShadowStrength, e.SunDirection);
     }
 
     // One view into the snapshot, with its culling frustum (kept while r_freezecull holds it); its index.
@@ -92,6 +93,7 @@ internal sealed class CameraExtract : ISystem
         view.Order = request.Order;
         view.Hidden = request.Hidden.IsNull ? 0 : request.Hidden.Id;
         view.DepthOnly = false;          // pooled: the slot may have been last frame's viewmodel view
+        view.ShadowCaster = false;       // or its shadow casters
 
         Vector3 forward = Vector3.Transform(Vector3.Forward, request.Rotation);
         Vector3 up = Vector3.Transform(Vector3.Up, request.Rotation);
@@ -155,11 +157,13 @@ internal sealed class MeshExtract : ISystem
                 // Interpolated once; made camera-relative once per view (issue #77).
                 Matrix pose = g[n].Interpolated(alpha).ToMatrix();   // System.Numerics → MonoGame (implicit)
                 int id = hiding ? entities.EntityAt(n).Id : 0;
+                bool casts = ShadowMath.Casts(material.Pass, material.CastShadows);
 
                 for (int v = 0; v < views; v++)
                 {
                     ref var view = ref s.Views[v];
                     if (hiding && view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
+                    if (view.ShadowCaster && !casts) continue;                        // the sun's view keeps casters only (4h-4)
                     Vector3 cullOffset = view.CameraPosition - s.CullOrigins[v];   // non-zero only while r_freezecull holds an old frustum
                     var frustum = s.Frustum(v);
                     Matrix world = pose;
@@ -274,6 +278,7 @@ internal sealed class SkinnedMeshExtract : ISystem
                     Snapshot = s, Mesh = mesh, MeshId = meshId, MaterialId = materialId, Pass = material.Pass, Layer = sr.Layer,
                     Pose = g[n].Interpolated(alpha).ToMatrix(),   // System.Numerics → MonoGame (implicit)
                     Hidden = hiding ? id : 0,
+                    Casts = ShadowMath.Casts(material.Pass, material.CastShadows),
                 };
                 SkinnedExtract.Emit(ref draws, joints, inverseBind, mesh.Name);
             }
@@ -289,6 +294,7 @@ internal sealed class SkinnedMeshExtract : ISystem
         public RenderPass Pass;
         public byte Layer;
         public Matrix Pose;
+        public bool Casts;   // drawn into the sun's view too (4h-4)
 
         public readonly int Views => Snapshot.Views.Count;
 
@@ -298,6 +304,7 @@ internal sealed class SkinnedMeshExtract : ISystem
             var s = Snapshot;
             ref var view = ref s.Views[v];
             if (Hidden != 0 && view.Hidden == Hidden) return false;   // a camera's own body (ViewSource.HiddenFor)
+            if (view.ShadowCaster && !Casts) return false;             // the sun's view keeps casters only (4h-4)
             Matrix world = Pose;
             world.Translation -= view.CameraPosition;
             var bounds = Mesh.Parts[0].Bounds;
@@ -415,6 +422,7 @@ internal sealed class LightExtract : ISystem
         for (int v = 0; v < snapshot.Views.Count; v++)
         {
             ref var view = ref snapshot.Views[v];
+            if (view.ShadowCaster) continue;   // casters are not lit (4h-4)
             Vector3 camera = view.CameraPosition;
             view.LightStart = snapshot.Lights.Count;
 
@@ -461,6 +469,7 @@ internal sealed class DebugExtract : ISystem
         for (int v = 0; v < s.Views.Count; v++)
         {
             ref var view = ref s.Views[v];
+            if (view.ShadowCaster) continue;   // debug lines cast no shadow (4h-4)
             var camera = view.CameraPosition;
             view.DebugStart = s.DebugLines.Count;
             foreach (var line in _lines)
@@ -551,6 +560,7 @@ internal sealed class SpriteExtract : ISystem
                 for (int v = 0; v < views; v++)
                 {
                     ref var view = ref s.Views[v];
+                    if (view.ShadowCaster) continue;                       // sprites cast no shadow (4h-4)
                     if (view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
                     Vector3 camera = view.CameraPosition;
 

@@ -101,7 +101,7 @@ public sealed class PlayerCameraSystem : ISystem
         var at = world.TryGet<Transform>(pawn, out var transform) ? transform.LocalPosition : default;
         Entity camera = default;
         if (world.Engine is { } engine && engine.Records.TryGet(Prefab, out PrefabRecord _))
-            camera = world.Spawn(Prefab, at);
+            camera = world.SpawnWithoutId(Prefab, at);
         if (camera.IsNull)
         {
             camera = world.Create(Transform.At(at), "player camera");
