@@ -225,11 +225,55 @@ public sealed class Renderer : IDisposable
     // error mesh) when it cannot be read.
     private int LoadMesh(string name, System.IO.Stream stream)
     {
-        if (!GltfLoader.TryLoad(stream, name, out var model))
+        var mesh = BuildMesh(name, stream);
+        if (mesh == null)
         {
             Log.Warn(LogCat.Render, $"Mesh '{name}' could not be read; drawing the error mesh");
             return 0;
         }
+        _meshes.Add(mesh);
+        return _meshes.Count - 1;
+    }
+
+    // Hot reload of a `.glb` (issue 4h-3): the file is read again and the mesh replaces the old one *in
+    // its slot*, so every id already handed out — in materials, components, this frame's snapshot —
+    // draws the new geometry. A file that cannot be read keeps the old mesh. Returns false when the
+    // path was never loaded, and a path that had fallen back to the error mesh gets a real one now.
+    // Runs in FrameUpdate, before Extract and Render, so no snapshot holds an index into the old parts.
+    internal bool ReloadMesh(AssetPath path)
+    {
+        if (!_meshIds.TryGetValue(path, out int id)) return false;
+
+        using var stream = _content.Open(path);
+        var fresh = stream == null ? null : BuildMesh(path.ToString(), stream);
+        if (fresh == null)
+        {
+            Log.Warn(LogCat.Render, $"Mesh '{path}' did not reload; keeping the copy already loaded");
+            return false;
+        }
+
+        if (id == 0)
+        {
+            _meshes.Add(fresh);
+            _meshIds[path] = _meshes.Count - 1;
+            return true;
+        }
+
+        var old = _meshes[id];
+        _meshes[id] = fresh;
+        if (old.Owned)
+            foreach (var part in old.Parts)
+            {
+                part.VertexBuffer.Dispose();
+                part.IndexBuffer.Dispose();
+            }
+        return true;
+    }
+
+    // The mesh for a `.glb` stream, not yet in the table; null when it cannot be read.
+    private MeshData? BuildMesh(string name, System.IO.Stream stream)
+    {
+        if (!GltfLoader.TryLoad(stream, name, out var model)) return null;
 
         var parts = new List<MeshPart>(model.Parts.Count);
         bool skinned = false;
@@ -265,8 +309,7 @@ public sealed class Renderer : IDisposable
 
         // Owned: these buffers are the renderer's, so they are disposed with it. An `.xnb` model
         // belonged to the ContentManager, which is the thing that has gone away.
-        _meshes.Add(new MeshData { Name = name, Parts = parts.ToArray(), Owned = true, Skin = skinned ? model.Skin : null });
-        return _meshes.Count - 1;
+        return new MeshData { Name = name, Parts = parts.ToArray(), Owned = true, Skin = skinned ? model.Skin : null };
     }
 
     // A mesh built by the engine or a game (terrain chunks, 14 §3): the renderer owns the buffers and

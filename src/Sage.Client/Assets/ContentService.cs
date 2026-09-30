@@ -42,6 +42,15 @@ public sealed class ContentService : IDisposable
     // Raised on the main thread after an asset has been reloaded, with the path that changed.
     public event Action<AssetPath>? Reloaded;
 
+    // Raised just before a reloaded sound's old `SoundEffect` is disposed, with its path (issue 4h-3).
+    // Disposing a `SoundEffect` disposes the instances made from it, so whoever holds instances of
+    // it — the audio backends — drops them here, and the mixers invalidate the voices.
+    internal event Action<AssetPath>? SoundReplacing;
+
+    // Meshes live in the renderer's table, not here: it sets this and `Reload` asks it for a `.glb`
+    // (issue 4h-3). Returns whether a loaded mesh was replaced.
+    internal Func<AssetPath, bool>? ModelReloader { get; set; }
+
     // Drops one asset and loads it again, keeping the cache key. Returns false when nothing was
     // cached under that path — reloading something nobody has asked for yet is not an error, it just
     // has nothing to do.
@@ -92,15 +101,39 @@ public sealed class ContentService : IDisposable
             return true;
         }
 
+        // A sound (issue 4h-3). MonoGame's ownership is the catch: disposing a `SoundEffect` disposes
+        // the instances made from it, so the backends drop theirs first (`SoundReplacing`) and the
+        // mixers stop the one-shots and restart the loops from the fresh file.
+        if (_sounds.TryGetValue(path, out var oldSound))
+        {
+            _sounds.Remove(path);
+            var fresh = LoadSound(path);
+            if (fresh == null || ReferenceEquals(fresh, oldSound))
+            {
+                _sounds[path] = oldSound;
+                Log.Warn(LogCat.Audio, $"{path} did not reload; keeping the sound already loaded");
+                return false;
+            }
+            SoundReplacing?.Invoke(path);
+            oldSound?.Dispose();
+            Log.Info(LogCat.Assets, $"Reloaded sound {path}");
+            Reloaded?.Invoke(path);
+            return true;
+        }
+
+        if (path.Path.Value.EndsWith(".glb", StringComparison.OrdinalIgnoreCase) && ModelReloader?.Invoke(path) == true)
+        {
+            Log.Info(LogCat.Assets, $"Reloaded model {path}");
+            Reloaded?.Invoke(path);
+            return true;
+        }
+
         return false;
     }
 
-    // Everything currently loaded, for `asset_list`. Since R12 every one of them is a *file*, which is
-    // most of what reloading needed — but a sound is still refused, and the reason is MonoGame's
-    // ownership rather than ours: `AudioBackend` keeps a `SoundEffectInstance` per voice, and disposing
-    // a `SoundEffect` disposes the instances made from it, so a reload mid-playback would leave the
-    // mixer holding disposed objects. Swapping a sound means teaching the backend to drop its voices
-    // first (F32). A list that claims otherwise is worse than one that says no.
+    // Everything currently loaded, for `asset_list`. Every one of them is a *file* since R12, and all
+    // of them can be reloaded: a sound since issue 4h-3 (the backends drop their instances first).
+    // Models are not listed: the renderer's mesh table holds them, and `asset_reload <path>` asks it.
     public IEnumerable<(AssetPath Path, string Kind, bool CanReload)> Cached
     {
         get
@@ -108,7 +141,7 @@ public sealed class ContentService : IDisposable
             foreach (var path in _textures.Keys) yield return (path, "texture", true);
             foreach (var path in _effects.Keys) yield return (path, "effect", true);
             foreach (var path in _fonts.Keys) yield return (path, "font", true);
-            foreach (var path in _sounds.Keys) yield return (path, "sound", false);
+            foreach (var path in _sounds.Keys) yield return (path, "sound", true);
         }
     }
 
@@ -243,5 +276,6 @@ public sealed class ContentService : IDisposable
     {
         foreach (var e in _effects.Values) e?.Dispose();
         foreach (var t in _textures.Values) t?.Dispose();
+        foreach (var sound in _sounds.Values) sound?.Dispose();
     }
 }

@@ -907,3 +907,4 @@ static Sage.Simulation.WorldClock.Between(double hour, double from, double to) -
 static Sage.Simulation.WorldClock.Format(double hour) -> string!
 static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldClock!
 static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
+Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int
