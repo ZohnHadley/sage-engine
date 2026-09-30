@@ -40,6 +40,20 @@ public sealed class WeatherRecord
     public float SunScale = 1f;                   // how much of the sun is left: 0.4 is a heavy sky
     public float AmbientScale = 1f;
 
+    // **How it adjusts a world that has a sky** (issue 4h-2, decision 5). With a `sky` record the fog and
+    // sky colours above are not used: they would replace the dusk the clock has reached. Weather instead
+    // tints and scales the sky's own values, and the defaults here are a clear sky, so `sage:clear` (and
+    // any record that says nothing) changes nothing. `SunScale` and `AmbientScale` apply as before, and
+    // `SunScale` softens shadows as well.
+    [Property(Tooltip = "With a sky: multiplies the sky's fog colour (a storm's grey is a dark tint)", Category = "Sky")]
+    public Vector3 FogTint = Vector3.One;
+    [Property(Tooltip = "With a sky: multiplies the sky's horizon and zenith colours", Category = "Sky")]
+    public Vector3 SkyTint = Vector3.One;
+    [Property(Min = 0, Tooltip = "With a sky: multiplies where fog begins (below 1 pulls it in)", Category = "Sky")]
+    public float FogStartScale = 1f;
+    [Property(Min = 0, Tooltip = "With a sky: multiplies where fog is complete", Category = "Sky")]
+    public float FogEndScale = 1f;
+
     // What it sounds like: a 2D looping sound, started when this weather takes hold and stopped when it
     // lets go (11 §3). Rain you cannot hear is a screen saver.
     public RecordRef<SoundRecord> Sound;

@@ -156,6 +156,9 @@ public sealed class Engine : IDisposable
         {
             world.Resources.Add(new CameraViews());
             world.Resources.Add(new Vars());                     // world variables (issue #89), saved
+            world.Resources.Add(new WorldClock());               // time of day (issue 4h-2), saved
+            world.AddSystem(new WorldClockSystem(world));
+            world.AddSystem(new SkySystem(world));               // lights the world by its `sky`, if it has one
             world.AddSystem(new CameraDirector(world));
             world.AddSystem(new ScriptedCameraSystem(world));     // holds run out (issue #80)
             world.AddSystem(new CameraInputLockSystem(world));    // a cut may hold the player still

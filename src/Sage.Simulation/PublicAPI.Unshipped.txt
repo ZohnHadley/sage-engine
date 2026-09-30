@@ -49,6 +49,7 @@ const Sage.Simulation.Viewmodel.DefaultFar = 10 -> float
 const Sage.Simulation.Viewmodel.DefaultFovY = 54 -> float
 const Sage.Simulation.Viewmodel.DefaultNear = 0.01 -> float
 const Sage.Simulation.Viewmodels.SystemId = "sage.camera.viewmodel" -> string!
+const Sage.Simulation.WorldClock.HoursPerDay = 24 -> double
 override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
 override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
@@ -490,6 +491,10 @@ Sage.Simulation.PlayerCameraSystem
 Sage.Simulation.PlayerCameraSystem.PlayerCameraSystem(Sage.Simulation.World! world) -> void
 Sage.Simulation.PlayerCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.PoseSampler
+Sage.Simulation.RenderEnvironment.ShadowStrength -> float
+Sage.Simulation.RenderEnvironment.Zenith -> System.Numerics.Vector3
+Sage.Simulation.SceneEnvironment.Hour -> float?
+Sage.Simulation.SceneEnvironment.Sky -> Sage.Core.RecordRef<Sage.Simulation.SkyRecord!>
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
@@ -541,6 +546,50 @@ Sage.Simulation.SkeletonSocketsRecord
 Sage.Simulation.SkeletonSocketsRecord.Model -> Sage.Core.AssetPath
 Sage.Simulation.SkeletonSocketsRecord.SkeletonSocketsRecord() -> void
 Sage.Simulation.SkeletonSocketsRecord.Sockets -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.SkeletonSocket!>!
+Sage.Simulation.SkyKey
+Sage.Simulation.SkyKey.AmbientGround -> System.Numerics.Vector3
+Sage.Simulation.SkyKey.AmbientSky -> System.Numerics.Vector3
+Sage.Simulation.SkyKey.Fog -> System.Numerics.Vector3
+Sage.Simulation.SkyKey.FogEnd -> float
+Sage.Simulation.SkyKey.FogStart -> float
+Sage.Simulation.SkyKey.Horizon -> System.Numerics.Vector3
+Sage.Simulation.SkyKey.Hour -> float
+Sage.Simulation.SkyKey.Shadow -> float
+Sage.Simulation.SkyKey.SkyKey() -> void
+Sage.Simulation.SkyKey.Sun -> System.Numerics.Vector3
+Sage.Simulation.SkyKey.Zenith -> System.Numerics.Vector3
+Sage.Simulation.SkyRecord
+Sage.Simulation.SkyRecord.Keys -> System.Collections.Generic.List<Sage.Simulation.SkyKey!>!
+Sage.Simulation.SkyRecord.Lean -> float
+Sage.Simulation.SkyRecord.SkyRecord() -> void
+Sage.Simulation.SkyRecord.Sunrise -> float
+Sage.Simulation.SkyRecord.Sunset -> float
+Sage.Simulation.SkyRules
+Sage.Simulation.SkyState
+Sage.Simulation.SkyState.AmbientGround.get -> System.Numerics.Vector3
+Sage.Simulation.SkyState.AmbientGround.init -> void
+Sage.Simulation.SkyState.AmbientSky.get -> System.Numerics.Vector3
+Sage.Simulation.SkyState.AmbientSky.init -> void
+Sage.Simulation.SkyState.Fog.get -> System.Numerics.Vector3
+Sage.Simulation.SkyState.Fog.init -> void
+Sage.Simulation.SkyState.FogEnd.get -> float
+Sage.Simulation.SkyState.FogEnd.init -> void
+Sage.Simulation.SkyState.FogStart.get -> float
+Sage.Simulation.SkyState.FogStart.init -> void
+Sage.Simulation.SkyState.Horizon.get -> System.Numerics.Vector3
+Sage.Simulation.SkyState.Horizon.init -> void
+Sage.Simulation.SkyState.ShadowStrength.get -> float
+Sage.Simulation.SkyState.ShadowStrength.init -> void
+Sage.Simulation.SkyState.SkyState() -> void
+Sage.Simulation.SkyState.SkyState(System.Numerics.Vector3 SunDirection, float SunElevation, System.Numerics.Vector3 SunColor, System.Numerics.Vector3 AmbientSky, System.Numerics.Vector3 AmbientGround, System.Numerics.Vector3 Horizon, System.Numerics.Vector3 Zenith, System.Numerics.Vector3 Fog, float FogStart, float FogEnd, float ShadowStrength) -> void
+Sage.Simulation.SkyState.SunColor.get -> System.Numerics.Vector3
+Sage.Simulation.SkyState.SunColor.init -> void
+Sage.Simulation.SkyState.SunDirection.get -> System.Numerics.Vector3
+Sage.Simulation.SkyState.SunDirection.init -> void
+Sage.Simulation.SkyState.SunElevation.get -> float
+Sage.Simulation.SkyState.SunElevation.init -> void
+Sage.Simulation.SkyState.Zenith.get -> System.Numerics.Vector3
+Sage.Simulation.SkyState.Zenith.init -> void
 Sage.Simulation.StateMachine
 Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
 Sage.Simulation.StateMachine.Machine -> Sage.Core.RecordId
@@ -660,6 +709,22 @@ Sage.Simulation.ViewmodelRecord.ViewmodelRecord() -> void
 Sage.Simulation.ViewmodelRecord.Weapon -> Sage.Core.AssetPath
 Sage.Simulation.ViewmodelRecord.WeaponMaterial -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
 Sage.Simulation.Viewmodels
+Sage.Simulation.WeatherRecord.FogEndScale -> float
+Sage.Simulation.WeatherRecord.FogStartScale -> float
+Sage.Simulation.WeatherRecord.FogTint -> System.Numerics.Vector3
+Sage.Simulation.WeatherRecord.SkyTint -> System.Numerics.Vector3
+Sage.Simulation.WorldClock
+Sage.Simulation.WorldClock.Advance(double realSeconds) -> void
+Sage.Simulation.WorldClock.Day.get -> int
+Sage.Simulation.WorldClock.Day.set -> void
+Sage.Simulation.WorldClock.Elapsed.get -> double
+Sage.Simulation.WorldClock.Hour.get -> double
+Sage.Simulation.WorldClock.Hour.set -> void
+Sage.Simulation.WorldClock.Scale.get -> double
+Sage.Simulation.WorldClock.Scale.set -> void
+Sage.Simulation.WorldClock.Sky.get -> Sage.Core.RecordId
+Sage.Simulation.WorldClock.Sky.set -> void
+Sage.Simulation.WorldClock.WorldClock() -> void
 static readonly Sage.Simulation.PlayerCameraSystem.Prefab -> Sage.Core.RecordId
 Sage.Simulation.Placement.Outputs -> System.Collections.Generic.List<Sage.Simulation.Connection!>!
 Sage.Simulation.ScriptedCamera
@@ -740,6 +805,10 @@ static Sage.Simulation.PoseSampler.ClipTime(Sage.Simulation.AnimationClip! clip,
 static Sage.Simulation.PoseSampler.Sample(Sage.Simulation.AnimationClip! clip, float time, bool loop, Sage.Simulation.SkeletonPose! pose) -> void
 static Sage.Simulation.PoseSampler.ToModelSpace(Sage.Simulation.Skeleton! skeleton, Sage.Simulation.SkeletonPose! pose) -> void
 static Sage.Simulation.PoseSampler.ToModelSpace(Sage.Simulation.Skeleton! skeleton, Sage.Simulation.SkeletonPose! pose, int firstJoint) -> void
+static Sage.Simulation.SkyRules.Apply(Sage.Simulation.SkyRecord! sky, double hour, Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather, Sage.Simulation.RenderEnvironment! environment) -> void
+static Sage.Simulation.SkyRules.Current(Sage.Core.RecordStore! records, Sage.Simulation.WorldClock? clock) -> Sage.Simulation.SkyRecord?
+static Sage.Simulation.SkyRules.Evaluate(Sage.Simulation.SkyRecord! sky, double hour) -> Sage.Simulation.SkyState
+static Sage.Simulation.SkyRules.SunAt(Sage.Simulation.SkyRecord! sky, double hour) -> (System.Numerics.Vector3 ToSun, float Elevation)
 static Sage.Simulation.StateMachines.FirstTransition(System.Collections.Generic.IReadOnlyList<Sage.Simulation.StateTransition!>? transitions, string? input, float timeInState, in Sage.Simulation.ConditionContext context) -> Sage.Simulation.StateTransition?
 static Sage.Simulation.StateMachines.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
 static Sage.Simulation.StateMachines.SetState(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity)) -> bool
@@ -788,3 +857,7 @@ static Sage.Simulation.Viewmodels.Show(Sage.Simulation.World! world, Sage.Simula
 static Sage.Simulation.Viewmodels.WeaponOf(Sage.Simulation.World! world, Sage.Simulation.Entity camera) -> Sage.Simulation.Entity
 Sage.Simulation.LayerMatrix.QueryOnly.get -> Sage.Simulation.LayerMask
 Sage.Simulation.LayerMatrix.Sees(Sage.Simulation.LayerMask mask, int layer) -> bool
+static Sage.Simulation.WorldClock.Between(double hour, double from, double to) -> bool
+static Sage.Simulation.WorldClock.Format(double hour) -> string!
+static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldClock!
+static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
