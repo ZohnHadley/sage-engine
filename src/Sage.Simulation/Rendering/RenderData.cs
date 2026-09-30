@@ -83,6 +83,13 @@ public sealed class RenderEnvironment
     public Vector3 SunColor = new(0.85f, 0.82f, 0.75f);
     public Vector3 AmbientSky = new(0.45f, 0.47f, 0.52f);
     public Vector3 AmbientGround = new(0.22f, 0.20f, 0.17f);
+
+    // Written by the sky (issue 4h-2); the sky and shadow passes read them. Without a sky they stay at
+    // these defaults, which is today's look.
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public Vector3 Zenith = new(0.333f, 0.420f, 0.184f);     // the sky overhead (ClearColor is the horizon's)
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float ShadowStrength = 1f;                        // 0 (none, as at night) to 1 (full)
 }
 
 public enum RenderPass { Opaque, AlphaTested, Transparent }

@@ -890,6 +890,27 @@
               "$ref": "ids.schema.json#/definitions/record:weather"
             }
           ]
+        },
+        "sky": {
+          "description": "The sky the scene's world is lit by (issue 4h-2); left out, the world's own (none: the light the game set) Names a sky record. (RecordRef<SkyRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:sky"
+            }
+          ]
+        },
+        "hour": {
+          "description": "The hour the scene starts at; left out, the clock's. Unit: h. Range: 0 to 24. (float?)",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

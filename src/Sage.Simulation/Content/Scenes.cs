@@ -53,6 +53,11 @@ public sealed class SceneEnvironment
 {
     [Property(Tooltip = "The weather the scene starts in; left out, the world's own (clear)")]
     public RecordRef<WeatherRecord> Weather;
+
+    [Property(Tooltip = "The sky the scene's world is lit by (issue 4h-2); left out, the world's own (none: the light the game set)")]
+    public RecordRef<SkyRecord> Sky;
+    [Property(Min = 0, Max = 24, Unit = "h", Tooltip = "The hour the scene starts at; left out, the clock's")]
+    public float? Hour;
 }
 
 // Placed by a scene, so hot reload and `scene_load` know what to sweep away and put back. Never on the
@@ -227,6 +232,11 @@ public sealed class Scenes
 
     private void ApplyEnvironment(World world, SceneRecord scene)
     {
+        if (world.Resources.TryGet<WorldClock>(out var clock) && clock != null)
+        {
+            if (!scene.Environment.Sky.Id.IsEmpty) clock.Sky = scene.Environment.Sky.Id;
+            if (scene.Environment.Hour is { } hour) clock.Hour = hour;
+        }
         if (scene.Environment.Weather.Id.IsEmpty || !world.Resources.TryGet<Weather>(out var weather) || weather == null) return;
         // Settled at once: a scene starts in its weather rather than watching it roll in.
         weather.Current = weather.Target = scene.Environment.Weather.Id;
