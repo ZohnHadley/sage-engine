@@ -66,7 +66,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | Capability | FPS (HL1) | 3rd-person action (Lugaru) | Top-down / iso RPG | 2D platformer | RTS / battles (Warband) | Puzzle / card / UI-heavy | **Your game** (Daggerfall) | Sage today |
 |---|---|---|---|---|---|---|---|---|
 | App kernel, plugins, records, VFS, console, saves | ● | ● | ● | ● | ● | ● | ● | ✅ mostly; boot and plugins need redoing (§3.2–3.3) |
-| ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are the engine's (#29). Prefab overrides and nesting missing (F31) |
+| ECS, scheduler, events, prefabs, scenes | ● | ● | ● | ● | ● | ● | ● | ✅ core. Scenes are the engine's (#29). Prefab overrides and nesting (F31) since 4i-1 |
 | **Cameras as components**: perspective and ortho, rigs, several viewports | ● | ● | ● | ● | ● | ● | ● | ❌ one `ActiveCamera` resource, perspective only (`RenderSystems.cs:48`), one first-person rig (`CharacterController.cs:417`) |
 | 3D physics, queries, triggers | ● | ● | ● | ○ | ● | ○ | ● | ✅ Bepu |
 | 2D physics (bodies, tiles, one-way platforms, slopes) | | | ● | ● | | ○ | | ❌ |

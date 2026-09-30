@@ -59,12 +59,14 @@ internal static class PrefabKeys
         return keys;
     }
 
-    // The prefab with a map entity's keys applied; the prefab itself when none of them are its keys.
-    // A value that does not read as its field's type is an error naming the key, and is skipped.
-    public static PrefabRecord Apply(Engine engine, RecordId id, PrefabRecord prefab, IReadOnlyDictionary<string, string> entityKeys,
-                                     string where)
+    // A map entity's keys as overrides of the prefab (phase 4i): `"light.range" "12"` is
+    // `{ "parts": { "light": { "range": 12 } } }`, merged by the same code a placement's overrides are
+    // (PrefabOverriding). Null when none of them are the prefab's keys. A value that does not read as its
+    // field's type is an error naming the key, and is skipped.
+    public static PrefabOverrides? Overrides(Engine engine, RecordId id, PrefabRecord prefab, IReadOnlyDictionary<string, string> entityKeys,
+                                             string where)
     {
-        PrefabRecord? copy = null;
+        PrefabOverrides? overrides = null;
         foreach (var key in For(engine, id, prefab))
         {
             if (!entityKeys.TryGetValue(key.Key, out var text)) continue;
@@ -74,27 +76,13 @@ internal static class PrefabKeys
                 continue;
             }
 
-            copy ??= new PrefabRecord
-            {
-                Name = prefab.Name,
-                Components = (JsonObject?)prefab.Components?.DeepClone(),
-                Tags = prefab.Tags == null ? new List<string>() : new List<string>(prefab.Tags),
-                Parts = (JsonObject?)prefab.Parts?.DeepClone(),
-            };
-            var section = key.IsPart ? copy.Parts! : copy.Components!;
-            if (section[key.Section] is not JsonObject body)
-            {
-                // `{}`, nothing, or a shorthand's bare value: an object now, keeping what it said.
-                body = new JsonObject();
-                if (key.IsPart && section[key.Section] is { } bare && engine.Prefabs.TryGet(key.Section, out var part) && part.Shorthand != null)
-                    body[Metadata.Camel(part.Shorthand)] = bare.DeepClone();
-                section[key.Section] = body;
-            }
-            // Replace whichever spelling the prefab used, so the value read is this one.
-            foreach (var existing in body.Select(kv => kv.Key).Where(k => Matches(k, key.Field)).ToList()) body.Remove(existing);
+            // The keys were read against the prefab's own fields, so what is left is as good as checked.
+            overrides ??= new PrefabOverrides { CheckedAtLoad = true };
+            var section = key.IsPart ? overrides.Parts ??= new JsonObject() : overrides.Components ??= new JsonObject();
+            if (section[key.Section] is not JsonObject body) section[key.Section] = body = new JsonObject();
             body[key.Field.JsonName] = value;
         }
-        return copy ?? prefab;
+        return overrides;
     }
 
     // The key for one field of a section: `light.range`, `sandbox.hop.base_y`.

@@ -77,6 +77,7 @@ internal static class WorldConsoleCommands
             foreach (var world in engine.Worlds)
                 foreach (var entity in world.Query<Transform>().Entities.ToEntityList())
                 {
+                    if (!world.IsAlive(entity)) continue;   // a prefab's child, gone with its parent
                     if (!World.Describe(entity).Contains(a[0], StringComparison.OrdinalIgnoreCase)) continue;
                     world.Destroy(entity);
                     destroyed++;
@@ -101,8 +102,14 @@ internal static class WorldConsoleCommands
 
                     found++;
                     Log.Info(LogCat.Console, $"[{world.Name}] {World.Describe(e)}");
+                    // Fields a placement or a map key overrode are marked `*` (phase 4i), and part options,
+                    // which are not a component's, are listed after as the overrides wrote them.
+                    var overridden = e.TryGetComponent<PrefabOverridden>(out var o) ? o.Overrides : null;
+                    string prefabNs = e.TryGetComponent<FromPrefab>(out var from) ? from.Prefab.Namespace : "sage";
                     foreach (var (componentId, value) in engine.Components.ComponentsOf(e))
-                        Log.Info(LogCat.Console, $"  {componentId,-28} {Describe(value)}");
+                        Log.Info(LogCat.Console, $"  {componentId,-28} {Describe(value, OverriddenFields(engine, overridden, prefabNs, value.GetType()))}");
+                    if (overridden?.Parts is { Count: > 0 } parts)
+                        Log.Info(LogCat.Console, $"  {"overridden parts",-28} {string.Join("  ", parts.Select(p => $"{p.Key}*={Short(p.Value?.ToJsonString() ?? "null")}"))}");
                     string tags = string.Join(", ", engine.Components.TagsOf(e));
                     if (tags.Length > 0) Log.Info(LogCat.Console, $"  {"tags",-28} {tags}");
                     if (found >= 8) { Log.Info(LogCat.Console, "  ... (stopping at 8 matches)"); return; }
@@ -206,7 +213,21 @@ internal static class WorldConsoleCommands
     // Component values the way a prefab spells them: `field=value unit`, skipping what is at its
     // default, so a dump is the interesting part of an entity rather than a wall of zeroes. The fields,
     // their names, units and defaults come from the metadata table (issue #18).
-    private static string Describe(object value)
+    // The fields of `type` that an entity's overrides write, by JSON name; null when none.
+    private static HashSet<string>? OverriddenFields(Engine engine, PrefabOverrides? overrides, string ns, Type type)
+    {
+        if (overrides?.Components is not { Count: > 0 } components) return null;
+        HashSet<string>? fields = null;
+        foreach (var (name, body) in components)
+        {
+            if (!engine.Components.TryResolveComponent(name, ns, out var resolved, out _) || resolved != type) continue;
+            if (body is not System.Text.Json.Nodes.JsonObject written) continue;
+            foreach (var (field, _) in written) (fields ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase)).Add(field.Replace("_", ""));
+        }
+        return fields;
+    }
+
+    private static string Describe(object value, HashSet<string>? overridden = null)
     {
         var meta = Metadata.Of(value.GetType());
         var parts = new List<string>();
@@ -215,9 +236,10 @@ internal static class WorldConsoleCommands
             if (field.Get == null) continue;
             object? got;
             try { got = field.Get(value); } catch (Exception ex) when (ex is InvalidOperationException or TargetInvocationException) { continue; }
-            if (Same(got, meta.DefaultOf(field))) continue;
+            bool isOverridden = overridden != null && (overridden.Contains(field.JsonName.Replace("_", "")) || overridden.Contains(field.Name));
+            if (!isOverridden && Same(got, meta.DefaultOf(field))) continue;
             string unit = field.Unit != null && got is float or double or int or Vector3 or Vector2 ? " " + field.Unit : "";
-            parts.Add($"{field.JsonName}={Short(Format(got))}{unit}");
+            parts.Add($"{field.JsonName}{(isOverridden ? "*" : "")}={Short(Format(got))}{unit}");
         }
         return parts.Count == 0 ? "(defaults)" : string.Join("  ", parts);
     }

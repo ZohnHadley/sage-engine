@@ -14,9 +14,8 @@ namespace Sage.Simulation;
 // absolute positions — and now there is one: a `placements` document and a `scene` (Scenes.cs) both hold
 // a list of these, written in camel case like every other record file.
 //
-// It is deliberately small. A placement is not a prefab with extras: per-entity overrides are F31's
-// remaining work and want the serializer's field metadata (09 §3.2), so this is the part that can be
-// written honestly today.
+// It is deliberately small. A placement is not a prefab with extras: what one thing does differently
+// from its prefab is its `overrides` (phase 4i, PrefabOverrides), merged into a copy of the prefab.
 [Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed class Placement
 {
@@ -32,6 +31,9 @@ public sealed class Placement
     public PlacementFrame? RelativeTo;
     [Property(Tooltip = "Entity I/O wires from this entity's outputs to other entities' inputs")]
     public List<Connection> Outputs = new();
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
+    [Property(Tooltip = "Changes to the prefab for this placement alone: component and part bodies, merged field by field")]
+    public PrefabOverrides? Overrides;
 }
 
 // What a placement's `at` is measured from (issue #29).
@@ -85,7 +87,7 @@ public static class PlacementExtensions
         foreach (var placement in record.Place)
         {
             var at = world.PlacementPosition(placement, record.Origin, record.RelativeTo);
-            var entity = world.Spawn(placement.Prefab, at, placement.Yaw);
+            var entity = world.Spawn(placement.Prefab.Id, at, placement.Yaw, placement.Overrides, $"placements {document}");
             if (entity.IsNull) continue;
 
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
@@ -169,6 +171,8 @@ public static class PlacementExtensions
                 Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI + 0f,
                 Name = entity.Name ?? "",
                 Outputs = PlacementWires.Read(entity),
+                // What the placement overrode goes back as it was written, not as the entity now stands.
+                Overrides = entity.TryGetComponent<PrefabOverridden>(out var overridden) ? overridden.Overrides?.Clone() : null,
             });
         }
 

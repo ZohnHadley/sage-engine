@@ -1599,10 +1599,12 @@
       "type": "string",
       "enum": [
         "faces_camera",
+        "from_parent_prefab",
         "from_scene",
         "interactable",
         "player_camera",
         "player_controlled",
+        "sage:from_parent_prefab",
         "sage:from_scene",
         "sage:interactable",
         "sage:player_camera",

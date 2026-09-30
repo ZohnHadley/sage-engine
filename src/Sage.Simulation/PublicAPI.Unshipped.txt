@@ -379,6 +379,8 @@ Sage.Simulation.FirstPersonRigPart.ShowBody -> bool
 Sage.Simulation.FirstPersonRigSystem
 Sage.Simulation.FirstPersonRigSystem.FirstPersonRigSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 Sage.Simulation.FirstPersonRigSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.FromParentPrefab
+Sage.Simulation.FromParentPrefab.FromParentPrefab() -> void
 Sage.Simulation.GltfAnimationReader
 Sage.Simulation.GltfAnimationReader.Count.get -> int
 Sage.Simulation.GltfAnimationReader.Forget(Sage.Core.AssetPath path) -> bool
@@ -486,6 +488,7 @@ Sage.Simulation.MathRemapPart.InMin -> float
 Sage.Simulation.MathRemapPart.MathRemapPart() -> void
 Sage.Simulation.MathRemapPart.OutMax -> float
 Sage.Simulation.MathRemapPart.OutMin -> float
+Sage.Simulation.Placement.Overrides -> Sage.Simulation.PrefabOverrides?
 Sage.Simulation.PlayerCamera
 Sage.Simulation.PlayerCamera.PlayerCamera() -> void
 Sage.Simulation.PlayerCameraSystem
@@ -517,6 +520,23 @@ Sage.Simulation.SavePlaceholder.SavePlaceholder() -> void
 Sage.Simulation.SaveSlot.Content.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SavedContent>!
 Sage.Simulation.SaveSlot.Mismatches.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.SaveSlot.Plugins.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SavedPlugin>!
+Sage.Simulation.PrefabChild
+Sage.Simulation.PrefabChild.At -> System.Numerics.Vector3
+Sage.Simulation.PrefabChild.Name -> string!
+Sage.Simulation.PrefabChild.Overrides -> Sage.Simulation.PrefabOverrides?
+Sage.Simulation.PrefabChild.Prefab -> Sage.Core.RecordRef<Sage.Simulation.PrefabRecord!>
+Sage.Simulation.PrefabChild.PrefabChild() -> void
+Sage.Simulation.PrefabChild.Yaw -> float
+Sage.Simulation.PrefabOverridden
+Sage.Simulation.PrefabOverridden.Overrides -> Sage.Simulation.PrefabOverrides?
+Sage.Simulation.PrefabOverridden.PrefabOverridden() -> void
+Sage.Simulation.PrefabOverrides
+Sage.Simulation.PrefabOverrides.Clone() -> Sage.Simulation.PrefabOverrides!
+Sage.Simulation.PrefabOverrides.Components -> System.Text.Json.Nodes.JsonObject?
+Sage.Simulation.PrefabOverrides.IsEmpty.get -> bool
+Sage.Simulation.PrefabOverrides.Parts -> System.Text.Json.Nodes.JsonObject?
+Sage.Simulation.PrefabOverrides.PrefabOverrides() -> void
+Sage.Simulation.PrefabRecord.Children -> System.Collections.Generic.List<Sage.Simulation.PrefabChild!>!
 Sage.Simulation.RenderPassAttribute
 Sage.Simulation.RenderPassAttribute.After.get -> string![]!
 Sage.Simulation.RenderPassAttribute.After.set -> void
@@ -854,6 +874,7 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.FirstPersonCameraSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.MaterialParam.RenderTarget -> string?
+static Sage.Simulation.PrefabExtensions.Spawn(this Sage.Simulation.World! world, Sage.Core.RecordId prefab, System.Numerics.Vector3 position, float yawDegrees, Sage.Simulation.PrefabOverrides? overrides, string? where = null) -> Sage.Simulation.Entity
 static Sage.Simulation.RenderStages.IsPerView(Sage.Simulation.RenderStage stage) -> bool
 static Sage.Simulation.RenderStages.Of(Sage.Simulation.RenderPass pass) -> Sage.Simulation.RenderStage
 static Sage.Simulation.RenderStages.SortKeyPass(Sage.Simulation.RenderStage stage) -> int

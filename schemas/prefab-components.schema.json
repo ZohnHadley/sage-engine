@@ -396,6 +396,14 @@
         }
       ]
     },
+    "prefab_overridden": {
+      "description": "The component sage:prefab_overridden (PrefabOverridden), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:prefab_overridden"
+        }
+      ]
+    },
     "projectile": {
       "description": "The component sage:projectile (Projectile), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -801,6 +809,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:point_light"
+        }
+      ]
+    },
+    "sage:prefab_overridden": {
+      "description": "Component sage:prefab_overridden (PrefabOverridden).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:prefab_overridden"
         }
       ]
     },
@@ -3613,6 +3629,26 @@
       },
       "additionalProperties": false,
       "description": "Component sage:point_light (PointLight)."
+    },
+    "sage:prefab_overridden": {
+      "type": "object",
+      "properties": {
+        "overrides": {
+          "description": "(PrefabOverrides)",
+          "type": "object",
+          "properties": {
+            "components": {
+              "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+            },
+            "parts": {
+              "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:prefab_overridden (PrefabOverridden)."
     },
     "sage:projectile": {
       "type": "object",
