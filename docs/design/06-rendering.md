@@ -226,7 +226,7 @@ The `Box` shape and the volume come from the weather; how a drop behaves is the 
 
 **The sun is scaled, not replaced.** A game sets the light it wants; weather says how much gets through,
 so dusk and a storm compose instead of fighting, and three storms in a row do not darken the world three
-times. See "As built (weather)".
+times. With a `sky` record the weather adjusts the sky's values instead (4h-2, "As built (the world clock, sky records and weather composition)"). See "As built (weather)".
 
 ## 4. Public API sketch
 
@@ -904,6 +904,54 @@ passes, ordered headless. All of it is experimental (SAGE0130, MAKING_A_GAME §1
 - **Not yet:** checked by a headless test only up to the order — the drawing is the client's, checked by
   the smoke run. Replacing or disabling an engine pass (a game swapping `sage:transparent` for an OIT
   pass) is not built; nor is the Shadow or PostProcess stage used by the engine (4h-4 and 4h-6).
+
+### As built (the world clock, sky records and weather composition, 2026-09-30 — issue 4h-2)
+Time of day, the light over a day, and weather on top of it, all headless: the client draws what
+`RenderEnvironment` says. Experimental, SAGE0130 (MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Simulation/World/WorldClock.cs` (the saved `clock` resource, its fixed-tick system and
+  the `time_between` condition), `src/Sage.Simulation/Rendering/Sky.cs` (`SkyRecord`, `SkyKey`,
+  `SkyState`, `SkyRules`, `SkySystem`), the `time`, `time_set` and `time_scale` commands in
+  `WorldConsoleCommands`, and `SceneEnvironment.Sky`/`Hour`. Tests: `tests/Sage.Tests/Gameplay/SkyTests.cs`.
+- **The clock** is a day count, an hour in [0, 24) and a scale in game seconds per real second (default
+  60: a game minute a second; 0 stops it). It advances in the fixed Commands phase, so it is
+  deterministic and stops with the game paused (test: TheClockRunsInFixedTicksAndWrapsIntoTheNextDay).
+  `time` prints it; `time_set 18:30` (or `18.5`) and `time_scale 120` are cheats (test: TheConsoleSetsTheClock).
+  It is saved as the `clock` resource; a save from before it has none and loads, leaving the world's own
+  clock (tests: TheClockSurvivesASave, AnOldSaveWithoutAClockStillLoads; the golden saves still load).
+  The calendar, schedules, waiting and sleeping are phase 4g's and read this clock.
+- **`time_between`** is a condition of the 4b vocabulary: `{ "time_between": { "from": 19, "to": 6 } }`. The
+  window is from inclusive to exclusive and wraps past midnight; equal ends are an empty window
+  (test: TimeBetweenWrapsPastMidnight).
+- **A `sky` record** is keyframes by hour (`sun`, `ambientSky`, `ambientGround`, `horizon`, `zenith`,
+  `fog`, `fogStart`, `fogEnd`, `shadow`) plus `sunrise`, `sunset` and `lean`. `SkyRules.Evaluate(sky, hour)`
+  lerps between the two keys around the hour and **wraps**: before the first key it blends from the last
+  of the day before (tests: TheCurveWrapsPastMidnight, DuskDarkensSteadily). The sun's direction is
+  geometry from the hour (east at sunrise, overhead at midday, under the world at night), not keyed;
+  its colour fades to nothing over the last 0.2 of elevation and **a sun at or below the horizon gives no
+  light and no shadow** whatever the keys say (test: TheSunBelowTheHorizonGivesNoLightAndNoShadow).
+  A world picks its sky with `WorldClock.Sky` (a scene's `environment.sky`, with `environment.hour`;
+  test: ASceneChoosesTheSkyAndTheHour).
+- **`SkySystem`** (fixed, Late, after the clock) writes the sky, as the weather leaves it, into the
+  world's `RenderEnvironment`, including two new fields the sky and shadow passes will read: `Zenith` and
+  `ShadowStrength`. `ClearColor` is the horizon colour.
+- **The weather bug, verified.** `WeatherRules.Apply` replaced `FogColor`, `ClearColor`, `FogStart` and
+  `FogEnd` from the weather record every frame (even `sage:clear` wrote its own green fog), and scaled a
+  cached copy of the sun and ambient that `WeatherSystem` only refreshed while the sky was clear and
+  settled, so a storm at dusk froze the light the day had reached when it arrived. **Under a sky, weather
+  now adjusts:** the baseline is the sky at the clock's hour, re-evaluated every tick, and the weather
+  record scales it: `sunScale`, `ambientScale` (as before), and new `fogTint`, `skyTint`, `fogStartScale`,
+  `fogEndScale`, all defaulting to 1, so `sage:clear` changes nothing; `sunScale` also softens shadows
+  (tests: AStormAtDuskKeepsDimmingWithTheDusk, ClearWeatherChangesNothingUnderASky,
+  AStormAtNightIsDarkerThanClear). The client's `WeatherSystem` stops writing the environment when the
+  world has a sky, and still throws the particles and plays the sound.
+- **With no sky record nothing changes**: the old weather path (absolute fog and sky colours, the game's own
+  light scaled) still runs, and the clock touches nothing (test: WithoutASkyTheLookIsUnchanged; the
+  WeatherTests are as they were). A record's absolute `fogColor` and `skyColor` are ignored once a sky is
+  on, which is the point.
+- **Not yet:** the sky pass, exp² fog and the fog-distance cull (4h-5), sun shadows (4h-4) and the night tint
+  in post (4h-6) read these values; weather's blend is advanced by the client's system, so a headless world
+  with a sky holds its weather where it is unless something calls `Weather.Advance`.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

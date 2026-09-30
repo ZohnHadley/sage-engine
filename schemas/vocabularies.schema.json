@@ -2269,7 +2269,7 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, var.",
+      "description": "A condition by id: all, anim_finished, anim_param, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, time_between, var.",
       "type": "string",
       "enum": [
         "All",
@@ -2283,6 +2283,7 @@
         "Quest",
         "Speaker",
         "Standing",
+        "TimeBetween",
         "Var",
         "all",
         "anim_finished",
@@ -2295,6 +2296,7 @@
         "quest",
         "speaker",
         "standing",
+        "time_between",
         "var"
       ]
     },
@@ -2826,6 +2828,49 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'standing' (StandingCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "time_between",
+                      "TimeBetween"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: time_between.",
+                    "enum": [
+                      "time_between",
+                      "TimeBetween"
+                    ]
+                  },
+                  "from": {
+                    "description": "The hour the window opens (inclusive); 18.5 is 18:30. Unit: h. Range: 0 to 24. (double, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 24
+                  },
+                  "to": {
+                    "description": "The hour it closes (exclusive); less than From wraps past midnight. Unit: h. Range: 0 to 24. (double, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 24
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'time_between' (TimeBetweenCondition)."
               }
             },
             {
@@ -4200,6 +4245,108 @@
           },
           "required": [
             "Standing"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "The hour the window opens (inclusive); 18.5 is 18:30. Unit: h. Range: 0 to 24. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24
+            },
+            "time_between": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "description": "The hour the window opens (inclusive); 18.5 is 18:30. Unit: h. Range: 0 to 24. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 24
+                    },
+                    "to": {
+                      "description": "The hour it closes (exclusive); less than From wraps past midnight. Unit: h. Range: 0 to 24. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 24
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'time_between' (TimeBetweenCondition), in shorthand."
+            },
+            "to": {
+              "description": "The hour it closes (exclusive); less than From wraps past midnight. Unit: h. Range: 0 to 24. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24
+            }
+          },
+          "required": [
+            "time_between"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "TimeBetween": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "description": "The hour the window opens (inclusive); 18.5 is 18:30. Unit: h. Range: 0 to 24. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 24
+                    },
+                    "to": {
+                      "description": "The hour it closes (exclusive); less than From wraps past midnight. Unit: h. Range: 0 to 24. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 24
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'time_between' (TimeBetweenCondition), in shorthand."
+            },
+            "from": {
+              "description": "The hour the window opens (inclusive); 18.5 is 18:30. Unit: h. Range: 0 to 24. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24
+            },
+            "to": {
+              "description": "The hour it closes (exclusive); less than From wraps past midnight. Unit: h. Range: 0 to 24. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24
+            }
+          },
+          "required": [
+            "TimeBetween"
           ],
           "additionalProperties": false
         },
