@@ -453,6 +453,13 @@ Creatures walk round things instead of into them.
   so an input sent at a name that does not exist yet is dropped (a wire's late binding would need
   `EntityIO` to take a name; #90 owns that file). Vars hold numbers only.
 
+### As built (phase 4b's exit games, issue #94, 2026-09-30)
+- `tests/games/topics` is a game with no C# (plugins `sage.gameplay.character`, `.io`, `.dialogue`): one
+  `dialogue_topic` whose first info is conditional on a var and whose fallback answers otherwise, an NPC
+  with a `dialogue` part, and a relay whose `then` sets the var. The test asks it before and after the
+  relay fires (AConditionalTopicAnswersByAVar_InAGameWithNoCode). `tests/games/scripted-sequence` has the
+  NPC speak through `StartDialogue` (04 §3.4e).
+
 ### As built (dialogue topics, issue #93, 2026-09-30)
 - **A topic is a keyword whose answer depends on who asks, whom and when** (Morrowind's topics, beside
   the node tree, which is unchanged). `dialogue_topic` (`TopicRecord`, `src/Sage.Gameplay/Narrative/Topics.cs`,

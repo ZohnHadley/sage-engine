@@ -335,6 +335,19 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   through the same values as the logic entities' outputs.
   (test: AStateMachineHearsAnInputBesideTheComponentsThatTakeIt)
 
+### 3.4e As built (phase 4b's exit: a scripted sequence in data, 2026-09-30, issue #94)
+- **`tests/games/scripted-sequence`** is the Half-Life-style chain with no C#, as placements' `outputs`
+  in one scene: a crate falls through `plate` (`OnStartTouch` → the door's `Open`, and `Add` at the
+  counter); the door's `OnFullyOpen` → the lift's `Open` and `Add`; the lift's `OnFullyOpen` →
+  the keeper's `StartDialogue` (the bridge input, so the NPC speaks a `dialogue` node) and `Add`; a
+  `logic_counter` with `max: 3` fires `OnHitMax` → a `logic_relay` `Trigger`, whose `then` counts a var
+  and whose `OnTrigger` → `Say`. Each hop is one tick later than the one before (an output queues its
+  wires), and the mover trips take their own seconds, so the order is the wiring's, not a timer's.
+  (test: ATriggerDoorLiftNpcCounterAndRelayRun_InAGameWithNoCode)
+- **`tests/games/topics`** answers one conditional `dialogue_topic` by a var that a scene relay sets
+  (test: AConditionalTopicAnswersByAVar_InAGameWithNoCode). No engine change was needed for either;
+  CI validates, schemas and smoke-runs both like `camera-cut`.
+
 ### 3.5 Engine signals in detail
 `EngineSignals` (on `Engine`, 01) holds plain C# events, raised on the main thread at the start of a frame (never inside a tick):
 - `AssetReloaded(AssetPath)`, `RecordsReloaded(RecordType)`;
