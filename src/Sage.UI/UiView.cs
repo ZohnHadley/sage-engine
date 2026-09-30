@@ -9,10 +9,11 @@ using System.Text;
 
 namespace Sage.UI;
 
-// What bindings and conditions are read against: the world a `visibleIf` asks about, and who it asks
-// about (the player looking at the screen). No world: conditions hold.
+// What bindings and conditions are read against: the world a `visibleIf` asks about, who it asks
+// about (the player looking at the screen) and, for a screen between two, the other one — the corpse
+// being looted, the NPC being asked (issue #98), a condition's `other`. No world: conditions hold.
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
-public readonly record struct UiBindContext(World? World, Entity Subject = default);
+public readonly record struct UiBindContext(World? World, Entity Subject = default, Entity Other = default);
 
 // A ui_layout record built into widgets (UiScreens.BuildLayout, or a screen's View), with its bindings.
 // Refresh reads every binding and condition and changes only what differs from last time, so once built
@@ -177,6 +178,7 @@ internal sealed class LayoutBuilder
                 case UiBindings.Visible: bound.Visible = reader; break;
                 case UiBindings.Enabled: bound.Enabled = reader; break;
                 case UiBindings.Data: bound.Data = reader; break;
+                case UiBindings.Columns: bound.Columns = reader; break;
                 case UiBindings.X: bound.X = reader; break;
                 case UiBindings.Y: bound.Y = reader; break;
                 case UiBindings.Rows:
@@ -220,12 +222,12 @@ internal sealed class LayoutTree
 internal static class UiBindings
 {
     public const string Text = "text", Tooltip = "tooltip", Value = "value", Min = "min", Max = "max", Source = "source",
-                        Style = "style", Visible = "visible", Enabled = "enabled", Data = "data", Rows = "rows",
+                        Style = "style", Visible = "visible", Enabled = "enabled", Data = "data", Rows = "rows", Columns = "columns",
                         // Where in its parent Box it sits, 0..1 across and down: a point anchor there (a map's
                         // markers, issue #99). Kept inside the box: a point anchor places the widget proportionally.
                         X = "x", Y = "y";
 
-    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, X, Y };
+    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
     public static string? Primary(string widget) => widget switch
@@ -244,6 +246,7 @@ internal static class UiBindings
         Value or Min or Max => widget == "bar",
         Source => widget == "image",
         Rows => widget is "stack" or "item_list" or "grid" or "box",
+        Columns => widget == "grid",   // a grid as wide as its view-model says (an inventory's, issue #98)
         _ => true,
     };
 
@@ -280,13 +283,13 @@ internal sealed class BoundNode
 
     public ICondition? VisibleIf, EnabledIf;
     public TextSlot? Text, Tooltip;
-    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, X, Y;
+    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
     public RowsSlot? Rows;
     private string? _source, _style;
 
     public bool Dynamic => _children.Length > 0 || Rows != null || VisibleIf != null || EnabledIf != null || Text != null || Tooltip != null
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
-                           || Enabled != null || Data != null || X != null || Y != null;
+                           || Enabled != null || Data != null || Columns != null || X != null || Y != null;
 
     public void SetChildren(List<BoundNode> children) => _children = children.ToArray();
 
@@ -320,6 +323,7 @@ internal sealed class BoundNode
             if (!ReferenceEquals(style, _style)) { _style = style; Widget.Style = style; }
         }
         if (Data != null) Widget.Data = Data.Read(source).Ref;
+        if (Columns != null && Widget is Grid grid) grid.Columns = (int)Columns.Read(source).AsFloat;   // Grid keeps at least 1
         if (X != null || Y != null)
         {
             var at = Widget.Anchors;
@@ -333,7 +337,7 @@ internal sealed class BoundNode
     }
 
     private static bool Holds(ICondition? condition, in UiBindContext context) =>
-        condition == null || context.World == null || Conditions.Test(condition, new ConditionContext(context.World, context.Subject), out _);
+        condition == null || context.World == null || Conditions.Test(condition, new ConditionContext(context.World, context.Subject, context.Other), out _);
 }
 
 // A label's text: fixed or bound, a key or not, with placeholders filled from the view-model. Worked out

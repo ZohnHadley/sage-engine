@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Sage.UI;
 
 namespace Sage.Kits.Rpg;
 
@@ -14,11 +15,25 @@ namespace Sage.Kits.Rpg;
 // Loaded only for a game that names it (game.json `"kits": ["sage.kits.rpg"]`); never part of
 // BasePlugins.All(). Its client half, Sage.Kits.Rpg.Client (`sage.kits.rpg.client`), comes with it in
 // a host with a window.
+//
+// Its content (issue #98) is carried in the assembly and mounted under the record namespace `rpg`:
+// the inventory, equipment, loot and topics `screen`s, their `ui_layout`s and `ui_style`s, and the
+// `rpg` string table (`src/Sage.Kits.Rpg/content`). A game patches any of it from its own mounts.
 [Plugin(Id, "0.1.0")]
+[PluginContent(ContentNamespace)]
 [RequiresPlugin("sage", ">=0.1")]   // the engine versions it is built for (issue #31)
 public sealed class RpgKitModule : IModule
 {
     public const string Id = "sage.kits.rpg";
+
+    // The record namespace of the kit's own content: `rpg:inventory`, `@rpg.inventory.title`.
+    public const string ContentNamespace = "rpg";
+
+    // The kit's screens (screen records in its content), for UiScreens.OpenScreen.
+    public static readonly RecordId InventoryScreen = new(ContentNamespace, "inventory");
+    public static readonly RecordId EquipmentScreen = new(ContentNamespace, "equipment");
+    public static readonly RecordId LootScreen = new(ContentNamespace, "loot");
+    public static readonly RecordId TopicsScreen = new(ContentNamespace, "topics");
 
     // The kit's equipment slots: a weapon and a shield, Daggerfall's two hands (issue #27). The base
     // has no slots of its own; a game adds more with EquipSlots.Register in its Init.
@@ -26,10 +41,12 @@ public sealed class RpgKitModule : IModule
     public const string OffHand = "OffHand";
 
     private ActionRegistry? _actions;
+    private EquipSlots? _slots;
 
     // Spells need abilities, the bag needs items; both bring attributes and combat with them. The
     // screens need sage.ui (a kit brings the base plugins it needs, even past game.json's `plugins`).
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(AbilitiesModule), typeof(ItemsModule), typeof(Sage.UI.UiModule) };
+    // Topics are the dialogue plugin's; without it the topics screen lists nothing.
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AbilitiesModule), typeof(ItemsModule), typeof(UiModule) };
 
     public void Init(ModuleContext ctx)
     {
@@ -41,9 +58,10 @@ public sealed class RpgKitModule : IModule
         var actions = _actions;
         ctx.Engine.Records.AddCheck<RpgConventionsRecord>((conventions, check) => RpgConventions.Check(actions, conventions, check));
 
-        var slots = ctx.Get<EquipSlots>();
+        var slots = _slots = ctx.Get<EquipSlots>();
         slots.Register(MainHand);
         slots.Register(OffHand);
+        ctx.Engine.Records.AddCheck<RpgItemRecord>(RpgItemRecord.Check);
 
         // Composing spells at the console (F21), the same rules a spellmaker screen calls.
         Spellmaker.RegisterCommands(ctx.Engine);
@@ -81,6 +99,10 @@ public sealed class RpgKitModule : IModule
             throw new InvalidDataException($"There are {ids.Count} rpg_conventions records ({string.Join(", ", ids)}); a game has one, or none for the kit's defaults.");
     }
 
-    public void OnWorldCreated(World world) =>
+    public void OnWorldCreated(World world)
+    {
         world.AddSystem(new ReadiedSpellSystem(world, _actions!));
+        // The equipment screen lists the slots there are.
+        if (!world.Resources.TryGet<EquipSlots>(out _)) world.Resources.Add(_slots!);
+    }
 }

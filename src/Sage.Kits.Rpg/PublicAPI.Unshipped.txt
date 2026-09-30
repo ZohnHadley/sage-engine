@@ -1,4 +1,132 @@
 #nullable enable
+abstract Sage.Kits.Rpg.ItemGridView.OwnerOf(int grid, in Sage.UI.UiBindContext context) -> Sage.Simulation.Entity
+const Sage.Kits.Rpg.GridCell.EmptyStyle = "rpg:cell" -> string!
+const Sage.Kits.Rpg.GridCell.HeldStyle = "rpg:cell_held" -> string!
+const Sage.Kits.Rpg.GridCell.ItemStyle = "rpg:cell_item" -> string!
+const Sage.Kits.Rpg.LootView.TakeAllButton = "take_all" -> string!
+const Sage.Kits.Rpg.RpgKitModule.ContentNamespace = "rpg" -> string!
+const Sage.Kits.Rpg.TopicsView.AskedStyle = "rpg:topic_asked" -> string!
+const Sage.Kits.Rpg.TopicsView.TopicStyle = "rpg:topic" -> string!
+override Sage.Kits.Rpg.LootView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+override Sage.Kits.Rpg.LootView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.EquipmentView
+Sage.Kits.Rpg.EquipmentView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.EquipmentView.CandidateRow
+Sage.Kits.Rpg.EquipmentView.CandidateRow.CandidateRow() -> void
+Sage.Kits.Rpg.EquipmentView.CandidateRow.Item.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.EquipmentView.CandidateRow.Slot.get -> string!
+Sage.Kits.Rpg.EquipmentView.CandidateRow.Text.get -> string!
+Sage.Kits.Rpg.EquipmentView.Candidates.get -> System.Collections.Generic.List<Sage.Kits.Rpg.EquipmentView.CandidateRow!>!
+Sage.Kits.Rpg.EquipmentView.EquipmentView() -> void
+Sage.Kits.Rpg.EquipmentView.Message.get -> string!
+Sage.Kits.Rpg.EquipmentView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.EquipmentView.SlotRow
+Sage.Kits.Rpg.EquipmentView.SlotRow.IsEmpty.get -> bool
+Sage.Kits.Rpg.EquipmentView.SlotRow.Item.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.EquipmentView.SlotRow.Slot.get -> string!
+Sage.Kits.Rpg.EquipmentView.SlotRow.SlotRow() -> void
+Sage.Kits.Rpg.EquipmentView.SlotRow.Text.get -> string!
+Sage.Kits.Rpg.EquipmentView.Slots.get -> System.Collections.Generic.List<Sage.Kits.Rpg.EquipmentView.SlotRow!>!
+Sage.Kits.Rpg.GridCell
+Sage.Kits.Rpg.GridCell.Grid.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.GridCell.GridCell() -> void
+Sage.Kits.Rpg.GridCell.IsEmpty.get -> bool
+Sage.Kits.Rpg.GridCell.Item.get -> Sage.Kits.Rpg.GridItem?
+Sage.Kits.Rpg.GridCell.Label.get -> string!
+Sage.Kits.Rpg.GridCell.Style.get -> string!
+Sage.Kits.Rpg.GridCell.Tooltip.get -> string!
+Sage.Kits.Rpg.GridCell.X.get -> int
+Sage.Kits.Rpg.GridCell.Y.get -> int
+Sage.Kits.Rpg.GridItem
+Sage.Kits.Rpg.GridItem.Count.get -> int
+Sage.Kits.Rpg.GridItem.Covers(int x, int y) -> bool
+Sage.Kits.Rpg.GridItem.Grid.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.GridItem.GridItem() -> void
+Sage.Kits.Rpg.GridItem.Height.get -> int
+Sage.Kits.Rpg.GridItem.Item.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.GridItem.Label.get -> string!
+Sage.Kits.Rpg.GridItem.Tooltip.get -> string!
+Sage.Kits.Rpg.GridItem.Weight.get -> float
+Sage.Kits.Rpg.GridItem.Width.get -> int
+Sage.Kits.Rpg.GridItem.X.get -> int
+Sage.Kits.Rpg.GridItem.Y.get -> int
+Sage.Kits.Rpg.GridPlacement
+Sage.Kits.Rpg.GridPlacement.GridPlacement() -> void
+Sage.Kits.Rpg.GridPlacement.Item -> Sage.Core.RecordId
+Sage.Kits.Rpg.GridPlacement.X -> int
+Sage.Kits.Rpg.GridPlacement.Y -> int
+Sage.Kits.Rpg.InventoryView
+Sage.Kits.Rpg.InventoryView.Bag.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.InventoryView.InventoryView() -> void
+Sage.Kits.Rpg.ItemGrid
+Sage.Kits.Rpg.ItemGrid.Capacity.get -> float
+Sage.Kits.Rpg.ItemGrid.CellAt(int x, int y) -> Sage.Kits.Rpg.GridCell?
+Sage.Kits.Rpg.ItemGrid.Cells.get -> System.Collections.Generic.List<Sage.Kits.Rpg.GridCell!>!
+Sage.Kits.Rpg.ItemGrid.Columns.get -> int
+Sage.Kits.Rpg.ItemGrid.Fits(int width, int height, int x, int y, Sage.Kits.Rpg.GridItem? ignore = null) -> bool
+Sage.Kits.Rpg.ItemGrid.ItemAt(int x, int y) -> Sage.Kits.Rpg.GridItem?
+Sage.Kits.Rpg.ItemGrid.ItemGrid(int columns = 8, int minRows = 6) -> void
+Sage.Kits.Rpg.ItemGrid.Items.get -> System.Collections.Generic.List<Sage.Kits.Rpg.GridItem!>!
+Sage.Kits.Rpg.ItemGrid.Limited.get -> bool
+Sage.Kits.Rpg.ItemGrid.MinRows.get -> int
+Sage.Kits.Rpg.ItemGrid.Move(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, int x, int y) -> bool
+Sage.Kits.Rpg.ItemGrid.Owner.get -> Sage.Simulation.Entity
+Sage.Kits.Rpg.ItemGrid.Refresh(Sage.Simulation.World! world, Sage.Simulation.Entity owner) -> bool
+Sage.Kits.Rpg.ItemGrid.Resize(int columns, int minRows) -> void
+Sage.Kits.Rpg.ItemGrid.Restyle(Sage.Kits.Rpg.GridItem? held) -> void
+Sage.Kits.Rpg.ItemGrid.Rows.get -> int
+Sage.Kits.Rpg.ItemGrid.Unlimited.get -> bool
+Sage.Kits.Rpg.ItemGrid.Version.get -> int
+Sage.Kits.Rpg.ItemGrid.Weight.get -> float
+Sage.Kits.Rpg.ItemGridPlacements
+Sage.Kits.Rpg.ItemGridPlacements.ItemGridPlacements() -> void
+Sage.Kits.Rpg.ItemGridPlacements.Placed -> System.Collections.Generic.List<Sage.Kits.Rpg.GridPlacement>?
+Sage.Kits.Rpg.ItemGridView
+Sage.Kits.Rpg.ItemGridView.Held.get -> Sage.Kits.Rpg.GridItem?
+Sage.Kits.Rpg.ItemGridView.HeldLabel.get -> string!
+Sage.Kits.Rpg.ItemGridView.Holding.get -> bool
+Sage.Kits.Rpg.ItemGridView.ItemGridView(params Sage.Kits.Rpg.ItemGrid![]! grids) -> void
+Sage.Kits.Rpg.ItemGridView.Message.get -> string!
+Sage.Kits.Rpg.ItemGridView.Message.set -> void
+Sage.Kits.Rpg.LootView
+Sage.Kits.Rpg.LootView.Bag.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.LootView.Container.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.LootView.ContainerName.get -> string!
+Sage.Kits.Rpg.LootView.IsEmpty.get -> bool
+Sage.Kits.Rpg.LootView.LootView() -> void
+Sage.Kits.Rpg.LootView.TakeAll(Sage.Simulation.World! world, Sage.Simulation.Entity from, Sage.Simulation.Entity to) -> int
+Sage.Kits.Rpg.RpgConventionsRecord.GridSize.get -> (int Columns, int Rows)
+Sage.Kits.Rpg.RpgConventionsRecord.InventoryGrid -> System.Numerics.Vector2
+Sage.Kits.Rpg.RpgItemRecord
+Sage.Kits.Rpg.RpgItemRecord.Footprint.get -> (int Width, int Height)
+Sage.Kits.Rpg.RpgItemRecord.Grid -> System.Numerics.Vector2
+Sage.Kits.Rpg.RpgItemRecord.RpgItemRecord() -> void
+Sage.Kits.Rpg.TopicsView
+Sage.Kits.Rpg.TopicsView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.TopicsView.Answer.get -> string!
+Sage.Kits.Rpg.TopicsView.Ask(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Kits.Rpg.TopicsView.TopicRow! row) -> Sage.Gameplay.TopicInfo?
+Sage.Kits.Rpg.TopicsView.Asked.get -> string!
+Sage.Kits.Rpg.TopicsView.HasTopics.get -> bool
+Sage.Kits.Rpg.TopicsView.NoTopics.get -> bool
+Sage.Kits.Rpg.TopicsView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.TopicsView.Speaker.get -> string!
+Sage.Kits.Rpg.TopicsView.TopicRow
+Sage.Kits.Rpg.TopicsView.TopicRow.Asked.get -> bool
+Sage.Kits.Rpg.TopicsView.TopicRow.Keyword.get -> string!
+Sage.Kits.Rpg.TopicsView.TopicRow.Style.get -> string!
+Sage.Kits.Rpg.TopicsView.TopicRow.Topic.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.TopicsView.TopicRow.TopicRow() -> void
+Sage.Kits.Rpg.TopicsView.Topics.get -> System.Collections.Generic.List<Sage.Kits.Rpg.TopicsView.TopicRow!>!
+Sage.Kits.Rpg.TopicsView.TopicsView() -> void
+static readonly Sage.Kits.Rpg.RpgKitModule.EquipmentScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.InventoryScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.LootScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.TopicsScreen -> Sage.Core.RecordId
+static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, out string! reason) -> bool
+static Sage.Kits.Rpg.RpgItemRecord.Of(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> (int Width, int Height)
+virtual Sage.Kits.Rpg.ItemGridView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.Back(in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.Refresh(in Sage.UI.UiBindContext context) -> void
 const Sage.Kits.Rpg.MapView.MinimumRange = 20 -> float
 const Sage.Kits.Rpg.MapView.RangeStep = 10 -> float
 Sage.Kits.Rpg.JournalView

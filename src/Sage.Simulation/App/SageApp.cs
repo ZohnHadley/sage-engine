@@ -100,8 +100,10 @@ public sealed class SageApp : IDisposable
         var app = new SageApp(options, engine);
         try
         {
-            app.Mount();
+            app.MountEngine();
             app.AddModules();
+            app.MountPlugins();
+            app.MountGame();
         }
         catch
         {
@@ -111,11 +113,33 @@ public sealed class SageApp : IDisposable
         return app;
     }
 
-    private void Mount()
+    // Engine content first, then the content the loaded plugins carry (a kit's, issue #98), then the
+    // game's mounts in order: later wins (05 §3.1), so a game patches a kit as it patches the engine.
+    // Mods: F37.
+    private void MountEngine()
     {
-        // Engine content first, then the game's mounts in order (later wins, 05 §3.1). Mods: F37.
         if (_options.EngineContentDirectory is { } engineContent)
             Engine.Vfs.Mount(new FolderMount("engine", engineContent, "sage"));
+    }
+
+    // [PluginContent] on a loaded module: its assembly's embedded `content/` files, one mount per plugin,
+    // in the order the modules were added. A plugin that is switched off brings none.
+    private void MountPlugins()
+    {
+        foreach (var module in Engine.Modules.Modules)
+        {
+            var type = module.GetType();
+            if (System.Reflection.CustomAttributeExtensions.GetCustomAttribute<PluginContentAttribute>(type) is not { } content) continue;
+            var mount = new AssemblyContentMount(PluginInfo.Of(module).Id, type.Assembly, content.RecordNamespace);
+            if (mount.Count == 0)
+                Log.Warn(LogCat.VFS, $"{mount.Name} says it carries content ([PluginContent]), and {type.Assembly.GetName().Name}.dll embeds " +
+                                     $"no '{AssemblyContentMount.Prefix}' resources");
+            Engine.Vfs.Mount(mount);
+        }
+    }
+
+    private void MountGame()
+    {
         if (Game is { } game)
             foreach (string mount in game.Mounts)
                 Engine.Vfs.Mount(new FolderMount($"{game.Id}/{mount}", Path.Combine(game.Directory, mount), game.Id));
@@ -139,10 +163,13 @@ public sealed class SageApp : IDisposable
                 Engine.Modules.Add(module);
         }
 
-        foreach (var module in ChoosePlugins(_options.AvailablePlugins, Game?.Plugins)) Add(module);
         // The kits the game is built on (issue #27), before anything of the game's: its assemblies
-        // reference them, and an assembly loaded by path finds its references among those loaded.
-        foreach (var module in LoadKits()) Add(module);
+        // reference them, and an assembly loaded by path finds its references among those loaded. Loaded
+        // first so that the base plugins a kit needs come with it (the RPG kit's screens need sage.ui,
+        // issue #98) even when game.json's `plugins` names only some; added after the plugins.
+        var kits = LoadKits();
+        foreach (var module in ChoosePlugins(_options.AvailablePlugins, Game?.Plugins, kits)) Add(module);
+        foreach (var module in kits) Add(module);
         foreach (var module in _options.HostModules) Add(module);
 
         if (Game is { } game)
@@ -163,7 +190,7 @@ public sealed class SageApp : IDisposable
     }
 
     // game.json's `kits`, each looked for beside the game's assemblies and then beside the host.
-    private IEnumerable<IModule> LoadKits()
+    private IReadOnlyList<IModule> LoadKits()
     {
         if (Game is not { Kits.Count: > 0 } game) return Array.Empty<IModule>();
         var folders = new List<string>();
@@ -183,12 +210,21 @@ public sealed class SageApp : IDisposable
     // The plugins a game.json asks for, plus everything they require (by type or by id), in
     // AvailablePlugins' order. Null means all of them. A pattern that matches nothing is an error that
     // lists what there is — a misspelt plugin would otherwise be a game quietly missing a system.
-    private static IEnumerable<IModule> ChoosePlugins(IReadOnlyList<IModule> all, IReadOnlyList<string>? wanted)
+    private static IEnumerable<IModule> ChoosePlugins(IReadOnlyList<IModule> all, IReadOnlyList<string>? wanted, IReadOnlyList<IModule> kits)
     {
         if (wanted == null || all.Count == 0) return all;   // a bare engine has none to choose from
 
         var infos = all.ToDictionary(m => m, PluginInfo.Of);
         var chosen = new HashSet<IModule>();
+        // What the kits need (by type or by id), as if game.json had named it.
+        foreach (var kit in kits)
+        {
+            var kitInfo = PluginInfo.Of(kit);
+            foreach (var need in kit.Dependencies.Select(t => all.FirstOrDefault(m => m.GetType() == t))
+                         .Concat(kitInfo.Requires.Select(r => all.FirstOrDefault(m => infos[m].Id.Equals(r.Id, StringComparison.OrdinalIgnoreCase)))))
+                if (need != null && chosen.Add(need))
+                    Log.Info(LogCat.Modules, $"{infos[need].Id} added: kit {kitInfo.Id} requires it");
+        }
         foreach (string pattern in wanted)
         {
             var matches = all.Where(m => infos[m].Matches(pattern)).ToList();

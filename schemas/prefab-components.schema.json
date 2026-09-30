@@ -180,6 +180,14 @@
         }
       ]
     },
+    "item_grid": {
+      "description": "The component rpg:item_grid (ItemGridPlacements), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:item_grid"
+        }
+      ]
+    },
     "known_topics": {
       "description": "The component sage:known_topics (KnownTopics), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -353,6 +361,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:rigid_body"
+        }
+      ]
+    },
+    "rpg:item_grid": {
+      "description": "Component rpg:item_grid (ItemGridPlacements).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:item_grid"
         }
       ]
     },
@@ -855,6 +871,91 @@
   },
   "additionalProperties": false,
   "definitions": {
+    "rpg:item_grid": {
+      "type": "object",
+      "properties": {
+        "placed": {
+          "description": "Where each stack lies, by item, in the inventory's order. (List<GridPlacement>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "x": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "y": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "placed+": {
+          "description": "Adds to \"placed\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "x": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "y": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "placed-": {
+          "description": "Removes these from \"placed\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "x": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "y": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component rpg:item_grid (ItemGridPlacements)."
+    },
     "sage:abilities": {
       "type": "object",
       "properties": {

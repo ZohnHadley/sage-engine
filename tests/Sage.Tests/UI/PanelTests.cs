@@ -49,7 +49,7 @@ public class PanelTests
 
         public Fixture()
         {
-            Engine = HeadlessApp.Gameplay().With(new RpgKitModule()).File("data/panel_test.json", Records).Build().Engine;
+            Engine = HeadlessApp.Gameplay().With(new Sage.UI.UiModule(), new RpgKitModule()).File("data/panel_test.json", Records).Build().Engine;
 
             World = Engine.CreateWorld("panels");
             var ground = World.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");

@@ -201,7 +201,8 @@ spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L
 | Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects` | the `"spellmaker"` screen |
 | Things you carry | the two hands, `MainHand` and `OffHand`, as equipment slots; `inv` | |
 | Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook) | registers them as `"spellmaker"`, `"journal"`, `"dialogue"`; the `Spellbook`, `Spellmaker` and `Journal` actions |
-| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`) and `castAction` (`"Cast"`) | |
+| Screens from records (#98) | `rpg:inventory` (a grid with weight), `rpg:equipment`, `rpg:loot` (take all), `rpg:topics`: `screen`/`ui_layout` records in the kit's content over `InventoryView`, `EquipmentView`, `LootView`, `TopicsView`; `ItemGrid`, the `rpg_item` record (`grid` footprint) and the saved `rpg:item_grid` | drawing them is #97's |
+| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`), `castAction` (`"Cast"`) and `inventoryGrid` (`[8, 6]`); the `rpg` string table | |
 
 To build on it, name it in `game.json` and reference it, compile-time only, like the base. With
 `Sage.Sdk` that is one item in each project that uses it; in a client half it brings the kit's client
@@ -234,9 +235,24 @@ is built on the RPG kit; `games/Hello` is not, and runs on the base alone
 (test: HelloHasNoKitAndTheSandboxHasTheRpgKit).
 
 Which keys open the kit's screens is your game's: bind the kit's actions in your own `input_map`
-records (`games/Sandbox/content/data/input.json`) and the screens in your client module (§7). The kit
-has no content of its own, so its words have defaults, and a game that wants others adds one
-`rpg_conventions` record in its own namespace (test: AGameChoosesTheNamespaceItsComposedSpellsLiveIn).
+records (`games/Sandbox/content/data/input.json`) and the screens in your client module (§7). The kit's
+words have defaults, and a game that wants others adds one `rpg_conventions` record in its own namespace
+(test: AGameChoosesTheNamespaceItsComposedSpellsLiveIn).
+
+**A kit carries content** (issue #98): `[PluginContent("rpg")]` on its module mounts the files its
+assembly embeds under `content/` with the record namespace `rpg`, after engine content and before your
+mounts — so the RPG kit's screens, layouts, styles and `strings/en/rpg.json` are there whenever the kit
+is, and your game changes them with a patch in its own mount, as it patches engine content:
+
+```json
+[ { "type": "ui_layout", "id": "rpg:inventory", "patch": true, "nodes": { "hint": { "visible": false } } },
+  { "type": "rpg_item", "id": "rifle", "grid": [4, 2] } ]
+```
+
+(test: TheKitsContentIsMountedAndAGamePatchesIt). A kit also brings the base plugins it needs — the RPG
+kit needs `sage.ui` — even if `game.json`'s `"plugins"` leaves them out
+(test: AKitBringsItsContentAndTheBasePluginsItNeeds). Your own kit does the same with
+`<EmbeddedResource Include="content/**/*" LogicalName="content/%(RecursiveDir)%(Filename)%(Extension)" />`.
 
 ### Running it
 
@@ -1230,6 +1246,14 @@ record hot reload rebuilds every open screen. Three record types, from the `sage
   style inherits its parent's text colour and scale, but a style's background, image, border and padding
   are drawn only where the style is applied — give a window its style and its labels a text style, and
   the frame is drawn once, round the window.
+- **Acting on it** (issue #98): a view-model may implement `Activate(widget, context)` — a confirmed or
+  clicked widget, a fixed button by its node name, a row by `UiScreen.RowOf(widget)` — and
+  `Back(context)`, returning true when it used Back (put down a held item) so the screen stays open. The
+  stack calls both for its top screen (`UiScreen.Handle`, which a tree you host yourself calls with what
+  `uiRoot.Update` returned). A screen between two entities passes the second as its context's `Other`,
+  which `visibleIf` conditions see as `other`; a `grid` can bind its `columns`. The RPG kit's screens
+  (§2 "Kits") are the worked examples:
+  `widgets.Open(RpgKitModule.LootScreen, new UiBindContext(world, player, corpse))`.
 - **Text is a key**, `@ns.key`, into `strings/<lang>/*.json` (05 §3.7): `strings/en/mygame.json` holds
   `{ "bag": { "title": "Bag", "weight": "{current} / {max} kg" } }`, plural forms are
   `{ "one": "{count} arrow", "other": "{count} arrows" }`, and the `lang` cvar picks the language
@@ -1543,7 +1567,7 @@ names their types needs the opt-in.
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
 | SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
-| SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel`, `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack`, `UiLayer`, `UiTween` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98) |
+| SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack`, `UiLayer`, `UiTween`; and the RPG kit's view-models (issue #98): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98) |
 
 SAGE0120–0129 are for experimental areas; an id is never reused once an area leaves.
 
