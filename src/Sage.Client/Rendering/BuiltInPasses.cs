@@ -5,7 +5,8 @@ namespace Sage.Client;
 
 // The engine's own render passes (issue 4h-1): what the renderer's fixed pass array and the UI system
 // drew before, now on the registry like anyone's, so a game orders its passes against them by id. Added
-// by ClientModule.Init. There is no Sky pass yet: the sky is the targets' clear colour (4h-5 adds one).
+// by ClientModule.Init. The Sky stage's `sage:sky` (issue 4h-5) and the Shadow stage's `sage:shadow`
+// (issue 4h-4) have files of their own.
 
 [RenderPass("sage:opaque", RenderStage.Opaque)]
 internal sealed class OpaquePass : IRenderPass

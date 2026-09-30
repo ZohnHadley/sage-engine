@@ -1006,6 +1006,55 @@ headless; the client only draws it. Experimental, SAGE0130 (MAKING_A_GAME §10b)
   grid holds still while the sun moves; shadows in views of worlds that do not draw to the screen.
   Checked on a GPU only by the Windows shader compile and the smoke run (`+r_shadows 1`).
 
+### As built (sky and fog, 2026-09-30 — issue 4h-5)
+The Sky stage's pass and the second fog curve §3.9 promised, both read from the world's `sky` record
+(4h-2). What the sky looks like and how far fog reaches are decided headless; the client only draws.
+Experimental, SAGE0130 (MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Simulation/Rendering/Fog.cs` (headless: `FogMode`, `FogMath`), the sky maths in
+  `src/Sage.Simulation/Rendering/Sky.cs` (`SkyRules.StarsAt`, `Gradient`, `Haze`, `SunDisc`, `ColorAt`),
+  `src/Sage.Client/Rendering/SkyPass.cs` (`sage:sky` and its `SkyDome`), `Renderer.DrawSky`, the fog cull
+  in the mesh, skinned and sprite extracts (`RenderSnapshot.FogHides`), and in the shaders `sky.fx` and
+  `common.fxh`'s `FogFactor`. Tests: `tests/Sage.Tests/Presentation/SkyFogTests.cs`.
+- **The sky pass** draws per view in the Sky stage — after the opaque and alpha-tested runs, before the
+  transparent one — one triangle at the far plane with the depth test on and depth writes off, so it
+  fills only what nothing covered; it draws into whatever target the view is bound to (the screen, a
+  render target, or a post-processing target when there is one). The colour along each view ray is
+  `SkyRules.ColorAt`: the horizon colour (`ClearColor`) at and below the horizon to `Zenith` overhead,
+  most of the change low down; the **fog colour hazing the lowest 0.12** (sin of elevation) when fog is on,
+  so a hill fogged away meets a sky of its own colour; and the **sun disc** (about 1.5°, four times the
+  sun's colour, which is zero once it has set) where the light comes from. **Stars** are hashed from the
+  view direction on the GPU, above the haze; how much they show is `StarsAt(sun elevation)`: none while the
+  sun is up, all of them once it is 0.15 below the horizon, and fewer under a heavy sky (weather's
+  `sunScale`). At noon the zenith is the key's, the horizon the fog's, the sun a bright disc and there are
+  no stars; at 21:00 all of it is dark, there is no sun and the stars are out
+  (test: TheSkyAtNineAtNightAgainstNoon).
+- **Drawn only while `RenderEnvironment.DrawSky`**, which the sky system turns on for a world with a sky
+  record and off when the sky goes; a game may turn it on itself. Not in a depth-only view (the
+  viewmodel's, drawn over a finished picture). **A world with no sky keeps its clear colour, linear fog
+  and no stars**: the look before 4h-5 (test: TheSkySetsTheFogAndDrawsOnlyWhileTheWorldHasOne).
+- **Fog** (`FogMath.Factor`, and `FogFactor` in `common.fxh`, pixel shader only — no vertex shader gains
+  a constant, so `Skinned` keeps its budget): **linear**, from `fogStart` to `fogEnd` as before
+  (test: LinearFogRisesInAStraightLineFromStartToEnd), or **exp²**, `1 - e^-(density·(d - start))²` —
+  softer than linear near the start, closing in faster — with a sky record's `"fogMode": "Exp2"`. A key's
+  `fogDensity` (per metre) sets it; 0, the default, is the density that leaves 1/512 of the surface at
+  `fogEnd`, so `fogStart`/`fogEnd` mean the same in both modes (test: Exp2FogStartsSoftAndIsCompleteAtItsEnd).
+  The mode rides in `FogParams.w` (0: linear; else the density scaled for `exp2()`), so it costs no
+  constant either. Weather's `fogEndScale` divides an explicit density, pulling exp² fog in as it pulls
+  in linear fog's end. The fog colour is the sky key's `fog`, tinted by weather.
+- **Culling what fog hides:** past `FogMath.CullDistance` — `fogEnd` for linear fog, where 1/512 or less
+  shows through for exp² — a fogged surface is its fog colour to within half an 8-bit step, so an item or
+  sprite whose bounding sphere is wholly beyond it (`FogMath.Hides`: nearest point past the distance) is
+  not extracted (test: FogCullsWhatItFullyHides). Only opaque and alpha-tested materials with `fog` on,
+  never into the sun's caster view (a caster past the fog may still shade what is near), and only against
+  a background of the fog's colour: while the sky pass draws, or with no sky when the clear colour is the
+  fog colour (the default) — so a game that set them apart does not see its fogged silhouettes vanish.
+  `r_stats` shows `fog culled N` (`RenderStats.FogCulled`, counted in `Culled` too) and `skies N`.
+- **Not yet:** a moon, clouds and a star field that turns with the hours (the stars are fixed to the
+  world's axes); fog on the sky above the haze band, so a tall thing culled at the fog's end can pop
+  against the gradient above the horizon; particles are never fog-culled. Checked on a GPU only by the
+  Windows shader compile and the smoke run; the Sandbox has no sky until 4h-7 gives it one.
+
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
 
