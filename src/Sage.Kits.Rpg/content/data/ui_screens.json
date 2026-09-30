@@ -37,6 +37,8 @@
       "title":      { "widget": "label", "parent": "window", "text": "@rpg.equipment.title", "style": "title" },
       "slots":      { "widget": "item_list", "parent": "window", "bind": "slots", "spacing": 2 },
       "slot":       { "widget": "button", "parent": "slots", "style": "button", "bind": "text", "textAlign": "start" },
+      "ammo":       { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.equipment.ammo",
+                      "args": { "rounds": "ammo.text" }, "bindings": { "visible": "ammo.has" } },
       "wearable":   { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.equipment.wearable" },
       "candidates": { "widget": "item_list", "parent": "window", "bind": "candidates", "spacing": 2 },
       "candidate":  { "widget": "button", "parent": "candidates", "style": "button", "bind": "text", "textAlign": "start" },

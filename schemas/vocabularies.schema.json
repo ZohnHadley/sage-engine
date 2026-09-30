@@ -5457,10 +5457,20 @@
                     "default": false,
                     "type": "boolean"
                   },
+                  "ammo": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
                   "hands": {
                     "description": "(string, default \"\")",
                     "default": "",
                     "type": "string"
+                  },
+                  "hasAmmo": {
+                    "description": "(bool, default false)",
+                    "default": false,
+                    "type": "boolean"
                   },
                   "hasPlayer": {
                     "description": "(bool, default false)",

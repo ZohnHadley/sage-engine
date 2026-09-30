@@ -143,22 +143,23 @@ public static class JsonMembers
 // an inventory stack's item is checked as well as a record's top-level fields.
 internal static class ContentValues
 {
-    public readonly record struct Found(string Path, object Value);
+    // `Kind`: the record type a plain RecordId's `[RecordRef("type")]` names, when it has one.
+    public readonly record struct Found(string Path, object Value, string? Kind = null);
 
     public static List<Found> Find(object? value, JsonSerializerOptions options, string path = "")
     {
         var found = new List<Found>();
-        Walk(value, value?.GetType(), options, path, found, 0);
+        Walk(value, value?.GetType(), options, path, found, 0, null);
         return found;
     }
 
-    private static void Walk(object? value, Type? type, JsonSerializerOptions options, string path, List<Found> found, int depth)
+    private static void Walk(object? value, Type? type, JsonSerializerOptions options, string path, List<Found> found, int depth, string? kind)
     {
         if (value is null || type is null || depth > 32) return;
         switch (value)
         {
             case RecordId or IRecordRef or AssetPath:
-                found.Add(new Found(path, value));
+                found.Add(new Found(path, value, kind));
                 return;
             case string or JsonNode:
                 return;
@@ -177,16 +178,17 @@ internal static class ContentValues
                     object? member;
                     try { member = property.Get(value); }
                     catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException) { continue; }
-                    Walk(member, property.PropertyType, options, JsonMembers.Child(path, property.Name), found, depth + 1);
+                    string? named = (property.AttributeProvider as System.Reflection.MemberInfo)?.GetCustomAttributes(typeof(RecordRefAttribute), false) is [RecordRefAttribute r, ..] ? r.RecordType : null;
+                    Walk(member, property.PropertyType, options, JsonMembers.Child(path, property.Name), found, depth + 1, named);
                 }
                 break;
             case JsonTypeInfoKind.Dictionary when value is IDictionary map:
                 foreach (DictionaryEntry entry in map)
-                    Walk(entry.Value, JsonMembers.ElementOf(value.GetType()), options, JsonMembers.Child(path, entry.Key.ToString() ?? ""), found, depth + 1);
+                    Walk(entry.Value, JsonMembers.ElementOf(value.GetType()), options, JsonMembers.Child(path, entry.Key.ToString() ?? ""), found, depth + 1, kind);
                 break;
             case JsonTypeInfoKind.Enumerable when value is IEnumerable list:
                 int i = 0;
-                foreach (var item in list) Walk(item, JsonMembers.ElementOf(value.GetType()), options, $"{path}[{i++}]", found, depth + 1);
+                foreach (var item in list) Walk(item, JsonMembers.ElementOf(value.GetType()), options, $"{path}[{i++}]", found, depth + 1, kind);
                 break;
         }
     }

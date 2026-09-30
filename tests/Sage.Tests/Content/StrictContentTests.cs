@@ -155,6 +155,23 @@ public class StrictContentTests
 
     // ---- Prefab bodies, at load ------------------------------------------------------------------
 
+    // A component's plain id whose [RecordRef] names a client record type — a mesh renderer's material —
+    // can't be checked in a headless app with no client, any more than a RecordRef<T> to one can; it used
+    // to be an error there unless something else happened to share the id (issue #138).
+    [Fact]
+    public void AnIdOfAnUnregisteredRecordType_IsNotAnErrorHeadlessly()
+    {
+        using var capture = new CaptureSink();
+        using var app = HeadlessApp.Gameplay().File("data/prefabs.json", """
+            [
+              { "type": "prefab", "id": "gun", "components": { "mesh_renderer": { "material": "gunmetal" } } }
+            ]
+            """, ns: "strictu").Build();
+
+        Assert.Equal(0, app.Records.ErrorCount);
+        Assert.DoesNotContain(MessagesAbout(capture, "strictu"), m => m.Contains("gunmetal"));
+    }
+
     [Fact]
     public void PrefabBodies_AreCheckedAtLoad_AtTheirLines()
     {

@@ -72,6 +72,7 @@
   { "type": "ui_style", "id": "hud_hands", "base": "hud_text", "textColour": "#D7D7D7E6" },
   { "type": "ui_style", "id": "hud_prompt", "base": "hud_text", "textColour": "#F5F0C8EB" },
   { "type": "ui_style", "id": "hud_hint", "base": "hud_text", "textColour": "#D7D7D7AA" },
+  { "type": "ui_style", "id": "hud_ammo", "base": "hud_text", "textScale": 3, "textColour": "#F5F0C8EB" },
   { "type": "ui_style", "id": "hud_bar", "background": "#0000008C", "fill": "#50C85AEB", "border": "#000000C8", "borderWidth": 1 },
   { "type": "ui_style", "id": "hud_bar_low", "base": "hud_bar", "fill": "#DC3C46EB" },
 
@@ -83,6 +84,8 @@
                       "style": "hud_bar", "minSize": [220, 16], "vAlign": "Center" },
       "healthText": { "widget": "label", "parent": "health", "bind": "healthText" },
       "hands":      { "widget": "label", "bind": "hands", "style": "hud_hands", "anchors": "bottom_left", "margin": [24, 0, 0, 26] },
+      "ammo":       { "widget": "label", "bind": "ammo", "style": "hud_ammo", "anchors": "bottom_right", "margin": [0, 0, 24, 26],
+                      "bindings": { "visible": "hasAmmo" } },
       "messages":   { "widget": "stack", "bind": "messages", "anchors": "bottom_left", "margin": [24, 0, 0, 96] },
       "message":    { "widget": "label", "parent": "messages", "bind": "text", "bindings": { "style": "style" } },
       "prompt":     { "widget": "label", "bind": "prompt", "args": { "item": "promptItem" }, "style": "hud_prompt",

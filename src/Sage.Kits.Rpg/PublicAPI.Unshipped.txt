@@ -11,8 +11,18 @@ override Sage.Kits.Rpg.LootView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBi
 override Sage.Kits.Rpg.LootView.Refresh(in Sage.UI.UiBindContext context) -> void
 override Sage.Kits.Rpg.ShopView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
 override Sage.Kits.Rpg.ShopView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.AmmoReadout
+Sage.Kits.Rpg.AmmoReadout.AmmoReadout() -> void
+Sage.Kits.Rpg.AmmoReadout.Attack.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.AmmoReadout.Carried.get -> int
+Sage.Kits.Rpg.AmmoReadout.Has.get -> bool
+Sage.Kits.Rpg.AmmoReadout.Loaded.get -> int
+Sage.Kits.Rpg.AmmoReadout.Magazine.get -> int
+Sage.Kits.Rpg.AmmoReadout.Read(Sage.Simulation.World! world, Sage.Simulation.Entity wielder) -> bool
+Sage.Kits.Rpg.AmmoReadout.Text.get -> string!
 Sage.Kits.Rpg.EquipmentView
 Sage.Kits.Rpg.EquipmentView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.EquipmentView.Ammo.get -> Sage.Kits.Rpg.AmmoReadout!
 Sage.Kits.Rpg.EquipmentView.CandidateRow
 Sage.Kits.Rpg.EquipmentView.CandidateRow.CandidateRow() -> void
 Sage.Kits.Rpg.EquipmentView.CandidateRow.Item.get -> Sage.Core.RecordId

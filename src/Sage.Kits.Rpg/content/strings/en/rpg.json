@@ -24,12 +24,17 @@
     "left": { "one": "Left {item}: too heavy.", "other": "Left {count} things, {item} among them: too heavy." },
     "hint": "A: pick up / put down    Take all: everything that fits    B: close"
   },
+  "ammo": {
+    "magazine": "{loaded} / {carried}",
+    "loose": "{carried}"
+  },
   "equipment": {
     "title": "Equipment",
     "slot": "{slot}: {item}",
     "empty_slot": "{slot}: nothing",
     "candidate": "{item} ({slot})",
     "wearable": "Could wear",
+    "ammo": "Rounds: {rounds}",
     "hint": "A on a slot: take it off    A on an item: put it on    B: close"
   },
   "slots": {

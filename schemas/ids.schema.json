@@ -69,9 +69,13 @@
       "type": "string",
       "enum": [
         "claws",
+        "crossbow_shot",
         "default_attack",
+        "pistol_shot",
         "sage:default_attack",
         "sandbox:claws",
+        "sandbox:crossbow_shot",
+        "sandbox:pistol_shot",
         "sandbox:sword_swing",
         "sword_swing"
       ]
@@ -232,7 +236,15 @@
       "description": "The id of a item record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "bolt",
+        "crossbow",
+        "pistol",
+        "pistol_rounds",
         "practice_sword",
+        "sandbox:bolt",
+        "sandbox:crossbow",
+        "sandbox:pistol",
+        "sandbox:pistol_rounds",
         "sandbox:practice_sword"
       ]
     },
@@ -249,11 +261,13 @@
       "type": "string",
       "enum": [
         "arms_skin",
+        "brass",
         "bunny",
         "crate",
         "door",
         "error",
         "floor",
+        "gunmetal",
         "lit_default",
         "mannequin",
         "mannequin_blue",
@@ -271,13 +285,16 @@
         "sage:terrain_default",
         "sage:unlit_default",
         "sandbox:arms_skin",
+        "sandbox:brass",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
         "sandbox:floor",
+        "sandbox:gunmetal",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:wall",
+        "sandbox:wood",
         "skeletal:floor",
         "skeletal:mannequin",
         "skeletal:mannequin_blue",
@@ -288,7 +305,8 @@
         "steel",
         "terrain_default",
         "unlit_default",
-        "wall"
+        "wall",
+        "wood"
       ]
     },
     "record:movement_profile": {
@@ -338,6 +356,8 @@
       "type": "string",
       "enum": [
         "beacon",
+        "bolt_flight",
+        "bolts_pickup",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -346,6 +366,7 @@
         "cameracut:trigger_zone",
         "campfire",
         "crate",
+        "crossbow_pickup",
         "door",
         "fence",
         "ferryman",
@@ -369,9 +390,11 @@
         "logic_timer",
         "math_remap",
         "npc",
+        "pistol_pickup",
         "player",
         "player_camera",
         "rain",
+        "rounds_pickup",
         "runner",
         "sage:logic_branch",
         "sage:logic_compare",
@@ -381,9 +404,12 @@
         "sage:math_remap",
         "sage:player_camera",
         "sage:scripted_camera",
+        "sandbox:bolt_flight",
+        "sandbox:bolts_pickup",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
+        "sandbox:crossbow_pickup",
         "sandbox:door",
         "sandbox:fence",
         "sandbox:fireball_bolt",
@@ -393,7 +419,9 @@
         "sandbox:hopper",
         "sandbox:hut_path",
         "sandbox:light",
+        "sandbox:pistol_pickup",
         "sandbox:player",
+        "sandbox:rounds_pickup",
         "sandbox:sword_pickup",
         "sandbox:tree",
         "sandbox:watcher",
@@ -440,9 +468,12 @@
       ]
     },
     "record:recoil": {
-      "description": "The id of a recoil record (none is loaded).",
+      "description": "The id of a recoil record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "pistol_recoil",
+        "sandbox:pistol_recoil"
+      ]
     },
     "record:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
@@ -529,9 +560,12 @@
       ]
     },
     "record:spread": {
-      "description": "The id of a spread record (none is loaded).",
+      "description": "The id of a spread record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "pistol_spread",
+        "sandbox:pistol_spread"
+      ]
     },
     "record:sprite_sheet": {
       "description": "The id of a sprite_sheet record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -620,6 +654,7 @@
         "cell_held",
         "cell_item",
         "hint",
+        "hud_ammo",
         "hud_bad",
         "hud_bar",
         "hud_bar_low",
@@ -651,6 +686,7 @@
         "rpg:topic_asked",
         "rpg:warning",
         "rpg:weight_bar",
+        "sandbox:hud_ammo",
         "sandbox:hud_bad",
         "sandbox:hud_bar",
         "sandbox:hud_bar_low",
@@ -699,6 +735,10 @@
       "description": "The id of a viewmodel record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "crossbow_arms",
+        "pistol_arms",
+        "sandbox:crossbow_arms",
+        "sandbox:pistol_arms",
         "sandbox:sword_arms",
         "sword_arms"
       ]
@@ -776,9 +816,13 @@
       "type": "string",
       "enum": [
         "claws",
+        "crossbow_shot",
         "default_attack",
+        "pistol_shot",
         "sage:default_attack",
         "sandbox:claws",
+        "sandbox:crossbow_shot",
+        "sandbox:pistol_shot",
         "sandbox:sword_swing",
         "sword_swing"
       ]
@@ -939,7 +983,15 @@
       "description": "Another item record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "bolt",
+        "crossbow",
+        "pistol",
+        "pistol_rounds",
         "practice_sword",
+        "sandbox:bolt",
+        "sandbox:crossbow",
+        "sandbox:pistol",
+        "sandbox:pistol_rounds",
         "sandbox:practice_sword"
       ]
     },
@@ -956,11 +1008,13 @@
       "type": "string",
       "enum": [
         "arms_skin",
+        "brass",
         "bunny",
         "crate",
         "door",
         "error",
         "floor",
+        "gunmetal",
         "lit_default",
         "mannequin",
         "mannequin_blue",
@@ -978,13 +1032,16 @@
         "sage:terrain_default",
         "sage:unlit_default",
         "sandbox:arms_skin",
+        "sandbox:brass",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
         "sandbox:floor",
+        "sandbox:gunmetal",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:wall",
+        "sandbox:wood",
         "skeletal:floor",
         "skeletal:mannequin",
         "skeletal:mannequin_blue",
@@ -995,7 +1052,8 @@
         "steel",
         "terrain_default",
         "unlit_default",
-        "wall"
+        "wall",
+        "wood"
       ]
     },
     "base:movement_profile": {
@@ -1045,6 +1103,8 @@
       "type": "string",
       "enum": [
         "beacon",
+        "bolt_flight",
+        "bolts_pickup",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -1054,6 +1114,7 @@
         "campfire",
         "crate",
         "creature",
+        "crossbow_pickup",
         "door",
         "fence",
         "ferryman",
@@ -1077,9 +1138,11 @@
         "logic_timer",
         "math_remap",
         "npc",
+        "pistol_pickup",
         "player",
         "player_camera",
         "rain",
+        "rounds_pickup",
         "runner",
         "sage:logic_branch",
         "sage:logic_compare",
@@ -1089,10 +1152,13 @@
         "sage:math_remap",
         "sage:player_camera",
         "sage:scripted_camera",
+        "sandbox:bolt_flight",
+        "sandbox:bolts_pickup",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
         "sandbox:creature",
+        "sandbox:crossbow_pickup",
         "sandbox:door",
         "sandbox:fence",
         "sandbox:fireball_bolt",
@@ -1102,7 +1168,9 @@
         "sandbox:hopper",
         "sandbox:hut_path",
         "sandbox:light",
+        "sandbox:pistol_pickup",
         "sandbox:player",
+        "sandbox:rounds_pickup",
         "sandbox:sword_pickup",
         "sandbox:tree",
         "sandbox:watcher",
@@ -1149,9 +1217,12 @@
       ]
     },
     "base:recoil": {
-      "description": "The id of a recoil record (none is loaded).",
+      "description": "Another recoil record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "pistol_recoil",
+        "sandbox:pistol_recoil"
+      ]
     },
     "base:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
@@ -1238,9 +1309,12 @@
       ]
     },
     "base:spread": {
-      "description": "The id of a spread record (none is loaded).",
+      "description": "Another spread record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "pistol_spread",
+        "sandbox:pistol_spread"
+      ]
     },
     "base:sprite_sheet": {
       "description": "Another sprite_sheet record to inherit every field from, abstract or not.",
@@ -1329,6 +1403,7 @@
         "cell_held",
         "cell_item",
         "hint",
+        "hud_ammo",
         "hud_bad",
         "hud_bar",
         "hud_bar_low",
@@ -1360,6 +1435,7 @@
         "rpg:topic_asked",
         "rpg:warning",
         "rpg:weight_bar",
+        "sandbox:hud_ammo",
         "sandbox:hud_bad",
         "sandbox:hud_bar",
         "sandbox:hud_bar_low",
@@ -1408,6 +1484,10 @@
       "description": "Another viewmodel record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "crossbow_arms",
+        "pistol_arms",
+        "sandbox:crossbow_arms",
+        "sandbox:pistol_arms",
         "sandbox:sword_arms",
         "sword_arms"
       ]
