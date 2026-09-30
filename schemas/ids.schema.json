@@ -81,6 +81,7 @@
       "type": "string",
       "enum": [
         "armor",
+        "armor_head",
         "fire_resist",
         "health",
         "mana",
@@ -89,6 +90,7 @@
         "sage:health",
         "sage:mana",
         "sage:stamina",
+        "skeletal:armor_head",
         "stamina"
       ]
     },
@@ -182,6 +184,32 @@
       "enum": [
         "default_conventions",
         "sage:default_conventions"
+      ]
+    },
+    "record:hit_location": {
+      "description": "The id of a hit_location record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "arm_l",
+        "arm_r",
+        "head",
+        "leg_l",
+        "leg_r",
+        "skeletal:arm_l",
+        "skeletal:arm_r",
+        "skeletal:head",
+        "skeletal:leg_l",
+        "skeletal:leg_r",
+        "skeletal:torso",
+        "torso"
+      ]
+    },
+    "record:hitboxes": {
+      "description": "The id of a hitboxes record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "mannequin",
+        "skeletal:mannequin"
       ]
     },
     "record:input_map": {
@@ -532,15 +560,19 @@
         "cooldown.ember",
         "cooldown.fireball",
         "element.fire",
+        "limb",
         "sage:element.fire",
         "sage:state.burning",
         "sage:state.dead",
         "sage:state.invulnerable",
         "sandbox:cooldown.ember",
         "sandbox:cooldown.fireball",
+        "skeletal:limb",
+        "skeletal:vital",
         "state.burning",
         "state.dead",
-        "state.invulnerable"
+        "state.invulnerable",
+        "vital"
       ]
     },
     "record:ui_layout": {
@@ -746,6 +778,7 @@
       "type": "string",
       "enum": [
         "armor",
+        "armor_head",
         "fire_resist",
         "health",
         "mana",
@@ -754,6 +787,7 @@
         "sage:health",
         "sage:mana",
         "sage:stamina",
+        "skeletal:armor_head",
         "stamina"
       ]
     },
@@ -847,6 +881,32 @@
       "enum": [
         "default_conventions",
         "sage:default_conventions"
+      ]
+    },
+    "base:hit_location": {
+      "description": "Another hit_location record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "arm_l",
+        "arm_r",
+        "head",
+        "leg_l",
+        "leg_r",
+        "skeletal:arm_l",
+        "skeletal:arm_r",
+        "skeletal:head",
+        "skeletal:leg_l",
+        "skeletal:leg_r",
+        "skeletal:torso",
+        "torso"
+      ]
+    },
+    "base:hitboxes": {
+      "description": "Another hitboxes record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "mannequin",
+        "skeletal:mannequin"
       ]
     },
     "base:input_map": {
@@ -1199,15 +1259,19 @@
         "cooldown.ember",
         "cooldown.fireball",
         "element.fire",
+        "limb",
         "sage:element.fire",
         "sage:state.burning",
         "sage:state.dead",
         "sage:state.invulnerable",
         "sandbox:cooldown.ember",
         "sandbox:cooldown.fireball",
+        "skeletal:limb",
+        "skeletal:vital",
         "state.burning",
         "state.dead",
-        "state.invulnerable"
+        "state.invulnerable",
+        "vital"
       ]
     },
     "base:ui_layout": {

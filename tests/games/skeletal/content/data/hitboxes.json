@@ -1,0 +1,38 @@
+[
+  // Where the mannequin can be hit (engine issue #137): a hitboxes record keyed by its model, eleven boxes
+  // that follow its bones, and what each place means. Every NPC in the yard gets them from the `hitboxes`
+  // part (npc.json). A strike that meets a box lands on that box's hit_location; one that meets no box
+  // lands on the body. The boxes are a little bigger than the art (make_mannequin.py) so a shot that
+  // grazes the paint still counts. Offsets are from each joint (its rest rotation is the identity).
+
+  // Head armour is an attribute like any other: a helmet is an item (or anything) whose effects add it.
+  { "type": "attribute", "id": "armor_head", "start": 0, "min": 0, "max": 95 },
+  { "type": "tag", "id": "vital", "description": "A strike here is worse than elsewhere" },
+  { "type": "tag", "id": "limb", "description": "An arm or a leg" },
+
+  { "type": "hit_location", "id": "head", "damageMultiplier": 2, "resist": "armor_head", "tags": ["vital"] },
+  { "type": "hit_location", "id": "torso", "damageMultiplier": 1 },
+  { "type": "hit_location", "id": "arm_l", "damageMultiplier": 0.5, "tags": ["limb"] },
+  { "type": "hit_location", "id": "arm_r", "damageMultiplier": 0.5, "tags": ["limb"] },
+  { "type": "hit_location", "id": "leg_l", "damageMultiplier": 0.75, "tags": ["limb"] },
+  { "type": "hit_location", "id": "leg_r", "damageMultiplier": 0.75, "tags": ["limb"] },
+
+  {
+    "type": "hitboxes",
+    "id": "mannequin",
+    "model": "models/mannequin.glb",
+    "boxes": {
+      "head":        { "location": "head",  "bone": "head",        "size": [0.22, 0.32, 0.26], "offset": [0, 0.08, 0] },
+      "chest":       { "location": "torso", "bone": "chest",       "size": [0.40, 0.52, 0.26], "offset": [0, -0.025, 0] },
+      "pelvis":      { "location": "torso", "bone": "pelvis",      "size": [0.34, 0.18, 0.22] },
+      "upper_arm_l": { "location": "arm_l", "bone": "upper_arm_l", "size": [0.12, 0.31, 0.12], "offset": [-0.01, -0.145, 0] },
+      "forearm_l":   { "location": "arm_l", "bone": "forearm_l",   "size": [0.10, 0.40, 0.10], "offset": [-0.005, -0.20, 0] },
+      "upper_arm_r": { "location": "arm_r", "bone": "upper_arm_r", "size": [0.12, 0.31, 0.12], "offset": [0.01, -0.145, 0] },
+      "forearm_r":   { "location": "arm_r", "bone": "forearm_r",   "size": [0.10, 0.40, 0.10], "offset": [0.005, -0.20, 0] },
+      "thigh_l":     { "location": "leg_l", "bone": "thigh_l",     "size": [0.16, 0.44, 0.16], "offset": [0, -0.21, 0] },
+      "shin_l":      { "location": "leg_l", "bone": "shin_l",      "size": [0.13, 0.50, 0.14], "offset": [0, -0.25, 0] },
+      "thigh_r":     { "location": "leg_r", "bone": "thigh_r",     "size": [0.16, 0.44, 0.16], "offset": [0, -0.21, 0] },
+      "shin_r":      { "location": "leg_r", "bone": "shin_r",      "size": [0.13, 0.50, 0.14], "offset": [0, -0.25, 0] }
+    }
+  }
+]
