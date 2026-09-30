@@ -50,7 +50,7 @@ public class ScreenTests
         {
             // The test's own action, registered with everything else's: once content has loaded, the
             // bindings are built and a late action would have none.
-            Engine = HeadlessApp.Gameplay().With(new RpgKitModule())
+            Engine = HeadlessApp.Gameplay().With(new Sage.UI.UiModule(), new RpgKitModule())
                 .OnRegistered(app => app.Engine.Actions.Register("TestSpellbook", ActionKind.Button))
                 .File("data/screen_test.json", Records)
                 .Build().Engine;

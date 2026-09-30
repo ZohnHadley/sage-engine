@@ -27,6 +27,15 @@ public interface IViewModel
     // Called by UiScreen.Refresh before its bindings are read: bring what they read up to date from the
     // world. Runs every frame a screen is shown, so, once warm, it should not allocate either.
     void Refresh(in UiBindContext context) { }
+
+    // A widget of the screen was confirmed or clicked (UiScreen.Handle, issue #98): a layout node by its
+    // Name (`take_all`), or a row's widget, whose Data — or its nearest ancestor's — is the row it shows
+    // (UiScreen.RowOf). Returns whether it did something. The screen reads the view-model again after.
+    bool Activate(Widget widget, in UiBindContext context) => false;
+
+    // Back was pressed: true when the view-model used it (put down an item it was holding), false to let
+    // the screen close.
+    bool Back(in UiBindContext context) => false;
 }
 
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
@@ -75,6 +84,28 @@ public sealed class UiScreen
         var context = Context;
         ViewModel?.Refresh(in context);
         View.Refresh(ViewModel, in context);
+    }
+
+    // What one UiRoot.Update did, for this screen (issue #98): an activated widget inside it goes to the
+    // view-model's Activate, Back to its Back; then the screen is read again. Returns whether the
+    // view-model used it — Back that it did not use is the owner's cue to close the screen.
+    public bool Handle(in UiResult result)
+    {
+        if (!IsOpen || ViewModel == null) return false;
+        var context = Context;
+        bool used = false;
+        if (result.Activated is { } widget && Root.Contains(widget)) used = ViewModel.Activate(widget, in context);
+        if (result.Back) used |= ViewModel.Back(in context);
+        if (used) Refresh();
+        return used;
+    }
+
+    // The row a widget of a bound list stands for: its Data, or its nearest ancestor's inside the screen.
+    public static object? RowOf(Widget? widget)
+    {
+        for (var w = widget; w != null; w = w.Parent)
+            if (w.Data != null) return w.Data;
+        return null;
     }
 
     // Takes Root out of its parent, and stops rebuilding on reload.

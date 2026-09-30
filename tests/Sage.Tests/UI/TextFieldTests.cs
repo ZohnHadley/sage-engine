@@ -125,7 +125,7 @@ public class SpellmakerScreenTests
 
         public Fixture()
         {
-            Engine = HeadlessApp.Gameplay().With(new RpgKitModule()).File("data/spellmaker_screen.json", Records).Build().Engine;
+            Engine = HeadlessApp.Gameplay().With(new Sage.UI.UiModule(), new RpgKitModule()).File("data/spellmaker_screen.json", Records).Build().Engine;
 
             World = Engine.CreateWorld("spellmaker");
             World.Resources.Add(Screens);

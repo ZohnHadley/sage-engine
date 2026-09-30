@@ -17,7 +17,22 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sage.Gameplay\Sage.Gameplay.csproj" />
+    <!-- The retained UI (issue #95/#96): the inventory, equipment, loot and topics screens are view-models
+         over it, built from the kit's own ui_layout and screen records (issue #98). -->
+    <ProjectReference Include="..\Sage.UI\Sage.UI.csproj" />
   </ItemGroup>
+
+  <!-- The kit's content (issue #98, [PluginContent("rpg")]): records and string tables carried in the
+       assembly, mounted after engine content and before the game's, so a game patches them. -->
+  <ItemGroup>
+    <EmbeddedResource Include="content/**/*" LogicalName="content/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Experimental API (docs/MAKING_A_GAME.md §10b): the screens are Sage.UI's (SAGE0125) and the topics
+       screen reads DialogueTopics (SAGE0124). -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0124;SAGE0125</NoWarn>
+  </PropertyGroup>
 
   <!-- The layers below, for every file. -->
   <ItemGroup>

@@ -89,7 +89,7 @@ public class RpgKitTests
     private static (HeadlessApp App, Entity Hero) Hero(bool kit, string extra = "")
     {
         var builder = HeadlessApp.Gameplay().File("data/kit_test.json", Records);
-        if (kit) builder.With(new RpgKitModule());
+        if (kit) builder.With(new Sage.UI.UiModule(), new RpgKitModule());
         if (extra.Length > 0) builder.File("data/extra.json", extra);
         var app = builder.Boot("kit");
         var ground = app.World.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
@@ -212,7 +212,7 @@ public class RpgKitTests
             Assert.Equal(2, bare.Records.ErrorCount);   // neither slot exists
         }
 
-        using var kit = HeadlessApp.Gameplay().With(new RpgKitModule())
+        using var kit = HeadlessApp.Gameplay().With(new Sage.UI.UiModule(), new RpgKitModule())
             .OnRegistered(app => SlotsOf(app).Register("Head"))   // the game's own, beside the kit's
             .File("data/armoury.json", Armoury).Boot("kit");
         Assert.Equal(new[] { RpgKitModule.MainHand, RpgKitModule.OffHand, "Head" }, SlotsOf(kit).Names);

@@ -344,8 +344,9 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   (test: TheRpgKitIsBuiltOnTheBaseAndIsNotPartOfIt), neither the built client nor the editor references
   a kit (test: NeitherTheClientNorTheEditorReferencesAKit), and SAGE0025 fires against the real kit
   (test: ABaseAssemblyThatUsesTheRealRpgKitIsABuildError). `FirstPersonCameraSystem` moved to
-  `Sage.Simulation` (it needed nothing of Bepu's). The kit has no content mount yet, so its defaults are
-  code and a game binds the kit's keys itself (`games/Sandbox/content/data/input.json`).
+  `Sage.Simulation` (it needed nothing of Bepu's). The kit had no content mount then, so its defaults were
+  code and a game binds the kit's keys itself (`games/Sandbox/content/data/input.json`); since #98 a
+  plugin carries content in its assembly (`[PluginContent]`, the kit's `rpg` screens and strings).
 - Not done here: `GameplayModules.cs`, `PrefabParts.cs` and `MapLevel.cs` moved whole rather than one
   file per module or type; the render, audio, input and UI view-models stay in `Sage.Simulation` rather
   than separate `Sage.UI`/`Sage.Audio` plugins (§0.5); `Sage.Sdk` is #32.
@@ -738,6 +739,14 @@ are the saved `sage:known_topics`, taught by the dialogue plugin's `add_topic` a
 `DialogueTopics.Available`/`Ask` are the headless view model 4c's screen reads (#98). Details: 16 "As
 built (dialogue topics)".
 
+As built (issue #98): that screen exists. The RPG kit's `rpg:topics` screen record, over `TopicsView`,
+lists `DialogueTopics.Available` for the player and the NPC (the screen's `UiBindContext.Other`) and asks
+with `DialogueTopics.Ask` on A, so the answer's `then` — an `add_topic` among them — runs through the same
+language as every other `then`, and the topic it teaches is in the list at the next refresh
+(test: AGamepadMovesAnItem_IsRefusedOverTheWeightLimit_LootsACorpse_AndAsksATopic). A layout's
+`visibleIf` now asks its conditions with that other entity as `other`. Details: docs/design/13 "As built
+(the RPG screens)".
+
 **Stage 3: entity I/O as the level-logic backbone.**
 - Add logic entities: `logic_relay`, `logic_counter`, `logic_timer`, `logic_compare`, `logic_branch` and
   `math_*`.
@@ -918,6 +927,10 @@ because it edits the live play world (`DevTools.cs:84-87`).
     focus highlight eased on frame time with 4b's `Easing`; the `Menu*` actions plus
     `MenuLeft`/`MenuRight`/`MenuTab` as its input. The Sandbox's status screen (`C`) is the demo
     (docs/design/13 "As built (drawing)"). The panel screens and the HUD move onto it in #98/#99.
+  - *As built (issue #98, 2026-09-30).* The first consumers: the RPG kit's inventory grid (with weight
+    and item footprints), equipment, loot and topics screens are records in the kit's own content
+    (`[PluginContent("rpg")]`) over headless view-models that act through `UiScreen.Handle`, and one test
+    drives them with a gamepad — phase 4c's exit criterion (docs/design/13 "As built (the RPG screens)").
 - **Asset hot reload** for meshes (`.glb`), sounds and `.fx`, in addition to textures and records.
 
 ### 4.8 SDK, packaging, CI and hygiene (developers first)

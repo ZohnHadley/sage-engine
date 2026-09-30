@@ -373,7 +373,10 @@ public sealed class UiScreenStack
                 top.RaiseActivated(activated);
                 Activated?.Invoke(top, activated);
             }
-            if (result.Back && top.CloseOnBack) Close(top);
+            // The screen's view-model acts on what was activated, and may use Back itself — put down the
+            // item it holds — in which case the screen stays (IViewModel.Activate/Back, issue #98).
+            bool used = !top.IsClosing && top.Screen != null && top.Screen.Handle(in result);
+            if (result.Back && top.CloseOnBack && !used) Close(top);
             else if (input.PointerPressed && !result.PointerOverUi && top.CloseOnClickOutside && !top.IsClosing) Close(top);
         }
         return result;

@@ -102,6 +102,8 @@ Sage.UI.ITextMeasure.LineHeight.get -> float
 Sage.UI.ITextMeasure.Measure(string! text, float scale) -> System.Numerics.Vector2
 Sage.UI.IViewModel
 Sage.UI.IViewModel.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.UI.IViewModel.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.IViewModel.Back(in Sage.UI.UiBindContext context) -> bool
 Sage.UI.IWidgetVisitor
 Sage.UI.IWidgetVisitor.Enter(Sage.UI.Widget! widget) -> bool
 Sage.UI.IWidgetVisitor.Leave(Sage.UI.Widget! widget) -> void
@@ -193,7 +195,9 @@ Sage.UI.UiBindContext
 Sage.UI.UiBindContext.Subject.get -> Sage.Simulation.Entity
 Sage.UI.UiBindContext.Subject.init -> void
 Sage.UI.UiBindContext.UiBindContext() -> void
-Sage.UI.UiBindContext.UiBindContext(Sage.Simulation.World? World, Sage.Simulation.Entity Subject = default(Sage.Simulation.Entity)) -> void
+Sage.UI.UiBindContext.UiBindContext(Sage.Simulation.World? World, Sage.Simulation.Entity Subject = default(Sage.Simulation.Entity), Sage.Simulation.Entity Other = default(Sage.Simulation.Entity)) -> void
+Sage.UI.UiBindContext.Other.get -> Sage.Simulation.Entity
+Sage.UI.UiBindContext.Other.init -> void
 Sage.UI.UiBindContext.World.get -> Sage.Simulation.World?
 Sage.UI.UiBindContext.World.init -> void
 Sage.UI.UiInput
@@ -321,6 +325,7 @@ Sage.UI.UiScreen
 Sage.UI.UiScreen.Builds.get -> int
 Sage.UI.UiScreen.Close() -> void
 Sage.UI.UiScreen.Context.get -> Sage.UI.UiBindContext
+Sage.UI.UiScreen.Handle(in Sage.UI.UiResult result) -> bool
 Sage.UI.UiScreen.Context.set -> void
 Sage.UI.UiScreen.Id.get -> Sage.Core.RecordId
 Sage.UI.UiScreen.IsOpen.get -> bool
@@ -546,3 +551,4 @@ virtual Sage.UI.Widget.OnChildAdded(Sage.UI.Widget! child) -> void
 virtual Sage.UI.Widget.OnChildRemoved(Sage.UI.Widget! child) -> void
 virtual Sage.UI.Widget.OnDescendantActivated(Sage.UI.Widget! widget) -> void
 virtual Sage.UI.Widget.OnDescendantFocused(Sage.UI.Widget! widget) -> void
+static Sage.UI.UiScreen.RowOf(Sage.UI.Widget? widget) -> object?

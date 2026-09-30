@@ -1,0 +1,99 @@
+[
+  // The RPG kit's screens (issue #98): each a `screen` naming its layout and its view-model (the kit's
+  // C#, src/Sage.Kits.Rpg/*View.cs), and each layout a flat tree of named nodes (13 "As built
+  // (style and layout records)"). A game moves, restyles, retranslates or adds to any node with a patch:
+  //   { "type": "ui_layout", "id": "rpg:inventory", "patch": true, "nodes": { "hint": { "visible": false } } }
+  //
+  // A grid binds its rows to an ItemGrid's `cells` (one square each: `label`, `style`, `tooltip`) and its
+  // width to its `columns`; its row template is the one node inside it.
+
+  // ---- inventory: the bag as a grid, with its weight ----------------------------------------------
+  { "type": "screen", "id": "inventory", "layout": "inventory", "viewModel": "rpg_inventory" },
+  { "type": "ui_layout", "id": "inventory", "style": "panel",
+    "nodes": {
+      "window":     { "widget": "stack", "anchors": "center", "spacing": 6 },
+      "title":      { "widget": "label", "parent": "window", "text": "@rpg.inventory.title", "style": "title" },
+      "weight":     { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.inventory.weight",
+                      "args": { "current": "bag.weight", "max": "bag.capacity" }, "bindings": { "visible": "bag.limited" } },
+      "weight_any": { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.inventory.weight_unlimited",
+                      "args": { "current": "bag.weight" }, "bindings": { "visible": "bag.unlimited" } },
+      "weight_bar": { "widget": "bar", "parent": "window", "style": "weight_bar", "bind": "bag.weight",
+                      "bindings": { "max": "bag.capacity", "visible": "bag.limited" }, "minSize": [0, 8] },
+      "cells":      { "widget": "grid", "parent": "window", "bind": "bag.cells", "bindings": { "columns": "bag.columns" },
+                      "uniform": true, "spacing": 2 },
+      "cell":       { "widget": "button", "parent": "cells", "style": "cell", "bind": "label",
+                      "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [56, 56] },
+      "holding":    { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.grid.holding",
+                      "args": { "item": "heldLabel" }, "bindings": { "visible": "holding" } },
+      "message":    { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
+      "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.inventory.hint" }
+    } },
+
+  // ---- equipment: what is worn, slot by slot, and what could be -----------------------------------
+  { "type": "screen", "id": "equipment", "layout": "equipment", "viewModel": "rpg_equipment" },
+  { "type": "ui_layout", "id": "equipment", "style": "panel",
+    "nodes": {
+      "window":     { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [420, 0] },
+      "title":      { "widget": "label", "parent": "window", "text": "@rpg.equipment.title", "style": "title" },
+      "slots":      { "widget": "item_list", "parent": "window", "bind": "slots", "spacing": 2 },
+      "slot":       { "widget": "button", "parent": "slots", "style": "button", "bind": "text", "textAlign": "start" },
+      "wearable":   { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.equipment.wearable" },
+      "candidates": { "widget": "item_list", "parent": "window", "bind": "candidates", "spacing": 2 },
+      "candidate":  { "widget": "button", "parent": "candidates", "style": "button", "bind": "text", "textAlign": "start" },
+      "message":    { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
+      "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.equipment.hint" }
+    } },
+
+  // ---- loot: a corpse's or a chest's grid beside the bag's, and take all ---------------------------
+  { "type": "screen", "id": "loot", "layout": "loot", "viewModel": "rpg_loot" },
+  { "type": "ui_layout", "id": "loot", "style": "panel",
+    "nodes": {
+      "window":      { "widget": "stack", "anchors": "center", "spacing": 6 },
+      "sides":       { "widget": "stack", "parent": "window", "direction": "row", "spacing": 16 },
+
+      "theirs":      { "widget": "stack", "parent": "sides", "spacing": 4 },
+      "their_title": { "widget": "label", "parent": "theirs", "style": "title", "text": "@rpg.loot.title",
+                       "args": { "who": "containerName" } },
+      "their_cells": { "widget": "grid", "parent": "theirs", "bind": "container.cells",
+                       "bindings": { "columns": "container.columns" }, "uniform": true, "spacing": 2 },
+      "their_cell":  { "widget": "button", "parent": "their_cells", "style": "cell", "bind": "label",
+                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+      "empty":       { "widget": "label", "parent": "theirs", "style": "hint", "text": "@rpg.loot.empty",
+                       "bindings": { "visible": "isEmpty" } },
+
+      "yours":       { "widget": "stack", "parent": "sides", "spacing": 4 },
+      "your_title":  { "widget": "label", "parent": "yours", "style": "title", "text": "@rpg.loot.yours" },
+      "weight":      { "widget": "label", "parent": "yours", "style": "text", "text": "@rpg.inventory.weight",
+                       "args": { "current": "bag.weight", "max": "bag.capacity" }, "bindings": { "visible": "bag.limited" } },
+      "weight_bar":  { "widget": "bar", "parent": "yours", "style": "weight_bar", "bind": "bag.weight",
+                       "bindings": { "max": "bag.capacity", "visible": "bag.limited" }, "minSize": [0, 8] },
+      "your_cells":  { "widget": "grid", "parent": "yours", "bind": "bag.cells",
+                       "bindings": { "columns": "bag.columns" }, "uniform": true, "spacing": 2 },
+      "your_cell":   { "widget": "button", "parent": "your_cells", "style": "cell", "bind": "label",
+                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+
+      "take_all":    { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.loot.take_all", "hAlign": "center" },
+      "holding":     { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.grid.holding",
+                       "args": { "item": "heldLabel" }, "bindings": { "visible": "holding" } },
+      "message":     { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
+      "hint":        { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.loot.hint" }
+    } },
+
+  // ---- topics: Morrowind's keywords down one side, the answer beside them --------------------------
+  { "type": "screen", "id": "topics", "layout": "topics", "viewModel": "rpg_topics" },
+  { "type": "ui_layout", "id": "topics", "style": "panel",
+    "nodes": {
+      "window":  { "widget": "stack", "anchors": "center", "spacing": 6 },
+      "title":   { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.topics.title",
+                   "args": { "who": "speaker" } },
+      "body":    { "widget": "stack", "parent": "window", "direction": "row", "spacing": 12 },
+      "scroll":  { "widget": "scroll", "parent": "body", "minSize": [220, 320] },
+      "list":    { "widget": "item_list", "parent": "scroll", "bind": "topics", "spacing": 1 },
+      "topic":   { "widget": "button", "parent": "list", "style": "topic", "bind": "keyword",
+                   "bindings": { "style": "style" }, "textAlign": "start" },
+      "answer":  { "widget": "label", "parent": "body", "style": "text", "bind": "answer", "minSize": [420, 0], "vAlign": "start" },
+      "none":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.topics.none",
+                   "bindings": { "visible": "noTopics" } },
+      "hint":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.topics.hint" }
+    } }
+]
