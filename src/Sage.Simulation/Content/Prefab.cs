@@ -412,7 +412,11 @@ public static class PrefabExtensions
         var placed = Transform.At(position);
         placed.LocalRotation = SageMath.RotationFromYaw(yawDegrees * MathF.PI / 180f);
         var entity = SpawnTree(world, prefab, placed, overrides, where, default, 0, persist);
-        if (!entity.IsNull) SnapGlobals(world, entity);
+        if (entity.IsNull) return entity;
+        SnapGlobals(world, entity);
+        // Its prefab's children get ids derived from the root's (4i-3), so a save keeps their state and a
+        // load finds them under the respawned parent rather than spawning them a second time.
+        if (entity.ChildCount > 0 && world.TryGet(entity, out Persistent root)) ContentIds.Assign(world, entity, root.Id);
         return entity;
     }
 
@@ -445,8 +449,8 @@ public static class PrefabExtensions
             world.SetParent(entity, parent);
             entity.AddTag<FromParentPrefab>();   // dies with it (World.Destroy)
         }
-        // Only the root of a runtime spawn: a child is re-spawned by its parent on load, so an id of its
-        // own would duplicate it (FromParentPrefab, #161).
+        // Only the root of a runtime spawn: a child is re-spawned by its parent on load, so a *random* id of
+        // its own would duplicate it (FromParentPrefab, #161); SpawnPlaced derives the children's from this.
         if (persist && parent.IsNull && record.Persist) world.MakePersistent(entity);
         if (overrides is { IsEmpty: false })
             world.Add(entity, new PrefabOverridden { Overrides = overrides.Clone() });   // for ent_dump and the editor
@@ -465,13 +469,17 @@ public static class PrefabExtensions
             Log.Error(LogCat.Records, $"{prefab}: prefabs nest deeper than {PrefabOverriding.MaxDepth}; its children are not spawned");
             return entity;
         }
-        foreach (var child in record.Children)
+        for (int i = 0; i < record.Children.Count; i++)
         {
+            var child = record.Children[i];
             if (child == null || child.Prefab.Id.IsEmpty) continue;
             var local = Transform.At(child.At);
             local.LocalRotation = SageMath.RotationFromYaw(child.Yaw * MathF.PI / 180f);
             var spawned = SpawnTree(world, child.Prefab.Id, local, child.Overrides, $"{prefab}: child {child.Prefab.Id}", entity, depth + 1);
-            if (!spawned.IsNull && !string.IsNullOrEmpty(child.Name)) spawned.Name = child.Name;
+            if (spawned.IsNull) continue;
+            if (!string.IsNullOrEmpty(child.Name)) spawned.Name = child.Name;
+            // Its place in the parent, from which its persistent id is derived (4i-3, ContentIds.Assign).
+            world.Add(spawned, new PrefabChildKey { Key = PrefabChildKeys.Of(i, child) });
         }
         return entity;
     }

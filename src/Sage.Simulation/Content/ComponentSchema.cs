@@ -312,6 +312,14 @@ public sealed class ComponentSchema
         entity.Raw.AddTags(new F.Tags(tagType));
     }
 
+    // Takes a tag off (a load laying saved tags over what content placed, 4i-3).
+    internal void RemoveTag(Entity entity, Type tag)
+    {
+        if (entity.IsNull) return;
+        if (F.EntityStore.GetEntitySchema().TagTypeByType.TryGetValue(tag, out var tagType))
+            entity.Raw.RemoveTags(new F.Tags(tagType));
+    }
+
     // Friflo's handle for a component type, declared or not (the inspector writes Friflo's own too).
     private static F.ComponentType ComponentTypeOf(Type type) =>
         F.EntityStore.GetEntitySchema().ComponentTypeByType.TryGetValue(type, out var component)

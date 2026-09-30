@@ -381,6 +381,51 @@ internal static class MapLoader
         SpawnEntities(world, level, level.Space);
     }
 
+    // Every level that can be placed now spawns its entities now, rather than at the next PrePhysics: a
+    // load lays its state onto them before it returns (4i-3). One still waiting for its ground keeps the
+    // save's state for it pending, and is given it when it spawns.
+    public static void EnsureEntities(World world)
+    {
+        if (!world.Resources.TryGet<MapLevels>(out var levels) || levels == null) return;
+        foreach (var level in levels.Loaded)
+            if (TryPlace(world, level)) EnsureEntities(world, level);
+    }
+
+    // A level's entities gone, to be spawned again (a load re-placing a level a person loaded by hand).
+    public static void ForgetEntities(World world, MapLevel level)
+    {
+        ContentIds.Forget(world, ContentIds.MapSource(level.Record));
+        foreach (var entity in world.Query<FromMap>().Entities.ToEntityList())
+            if (world.IsAlive(entity) && entity.GetComponent<FromMap>().Level == level.Record) world.Destroy(entity);
+        foreach (var solid in level.Solids) solid.Spawned = default;
+        level.EntitiesSpawned = false;
+    }
+
+    // A map entity's identity in saves (4i-3): its `id` key, else its `targetname` when no other entity in
+    // the level has that name, else the level and its place in the file — which moves when the mapper adds
+    // an entity above it, and is why the first two win.
+    private static PersistentId MapEntityId(MapLevel level, MapEntity entity, string kind, int index, Dictionary<string, int> names)
+    {
+        string source = ContentIds.MapSource(level.Record);
+        if (entity.Keys.TryGetValue("id", out var authored) && ContentIds.Authored(source, authored) is { } id) return id;
+        if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name) && names.TryGetValue(name, out int n) && n == 1)
+            return PersistentId.FromName($"{source}:name:{name}");
+        return PersistentId.FromName($"{source}:{kind}:{index}");
+    }
+
+    private static Dictionary<string, int> TargetNames(MapLevel level)
+    {
+        var names = new Dictionary<string, int>(StringComparer.Ordinal);
+        void Count(MapEntity entity)
+        {
+            if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
+                names[name] = names.TryGetValue(name, out int n) ? n + 1 : 1;
+        }
+        foreach (var entity in level.PointEntities) Count(entity);
+        foreach (var solid in level.Solids) Count(solid.Source);
+        return names;
+    }
+
     // `classname` is a prefab id. That is the whole entity mapping, and it is deliberate: a `.map` says
     // "a watcher stands here", and what a watcher *is* stays in the prefab record where a game can change
     // it without touching the level. Keys the engine understands are `origin`, `angle`, `targetname`,
@@ -391,9 +436,12 @@ internal static class MapLoader
         var engine = world.Engine!;
         int spawned = 0;
         List<string>? unknown = null;
+        string source = ContentIds.MapSource(level.Record);
+        var names = TargetNames(level);
 
-        foreach (var entity in level.PointEntities)
+        for (int index = 0; index < level.PointEntities.Count; index++)
         {
+            var entity = level.PointEntities[index];
             string className = entity.ClassName;
             if (string.IsNullOrEmpty(className)) continue;
 
@@ -431,10 +479,16 @@ internal static class MapLoader
 
             if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
                 spawnedEntity.Name = name;
+            ContentIds.Place(world, source, spawnedEntity, MapEntityId(level, entity, "point", index, names));
             spawned++;
         }
 
-        for (int i = 0; i < level.Solids.Count; i++) SpawnSolid(world, level, level.Solids[i], i, ref spawned);
+        for (int i = 0; i < level.Solids.Count; i++)
+        {
+            SpawnSolid(world, level, level.Solids[i], i, ref spawned);
+            if (level.Solids[i].Spawned is { IsNull: false } solid)
+                ContentIds.Place(world, source, solid, MapEntityId(level, level.Solids[i].Source, "solid", i, names));
+        }
 
         // Names are resolved after everything is in the world, so a wire may point either way along the
         // file: a trigger at the top of the map can open a door written at the bottom of it.
@@ -445,6 +499,9 @@ internal static class MapLoader
         if (spawned > 0 || unknown != null)
             Log.Info(LogCat.Level, $"{level.Source}: spawned {spawned} entit(ies)"
                                  + (unknown != null ? $", left for the game: {string.Join(", ", unknown)}" : ""));
+
+        // What a save said about this level — what was taken, what a counter reached — now it is here.
+        ContentIds.Finish(world, source);
     }
 
     // A classname is a prefab of the level's own namespace, or of another when it says so
@@ -678,6 +735,9 @@ public sealed class MapModule : IModule
     {
         var levels = new MapLevels();
         world.Resources.Add(levels);
+        // Subscribed before the collision system's handler, which destroys the level's entities: what is
+        // dead *before* that is what the game destroyed, and stays so if the level is loaded again (4i-3).
+        levels.Unloaded += level => ContentIds.Forget(world, ContentIds.MapSource(level.Record));
         world.AddSystem(new MapCollisionSystem(world));
 
         // A level's `Position` is a world position held outside the ECS, and the rule for those is the

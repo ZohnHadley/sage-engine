@@ -489,6 +489,7 @@ Sage.Simulation.MathRemapPart.MathRemapPart() -> void
 Sage.Simulation.MathRemapPart.OutMax -> float
 Sage.Simulation.MathRemapPart.OutMin -> float
 Sage.Simulation.Placement.Overrides -> Sage.Simulation.PrefabOverrides?
+Sage.Simulation.Placement.Id -> string!
 Sage.Simulation.PlayerCamera
 Sage.Simulation.PlayerCamera.PlayerCamera() -> void
 Sage.Simulation.PlayerCameraSystem
@@ -946,3 +947,5 @@ static Sage.Simulation.WorldClock.Format(double hour) -> string!
 static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldClock!
 static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
 Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int
+*REMOVED*const Sage.Simulation.SaveSystem.FormatVersion = 2 -> int
+const Sage.Simulation.SaveSystem.FormatVersion = 3 -> int

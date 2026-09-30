@@ -153,7 +153,10 @@ public class RuntimeSpawnSaveTests
             var world = app.World;
             var cart = world.Spawn(Id("cart"), new Vector3(2, 0, 2));
             Assert.True(world.Has<Persistent>(cart));
-            Assert.All(cart.ChildEntities, child => Assert.False(world.Has<Persistent>(child)));
+            // Never a random id of their own: one derived from the cart's and each child's place in it (4i-3).
+            var cartId = world.Get<Persistent>(cart).Id;
+            Assert.Equal(new[] { ContentIds.Child(cartId, "0:sage:lamp"), ContentIds.Child(cartId, "1:sage:lamp") },
+                         cart.ChildEntities.Select(child => world.Get<Persistent>(child).Id).OrderBy(i => i == ContentIds.Child(cartId, "1:sage:lamp")));
             Assert.Equal(2, cart.ChildEntities.Count());
 
             SaveAndReload(app);

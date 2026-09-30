@@ -27,6 +27,11 @@ public sealed class Placement
     public float Yaw;                  // degrees about +Y, 0 facing -Z
     [Property(Tooltip = "Optional, so an outliner, ent_list and a wire can name it")]
     public string Name = "";
+    // Its identity in saves (phase 4i-3): left out, one is derived from where it is in the list, which
+    // moves when the list is reordered; written, it stays put. A GUID is used as written.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i)
+    [Property(Tooltip = "A stable id for saves, unique in its list; left out, one is derived from its place in the list")]
+    public string Id = "";
     [Property(Tooltip = "What `at` is measured from; left out, the document's or scene's own `relativeTo`")]
     public PlacementFrame? RelativeTo;
     [Property(Tooltip = "Entity I/O wires from this entity's outputs to other entities' inputs")]
@@ -84,8 +89,10 @@ public static class PlacementExtensions
     public static int SpawnPlacements(this World world, RecordId document, PlacementsRecord record)
     {
         int spawned = 0;
-        foreach (var placement in record.Place)
+        string source = ContentIds.DocumentSource(document);
+        for (int i = 0; i < record.Place.Count; i++)
         {
+            var placement = record.Place[i];
             var at = world.PlacementPosition(placement, record.Origin, record.RelativeTo);
             var entity = world.SpawnWithoutId(placement.Prefab.Id, at, placement.Yaw, placement.Overrides, $"placements {document}");
             if (entity.IsNull) continue;
@@ -93,8 +100,12 @@ public static class PlacementExtensions
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
             PlacementWires.Attach(world, entity, placement);
             world.Add(entity, new FromPlacements { Document = document });
+            // A stable identity, so a save finds this same thing again (4i-3).
+            ContentIds.Place(world, source, entity, ContentIds.DocumentPlacement(document, i, placement));
             spawned++;
         }
+        // What a save said about this document (its dead, its state) is applied now it is placed.
+        ContentIds.Finish(world, source);
 
         Log.Info(LogCat.Editor, $"Placements '{document}': {spawned} of {record.Place.Count} placed in '{world.Name}'");
         return spawned;
@@ -152,10 +163,14 @@ public static class PlacementExtensions
     public static PlacementsRecord ReadPlacements(this World world, RecordId document)
     {
         var record = new PlacementsRecord();
+        // Authored ids go back as they were written: an entity whose id is one of them was placed with it.
+        var authored = new Dictionary<PersistentId, string>();
         if (world.Engine?.Records.TryGet(document, out PlacementsRecord opened) == true)
         {
             record.Origin = opened.Origin;
             record.RelativeTo = opened.RelativeTo;
+            foreach (var placement in opened.Place)
+                if (ContentIds.Authored(ContentIds.DocumentSource(document), placement.Id) is { } id) authored[id] = placement.Id;
         }
 
         foreach (var entity in world.Query<Transform, FromPlacements>().Entities)
@@ -170,6 +185,7 @@ public static class PlacementExtensions
                 // + 0: a yaw of -0 is 0, and a file should not say "-0".
                 Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI + 0f,
                 Name = entity.Name ?? "",
+                Id = entity.TryGetComponent<Persistent>(out var persistent) && authored.TryGetValue(persistent.Id, out var written) ? written : "",
                 Outputs = PlacementWires.Read(entity),
                 // What the placement overrode goes back as it was written, not as the entity now stands.
                 Overrides = entity.TryGetComponent<PrefabOverridden>(out var overridden) ? overridden.Overrides?.Clone() : null,
@@ -182,6 +198,8 @@ public static class PlacementExtensions
     // Destroys what a document put in the world, so it can be opened again or closed.
     public static int ClearPlacements(this World world, RecordId document)
     {
+        // Before anything goes: what the game destroyed stays destroyed if the document is placed again.
+        ContentIds.Forget(world, ContentIds.DocumentSource(document));
         int removed = 0;
         foreach (var entity in world.Query<FromPlacements>().Entities.ToEntityList())
             if (entity.GetComponent<FromPlacements>().Document == document)
