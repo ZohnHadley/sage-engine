@@ -93,7 +93,7 @@ public class CameraRigTests
     {
         using var app = HeadlessApp.Gameplay()
             .File("data/hero.json", """
-                [ { "type": "prefab", "id": "hero", "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } } ]
+                [ { "type": "prefab", "id": "hero", "persist": false, "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } } ]
                 """, "test")
             .Boot("bare");
         var world = app.World;

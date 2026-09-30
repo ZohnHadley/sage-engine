@@ -24,6 +24,8 @@ internal sealed class RenderTargetPool : IDisposable
     {
         public required string Name;
         public int Width = DefaultSize, Height = DefaultSize;
+        public SurfaceFormat Format = SurfaceFormat.Color;
+        public DepthFormat Depth = DepthFormat.Depth24;
         public bool Declared;
         public RenderTarget2D? Texture;
     }
@@ -54,17 +56,22 @@ internal sealed class RenderTargetPool : IDisposable
 
     public bool TryFind(string name, out int id) => _ids.TryGetValue(name, out id);
 
-    public int Declare(string name, int width, int height)
+    public int Declare(string name, int width, int height) => Declare(name, width, height, SurfaceFormat.Color, DepthFormat.Depth24);
+
+    // With its pixel format and depth buffer (issue 4h-1): another size, format or depth remakes it.
+    public int Declare(string name, int width, int height, SurfaceFormat format, DepthFormat depth)
     {
         if (width < 1 || height < 1 || width > MaxSize || height > MaxSize)
             throw new ArgumentOutOfRangeException(nameof(width), $"Render target '{name}' is {width}x{height}; each side is 1 to {MaxSize} pixels.");
         int id = Id(name);
         var slot = _slots[id];
         slot.Declared = true;
-        if (slot.Width == width && slot.Height == height) return id;
+        if (slot.Width == width && slot.Height == height && slot.Format == format && slot.Depth == depth) return id;
 
         slot.Width = width;
         slot.Height = height;
+        slot.Format = format;
+        slot.Depth = depth;
         if (slot.Texture != null)
         {
             slot.Texture.Dispose();
@@ -83,6 +90,8 @@ internal sealed class RenderTargetPool : IDisposable
         slot.Texture = null;
         slot.Declared = false;
         slot.Width = slot.Height = DefaultSize;
+        slot.Format = SurfaceFormat.Color;
+        slot.Depth = DepthFormat.Depth24;
         if (had) Changed?.Invoke();
         return true;
     }
@@ -100,8 +109,8 @@ internal sealed class RenderTargetPool : IDisposable
         if (slot.Texture != null) return slot.Texture;
         if (!slot.Declared)
             Log.Info(LogCat.Render, $"Render target '{slot.Name}' was never declared; made at {slot.Width}x{slot.Height}");
-        slot.Texture = new RenderTarget2D(_device, slot.Width, slot.Height, false, SurfaceFormat.Color,
-                                          DepthFormat.Depth24, 0, RenderTargetUsage.PreserveContents);
+        slot.Texture = new RenderTarget2D(_device, slot.Width, slot.Height, false, slot.Format,
+                                          slot.Depth, 0, RenderTargetUsage.PreserveContents);
         return slot.Texture;
     }
 

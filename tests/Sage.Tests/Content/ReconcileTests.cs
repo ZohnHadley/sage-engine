@@ -262,12 +262,12 @@ public class ReconcileTests
     public void APrefabsChildrenAreNotSpawnedTwice()
     {
         string saves = TestEnv.NewTempDir();
-        var id = PersistentId.FromName("a chest the game made");
+        PersistentId id;
         using (var first = Run(Files(), saves))
         {
             var world = first.World;
-            var chest = world.Spawn(Game("chest"), new Vector3(20, 0, 20));
-            ContentIds.Assign(world, chest, id);
+            var chest = world.Spawn(Game("chest"), new Vector3(20, 0, 20));   // a runtime spawn has an id (4i-4)
+            id = chest.GetComponent<Persistent>().Id;
             var lid = chest.ChildEntities.Single();
             Assert.Equal(ContentIds.Child(id, "name:lid"), lid.GetComponent<Persistent>().Id);
             world.Get<LogicCounter>(lid).Value = 4;

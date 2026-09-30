@@ -58,6 +58,7 @@ public static class SageTypes
     public const string EntityInputs = Simulation + ".EntityInputs";
     public const string PrefabRegistry = Simulation + ".PrefabRegistry";
     public const string SaveSystem = Simulation + ".SaveSystem";
+    public const string RenderPassRegistry = Simulation + ".RenderPassRegistry`1";   // the client's RenderPasses derives from it (issue 4h-1)
 
     // The ECS vocabulary, Sage's own since issue #25 (Friflo is the storage underneath).
     public const string Entity = Simulation + ".Entity";

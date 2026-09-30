@@ -195,6 +195,15 @@ public sealed class World : IDisposable
             Assert.Ensure(false, $"World.Add<{typeof(T).Name}>: entity {entity.Id} is not alive");
             return false;
         }
+        if (typeof(T) == typeof(Persistent) && entity.HasComponent<T>())
+        {
+            // A runtime spawn already has a fresh id (phase 4i); a scene, a map or a load gives it its own.
+            ref var held = ref entity.GetComponent<Persistent>();
+            if (_persistent.TryGetValue(held.Id, out var indexed) && indexed == entity) _persistent.Remove(held.Id);
+            held = System.Runtime.CompilerServices.Unsafe.As<T, Persistent>(ref System.Runtime.CompilerServices.Unsafe.AsRef(in component));
+            IndexPersistent(entity);
+            return true;
+        }
         if (entity.HasComponent<T>())
         {
             Assert.Ensure(false, $"World.Add: {Describe(entity)} already has {typeof(T).Name}");

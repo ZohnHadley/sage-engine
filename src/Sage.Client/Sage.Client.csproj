@@ -26,7 +26,7 @@
     <Using Include="Sage.Gameplay" />
   </ItemGroup>
   <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the client draws brush maps (SAGE0122, MapLevels) and the views of camera entities (SAGE0123, CameraViews),
-       and widget screens (SAGE0125, Sage.UI; #97), whose transitions ease with 4b's curves (SAGE0124), and skinned meshes (SAGE0126, #117). -->
+       and widget screens (SAGE0125, Sage.UI; #97), whose transitions ease with 4b's curves (SAGE0124), and skinned meshes (SAGE0126, #117), and it declares and draws the render passes (SAGE0130, issue 4h-1). -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);SAGE0122;SAGE0123;SAGE0124;SAGE0125;SAGE0126;SAGE0130</NoWarn>
   </PropertyGroup>
