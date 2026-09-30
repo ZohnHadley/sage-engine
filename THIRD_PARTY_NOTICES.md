@@ -15,7 +15,7 @@ licences were read from each package's metadata (NuGet `nuspec`), not assumed; u
 | ↳ MonoGame.Library.SDL | 2.32.10.2 | zlib (SDL) | native windowing and input |
 | ↳ MonoGame.Library.OpenAL | 1.24.3.4 | see the package's `LICENSE` (OpenAL Soft; parts BSD-3-Clause) | native audio |
 | ↳ NVorbis | 0.10.4 | MIT | Ogg Vorbis decoding |
-| [SharpGLTF.Core](https://github.com/vpenades/SharpGLTF) | 1.0.7 | MIT | `Sage.Client` — glTF meshes |
+| [SharpGLTF.Core](https://github.com/vpenades/SharpGLTF) | 1.0.7 | MIT | `Sage.Simulation` — glTF skins and clips, read headlessly (issue #116); `Sage.Client` — glTF meshes, through it |
 
 **LGPL note.** The three Friflo.Json packages are LGPL-3.0-only. They are used as unmodified,
 dynamically linked .NET assemblies, which the LGPL permits in a program under another licence, provided

@@ -18,8 +18,13 @@
     <!-- EngineAssemblies names the retained UI too (issue #95), a base assembly beside Physics3D. -->
     <ProjectReference Include="..\..\src\Sage.UI\Sage.UI.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- SkinnedModelBuilder writes skinned .glb files in code (issue #116). Sage.Simulation brings it
+         already; named here because this project uses it directly. -->
+    <PackageReference Include="SharpGLTF.Core" />
+  </ItemGroup>
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0125</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0125;SAGE0126</NoWarn>
   </PropertyGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->

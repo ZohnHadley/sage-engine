@@ -1196,6 +1196,16 @@ games with no C#, both loaded headlessly by tests. `tests/games/scripted-sequenc
 No engine change was needed. CI validates, schemas and smoke-runs both. Details: docs/design/04 §3.4e
 and 16 "As built (phase 4b's exit games)".
 
+*As built, 4d (issue #116, 2026-09-30): skeletons, clips and headless pose sampling.* Phase 4d (#115)
+starts in the simulation: `SharpGLTF.Core` moved from `Sage.Client` to `Sage.Simulation` (plain .NET, so
+SAGE0024 allows it), where `GltfAnimationReader` reads a `.glb`'s skin and clips through the VFS into a
+`Skeleton` (parents first, rest pose, inverse binds) and `AnimationClip`s (step, linear and cubic-spline
+channels, with room for #119's events), cached by `AssetPath` and never loaded by a tick. `PoseSampler`
+samples a clip into a pooled `SkeletonPose` (looping wraps, a one-shot clamps), blends two poses with an
+optional per-joint `JointMask` and puts one in model space, allocating nothing
+(test: SamplingAllocatesNothing). `SkinnedModelBuilder` in `tests/Sage.Testing` writes the test rig in
+code. SAGE0126. Details: docs/design/12 "As built (skeletons and sampling)".
+
 ### Stage C: prove it on the action-RPG family, then build your game
 
 | Phase | Work | Exit criterion |

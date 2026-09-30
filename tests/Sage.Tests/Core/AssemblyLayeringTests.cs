@@ -24,7 +24,8 @@ public class AssemblyLayeringTests
         string[] never = { "MonoGame.Framework", "Sage.Client", "Sage.Editor", "Sage.Host", "Sage.Cli", "Sage.Testing" };
         var above = new Dictionary<Assembly, string[]>
         {
-            [EngineAssemblies.Core] = new[] { "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Friflo.Engine.ECS", "BepuPhysics", "BepuUtilities" },
+            [EngineAssemblies.Core] = new[] { "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Friflo.Engine.ECS", "BepuPhysics", "BepuUtilities", "SharpGLTF.Core" },
+            // SharpGLTF is the simulation's since #116 (skeletons and clips are read headlessly), not the kernel's.
             [EngineAssemblies.Simulation] = new[] { "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "BepuPhysics", "BepuUtilities" },
             [EngineAssemblies.Physics3D] = new[] { "Sage.Gameplay", "Sage.UI" },
             [EngineAssemblies.Gameplay] = Array.Empty<string>(),

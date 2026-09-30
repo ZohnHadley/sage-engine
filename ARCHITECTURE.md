@@ -318,7 +318,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **104 console commands, 33 record types, 1018 headless tests.** <!-- counts -->
+and audible: **104 console commands, 33 record types, 1028 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
@@ -363,7 +363,7 @@ start, and [`docs/REDESIGN.md`](docs/REDESIGN.md) where the engine is going; [`d
 | D7 | Editor form | **Separate editor host** loading the same game module, with play-in-editor |
 | D8 | Game UI | **Decided 2026-09-23: our own, on `UiDraw`.** ImGui stays dev/editor only. The engine already produced a screen’s *contents* as data (`Panel`), so what a library would have added was a list, a selection and a box — about 300 lines, against a dependency with its own fonts, stylesheets or external layout editor. Gum and Myra stay reasonable answers if screens outgrow lists ([13](docs/design/13-ui.md)). When they did (grids, gamepad focus; Phase 4c, #95) the answer stayed our own: retained widgets in `Sage.UI`, drawn by the client (#97) |
 | D9 | Engine licence | **MIT** (`LICENSE`), decided 2026-09-27, replacing CC0: short and permissive, the same as MonoGame's other dependencies and Friflo, and a normal licence for code others build commercial games on (CC0 is unusual for code and grants no patent licence). Apache-2.0 was the alternative, for its explicit patent grant. Dependencies keep their own licences, listed in `THIRD_PARTY_NOTICES.md` — including three LGPL-3.0 assemblies that Friflo.Engine.ECS pulls in |
-| D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; MGCB dropped. **As built (2026-09-24, R12): true.** Models read from `.glb` by `GltfLoader`, textures and sounds from streams, the HUD font from a generated glyph atlas (13 §3); `Content.mgcb`, the builder task, the `dotnet-mgcb*` tools and every `.xnb` path are gone. `dotnet-mgfxc` remains, for `.fx` only |
+| D10 | Asset formats and pipeline | Runtime **PNG / glTF 2.0 (SharpGLTF) / WAV**; shaders via **`dotnet-mgfxc`**; MGCB dropped. **As built (2026-09-24, R12): true.** Models read from `.glb` by `GltfLoader`, textures and sounds from streams, the HUD font from a generated glyph atlas (13 §3); `Content.mgcb`, the builder task, the `dotnet-mgcb*` tools and every `.xnb` path are gone. `dotnet-mgfxc` remains, for `.fx` only. **Since #116** SharpGLTF is referenced by `Sage.Simulation` (it is plain .NET, so SAGE0024 allows it): skins and clips are read there by `GltfAnimationReader`, headlessly (12 "As built (skeletons and sampling)"), and the client's `GltfLoader` reads meshes through the same reference |
 | D11 | Model format for animation | **glTF 2.0** over FBX |
 | D12 | Which game drives development | **Daggerfall-like** (confirmed) |
 | D13 | MonoGame version/backend | **Done 2026-09-24 (R12): 3.8.5.1 on DesktopGL**, `GraphicsProfile.HiDef`. Re-evaluate DesktopVK (new in 3.8.5, intended to replace DesktopGL over the next few years) once it has matured |
