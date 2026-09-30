@@ -247,10 +247,7 @@ public sealed class SaveSystem
             }
 
             foreach (var world in _engine.Worlds)
-            {
-                _engine.Scenes.AfterLoad(world);   // what the scene placed is the scene's again (issue #29)
                 world.Resources.Get<GameRules>().OnLoaded(world);
-            }
 
             Log.Info(LogCat.Save, $"Loaded '{slot}': {total} entities");
             return true;
@@ -322,6 +319,10 @@ public sealed class SaveSystem
             if (saved["tags"] is JsonArray tags)
                 _serializer.ReadTags(world, entity, tags, where);
         }
+
+        // What the scene placed is the scene's again, with its wiring (issues #29, #90) — before the
+        // resources, because entity I/O's puts back how often each of those wires fired.
+        _engine.Scenes.AfterLoad(world);
 
         ReadResources(world, root["resources"] as JsonObject, dialect, where);
 

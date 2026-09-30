@@ -106,7 +106,17 @@ public sealed class CameraViews
         return -1;
     }
 
+    // The view `camera` drew this frame, if it won its target.
+    internal int IndexOf(Entity camera)
+    {
+        for (int i = 0; i < Count; i++)
+            if (_views[i].Entity == camera && !camera.IsNull) return i;
+        return -1;
+    }
+
     // ---- The director's side -----------------------------------------------------------------------
+
+    internal ref CameraView At(int index) => ref _views[index];
 
     internal void Begin()
     {

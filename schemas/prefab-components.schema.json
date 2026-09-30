@@ -52,6 +52,14 @@
         }
       ]
     },
+    "camera_blend": {
+      "description": "The component sage:camera_blend (CameraBlend), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:camera_blend"
+        }
+      ]
+    },
     "camera_pose": {
       "description": "The component sage:camera_pose (CameraPose), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -340,6 +348,14 @@
         }
       ]
     },
+    "sage:camera_blend": {
+      "description": "Component sage:camera_blend (CameraBlend).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:camera_blend"
+        }
+      ]
+    },
     "sage:camera_pose": {
       "description": "Component sage:camera_pose (CameraPose).",
       "allOf": [
@@ -612,11 +628,27 @@
         }
       ]
     },
+    "sage:timer": {
+      "description": "Component sage:timer (LogicTimer).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:timer"
+        }
+      ]
+    },
     "sage:transform": {
       "description": "Component sage:transform (Transform).",
       "allOf": [
         {
           "$ref": "#/definitions/sage:transform"
+        }
+      ]
+    },
+    "sage:tween": {
+      "description": "Component sage:tween (Tween).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:tween"
         }
       ]
     },
@@ -668,11 +700,27 @@
         }
       ]
     },
+    "timer": {
+      "description": "The component sage:timer (LogicTimer), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:timer"
+        }
+      ]
+    },
     "transform": {
       "description": "The component sage:transform (Transform), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
         {
           "$ref": "#/definitions/sage:transform"
+        }
+      ]
+    },
+    "tween": {
+      "description": "The component sage:tween (Tween), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:tween"
         }
       ]
     }
@@ -1159,6 +1207,99 @@
       },
       "additionalProperties": false,
       "description": "Component sage:camera (Camera)."
+    },
+    "sage:camera_blend": {
+      "type": "object",
+      "properties": {
+        "fromPosition": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "fromRotation": {
+          "description": "(Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "fromFovY": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "duration": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "elapsed": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "previousElapsed": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "ease": {
+          "description": "(Ease, default \"Linear\")",
+          "default": "Linear",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:camera_blend (CameraBlend)."
     },
     "sage:camera_pose": {
       "type": "object",
@@ -2230,6 +2371,49 @@
         },
         "activator": {
           "description": "Not saved. (Entity)"
+        },
+        "blendTime": {
+          "description": "Seconds CameraOn blends into it from the screen's view when the wire gives none; 0 = a cut. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "blendEase": {
+          "description": "The easing curve of that blend. (Ease, default \"Linear\")",
+          "default": "Linear",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
         }
       },
       "additionalProperties": false,
@@ -2388,6 +2572,50 @@
       "additionalProperties": false,
       "description": "Component sage:third_person_rig (ThirdPersonRig)."
     },
+    "sage:timer": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "description": "Seconds between one OnTimer and the next. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "spread": {
+          "description": "Each wait is the interval plus or minus up to this much, at random. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "repeat": {
+          "description": "Fire every interval (on), or once and stop (off) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "running": {
+          "description": "Counting down now. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "remaining": {
+          "description": "Seconds left before the next OnTimer. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "random": {
+          "description": "(uint, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "activator": {
+          "description": "Not saved. (Entity)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:timer (LogicTimer)."
+    },
     "sage:transform": {
       "type": "object",
       "properties": {
@@ -2437,6 +2665,208 @@
       },
       "additionalProperties": false,
       "description": "Component sage:transform (Transform)."
+    },
+    "sage:tween": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "description": "What a TweenTo with no channel moves: Position, Rotation or Scale. (TweenChannel, default \"Position\")",
+          "default": "Position",
+          "type": "string",
+          "enum": [
+            "Position",
+            "Rotation",
+            "Scale"
+          ]
+        },
+        "target": {
+          "description": "Where a TweenTo with no numbers goes: metres, degrees (pitch, yaw, roll) or scale factors. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "relative": {
+          "description": "The target is from where it is (moved by, turned by, scaled by) rather than where it ends up. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "duration": {
+          "description": "How long a TweenTo with no seconds takes. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "ease": {
+          "description": "The easing curve a TweenTo with no curve uses. (Ease, default \"Linear\")",
+          "default": "Linear",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
+        },
+        "playing": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "playingChannel": {
+          "description": "(TweenChannel, default \"Position\")",
+          "default": "Position",
+          "type": "string",
+          "enum": [
+            "Position",
+            "Rotation",
+            "Scale"
+          ]
+        },
+        "elapsed": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "playingDuration": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "playingEase": {
+          "description": "(Ease, default \"Linear\")",
+          "default": "Linear",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
+        },
+        "from": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "to": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "fromRotation": {
+          "description": "(Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "toRotation": {
+          "description": "(Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "activator": {
+          "description": "Not saved. (Entity)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:tween (Tween)."
     },
     "sandbox:hop": {
       "type": "object",

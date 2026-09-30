@@ -217,12 +217,10 @@ internal sealed class FireAction : IAction
         }
         else
         {
-            target = context.World.FindByName(Target);
-            if (target.IsNull)
-            {
-                Log.Debug(LogCat.Events, $"fire: no entity named '{Target}' for {Input}");
-                return;
-            }
+            // By name, found when it arrives (late binding, #90): a delayed `fire` at something spawned
+            // or respawned meanwhile still reaches it.
+            io.FireInput(Target, Input, Parameter, Delay, context.Subject, context.Other);
+            return;
         }
         io.FireInput(target, Input, Parameter, Delay, context.Subject, context.Other);
     }

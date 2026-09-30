@@ -201,6 +201,22 @@
           "$ref": "#/definitions/third_person_rig"
         }
       ]
+    },
+    "timer": {
+      "description": "Prefab part 'timer' (LogicTimerPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/timer"
+        }
+      ]
+    },
+    "tween": {
+      "description": "Prefab part 'tween' (TweenPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/tween"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -768,6 +784,49 @@
           "description": "While on and drawing to the screen, the local player's movement, look and buttons are held. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "blendTime": {
+          "description": "Seconds CameraOn blends into it from the screen's view when the wire gives none; 0 = a cut. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "blendEase": {
+          "description": "The easing curve of that blend. (Ease, default \"SmoothStep\")",
+          "default": "SmoothStep",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
         }
       },
       "additionalProperties": false,
@@ -879,6 +938,120 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'third_person_rig' (ThirdPersonRigPart)."
+    },
+    "timer": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "description": "Seconds between one OnTimer and the next. Unit: s. At least 0. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0
+        },
+        "spread": {
+          "description": "Each wait is the interval plus or minus up to this much, at random. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "repeat": {
+          "description": "Fire every interval (on), or once and stop (off) (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "startOn": {
+          "description": "Start counting as soon as it is spawned; off: wait for TimerStart. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "seed": {
+          "description": "Where the random stream for `spread` starts; 0 = from the entity. (uint, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'timer' (LogicTimerPart)."
+    },
+    "tween": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "description": "What a TweenTo with no channel moves: Position, Rotation or Scale. (TweenChannel, default \"Position\")",
+          "default": "Position",
+          "type": "string",
+          "enum": [
+            "Position",
+            "Rotation",
+            "Scale"
+          ]
+        },
+        "target": {
+          "description": "Where a TweenTo with no numbers goes: metres, degrees (pitch, yaw, roll) or scale factors. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "relative": {
+          "description": "The target is from where it is (moved by, turned by, scaled by) rather than where it ends up. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "duration": {
+          "description": "How long a TweenTo with no seconds takes. Unit: s. At least 0. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0
+        },
+        "ease": {
+          "description": "The easing curve a TweenTo with no curve uses. (Ease, default \"SmoothStep\")",
+          "default": "SmoothStep",
+          "type": "string",
+          "enum": [
+            "Linear",
+            "QuadIn",
+            "QuadOut",
+            "QuadInOut",
+            "CubicIn",
+            "CubicOut",
+            "CubicInOut",
+            "QuartIn",
+            "QuartOut",
+            "QuartInOut",
+            "QuintIn",
+            "QuintOut",
+            "QuintInOut",
+            "SineIn",
+            "SineOut",
+            "SineInOut",
+            "ExpoIn",
+            "ExpoOut",
+            "ExpoInOut",
+            "BackIn",
+            "BackOut",
+            "BackInOut",
+            "ElasticIn",
+            "ElasticOut",
+            "ElasticInOut",
+            "BounceIn",
+            "BounceOut",
+            "BounceInOut",
+            "SmoothStep",
+            "SmootherStep"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'tween' (TweenPart)."
     }
   }
 }

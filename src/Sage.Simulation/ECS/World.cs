@@ -102,6 +102,7 @@ public sealed class World : IDisposable
 
     public long Tick => _lastTick.Tick;
     public double SimTime => _lastTick.SimTime;
+    internal TickTime LastTick => _lastTick;
 
     // ---- Entities -------------------------------------------------------------------------------
 
