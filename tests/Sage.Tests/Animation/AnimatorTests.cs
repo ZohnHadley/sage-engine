@@ -458,6 +458,19 @@ public class AnimatorTests
                     if (Animators.TryGetPose(world, all[i], out _, out bool fresh) && fresh) sampled[i]++;
             }
             Assert.Equal(new[] { 16, 8, 4 }, sampled);
+
+            // A post-process (#120's IK) that bends the pose never compounds, sampled this tick or not:
+            // the readers' pose is rewritten from the graph's output every tick.
+            var farPose = Pose(world, far);
+            var mid1 = farPose.Local[1];
+            farPose.Local[1].Position += new Vector3(0, 5, 0);
+            views.Begin();
+            views.SetScreen(new CameraView { Target = "", Position = Vector3.Zero, Rotation = Quaternion.Identity });
+            views.End();
+            Tick(world);
+            Assert.True(Animators.TryGetPose(world, far, out _, out bool resampled));
+            Assert.False(resampled);                                          // an LOD-skipped tick
+            Near(mid1.Position, farPose.Local[1].Position);
             Assert.Equal(Layer(world, near).Time, Layer(world, far).Time, 4);
             Assert.Equal(1, AnimatorSystem.Interval(29f, 30f));
             Assert.Equal(2, AnimatorSystem.Interval(59f, 30f));

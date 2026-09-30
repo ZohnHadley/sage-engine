@@ -23,7 +23,8 @@ internal sealed class AnimatorPoses
         public long SampledTick = -1;
         public int Interval = 1;                                 // animation LOD: sampled every Interval ticks
         public AnimationSet? Set;
-        public SkeletonPose? Pose;
+        public SkeletonPose? Pose;                               // what readers get: rewritten from Sampled every tick
+        public SkeletonPose? Sampled;                            // the graph's output, at the LOD's rate
         public int ResolvedVersion;                              // the compiled graph Clips and Masks are for
         public AnimationClip?[] Clips = Array.Empty<AnimationClip?>();
         public JointMask?[] Masks = Array.Empty<JointMask?>();
@@ -70,6 +71,8 @@ internal sealed class AnimatorPoses
         if (skin.TryGet(instance.Owner.Id, out var shown) && ReferenceEquals(shown, pose)) skin.Remove(instance.Owner);
         pose.Dispose();
         instance.Pose = null;
+        instance.Sampled?.Dispose();
+        instance.Sampled = null;
     }
 }
 
@@ -412,10 +415,10 @@ internal static class AnimatorStepper
 
     // ---- sampling: at the LOD's rate ------------------------------------------------------------------
 
-    // Every layer into the instance's pose, then its model space.
+    // Every layer into the instance's Sampled pose (the system copies it into the readers' pose every tick).
     public static void Sample(in Animator a, AnimGraphRecord.Compiled g, AnimatorPoses.Instance instance, AnimatorScratch scratch)
     {
-        var pose = instance.Pose!;
+        var pose = instance.Sampled!;
         var values = a.Params!;
         for (int l = 0; l < g.Layers.Length; l++)
         {
@@ -435,7 +438,6 @@ internal static class AnimatorStepper
             float weight = layer.Weight * Layer(layer, in s, values, instance, scratch.Layer, scratch);
             if (weight > 0f) PoseSampler.Blend(pose, scratch.Layer, weight, instance.Masks[l], pose);
         }
-        PoseSampler.ToModelSpace(pose.Skeleton, pose);
     }
 
     // One layer into `into`: its state, cross-faded from the one it is leaving. Returns how much of the
@@ -559,9 +561,15 @@ internal sealed class AnimatorSystem : ISystem
 
             if (instance.Pose == null) continue;
             instance.Interval = haveCamera && _world.TryGet<GlobalTransform>(entity, out var at) ? Interval(Vector3.Distance(camera, at.Current.Position), lod) : 1;
-            if (instance.SampledTick >= 0 && tick - instance.SampledTick < instance.Interval) continue;
-            instance.SampledTick = tick;
-            AnimatorStepper.Sample(in a, g, instance, Scratch(instance.Pose.Skeleton));
+            if (instance.SampledTick < 0 || tick - instance.SampledTick >= instance.Interval)
+            {
+                instance.SampledTick = tick;
+                AnimatorStepper.Sample(in a, g, instance, Scratch(instance.Pose.Skeleton));
+            }
+            // Every tick, sampled or not: the readers' pose is rewritten from the graph's output, so what a
+            // post-process (#120's IK) did to it last tick never compounds.
+            instance.Sampled!.Local.CopyTo(instance.Pose.Local);
+            PoseSampler.ToModelSpace(instance.Pose.Skeleton, instance.Pose);
             _skin.Set(entity, instance.Pose);                   // #117 draws it (an overwrite: no allocation)
         }
         _step.Clear();
@@ -599,6 +607,7 @@ internal sealed class AnimatorSystem : ISystem
         AnimatorPoses.Release(instance, _skin);
         instance.Set = set;
         instance.Pose = new SkeletonPose(set.Skeleton);
+        instance.Sampled = new SkeletonPose(set.Skeleton);
         instance.ResolvedVersion = 0;
         instance.SampledTick = -1;
     }
