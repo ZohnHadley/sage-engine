@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Game UI's retained half (issue #95, docs/design/13 "As built (widgets)", decision D8): widgets
+    (Box, Stack, Grid, Label, Image, Button, ItemList, Bar, Scroll, Tooltip), a two-pass layout in
+    virtual units, and focus driven by a UiInput struct — all headless. Simulation ← UI ← Client
+    (decision D1): it names no font and no texture (ITextMeasure measures text), so a test lays out,
+    navigates and hit-tests a screen without a window, and the client only draws what it arranged (#97).
+    A base assembly (SageBaseAssembly), not a kit: every game may use it, and it never references one.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <SageBaseAssembly>true</SageBaseAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sage.Simulation\Sage.Simulation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sage.Tests" />
+  </ItemGroup>
+
+  <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->
+  <ItemGroup>
+    <Using Include="Sage.Core" />
+    <Using Include="Sage.Simulation" />
+  </ItemGroup>
+  <!-- Experimental API (docs/MAKING_A_GAME.md §10b): the whole assembly is SAGE0125 while Phase 4c
+       (#96 records, #97 drawing, #98 view-models) builds on it; it uses its own types freely. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SAGE0125</NoWarn>
+  </PropertyGroup>
+</Project>

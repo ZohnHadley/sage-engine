@@ -266,7 +266,7 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   **`IPhysicsWorld`** (issue #30, below), which the space is installed as too. `PawnIntent`, `Pawn`, `PlayerControlled` and `Players.ForEachPlayer` are
   simulation (`Sage.Simulation/Input`), because streaming, maps, entity I/O and the controller all read them.
 - **The RPG kit came with #27** (below). What stops its code coming back into the base is **SAGE0025**:
-  a base assembly (`SageBaseAssembly`, set for Core to Gameplay, Client and Editor) that references a
+  a base assembly (`SageBaseAssembly`, set for Core to Gameplay, UI, Client and Editor) that references a
   `Sage.Kits.*` assembly or uses its types is a build error.
 - **Plugin ids did not change** (`sage.physics3d`, `sage.streaming`, `sage.gameplay.*` — `game.json`
   names them), even where the plugin's assembly did: entity I/O (`sage.gameplay.io`) and maps are in
@@ -282,6 +282,13 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   plugin elsewhere would never register (test: EveryDeclarationOutsideTheSimulationBelongsToAPluginInItsOwnAssembly).
   The `physics_layers` record (owned by `sage.physics3d`) stays in `Sage.Simulation` beside the other
   physics data, which is always included.
+- **`Sage.UI` (issue #95, 2026-09-30) is a fifth base assembly, beside `Sage.Physics3D` on
+  `Sage.Simulation`:** the game UI's retained widgets, layout and focus (docs/design/13 "As built
+  (retained widgets)"), simulation-only and headless, referenced by `Sage.Client`, which draws them
+  (#97). Simulation ← UI ← Client (decision D1): the simulation's `Screen`/`Panel` model does not know
+  it, and it knows nothing of physics, gameplay or a kit (test: NoBaseAssemblyReferencesALayerAboveIt).
+  It is in `EngineAssemblies.Base`, so the base-wide checks (declared API, simulation-only, no Friflo)
+  read it too; `Sage.Sdk` references it for every game, without a global using.
 - **Friflo builds its schema from every loaded assembly that references it**, the split ones included
   (23 in Simulation and 15 in Gameplay since #30 moved `CharacterController`; none in Physics3D) (test: TheEcsSchemaHasTheComponentsOfEveryBaseAssembly).
 - **`InternalsVisibleTo` goes only to `Sage.Tests`**, so what the next layer used became public: the record
@@ -507,7 +514,7 @@ experimental ids are MAKING_A_GAME §10b.
   checks out with `fetch-depth: 0`; without git MinVer warns and builds `0.1.0-alpha.0`. The templates
   name `Sage.Sdk/SAGE_SDK_VERSION`, an `sdkVersion` template parameter whose default the pack stamps.
 - **The public API is declared** by `Microsoft.CodeAnalysis.PublicApiAnalyzers` on Core, Simulation,
-  Physics3D, Gameplay, Client and both halves of the RPG kit (`SagePublicApi` in `src/Directory.Build.props`;
+  Physics3D, Gameplay, UI (since #95), Client and both halves of the RPG kit (`SagePublicApi` in `src/Directory.Build.props`;
   the host, CLI, editor and generators are not compiled against). All of it starts in
   `PublicAPI.Unshipped.txt`: nothing ships before `v0.1.0`, and moving it to Shipped is a step of tagging.
   RS0016/RS0017 are errors in every configuration on both CI jobs; a Linux step adds an undeclared public
