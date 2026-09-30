@@ -335,7 +335,8 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   saves' `MainHand`/`OffHand` across), and the slots are whatever the kit and the game register in
   `EquipSlots` — none in the base (test: TheKitHasTwoHandsAndTheBaseNone). Spell prices are worded in the
   conventions' `costAttribute`, and the sprite clips combat plays are `gameplay_conventions`
-  `animations` (test: AGameNamesTheSpriteClipsCombatPlays). **How the host finds a kit:** by its id —
+  `animations` (test: AGameNamesTheSpriteClipsCombatPlays) — since #119 only `hit` and `attackTrigger`:
+  clip names are an `anim_graph`'s, and the old two are read only by the upgrade of a graphless sprite. **How the host finds a kit:** by its id —
   `sage.kits.rpg` is `Sage.Kits.Rpg.dll` — beside the game's assembly or its `modules.add` ones, or
   beside the host, where `build/Sage.Kits.targets` copies every kit without the host referencing one
   (a referenced kit would be loaded, and put in the ECS schema, for every game); loaded before the
@@ -1234,9 +1235,21 @@ the viewmodel's own field of view and depth range, drawn after it with only dept
 the `sage:viewmodel_layer` pieces the world's extracts leave out; it exists only while the screen looks
 out of a first-person rig (test: TheViewmodelIsHiddenInThirdPersonAndFromTheEditorsFreeCamera). A
 `Reload` action plays the arms' reload (test: Reload_Plays_FiresMagOutThenMagIn_AndReturnsToIdle), whose
-clip events reach `AnimationEvent` through a small stand-in that #119's event firing replaces. Nothing
+clip events reach `AnimationEvent` through #119's event firing (a small stand-in until it landed). Nothing
 allocates per frame (test: TheViewmodelAndItsExtractAllocateNothingPerFrame). SAGE0126. Details:
 docs/design/12 "As built (first-person arms)" and 06 "As built (the viewmodel pass)".
+
+*As built, 4d (issue #119, 2026-09-30): animation events replace the `attack`/`hit`/`idle` names.* Clip
+events come from `anim_events` records keyed by model (and a sprite sheet's frame events); the animator
+raises each once per crossing — through loop wraps, on distant animators as on near ones, from the state
+being left while it still shows more than half — as the existing `AnimationEvent`, as the `OnAnimEvent`
+output, and as the same-named trigger param, which is how events drive transitions. Sprites became graph
+leaves (the `sprite` part's `graph`), so combat sets an `attack` trigger and lands on `hit` for a sprite
+goblin and a skinned NPC alike, on the tick it always did; the conventions' clip names are obsolete, and a
+sprite fighter from before is upgraded to a graph that plays them (test:
+ASpriteGoblinAndASkinnedNpcLandOnHitOnTheSameTickAsBefore) (test: AGameNamesTheSpriteClipsCombatPlays).
+Nothing allocates per tick (test: RaisingEventsAllocatesNothingPerTick). SAGE0126, TODO F10. Details:
+docs/design/12 "As built (animation events)".
 
 ### Stage C: prove it on the action-RPG family, then build your game
 

@@ -42,12 +42,22 @@
         "sage:melee_attack"
       ]
     },
+    "record:anim_events": {
+      "description": "The id of a anim_events record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "arms",
+        "sandbox:arms"
+      ]
+    },
     "record:anim_graph": {
       "description": "The id of a anim_graph record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
         "arms",
-        "sandbox:arms"
+        "creature",
+        "sandbox:arms",
+        "sandbox:creature"
       ]
     },
     "record:attack": {
@@ -662,12 +672,22 @@
         "sage:melee_attack"
       ]
     },
+    "base:anim_events": {
+      "description": "Another anim_events record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "arms",
+        "sandbox:arms"
+      ]
+    },
     "base:anim_graph": {
       "description": "Another anim_graph record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
         "arms",
-        "sandbox:arms"
+        "creature",
+        "sandbox:arms",
+        "sandbox:creature"
       ]
     },
     "base:attack": {

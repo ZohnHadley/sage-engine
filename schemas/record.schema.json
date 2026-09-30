@@ -27,6 +27,7 @@
             "ability",
             "ai_profile",
             "ai_schedule",
+            "anim_events",
             "anim_graph",
             "attack",
             "attribute",
@@ -107,6 +108,21 @@
           },
           "then": {
             "$ref": "ai_schedule.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "anim_events"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "anim_events.schema.json"
           }
         },
         {

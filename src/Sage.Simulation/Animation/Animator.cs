@@ -64,6 +64,9 @@ public struct AnimatorLayer
     // Indices into the compiled layer (-1: none); found again by name.
     internal int Index;
     internal int FromIndex;
+    // Entered since the last step, by code (Animators.Play) or as a new animator's initial state: its
+    // next step raises the events at the clip's very start too (issue #119). Not saved.
+    internal bool Entered;
 
     public readonly bool Fading => From != null;
 }
@@ -125,6 +128,10 @@ public static class Animators
     public const string SetParamInput = "SetAnimParam";
     public const string TriggerInput = "AnimTrigger";
 
+    // The output an animator fires for every clip event it crosses, with the event's name as its value
+    // (issue #119): `{ "output": "OnAnimEvent", "target": "door", "input": "Open" }` wired to a lever's pull.
+    public const string AnimEventOutput = "OnAnimEvent";
+
     // Params copied into the entity's AimIk (#120) every tick, degrees to radians, when both exist.
     public const string AimPitchParam = "aim_pitch";
     public const string AimYawParam = "aim_yaw";
@@ -147,6 +154,7 @@ public static class Animators
                 Log.Warn(LogCat.Events, $"I/O: {TriggerInput}({io.Parameter}) at {World.Describe(io.Self)}: no such trigger param");
         });
         engine.Records.AddCheck<AnimGraphRecord>(Check);
+        engine.Outputs.Declare(AnimEventOutput, "A clip event this animator's graph crossed (anim_events, a sprite sheet's frame events); hands on the event's name.");
 
         engine.CVars.Register(LodDistanceCVar, 30f, CVarFlags.None,
             "Animation LOD: animators farther than this from the main camera sample their pose every 2nd tick, past twice it every 4th " +
@@ -336,6 +344,70 @@ public static class Animators
         if (to < 0) return false;
         AnimatorStepper.Change(g, g.Layers[l], ref a.Layers![l], to);
         return true;
+    }
+
+    // The clip a layer shows now and how far into it, in seconds: its state's clip, or the heaviest clip
+    // of its blend (issue #119). What drives a sprite (whose animator's leaves are sheet clips) and what
+    // a viewmodel or a sound can ask. The cross-fade is not counted: the state it is going to. False
+    // when there is no animator, no such layer, or its state plays nothing.
+    public static bool TryGetClip(World world, Entity entity, [NotNullWhen(true)] out string? clip, out float time, string? layer = null)
+    {
+        clip = null;
+        time = 0f;
+        if (entity.IsNull || !world.IsAlive(entity) || !world.Has<Animator>(entity)) return false;
+        ref var a = ref world.Get<Animator>(entity);
+        if (a.Layers == null || Compiled(world, a.Graph) is not { } g) return false;
+        AnimatorStepper.Resolve(entity, ref a, g);
+        int l = g.LayerIndex(layer);
+        if (l < 0) return false;
+        ref var s = ref a.Layers![l];
+        if (s.Index < 0) return false;
+        int c = AnimatorStepper.HeaviestClip(g.Layers[l].States[s.Index], a.Params!);
+        if (c < 0) return false;
+        clip = g.ClipNames[c];
+        if (world.Resources.TryGet<AnimatorPoses>(out var poses) && poses != null && poses.Find(a.Slot, entity) is { } instance
+            && c < instance.Clips.Length && instance.Clips[c] is { } resolved)
+            time = s.Phase * resolved.Duration;
+        return true;
+    }
+
+    // An anim_graph made in code for a sprite that stands in one clip and swings with another (issue
+    // #119: how content from before graphs keeps its sprite fighters swinging, Sage.Gameplay's upgrade).
+    // `initial` is "idle", playing `idle` (looping; empty: nothing); on the trigger `trigger` it goes to
+    // "swing", which plays `swing` once — again from its start on another trigger — and goes back to
+    // "idle" when the clip is done (anim_finished). No cross-fades: sprites cannot blend. Added to
+    // `records` as a runtime record, sage:sprite_swing, made again when asked with other names; its id.
+    public static RecordId SpriteSwingGraph(RecordStore records, string idle, string swing, string trigger)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        ArgumentNullException.ThrowIfNull(idle);
+        ArgumentNullException.ThrowIfNull(swing);
+        ArgumentNullException.ThrowIfNull(trigger);
+        var id = new RecordId(ComponentSchema.EngineNamespace, "sprite_swing");
+        if (records.TryGet(id, out AnimGraphRecord made) && made.States.TryGetValue("idle", out var i) && i != null && i.Clip == idle
+            && made.States.TryGetValue("swing", out var sw) && sw != null && sw.Clip == swing && made.Params.ContainsKey(trigger))
+            return id;
+
+        var back = new StateTransition { To = "idle", When = new AnimFinishedCondition() };
+        var graph = new AnimGraphRecord
+        {
+            Initial = "idle",
+            Fade = 0f,
+            Params = new Dictionary<string, AnimParam> { [trigger] = new AnimParam { Kind = AnimParamKind.Trigger } },
+            States = new Dictionary<string, AnimState>
+            {
+                ["idle"] = new AnimState { Clip = idle },
+                ["swing"] = new AnimState
+                {
+                    Clip = swing,
+                    Loop = false,
+                    Transitions = new List<StateTransition> { new() { To = "swing", On = trigger }, back },
+                },
+            },
+            Transitions = new List<StateTransition> { new() { To = "swing", On = trigger } },
+        };
+        records.AddRuntime(id, graph);
+        return id;
     }
 
     // ---- the pose --------------------------------------------------------------------------------------
@@ -539,5 +611,31 @@ internal sealed class AnimParamCondition : ICondition
         var entity = context.Other.IsNull ? context.Subject : context.Other;
         if (!Animators.TryReadParam(context.World, entity, Name, out float value)) return false;
         return (Eq is not { } eq || value == eq) && value >= Min && value <= Max;
+    }
+}
+
+// `{ "anim_finished": "base" }`: the layer (a name; "base" or empty: the base) of the animator on the
+// entity doing the asking is in a one-shot state whose clip has played to its end (issue #119). What a
+// graph uses to leave an attack or a reload when its clip is done, without a number that must follow the
+// art: `{ "to": "idle", "when": { "anim_finished": "base" } }`. A looping state never finishes.
+[Condition("anim_finished", Plugin = RegistrationOwners.Core)]
+internal sealed class AnimFinishedCondition : ICondition
+{
+    [EntryValue, Property(Tooltip = "The layer to look at; empty or \"base\": the base layer")]
+    public string Layer = "";
+
+    public bool Test(in ConditionContext context, out string why)
+    {
+        why = "its clip is still playing";
+        var world = context.World;
+        var entity = context.Other.IsNull ? context.Subject : context.Other;
+        if (entity.IsNull || !world.IsAlive(entity) || !world.TryGet<Animator>(entity, out var a) || a.Layers is not { } layers) return false;
+        if (Animators.Compiled(world, a.Graph) is not { } g) return false;
+        int l = g.LayerIndex(Layer);
+        if (l < 0 || l >= layers.Length) return false;
+        var s = layers[l];
+        if (s.Index < 0 || s.Index >= g.Layers[l].Count) return false;
+        var state = g.Layers[l].States[s.Index];
+        return !state.Loop && state.HasMotion && s.Phase >= 1f;
     }
 }

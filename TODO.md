@@ -98,7 +98,7 @@ Each phase builds on the previous one. Items marked **(v1)** are part of the fir
 
 #### Phase 3 — Animation
 - [ ] **F9. Skeletal animation pipeline.** glTF skins/clips via SharpGLTF; sim-side pose sampling; GPU skinning technique. *Skins, clips and headless sampling done (#116, SAGE0126); GPU skinning is #117.* → `12`
-- [ ] **F10. Animation blending + state machine.** Crossfades, layers, blend spaces, directional attack/block sets. → `12`
+- [~] **F10. Animation blending + state machine.** Crossfades, layers, blend spaces, directional attack/block sets. *Graphs done (#118): `anim_graph` records, cross-fades, layers, 1D/2D blend spaces, the `Animator`. Clip events done 2026-09-30 (#119, SAGE0126): `anim_events` records keyed by model, raised once per crossing (loops, LOD, cross-fades) as `AnimationEvent`, `OnAnimEvent` and same-named triggers; sprite sheets are graph leaves; combat sets a trigger and lands on `hit`, and the conventions' clip names are retired with an upgrade. Left: directional attack/block sets, root motion, sync markers.* → `12`
 - [ ] **F11. Ragdolls + physical animation.** Ragdoll on death/knockdown, blend back to animation. Depends on F6. → `10`, `12`
 - [~] **F12. Attachment points.** Weapons, shields and riders on bones. *Done 2026-09-30 (#120, SAGE0126): `skeleton_sockets` records keyed by model, the `bone_attachment` component and part (a child follows its parent's socket, or any entity's by `Target`) and `AttachmentSystem` in Phase.Late; with it simple IK: `TwoBoneIk`, `AimChainIk` (`aim_ik`) and foot IK through `IPhysicsWorld` (`foot_ik`). Left: poses from the Animator (#118), feet tilted to the ground's normal, pelvis smoothing, socket joints checked at load.* → `12`
 

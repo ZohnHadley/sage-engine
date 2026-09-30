@@ -29,8 +29,10 @@
     // Input actions by name. Modules register these in Init, before content loads; a game that wants
     // its own registers them in its module and names them here.
     "actions": { "attack": "Attack", "use": "Use", "jump": "Jump", "run": "Run", "crouch": "Crouch" },
-    // Sprite clips and frame events by name (issue #27): what a swing plays, the frame event that lands
-    // it, and what a fighter goes back to. A Daggerfall-style sheet's words.
-    "animations": { "attack": "attack", "hit": "hit", "idle": "idle" }
+    // What combat and animation share (issues #27, #119, #121): the trigger a swing sets on the fighter's
+    // animator (and its first-person arms'), the clip event that lands the blow, and the trigger Reload
+    // sets on the arms. Which clip plays is the anim_graph's business. (`attack` and `idle`, the clip
+    // names combat used to play, are obsolete: see 12 "As built (animation events)".)
+    "animations": { "attackTrigger": "attack", "hit": "hit", "reload": "reload" }
   }
 ]

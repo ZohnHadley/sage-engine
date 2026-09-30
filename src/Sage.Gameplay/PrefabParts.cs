@@ -55,11 +55,22 @@ public sealed class SpritePart : IPrefabPart
     public Vector2 Size;               // metres; 0 = the sheet's own
     [Property(Tooltip = "A clip name to play; empty = don't animate")]
     public string Animation = "";      // a clip *name*; empty = don't animate
+    [Property(Tooltip = "An anim_graph whose clips are this sheet's: it picks the clip, and its clip events land blows (issue #119)")]
+    public RecordRef<AnimGraphRecord> Graph;   // wins over `animation`
 
     public void Apply(in PrefabPartContext ctx)
     {
         if (Sheet.IsEmpty) { ctx.Error("needs a \"sheet\""); return; }
         ctx.World.Add(ctx.Entity, new SpriteRenderer { Sheet = Sheet, Material = Material, Size = Size });
+
+        if (!Graph.IsEmpty)
+        {
+            // Sprites are graph leaves (issue #119): an animator with no model plays the sheet's clips,
+            // and SpriteGraphSystem shows them through the SpriteAnimator.
+            ctx.World.Add(ctx.Entity, new Animator { Graph = Graph.Id });
+            ctx.World.Add(ctx.Entity, new SpriteAnimator());
+            return;
+        }
 
         if (string.IsNullOrEmpty(Animation)) return;
         var records = ctx.World.Resources.Get<RecordStore>();

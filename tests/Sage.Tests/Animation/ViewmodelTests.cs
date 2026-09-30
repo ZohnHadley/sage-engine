@@ -12,7 +12,7 @@ using Assert = Xunit.Assert;
 // pass)"): the `viewmodel` record, the `sage:viewmodel` component on the player's camera, the arms and the
 // weapon ViewmodelSystem spawns in view space, the attack's `arms` choosing them, Reload, and the pass's
 // decision to draw (ViewmodelPass: first person only). Headless, against SkinnedModelBuilder's rig: its
-// `walk` clip (one second) stands in for the reload, with `mag_out` and `mag_in` added as clip events.
+// `walk` clip (one second) stands in for the reload, with `mag_out` and `mag_in` from an anim_events record.
 public class ViewmodelTests
 {
     public ViewmodelTests() { _ = TestEnv.UserRoot; }
@@ -29,8 +29,11 @@ public class ViewmodelTests
         "states": {
           "idle":   { "clip": "idle" },
           "reload": { "clip": "walk", "loop": false, "tags": ["reloading"], "transitions": [ { "to": "idle", "after": 1 } ] },
-          "swing":  { "clip": "walk", "loop": false, "transitions": [ { "to": "idle", "after": 1 } ] } },
+          "swing":  { "clip": "run", "loop": false, "transitions": [ { "to": "idle", "after": 0.5 } ] } },
         "transitions": [ { "to": "reload", "on": "reload" }, { "to": "swing", "on": "attack" } ] },
+      { "type": "anim_events", "id": "rig", "model": "models/rig.glb",
+        "clips": { "walk": [ { "time": 0.7, "name": "mag_in" }, { "time": 0.3, "name": "mag_out" } ],
+                   "run":  [ { "time": 0.1, "name": "hit" } ] } },
       { "type": "skeleton_sockets", "id": "rig", "model": "models/rig.glb", "sockets": { "hand_r": { "joint": "tip", "offset": [0, 0.5, 0] } } },
       { "type": "viewmodel", "id": "bare", "model": "models/rig.glb", "graph": "arms", "offset": [0.2, -0.5, -0.6] },
       { "type": "viewmodel", "id": "sword", "model": "models/rig.glb", "graph": "arms", "offset": [0.2, -0.5, -0.6],
@@ -47,7 +50,7 @@ public class ViewmodelTests
     {
         var files = new MountFixture();
         files.Write("game", "data/arms.json", Content);
-        SkinnedModelBuilder.Write(Path.Combine(files.Dir("game"), "models", "rig.glb"));
+        SkinnedModelBuilder.Write(Path.Combine(files.Dir("game"), "models", "rig.glb"), withRun: true);
         files.Mount("game", "test");
         return HeadlessApp.Gameplay().Mount(files).Boot("arms");
     }
@@ -89,10 +92,9 @@ public class ViewmodelTests
         using var app = NewGame();
         var world = app.World;
         var (_, camera, arms) = Ready(world);
+        // The reload's events are an anim_events record's (issue #119), written out of order: the clip sorts them.
         Assert.True(app.Engine.Animations.TryGet(AssetPath.Intern("models/rig.glb"), out var rig));
-        var reloadClip = rig.FindClip(SkinnedModelBuilder.Walk)!;
-        reloadClip.AddEvent(0.7f, "mag_in");                   // out of order on purpose: the clip sorts them
-        reloadClip.AddEvent(0.3f, "mag_out");
+        Assert.Equal(new[] { "mag_out", "mag_in" }, rig.FindClip(SkinnedModelBuilder.Walk)!.Events.Select(e => e.Name));
         var events = new EventProbe<AnimationEvent>(world);
         Assert.Equal("idle", Animators.StateOf(world, arms));
 
@@ -124,6 +126,25 @@ public class ViewmodelTests
         var (_, _, arms) = Ready(world);
         Press(world, app.Engine.Actions.Get("Attack"), 1);
         Assert.Equal("swing", Animators.StateOf(world, arms));
+    }
+
+    // The arms' own `hit` (issue #119: their swing clip's anim_events, 0.1 s in) lands a first-person
+    // blow — on tick 6 after the press (the clip starts on the press tick, crosses 0.1 s in the Animation
+    // phase of tick 5, and combat reads it on tick 6) — long before the fists' 0.25 s windup would (tick 15).
+    [Fact]
+    public void TheArmsHitLandsTheFirstPersonBlow()
+    {
+        using var app = NewGame();
+        var world = app.World;
+        var (player, _, arms) = Ready(world);
+        var events = new EventProbe<AnimationEvent>(world);
+        Press(world, app.Engine.Actions.Get("Attack"), 1);                // the press tick
+        Assert.Equal(MeleePhase.Windup, world.Get<Melee>(player).Phase);
+        Step(world, 5);
+        Assert.Equal(MeleePhase.Windup, world.Get<Melee>(player).Phase);
+        Assert.Contains(events.All, e => e.Entity == arms && e.Name == "hit");
+        Step(world);
+        Assert.Equal(MeleePhase.Recover, world.Get<Melee>(player).Phase);   // landed on the arms' hit
     }
 
     // Acceptance: the viewmodel is drawn only looking out of the first-person rig — not in third person,
@@ -234,7 +255,7 @@ public class ViewmodelTests
 
     // The Sandbox's own arms (tools/make_mannequin.py, content/data/viewmodel.json): drawing the
     // practice sword puts them on the player's camera with the sword on `hand_r`, and R plays the reload
-    // clip, which goes back to idle after its 1.2 s.
+    // clip, which fires mag_out and mag_in and goes back to idle after its 1.2 s.
     [Fact]
     public void TheSandboxsSwordShowsItsArms_AndReloadPlaysTheirClip()
     {
@@ -261,10 +282,13 @@ public class ViewmodelTests
         Assert.NotNull(set.FindClip("reload"));
         Assert.NotNull(set.FindClip("attack"));
 
+        var events = new EventProbe<AnimationEvent>(world);
         Press(world, app.Engine.Actions.Get("Reload"), 1);
         Assert.Equal("reload", Animators.StateOf(world, arms));
         Step(world, 80);
         Assert.Equal("idle", Animators.StateOf(world, arms));
+        // Its anim_events (viewmodel.json): mag_out 0.3 s and mag_in 0.9 s into the reload, once each.
+        Assert.Equal(new[] { "mag_out", "mag_in" }, events.All.Where(e => e.Entity == arms).Select(e => e.Name));
     }
 
     internal struct Sink : IViewmodelDraws

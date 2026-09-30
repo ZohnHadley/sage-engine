@@ -137,7 +137,10 @@ public sealed class AnimationModule : IModule
     public void OnWorldCreated(World world)
     {
         world.AddSystem(new SpriteAnimationSystem(world, _records!));
+        world.AddSystem(new SpriteGraphSystem(world, _records!));   // sprites played by a graph (issue #119)
         world.AddSystem(new FootIkSystem(world));   // feet on the ground (issue #120), through IPhysicsWorld
+        // The animator's clip events become AnimationEvents (issue #119).
+        world.Resources.Replace<IAnimationEventSink>(new AnimationEventBus());
     }
 }
 
@@ -204,9 +207,8 @@ public sealed class CombatModule : IModule
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
         // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);
-        // their clip events reach AnimationEvent through the stand-in for #119.
+        // their clip events are the animator's, like everyone's (issue #119).
         world.AddSystem(new ViewmodelCombatSystem(world, _records!, _actions!));
-        world.AddSystem(new ViewmodelEventSystem(world, _records!));
     }
 }
 

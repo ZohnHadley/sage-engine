@@ -92,6 +92,11 @@
       "default": "",
       "type": "string"
     },
+    "trigger": {
+      "description": "(string, default \"\")",
+      "default": "",
+      "type": "string"
+    },
     "swingCue": {
       "description": "Names a cue record. (RecordRef<CueRecord>)",
       "allOf": [

@@ -68,10 +68,13 @@ public class ConventionsTests
         Assert.Equal(new RecordId("sage", "hold_ground"), conventions.Schedules.HoldGround.Id);
         Assert.Equal("Attack", conventions.Actions.Attack);
         Assert.Equal("Jump", conventions.Actions.Jump);
-        // The sprite clips combat plays and listens for (issue #27), which were string constants.
-        Assert.Equal("attack", conventions.Animations.Attack);
+        // The clip event combat listens for (issue #27) and the trigger a swing sets (issue #119).
         Assert.Equal("hit", conventions.Animations.Hit);
+        Assert.Equal("attack", conventions.Animations.AttackTrigger);
+#pragma warning disable CS0618 // the retired clip names keep their defaults, for the upgrade
+        Assert.Equal("attack", conventions.Animations.Attack);
         Assert.Equal("idle", conventions.Animations.Idle);
+#pragma warning restore CS0618
 
         // The character controller, below gameplay, reads the same record through its own view.
         Assert.Equal(conventions.Movement.Id, CharacterConventions.Of(app.World).DefaultProfile);
