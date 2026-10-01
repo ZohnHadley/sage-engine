@@ -36,6 +36,20 @@ internal sealed class RecordsPanel
         editor.Changed += () => _rawStale = true;
     }
 
+    // Opens a record known only by id (a problems row, #227): the first type that has it, shown in the
+    // browser, and the tab brought forward.
+    public bool OpenById(RecordId id)
+    {
+        foreach (var type in _editor.Types())
+        {
+            if (!_editor.Engine.Records.Exists(type, id) || !_editor.Open(type, id)) continue;
+            _type = type;
+            ImGui.SetWindowFocus(EditorLayout.RecordsTitle);
+            return true;
+        }
+        return false;
+    }
+
     public void Draw()
     {
         ImGui.SetNextWindowPos(new Vector2(8, 266), ImGuiCond.FirstUseEver);

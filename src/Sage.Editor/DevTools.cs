@@ -67,6 +67,7 @@ public sealed class DevTools : IDisposable
     private readonly LogPanel _log = new();
     private readonly RecordsPanel _records;   // the record browser (#224)
     private PalettePanel? _palette;   // #222
+    private ProblemsPanel? _problems;   // #227
     private PlaySession? _play;       // play-in-editor (#226): ed_play, ed_stop
     private PlayBar? _playBar;
     private WiringPanel? _wiring;     // #225
@@ -168,6 +169,8 @@ public sealed class DevTools : IDisposable
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
         _wiring = new WiringPanel(_selection!, _pickable);
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
+        _problems?.Dispose();
+        _problems = new ProblemsPanel(new ProblemList(_engine, _document), _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
         // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
@@ -201,7 +204,8 @@ public sealed class DevTools : IDisposable
         var selection = _selection?.Entity ?? default;
         string selected = world != null && !selection.IsNull && world.IsAlive(selection)
             ? World.Describe(selection) : "nothing selected";
-        return $"{doc}   |   {selected}   |   {world?.Name} ({world?.EntityCount ?? 0} entities)   |   camera {_camera.Position.X:F1} {_camera.Position.Y:F1} {_camera.Position.Z:F1}";
+        return $"{doc}   |   {selected}   |   {world?.Name} ({world?.EntityCount ?? 0} entities)   |   camera {_camera.Position.X:F1} {_camera.Position.Y:F1} {_camera.Position.Z:F1}"
+            + (_problems != null ? $"   |   {_problems.Summary}" : "");
     }
 
     // Every menu item is a console command as well. That is a rule rather than a convenience: a menu a
@@ -223,6 +227,7 @@ public sealed class DevTools : IDisposable
         _tools = ViewportTools.Register(cvars, () => _selection);
         PlayCommands.Register(cvars, () => _play);   // ed_play, ed_stop (#226)
         _gizmo = new ViewportGizmo(_tools, cvars);
+        ProblemCommands.Register(cvars, _engine, () => _document);   // ed_problems (#227)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
         {
@@ -336,6 +341,7 @@ public sealed class DevTools : IDisposable
         _wiring?.Draw();
         if (_world != null) _wiring?.DrawLines(_world);
         _log.Draw();
+        _problems?.Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();

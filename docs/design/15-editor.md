@@ -635,6 +635,28 @@ host only chooses which world it draws and sends input to.
 
 **Not built:** simulating in the edit world (Unity's "keep changes"); playing from a selected entity; a
 second viewport showing the edit world while playing.
+## 10m. As built: the problems panel (#227, 2026-10-01)
+
+What is wrong with the content and the open document, in one list grouped by file, and a count in the
+status bar. The list is `ProblemList` (`src/Sage.Editing/ProblemList.cs`); `ProblemsPanel`
+(`src/Sage.Editor/Tools/ProblemsPanel.cs`) only draws it, as a tab beside Log and Console.
+
+- **It reads what the running engine already found; nothing is booted.** `RecordStore` now keeps the last
+  load's error and warning messages (`LoadErrors`, `LoadWarnings`), which carry the loader's
+  `mount:path:line:col`; a row splits that into file, line and, when the message is about a record, its
+  id. The content report's conflicts between mods are warnings in the file of the mod that won.
+  (tests: ARecordFileWithAnErrorShowsWithItsFileAndLine_AndARowOpensTheRecord, AModConflictShowsFromTheContentReport)
+- **The open document is checked live**: a placement whose prefab is missing or unnamed (error), a wire
+  whose target is no placement of the document (warning; `!self` and its kin are fine), two placements
+  with one name (warning) or one id (error). Each row carries the placement, so a click selects it.
+  These are read again on every change to the document (a command, an undo, a save); the loader's rows
+  come again on `Records.Reloaded`. While a document is open its own rows from the loader are left out:
+  the live checks stand for them, and would otherwise go stale after the first edit.
+  (tests: AMissingPrefabAndADanglingWireAreListedWithThePlacements_AndFixingThemClears, DuplicateNamesAndIdsAreListed, AReloadRefreshesAndARowSelectsItsPlacement)
+- **A click**: `ProblemList.Activate` selects a placement row through `EditorSelection` and hands a record
+  row to the panel's `OpenRecord` hook (DevTools sets it to the record browser's `OpenById`, §10j).
+- **`ed_problems`** prints the summary, then each file and its problems. (test: TheConsolePrintsTheProblemsByFile)
+
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
