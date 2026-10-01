@@ -36,6 +36,7 @@
         "hold_ground",
         "idle",
         "keep_routine",
+        "keep_to_routine",
         "melee_attack",
         "openworld:keep_to_routine",
         "sage:cast_spell",
@@ -216,7 +217,8 @@
         "sandbox:firebugs",
         "sandbox:hermits",
         "sandbox:village",
-        "village"
+        "village",
+        "villagers"
       ]
     },
     "record:gameplay_conventions": {
@@ -318,6 +320,7 @@
         "camp",
         "crypt",
         "hut",
+        "openworld:crypt",
         "sandbox:crypt",
         "sandbox:hut",
         "saves:camp"
@@ -452,6 +455,7 @@
       "type": "string",
       "enum": [
         "anvil",
+        "bandit",
         "beacon",
         "bolt_flight",
         "bolts_pickup",
@@ -577,6 +581,7 @@
         "skeletal:sentry",
         "skeletal:trooper",
         "skeletal:walker",
+        "skeleton",
         "smith",
         "spot",
         "steps",
@@ -591,6 +596,7 @@
         "trooper",
         "walker",
         "watcher",
+        "way_out",
         "waystone",
         "weapons:dummy",
         "weapons:floor",
@@ -620,6 +626,9 @@
       "description": "The id of a routine record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "openworld:raid",
+        "openworld:smith",
+        "raid",
         "sandbox:smith",
         "smith"
       ]
@@ -971,6 +980,7 @@
         "hold_ground",
         "idle",
         "keep_routine",
+        "keep_to_routine",
         "melee_attack",
         "openworld:keep_to_routine",
         "sage:cast_spell",
@@ -1151,7 +1161,8 @@
         "sandbox:firebugs",
         "sandbox:hermits",
         "sandbox:village",
-        "village"
+        "village",
+        "villagers"
       ]
     },
     "base:gameplay_conventions": {
@@ -1253,6 +1264,7 @@
         "camp",
         "crypt",
         "hut",
+        "openworld:crypt",
         "sandbox:crypt",
         "sandbox:hut",
         "saves:camp"
@@ -1387,6 +1399,7 @@
       "type": "string",
       "enum": [
         "anvil",
+        "bandit",
         "beacon",
         "bolt_flight",
         "bolts_pickup",
@@ -1514,6 +1527,7 @@
         "skeletal:sentry",
         "skeletal:trooper",
         "skeletal:walker",
+        "skeleton",
         "smith",
         "spot",
         "steps",
@@ -1528,6 +1542,7 @@
         "trooper",
         "walker",
         "watcher",
+        "way_out",
         "waystone",
         "weapons:dummy",
         "weapons:floor",
@@ -1557,6 +1572,9 @@
       "description": "Another routine record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "openworld:raid",
+        "openworld:smith",
+        "raid",
         "sandbox:smith",
         "smith"
       ]
