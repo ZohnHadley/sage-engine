@@ -16,7 +16,7 @@ namespace Sage.Gameplay;
 
 // ---- looks ---------------------------------------------------------------------------------------
 
-// "light": { "colour": [1, 0.85, 0.6], "range": 8, "intensity": 1.4 }
+// "light": { "colour": [1, 0.85, 0.6], "range": 8, "intensity": 1.4, "off": false }
 //
 // A lamp. The engine carries it because a light is a fact about the world rather than about the
 // screen — a headless server has lamps and never draws one — and because a map places them by
@@ -30,12 +30,15 @@ public sealed class LightPart : IPrefabPart
     public float Range = 8f;
     [Property(Min = 0, Tooltip = "Multiplies the colour; 1 is a lamp")]
     public float Intensity = 1f;
+    [Property(Tooltip = "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night)")]
+    public bool Off;
 
     public void Apply(in PrefabPartContext ctx) => ctx.World.Add(ctx.Entity, new PointLight
     {
         Colour = Colour == Vector3.Zero ? Vector3.One : Colour,
         Range = Range <= 0f ? 8f : Range,
         Intensity = Intensity <= 0f ? 1f : Intensity,
+        Off = Off,
     });
 }
 

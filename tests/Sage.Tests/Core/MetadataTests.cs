@@ -225,7 +225,7 @@ public class MetadataTests
 
         var lines = capture.Entries.Select(e => e.Message).ToList();
         Assert.Contains(lines, l => l.Contains("sage:point_light") && l.Contains("range=12.000 m") && l.Contains("intensity=1.000"));
-        Assert.Contains(lines, l => l.Contains("light") && l.Contains("{ colour: Vector3 0.., range: float m 0.., intensity: float 0.. }"));
+        Assert.Contains(lines, l => l.Contains("light") && l.Contains("{ colour: Vector3 0.., range: float m 0.., intensity: float 0.., off: bool }"));
     }
 
     // ---- the generator ---------------------------------------------------------------------------------

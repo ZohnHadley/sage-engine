@@ -16,13 +16,33 @@
 
   // A lamp (06 §3.9, F2). The hut places two of these by classname, which is all a `.map` needs to say:
   // what a lamp *is* — how warm, how far it reaches — lives here, so changing it changes every one.
+  //
+  // And when it is lit (phase 4h's exit, engine issue 4h-7): it starts dark, and `sandbox:lamp` below
+  // switches it on from sunset to sunrise by the world's clock. No C#: a state machine, a `time_between`
+  // condition and the light's TurnOn/TurnOff inputs.
   {
     "type": "prefab",
     "id": "light",
     "name": "lamp",
     "parts": {
-      "light": { "colour": [1.0, 0.82, 0.55], "range": 7, "intensity": 2.2 }
+      "light": { "colour": [1.0, 0.82, 0.55], "range": 7, "intensity": 2.2, "off": true },
+      "state_machine": { "machine": "lamp" }
     }
+  },
+  {
+    // The night is the Sandbox sky's (scene.json `sandbox:day`): the sun is down at 19:30 and up at 5:30.
+    // Transitions from any state never go to the state the lamp is in, so each fires once a dusk or dawn.
+    "type": "state_machine",
+    "id": "lamp",
+    "initial": "off",
+    "states": {
+      "off": { "enter": [ { "fire": "!self", "input": "TurnOff" } ] },
+      "on":  { "enter": [ { "fire": "!self", "input": "TurnOn" } ] }
+    },
+    "transitions": [
+      { "to": "on",  "when": { "time_between": { "from": 19.5, "to": 5.5 } } },
+      { "to": "off", "when": { "not": { "time_between": { "from": 19.5, "to": 5.5 } } } }
+    ]
   },
 
   // A face's texture name becomes a material in the map's namespace: `wall` in `sandbox:hut` looks for

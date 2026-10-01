@@ -378,6 +378,34 @@ public class SkyTests
         Assert.Equal(new Vector3(0.3f, 0.4f, 0.2f), legacy.FogColor);
     }
 
+    // A world with no client has no `weather` record type (it is sage.client's). Under a sky, a weather
+    // named by a save or a scene reads as clear there, rather than throwing from the sky system every tick
+    // (found by the 4h exit, issue 4h-7: a headless Sandbox with rain set).
+    [Fact]
+    public void WithoutTheClientsWeatherTypeTheWeatherReadsAsClear()
+    {
+        using var app = HeadlessApp.Gameplay()
+            .File("data/sky.json", """
+                [{ "type": "sky", "id": "day", "keys": [ { "hour": 12, "sun": [1, 0.9, 0.8], "fog": [0.5, 0.6, 0.7] } ] }]
+                """)
+            .Boot("server");
+        Assert.Equal(0, app.Records.ErrorCount);
+        Assert.Null(app.Records.TypeNameOf(typeof(WeatherRecord)));
+        var world = app.World;
+        var clock = WorldClock.Of(world);
+        clock.Sky = Id("day");
+        clock.Hour = 12;
+        clock.Scale = 0;
+        var weather = world.Resources.Get<Weather>();
+        weather.Current = weather.Target = new RecordId("sandbox", "rain");
+
+        world.RunFixed(1f / 60f);
+        var environment = world.Resources.Get<RenderEnvironment>();
+        var sky = SkyRules.Evaluate(app.Records.Get<SkyRecord>(Id("day")), 12);
+        Assert.Equal(sky.SunColor, environment.SunColor);
+        Assert.Equal(sky.Fog, environment.FogColor);
+    }
+
     // A scene says which sky its world is lit by and what hour it starts at.
     [Fact]
     public void ASceneChoosesTheSkyAndTheHour()

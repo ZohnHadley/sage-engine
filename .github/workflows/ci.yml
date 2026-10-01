@@ -156,6 +156,15 @@ jobs:
           host=src/Sage.Host/bin/Development/net8.0
           tools/smoke_run.sh "$host" games/Hello 3 Shaders
           tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
+          # Phase 4h's exit (issue 4h-7): the Sandbox opens at dusk under its sky with sun shadows on (its
+          # own default); post-processing at half scale, the clock run through sunset into the night (the
+          # lamps come on: r_stats' lights), a storm rolled in over the dusk, then 22:00; r_passes lists the
+          # shadow, sky and post passes. Without shaders no material builds, so nothing casts and the sky
+          # and post steps fall back to their clears and plain copies: this proves the passes, targets, cvars,
+          # clock and weather in the real host, and the catch-up frames under llvmpipe with post on. The
+          # maths is DuskToNightExitTests; the shaders compile in the Windows job.
+          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_post 1\n+r_scale 0.5\n+wait 1\n+r_stats\n+time_set 19:20\n+time_scale 3600\n+wait 2\n+time\n+r_stats\n+r_passes\n+weather rain 1\n+wait 1\n+time_set 22\n+wait 1\n+r_stats' \
+            tools/smoke_run.sh "$host" games/Sandbox 6 Shaders Audio
           # Several views a frame (issue #77): a split screen, then a top-down view into a render target the
           # HUD shows. Without shaders nothing is drawn but the clears, so this proves the path, not the picture.
           SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testview 1\n+wait 1\n+r_testview 2\n+wait 1\n+r_stats' \

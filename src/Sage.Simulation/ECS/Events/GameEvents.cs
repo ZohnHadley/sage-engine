@@ -18,7 +18,9 @@ namespace Sage.Simulation;
 // - An event is kept until **every registered reader has passed it**, then dropped. A queue nobody
 //   reads drops immediately: sending into the void costs a slot, not a leak.
 // - `ev_maxage` is the backstop. Events older than that many ticks are dropped with a warning naming
-//   the reader that is behind, so a disabled system shows up as a message instead of as memory.
+//   the reader that is behind, so a disabled system shows up as a message instead of as memory. In a
+//   world that draws, it is checked at the end of each frame, so a frame reader is never blamed for the
+//   ticks of a catch-up it could not read during (EndOfSchedule).
 //
 // Not for: engine plumbing (use EngineSignals), things a level designer wires (entity I/O, 04 §3.4),
 // or anything that wants an answer back. Nothing here calls into another system; facts go in a queue
@@ -258,11 +260,32 @@ public sealed class GameEvents
     }
 
     // Called by World at the end of each schedule, after every system in it has had its turn.
+    //
+    // **The age backstop waits for the frame** in a world that draws (issue 4h-7). A Fixed queue is read
+    // by Fixed systems every tick and by display-rate ones (particles, audio, a HUD) once a frame, and a
+    // slow frame is followed by a catch-up of up to `sim_maxframetime` × tick rate ticks (15 at 60 Hz) with
+    // no frame in between. Checking the age at the end of each of those ticks dropped an event sent early
+    // in the catch-up before its frame reader's only chance to read it, and blamed that reader
+    // ("Dropping 1 CueTriggered … slowest reader: ParticleSystem" on a slow software renderer). So once a
+    // world has drawn a frame, a tick only drops what every reader has passed, and the age check runs at
+    // the end of the frame, for both schedules' queues, when every reader has had its turn. A world that
+    // never draws (a server, a test that only ticks) checks every tick, as before
+    // (test: AFrameReaderKeepsUpThroughACatchUpLongerThanMaxAge).
     public void EndOfSchedule(Schedule schedule, long nowTick)
     {
-        var queues = schedule == Schedule.Fixed ? _fixed : _frame;
-        for (int i = 0; i < queues.Count; i++) queues[i].Prune(nowTick, MaxAge);
+        if (schedule == Schedule.Fixed)
+        {
+            int maxAge = _drawsFrames ? -1 : MaxAge;
+            for (int i = 0; i < _fixed.Count; i++) _fixed[i].Prune(nowTick, maxAge);
+            return;
+        }
+
+        _drawsFrames = true;
+        for (int i = 0; i < _frame.Count; i++) _frame[i].Prune(nowTick, MaxAge);
+        for (int i = 0; i < _fixed.Count; i++) _fixed[i].Prune(nowTick, MaxAge);
     }
+
+    private bool _drawsFrames;   // a frame has ended in this world: Fixed queues' age is checked per frame
 
     // For `ev_stats`.
     public IEnumerable<(string Event, Schedule Schedule, int Count, int Readers, long OldestTick)> Stats()

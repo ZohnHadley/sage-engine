@@ -1066,6 +1066,11 @@
           "default": 1,
           "type": "number",
           "minimum": 0
+        },
+        "off": {
+          "description": "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night) (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

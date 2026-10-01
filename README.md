@@ -37,14 +37,15 @@ down and swings, you swing back with a sword you picked up, you throw a fireball
 Since then the engine has been following [`docs/REDESIGN.md`](docs/REDESIGN.md). Stage A (phases 0–3)
 carved a base engine out of it, with an RPG kit on top. Stage B is building the action-RPG base:
 cameras (4a), timers, state machines and logic entities (4b), the UI toolkit and RPG screens (4c) and
-skeletal animation (4d) are done; weapons and combat on one hit pipeline (4e, #132) are in progress.
+skeletal animation (4d), weapons and combat on one hit pipeline (4e) and rendering for open worlds
+(4h: render passes, a sky over a day, shadows, fog and post-processing) are done; saves (4i) are in progress.
 
 | Area | What exists |
 |---|---|
 | Core | Fixed 60 Hz tick with render interpolation, phases with ordering and dev-asserted contracts, logging with categories, cvars and a console, crash reports, three build configurations |
 | World | Friflo ECS behind a thin `World`, in Sage's own vocabulary (`Entity`, `IComponent`, `Query<…>`, `EntityCommands`; no Friflo type in the API), several worlds per engine, hierarchy and transform propagation, one typed event bus with per-reader cursors, world resources |
 | Content | One JSON record pipeline for every definition (items, spells, materials, AI, input maps, prefabs…) with namespaces, inheritance, per-field patch merge, validation and hot reload; a layered VFS; records that can also be made at run time |
-| Rendering | Extract → pooled snapshot → fixed passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, GPU-skinned models, heightmap terrain, debug draw |
+| Rendering | Extract → pooled snapshot → registered render passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, GPU-skinned models, heightmap terrain, debug draw; a world clock and `sky` records lighting a day (the Sandbox opens at dusk and its lamps light at sunset), stable sun shadows, a sky pass with stars, exp² fog, post-processing and a render scale |
 | Cameras | Cameras are entities with a director: first- and third-person rigs with the `V` toggle, scripted cuts from entity I/O, several views a frame and named render targets |
 | World | An unbounded grid of 1024 m sectors: terrain streams in and out in rings around the player, and the simulation rebases so nothing is ever far from its own origin — verified 120 km out |
 | Physics | BepuPhysics per world behind handles, layers, raycast/sweep/overlap, triggers, and our own kinematic character controller |
@@ -58,7 +59,7 @@ skeletal animation (4d) are done; weapons and combat on one hit pipeline (4e, #1
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1222 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1227 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: ragdolls, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says

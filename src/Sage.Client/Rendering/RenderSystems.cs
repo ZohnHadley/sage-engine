@@ -445,7 +445,7 @@ internal sealed class LightExtract : ISystem
                 for (int n = 0; n < globals.Length; n++)
                 {
                     ref readonly var light = ref lights[n];
-                    if (light.Range <= 0f || light.Intensity <= 0f) continue;
+                    if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
 
                     var world = globals[n].Interpolated(alpha).Position;
                     var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);

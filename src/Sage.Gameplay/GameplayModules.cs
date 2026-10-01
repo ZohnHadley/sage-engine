@@ -154,7 +154,24 @@ public sealed class AnimationModule : IModule
 [Plugin("sage.gameplay.lights", "0.1.0")]
 public sealed class LightsModule : IModule
 {
-    public void Init(ModuleContext ctx) { }   // LightPart is declared ([PrefabPart], issue #17)
+    internal const string TurnOn = "TurnOn";
+    internal const string TurnOff = "TurnOff";
+    internal const string Toggle = "Toggle";
+
+    // LightPart is declared ([PrefabPart], issue #17). The switch is entity I/O (issue 4h-7), routed to
+    // lights so a branch's or a door's `Toggle` is untouched: a lamp lit at night is a state machine whose
+    // `time_between` transition fires TurnOn at it, all in data (the Sandbox's `sandbox:lamp`).
+    public void Init(ModuleContext ctx)
+    {
+        var inputs = ctx.Engine.Inputs;
+        inputs.Register<PointLight>(TurnOn, static (World world, in IOContext io) => world.Get<PointLight>(io.Self).Off = false);
+        inputs.Register<PointLight>(TurnOff, static (World world, in IOContext io) => world.Get<PointLight>(io.Self).Off = true);
+        inputs.Register<PointLight>(Toggle, static (World world, in IOContext io) =>
+        {
+            ref var light = ref world.Get<PointLight>(io.Self);
+            light.Off = !light.Off;
+        });
+    }
 }
 
 // Hitting things (16 §3.2): one damage pipeline, `attack` records, and the melee both the player and

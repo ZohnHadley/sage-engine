@@ -200,4 +200,61 @@ public class GameEventTests
         Assert.Equal(1, seen);
         Assert.Equal(new[] { 2 }, Drain(reader));
     }
+
+    // A display-rate system reading a Fixed queue (particles, audio, a HUD), as a world runs it.
+    private sealed class FrameReader : ISystem
+    {
+        public readonly List<int> Seen = new();
+        private readonly EventReader<CatchUpPing> _reader;
+
+        public FrameReader(World world)
+        {
+            _reader = world.Events.Reader<CatchUpPing>(this, Schedule.Fixed);
+            world.AddSystem(this, Phase.FrameUpdate, RunCondition.Always);
+        }
+
+        public void Run(in SystemContext ctx)
+        {
+            foreach (ref readonly var ev in _reader.Read()) Seen.Add(ev.Value);
+        }
+    }
+
+    // The 4h exit's smoke failure (issue 4h-7): after a slow frame the host runs up to sim_maxframetime ×
+    // tick rate ticks (15 at 60 Hz) before the next frame, more than ev_maxage (8). An event sent early in
+    // that catch-up was dropped at the end of a tick, before the frame reader's only chance to read it, and
+    // the warning blamed the reader ("Dropping 1 CueTriggered … slowest reader: ParticleSystem"). Once a
+    // world draws, the age is checked at the end of the frame: the frame reader gets it and nobody is
+    // blamed; a reader that really is stuck is still dropped, at the frame.
+    [Xunit.Fact]
+    public void AFrameReaderKeepsUpThroughACatchUpLongerThanMaxAge()
+    {
+        using var log = new CaptureSink();
+        using var world = new World("catch-up");
+        world.Events.MaxAge = 8;
+        var particles = new FrameReader(world);
+        world.RunFixed(1f / 60f);
+        world.RunFrame(1f / 60f, 1f);                                     // a world that draws
+
+        // A frame that took a quarter of a second: fifteen ticks, a cue in the first, then the frame.
+        world.Events.Send(new CatchUpPing { Value = 1 });
+        for (int tick = 0; tick < 15; tick++) world.RunFixed(1f / 60f);
+        world.RunFrame(0.25f, 1f);
+
+        Assert.Equal(new[] { 1 }, particles.Seen);
+        Assert.Equal(0, world.Events.Queue<CatchUpPing>().Count);
+        Assert.DoesNotContain(log.Entries, e => e.Message.Contains(nameof(CatchUpPing)));
+
+        // A reader that never reads is still the backstop's: dropped at the frame, and named.
+        var stuck = world.Events.Reader<CatchUpPing>("stuck");
+        world.Events.Send(new CatchUpPing { Value = 2 });
+        for (int tick = 0; tick < 15; tick++) world.RunFixed(1f / 60f);
+        Assert.Equal(1, world.Events.Queue<CatchUpPing>().Count);         // held through the catch-up
+        world.RunFrame(0.25f, 1f);
+        Assert.Equal(new[] { 1, 2 }, particles.Seen);
+        Assert.Equal(0, world.Events.Queue<CatchUpPing>().Count);
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Warn && e.Message.Contains(nameof(CatchUpPing)) && e.Message.Contains("stuck"));
+        _ = stuck;
+    }
 }
+
+[GameEvent] public struct CatchUpPing { public int Value; }

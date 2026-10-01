@@ -23,6 +23,14 @@ public struct PointLight : IComponent
     public float Range;         // metres to where it fades to nothing
     [Property(Min = 0, Tooltip = "Multiplies the colour; 1 is a lamp")]
     public float Intensity;     // multiplies the colour; 1 is "a lamp"
+    // Switched off (issue 4h-7): it gives no light until a TurnOn or Toggle reaches it (the inputs are the
+    // lights plugin's, sage.gameplay.lights). Saved, so a lamp lit at dusk is lit after a load; a save from
+    // before it has no such field and loads as on, which is what every light was.
+    [Property(Tooltip = "Switched off: no light until TurnOn or Toggle (entity I/O) reaches it")]
+    public bool Off;
+
+    // Whether it lights anything: switched on, with a range and an intensity.
+    public readonly bool Lit => !Off && Range > 0f && Intensity > 0f;
 }
 
 // One light as the renderer wants it: where it is, what it contributes, how far it reaches.
