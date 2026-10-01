@@ -220,6 +220,9 @@ jobs:
           # Phase 4e's exit (issue #139): a range where a sword, a crossbow, a pistol and a fireball, all records,
           # hit armoured dummies on the one hit pipeline. Same allowances as above.
           tools/smoke_run.sh "$host" tests/games/weapons 3 Shaders Audio Records Input
+          # Phase 4i's exit (issue #167): placed goblins, a map's ring and tally, a dropped item and an arrow
+          # to save and load (SavesExitTests plays it headlessly). Same allowances as above.
+          tools/smoke_run.sh "$host" tests/games/saves 3 Shaders Audio Records Input
 
       # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
       # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.

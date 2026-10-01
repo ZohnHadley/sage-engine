@@ -437,7 +437,7 @@ lost and nothing duplicated. `tests/games/saves` proves it headless, with no C#
   - the arrow is back with its id, where it was, still the player's, and flies on after the load;
   - the tally is at 2, and an `Add` takes it to 3.
 - **Validated** alone and with the patch (test: TheSavesGameValidates); CI runs `sage validate` both
-  ways and includes the game in `sage schema`.
+  ways, includes the game in `sage schema` and smoke-runs it in the real host.
 - **No engine change was needed.** Two things the exit showed that are not 4i's: a data-only game whose
   map or placements carry wires must list `sage.gameplay.io`, and nothing (`sage validate` included)
   says so when it does not, so the wires silently never fire; and a test that leaves a `PlayerCommand`
