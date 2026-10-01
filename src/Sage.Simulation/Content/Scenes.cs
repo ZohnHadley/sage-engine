@@ -139,16 +139,17 @@ public sealed class Scenes
 
     // Called by Engine.CreateWorld once every module has furnished the world, before its rules start: the
     // rules find the scene placed, and their SpawnPlayer finds its start.
-    internal void Enter(World world)
+    // An edit world may start in another scene than Start (issue #219).
+    internal void Enter(World world, RecordId start)
     {
         world.Resources.Add(new ActiveScene());
-        if (Start.IsEmpty) return;
-        if (!_engine.Records.TryGet(Start, out SceneRecord scene))
+        if (start.IsEmpty) return;
+        if (!_engine.Records.TryGet(start, out SceneRecord scene))
         {
-            Log.Error(LogCat.World, $"No scene '{Start}': world '{world.Name}' starts empty");
+            Log.Error(LogCat.World, $"No scene '{start}': world '{world.Name}' starts empty");
             return;
         }
-        Place(world, Start, scene);
+        Place(world, start, scene);
         ApplyEnvironment(world, scene);
     }
 
@@ -174,7 +175,8 @@ public sealed class Scenes
         var player = Player(world);
         if (player.IsNull)
         {
-            if (world.Resources.TryGet<GameRules>(out var rules) && rules != null) rules.SpawnPlayer(world);
+            // An edit world never has one (issue #219): it shows the scene, nobody plays it.
+            if (!world.Editing && world.Resources.TryGet<GameRules>(out var rules) && rules != null) rules.SpawnPlayer(world);
         }
         else if (movePlayer && PlayerStart(world) is { } start)
         {
@@ -251,7 +253,7 @@ public sealed class Scenes
 
             // A player the rules spawned stays where it is, with what it has. One that is gone — or never
             // was, because the scene only now has a start — comes back.
-            if (Player(world).IsNull && scene.Player != null
+            if (Player(world).IsNull && scene.Player != null && !world.Editing   // never in an edit world (#219)
                 && world.Resources.TryGet<GameRules>(out var rules) && rules != null)
                 rules.SpawnPlayer(world);
         }

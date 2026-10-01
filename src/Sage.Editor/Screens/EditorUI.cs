@@ -24,6 +24,9 @@ internal class EditorUI
         _viewport = viewport;
     }
 
+    // The host runs the editor (`-edit`): the View menu offers its layout.
+    public bool Editing { get; set; }
+
     public void Draw(Game game)
     {
         ImGui.BeginMainMenuBar();
@@ -64,6 +67,8 @@ internal class EditorUI
         {
             if (ImGui.MenuItem("Free camera", "cam_free", _camFree.Value)) _camFree.Value = !_camFree.Value;
             if (ImGui.MenuItem("Viewport", "ed_viewport", _viewport.Value)) _viewport.Value = !_viewport.Value;
+            // The editor's docked panels (`-edit`, issue #219), as the command says it.
+            if (Editing && ImGui.MenuItem("Reset layout", "ed_layout")) _document.Engine.CVars.Execute("ed_layout", ExecSource.Console);
             ImGui.EndMenu();
         }
 

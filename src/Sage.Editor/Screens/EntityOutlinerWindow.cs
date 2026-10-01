@@ -18,10 +18,12 @@ internal sealed class EntityOutlinerWindow
     private readonly List<Entity> _entities = new();
     private readonly ImGuiWindowFlags _flags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
     private readonly EditorSelection? _selection;
+    private readonly string? _title;   // the editor's docked "Outliner" (issue #219); else "Entities (<world>)"
 
-    public EntityOutlinerWindow(World world, EditorSelection? selection = null)
+    public EntityOutlinerWindow(World world, EditorSelection? selection = null, string? title = null)
     {
         _world = world;
+        _title = title;
         _all = world.QueryAll();
         _selection = selection;
     }
@@ -34,7 +36,7 @@ internal sealed class EntityOutlinerWindow
         ImGui.SetNextWindowPos(new Vector2(8, 28), ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowSize(new Vector2(280, 230), ImGuiCond.FirstUseEver);
 
-        if (!ImGui.Begin($"Entities ({_world.Name})", _flags))
+        if (!ImGui.Begin(_title ?? $"Entities ({_world.Name})", _flags))
         {
             ImGui.End();   // collapsed: skip the listing entirely (it allocates per entity)
             return;

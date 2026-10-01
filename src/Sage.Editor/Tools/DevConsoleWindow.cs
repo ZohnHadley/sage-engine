@@ -138,7 +138,7 @@ internal sealed class DevConsoleWindow
         }
     }
 
-    private static Vector4 ColorFor(LogLevel level) => level switch
+    internal static Vector4 ColorFor(LogLevel level) => level switch
     {
         LogLevel.Trace => new Vector4(0.55f, 0.55f, 0.55f, 1),
         LogLevel.Debug => new Vector4(0.75f, 0.75f, 0.80f, 1),

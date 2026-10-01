@@ -21,6 +21,11 @@ public enum RunCondition
     WhenNotPaused,
     Always,
     DevOnly,        // dev builds only (not run in Shipping)
+    // As Default, and in an edit world too (issue #219), where no other Fixed system runs: for a system that
+    // only mirrors the world into a service the editor reads (physics' bodies for picking), never one that
+    // simulates.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor (phase 10a)
+    EvenWhenEditing,
 }
 
 internal static class PhaseInfo

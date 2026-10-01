@@ -69,6 +69,9 @@ public sealed class ClientModule : IModule
         actions.Register("Look", ActionKind.Axis2D);
         actions.Register("Menu", ActionKind.Button);
         actions.Register("ToggleConsole", ActionKind.Button);
+        // The editor's free camera (`-edit`, issue #219): bound in the `Editor` context only, so a pawn's
+        // Move and the camera's never share a key in one run.
+        actions.Register("EditorMove", ActionKind.Axis2D);
 
         // Screens (13 §3, F38). Navigation is the client's business because screens are: a headless
         // server has no use for "the highlighted row moved down". The bag opens with Inventory; the

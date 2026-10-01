@@ -201,6 +201,12 @@ jobs:
           # Then the Sandbox's scripted cut: the hut camera its path's wire turns on, for a second.
           SAGE_SMOKE_COMMANDS=$'+ed_viewport 1\n+wait 1\n+cam_free 1\n+wait 1\n+cam_free 0\n+ed_viewport 0\n+sv_cheats 1\n+ent_fire hut_cam CameraOn 1\n+wait 2' \
             tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
+          # The editor mode (issue #219): `-edit yard` boots the Sandbox into an edit world (its start scene,
+          # nothing simulated, no player) with the `yard` placements document open, the docked layout, the free
+          # camera on the screen flying on the Editor context's EditorMove, a crate selected for the inspector
+          # and the status bar, the layout reset and the viewport window on. EditModeTests has the edit world.
+          SAGE_SMOKE_ARGS='-edit yard' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ent_select crate by the door\n+in_axis EditorMove 0 1 1\n+wait 1\n+ed_layout\n+ed_viewport 1\n+wait 1\n+in_contexts' \
+            tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
           # A widget screen (issue #97): the Sandbox's status screen opened by its key, walked with the
           # D-pad actions, closed with Back, then opened and closed from the console, fades and all.
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_tap Status\n+wait 5\n+in_tap MenuDown\n+wait 2\n+in_tap MenuTab\n+wait 2\n+in_tap MenuBack\n+wait 5\n+ui_open status\n+wait 5\n+ui_close all' \

@@ -56,6 +56,11 @@ public sealed class DevTools : IDisposable
     private EntityOutlinerWindow? _outliner;
     private EntityInspectorWindow? _inspector;
 
+    // The editor mode (`-edit`, issue #219): set once, by BeginEditing, for the life of the host.
+    private bool _editing;
+    private readonly EditorLayout _layout = new();
+    private readonly LogPanel _log = new();
+
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
         _game = game;
@@ -90,8 +95,16 @@ public sealed class DevTools : IDisposable
             Log.Info(LogCat.Console, $"camera at {_camera.Position}");
         });
 
+        cvars.RegisterCommand("ed_layout", CVarFlags.DevOnly, "ed_layout: put the editor's panels back where they started (-edit).", _ =>
+        {
+            if (!_editing) { Log.Warn(LogCat.Console, "ed_layout: only in the editor (start the host with -edit)"); return; }
+            _layout.Reset();
+        });
+
         RegisterDocumentCommands();
     }
+
+    public bool IsEditing => _editing;
 
     // What ImGui is doing with the mouse and keyboard this frame: with no dev tools, nothing is, which
     // is why the host holds these as constants in a Shipping build.
@@ -123,6 +136,51 @@ public sealed class DevTools : IDisposable
         // The free camera keeps its own position, so it has to be told when the world moves under it
         // (R6): without this, `cam_free` after a rebase leaves it a sector behind what it was looking at.
         world.Origin().Rebased += offset => _camera.Position += new Vector3(offset.X, offset.Y, offset.Z);
+    }
+
+    // The editor mode (`-edit`, issue #219), once the edit world exists and OnWorldCreated has seen it: the
+    // free camera on the screen for good, flying on the Editor context's EditorMove, the docked layout,
+    // and `target`'s document open.
+    public void BeginEditing(EditTarget target)
+    {
+        if (_world == null || _document == null) throw new InvalidOperationException("BeginEditing needs the edit world: call OnWorldCreated first");
+        _editing = true;
+        _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
+        if (_menu != null) _menu.Editing = true;
+        _camera.EditorMove = _engine.Actions.Get("EditorMove");
+        if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
+
+        // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
+        if (_world.PlayerStart() is { } start)
+        {
+            _camera.Position = new Vector3(start.X, start.Y + 1.7f, start.Z);
+            _camera.SetLook(0f, -10f);
+        }
+        else
+        {
+            _camera.Position = new Vector3(0, 3, 8);
+            _camera.SetLook(0f, -15f);
+        }
+        _placed = true;
+
+        // **The one place the editor's document is opened from a launch line**: the EditDocument (#217)
+        // bound to this world, whose edits are commands and which `doc_*` / `ed_undo` act on from here on.
+        if (!target.Document.IsEmpty) _document.Open(target.Document);
+        Log.Info(LogCat.Editor, $"Editing '{_world.Name}': scene {(target.Scene.IsEmpty ? "(none)" : target.Scene.ToString())}, " +
+                                $"document {(_document.IsOpen ? _document.Title : "(none: File > New or doc_open)")}");
+    }
+
+    // The status bar's line: the document, whether it is saved, and the selection.
+    private string StatusLine()
+    {
+        var document = _document;
+        string doc = document is { IsOpen: true }
+            ? $"{document.Id}  {(document.Dirty ? "modified" : "saved")}"
+            : "no document";
+        var world = _world;
+        string selected = world != null && !_selection.Entity.IsNull && world.IsAlive(_selection.Entity)
+            ? World.Describe(_selection.Entity) : "nothing selected";
+        return $"{doc}   |   {selected}   |   {world?.Name} ({world?.EntityCount ?? 0} entities)   |   camera {_camera.Position.X:F1} {_camera.Position.Y:F1} {_camera.Position.Z:F1}";
     }
 
     // Every menu item is a console command as well. That is a rule rather than a convenience: a menu a
@@ -159,7 +217,7 @@ public sealed class DevTools : IDisposable
         var world = _world;
         if (world == null) { _camera.Update(time); return; }
 
-        bool free = _camFree.Value;
+        bool free = _camFree.Value || _editing;   // the editor's screen is the free camera's
         // It flies while something shows it: the screen (cam_free, or no other camera there last frame)
         // or the viewport with the mouse or focus on it.
         bool onScreen = world.TryGetMainView(out var main) && !main.Entity.IsNull && main.Entity == _freeCamera;
@@ -198,6 +256,12 @@ public sealed class DevTools : IDisposable
     public void Draw(GameTime time)
     {
         _gui.BeginLayout(time);
+        if (_editing)
+        {
+            DrawEditor();
+            _gui.EndLayout();
+            return;
+        }
         _menu?.Draw(_game);
         if (_showEntities.Value)
         {
@@ -208,6 +272,20 @@ public sealed class DevTools : IDisposable
         _console.Draw();
         _stats.Draw();
         _gui.EndLayout();
+    }
+
+    // The editor mode's frame (issue #219): the menu, the dock space, its panels, the status bar.
+    private void DrawEditor()
+    {
+        _menu?.Draw(_game);
+        _layout.BeginFrame();
+        _outliner?.Draw();
+        _inspector?.Draw();
+        _log.Draw();
+        _console.Draw();
+        DrawViewport();
+        _stats.Draw();
+        _layout.DrawStatusBar(StatusLine());
     }
 
     // The editor viewport (issue #81): the render target the viewport camera drew this frame (views into

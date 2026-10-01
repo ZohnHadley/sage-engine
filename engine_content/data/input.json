@@ -5,6 +5,18 @@
   // QuickLoad, issue 4i-6); games add maps for their own actions, and player rebinds will be patches. A
   // game moves F5/F9 with a patch of these maps, or binds them in its own map as well.
   {
+    // Active in the editor (`-edit`, issue #219), above everything else, with Gameplay off: there is no
+    // pawn to walk, and the free camera flies on EditorMove (right-drag still turns it, as in a dev run).
+    "type": "input_map",
+    "id": "editor",
+    "context": "Editor",
+    "actions": {
+      "EditorMove":    [ { "composite": "WASD" } ],
+      "ToggleConsole": [ { "key": "OemTilde" } ],
+      "Menu":          [ { "key": "Escape" } ]
+    }
+  },
+  {
     // Active while the console is open; consumes all other keyboard input.
     "type": "input_map",
     "id": "console",

@@ -53,11 +53,16 @@ public class Game1 : Game
     private double quitAt = -1;         // >= 0: exit once RealTime passes it (`quit <seconds>`)
 
     private readonly string? dumpRegistry;   // -dump-registry: write RegistryDump here once booted, then quit
+    // -edit [placements-or-scene] (issue #219): null in a game run; "" opens the game's start scene. Its
+    // world is an edit world, nothing in it is simulated, and the free camera has the screen.
+    private readonly string? edit;
+    private bool Editing => edit != null;
 
-    internal Game1(SageApp app, string? dumpRegistry = null)
+    internal Game1(SageApp app, string? dumpRegistry = null, string? edit = null)
     {
         this.app = app;
         this.dumpRegistry = dumpRegistry;
+        this.edit = edit;
         engine = app.Engine;
         loop = new HostLoop(engine);
         beforeTick = BeforeTick;
@@ -143,7 +148,14 @@ public class Game1 : Game
         engine.Modules.ProvideHostService(devices);
         engine.Modules.ProvideHostService(actions);
         app.Start();
+#if SAGE_DEV
+        // The editor (`-edit`, issue #219): an edit world in place of the main one. Play-in-editor (#226)
+        // will make a play world beside it.
+        var editTarget = Editing ? ResolveEditTarget() : default;
+        world = Editing ? CreateEditWorld(editTarget) : app.CreateWorld("main");
+#else
         world = app.CreateWorld("main");
+#endif
 
         // Sampled every frame whether or not anything reads it: a game without the character plugin
         // has no pawn to command, and its PlayerInput is only ever written (issue #13).
@@ -151,6 +163,7 @@ public class Game1 : Game
 
 #if SAGE_DEV
         dev.OnWorldCreated(world);
+        if (Editing) dev.BeginEditing(editTarget);
 #endif
         app.RunLaunchCommands();   // +args last, with the world up
 
@@ -173,6 +186,22 @@ public class Game1 : Game
 
         base.Initialize();
     }
+
+#if SAGE_DEV
+#pragma warning disable SAGE0133, SAGE0121 // the editor's model and the start scene: the dev host ships with the engine that declares them
+    // What `-edit <name>` names; a name that is neither a placements document nor a scene is an error in
+    // the log, and the editor opens the start scene instead (a typo should not cost the session).
+    private EditTarget ResolveEditTarget()
+    {
+        if (EditTarget.TryResolve(engine.Records, engine.Scenes.Start, edit, out var target, out string error)) return target;
+        Log.Error(LogCat.Editor, $"{error}; opening the start scene");
+        EditTarget.TryResolve(engine.Records, engine.Scenes.Start, null, out target, out _);
+        return target;
+    }
+
+    private World CreateEditWorld(EditTarget target) => app.CreateEditWorld("edit", target.Scene);
+#pragma warning restore SAGE0133, SAGE0121
+#endif
 
     // A new document belongs to the game that is loaded: that is whose content folder it is saved into.
     private string NamespaceOfGame()
@@ -226,7 +255,10 @@ public class Game1 : Game
 #else
         const bool uiWantsMouse = false, uiWantsKeyboard = false;
 #endif
-        actions.SetActive(InputContext.Editor, true);   // the editor host (no Editor map yet: nothing consumed)
+        // The editor (`-edit`) reads its own map and nothing walks: there is no pawn. A game run has no
+        // Editor context at all, so the editor's keys never reach a played game.
+        actions.SetActive(InputContext.Editor, Editing);
+        actions.SetActive(InputContext.Gameplay, !Editing);
 #if SAGE_DEV
         actions.SetActive(InputContext.Console, dev.ConsoleIsOpen);
 #else
@@ -236,7 +268,8 @@ public class Game1 : Game
         actions.UiWantsMouse = uiWantsMouse;
         actions.Update(realDt);
 
-        // Menu closes the console first; otherwise it quits (until there is a menu).
+        // Menu closes the console first; otherwise it quits (until there is a menu). Not in the editor,
+        // where Escape is too easy a key to lose work to: File > Exit (or `quit`) leaves it.
 #if SAGE_DEV
         if (actions.Pressed(toggleConsoleAction)) dev.ToggleConsole();
 #endif
@@ -244,7 +277,7 @@ public class Game1 : Game
         {
 #if SAGE_DEV
             if (dev.ConsoleIsOpen) dev.CloseConsole();
-            else Exit();
+            else if (!Editing) Exit();
 #else
             Exit();
 #endif

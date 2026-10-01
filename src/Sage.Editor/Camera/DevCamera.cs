@@ -43,6 +43,11 @@ internal class DevCamera
     // ImGui has the mouse (it does over any of its windows).
     public bool MouseOverViewport { get; set; }
 
+    // In the editor (`-edit`, issue #219) it flies on the `EditorMove` action, which only the `Editor`
+    // input context binds (08 §14 step 4, for moving): no pawn needed, and nothing else hears those keys.
+    // Unset (a dev run), it reads WASD from the devices as it always has, beside the player's Move.
+    public ActionId EditorMove { get; set; } = ActionId.None;
+
     public DevCamera(InputDevices devices, InputActions actions, Vector3 position, Vector3 rotationDegrees)
     {
         this.devices = devices;
@@ -95,11 +100,19 @@ internal class DevCamera
         Vector3 move = Vector3.Zero;
         // Don't fly while typing in the console or an editor field (the Editor input context replaces this, 08 §14 step 4).
         bool typing = ImGui.GetIO().WantCaptureKeyboard;
-        var keyboard = devices.Keyboard;
-        if (!typing && keyboard.IsKeyDown(Keys.W)) move += forward;
-        if (!typing && keyboard.IsKeyDown(Keys.S)) move -= forward;
-        if (!typing && keyboard.IsKeyDown(Keys.D)) move += right;
-        if (!typing && keyboard.IsKeyDown(Keys.A)) move -= right;
+        if (EditorMove.IsValid)
+        {
+            var axis = typing ? System.Numerics.Vector2.Zero : actions.Axis2(EditorMove);   // x: right, y: forward
+            move += forward * axis.Y + right * axis.X;
+        }
+        else
+        {
+            var keyboard = devices.Keyboard;
+            if (!typing && keyboard.IsKeyDown(Keys.W)) move += forward;
+            if (!typing && keyboard.IsKeyDown(Keys.S)) move -= forward;
+            if (!typing && keyboard.IsKeyDown(Keys.D)) move += right;
+            if (!typing && keyboard.IsKeyDown(Keys.A)) move -= right;
+        }
 
         // Normalize so diagonal movement isn't faster, then scale by speed * dt
         // for frame-rate-independent movement.
