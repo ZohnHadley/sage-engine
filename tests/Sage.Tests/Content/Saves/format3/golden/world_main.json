@@ -1,0 +1,263 @@
+{
+  "origin": {
+    "x": 0,
+    "z": 0
+  },
+  "entities": [
+    {
+      "id": "ceff879ec86f840e029d401822c71013",
+      "name": "lantern",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              1.5,
+              2,
+              4
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "test:lamp": {
+          "version": 2,
+          "data": {
+            "Lumens": 0.75,
+            "Charges": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "8b9ab36232d074624613b0bde3e51efa",
+      "prefab": "sage:goblin",
+      "name": "goblin",
+      "diff": true,
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0,
+              0.085,
+              -3
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:character_controller": {
+          "version": 1,
+          "data": {
+            "Velocity": [
+              0,
+              -0.6,
+              0
+            ]
+          }
+        },
+        "sage:ai_state": {
+          "version": 1,
+          "data": {
+            "Schedule": "",
+            "Target": "1bf64af0333ffa2a0ceec786a42cd365",
+            "NextThink": 0.17976192
+          }
+        }
+      }
+    },
+    {
+      "id": "1bf64af0333ffa2a0ceec786a42cd365",
+      "prefab": "sage:hero",
+      "name": "hero",
+      "diff": true,
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              3,
+              0.085,
+              -7
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:character_controller": {
+          "version": 1,
+          "data": {
+            "Velocity": [
+              0,
+              -0.6,
+              0
+            ]
+          }
+        },
+        "sage:abilities": {
+          "version": 1,
+          "data": {
+            "Known": [
+              "sage:heal"
+            ],
+            "Selected": ""
+          }
+        },
+        "sage:attributes": {
+          "version": 1,
+          "data": {
+            "Values": {
+              "sage:armour": 0,
+              "sage:health": 65
+            }
+          }
+        },
+        "sage:active_effects": {
+          "version": 1,
+          "data": {
+            "Effects": [
+              {
+                "Record": "sage:curse",
+                "Source": "8b9ab36232d074624613b0bde3e51efa",
+                "Remaining": "Infinity",
+                "PeriodTimer": 0,
+                "Stacks": 1,
+                "Magnitude": 1
+              }
+            ]
+          }
+        },
+        "sage:inventory": {
+          "version": 1,
+          "data": {
+            "Items": [
+              {
+                "Item": "sage:sword",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              },
+              {
+                "Item": "sage:bread",
+                "Count": 1
+              }
+            ]
+          }
+        },
+        "sage:equipment": {
+          "version": 2,
+          "data": {
+            "Worn": [
+              {
+                "Slot": "MainHand",
+                "Item": "sage:sword"
+              }
+            ]
+          }
+        }
+      },
+      "tags": [
+        "sage:player_controlled"
+      ]
+    }
+  ],
+  "resources": {
+    "clock": {
+      "version": 1,
+      "data": {
+        "Day": 0,
+        "Hour": 12.00055555558453,
+        "Scale": 60,
+        "Sky": ""
+      }
+    },
+    "entity_io": {
+      "version": 1,
+      "data": {
+        "Pending": [],
+        "Wires": []
+      }
+    },
+    "journal": {
+      "version": 1,
+      "data": {
+        "Entries": [
+          {
+            "Quest": "sandbox:errand",
+            "Stage": "hunt",
+            "Finished": false,
+            "Progress": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    "reputation": {
+      "version": 1,
+      "data": {
+        "Standings": [
+          {
+            "Faction": "sandbox:townsfolk",
+            "Value": -40
+          }
+        ]
+      }
+    },
+    "vars": {
+      "version": 1,
+      "data": {
+        "Values": {}
+      }
+    },
+    "weather": {
+      "version": 1,
+      "data": {
+        "Current": "sage:clear",
+        "Target": "sandbox:storm",
+        "Blend": 0.25,
+        "BlendRate": 0.25,
+        "Settled": false,
+        "Showing": "sage:clear"
+      }
+    }
+  }
+}

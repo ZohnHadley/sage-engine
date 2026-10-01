@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -44,28 +45,59 @@ internal sealed class SaveSerializer
     public static bool IsTransient(Type type) =>
         Transient.GetOrAdd(type, static t => t.GetCustomAttribute<TransientAttribute>() != null);
 
-    public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json)
+    public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json) =>
+        WriteComponents(world, entity, json, baseline: null, removed: null);
+
+    // With a `baseline` (4i-5, SaveDiff): only what differs from it — the fields that changed, and the
+    // components the prefab did not give it in full — and the baseline's components the entity no longer
+    // has go in `removed`. `quiet`: taking a baseline at spawn, where an unwritable field is the save's
+    // business to report, not the spawn's.
+    public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json, SpawnBaseline? baseline,
+                                      JsonArray? removed, bool quiet = false)
     {
         var result = new JsonObject();
+        HashSet<string>? had = baseline != null ? new HashSet<string>(StringComparer.Ordinal) : null;
         foreach (var (id, value) in _schema.ComponentsOf(entity))
         {
             var type = value.GetType();
             if (OnTheEntity(type) || IsTransient(type)) continue;
             var declaration = _schema.DeclarationOf(type)!;
+            had?.Add(id);
             try
             {
-                result[id] = Entry(declaration.Version, JsonSerializer.SerializeToNode(value, type, json));
+                var data = JsonSerializer.SerializeToNode(value, type, json);
+                if (baseline != null && id != TransformId
+                    && baseline.Components[id] is JsonObject before
+                    && before["version"] is JsonValue v && v.TryGetValue(out int version) && version == declaration.Version)
+                {
+                    var was = before["data"];
+                    if (data is JsonObject fields && was is JsonObject wasFields && SaveDiff.ByField(type, json))
+                    {
+                        var changed = SaveDiff.Fields(fields, wasFields);
+                        if (changed.Count == 0) continue;
+                        data = changed;
+                    }
+                    else if (JsonNode.DeepEquals(data, was)) continue;
+                }
+                result[id] = Entry(declaration.Version, data);
             }
             catch (Exception ex) when (ex is NotSupportedException or JsonException or ArgumentException)
             {
+                if (quiet) continue;
                 // A field type the dialect cannot express. Named once, so it can be given a converter
                 // or marked `[Transient]`, rather than quietly missing from every save.
                 Log.Once(LogCat.Save, LogLevel.Error, $"unwritable:{id}",
                     $"{id} cannot be saved: {ex.Message}. Give the field a converter or mark it [Transient] (09 §3.3)");
             }
         }
+        if (baseline != null && removed != null)
+            foreach (var (id, _) in baseline.Components)
+                if (!had!.Contains(id)) removed.Add(id);
         return result;
     }
+
+    // Always written in full, never diffed (SaveDiff): a runtime spawn is rebuilt where it stood.
+    internal const string TransformId = "sage:transform";
 
     // `{ "version": n, "data": … }`: the shape of every component and saved resource in a save.
     public static JsonObject Entry(int version, JsonNode? data) => new() { ["version"] = version, ["data"] = data };
@@ -80,9 +112,10 @@ internal sealed class SaveSerializer
     }
 
     // `unknown` collects, as saved, every entry whose id matches no component here, so the next save
-    // can write it back unchanged (issue 4i-2).
+    // can write it back unchanged (issue 4i-2). `merge`: the entries are diffs (4i-5, SaveDiff), laid field
+    // by field onto the component the entity has; without it, or when it has none, an entry replaces it.
     public void ReadComponents(World world, Entity entity, JsonObject components, JsonSerializerOptions json, string where,
-                               JsonObject? unknown = null)
+                               JsonObject? unknown = null, bool merge = false)
     {
         foreach (var (key, node) in components)
         {
@@ -102,16 +135,40 @@ internal sealed class SaveSerializer
             }
             if (OnTheEntity(declaration.Type) || IsTransient(declaration.Type)) continue;
 
-            object? value = ReadEntry(declaration.Type, declaration.Id, declaration.Version, node, json, $"{where}: component '{declaration.Id}'");
-            if (value != null && _schema.TryComponent(declaration.Id, out var type))
-                _schema.Write(entity, type, value);
+            // The fields a diff names, as upgraded: only those are laid over what the entity has.
+            JsonObject? fields = null;
+            Action<JsonObject>? upgraded = merge ? f => fields = (JsonObject)f.DeepClone() : null;
+            object? value = ReadEntry(declaration.Type, declaration.Id, declaration.Version, node, json,
+                                      $"{where}: component '{declaration.Id}'", upgraded);
+            if (value is null || !_schema.TryComponent(declaration.Id, out var type)) continue;
+            if (fields != null && SaveDiff.ByField(type, json) && _schema.Read(entity, type) is { } current)
+                value = SaveDiff.Merge(type, current, value, fields, json);
+            _schema.Write(entity, type, value);
+        }
+    }
+
+    // A diffed entity's `removed` (4i-5): the components its prefab gave it that it did not have when saved.
+    public void RemoveComponents(Entity entity, JsonArray removed)
+    {
+        foreach (var node in removed)
+        {
+            string? key = (string?)node;
+            if (string.IsNullOrEmpty(key)) continue;
+            ComponentDeclaration? declaration = null;
+            if (_schema.TryComponent(key, out var found)) declaration = _schema.DeclarationOf(found);
+            else if (_schema.TryFormerComponent(key, typeNames: false, out var former)) declaration = former;
+            // One this game does not have is not on the entity either.
+            if (declaration is null || OnTheEntity(declaration.Type) || IsTransient(declaration.Type)) continue;
+            if (_schema.TryComponent(declaration.Id, out var type)) _schema.Remove(entity, type);
         }
     }
 
     // One `{ "version", "data" }` entry, brought up to date by the type's upgraders and read as that
     // type. Null, having said why, when it cannot be: the caller keeps whatever it had (a prefab's
     // component, a fresh resource), which is the most a load can honestly do with it.
-    public static object? ReadEntry(Type type, string id, int current, JsonNode entry, JsonSerializerOptions json, string what)
+    // `upgraded`: told the data object as upgraded, before it is read (a diff needs to know which fields it names).
+    public static object? ReadEntry(Type type, string id, int current, JsonNode entry, JsonSerializerOptions json, string what,
+                                    Action<JsonObject>? upgraded = null)
     {
         if (entry is not JsonObject wrapper || wrapper["version"] is not JsonValue v || !v.TryGetValue(out int version))
         {
@@ -139,6 +196,7 @@ internal sealed class SaveSerializer
                     return null;
                 }
             }
+            if (data is JsonObject read) upgraded?.Invoke(read);
             return data is null ? null : JsonSerializer.Deserialize(data.ToJsonString(), type, json);
         }
         catch (JsonException ex) when (ex.Message.Contains("could not be mapped", StringComparison.Ordinal))

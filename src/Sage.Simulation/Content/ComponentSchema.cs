@@ -320,6 +320,14 @@ public sealed class ComponentSchema
             entity.Raw.RemoveTags(new F.Tags(tagType));
     }
 
+    // Takes a component off by its type (a load removing what a diffed entity's prefab gave it, 4i-5).
+    internal void Remove(Entity entity, Type type)
+    {
+        if (entity.IsNull || entity.Raw.Archetype is not { } archetype) return;
+        var component = ComponentTypeOf(type);
+        if (archetype.ComponentTypes.Contains(component)) F.EntityUtils.RemoveEntityComponent(entity.Raw, component);
+    }
+
     // Friflo's handle for a component type, declared or not (the inspector writes Friflo's own too).
     private static F.ComponentType ComponentTypeOf(Type type) =>
         F.EntityStore.GetEntitySchema().ComponentTypeByType.TryGetValue(type, out var component)

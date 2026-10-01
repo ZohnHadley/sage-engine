@@ -383,6 +383,16 @@ public static class PrefabExtensions
                                           PrefabOverrides? overrides, string? where) =>
         SpawnPlaced(world, prefab, position, yawDegrees, overrides, where, persist: false);
 
+    // A saved entity on load, where the save says it stood (4i-5): its position and its whole rotation.
+    internal static Entity SpawnWithoutId(this World world, RecordId prefab, in Transform placed)
+    {
+        var at = Transform.At(placed.LocalPosition);
+        at.LocalRotation = placed.LocalRotation;
+        var entity = SpawnTree(world, prefab, at, overrides: null, where: null, default, 0);
+        if (!entity.IsNull) SnapGlobals(world, entity);
+        return entity;
+    }
+
     // The same, with per-entity values from a map (`"light.range" "12"`): the keys PrefabKeys offers for
     // this prefab, read as overrides of this one entity (issue #18; since phase 4i the same overrides a
     // placement writes). `where` names the map line.
@@ -437,6 +447,7 @@ public static class PrefabExtensions
             return default;
         }
 
+        var asAuthored = record;
         record = PrefabOverriding.Apply(engine, prefab, record, overrides);
 
         // Placed *before* the body goes on, because parts read the transform: `character` seeds the
@@ -461,6 +472,10 @@ public static class PrefabExtensions
         ref var transform = ref world.Get<Transform>(entity);
         transform.LocalPosition = placed.LocalPosition;
         transform.LocalRotation = placed.LocalRotation;
+
+        // What it was spawned as, for a save to diff it against (4i-5): before its children, a name or
+        // an id are added, none of which is the prefab's.
+        engine.Saves.NoteSpawned(world, entity, prefab, asAuthored, overrides);
 
         if (record.Children.Count == 0) return entity;
         if (depth >= PrefabOverriding.MaxDepth)
