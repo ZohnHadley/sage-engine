@@ -366,6 +366,9 @@ public sealed class World : IDisposable
         // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with every
         // phase of it done, and the autosave clock advances. Nothing to do costs a comparison.
         Engine?.Saves.TickEnded(this, dt);
+        // And a streamed scene places, and puts to sleep, the sectors the ring reached or left (4g-3): work
+        // that allocates, so never inside the phases.
+        Engine?.Scenes.TickEnded(this);
     }
 
     private void RunFixedPhases(float dt)

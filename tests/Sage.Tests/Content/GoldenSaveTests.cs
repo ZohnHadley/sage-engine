@@ -76,7 +76,10 @@ public class GoldenSaveTests
         "parts": { "character": { "layer": "enemy" }, "attributes": {} } },
       { "type": "prefab", "id": "guard", "name": "guard", "parts": { "attributes": {} } },
       { "type": "scene", "id": "vault", "place": [ { "prefab": "guard", "at": [2, 0, 2], "name": "guard", "id": "guard" } ] },
-      { "type": "scene", "id": "yard" }
+      { "type": "scene", "id": "yard" },
+      { "type": "scene", "id": "field", "streamed": true,
+        "place": [ { "prefab": "guard", "at": [10, 0, 10], "name": "sentry", "id": "sentry" },
+                   { "prefab": "guard", "at": [1100, 0, 10], "name": "slain", "id": "slain" } ] }
     ]
     """;
 
@@ -185,6 +188,42 @@ public class GoldenSaveTests
         Assert.True((bool)saved["diff"]!);
         Assert.False(saved["components"]!.AsObject().ContainsKey("sage:attributes"));
         Assert.Equal(100f, world.Attribute(world.Resolve(PersistentId.FromName("goblin")), Id("health")));
+    }
+
+    // A 4i save of a scene that streams now (4g-3): the format 3 golden save, put in the streamed `field`
+    // with a guard it killed there. Ids keep 4i's formula, so the load re-keys the `scene:` tombstone to the
+    // sector that places the guard, and a runtime spawn's cell to the sector it stands in; once the ring is
+    // known the sectors are placed, the killed guard is not, and its sector keeps the tombstone.
+    [Fact]
+    public void AFormat3SaveOfASceneThatStreamsNowLoadsIntoItsSectors()
+    {
+        string root = CopyOf(3);
+        string file = Path.Combine(root, "golden", "world_main.json");
+        var json = JsonNode.Parse(File.ReadAllText(file))!.AsObject();
+        var slain = ContentIds.Authored("scene:sage:field", "slain")!.Value;
+        var sentry = ContentIds.Authored("scene:sage:field", "sentry")!.Value;
+        json["scene"] = "sage:field";
+        json["tombstones"] = new JsonObject { ["scene:sage:field"] = new JsonArray(slain.ToString()) };
+        File.WriteAllText(file, json.ToJsonString());
+
+        using var app = HeadlessApp.Bare().With(new PhysicsModule(), new StreamingModule()).WithGameplay().WithHands()
+            .File("data/golden.json", Records).Build();
+        app.Engine.Saves.Root = root;
+        var world = app.Engine.CreateWorld("main");
+        using var log = new CaptureSink();
+
+        Assert.True(app.Engine.Saves.Load("golden"));
+        AssertTheGoldenWorld(world, schedule: "");
+        Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn && e.Message.Contains("golden/world_main"));
+        var lamp = world.Resolve(PersistentId.FromName("lantern"));
+        Assert.Equal("sector:sage:field:0,0", world.Get<InCell>(lamp).Source);   // From3 gave it the scene's cell
+
+        world.RunFixed(1f / 60f);
+        var baseline = ContentIds.Baseline(world);
+        Assert.True(baseline.IsLive("sector:sage:field:1,0"));
+        Assert.False(world.Resolve(sentry).IsNull);
+        Assert.True(world.Resolve(slain).IsNull);
+        Assert.True(baseline.IsTombstoned("sector:sage:field:1,0", slain));
     }
 
     // Format 4 (4g-1): the same world, in the yard, with the vault it came from dormant — a wounded guard

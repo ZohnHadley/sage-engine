@@ -496,8 +496,9 @@ dormancy (`Cells.cs`, experimental SAGE0129).
 - **Limits.** Only a root's transform is moved between frames: a position held in another component (an
   AI's last sight of its target) stays in the frame it was taken in, as it would across a rebase without
   AI's own hook. A live entity's reference to one that went to sleep (an effect's source) does not
-  resolve while it sleeps. The current cell is the world's scene; 4g-3 gives a streamed scene's spawns
-  their sector and moves an entity between sectors. A follower spawned at runtime sleeps with the scene
+  resolve while it sleeps. The current cell is the world's scene, or in a streamed scene the sector the spawn
+  stands in, and an entity that crosses a sector edge moves to the next (14 "As built (entities stream by
+  sector)", issue 4g-3). A follower spawned at runtime sleeps with the scene
   it was made in until 4g-5 carries it through doors.
 
 ### As built (saved resources, F21/F27, 2026-09-23)
