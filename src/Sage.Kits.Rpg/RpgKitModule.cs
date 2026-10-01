@@ -38,6 +38,9 @@ public sealed class RpgKitModule : IModule
     // The rest and wait screen (issue 4g-7): hours, then sleep or wait (RestView, the Rest rule).
     public static readonly RecordId RestScreen = new(ContentNamespace, "rest");
 
+    // The mods screen (issue 4j-6): what was found, on or off, the order, and the conflicts (Sage.UI's ModsView).
+    public static readonly RecordId ModsScreen = new(ContentNamespace, "mods");
+
     // The kit's experimental id for what it adds to phase 4g's open world (MAKING_A_GAME §10b): the base's own.
     internal const string OpenWorld = "SAGE0129";
     internal const string ExperimentalUrl = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api";
