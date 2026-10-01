@@ -40,6 +40,47 @@ Sage.Editing.EditDocument.Engine.get -> Sage.Simulation.Engine!
 Sage.Editing.EditDocument.EntityOf(Sage.Simulation.Placement! placement) -> Sage.Simulation.Entity
 Sage.Editing.EditDocument.Execute(Sage.Editing.IEditorCommand! command) -> bool
 Sage.Editing.EditDocument.Find(string! nameOrId) -> Sage.Simulation.Placement?
+Sage.Editing.RecordDocument
+Sage.Editing.RecordDocument.Changed -> System.Action?
+Sage.Editing.RecordDocument.Dirty.get -> bool
+Sage.Editing.RecordDocument.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.RecordDocument.Get(string! path) -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.RecordDocument.History.get -> Sage.Editing.CommandLog!
+Sage.Editing.RecordDocument.Id.get -> Sage.Core.RecordId
+Sage.Editing.RecordDocument.IsEdited(string! path) -> bool
+Sage.Editing.RecordDocument.Meta.get -> Sage.Core.TypeMetadata?
+Sage.Editing.RecordDocument.MetaAt(string! path) -> Sage.Core.FieldMetadata?
+Sage.Editing.RecordDocument.Original.get -> System.Text.Json.Nodes.JsonObject!
+Sage.Editing.RecordDocument.Provenance(string! path) -> string?
+Sage.Editing.RecordDocument.RawText.get -> string!
+Sage.Editing.RecordDocument.Redo() -> bool
+Sage.Editing.RecordDocument.Save() -> bool
+Sage.Editing.RecordDocument.SavedTo.get -> string!
+Sage.Editing.RecordDocument.SavesAsPatch.get -> bool
+Sage.Editing.RecordDocument.Set(string! path, System.Text.Json.Nodes.JsonNode? value) -> bool
+Sage.Editing.RecordDocument.Sources() -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.RecordDocument.Title.get -> string!
+Sage.Editing.RecordDocument.Type.get -> string!
+Sage.Editing.RecordDocument.Undo() -> bool
+Sage.Editing.RecordDocument.Working.get -> System.Text.Json.Nodes.JsonObject!
+Sage.Editing.RecordEditor
+Sage.Editing.RecordEditor.Changed -> System.Action?
+Sage.Editing.RecordEditor.Close() -> void
+Sage.Editing.RecordEditor.Current.get -> Sage.Editing.RecordDocument?
+Sage.Editing.RecordEditor.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.RecordEditor.Ids(string! type, string! search = "") -> Sage.Core.RecordId[]!
+Sage.Editing.RecordEditor.Open(string! type, Sage.Core.RecordId id) -> bool
+Sage.Editing.RecordEditor.RecordEditor(Sage.Simulation.Engine! engine) -> void
+Sage.Editing.RecordEditor.Register(Sage.Core.CVarRegistry! cvars) -> void
+Sage.Editing.RecordEditor.Types() -> string![]!
+Sage.Editing.SetRecordValue
+Sage.Editing.SetRecordValue.Description.get -> string!
+Sage.Editing.SetRecordValue.Do() -> void
+Sage.Editing.SetRecordValue.Path.get -> string!
+Sage.Editing.SetRecordValue.SetRecordValue(Sage.Editing.RecordDocument! document, string! path, System.Text.Json.Nodes.JsonNode? value) -> void
+Sage.Editing.SetRecordValue.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
+Sage.Editing.SetRecordValue.Undo() -> void
+Sage.Editing.SetRecordValue.Value.get -> System.Text.Json.Nodes.JsonNode?
 static Sage.Editing.EditDocument.GameNamespace(Sage.Simulation.Engine! engine) -> string!
 Sage.Editing.EditDocument.History.get -> Sage.Editing.CommandLog!
 Sage.Editing.EditDocument.Id.get -> Sage.Core.RecordId
@@ -139,6 +180,9 @@ Sage.Editing.RemovePlacement.Placement.get -> Sage.Simulation.Placement!
 Sage.Editing.RemovePlacement.RemovePlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
 Sage.Editing.RemovePlacement.Undo() -> void
 Sage.Editing.RotateGizmo
+static Sage.Editing.RecordDocument.ChildPath(string! parent, string! name) -> string!
+static Sage.Editing.RecordDocument.Open(Sage.Simulation.Engine! engine, string! type, Sage.Core.RecordId id) -> Sage.Editing.RecordDocument?
+static Sage.Editing.RecordDocument.ParseValue(string! text) -> System.Text.Json.Nodes.JsonNode?
 static Sage.Editing.RotateGizmo.Drag(in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, float stepDegrees = 0) -> float?
 static Sage.Editing.RotateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size) -> bool
 Sage.Editing.SetOutputs

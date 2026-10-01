@@ -60,6 +60,7 @@ public sealed class DevTools : IDisposable
     private bool _editing;
     private readonly EditorLayout _layout = new();
     private readonly LogPanel _log = new();
+    private readonly RecordsPanel _records;   // the record browser (#224)
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -70,6 +71,7 @@ public sealed class DevTools : IDisposable
         _gui = new ImGuiRenderer(game);
         _camera = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0)) { Position = new Vector3(0, 0, 1) };
         _console = new DevConsoleWindow(cvars, engine.Core);
+        _records = new RecordsPanel(new RecordEditor(engine));
         _stats = new StatOverlay(cvars, engine.Core);
 
         _camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
@@ -196,6 +198,7 @@ public sealed class DevTools : IDisposable
         // The document's commands (doc_*, ed_undo, ed_redo, ed_history) are Sage.Editing's, so tests press
         // them too (issue #217).
         EditorCommands.Register(cvars, () => _document);
+        _records.Editor.Register(cvars);   // ed_rec_* (#224)
 
         cvars.RegisterCommand("ent_select", CVarFlags.DevOnly, "ent_select <name>: select an entity for the inspector.", a =>
         {
@@ -281,6 +284,7 @@ public sealed class DevTools : IDisposable
         _layout.BeginFrame();
         _outliner?.Draw();
         _inspector?.Draw();
+        _records.Draw();
         _log.Draw();
         _console.Draw();
         DrawViewport();
