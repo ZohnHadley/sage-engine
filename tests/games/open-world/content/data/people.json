@@ -1,0 +1,80 @@
+[
+  // Who lives in the valley (engine issue #190). Everyone who should go on living while the player is
+  // away has the `offscreen` part (4g-6): when the sector they stand in goes to sleep, or the player goes
+  // indoors, they leave the world for the off-screen table, walk their routines a game minute at a time,
+  // fight whoever their faction is hostile to, and come back where they are when their sector is placed.
+
+  // ---- the player ------------------------------------------------------------------------------------
+  // A staff to fight with (the base engine has no hands to hold a sword in: that is a kit's), and a
+  // sword in the pack to leave on the crypt's floor.
+  {
+    "type": "attack", "id": "staff_blow", "damage": 12, "damageType": "sage:physical",
+    "reach": 2.4, "radius": 0.35, "arcDegrees": 60,
+    "windupTime": 0.2, "recoverTime": 0.2, "cooldown": 0.5
+  },
+  { "type": "item", "id": "sword", "label": "sword", "weight": 3 },
+  { "type": "item", "id": "hammer", "label": "smith's hammer", "weight": 2 },
+  {
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "melee": { "attack": "staff_blow" },
+      "inventory": { "items": [ { "item": "sword" } ] }
+    }
+  },
+
+  // ---- factions --------------------------------------------------------------------------------------
+  // Neither guards nor bandits mind the player; they mind each other. Villagers mind nobody.
+  { "type": "faction", "id": "villagers", "label": "villagers" },
+  { "type": "faction", "id": "guards", "label": "the watch", "relations": [ { "faction": "bandits", "stance": "Hostile" } ] },
+  { "type": "faction", "id": "bandits", "label": "bandits", "relations": [ { "faction": "guards", "stance": "Hostile" } ] },
+
+  // ---- the smith -------------------------------------------------------------------------------------
+  // At the forge from 08:00 to 20:00, at home the rest of the day (4g-4). Loaded, his AI walks there and
+  // stays; unloaded, the off-screen table walks him at his movement profile's pace.
+  { "type": "ai_schedule", "id": "keep_to_routine", "tasks": ["MoveToAnchor", "FaceAnchor", "StayAt"], "interrupts": ["SeeEnemy"] },
+  {
+    "type": "routine", "id": "smith",
+    "entries": [ { "from": 8, "to": 20, "schedule": "keep_to_routine", "at": "forge" },
+                 { "from": 20, "to": 8, "schedule": "keep_to_routine", "at": "smith_home" } ]
+  },
+  {
+    "type": "prefab", "id": "smith", "name": "smith", "components": { "ai_state": {} },
+    "parts": {
+      "character": { "layer": "enemy" },
+      "attributes": {},
+      "faction": "villagers",
+      "routine": "smith",
+      "offscreen": {},
+      "inventory": { "items": [ { "item": "hammer" } ] }
+    }
+  },
+
+  // ---- the watch and the bandits ---------------------------------------------------------------------
+  // The guards stand at the north gate. The bandits keep to their camp, 200 m further north, by night and
+  // raid the gate by day; they have no AI, so in the world they only stand, and the fight happens off-screen
+  // (the `strength` rule: strength × health against a roll, deterministic by minute and ids).
+  {
+    "type": "routine", "id": "raid",
+    "entries": [ { "from": 8, "to": 20, "schedule": "keep_to_routine", "at": "gate" },
+                 { "from": 20, "to": 8, "schedule": "keep_to_routine", "at": "bandit_camp" } ]
+  },
+  {
+    "type": "prefab", "id": "guard", "name": "guard",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "faction": "guards", "offscreen": { "speed": 1.2, "strength": 8 } }
+  },
+  {
+    "type": "prefab", "id": "bandit", "name": "bandit",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "faction": "bandits", "routine": "raid",
+               "offscreen": { "speed": 1.5, "strength": 5 } }
+  },
+
+  // ---- the crypt -------------------------------------------------------------------------------------
+  // A skeleton is the engine's character with 30 health: three blows of the staff.
+  { "type": "effect", "id": "skeleton_build", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 30 } ] },
+  {
+    "type": "prefab", "id": "skeleton", "name": "skeleton",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "effects": ["skeleton_build"] }
+  }
+]

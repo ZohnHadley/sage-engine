@@ -109,6 +109,49 @@ and the simulation carries on with small numbers, because the frame of reference
 - **Since 4g-3, entities stream by sector**: see "As built (entities stream by sector)" below.
 - **Since 4g-5, interiors are scenes behind load doors, and fast travel exists**: see "As built (doors,
   interiors and travel)" below.
+- **Phase 4g's exit** puts all of it in one data-only game: "As built (the 4g exit game)" just below.
+
+### As built (the 4g exit game, issue 4g-8, 2026-10-01)
+Phase 4g's exit (REDESIGN §5, issue #190): walk from an exterior into a dungeon and back; an NPC keeps its
+schedule across a day while you are away. `tests/games/open-world` proves it headless, with no C# and no
+kit (`tests/Sage.Tests/Games/OpenWorldExitTests.cs`).
+
+- **The game.** A streamed scene, `valley`, on the built-in `Hills` (seed 4, 3 m), starting at 07:00. The
+  village is in sector (0, 0) by its east edge: a well, the smith's home and, across the edge in (1, 0),
+  the forge. The smith has a character, an AI, the `villagers` faction, a hammer, the `smith` routine (the
+  forge 08–20, home 20–08, through `MoveToAnchor`, `FaceAnchor` and `StayAt`) and the `offscreen` part.
+  Three guards stand at the north gate and three bandits in a camp 200 m further north, in (0, -1); the
+  bandits' routine, `raid`, takes them to the gate by day. Neither has an AI, so they fight only off-screen
+  (guards strength 8, bandits 5). Two sectors east of the village, in (2, 0), a `load_door` leads into
+  `crypt`, an interior scene whose `.map` (`maps/crypt.map`, written by a short script) is a stone room
+  with a torch, a skeleton (30 health), the entry `crypt_in` (a point with no prefab) and a door back out.
+  The player fights with a staff (12 a blow) and carries a sword. The plugins are physics, streaming, maps,
+  entity I/O, character, attributes, combat, items, AI, factions and lights.
+- **The run** (test: OpenWorldExit_AwayADayInTheCrypt_TheSmithKeptHisScheduleAndNothingIsDoubled). At
+  07:00 the smith, who has been burnt to 80, is at home. The player travels to the crypt door, uses it
+  (the Use action), and is at `crypt_in` with the terrain gone. The village is asleep, and the smith, the
+  guards and the bandits are in the off-screen table. Three blows kill the skeleton, the sword is dropped,
+  and the player rests 26 hours (`Time.Pass`, reason `rest`): one skip, every game minute of it stepped.
+  The game is saved, and a fresh app loads it in the crypt at 09:00 the next day. The player uses the way
+  out and is at the crypt door at 09:00, and the forge's sector is in the ring:
+  - the smith is at the forge, not at home: the same id, still at 80, the hammer on him, once;
+  - the gate's sector, placed again, has what the fight left: one side is dead (the bandits, in this
+    content), each guard and bandit has the health and the dead tag the table gave it, and none is in the
+    world and in the table at once;
+  - at 20:00 he leaves the forge and walks home (the hour has just begun, so the catch-up does not put him
+    there), and an hour later he is home;
+  - back in the crypt the skeleton is dead with 0 health, with its id, and the sword lies where it fell,
+    with its id; no persistent id is in the world twice, or in the world and the table.
+  The same run without the save and load ends with the same fight, to the health and the position of
+  each guard and bandit.
+- **Validated** (test: TheOpenWorldGameValidates); CI runs `sage validate` on it, includes it in `sage
+  schema`, and smoke-runs it in the real host: into the crypt through the `Travel` input, `time_pass 26`,
+  out again and `offscreen_status`.
+- **Two engine changes, the same as 4g-7's** (ported so the two merge as one). A door whose entry is a
+  `.map` entity's `targetname` did not find it, because the scene's level was placed at the next tick, after
+  the player had been put down: `Travel` now places the level's entities at once (`MapLoader.EnsureEntities`).
+  And a journey set the clock to the destination scene's `environment.hour`, so coming out of the crypt
+  into the valley made it 07:00 again: `hour` is for starting in a scene, and travel keeps the clock.
 
 ### As built (entities stream by sector, issue 4g-3, 2026-10-01)
 Streaming loaded terrain only: a scene was placed whole, so an exterior bigger than a sector held every

@@ -1,0 +1,64 @@
+[
+  // The valley (engine issue #190): a streamed exterior on the built-in hills, and the crypt behind a
+  // load door in it (4g-3, 4g-5). Sectors are 1024 m. The village is in (0, 0) by its east edge, with the
+  // forge across the edge in (1, 0); the north gate and the bandits' camp are in (0, -1); the crypt door is
+  // two sectors east of the village, in (2, 0).
+  { "type": "terrain", "id": "hills", "generator": "Hills", "seed": 4, "height": 0, "amplitude": 3, "wavelength": 400 },
+
+  // Markers: places with a name, for routines to walk to and doors to come out at. They are nothing else.
+  { "type": "prefab", "id": "marker", "name": "marker" },
+  { "type": "prefab", "id": "well", "name": "well", "parts": { "body": { "size": [1.5, 1, 1.5] } } },
+
+  // The door into the hill, and the way out of the crypt (a map entity, maps/crypt.map).
+  {
+    "type": "prefab", "id": "crypt_door", "name": "crypt door",
+    "parts": { "body": { "size": [1.5, 2.5, 0.2] }, "load_door": { "scene": "crypt", "entry": "crypt_in" } }
+  },
+  {
+    "type": "prefab", "id": "way_out", "name": "way out",
+    "parts": { "body": { "size": [1.5, 2.5, 0.2] }, "load_door": { "scene": "valley", "entry": "crypt_door_out" } }
+  },
+
+  {
+    // The village wakes at seven. Placements stand on the ground (`relativeTo`), and each has an id, so a
+    // save finds it however the list is reordered.
+    "type": "scene", "id": "valley", "streamed": true, "terrain": "hills", "relativeTo": "Ground",
+    "environment": { "hour": 7 },
+    "player": { "prefab": "player", "at": [900, 0.1, 504] },
+    "place": [
+      { "prefab": "well", "at": [900, 0.5, 500], "name": "well", "id": "well" },
+      { "prefab": "marker", "at": [900, 0.1, 510], "name": "square", "id": "square" },
+      { "prefab": "marker", "at": [860, 0, 520], "name": "smith_home", "id": "smith_home" },
+      { "prefab": "marker", "at": [1100, 0, 520], "yaw": -90, "name": "forge", "id": "forge" },
+      { "prefab": "smith", "at": [860, 0.1, 520], "name": "smith", "id": "smith" },
+
+      { "prefab": "marker", "at": [904, 0, -96], "name": "gate", "id": "gate" },
+      { "prefab": "guard", "at": [900, 0.1, -100], "name": "guard", "id": "guard_west" },
+      { "prefab": "guard", "at": [904, 0.1, -102], "name": "guard", "id": "guard_middle" },
+      { "prefab": "guard", "at": [908, 0.1, -100], "name": "guard", "id": "guard_east" },
+      { "prefab": "marker", "at": [904, 0, -300], "name": "bandit_camp", "id": "bandit_camp" },
+      { "prefab": "bandit", "at": [900, 0.1, -300], "name": "bandit", "id": "bandit_one" },
+      { "prefab": "bandit", "at": [904, 0.1, -302], "name": "bandit", "id": "bandit_two" },
+      { "prefab": "bandit", "at": [908, 0.1, -300], "name": "bandit", "id": "bandit_three" },
+
+      { "prefab": "crypt_door", "at": [2148, 1.25, 498.6], "name": "crypt_door", "id": "crypt_door" },
+      { "prefab": "marker", "at": [2148, 0.1, 500], "yaw": 180, "name": "crypt_door_out", "id": "crypt_door_out" }
+    ]
+  },
+
+  // The crypt: an interior (no terrain, no rings, no sun), lit by its torch and a little ambient light.
+  {
+    "type": "material", "id": "crypt_floor", "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.35, 0.33, 0.3, 1] }
+  },
+  {
+    "type": "material", "id": "crypt_wall", "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.45, 0.43, 0.4, 1] }
+  },
+  { "type": "prefab", "id": "torch", "name": "torch", "parts": { "light": { "colour": [1, 0.6, 0.3], "range": 12, "intensity": 1.5 } } },
+  { "type": "map", "id": "crypt", "file": "maps/crypt.map", "at": [6000, 0, 0] },
+  {
+    "type": "scene", "id": "crypt", "space": "Interior", "maps": ["crypt"],
+    "environment": { "ambient": [0.06, 0.06, 0.08] }
+  }
+]
