@@ -223,7 +223,9 @@ public sealed class InspectorModel
     // ---- Finding --------------------------------------------------------------------------------------
 
     // A row by "group.field": the group by the prefab's key or its id (`timer`, `sage:timer`, `body`), and
-    // `components.` or `parts.` in front to say which when a component and a part share a name.
+    // `components.` or `parts.` in front to say which when a component and a part share a name. Without
+    // either, a row that can be edited wins over one that cannot: a part builds a component of its own
+    // name (`mover` builds `sage:mover`), shown read-only, and `mover.seconds` means the part's (#228).
     public InspectorRow? Find(string path)
     {
         string? only = null;
@@ -236,6 +238,7 @@ public sealed class InspectorModel
         var engine = World.Engine;
         string ns = Placement?.Prefab.Id is { IsEmpty: false } p ? p.Namespace : "sage";
         Type? named = engine != null && engine.Components.TryResolveComponent(groupName, ns, out var t, out _) ? t : null;
+        InspectorRow? readOnly = null;
         foreach (var group in _groups)
         {
             bool isPart = group.Section == OverrideSection.Part;
@@ -245,9 +248,10 @@ public sealed class InspectorModel
                          || !isPart && named != null && group.Rows.Count > 0 && Matches(engine!, group, named, ns);
             if (!match) continue;
             var row = group.Rows.FirstOrDefault(r => Overrides.SameField(r.Field.JsonName, fieldName));
-            if (row != null) return row;
+            if (row is { Editable: true }) return row;
+            readOnly ??= row;
         }
-        return null;
+        return readOnly;
     }
 
     private static bool Matches(Engine engine, InspectorGroup group, Type type, string ns) =>

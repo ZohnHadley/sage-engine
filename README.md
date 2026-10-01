@@ -26,6 +26,8 @@ the `games/Sandbox` test game in the same commit.
   with what it was and why it happened.
 - [`docs/MODDING.md`](docs/MODDING.md) — for modders: a data mod's folder and `mod.json`, load order,
   patching a game's records, the conflict report, saves, checking a mod with `sage`, and what is not supported.
+- [`docs/EDITOR.md`](docs/EDITOR.md) — for level designers: opening the editor (`-edit`), its panels and
+  keys, placing, tuning, wiring, undo, play-in-editor, saving, and every `ed_*` and `doc_*` command.
 - [`docs/RELEASING.md`](docs/RELEASING.md) — the version (from git tags), the declared public API
   (`PublicAPI.*.txt`), experimental areas, the `sage` range plugins and games declare, and how to tag a
   release.
@@ -62,10 +64,11 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1454 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1457 headless tests | <!-- counts -->
 
-What is deliberately **not** here yet: ragdolls, mod loading, a standalone editor (today's
-is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
+What is deliberately **not** here yet: ragdolls, code mods, the editor's brushes and asset
+browser (its first half, phase 10a, is a mode of the dev host: [`docs/EDITOR.md`](docs/EDITOR.md)), and
+multiplayer. The roadmap in [`TODO.md`](TODO.md) says
 where each one sits, and [`docs/REDESIGN.md`](docs/REDESIGN.md) is the plan for what comes next.
 
 ## Running it
@@ -202,7 +205,7 @@ CI fails when they are stale) and mapped by `.vscode/settings.json`; after addin
 a part or a record, regenerate them:
 
 ```bash
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods --out schemas
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor --out schemas
 ```
 
 [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) §3, "Editing records in VS Code", has the details.
@@ -283,10 +286,11 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `src/Sage.UI` | Retained game-UI widgets, layout, focus and screen records on the simulation, headless (issue #95). **No MonoGame**; the client draws its render plan |
 | `src/Sage.Kits.Rpg`, `src/Sage.Kits.Rpg.Client` | The action-RPG kit (issue #27), *not* part of the base: the readied spell, the spellmaker, two hands, the bag, spellbook, journal and conversation screens. A game opts in with `"kits": ["sage.kits.rpg"]` in `game.json` (MAKING_A_GAME §2) |
 | `src/Sage.Client` | Rendering, input devices, assets, sprite batching — the MonoGame half |
-| `src/Sage.Editor` | Dev camera, console window, entity outliner, stat overlay (ImGui) |
+| `src/Sage.Editing` | The editor's model, headless (phase 10a): documents, the command log and undo, picking and gizmo maths, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, problems, and their `ed_*`/`doc_*` commands. **No MonoGame.** |
+| `src/Sage.Editor` | Dev camera, console window, the editor's panels (`-edit`, [`docs/EDITOR.md`](docs/EDITOR.md)), stat overlay (ImGui): they draw `Sage.Editing` |
 | `src/Sage.Host` | The executable: boot sequence and the main loop |
 | `src/Sage.Cli` | `sage`, the headless command line: `sage validate <game> [--mods <dir>] [--game-mods]` checks a game's content (and its mods') and exits non-zero on errors; `sage mods <game>` prints the mods' load order, the refused ones and the conflicts; `sage schema <game>` writes the JSON Schemas record files are edited with |
-| `schemas/` | Those JSON Schemas for engine content, the Sandbox, Hello, `tests/games/scene-only`, `tests/games/camera-cut`, `tests/games/scripted-sequence`, `tests/games/topics`, `tests/games/skeletal`, `tests/games/weapons`, `tests/games/saves`, `tests/games/open-world` and `tests/games/mods`, generated by `sage schema` (never edit by hand); `.vscode/settings.json` maps them onto `data/**/*.json` |
+| `schemas/` | Those JSON Schemas for engine content, the Sandbox, Hello, `tests/games/scene-only`, `tests/games/camera-cut`, `tests/games/scripted-sequence`, `tests/games/topics`, `tests/games/skeletal`, `tests/games/weapons`, `tests/games/saves`, `tests/games/open-world`, `tests/games/mods` and `tests/games/editor`, generated by `sage schema` (never edit by hand); `.vscode/settings.json` maps them onto `data/**/*.json` |
 | `src/Sage.Generators` | The declarations generator (issue #16): `[Record]` and `[SavedResource]` register themselves for the plugin that owns them |
 | `games/Sandbox` | The test game's **simulation**: its module, scene records, placeholder art and tools. References only the base engine (`Sage.Core` … `Sage.Gameplay`) and the RPG kit it is built on, so it is testable headlessly |
 | `games/Sandbox.Client` | The same game's **client half**: the HUD, and the prefab part that needs a renderer |
@@ -338,8 +342,9 @@ dotnet run --project src/Sage.Host -c Development -- -game games/Hello
 ## Levels
 
 > **Changing:** levels will be built in Sage's own editor rather than TrenchBroom (decided 2026-09-28,
-> `docs/REDESIGN.md` §4.6 and §6 item 8). What follows is how it works today, and the `.map` importer
-> stays until the editor replaces it.
+> `docs/REDESIGN.md` §4.6 and §6 item 8). Its first half is built (phase 10a): `-edit` places, tunes and
+> wires prefabs, plays and saves ([`docs/EDITOR.md`](docs/EDITOR.md)). Brushes are 10b's, so what follows
+> is how rooms are drawn today, and the `.map` importer stays until the editor replaces it.
 
 Interiors are **brushes**, and the editor is [TrenchBroom](https://trenchbroom.github.io/): the engine
 reads the `.map` files it writes (standard, Valve 220 and Quake 2/3 dialects) and turns each brush into

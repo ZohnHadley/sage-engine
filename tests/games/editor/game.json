@@ -1,0 +1,15 @@
+{
+  // Phase 10a's exit (issue #228, docs/EDITOR.md): a designer builds a level from prefabs without touching
+  // JSON. A data-only game with four prefabs (a pressure plate, a door, a crate, a light) and an empty
+  // level: the scene `level`, a floor and a player start, naming the placements document `level_placements`,
+  // which holds a comment and nothing else. tests/Sage.Tests/Editing/EditorExitTests.cs opens it in the
+  // editor, places, tunes, wires, undoes, plays and saves through the console, then boots the saved game
+  // with no editor. CI validates it and smoke-runs the host on it with `-edit`.
+  "name": "Editor",
+  "id": "editor",
+  // A player to stand on the plate (physics comes with it), entity I/O for the wire, movers for the door
+  // and lamps for the light. Engine pieces only: no kit.
+  "plugins": ["sage.gameplay.character", "sage.gameplay.io", "sage.gameplay.movers", "sage.gameplay.lights"],
+  "mounts": ["content"],
+  "scene": "level"
+}
