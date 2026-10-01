@@ -448,13 +448,15 @@ public sealed class World : IDisposable
 
     public Entity Resolve(PersistentId id) => _persistent.TryGetValue(id, out var e) && IsAlive(e) ? e : default;
 
-    // Adds a Persistent component with a new id (runtime-spawned entities that should be saved).
+    // Adds a Persistent component with a new id (runtime-spawned entities that should be saved), and the
+    // cell it was made in (phase 4g-1, InCell): it goes dormant with that cell and comes back with it.
     public PersistentId MakePersistent(Entity entity)
     {
         if (TryGet(entity, out Persistent existing))
             return existing.Id;
         var id = PersistentId.New();
         Add(entity, new Persistent { Id = id });
+        Cells.Join(this, entity);
         return id;
     }
 

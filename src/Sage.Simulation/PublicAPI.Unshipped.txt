@@ -1023,7 +1023,7 @@ static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simul
 static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
 Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int
 *REMOVED*const Sage.Simulation.SaveSystem.FormatVersion = 2 -> int
-const Sage.Simulation.SaveSystem.FormatVersion = 3 -> int
+const Sage.Simulation.SaveSystem.FormatVersion = 4 -> int
 Sage.Simulation.PostEffectRecord
 Sage.Simulation.PostEffectRecord.Cvar -> string!
 Sage.Simulation.PostEffectRecord.Material -> Sage.Core.RecordId
@@ -1031,3 +1031,6 @@ Sage.Simulation.PostEffectRecord.Order -> int
 Sage.Simulation.PostEffectRecord.PostEffectRecord() -> void
 Sage.Simulation.PointLight.Lit.get -> bool
 Sage.Simulation.PointLight.Off -> bool
+Sage.Simulation.InCell
+Sage.Simulation.InCell.InCell() -> void
+Sage.Simulation.InCell.Source -> string!

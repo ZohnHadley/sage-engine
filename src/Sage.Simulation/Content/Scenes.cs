@@ -145,12 +145,18 @@ public sealed class Scenes
 
     // Everything the world's scene placed, gone: its own placements, its documents' and its levels. The
     // player is not the scene's to take. Returns how many entities went.
+    //
+    // **The scene goes dormant** (4g-1): the state of everything it placed, and the runtime spawns that
+    // belong to it (a dropped sword, an arrow in flight: InCell), are kept, and placing the scene again
+    // lays that state back and spawns those again. The runtime spawns leave the world with it rather than
+    // turning up in the next scene at the same coordinates.
     public int Clear(World world)
     {
         if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null) return 0;
 
         // Before anything goes (4i-3): what the game destroyed is noted, so that placing this scene again
-        // (a hot reload, a `scene_load` back to it) leaves it destroyed.
+        // (a hot reload, a `scene_load` back to it) leaves it destroyed — and, unless a reload or a load is
+        // clearing it (ContentIds.Discarding), its state and its runtime spawns go dormant (4g-1).
         if (!state.Id.IsEmpty) ContentIds.Forget(world, ContentIds.SceneSource(state.Id));
 
         int removed = 0;
@@ -206,11 +212,17 @@ public sealed class Scenes
     // placed is left: a load puts the save's tombstones in place there. Levels a person loaded with
     // `map_load` are not the scene's; with `levels` their entities are placed again as well. Returns false
     // when there is no such scene (the world is then left with none).
+    //
+    // Nothing goes dormant here (4g-1): a reload is for seeing the edit, so the live state is not laid back
+    // over it and the runtime spawns stay where they are; a load replaces both with the save's.
     internal bool Replace(World world, RecordId id, Action? cleared = null, bool levels = false)
     {
-        Clear(world);
-        if (levels && world.Resources.TryGet<MapLevels>(out var loaded) && loaded != null)
-            foreach (var level in loaded.Loaded) MapLoader.ForgetEntities(world, level);
+        using (ContentIds.Discarding(world))
+        {
+            Clear(world);
+            if (levels && world.Resources.TryGet<MapLevels>(out var loaded) && loaded != null)
+                foreach (var level in loaded.Loaded) MapLoader.ForgetEntities(world, level);
+        }
         cleared?.Invoke();
 
         if (id.IsEmpty || !_engine.Records.TryGet(id, out SceneRecord scene)) return false;

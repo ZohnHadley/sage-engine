@@ -202,7 +202,7 @@ because no upgrader existed.
   an inventory, equipment, a spell and a curse from a goblin, a goblin mid-chase, a lamp, and the
   journal, reputation and weather. Both load, with every value checked — including the lamp, whose
   type *and* one field have been renamed since format 1 was written (tests:
-  AGoldenSaveFromBeforeStableIdsStillLoads, AGoldenSaveInTheCurrentFormatLoads). A new format adds a
+  AGoldenSaveFromBeforeStableIdsStillLoads, AGoldenSaveInFormat2Loads). A new format adds a
   folder; `GoldenSaveTests` says how to write one.
 - **Never written, by type rather than by name:** a component or tag type marked `[Transient]`
   (`GlobalTransform`, `PhysicsBody`, `IOConnections`, the Sandbox's `FromScene`), the two the entity
@@ -353,7 +353,7 @@ saved field opt-in.
   so a part that reads its placement reads what it read when the diff was taken.
 - **The format stays 3**: only an entity marked `diff` is merged; any other entry replaces its component
   as before, so formats 1, 2 and 3 without diffs read as they did. A format 3 golden save written as
-  diffs is committed and loads (test: AGoldenSaveInTheCurrentFormatLoads), beside formats 1 and 2 (tests:
+  diffs is committed and loads (test: AGoldenSaveInFormat3Loads), beside formats 1 and 2 (tests:
   AGoldenSaveFromBeforeStableIdsStillLoads, AGoldenSaveInFormat2Loads).
 - **Limits**: the baseline is shared, so a value a part derives from the placement (a mover's closed
   position) differs from the first spawn's on every other placement and is written, and does not follow a
@@ -442,6 +442,63 @@ lost and nothing duplicated. `tests/games/saves` proves it headless, with no C#
   map or placements carry wires must list `sage.gameplay.io`, and nothing (`sage validate` included)
   says so when it does not, so the wires silently never fire; and a test that leaves a `PlayerCommand`
   in `PlayerInput` with a button pressed presses it again on the next tick (F9 then loaded twice).
+
+### As built (cells go dormant with their state, issue 4g-1, 2026-10-01)
+
+Leaving content lost its state: `ContentBaseline.Forget` kept only tombstones, so a goblin wounded in a
+scene the player left was back at full health on return, and `Scenes.Clear` swept only what the scene
+placed, so a dropped sword or an arrow stayed in the world and turned up in the next scene at the same
+coordinates. And the state a load held for content not placed yet was written back, and laid on, in
+whatever frame the world was in by then. Phase 4g's plan, decision 2: the **cell** is the unit of
+dormancy (`Cells.cs`, experimental SAGE0129).
+
+- **A cell is a source** in 4i-3's sense: a scene (`scene:<id>`) today, a streamed sector with 4g-3. Ids,
+  tombstones and now state are kept per source; any source (a placements document, a `.map` level) goes
+  dormant the same way.
+- **Going dormant.** `Forget` (a scene cleared by `scene_load` or `Scenes.Clear`, a document closed, a
+  level unloaded) writes every live entity the source placed, and its prefab children, as the entry a
+  save writes (`SaveSystem.Capture`: diff, source, tags), into the world's dormant store. **Runtime
+  spawns belong to the cell they were made in**: `World.MakePersistent` — so `world.Spawn` of a prefab,
+  a dropped item and a projectile — gives one the world's current cell (`InCell`, `sage:cell`, saved),
+  and the cell's runtime spawns are written and destroyed with it. The player, its camera and anything
+  `PlayerControlled` never go to sleep, whatever cell they were spawned in.
+- **Waking.** `Finish` (the source placed again) removes its dead, then hands its dormant cell to
+  `SaveSystem.Wake`: the entries are laid onto what the source placed by id, and the runtime spawns are
+  spawned again from their prefabs with their children — the load's own first and second passes, factored
+  out as `SaveSystem.Restore`. Leave the camp for the crypt and come back, twice: the wounded goblin is
+  still at 88, the spared one at 100, the sword is on the floor where it fell with its id, a chest the
+  game spawned is back with its lid's count, the player came along, and no id is doubled or lost (test:
+  LeavingASceneAndComingBackKeepsTheWoundedWoundedAndTheSwordOnTheFloor); a goblin killed there stays
+  dead beside them (test: AKilledGoblinStaysDeadAcrossATripAndTheOtherKeepsItsState).
+- **Absolute positions.** A dormant cell keeps the sector its positions are relative to (its frame, the
+  origin when it was taken); waking it moves each root's saved position into the frame then in use. A
+  rebase while the camp is dormant, and a save and a load into a new run with another origin, put the
+  sword back at its absolute position (test: ADormantCellSurvivesARebaseAndASaveAndLoad). The state a load
+  holds for a source not placed yet (a level waiting for its ground) is a dormant cell in the file's
+  frame, which fixes 4i's latent bug: a rebase before the level spawns no longer puts it a sector out
+  (test: PendingStateFollowsARebase).
+- **A hot reload and a load do not go dormant** (`ContentIds.Discarding`): a reload shows the edit
+  rather than laying the old state over it, and leaves the scene's runtime spawns where they are (test:
+  AHotReloadLeavesTheScenesRuntimeSpawnsInTheWorld); a load replaces the dormant store with the save's.
+- **Format 4.** A world file's `dormant` holds, by source, `{ "sector": { x, z }, "entities": [ … ] }`:
+  the dormant cells, each in its own frame, so the file's origin does not matter to them. Live entities
+  stay in `entities`; a runtime spawn has its `sage:cell`. **From3**: a format 3 file's pending state is
+  read as before (entries in `entities` with a `source` that is not placed); its runtime spawns are given
+  the file's scene's cell, since nothing left a scene with its spawns then, except the player, its camera
+  and a prefab's children (test: AFormat3SavesRuntimeSpawnsBelongToItsScene). A format 4 golden save —
+  the golden world in a yard, with the vault it came from dormant in another sector, holding a wounded
+  guard and a dropped loaf — is committed and loads (test: AGoldenSaveInTheCurrentFormatLoads), beside
+  formats 1, 2 and 3 (tests: AGoldenSaveFromBeforeStableIdsStillLoads, AGoldenSaveInFormat2Loads,
+  AGoldenSaveInFormat3Loads).
+- **Fixed on the way:** a prefab spawn gave its root a persistent id before the spawn baseline (4i-5) was
+  taken. Harmless while `Persistent` is never written, but the cell that now comes with the id would have
+  been part of the baseline, never written, and lost by a load; the id is given after the baseline now.
+- **Limits.** Only a root's transform is moved between frames: a position held in another component (an
+  AI's last sight of its target) stays in the frame it was taken in, as it would across a rebase without
+  AI's own hook. A live entity's reference to one that went to sleep (an effect's source) does not
+  resolve while it sleeps. The current cell is the world's scene; 4g-3 gives a streamed scene's spawns
+  their sector and moves an entity between sectors. A follower spawned at runtime sleeps with the scene
+  it was made in until 4g-5 carries it through doors.
 
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
