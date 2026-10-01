@@ -65,6 +65,7 @@ public sealed class DevTools : IDisposable
     private bool _editing;
     private readonly EditorLayout _layout = new();
     private readonly LogPanel _log = new();
+    private readonly RecordsPanel _records;   // the record browser (#224)
     private PalettePanel? _palette;   // #222
     private WiringPanel? _wiring;     // #225
 
@@ -78,6 +79,7 @@ public sealed class DevTools : IDisposable
         _pickable = e => e != _freeCamera && e != _viewportCamera;
         _camera = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0)) { Position = new Vector3(0, 0, 1) };
         _console = new DevConsoleWindow(cvars, engine.Core);
+        _records = new RecordsPanel(new RecordEditor(engine));
         _stats = new StatOverlay(cvars, engine.Core);
 
         _camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
@@ -207,6 +209,8 @@ public sealed class DevTools : IDisposable
         // The document's commands (doc_*, ed_undo, ed_redo, ed_history) are Sage.Editing's, so tests press
         // them too (issue #217).
         EditorCommands.Register(cvars, () => _document);
+        _records.Editor.Register(cvars);   // ed_rec_* (#224)
+        InspectorCommands.Register(cvars, () => _document);   // ed_set, ed_revert, ed_inspect (#223)
         // Selecting and moving (issue #221): ed_select, ed_move, ed_rotate, ed_delete, ed_duplicate, the snapping.
         _tools = ViewportTools.Register(cvars, () => _selection);
         _gizmo = new ViewportGizmo(_tools, cvars);
@@ -306,6 +310,7 @@ public sealed class DevTools : IDisposable
         if (_world != null && _selection != null && _palette is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();
+        _records.Draw();
         _palette?.Draw();
         _wiring?.Draw();
         if (_world != null) _wiring?.DrawLines(_world);
