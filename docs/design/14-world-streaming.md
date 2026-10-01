@@ -254,7 +254,56 @@ decision 1: an interior is a scene in the same world, swapped through dormancy (
   The distance of a journey is measured from where the player stands, so from an interior it is from the
   interior's coordinates. An entry in a streamed scene must be a placement (a map on the terrain is placed
   with its sector, after the player arrives). `warp` refuses inside an interior. The kit's rest screen and
-  map markers are 4g-7.
+  map markers came with 4g-7 (below).
+
+### As built (the kit's rest and fast travel, and the Sandbox's open world, issue 4g-7, 2026-10-01)
+Phase 4g's plan, decision 8: rest rules and the screens are the RPG kit's (`Sage.Kits.Rpg`), content is
+the game's, and the base only passes time and travels. Code: `src/Sage.Kits.Rpg/Rest.cs`, `RestView.cs`,
+`MapView.cs`, the kit's `rpg:rest` screen (`content/data/ui_screens.json`); the Sandbox's
+`content/data/open_world.json` and `tools/make_crypt.py`; experimental SAGE0129.
+
+- **Resting is a kit rule over `Time.Pass`.** `Rest.Begin(world, who, Sleep | Wait, hours)` asks for the
+  hours with the reason `rest` or `wait`; a sleep is refused while a hostile creature (an AI, alive, that
+  `Factions` says is hostile) is within `rpg_conventions.restEnemyRange` metres, with the reason
+  `@rpg.rest.enemies`, and waiting is not; neither goes past `restMaxHours`. Waking from a sleep applies
+  `restEffect` with the hours slept as its magnitude, so a heal is content: `health +5` heals 40 over eight
+  hours (test: SleepIsRefusedWithAnEnemyNearAndWaitingIsNot). Asked for inside a tick, it passes at the
+  tick's end like any skip (test: ARestAskedForDuringATickPassesAtItsEnd). `rest <hours> [sleep|wait]` is
+  the same call at the console.
+- **The rest screen** (`rpg:rest` over `RestView`, opened by the kit's `Rest` action a game binds): the
+  hours are a slider made of a bar between `less` and `more` buttons, within 1 to `restMaxHours`; `sleep`
+  is disabled, with the reason beside it, while the rule refuses it, and enabled again once the enemy is
+  gone; choosing it passes the hours, heals, and says so, with the clock's words (test:
+  TheRestScreenSlidesTheHoursAndSleepsWhenNoEnemyIsNear). Open and read every frame, it allocates nothing
+  (test: RefreshingTheRpgScreensAllocatesNothing).
+- **Fast travel from the map.** `MapView` (the kit's `rpg_map`) makes each discovered travel point in the
+  world's scene a marker you can choose (`canTravel`, and `travelHours`, `Travel.HoursTo` to a tenth): the
+  point's own entity's marker when it is placed with a map marker (`sage:map_marker`), else a marker of
+  its own where the saved `TravelLog` says it is (style `rpg:map_travel`), so a point whose sector sleeps
+  stays on the map. `destinations` lists every discovered point in any scene; choosing a marker or a row
+  travels there (`Travel.ToPoint`) and the journey costs its hours (test:
+  TheRoadLeadsToTheWildsWhichStreamAndTheMapTravelsBack). The base gained `Scenes.Current(world)`, the
+  scene the world is in, for this.
+- **The Sandbox's open world**, in data: a crypt (`sandbox:crypt`, `"space": "Interior"`, a `.map` made
+  by `tools/make_crypt.py`) behind a door on the hut's hill, lit by three torches and its ambient; sleeping
+  is refused by the start, where a watcher stands, and allowed in the crypt; the way out puts the player on
+  the steps (test: TheCryptIsAnInteriorLitByItsTorchesAndTheWayOutKeepsTheClock). A smith with a routine,
+  at his anvil from 08:00 to 20:00 and by the west trees at night (test: TheSmithKeepsTheHoursOfHisForge).
+  A road sign (a `load_door` with `"hours": 2`) to `sandbox:wilds`, a streamed scene four kilometres east
+  whose camp is placed with its sector and whose far watcher only when the player goes past it, and
+  waystones (`travel_point`s) the map travels between (test:
+  TheRoadLeadsToTheWildsWhichStreamAndTheMapTravelsBack). `T` opens the rest screen; the smoke run goes
+  into the crypt, reads the lights, rests and comes back out through fast travel.
+- **Two fixes to 4g-5 the Sandbox found.** A journey no longer sets the clock to its scene's
+  `environment.hour` (coming back out of the crypt at 02:30 into the Sandbox's main scene, which starts at
+  18:30, made it dusk again; a world starting there and `scene_load` still set it) (test: GoingThroughADoorKeepsTheClock); and an entry that is a map entity's
+  `targetname` is found as the player arrives: the destination's levels are placed and their entities
+  spawned in the journey, where before the player was left where they stood (test:
+  AnEntryInAMapIsFoundAsThePlayerArrives).
+- **Limits.** The rest rule does not interrupt a rest (nothing ticks through a skip to come for you); a
+  creature with no AI is never an enemy for it. Travel points with the same label in two scenes are told
+  apart by `Travel.ToPoint`'s first match. The map leaves a fast-travel journey open on the map, now around
+  the destination (a view-model cannot close its own screen).
 
 ## 4. API sketch
 ```csharp

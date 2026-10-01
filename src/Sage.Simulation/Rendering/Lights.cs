@@ -89,4 +89,19 @@ public static class LightRules
 
         return found;
     }
+
+    // Whether two choices from `Nearest` are the same lights, so one draw can carry both (the renderer
+    // batches sprites while it holds). Order matters not: the shader sums them.
+    internal static bool SameSet(ReadOnlySpan<LightSample> a, ReadOnlySpan<LightSample> b)
+    {
+        if (a.Length != b.Length) return false;
+        foreach (var light in a)
+        {
+            bool found = false;
+            foreach (var other in b)
+                if (light == other) { found = true; break; }
+            if (!found) return false;
+        }
+        return true;
+    }
 }

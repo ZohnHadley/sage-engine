@@ -15,7 +15,9 @@
       // The Sandbox's own widget screens (issues #97, #99): SandboxModule registers the actions.
       "Status":        [ { "key": "C" } ],
       "Map":           [ { "key": "N" } ],
-      "MainMenu":      [ { "key": "F10" } ]
+      "MainMenu":      [ { "key": "F10" } ],
+      // The RPG kit's rest screen (4g-7): the kit's client registers the action, the key is ours.
+      "Rest":          [ { "key": "T" } ]
     }
   },
   {
@@ -28,7 +30,8 @@
       "Journal":       [ { "key": "J" } ],
       "Status":        [ { "key": "C" } ],
       "Map":           [ { "key": "N" } ],
-      "MainMenu":      [ { "key": "F10" } ]
+      "MainMenu":      [ { "key": "F10" } ],
+      "Rest":          [ { "key": "T" } ]
     }
   }
 ]

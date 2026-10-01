@@ -21,6 +21,7 @@
     "texture": "textures/creature.png",
     "directions": 8,
     "size": [1.2, 1.8],
+    "material": "sage:sprite_lit",   // in the world's light: dark at night, lit by the campfire
     "frames": [
       { "rect": [0, 0, 64, 96], "pivot": [32, 94] },   { "rect": [64, 0, 64, 96], "pivot": [32, 94] },
       { "rect": [128, 0, 64, 96], "pivot": [32, 94] }, { "rect": [192, 0, 64, 96], "pivot": [32, 94] },
@@ -915,7 +916,22 @@
       {
         "prefab": "sage:scripted_camera", "at": [24, 3.5, -2], "yaw": 46, "name": "hut_cam",
         "outputs": [ { "output": "OnCameraOn", "target": "!self", "input": "Say", "parameter": "A hut on the hill. Somebody lives here." } ]
-      }
+      },
+
+      // The open world (engine issue 4g-7; content/data/open_world.json). The crypt door behind the hut,
+      // and the steps in front of it that its way out leads back to.
+      { "prefab": "crypt_door",   "at": [20, 1.2, -24], "name": "crypt_door" },
+      { "prefab": "spot",         "at": [20, 1, -22],   "yaw": 180, "name": "crypt_steps" },
+      // The smith, at his anvil (`forge`) by day and by the west trees (`smith_home`) by night.
+      { "prefab": "anvil",        "at": [-6.2, 0.4, 3] },
+      { "prefab": "spot",         "at": [-5.2, 0, 3],   "yaw": 90, "name": "forge" },
+      { "prefab": "spot",         "at": [-9, 0, -4],    "yaw": 180, "name": "smith_home" },
+      { "prefab": "smith",        "at": [-5.2, 0.1, 3], "yaw": 90, "name": "smith" },
+      // The road to the wilds, and where it brings you back to; a waystone by the start.
+      { "prefab": "road_sign",    "at": [-10, 0.8, 10], "name": "road_sign" },
+      { "prefab": "spot",         "at": [-8.5, 1, 11],  "yaw": 0, "name": "road_end" },
+      { "prefab": "waystone",     "at": [-2, 0.8, 9],   "name": "clearing_stone",
+        "overrides": { "parts": { "travel_point": { "label": "Clearing" } } } }
     ]
   }
 ]

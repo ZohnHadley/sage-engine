@@ -28,6 +28,9 @@ public sealed class RpgKitClientModule : IModule
         actions.Register("Spellbook", ActionKind.Button);
         actions.Register("Spellmaker", ActionKind.Button);
         actions.Register("Journal", ActionKind.Button);
+        // The rest screen's button (4g-7); the screen is the kit's widget screen `rpg:rest`, which a game binds
+        // (UiScreenStack.Bind) as it binds its map.
+        actions.Register("Rest", ActionKind.Button);
 
         var screens = ctx.Get<ScreenRegistry>();
         screens.Register(ScreenRegistry.Dialogue, () => new DialogueScreen());

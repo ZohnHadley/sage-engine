@@ -501,6 +501,12 @@ public sealed class Scenes
         return entity;
     }
 
+    // The scene the world is in (the one placed last, or travelled to); empty before any is. The RPG kit's map
+    // shows the travel points of this one (4g-7).
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public static RecordId Current(World world) =>
+        world.Resources.TryGet<ActiveScene>(out var state) && state != null ? state.Id : default;
+
     // The player: the one the scene spawned if it is still alive, else any entity tagged PlayerControlled
     // (a game's own rules may have spawned it their way).
     public static Entity Player(World world)

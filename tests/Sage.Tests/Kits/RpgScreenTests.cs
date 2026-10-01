@@ -355,12 +355,14 @@ public class RpgScreenAllocationTests
         world.Give(bandit, new RecordId("sage", "bread"), 2);
         var guard = world.Create(Transform.At(Vector3.Zero), "guard");
         Assert.True(world.Systems.Disable("sage.physics.step"));   // Bepu's own bytes a tick are not the screens'
+        WorldClock.Of(world).Scale = 0;   // the rest screen says the time again when the minute turns, and only then
 
-        // All four on the world's screen stack (#97), the topics screen on top taking the (idle) input.
+        // All five on the world's screen stack (#97), the topics screen on top taking the (idle) input.
         var stack = world.Resources.Get<UiScreenStack>();
         stack.Open(RpgKitModule.InventoryScreen, new UiBindContext(world, hero));
         stack.Open(RpgKitModule.EquipmentScreen, new UiBindContext(world, hero));
         stack.Open(RpgKitModule.LootScreen, new UiBindContext(world, hero, bandit));
+        stack.Open(RpgKitModule.RestScreen, new UiBindContext(world, hero));   // the rest screen (4g-7): its rule asked every frame
         stack.Open(RpgKitModule.TopicsScreen, new UiBindContext(world, hero, guard));
 
         void Frame()

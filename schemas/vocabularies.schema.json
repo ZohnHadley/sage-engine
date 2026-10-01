@@ -5826,7 +5826,7 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status.",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status.",
       "type": "string",
       "enum": [
         "RpgEquipment",
@@ -5834,6 +5834,7 @@
         "RpgJournal",
         "RpgLoot",
         "RpgMap",
+        "RpgRest",
         "RpgShop",
         "RpgTopics",
         "SandboxHud",
@@ -5844,6 +5845,7 @@
         "rpg_journal",
         "rpg_loot",
         "rpg_map",
+        "rpg_rest",
         "rpg_shop",
         "rpg_topics",
         "sandbox_hud",
@@ -6011,6 +6013,40 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'rpg_map' (MapView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_rest",
+                      "RpgRest"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "hours": {
+                    "description": "(int, default 8)",
+                    "default": 8,
+                    "type": "integer"
+                  },
+                  "viewModel": {
+                    "description": "The view_model: rpg_rest.",
+                    "enum": [
+                      "rpg_rest",
+                      "RpgRest"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_rest' (RestView)."
               }
             },
             {

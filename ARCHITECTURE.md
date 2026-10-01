@@ -257,7 +257,7 @@ If a feature shows up in two or more rows, it belongs in the framework or engine
 6. ~~**Extract + snapshot + materials** (R9); **input actions → `PlayerCommand`** (R3)~~ **Done 2026-09-22.**
    - **Rendering:** `MeshRenderer` (Sage.Simulation) → `CameraExtract`/`MeshExtract` → a pooled `RenderSnapshot` (camera-relative, interpolated, frustum-culled, sort keys) → the `Renderer`'s fixed passes.
    - **Materials and shaders:** material records (`sage:lit_default`, `sage:error`, `base` inheritance, hot reload) drawn with our own `lit.fx`/`error.fx`. Shaders are compiled by `dotnet-mgfxc` from `engine_content/` at build time, and `BasicEffect` is gone.
-   - **Input:** `InputDevices` (+ gamepad) → `InputActions` (input_map records, Editor/Console/UI/Gameplay contexts with consumption) → `CommandLatch` → a `PlayerCommand` per tick in the world's `PlayerInput`. The Sandbox hops on Jump, and `Menu` replaces the Escape check.
+   - **Input:** `InputDevices` (+ gamepad) → `InputActions` (input_map records, Editor/Console/UI/Gameplay contexts with consumption) → `CommandLatch` → a `PlayerCommand` per tick in the world's `PlayerInput`. The player's character jumps on Jump, and `Menu` replaces the Escape check.
    - **Fixed:** #25, #37, #39, and a new #40 (listener edges were always false).
    - **Deviations, all written up in 06 §3.11, 07 §3.6 and 08 §3.6:**
      - no `Camera` component yet (`ActiveCamera` is the view);
@@ -318,7 +318,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **116 console commands, 46 record types, 1274 headless tests.** <!-- counts -->
+and audible: **117 console commands, 46 record types, 1283 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
