@@ -46,6 +46,20 @@ internal sealed class ContentBaseline
 
     public bool IsLive(string source) => _live.Contains(source);
 
+    // Counts the sources finished (placed, with their state laid back): what changed since something last
+    // looked, for the off-screen simulation (4g-6) to see that a cell came back without being called.
+    internal int Generation { get; private set; }
+
+    // What takes entities out of a cell as it goes dormant (4g-6, CellContent.Handoff).
+    private readonly List<ICellHandoff> _handoffs = new();
+
+    internal void AddHandoff(ICellHandoff handoff)
+    {
+        if (!_handoffs.Contains(handoff)) _handoffs.Add(handoff);
+    }
+
+    internal void RemoveHandoff(ICellHandoff handoff) => _handoffs.Remove(handoff);
+
     // True for an id that content placed and has not forgotten: content's, not the game's. A source is live
     // once Finish has run; a streamed sector placed over several ticks (4g-3) is content before that too, so
     // a save in between writes its entities with their source rather than as the game's own.
@@ -65,6 +79,7 @@ internal sealed class ContentBaseline
     internal void Finish(World world, string source)
     {
         _live.Add(source);
+        Generation++;
         _placed.TryAdd(source, new HashSet<PersistentId>());
 
         // A streamed sector's tombstones are kept (4g-3): it is placed again every time the player comes
@@ -122,11 +137,19 @@ internal sealed class ContentBaseline
     // the sector it is in now as that cell's runtime spawn, with its id, its children and its state.
     internal void Leave(World world, Entity root, PersistentId id, string to)
     {
-        if (!_sourceOf.TryGetValue(id, out var from)) return;
-        Unregister(root, from);
-        Pending(_pendingTombstones, from).Add(id);
+        if (!Release(root, id)) return;
         if (world.Has<InCell>(root)) world.Get<InCell>(root).Source = to;
         else world.Add(root, new InCell { Source = to });
+    }
+
+    // A placed root is its source's no longer (Leave, and the off-screen simulation's handoff, 4g-6):
+    // tombstoned there, so placing the source again does not place it twice. False when no source placed it.
+    internal bool Release(Entity root, PersistentId id)
+    {
+        if (!_sourceOf.TryGetValue(id, out var from)) return false;
+        Unregister(root, from);
+        Pending(_pendingTombstones, from).Add(id);
+        return true;
     }
 
     private void Unregister(Entity entity, string from)
@@ -151,6 +174,19 @@ internal sealed class ContentBaseline
         var members = Cells.Members(world, source);
         entities.AddRange(members);
         if (entities.Count == 0) return;
+
+        // What something else keeps while the cell sleeps (4g-6: an NPC the off-screen simulation moves)
+        // is taken first; whatever it took is out of the world, and the rest sleeps here.
+        if (_handoffs.Count > 0)
+        {
+            var roots = new List<Entity>();
+            foreach (var entity in entities)
+                if (entity.Parent.IsNull && Cells.Sleeps(world, entity)) roots.Add(entity);
+            foreach (var handoff in _handoffs.ToArray()) handoff.Sleeping(world, source, roots);
+            entities.RemoveAll(e => !world.IsAlive(e));
+            members.RemoveAll(e => !world.IsAlive(e));
+            if (entities.Count == 0) return;
+        }
 
         var frame = world.Origin().Sector;
         foreach (var saved in engine.Saves.Capture(world, entities)) Dormant(source, frame).Add(saved, frame);

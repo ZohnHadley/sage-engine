@@ -340,6 +340,7 @@ Sage.Simulation.CameraViews.this[int index].get -> Sage.Simulation.CameraView
 Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> bool
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
+Sage.Simulation.CellContent
 Sage.Simulation.ClipEvent
 Sage.Simulation.ClipEvent.ClipEvent() -> void
 Sage.Simulation.ClipEvent.ClipEvent(float time, string! name) -> void
@@ -444,6 +445,8 @@ Sage.Simulation.GltfAnimationReader.Load(Sage.Core.AssetPath path) -> Sage.Simul
 Sage.Simulation.GltfAnimationReader.TryGet(Sage.Core.AssetPath path, out Sage.Simulation.AnimationSet? set) -> bool
 Sage.Simulation.IAction
 Sage.Simulation.IAction.Run(in Sage.Simulation.ActionContext context) -> void
+Sage.Simulation.ICellHandoff
+Sage.Simulation.ICellHandoff.Sleeping(Sage.Simulation.World! world, string! cell, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>! roots) -> void
 Sage.Simulation.ICondition
 Sage.Simulation.ICondition.Test(in Sage.Simulation.ConditionContext context, out string! why) -> bool
 Sage.Simulation.JointMask
@@ -979,6 +982,14 @@ static Sage.Simulation.CameraRigs.RigOf(Sage.Simulation.World! world, Sage.Simul
 static Sage.Simulation.CameraViewport.Full.get -> Sage.Simulation.CameraViewport
 static Sage.Simulation.CameraViewport.operator !=(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
 static Sage.Simulation.CameraViewport.operator ==(Sage.Simulation.CameraViewport a, Sage.Simulation.CameraViewport b) -> bool
+static Sage.Simulation.CellContent.AddHandoff(Sage.Simulation.World! world, Sage.Simulation.ICellHandoff! handoff) -> void
+static Sage.Simulation.CellContent.CellAt(Sage.Simulation.World! world, Sage.Core.RecordId scene, Sage.Simulation.SectorCoord sector) -> string!
+static Sage.Simulation.CellContent.Generation(Sage.Simulation.World! world) -> int
+static Sage.Simulation.CellContent.IsLive(Sage.Simulation.World! world, Sage.Core.RecordId scene, Sage.Simulation.SectorCoord sector) -> bool
+static Sage.Simulation.CellContent.Release(Sage.Simulation.World! world, Sage.Simulation.Entity root) -> System.Collections.Generic.List<System.Text.Json.Nodes.JsonObject!>!
+static Sage.Simulation.CellContent.RemoveHandoff(Sage.Simulation.World! world, Sage.Simulation.ICellHandoff! handoff) -> void
+static Sage.Simulation.CellContent.Restore(Sage.Simulation.World! world, System.Collections.Generic.IReadOnlyList<System.Text.Json.Nodes.JsonObject!>! saved, System.Numerics.Vector3 position, string! cell) -> Sage.Simulation.Entity
+static Sage.Simulation.CellContent.SceneOf(Sage.Simulation.World! world) -> Sage.Core.RecordId
 static Sage.Simulation.Conditions.Evaluate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, Sage.Simulation.ICondition? condition, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> bool
 static Sage.Simulation.Conditions.Evaluate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, System.Collections.Generic.IReadOnlyList<Sage.Simulation.ICondition!>? conditions, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> bool
 static Sage.Simulation.Conditions.Run(Sage.Simulation.World! world, Sage.Simulation.Entity subject, System.Collections.Generic.IReadOnlyList<Sage.Simulation.IAction!>? actions, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> void

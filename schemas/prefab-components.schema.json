@@ -348,6 +348,14 @@
         }
       ]
     },
+    "offscreen": {
+      "description": "The component sage:offscreen (Offscreen), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:offscreen"
+        }
+      ]
+    },
     "particle_emitter": {
       "description": "The component sage:particle_emitter (ParticleEmitter), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -785,6 +793,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:mover"
+        }
+      ]
+    },
+    "sage:offscreen": {
+      "description": "Component sage:offscreen (Offscreen).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:offscreen"
         }
       ]
     },
@@ -3539,6 +3555,41 @@
       },
       "additionalProperties": false,
       "description": "Component sage:mover (Mover)."
+    },
+    "sage:offscreen": {
+      "type": "object",
+      "properties": {
+        "speed": {
+          "description": "How fast it walks off-screen; 0 = its movement profile's walking speed. Unit: m/s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "strength": {
+          "description": "How hard it fights off-screen: its weight in a round (with its health) and the health it takes when it wins one. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "corpse": {
+          "description": "Whether it leaves a corpse when it dies off-screen; false, it is gone. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "fight": {
+          "description": "The rule its off-screen fights are settled by. (string)",
+          "anyOf": [
+            {
+              "$ref": "vocabularies.schema.json#/definitions/offscreen_fight:id"
+            },
+            {
+              "const": ""
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:offscreen (Offscreen)."
     },
     "sage:particle_emitter": {
       "type": "object",

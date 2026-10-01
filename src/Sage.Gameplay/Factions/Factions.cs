@@ -116,6 +116,12 @@ public static class Factions
         return record.Default;
     }
 
+    // Whether two factions fight on sight, from the records alone: either one's table (or default) says
+    // Hostile. What the off-screen simulation asks of two agents (issue 4g-6), which are no entities.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public static bool AreHostile(RecordStore records, RecordId a, RecordId b) =>
+        a != b && (Between(records, a, b) == Stance.Hostile || Between(records, b, a) == Stance.Hostile);
+
     // The whole question: what does `viewer` think of `other`, right now, in this world.
     //
     // The player is the special case, because the player is the only one whose standing moves: a

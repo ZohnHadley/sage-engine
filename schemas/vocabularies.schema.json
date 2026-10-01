@@ -5457,6 +5457,64 @@
         }
       ]
     },
+    "offscreen_fight:id": {
+      "description": "An offscreen_fight by id: strength.",
+      "type": "string",
+      "enum": [
+        "Strength",
+        "strength"
+      ]
+    },
+    "offscreen_fight": {
+      "description": "An offscreen_fight: its id, or { \"kind\": \"<id>\", … } with its settings.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/offscreen_fight:id"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "$ref": "#/definitions/offscreen_fight:id"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "strength",
+                      "Strength"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The offscreen_fight: strength.",
+                    "enum": [
+                      "strength",
+                      "Strength"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "offscreen_fight 'strength' (StrengthFight)."
+              }
+            }
+          ]
+        }
+      ]
+    },
     "quest_objective:id": {
       "description": "A quest_objective by id: have, kill, reach, talk.",
       "type": "string",
