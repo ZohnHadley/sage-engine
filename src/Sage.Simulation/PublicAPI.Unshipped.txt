@@ -396,6 +396,8 @@ Sage.Simulation.Ease.SmootherStep = 29 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmoothStep = 28 -> Sage.Simulation.Ease
 Sage.Simulation.Easing
 Sage.Simulation.Engine.Animations.get -> Sage.Simulation.GltfAnimationReader!
+Sage.Simulation.Engine.Mods.get -> Sage.Core.ModLoadResult!
+Sage.Simulation.Engine.Mods.set -> void
 Sage.Simulation.EntityInputs.ComponentsTaking(string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.EntityInputs.Register<T>(string! name, Sage.Simulation.EntityInput! handler) -> void
 Sage.Simulation.EntityInputs.Takes(Sage.Simulation.Entity entity, string! name) -> bool

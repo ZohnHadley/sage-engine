@@ -132,6 +132,10 @@ public sealed class Engine : IDisposable
     // What each world starts with, and hot reload of it (issue #29).
     public Scenes Scenes { get; }
 
+    // The mods this run loaded and the ones it refused (phase 4j). Empty until the app fills it at boot.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (phase 4j): may change before 1.0
+    public ModLoadResult Mods { get; set; } = ModLoadResult.Empty;
+
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }
     public CoreCVars Core { get; }

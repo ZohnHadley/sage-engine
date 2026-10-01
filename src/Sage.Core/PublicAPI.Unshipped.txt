@@ -1,14 +1,79 @@
 #nullable enable
+override Sage.Core.ModManifest.ToString() -> string!
 Sage.Core.EntryValueAttribute
 Sage.Core.EntryValueAttribute.EntryValueAttribute() -> void
+Sage.Core.GameManifest.Version.get -> string?
+Sage.Core.GameManifest.Version.set -> void
+Sage.Core.ModList
+Sage.Core.ModList.Disabled.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModList.Disabled.set -> void
+Sage.Core.ModList.IsDisabled(string! id) -> bool
+Sage.Core.ModList.ModList() -> void
+Sage.Core.ModList.Order.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModList.Order.set -> void
+Sage.Core.ModList.Save(string! path) -> void
+Sage.Core.ModLoadOrder
+Sage.Core.ModLoadResult
+Sage.Core.ModLoadResult.Active.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>!
+Sage.Core.ModLoadResult.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>!
+Sage.Core.ModLoadResult.ModLoadResult(System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>! active, System.Collections.Generic.IReadOnlyList<Sage.Core.RefusedMod>! refused, System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>! disabled, System.Collections.Generic.IReadOnlyList<string!>! notes) -> void
+Sage.Core.ModLoadResult.Notes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ModLoadResult.Refused.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.RefusedMod>!
+Sage.Core.ModManifest
+Sage.Core.ModManifest.AsksForCode.get -> bool
+Sage.Core.ModManifest.Assemblies.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.Assemblies.set -> void
+Sage.Core.ModManifest.Author.get -> string!
+Sage.Core.ModManifest.Author.set -> void
+Sage.Core.ModManifest.Dependencies.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.Core.ModManifest.Dependencies.set -> void
+Sage.Core.ModManifest.Description.get -> string!
+Sage.Core.ModManifest.Description.set -> void
+Sage.Core.ModManifest.Directory.get -> string!
+Sage.Core.ModManifest.Game.get -> string?
+Sage.Core.ModManifest.Game.set -> void
+Sage.Core.ModManifest.GameVersion.get -> string?
+Sage.Core.ModManifest.GameVersion.set -> void
+Sage.Core.ModManifest.Id.get -> string!
+Sage.Core.ModManifest.Id.set -> void
+Sage.Core.ModManifest.Incompatible.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.Incompatible.set -> void
+Sage.Core.ModManifest.Kind.get -> string?
+Sage.Core.ModManifest.Kind.set -> void
+Sage.Core.ModManifest.LoadAfter.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.LoadAfter.set -> void
+Sage.Core.ModManifest.LoadBefore.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.LoadBefore.set -> void
+Sage.Core.ModManifest.ModManifest() -> void
+Sage.Core.ModManifest.Name.get -> string!
+Sage.Core.ModManifest.Name.set -> void
+Sage.Core.ModManifest.Sage.get -> string?
+Sage.Core.ModManifest.Sage.set -> void
+Sage.Core.ModManifest.SemVersion.get -> Sage.Core.SemVersion
+Sage.Core.ModManifest.Version.get -> string!
+Sage.Core.ModManifest.Version.set -> void
 Sage.Core.RecordCheck.TryGet<T>(Sage.Core.RecordId id, out T? record) -> bool
 Sage.Core.RecordStore.PolymorphicShorthand.get -> System.Func<System.Type!, System.Text.Json.Nodes.JsonNode?, System.Text.Json.Nodes.JsonNode?>?
 Sage.Core.RecordStore.PolymorphicShorthand.set -> void
+Sage.Core.RefusedMod
+Sage.Core.RefusedMod.Folder.get -> string?
+Sage.Core.RefusedMod.Folder.init -> void
+Sage.Core.RefusedMod.Id.get -> string!
+Sage.Core.RefusedMod.Id.init -> void
+Sage.Core.RefusedMod.Reason.get -> string!
+Sage.Core.RefusedMod.Reason.init -> void
+Sage.Core.RefusedMod.RefusedMod() -> void
+Sage.Core.RefusedMod.RefusedMod(string! Id, string? Folder, string! Reason) -> void
 Sage.Core.Vocabularies.Expand(System.Type! type, System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?
 Sage.Core.Vocabulary.Expand(System.Text.Json.Nodes.JsonObject! obj) -> System.Text.Json.Nodes.JsonObject?
 Sage.Core.Vocabulary.Shorthand.get -> bool
 Sage.Core.VocabularyAttribute.Shorthand.get -> bool
 Sage.Core.VocabularyAttribute.Shorthand.set -> void
+static readonly Sage.Core.ModLoadResult.Empty -> Sage.Core.ModLoadResult!
+static Sage.Core.ModList.DefaultPath.get -> string!
+static Sage.Core.ModList.Load(string! path, out string? warning) -> Sage.Core.ModList!
+static Sage.Core.ModLoadOrder.Resolve(System.Collections.Generic.IEnumerable<Sage.Core.ModManifest!>! found, Sage.Core.ModList? userList, Sage.Core.GameManifest! game, Sage.Core.SemVersion engine, System.Collections.Generic.IEnumerable<string!>? reservedIds = null) -> Sage.Core.ModLoadResult!
+static Sage.Core.ModManifest.Load(string! folder) -> Sage.Core.ModManifest!
 static Sage.Core.Vocabulary.ValueFieldName(System.Type! type) -> string?
 Sage.Core.RecordStore.Latest<T>() -> System.Collections.Generic.IReadOnlyList<T!>!
 const Sage.Core.AssemblyContentMount.Prefix = "content/" -> string!
