@@ -101,6 +101,10 @@ public sealed class MainMenuView : IViewModel
                 string name = NextSlotName(engine.Saves);
                 Say(engine.Saves.Save(name) ? "@sandbox.menu.saved" : "@sandbox.menu.save_failed", name);
                 return true;
+            case "mods":   // the mods screen (4j-6) on top of this menu; Back returns here
+                if (world.Resources.TryGet<UiScreenStack>(out var stack))
+                    stack!.Open(Sage.Kits.Rpg.RpgKitModule.ModsScreen, new UiBindContext(world));
+                return true;
             case "quit":
                 if (engine.CVars.FindCommand("quit") != null) engine.CVars.Execute("quit");
                 return true;

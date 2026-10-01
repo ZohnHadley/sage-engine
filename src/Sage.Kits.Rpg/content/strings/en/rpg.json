@@ -72,6 +72,29 @@
     "no_clock": "Time does not pass here.",
     "hint": "< >: how long    A: sleep or wait    B: close"
   },
+  "mods": {
+    "title": "Mods",
+    "tab_mods": "Mods ({count})",
+    "tab_conflicts": { "zero": "Conflicts", "one": "Conflicts ({count})", "other": "Conflicts ({count})" },
+    "name": "{name} {version}",
+    "none": "No mods were found.",
+    "no_conflicts": "No two mods write the same thing.",
+    "state_active": "on",
+    "state_off": "off",
+    "state_refused": "refused",
+    "turn_on": "Turn on",
+    "turn_off": "Turn off",
+    "earlier": "Earlier",
+    "later": "Later",
+    "turned_on": "{mod} will load.",
+    "turned_off": "{mod} will not load.",
+    "moved": "{mod} moved.",
+    "pinned": "{mod} stays where its dependencies put it.",
+    "at_end": "{mod} cannot go further.",
+    "cannot_save": "Could not save the list of mods; see the log.",
+    "restart": "Restart to apply: mods are loaded once, at start.",
+    "hint": "Later mods win over earlier ones where they conflict.    B: close"
+  },
   "map": {
     "travel": "Travel ({hours} h)"
   }

@@ -182,6 +182,7 @@
       "buttons":  { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
       "resume":   { "widget": "button", "parent": "buttons", "text": "@sandbox.menu.resume", "style": "ui_button" },
       "save":     { "widget": "button", "parent": "buttons", "text": "@sandbox.menu.save", "style": "ui_button" },
+      "mods":     { "widget": "button", "parent": "buttons", "text": "@sandbox.menu.mods", "style": "ui_button" },
       "quit":     { "widget": "button", "parent": "buttons", "text": "@sandbox.menu.quit", "style": "ui_button" },
 
       "savesTitle": { "widget": "label", "parent": "window", "text": "@sandbox.menu.saves", "args": { "count": "slotCount" }, "style": "ui_dim" },

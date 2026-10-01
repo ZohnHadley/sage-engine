@@ -43,6 +43,7 @@
     "title": "Sandbox",
     "resume": "Resume",
     "save": "Save",
+    "mods": "Mods",
     "quit": "Quit",
     "saves": { "zero": "No saves", "one": "{count} save", "other": "{count} saves" },
     "no_saves": "Save once and it is listed here.",
