@@ -220,16 +220,21 @@ public class ModBootTests
     {
         string game = NewGame();
         string mods = Path.Combine(game, "mods");
-        Mod(mods, "kept");
+        Mod(mods, "kept", rockName: "kept's rock");
+        Mod(mods, "rival", rockName: "rival's rock");
         Mod(mods, "coder", extra: """, "kind": "code" """);
         string report = Path.Combine(TestEnv.NewTempDir(), "logs", "mod_report.txt");
 
         using var app = HeadlessApp.ForGame(game).WithModReport(report).Boot();
 
         string text = File.ReadAllText(report);
-        Assert.Contains("Mods: 1 active (kept 1.0.0), 1 refused", text);
+        Assert.Contains("Mods: 2 active (kept 1.0.0, rival 1.0.0), 1 refused", text);
         Assert.Contains("  1. kept 1.0.0", text);
         Assert.Contains("coder: code mods are phase 9", text);
+        // 4j-2's content report: the two mods' clash over the rock's name, and each mod's override of the game.
+        Assert.Contains("prefab modtest:rock name: kept, rival; rival won", text);
+        Assert.Contains("patched prefab modtest:rock (overrides modtest", text);
+        Assert.Contains("added prefab: rival:thing", text);
     }
 
     [Fact]

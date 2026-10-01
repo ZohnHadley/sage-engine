@@ -260,19 +260,18 @@ public sealed class ModManager
 
     private string Where() => _searched.Count == 0 ? "" : $" (looked in {string.Join(", ", _searched)})";
 
-    // `user://logs/mod_report.txt`, written once records have loaded. Today: the load order, the switched
-    // off, the refused and why, and the notes.
-    // SEAM (4j-2): the content report — records added and patched per mod, conflicts, shadowed assets —
-    // goes after these lines: `ContentReport.Build(records, vfs).Lines()`. The lead connects it when both
-    // land; the method already takes what that needs.
+    // `user://logs/mod_report.txt`, written once records have loaded: the load order, the switched off, the
+    // refused and why, and the notes; then the content report (4j-2): conflicts between mods, and per mount
+    // the records added and patched (a mod's override of the game marked), redefinitions, skipped patches
+    // and shadowed assets — what `mod_conflicts` prints.
     internal void WriteBootReport(string path, RecordStore records, VirtualFileSystem vfs)
     {
-        _ = records;
-        _ = vfs;
         var text = new StringBuilder();
         text.AppendLine($"Mod report: {_game.Id}, Sage {BuildInfo.EngineVersion}, {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         text.AppendLine(Summary());
         foreach (string line in ListLines()) text.AppendLine(line);
+        text.AppendLine();
+        foreach (string line in ContentReport.Build(records, vfs).Lines()) text.AppendLine(line);
         string? dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
         File.WriteAllText(path, text.ToString());
