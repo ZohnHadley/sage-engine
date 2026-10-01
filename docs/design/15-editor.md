@@ -201,6 +201,34 @@ editor, per-entity overrides, play-in-editor, and an inspector generated from de
 than reflection (09 §3.2). Editing runs against the live world, so `pause 1` before moving things — the
 simulation will otherwise drop a crate while you inspect it.
 
+## 10c. As built: picking and gizmo maths (10-5, #220)
+
+`Sage.Editing`, headless, System.Numerics only: what the viewport decides, so `Sage.Editor` only draws it.
+
+- **A ray from a camera and a pixel.** `EditorPicking.RayFrom(CameraPose, fovY, viewportSize, screenPoint)`
+  follows `CameraMath`'s conventions (looks down -Z, screen right is +X, pixel origin top left) and passes
+  through the point `CameraMath.View` and `Perspective` project to that pixel (test:
+  ARayAgreesWithTheViewAndProjectionMatrices). `RayFromOrthographic` gives parallel rays (test:
+  AnOrthographicRayIsParallelAndOffsetByThePixel).
+- **Picking.** `EditorPicking.Pick(world, ray)` takes the nearest of the physics raycast and a fallback
+  for entities with no `Collider` (test: PickingTakesTheNearestColliderAndReportsWhereTheRayMetIt). Headless
+  code has no render mesh bounds (the client loads meshes), so the fallback is a sphere of
+  `EditorPicking.FallbackRadius` (0.35 m) at the entity's position; a collider in front still wins (test:
+  AnEntityWithNoColliderIsPickedByItsFallbackSphereAndLosesToANearerCollider). A world with no physics
+  plugin picks by the fallback alone (test: PickingWorksInAWorldWithNoPhysicsAtAll).
+- **Translate gizmo.** `TranslateGizmo.HitTest` finds the X, Y, Z axis or XY, XZ, YZ plane handle, the
+  planes winning where they sit between axes (test: TheTranslateGizmoFindsAxisAndPlaneHandles). `Drag`
+  turns two rays into a delta in origin space, with grid snapping applied to the result on the moved axes
+  (tests: ADragAlongAnAxisMovesOnlyThatAxisByHowFarThePointerWent,
+  ADragOnAPlaneMovesBothAxesAndGridSnapsTheResult). A ray parallel to the axis or plane, or a plane behind
+  the camera, gives no delta (test: ADragHasNoAnswerForARayParallelToItsAxisOrPlaneOrAPlaneBehindTheCamera).
+- **Rotate about Y.** `RotateGizmo.HitTest` and `Drag`: the angle is positive as
+  `Quaternion.CreateFromAxisAngle(UnitY, a)` turns, takes the short way over the seam, and snaps to
+  `stepDegrees` (tests: TheRotateRingIsHitOnItsCircleOnly,
+  ARotateDragGivesTheAngleAboutYInTheDirectionQuaternionsTurn, ARotateDragHasNoAnswerOnTheAxisOrParallelToThePlane).
+- **Screen-constant size.** `GizmoMath.ScreenConstantSize` (test: AGizmoKeepsItsPixelSizeAtAnyDistance);
+  `Snap.ToGrid` and `Snap.Angle` (test: SnapRoundsToTheGridAndTheAngleStepAndZeroMeansOff).
+
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
