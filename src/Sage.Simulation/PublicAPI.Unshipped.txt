@@ -504,6 +504,7 @@ Sage.Simulation.MathRemapPart.MathRemapPart() -> void
 Sage.Simulation.MathRemapPart.OutMax -> float
 Sage.Simulation.MathRemapPart.OutMin -> float
 Sage.Simulation.Placement.Overrides -> Sage.Simulation.PrefabOverrides?
+Sage.Simulation.Placement.Id -> string!
 Sage.Simulation.PlayerCamera
 Sage.Simulation.PlayerCamera.PlayerCamera() -> void
 Sage.Simulation.PlayerCameraSystem
@@ -589,6 +590,7 @@ Sage.Simulation.RenderStage.Shadow = 0 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStage.Sky = 3 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStage.Transparent = 4 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStages
+Sage.Simulation.PrefabRecord.Persist -> bool
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
@@ -1002,3 +1004,5 @@ static Sage.Simulation.WorldClock.Format(double hour) -> string!
 static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldClock!
 static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
 Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int
+*REMOVED*const Sage.Simulation.SaveSystem.FormatVersion = 2 -> int
+const Sage.Simulation.SaveSystem.FormatVersion = 3 -> int

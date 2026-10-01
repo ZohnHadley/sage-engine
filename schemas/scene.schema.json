@@ -139,6 +139,10 @@
           "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
           "type": "string"
         },
+        "id": {
+          "description": "A stable id for saves, unique in its list; left out, one is derived from its place in the list. (string)",
+          "type": "string"
+        },
         "relativeTo": {
           "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
           "anyOf": [
@@ -329,6 +333,10 @@
           },
           "name": {
             "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "id": {
+            "description": "A stable id for saves, unique in its list; left out, one is derived from its place in the list. (string)",
             "type": "string"
           },
           "relativeTo": {
@@ -524,6 +532,10 @@
             "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
             "type": "string"
           },
+          "id": {
+            "description": "A stable id for saves, unique in its list; left out, one is derived from its place in the list. (string)",
+            "type": "string"
+          },
           "relativeTo": {
             "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
             "anyOf": [
@@ -715,6 +727,10 @@
           },
           "name": {
             "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+            "type": "string"
+          },
+          "id": {
+            "description": "A stable id for saves, unique in its list; left out, one is derived from its place in the list. (string)",
             "type": "string"
           },
           "relativeTo": {

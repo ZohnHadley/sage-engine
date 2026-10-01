@@ -86,6 +86,11 @@
         }
       ]
     },
+    "persist": {
+      "description": "Whether an entity spawned from this prefab at runtime is saved; false for effects and other things nothing needs back. (bool, default true)",
+      "default": true,
+      "type": "boolean"
+    },
     "children": {
       "description": "Prefabs placed inside this one: parented to it and destroyed with it. (List<PrefabChild>)",
       "type": "array",

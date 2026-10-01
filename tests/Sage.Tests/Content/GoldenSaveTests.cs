@@ -214,7 +214,7 @@ public class GoldenSaveTests
     {
         string root = CopyOf(2);
         string header = Path.Combine(root, "golden", "header.json");
-        File.WriteAllText(header, File.ReadAllText(header).Replace($"\"formatVersion\": {SaveSystem.FormatVersion}", "\"formatVersion\": 99"));
+        File.WriteAllText(header, File.ReadAllText(header).Replace("\"formatVersion\": 2", "\"formatVersion\": 99"));
 
         using var app = NewApp(root);
         app.Engine.CreateWorld("main");
