@@ -57,7 +57,9 @@ internal sealed class WeatherSystem : ISystem
         float dt = ctx.Frame.Dt;
         _weather.Advance(dt);
 
-        if (!_enabled.Value)
+        // Inside (issue 4g-5) no rain falls and the weather does not touch the light: the interior is lit
+        // by its lights, and the sky outside is kept for when the player leaves.
+        if (!_enabled.Value || Interiors.Active(_world))
         {
             _particles.Wind = Vector3.Zero;
             Silence();

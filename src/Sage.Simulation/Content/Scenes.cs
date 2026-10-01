@@ -57,6 +57,20 @@ public sealed class SceneRecord
     [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
     [Property(Tooltip = "A terrain record: the ground the world gets when this scene is placed; left out, the game's own")]
     public RecordRef<TerrainRecord> Terrain;
+
+    // An exterior has the terrain, the streaming rings, the sun and the sky; an interior (a crypt, a house
+    // behind a load door) has none of them and is lit by its lights alone (4g-5, Travel.cs).
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    [Property(Tooltip = "Exterior (terrain, streaming, sun and sky) or Interior (none of them: lit by its lights and environment.ambient)")]
+    public SceneSpace Space = SceneSpace.Exterior;
+}
+
+// Where a scene is (4g-5): outside, under the sky, or inside, out of it.
+[Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+public enum SceneSpace
+{
+    Exterior,
+    Interior,
 }
 
 // A scene's defaults for the world around it. Time of day joins the weather when there is a clock.
@@ -70,6 +84,11 @@ public sealed class SceneEnvironment
     public RecordRef<SkyRecord> Sky;
     [Property(Min = 0, Max = 24, Unit = "h", Tooltip = "The hour the scene starts at; left out, the clock's")]
     public float? Hour;
+
+    // An interior's light besides its lights (4g-5): there is no sky to give any.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    [Property(Tooltip = "Interior scenes only: the ambient light, from above and below alike; the sun and sky give none inside")]
+    public Vector3 Ambient = new(0.08f, 0.08f, 0.1f);
 }
 
 // Placed by a scene, so hot reload and `scene_load` know what to sweep away and put back. Never on the
@@ -92,6 +111,10 @@ internal sealed class ActiveScene
 
     // A streamed scene's sectors (4g-3); null for a scene placed whole.
     internal StreamedScene? Streamed;
+
+    // The scene is an interior (4g-5), and the light the world had outside, put back when it leaves.
+    internal bool Interior;
+    internal RenderEnvironment? Outside;
 }
 
 // The engine's scene service (Engine.Scenes).
@@ -107,6 +130,7 @@ public sealed class Scenes
         engine.Records.Reloaded += Respawn;
         engine.Records.AddCheck<SceneRecord>(Check);
         engine.Records.AddCheck<PlacementsRecord>((record, check) => CheckPlacements(record.Place, "Place", check));
+        engine.Records.AddCheck<PrefabRecord>((record, check) => TravelChecks.CheckPrefab(engine, record, check));   // 4g-5
     }
 
     // The scene every new world starts in: game.json's `"scene"`, set by SageApp once content has loaded.
@@ -130,7 +154,10 @@ public sealed class Scenes
 
     // `scene_load`: the world's scene is swept away and another placed. The player stays, and is moved
     // to the new scene's start; a world with no player yet gets one from its rules.
-    public bool Load(World world, RecordId id)
+    public bool Load(World world, RecordId id) => Load(world, id, movePlayer: true);
+
+    // The same, leaving the player where it is when `movePlayer` is false: travel puts it at an entry.
+    internal bool Load(World world, RecordId id, bool movePlayer)
     {
         if (!_engine.Records.TryGet(id, out SceneRecord scene))
         {
@@ -147,7 +174,7 @@ public sealed class Scenes
         {
             if (world.Resources.TryGet<GameRules>(out var rules) && rules != null) rules.SpawnPlayer(world);
         }
-        else if (PlayerStart(world) is { } start)
+        else if (movePlayer && PlayerStart(world) is { } start)
         {
             var where = Transform.At(start);
             where.LocalRotation = SageMath.RotationFromYaw(scene.Player!.Yaw * MathF.PI / 180f);
@@ -257,10 +284,14 @@ public sealed class Scenes
         state.Id = id;
         string source = ContentIds.SceneSource(id);
         ApplyTerrain(world, scene);
+        ApplySpace(world, scene);
 
         // Streamed (4g-3): nothing is placed now but the levels that do not stand on the terrain. The
-        // sectors are placed at tick boundaries as the ring reaches them (TickEnded).
-        if (scene.Streamed && world.Resources.TryGet<SectorRing>(out _))
+        // sectors are placed at tick boundaries as the ring reaches them (TickEnded). An interior has no
+        // ring, and is placed whole.
+        if (scene.Streamed && scene.Space == SceneSpace.Interior)
+            Log.Once(LogCat.World, LogLevel.Warn, $"interior-streamed:{id}", $"Scene '{id}' is an interior and streamed: an interior has no ring, so it is placed whole");
+        else if (scene.Streamed && world.Resources.TryGet<SectorRing>(out _))
         {
             state.Streamed = StreamedScene.Build(_engine, id, scene);
             foreach (var map in scene.Maps)
@@ -268,7 +299,7 @@ public sealed class Scenes
             Log.Info(LogCat.World, $"Scene '{id}' streams by sector in '{world.Name}' ({state.Levels.Count} level(s) loaded whole)");
             return;
         }
-        if (scene.Streamed)
+        else if (scene.Streamed)
             Log.Once(LogCat.World, LogLevel.Warn, $"unstreamed:{id}", $"Scene '{id}' is streamed, but sage.streaming is not loaded: it is placed whole");
 
         int placed = 0;
@@ -306,7 +337,7 @@ public sealed class Scenes
 
     // A scene's `terrain` (4g-3): the world's ground becomes that built-in generator. Ground generated from
     // another is dropped, and the ring generates it again. A scene that names none leaves the game's own.
-    private void ApplyTerrain(World world, SceneRecord scene)
+    internal void ApplyTerrain(World world, SceneRecord scene)
     {
         if (scene.Terrain.Id.IsEmpty || !world.Resources.TryGet<Terrain>(out var terrain) || terrain == null) return;
         if (!_engine.Records.TryGet(scene.Terrain.Id, out TerrainRecord record)) return;   // the load check says so
@@ -315,6 +346,95 @@ public sealed class Scenes
         terrain.Generator = BuiltInTerrain.Create(record);
         terrain.Seed = record.Seed;
         Log.Info(LogCat.Streaming, $"'{world.Name}': ground from terrain '{scene.Terrain.Id}' ({record.Generator}, seed {record.Seed})");
+    }
+
+    // A scene's `space` (4g-5). An interior stops the streaming rings and unloads the terrain, and the
+    // world is lit by its lights and the scene's `ambient` only; the light it had outside is kept and put
+    // back when an exterior is placed again, and the ring starts again around the player on the next tick.
+    private static void ApplySpace(World world, SceneRecord scene)
+    {
+        var state = world.Resources.Get<ActiveScene>();
+        bool interior = scene.Space == SceneSpace.Interior;
+        if (world.Resources.TryGet<SectorRing>(out var ring) && ring != null)
+        {
+            ring.Suspended = interior;
+            if (interior)
+            {
+                ring.Live.Clear();
+                ring.Ready = false;
+            }
+        }
+        if (interior && world.Resources.TryGet<Terrain>(out var terrain) && terrain != null)
+            for (int i = terrain.Sectors.Count - 1; i >= 0; i--) terrain.Unload(terrain.Sectors[i].Coord);
+
+        world.Resources.TryGet<RenderEnvironment>(out var environment);
+        if (interior)
+        {
+            if (!state.Interior && environment != null) state.Outside = Interiors.Copy(environment);
+            if (environment != null) Interiors.Light(environment, scene.Environment.Ambient);
+        }
+        else if (state.Interior)
+        {
+            if (environment != null && state.Outside != null) Interiors.Restore(state.Outside, environment);
+            state.Outside = null;
+        }
+        state.Interior = interior;
+    }
+
+    // Travel's half of warp's order (4g-5): the ground `scene` stands on, generated around the origin's
+    // sector before anything is placed on it. Nothing for a world without a generator.
+    internal void PrepareGround(World world, SceneRecord scene)
+    {
+        ApplyTerrain(world, scene);
+        if (!world.Resources.TryGet<Terrain>(out var terrain) || terrain?.Generator == null) return;
+        int radius = world.Resources.TryGet<SectorRing>(out var ring) && ring != null ? Math.Clamp(ring.Radius, 0, 8) : 1;
+        var centre = world.Origin().Sector;
+        for (int z = -radius; z <= radius; z++)
+            for (int x = -radius; x <= radius; x++)
+                terrain.Load(new SectorCoord(centre.X + x, centre.Z + z));
+    }
+
+    // A named entry of a scene where its content says it is (4g-5): a placement of the scene's (its player
+    // start among them) or of its placements documents, by `name`. False when none is named so; a map's
+    // entity is only known once the map is placed (TryEntryInWorld).
+    internal bool TryEntry(SceneRecord scene, string entry, out SceneEntry found)
+    {
+        found = default;
+        if (string.IsNullOrEmpty(entry)) return false;
+        foreach (var placement in scene.Place)
+            if (placement.Name == entry) { found = Entry(placement, scene.Origin, scene.RelativeTo); return true; }
+        if (scene.Player is { } start && start.Name == entry) { found = Entry(start, scene.Origin, scene.RelativeTo); return true; }
+        foreach (var document in scene.Placements)
+        {
+            if (!_engine.Records.TryGet(document.Id, out PlacementsRecord record)) continue;
+            foreach (var placement in record.Place)
+                if (placement.Name == entry) { found = Entry(placement, record.Origin, record.RelativeTo); return true; }
+        }
+        return false;
+    }
+
+    private static SceneEntry Entry(Placement placement, Vector3 origin, PlacementFrame frame) =>
+        (placement.RelativeTo ?? frame) switch
+        {
+            PlacementFrame.Origin => new SceneEntry(origin + placement.At, placement.Yaw, Ground: false),
+            PlacementFrame.Ground => new SceneEntry(origin + placement.At, placement.Yaw, Ground: true),
+            _ => new SceneEntry(placement.At, placement.Yaw, Ground: false),
+        };
+
+    // A named entry in what the world has placed (4g-5): a map entity's `targetname` in the scene's levels
+    // (a point with no prefab included), else any entity of that name. In the simulation's frame.
+    internal bool TryEntryInWorld(World world, string entry, out Vector3 at, out float yaw)
+    {
+        at = default;
+        yaw = 0f;
+        if (world.Resources.TryGet<ActiveScene>(out var state) && state != null)
+            foreach (var level in state.Levels)
+                if (level.TryFindNamed(entry, out at, out yaw)) return true;
+        var entity = world.FindByName(entry);
+        if (entity.IsNull || !world.TryGet<Transform>(entity, out var transform)) return false;
+        at = transform.LocalPosition;
+        yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI;
+        return true;
     }
 
     // ---- The tick boundary (4g-3) ---------------------------------------------------------------------
@@ -331,7 +451,8 @@ public sealed class Scenes
     // What a scene's content would be if it is streamed, for a load to re-key an older save's `scene:`
     // tombstones and sources by (SaveSystem.Rekey); null for a scene placed whole.
     internal StreamedScene? StreamedFor(World world, RecordId id) =>
-        !id.IsEmpty && _engine.Records.TryGet(id, out SceneRecord scene) && scene.Streamed && world.Resources.TryGet<SectorRing>(out _)
+        !id.IsEmpty && _engine.Records.TryGet(id, out SceneRecord scene) && scene.Streamed && scene.Space == SceneSpace.Exterior
+        && world.Resources.TryGet<SectorRing>(out _)
             ? StreamedScene.Build(_engine, id, scene)
             : null;
 
@@ -438,13 +559,36 @@ public sealed class Scenes
             else
                 PrefabOverriding.Check(_engine, placements[i].Overrides, placements[i].Prefab.Id.Namespace, path + ".Overrides", check);
             PlacementWires.Check(_engine, placements[i], path, check);
+            TravelChecks.CheckPlacement(_engine, placements[i], path, check);   // a load door's scene and entry (4g-5)
         }
     }
 
     // ---- Console ------------------------------------------------------------------------------------
 
+    // Metres a journey covers in a game hour (`travel_speed`, 4g-5); null until the commands are registered.
+    internal CVar<float>? TravelSpeed { get; private set; }
+
     public void RegisterCommands(CVarRegistry cvars)
     {
+        TravelSpeed = cvars.Register("travel_speed", Travel.DefaultSpeed, CVarFlags.Archive,
+            "Metres fast travel covers in a game hour: a journey costs its distance over this (4g-5).", 1f, 1_000_000f);
+        cvars.RegisterCommand("travel", CVarFlags.None,
+            "travel [point]: fast travel to a discovered travel point, by its label; the journey takes distance / travel_speed game hours. With no point, list them.", a =>
+        {
+            foreach (var world in _engine.Worlds)
+            {
+                if (a.Count == 0)
+                {
+                    var points = TravelLog.Of(world).Points;
+                    Log.Info(LogCat.Console, $"'{world.Name}': {points.Count} travel point(s) discovered");
+                    foreach (var point in points)
+                        Log.Info(LogCat.Console, $"  {point.Label}  ({point.Scene}, {point.At.X:F0}, {point.At.Z:F0}; {Travel.HoursTo(world, point):0.#} h)");
+                    continue;
+                }
+                Travel.ToPoint(world, a.Rest);
+            }
+        });
+
         cvars.RegisterCommand("scene_load", CVarFlags.Cheat,
             "scene_load [scene]: replace every world's scene with another, keeping the player; with no scene, list them.", a =>
         {
