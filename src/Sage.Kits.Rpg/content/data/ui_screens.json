@@ -154,5 +154,43 @@
       "refused":  { "widget": "label", "parent": "window", "style": "warning", "bind": "refused" },
       "message":  { "widget": "label", "parent": "window", "style": "text", "bind": "message" },
       "hint":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.rest.hint" }
+    } },
+
+  // ---- mods: what was found, switched on and off, in what order, and where they conflict (issue 4j-6) --
+  // Over `ui_mods` (Sage.UI ModsView), a view of the engine's ModManager: a switch and earlier/later per
+  // mod write user://mods.json, and apply at the next start. The second tab is `mod_conflicts`' conflicts.
+  { "type": "screen", "id": "mods", "layout": "mods", "viewModel": "ui_mods" },
+  { "type": "ui_layout", "id": "mods", "style": "panel",
+    "nodes": {
+      "window":     { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [560, 0] },
+      "title":      { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.mods.title" },
+      "tabs":       { "widget": "stack", "parent": "window", "direction": "row", "spacing": 8 },
+      "tabMods":    { "widget": "button", "parent": "tabs", "style": "button", "text": "@rpg.mods.tab_mods", "args": { "count": "modCount" } },
+      "tabConflicts": { "widget": "button", "parent": "tabs", "style": "button", "text": "@rpg.mods.tab_conflicts", "args": { "count": "conflictCount" } },
+
+      "none":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.mods.none",
+                      "bindings": { "visible": "noMods" } },
+      "list":       { "widget": "scroll", "parent": "window", "minSize": [0, 240], "bindings": { "visible": "showMods" } },
+      "mods":       { "widget": "item_list", "parent": "list", "bind": "mods", "spacing": 2 },
+      "mod":        { "widget": "stack", "parent": "mods", "direction": "row", "spacing": 8 },
+      "place":      { "widget": "label", "parent": "mod", "style": "hint", "bind": "place", "minSize": [24, 0] },
+      "name":       { "widget": "label", "parent": "mod", "style": "text", "text": "@rpg.mods.name",
+                      "args": { "name": "name", "version": "version" }, "expand": 1 },
+      "reason":     { "widget": "label", "parent": "mod", "style": "warning", "bind": "reason", "bindings": { "visible": "hasReason" } },
+      "state":      { "widget": "label", "parent": "mod", "style": "hint", "bind": "state" },
+      "earlier":    { "widget": "button", "parent": "mod", "style": "button", "text": "@rpg.mods.earlier", "bindings": { "visible": "canMove" } },
+      "later":      { "widget": "button", "parent": "mod", "style": "button", "text": "@rpg.mods.later", "bindings": { "visible": "canMove" } },
+      "toggle":     { "widget": "button", "parent": "mod", "style": "button", "bind": "toggleLabel", "bindings": { "visible": "canToggle" } },
+
+      "noConflicts": { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.mods.no_conflicts",
+                      "bindings": { "visible": "showConflicts" } },
+      "clist":      { "widget": "scroll", "parent": "window", "minSize": [0, 240], "bindings": { "visible": "showConflicts" } },
+      "conflicts":  { "widget": "item_list", "parent": "clist", "bind": "conflicts", "spacing": 2 },
+      "conflict":   { "widget": "label", "parent": "conflicts", "style": "text", "bind": "line" },
+
+      "restart":    { "widget": "label", "parent": "window", "style": "warning", "text": "@rpg.mods.restart",
+                      "bindings": { "visible": "restartNeeded" } },
+      "message":    { "widget": "label", "parent": "window", "style": "text", "bind": "message", "args": { "mod": "messageMod" } },
+      "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.mods.hint" }
     } }
 ]

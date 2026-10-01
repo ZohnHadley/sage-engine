@@ -184,6 +184,7 @@ static readonly Sage.Kits.Rpg.RpgKitModule.EquipmentScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.InventoryScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.LootScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.RestScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.ModsScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.TopicsScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.StubPriceRule.Instance -> Sage.Kits.Rpg.StubPriceRule!
 static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, out string! reason) -> bool

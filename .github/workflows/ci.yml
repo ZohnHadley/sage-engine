@@ -220,6 +220,10 @@ jobs:
           # the way out back to the hill at night (the lamps lit); the map with its waystone; `travel` lists it.
           SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+wait 1\n+in_tap Rest\n+wait 3\n+in_tap MenuRight\n+wait 1\n+in_tap MenuConfirm\n+wait 1\n+in_tap MenuBack\n+wait 2\n+ent_fire crypt_door Travel\n+wait 2\n+r_stats\n+ui_open rpg:rest\n+wait 2\n+rest 8\n+wait 2\n+ui_close all\n+ent_fire crypt_exit Travel\n+wait 2\n+r_stats\n+in_tap Map\n+wait 3\n+in_tap MenuBack\n+wait 1\n+travel' \
             tools/smoke_run.sh "$host" games/Sandbox 8 Shaders Audio
+          # The mods screen (issue 4j-6): opened from the console (the F10 menu's Mods button opens the same screen),
+          # walked with the menu actions, tabbed to the conflicts and closed; the Sandbox has no mods, so it lists none.
+          SAGE_SMOKE_COMMANDS=$'+wait 1\n+ui_open rpg:mods\n+wait 3\n+in_tap MenuDown\n+wait 1\n+in_tap MenuRight\n+wait 1\n+in_tap MenuConfirm\n+wait 2\n+in_tap MenuBack\n+wait 2\n+ui_close all' \
+            tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
           # No plugins at all (issue #13). Records and Input are allowed because engine content still
           # ships every plugin's data in one folder, and says so when the plugin that reads it is absent.
           tools/smoke_run.sh "$host" tests/games/no-plugins 3 Shaders Audio Records Input

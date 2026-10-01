@@ -72,7 +72,7 @@ public class AssemblyLayeringTests
         Assert.Equal(new[] { typeof(Sage.UI.UiModule) }, ui.GetTypes().Where(t => typeof(IModule).IsAssignableFrom(t)));
         var generated = new GeneratedRegistrations();
         generated.Include(ui);
-        Assert.Equal(new[] { Sage.UI.UiModule.Id }, generated.Owners);
+        Assert.Equal(new[] { Sage.UI.UiModule.Id }, generated.Owners.Distinct());   // once per kind it registers: records, and (4j-6) the ui_mods view-model
         Assert.DoesNotContain(ui.GetTypes(), t => Metadata.DeclarationOf(t) is { Kind: not DeclarationKind.Record });
     }
 

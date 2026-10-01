@@ -35,6 +35,6 @@
   <PropertyGroup>
     <NoWarn>$(NoWarn);SAGE0125</NoWarn>
     <!-- visibleIf and enabledIf are conditions (#89's language, SAGE0120 and SAGE0124). -->
-    <NoWarn>$(NoWarn);SAGE0120;SAGE0124</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0124;SAGE0132</NoWarn>
   </PropertyGroup>
 </Project>

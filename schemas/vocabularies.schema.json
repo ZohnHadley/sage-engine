@@ -5826,7 +5826,7 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status.",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_mods.",
       "type": "string",
       "enum": [
         "RpgEquipment",
@@ -5840,6 +5840,7 @@
         "SandboxHud",
         "SandboxMainMenu",
         "SandboxStatus",
+        "UiMods",
         "rpg_equipment",
         "rpg_inventory",
         "rpg_journal",
@@ -5850,7 +5851,8 @@
         "rpg_topics",
         "sandbox_hud",
         "sandbox_main_menu",
-        "sandbox_status"
+        "sandbox_status",
+        "ui_mods"
       ]
     },
     "view_model": {
@@ -6291,6 +6293,35 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'sandbox_status' (StatusView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "ui_mods",
+                      "UiMods"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: ui_mods.",
+                    "enum": [
+                      "ui_mods",
+                      "UiMods"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'ui_mods' (ModsView)."
               }
             }
           ]

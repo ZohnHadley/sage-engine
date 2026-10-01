@@ -1,6 +1,14 @@
 #nullable enable
 abstract Sage.UI.Widget.TypeName.get -> string!
 const Sage.UI.Localisation.DefaultLanguage = "en" -> string!
+const Sage.UI.ModsView.ConflictsTab = "tabConflicts" -> string!
+const Sage.UI.ModsView.EarlierButton = "earlier" -> string!
+const Sage.UI.ModsView.LaterButton = "later" -> string!
+const Sage.UI.ModsView.ModsTab = "tabMods" -> string!
+const Sage.UI.ModsView.StateActive = "@rpg.mods.state_active" -> string!
+const Sage.UI.ModsView.StateOff = "@rpg.mods.state_off" -> string!
+const Sage.UI.ModsView.StateRefused = "@rpg.mods.state_refused" -> string!
+const Sage.UI.ModsView.ToggleButton = "toggle" -> string!
 const Sage.UI.UiModule.Id = "sage.ui" -> string!
 const Sage.UI.UiScreens.ViewModelVocabulary = "view_model" -> string!
 override Sage.UI.Bar.TypeName.get -> string!
@@ -129,6 +137,41 @@ Sage.UI.Localisation.Reload() -> void
 Sage.UI.Localisation.Text(string! text) -> string!
 Sage.UI.Localisation.Text(string! text, double count) -> string!
 Sage.UI.Localisation.Version.get -> int
+Sage.UI.ModsView
+Sage.UI.ModsView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.ModsView.ConflictCount.get -> int
+Sage.UI.ModsView.ConflictRow
+Sage.UI.ModsView.ConflictRow.ConflictRow() -> void
+Sage.UI.ModsView.ConflictRow.Line.get -> string!
+Sage.UI.ModsView.Conflicts.get -> System.Collections.Generic.List<Sage.UI.ModsView.ConflictRow!>!
+Sage.UI.ModsView.Message.get -> string!
+Sage.UI.ModsView.MessageMod.get -> string!
+Sage.UI.ModsView.ModCount.get -> int
+Sage.UI.ModsView.ModRow
+Sage.UI.ModsView.ModRow.Active.get -> bool
+Sage.UI.ModsView.ModRow.Author.get -> string!
+Sage.UI.ModsView.ModRow.CanMove.get -> bool
+Sage.UI.ModsView.ModRow.CanToggle.get -> bool
+Sage.UI.ModsView.ModRow.Description.get -> string!
+Sage.UI.ModsView.ModRow.HasReason.get -> bool
+Sage.UI.ModsView.ModRow.Id.get -> string!
+Sage.UI.ModsView.ModRow.LoadedNow.get -> bool
+Sage.UI.ModsView.ModRow.ModRow() -> void
+Sage.UI.ModsView.ModRow.Name.get -> string!
+Sage.UI.ModsView.ModRow.Place.get -> string!
+Sage.UI.ModsView.ModRow.Reason.get -> string!
+Sage.UI.ModsView.ModRow.Refused.get -> bool
+Sage.UI.ModsView.ModRow.State.get -> string!
+Sage.UI.ModsView.ModRow.ToggleLabel.get -> string!
+Sage.UI.ModsView.ModRow.Version.get -> string!
+Sage.UI.ModsView.Mods.get -> System.Collections.Generic.List<Sage.UI.ModsView.ModRow!>!
+Sage.UI.ModsView.ModsView() -> void
+Sage.UI.ModsView.NoConflicts.get -> bool
+Sage.UI.ModsView.NoMods.get -> bool
+Sage.UI.ModsView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.UI.ModsView.RestartNeeded.get -> bool
+Sage.UI.ModsView.ShowConflicts.get -> bool
+Sage.UI.ModsView.ShowMods.get -> bool
 Sage.UI.MonospaceTextMeasure
 Sage.UI.MonospaceTextMeasure.CharacterWidth.get -> float
 Sage.UI.MonospaceTextMeasure.LineHeight.get -> float

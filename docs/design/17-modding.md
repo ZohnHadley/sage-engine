@@ -215,6 +215,26 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
   it with `--mods`, runs `sage mods`, puts it in the game's `mods/` and checks `--game-mods`, and checks that a `mod.json`
   with an unknown key fails.
 
+## As built (the mods screen, issue 4j-6)
+
+- **`ModsView`** (`Sage.UI`, `[ViewModel("ui_mods")]`, SAGE0132) is a view of `Engine.ModManager`; it keeps no state of the
+  player's choices and writes only through `ModManager.Enable` / `Disable` / `Move`, the calls the console's `mod_enable`,
+  `mod_disable` and `mod_move` make. The kit's `rpg:mods` screen and layout (`src/Sage.Kits.Rpg/content/data/ui_screens.json`,
+  strings `rpg.mods.*`) is the screen; `RpgKitModule.ModsScreen` is its id, and the Sandbox's F10 menu has a Mods button that
+  opens it (or `ui_open rpg:mods`).
+- **Rows are what the next start would load** (`ModManager.Next()`): the active in load order, then the switched off, then the
+  refused with their reasons; a refused mod has no switch. Turning a mod off or on and moving it Earlier or Later write
+  `user://mods.json` and the screen says "Restart to apply" (`RestartNeeded`); this run is unchanged (test:
+  TheModsScreenTogglesAndReordersAndWritesTheListForTheNextStart, which also boots again from that list and sees the new order
+  win). Where the order is fixed by a dependency, a move that changes nothing says so (`@rpg.mods.pinned`).
+- **A conflicts tab** lists `ContentReport.Build(...).Conflicts`, the lines `mod_conflicts` prints (test:
+  TheConflictsTabListsWhatTwoModsBothWrite).
+- **With no user folder** (an app that keeps no `mods.json`) a change is refused with a message and nothing is changed (test:
+  WithNoUserFolderAChangeIsRefusedAndSaysSo).
+- **Refreshing allocates nothing**: the rows are made when the screen opens and after its own buttons, not per frame (test:
+  RefreshingTheRpgScreensAllocatesNothing, which now includes `rpg:mods`). A console `mod_enable` while the screen is open
+  shows when it is opened again.
+
 ## As built (the 4j exit game, issue 4j-7)
 
 Phase 4j's exit: a data mod that adds a weapon and patches a trader loads, and its conflicts are reported.
