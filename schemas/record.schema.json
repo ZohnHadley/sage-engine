@@ -31,6 +31,7 @@
             "anim_graph",
             "attack",
             "attribute",
+            "calendar",
             "cue",
             "damage_type",
             "dialogue",
@@ -174,6 +175,21 @@
           },
           "then": {
             "$ref": "attribute.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "calendar"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "calendar.schema.json"
           }
         },
         {

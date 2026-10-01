@@ -108,6 +108,11 @@
         "weapons:armor_head"
       ]
     },
+    "record:calendar": {
+      "description": "The id of a calendar record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:cue": {
       "description": "The id of a cue record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -946,6 +951,11 @@
         "stamina",
         "weapons:armor_head"
       ]
+    },
+    "base:calendar": {
+      "description": "The id of a calendar record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:cue": {
       "description": "Another cue record to inherit every field from, abstract or not.",
