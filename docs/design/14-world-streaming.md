@@ -107,6 +107,8 @@ and the simulation carries on with small numbers, because the frame of reference
   are kept, with absolute positions, when the player leaves it, and come back when it is placed again
   (09 "As built (cells go dormant with their state)").
 - **Since 4g-3, entities stream by sector**: see "As built (entities stream by sector)" below.
+- **Since 4g-5, interiors are scenes behind load doors, and fast travel exists**: see "As built (doors,
+  interiors and travel)" below.
 
 ### As built (entities stream by sector, issue 4g-3, 2026-10-01)
 Streaming loaded terrain only: a scene was placed whole, so an exterior bigger than a sector held every
@@ -162,7 +164,54 @@ Code: `src/Sage.Simulation/Content/StreamedScene.cs`, `World/Streaming.cs` (`Sec
   the editor does not read them back. A runtime spawn made directly into a sector outside the ring sleeps
   there at the next boundary. Levels that
   stand on terrain are placed and dropped whole with the sector their `at` is in. Interiors, doors and
-  travel are 4g-5.
+  travel came with 4g-5 (below).
+
+### As built (doors, interiors and travel, issue 4g-5, 2026-10-01)
+`scene_load` was a cheat that put the player at the scene's start, nothing said a scene was indoors, so a
+crypt kept streaming terrain and lit by the sun, and fast travel was `warp <x> <z>`. Phase 4g's plan,
+decision 1: an interior is a scene in the same world, swapped through dormancy (4g-1's cells). Code:
+`src/Sage.Simulation/World/Travel.cs`, `Content/Scenes.cs` (`ApplySpace`, entries), `World/Streaming.cs`
+(`SectorRing.Suspended`); experimental SAGE0129.
+
+- **`Travel.To(world, scene, entry, hours)` runs at a tick boundary**, before a time skip and a save asked
+  for in the same tick: no system later in the tick sees the scene change, the hours pass with it through
+  `Time.Pass`, and a second journey asked for in the tick is refused (test: TravelRunsAtTheTickBoundary).
+  The scene the player is in goes dormant with its state, the other is placed, the player is put at the
+  *entry* — a placement's `name` (the scene's, its player start's or a placements document's) or a map
+  entity's `targetname`, a point with no prefab included — facing its yaw, and the origin follows. Within
+  one scene nothing is unloaded: the player moves and the ring follows on the next tick.
+- **Warp's order.** When content says where the entry is (a placement), the origin moves to its sector and
+  the ground there is generated before the scene is placed and the player stands on it; an entry in a map
+  is found once the map is placed, and the origin then follows the player.
+- **`"space": "interior"`** on a scene: the rings stop (`SectorRing.Suspended`), the terrain unloads, and
+  the world is lit by its lights and `environment.ambient` only — no sun, no sky, no stars, no sun shadow;
+  the sky system steps aside and the client's weather neither falls nor touches the light. Use the door
+  (the Use action, through the interaction system) and the player is at the crypt's entry five kilometres
+  east, the origin with them, the village's sectors asleep, the terrain gone and staying gone
+  (test: UsingTheDoorPutsYouAtTheCryptEntryWithTerrainUnloaded). Coming back, the ground around the door
+  is there before the player is, the light the village had is put back, the ring starts again, the wounded
+  goblin is wounded still, and the skeleton killed in the crypt and the sword dropped there are dead and on
+  the floor when the player goes back in (test: ComingBackYouAreAtTheDoorWithTheExteriorIntact). A save in
+  the crypt loads into a game that started in the village as the crypt, terrain unloaded and lit inside, and
+  the way out leads to the village as it was (test: SaveAndLoadInTheCrypt). An interior is never streamed.
+- **Doors**: the `load_door` part (`sage:load_door`, not saved: content says it again) with `scene`,
+  `entry` and `hours`. Using one travels (`Travel.Use`; only the player goes through), and so does the
+  `Travel` input, which also takes `"<scene> <entry>"` sent to anything
+  (test: TheTravelInputGoesThroughADoorOrToAnEntry). A door to a scene that does not exist, to an entry
+  its scene does not have (with the nearest name), or a placed door with no scene is a load error, so
+  `sage validate` reports it; a prefab's own door is checked when it names both, a placement's with its
+  overrides over the prefab's (test: ADoorToAMissingSceneOrEntryIsALoadError).
+- **Fast travel**: the `travel_point` part (`label`, `radius`, `discovered`). Coming within `radius`
+  discovers it (`TravelPointSystem`, Late), which the component keeps and the saved `travel` resource
+  (`TravelLog`) lists with its scene and absolute place, so a point is known while its sector sleeps.
+  `travel <point>` (`Travel.ToPoint`) costs the straight-line distance from the player over `travel_speed`
+  (metres per game hour, default 5000) and lands on the ground there, the ground generated first; a point
+  not yet discovered cannot be travelled to (test: FastTravelAdvancesTheClockAndLandsOnTheGround).
+- **Limits.** Only the player travels: companions and followers stay (4g-6 moves NPCs between spaces).
+  The distance of a journey is measured from where the player stands, so from an interior it is from the
+  interior's coordinates. An entry in a streamed scene must be a placement (a map on the terrain is placed
+  with its sector, after the player arrives). `warp` refuses inside an interior. The kit's rest screen and
+  map markers are 4g-7.
 
 ## 4. API sketch
 ```csharp
