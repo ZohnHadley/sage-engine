@@ -39,6 +39,9 @@ const Sage.Gameplay.BridgeIO.SetStage = "SetStage" -> string!
 const Sage.Gameplay.BridgeIO.StartDialogue = "StartDialogue" -> string!
 const Sage.Gameplay.HitDeliveries.Default = "sweep" -> string!
 Sage.Gameplay.ActionConventions.Reload -> string!
+Sage.Gameplay.AICondition.InRoutine = 2048 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AIProfileRecord.Routine -> Sage.Core.RecordRef<Sage.Gameplay.RoutineRecord!>
+Sage.Gameplay.AIScheduleChoice.Routine -> Sage.Core.RecordId
 Sage.Gameplay.AnimationConventions.Reload -> string!
 Sage.Gameplay.AttackRecord.Arms -> Sage.Core.RecordRef<Sage.Simulation.ViewmodelRecord!>
 Sage.Gameplay.AttackRecord.Delivery -> string!
@@ -164,6 +167,43 @@ Sage.Gameplay.RecoilRecord.RecoilRecord() -> void
 Sage.Gameplay.RecoilRecord.ReturnSpeedDegrees -> float
 Sage.Gameplay.RecoilRecord.YawMaxDegrees -> float
 Sage.Gameplay.RecoilRecord.YawMinDegrees -> float
+Sage.Gameplay.Routine
+Sage.Gameplay.Routine.Id -> Sage.Core.RecordId
+Sage.Gameplay.Routine.Routine() -> void
+Sage.Gameplay.RoutineEntry
+Sage.Gameplay.RoutineEntry.At -> string!
+Sage.Gameplay.RoutineEntry.Days -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.RoutineEntry.From -> double
+Sage.Gameplay.RoutineEntry.RoutineEntry() -> void
+Sage.Gameplay.RoutineEntry.Scene -> Sage.Core.RecordId
+Sage.Gameplay.RoutineEntry.Schedule -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.RoutineEntry.To -> double
+Sage.Gameplay.RoutinePart
+Sage.Gameplay.RoutinePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.RoutinePart.Id -> Sage.Core.RecordRef<Sage.Gameplay.RoutineRecord!>
+Sage.Gameplay.RoutinePart.RoutinePart() -> void
+Sage.Gameplay.RoutineRecord
+Sage.Gameplay.RoutineRecord.Entries -> System.Collections.Generic.List<Sage.Gameplay.RoutineEntry!>!
+Sage.Gameplay.RoutineRecord.RoutineRecord() -> void
+Sage.Gameplay.Routines
+Sage.Gameplay.RoutineTarget
+Sage.Gameplay.RoutineTarget.Anchor.get -> Sage.Simulation.Entity
+Sage.Gameplay.RoutineTarget.Anchor.init -> void
+Sage.Gameplay.RoutineTarget.At.get -> string!
+Sage.Gameplay.RoutineTarget.At.init -> void
+Sage.Gameplay.RoutineTarget.Elsewhere.get -> bool
+Sage.Gameplay.RoutineTarget.Elsewhere.init -> void
+Sage.Gameplay.RoutineTarget.Entry.get -> int
+Sage.Gameplay.RoutineTarget.Entry.init -> void
+Sage.Gameplay.RoutineTarget.InForce.get -> bool
+Sage.Gameplay.RoutineTarget.RoutineId.get -> Sage.Core.RecordId
+Sage.Gameplay.RoutineTarget.RoutineId.init -> void
+Sage.Gameplay.RoutineTarget.RoutineTarget() -> void
+Sage.Gameplay.RoutineTarget.RoutineTarget(Sage.Core.RecordId RoutineId, int Entry, Sage.Core.RecordId Schedule, string! At, Sage.Core.RecordId Scene, Sage.Simulation.Entity Anchor, bool Elsewhere) -> void
+Sage.Gameplay.RoutineTarget.Scene.get -> Sage.Core.RecordId
+Sage.Gameplay.RoutineTarget.Scene.init -> void
+Sage.Gameplay.RoutineTarget.Schedule.get -> Sage.Core.RecordId
+Sage.Gameplay.RoutineTarget.Schedule.init -> void
 Sage.Gameplay.ShotRandom
 Sage.Gameplay.Spread
 Sage.Gameplay.SpreadRecord
@@ -284,6 +324,10 @@ Sage.Gameplay.WeaponFired.Shooter.get -> Sage.Simulation.Entity
 Sage.Gameplay.WeaponFired.Shooter.init -> void
 Sage.Gameplay.WeaponFired.WeaponFired() -> void
 Sage.Gameplay.WeaponFired.WeaponFired(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
+static Sage.Gameplay.Routines.EntryAt(Sage.Gameplay.RoutineRecord! routine, Sage.Simulation.CalendarRecord! calendar, double elapsed) -> int
+static Sage.Gameplay.Routines.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.RoutineRecord?
+static Sage.Gameplay.Routines.StartOf(Sage.Gameplay.RoutineEntry! entry, double elapsed) -> double
+static Sage.Gameplay.Routines.Target(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.RoutineTarget
 static Sage.Gameplay.ShotRandom.Hash(long tick, int entity, uint shot, uint salt) -> ulong
 static Sage.Gameplay.ShotRandom.Value(long tick, int entity, uint shot, uint salt) -> float
 static Sage.Gameplay.Spread.ConeOf(Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Gameplay.SpreadRecord! spread) -> float

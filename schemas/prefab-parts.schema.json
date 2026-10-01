@@ -283,6 +283,22 @@
         }
       ]
     },
+    "routine": {
+      "description": "Prefab part 'routine' (RoutinePart). A bare value is its \"id\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/routine"
+        },
+        {
+          "description": "Its daily routine. Names a routine record. (RecordRef<RoutineRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:routine"
+            }
+          ]
+        }
+      ]
+    },
     "scripted_camera": {
       "description": "Prefab part 'scripted_camera' (ScriptedCameraPart).",
       "allOf": [
@@ -1356,6 +1372,21 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'quest_watch' (QuestWatchPart)."
+    },
+    "routine": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Its daily routine. Names a routine record. (RecordRef<RoutineRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:routine"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'routine' (RoutinePart)."
     },
     "scripted_camera": {
       "type": "object",

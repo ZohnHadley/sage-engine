@@ -53,6 +53,7 @@
             "prefab",
             "quest",
             "recoil",
+            "routine",
             "rpg_conventions",
             "rpg_item",
             "scene",
@@ -506,6 +507,21 @@
           },
           "then": {
             "$ref": "recoil.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "routine"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "routine.schema.json"
           }
         },
         {

@@ -1199,8 +1199,8 @@ What the clock's day count means as a date, and a way to move the clock a long w
 - **Saved** with the clock: `Calendar` is one more field of the `clock` resource, and a clock saved before it
   loads with none, keeping its day count (tests: TheCalendarSurvivesASave, AClockSavedBeforeTheCalendarStillLoads;
   the format 2 and 3 golden saves still load).
-- **Not yet:** nothing reads `TimePassed` (routines are 4g-4, the off-screen simulation 4g-6, rest and wait
-  screens 4g-7); a scene cannot choose a calendar, as it can a sky.
+- **Not yet:** routines read `TimePassed` (issue 4g-4, design 16 "As built (NPC routines)"); the off-screen
+  simulation (4g-6) and rest and wait screens (4g-7) do not yet; a scene cannot choose a calendar, as it can a sky.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

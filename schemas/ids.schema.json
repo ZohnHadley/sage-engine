@@ -557,6 +557,11 @@
         "weapons:pistol_recoil"
       ]
     },
+    "record:routine": {
+      "description": "The id of a routine record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
       "type": "string",
@@ -1407,6 +1412,11 @@
         "sandbox:pistol_recoil",
         "weapons:pistol_recoil"
       ]
+    },
+    "base:routine": {
+      "description": "The id of a routine record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",

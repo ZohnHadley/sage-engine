@@ -103,7 +103,8 @@ public class VocabularyDeclarationTests
         Assert.Contains(("item_use", "cast", "sage.gameplay.items"), owners);
         Assert.Contains(("ai_schedule_selector", "default", "sage.gameplay.ai"), owners);
         Assert.Contains(("ai_condition", "CanCastAtEnemy", "sage.gameplay.ai"), owners);
-        Assert.Equal(11, vocabularies.Of<IAICondition>().Entries.Count);
+        Assert.Contains(("ai_condition", "in_routine", "sage.gameplay.ai"), owners);   // issue 4g-4
+        Assert.Equal(12, vocabularies.Of<IAICondition>().Entries.Count);
     }
 
     // A plugin switched off takes its entries with it: no quests, no `reach`. What is left is the base's

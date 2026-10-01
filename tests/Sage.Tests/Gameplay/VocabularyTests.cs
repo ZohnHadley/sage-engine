@@ -218,7 +218,8 @@ public class VocabularyTests
         Assert.Equal(0, conditions.BitOf("SeeEnemy"));
         Assert.Equal(0, conditions.BitOf("see_enemy"));     // one word however it is spelled
         Assert.Equal(10, conditions.BitOf(nameof(AICondition.RememberEnemy)));
-        Assert.Equal(11, conditions.BitOf("is_night"));
+        Assert.Equal(11, conditions.BitOf("in_routine"));    // the engine's own, from 4g-4
+        Assert.Equal(12, conditions.BitOf("is_night"));
         Assert.Equal(-1, conditions.BitOf("is_nite"));
         Assert.Equal("sage.gameplay.ai", app.Engine.Registrations.OwnerOf("ai_condition", "SeeEnemy"));
         Assert.Equal("test.vocabulary", app.Engine.Registrations.OwnerOf("ai_condition", "is_night"));

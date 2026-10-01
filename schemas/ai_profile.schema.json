@@ -265,6 +265,14 @@
         },
         "additionalProperties": false
       }
+    },
+    "routine": {
+      "description": "Its daily routine; an entity's own `routine` part wins over it. Names a routine record. (RecordRef<RoutineRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:routine"
+        }
+      ]
     }
   },
   "additionalProperties": false
