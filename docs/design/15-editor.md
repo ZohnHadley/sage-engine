@@ -201,6 +201,41 @@ editor, per-entity overrides, play-in-editor, and an inspector generated from de
 than reflection (09 §3.2). Editing runs against the live world, so `pause 1` before moving things — the
 simulation will otherwise drop a crate while you inspect it.
 
+## 10c. As built: file-preserving write-back (#218, 2026-10-01)
+
+A save used to serialise the document's record and write the file whole, so it lost the comments, the
+key order, the one-line vectors and any record kept beside the document (REDESIGN §4.6). **`JsonFileEdit`**
+(`src/Sage.Core/Content/JsonFileEdit.cs`, SAGE0133) edits a record file's text instead: a small JSONC
+parser keeps where every value starts and ends, an edit splices one value's text, and the file is
+parsed again before the next. It finds a record by `type` and `id` in a file holding one record or an
+array of them (a bare id means the mount's namespace), and it replaces, adds or removes a record, or
+sets or removes a value at a path inside one (`place[3].at`, `overrides.components.health.max`).
+
+- **Nothing changed, nothing rewritten:** a record set to what the file already says leaves the text
+  byte for byte, byte order mark and line endings included. Numbers compare as values, so `1` is `1.0`.
+  (tests: AFileNothingChangedInIsWrittenBackByteForByte, SavingKeepsTheFilesByteOrderMarkAndLineEndings)
+- **Only the difference is written.** Setting an object or array, or a whole record, compares it with
+  the file key by key and element by element, so a moved placement is the number that moved: one line
+  in a file with one-line vectors, one number in a file that spreads them over lines. (tests:
+  MovingOnePlacementChangesOneLine, AVectorWrittenOverManyLinesChangesOnlyTheNumberThatMoved)
+- **Comments, key order and the other records stay**, a removed value takes its own lines with it, and
+  a value added to a list goes after the last one's comment rather than before it.
+  (tests: CommentsAndTheOtherRecordsStay, RecordsAreReplacedAddedAndRemovedInPlace,
+  ValuesAreSetAndRemovedAtAPathInsideARecord)
+- **New values are in the record store's dialect** (its converters, camel case, enums by name, nulls
+  left out), arrays of numbers and strings on one line and objects indented like their neighbours.
+  (test: NewValuesAreWrittenInTheRecordStoresDialect)
+- **`PatchRecord(before, after)` is what the document saves with.** A program's record spells out
+  fields the file leaves at their defaults (`"yaw": 0`, `"outputs": []`), so comparing it with the file
+  would write them all. `EditorDocument` keeps the document as it was opened or last saved and writes
+  only what changed since; a document the file does not hold (a new one) is added, or makes the file.
+  (tests: APatchWritesOnlyWhatChangedBetweenTwoVersions, SavingChangesOnlyWhatChangedInTheFile)
+
+**Not built:** comments above a removed value stay where they were, and a list's element is matched by
+its index, so removing one from the middle rewrites the ones after it. A record merged from patches in
+other mounts is written to the file that defined it; a patch file of its own is the record editor's
+(#224).
+
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
