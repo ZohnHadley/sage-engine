@@ -4,6 +4,14 @@ const Sage.Kits.Rpg.GridCell.EmptyStyle = "rpg:cell" -> string!
 const Sage.Kits.Rpg.GridCell.HeldStyle = "rpg:cell_held" -> string!
 const Sage.Kits.Rpg.GridCell.ItemStyle = "rpg:cell_item" -> string!
 const Sage.Kits.Rpg.LootView.TakeAllButton = "take_all" -> string!
+const Sage.Kits.Rpg.MapView.TravelStyle = "rpg:map_travel" -> string!
+const Sage.Kits.Rpg.Rest.SleepReason = "rest" -> string!
+const Sage.Kits.Rpg.Rest.WaitReason = "wait" -> string!
+const Sage.Kits.Rpg.RestView.DefaultHours = 8 -> int
+const Sage.Kits.Rpg.RestView.LessButton = "less" -> string!
+const Sage.Kits.Rpg.RestView.MoreButton = "more" -> string!
+const Sage.Kits.Rpg.RestView.SleepButton = "sleep" -> string!
+const Sage.Kits.Rpg.RestView.WaitButton = "wait" -> string!
 const Sage.Kits.Rpg.RpgKitModule.ContentNamespace = "rpg" -> string!
 const Sage.Kits.Rpg.TopicsView.AskedStyle = "rpg:topic_asked" -> string!
 const Sage.Kits.Rpg.TopicsView.TopicStyle = "rpg:topic" -> string!
@@ -109,8 +117,35 @@ Sage.Kits.Rpg.LootView.ContainerName.get -> string!
 Sage.Kits.Rpg.LootView.IsEmpty.get -> bool
 Sage.Kits.Rpg.LootView.LootView() -> void
 Sage.Kits.Rpg.LootView.TakeAll(Sage.Simulation.World! world, Sage.Simulation.Entity from, Sage.Simulation.Entity to) -> int
+Sage.Kits.Rpg.MapView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.MapView.Destinations.get -> System.Collections.Generic.List<Sage.Kits.Rpg.MapView.Marker!>!
+Sage.Kits.Rpg.MapView.HasDestinations.get -> bool
+Sage.Kits.Rpg.MapView.Marker.CanTravel.get -> bool
+Sage.Kits.Rpg.MapView.Marker.Point.get -> Sage.Simulation.TravelDestination?
+Sage.Kits.Rpg.MapView.Marker.TravelHours.get -> string!
+Sage.Kits.Rpg.Rest
+Sage.Kits.Rpg.RestKind
+Sage.Kits.Rpg.RestKind.Sleep = 0 -> Sage.Kits.Rpg.RestKind
+Sage.Kits.Rpg.RestKind.Wait = 1 -> Sage.Kits.Rpg.RestKind
+Sage.Kits.Rpg.RestView
+Sage.Kits.Rpg.RestView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.RestView.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Kits.Rpg.RestKind kind) -> bool
+Sage.Kits.Rpg.RestView.CanSleep.get -> bool
+Sage.Kits.Rpg.RestView.CanWait.get -> bool
+Sage.Kits.Rpg.RestView.Hours.get -> int
+Sage.Kits.Rpg.RestView.Hours.set -> void
+Sage.Kits.Rpg.RestView.MaxHours.get -> int
+Sage.Kits.Rpg.RestView.Message.get -> string!
+Sage.Kits.Rpg.RestView.Now.get -> string!
+Sage.Kits.Rpg.RestView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.RestView.Refused.get -> string!
+Sage.Kits.Rpg.RestView.RestView() -> void
+Sage.Kits.Rpg.RestView.Subject.get -> Sage.Simulation.Entity
 Sage.Kits.Rpg.RpgConventionsRecord.GridSize.get -> (int Columns, int Rows)
 Sage.Kits.Rpg.RpgConventionsRecord.InventoryGrid -> System.Numerics.Vector2
+Sage.Kits.Rpg.RpgConventionsRecord.RestEffect -> Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>
+Sage.Kits.Rpg.RpgConventionsRecord.RestEnemyRange -> float
+Sage.Kits.Rpg.RpgConventionsRecord.RestMaxHours -> int
 Sage.Kits.Rpg.RpgItemRecord
 Sage.Kits.Rpg.RpgItemRecord.Footprint.get -> (int Width, int Height)
 Sage.Kits.Rpg.RpgItemRecord.Grid -> System.Numerics.Vector2
@@ -148,9 +183,13 @@ Sage.Kits.Rpg.TopicsView.TopicsView() -> void
 static readonly Sage.Kits.Rpg.RpgKitModule.EquipmentScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.InventoryScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.LootScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.RestScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.TopicsScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.StubPriceRule.Instance -> Sage.Kits.Rpg.StubPriceRule!
 static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, out string! reason) -> bool
+static Sage.Kits.Rpg.Rest.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Kits.Rpg.RestKind kind, double hours, out string! reason) -> bool
+static Sage.Kits.Rpg.Rest.Can(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Kits.Rpg.RestKind kind, double hours, out string! reason) -> bool
+static Sage.Kits.Rpg.Rest.EnemyNear(Sage.Simulation.World! world, Sage.Simulation.Entity who, float range) -> Sage.Simulation.Entity
 static Sage.Kits.Rpg.RpgItemRecord.Of(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> (int Width, int Height)
 virtual Sage.Kits.Rpg.ItemGridView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
 virtual Sage.Kits.Rpg.ItemGridView.Back(in Sage.UI.UiBindContext context) -> bool

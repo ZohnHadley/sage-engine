@@ -35,6 +35,13 @@ public sealed class RpgKitModule : IModule
     public static readonly RecordId LootScreen = new(ContentNamespace, "loot");
     public static readonly RecordId TopicsScreen = new(ContentNamespace, "topics");
 
+    // The rest and wait screen (issue 4g-7): hours, then sleep or wait (RestView, the Rest rule).
+    public static readonly RecordId RestScreen = new(ContentNamespace, "rest");
+
+    // The kit's experimental id for what it adds to phase 4g's open world (MAKING_A_GAME §10b): the base's own.
+    internal const string OpenWorld = "SAGE0129";
+    internal const string ExperimentalUrl = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api";
+
     // The kit's equipment slots: a weapon and a shield, Daggerfall's two hands (issue #27). The base
     // has no slots of its own; a game adds more with EquipSlots.Register in its Init.
     public const string MainHand = "MainHand";
@@ -83,6 +90,9 @@ public sealed class RpgKitModule : IModule
                     ? $"{World.Describe(entity)} readies {ability.Name}"
                     : $"{World.Describe(entity)} does not know {ability.Name}"));
         });
+
+        // Resting and waiting (4g-7): the rest screen's rule, at the console.
+        Rest.RegisterCommand(ctx.Engine);
 
         // Prints the inventory *panel* (13 §3): the same rows the bag screen draws, so the console and
         // the screen cannot disagree about what you are carrying, and a `*` is what is in your hands.

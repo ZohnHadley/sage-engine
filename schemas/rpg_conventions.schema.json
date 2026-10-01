@@ -68,6 +68,27 @@
       },
       "minItems": 2,
       "maxItems": 2
+    },
+    "restEnemyRange": {
+      "description": "Sleeping is refused while a hostile creature is this near; 0: never refused. Unit: m. At least 0. Category: Rest. (float, default 25)",
+      "default": 25,
+      "type": "number",
+      "minimum": 0
+    },
+    "restMaxHours": {
+      "description": "The most the rest screen passes at once. Unit: h. Range: 1 to 168. Category: Rest. (int, default 24)",
+      "default": 24,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 168
+    },
+    "restEffect": {
+      "description": "Applied on waking from a sleep, its magnitude the hours slept (\"health +5\" heals five an hour); empty: none. Names a effect record. Category: Rest. (RecordRef<EffectRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:effect"
+        }
+      ]
     }
   },
   "additionalProperties": false

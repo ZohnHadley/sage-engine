@@ -54,5 +54,25 @@
     "sell": "Selling {item} for {price}",
     "balance": "You owe {balance}",
     "hint": "A: pick up / put down on the other side to trade    B: close"
+  },
+  "rest": {
+    "title": "Rest",
+    "now": "Day {day}, {time}",
+    "hours": { "one": "{hours} hour", "other": "{hours} hours" },
+    "less": "<",
+    "more": ">",
+    "sleep": "Sleep",
+    "wait": "Wait",
+    "slept": { "one": "You sleep for an hour.", "other": "You sleep for {hours} hours." },
+    "waited": { "one": "You wait for an hour.", "other": "You wait for {hours} hours." },
+    "enemies": "You cannot sleep with enemies nearby.",
+    "dead": "The dead do not rest.",
+    "nobody": "There is nobody to rest.",
+    "hours_range": "That is not a time you can rest for.",
+    "no_clock": "Time does not pass here.",
+    "hint": "< >: how long    A: sleep or wait    B: close"
+  },
+  "map": {
+    "travel": "Travel ({hours} h)"
   }
 }

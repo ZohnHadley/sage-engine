@@ -227,6 +227,66 @@ public class TravelTests
         }
     }
 
+    // A scene's `environment.hour` is the hour it starts at, not the hour it always is: coming back to the
+    // village through the crypt's way out at 02:30 keeps the clock, where `scene_load` still sets it (4g-7).
+    [Xunit.Fact]
+    public void GoingThroughADoorKeepsTheClock()
+    {
+        string content = Content.Replace("""{ "type": "scene", "id": "village", "streamed": true,""",
+                                         """{ "type": "scene", "id": "village", "streamed": true, "environment": { "hour": 18.5 },""");
+        using var app = Run(Files(content), TestEnv.NewTempDir());
+        var world = app.World;
+        var clock = WorldClock.Of(world);
+        Assert.Equal(18.5, clock.Hour, 3);                                 // the world started there
+
+        Assert.True(Travel.Use(world, One(world, "crypt_door"), Hero(world)));
+        Assert.True(Time.Pass(world, 8, "rest"));
+        Assert.Equal(2.5, clock.Hour, 3);
+        Assert.True(Travel.Use(world, One(world, "crypt_exit"), Hero(world)));
+        Assert.Equal(Game("village"), SceneOf(world));
+        Assert.Equal(2.5, clock.Hour, 3);                                  // not dusk again
+
+        app.CVars.Execute("sv_cheats 1");
+        Assert.True(app.CVars.Execute("scene_load village"));
+        Assert.Equal(18.5, clock.Hour, 3);                                 // starting a scene still sets it
+    }
+
+    // An entry that is a map entity's `targetname` (a point with no prefab) is found as the player arrives:
+    // the interior's level is placed and its entities spawned in the journey, not a tick later (4g-7, the
+    // Sandbox's crypt).
+    [Xunit.Fact]
+    public void AnEntryInAMapIsFoundAsThePlayerArrives()
+    {
+        string content = Content.Replace("""{ "type": "scene", "id": "crypt",""", """
+              { "type": "map", "id": "vault", "file": "maps/vault.map", "at": [6000, 0, 0] },
+              { "type": "scene", "id": "vault", "space": "interior", "maps": ["vault"] },
+              { "type": "scene", "id": "crypt",
+            """);
+        var files = Files(content);
+        files.Write("game", "maps/vault.map", """
+            { "classname" "worldspawn"
+            { ( -256 -256 -16 ) ( -256 -255 -16 ) ( -256 -256 -15 ) stone 0 0 0 1 1
+            ( -256 -256 -16 ) ( -256 -256 -15 ) ( -255 -256 -16 ) stone 0 0 0 1 1
+            ( -256 -256 -16 ) ( -255 -256 -16 ) ( -256 -255 -16 ) stone 0 0 0 1 1
+            ( 256 256 0 ) ( 256 257 0 ) ( 257 256 0 ) stone 0 0 0 1 1
+            ( 256 256 0 ) ( 257 256 0 ) ( 256 256 1 ) stone 0 0 0 1 1
+            ( 256 256 0 ) ( 256 256 1 ) ( 256 257 0 ) stone 0 0 0 1 1 } }
+            { "classname" "info_target" "targetname" "vault_in" "origin" "64 -96 8" "angle" "90" }
+            { "classname" "marker" "targetname" "vault_marker" "origin" "0 0 8" }
+            """);
+        using var app = HeadlessApp.Bare().With(new PhysicsModule(), new StreamingModule(), new MapModule()).WithGameplay()
+            .Mount(files).StartScene("game:village").Boot();
+        Assert.Equal(0, app.Records.ErrorCount);
+        var world = app.World;
+        Tick(world);
+
+        Assert.True(Travel.To(world, Game("vault"), "vault_in"));
+        Assert.Equal(Game("vault"), SceneOf(world));
+        AssertNear(new Vector3(6002, 0.25f, 3), Absolute(world, Hero(world)));   // Quake units, 32 to the metre
+        Assert.Equal(0f, SageMath.YawOf(world.Get<Transform>(Hero(world)).LocalRotation) * 180f / MathF.PI, 2);
+        One(world, "vault_marker");                                       // spawned with the journey
+    }
+
     // A door used during a tick takes the player through at its end, like a save: no system later in the
     // tick sees the scene change under it, and the hours it costs pass with it.
     [Xunit.Fact]

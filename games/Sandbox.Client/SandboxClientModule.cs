@@ -72,6 +72,8 @@ public sealed class SandboxClientModule : IModule
         widgets.Bind(_actions!.Get("Journal"), new RecordId("sandbox", "journal"));
         widgets.Bind(_actions!.Get("Map"), new RecordId("sandbox", "map"));
         widgets.Bind(_actions!.Get("MainMenu"), new RecordId("sandbox", "main_menu"));
+        // The RPG kit's rest screen (4g-7), its own layout from the kit's content: T.
+        widgets.Bind(_actions!.Get("Rest"), RpgKitModule.RestScreen);
         widgets.TooltipStyle = "sandbox:ui_tooltip";
         widgets.OpenHud(Hud, new Sage.UI.UiBindContext(world));
         widgets.Activated += (layer, widget) =>
