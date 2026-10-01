@@ -27,6 +27,7 @@ namespace Sage.Simulation;
 //   ids.schema.json               the ids content has loaded, per record type: "record:<type>" (what a
 //                                 reference may name) and "base:<type>" (abstract ones too), and the
 //                                 tag ids; regenerate after adding a record
+//   mod.schema.json               a mod's mod.json (phase 4j); game.schema.json, a game's game.json
 //   vocabularies.schema.json      the open vocabularies (issue #28): "<name>" is an entry — its id, or
 //                                 an object naming it under the vocabulary's key with its settings —
 //                                 and "<name>:id" the registered ids, which a [VocabularyRef] field names
@@ -49,6 +50,8 @@ public static class RecordSchemas
     public const string Components = "prefab-components.schema.json";
     public const string Parts = "prefab-parts.schema.json";
     public const string Vocabularies = "vocabularies.schema.json";
+    public const string Mod = "mod.schema.json";
+    public const string Game = "game.schema.json";
 
     // A record id as content writes it: `name` or `namespace:name` (RecordId.Parse).
     public const string IdPattern = "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$";
@@ -62,7 +65,7 @@ public static class RecordSchemas
     public static SortedDictionary<string, string> Write(SchemaCatalog catalog)
     {
         foreach (string name in catalog.RecordTypes.Keys)
-            if (FileOf(name) is Root or Ids or Components or Parts or Vocabularies)
+            if (FileOf(name) is Root or Ids or Components or Parts or Vocabularies or Mod or Game)
                 throw new InvalidOperationException($"record type '{name}' would overwrite {FileOf(name)}; rename it");
 
         var writer = new Writer(catalog);
@@ -73,6 +76,8 @@ public static class RecordSchemas
             [Components] = writer.ComponentsSchema(),
             [Parts] = writer.PartsSchema(),
             [Vocabularies] = writer.VocabulariesSchema(),
+            [Mod] = ManifestSchemas.ModSchema(),
+            [Game] = ManifestSchemas.GameSchema(),
         };
         foreach (var (name, type) in catalog.RecordTypes) files[FileOf(name)] = writer.RecordSchema(name, type);
 
@@ -889,5 +894,89 @@ public sealed class SchemaCatalog
     {
         if (!table.TryGetValue(key, out var set)) table[key] = set = new SortedSet<string>(StringComparer.Ordinal);
         return set;
+    }
+}
+
+// mod.json and game.json as JSON Schemas (phase 4j, 4j-5): the keys their loaders read, so a misspelt one is
+// underlined in VS Code as the loader would refuse it. Written beside the record schemas; not built from the
+// catalog, because a manifest is read before any content is.
+internal static class ManifestSchemas
+{
+    private static JsonObject Str(string description) => new() { ["type"] = "string", ["description"] = description };
+
+    private static JsonObject Strings(string description) => new()
+    {
+        ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" }, ["description"] = description,
+    };
+
+    private static JsonObject Object(string title, JsonObject properties) => new()
+    {
+        ["$schema"] = "http://json-schema.org/draft-07/schema#",
+        ["title"] = title,
+        ["type"] = "object",
+        ["properties"] = properties,
+        ["additionalProperties"] = false,
+    };
+
+    public static JsonObject ModSchema()
+    {
+        var schema = Object("Sage mod.json", new JsonObject
+        {
+            ["id"] = new JsonObject
+            {
+                ["type"] = "string", ["pattern"] = "^[a-z0-9_.-]+$",
+                ["description"] = "The mod's record namespace and mount name (mods/<id>): what its data/ defines is <id>:... It may not be `sage`, the game's id or a plugin's namespace.",
+            },
+            ["name"] = Str("The name shown to players."),
+            ["version"] = Str("The mod's version, 1.2.0."),
+            ["author"] = Str("Who made it."),
+            ["description"] = Str("What it does."),
+            ["game"] = Str("The id of the game this mod is for; \"*\" or left out, any."),
+            ["gameVersion"] = Str("A range against the game's own game.json \"version\": \">=0.1\". Left out, any."),
+            ["sage"] = Str("The engine versions the mod was made for, as game.json's \"sage\" is: \"^0.1\"."),
+            ["dependencies"] = new JsonObject
+            {
+                ["type"] = "object",
+                ["additionalProperties"] = new JsonObject { ["type"] = "string" },
+                ["description"] = "Mods that must be active, loaded before this one: { \"other_mod\": \"^1.0\" } (\"*\" for any version).",
+            },
+            ["loadAfter"] = Strings("Mod ids this one loads after, when they are there."),
+            ["loadBefore"] = Strings("Mod ids this one loads before, when they are there."),
+            ["incompatible"] = Strings("Mod ids that refuse this mod when one is loaded before it."),
+            ["assemblies"] = Strings("Code mods are phase 9: naming an assembly refuses the mod."),
+            ["kind"] = Str("\"data\" (the only kind that loads). \"code\" refuses the mod: code mods are phase 9."),
+        });
+        schema["required"] = new JsonArray("id");
+        return schema;
+    }
+
+    public static JsonObject GameSchema()
+    {
+        var modules = Object("modules", new JsonObject
+        {
+            ["disable"] = Strings("Engine module ids this game switches off."),
+            ["add"] = Strings("Further assemblies whose modules are added after the game's own."),
+        });
+        modules.Remove("$schema");
+        var schema = Object("Sage game.json", new JsonObject
+        {
+            ["name"] = Str("The game's name."),
+            ["id"] = new JsonObject
+            {
+                ["type"] = "string", ["pattern"] = "^[a-z0-9_.-]+$",
+                ["description"] = "The game's record namespace.",
+            },
+            ["assembly"] = Str("The game's assembly, relative to this folder; {config} is the build's configuration. Left out for a game of data only."),
+            ["mounts"] = Strings("Content folders, relative to this folder, mounted in order; the last wins."),
+            ["modsDirectory"] = Str("The folder, relative to this one, whose subfolders are mods (each with a mod.json). Default \"mods\"."),
+            ["modules"] = modules,
+            ["plugins"] = Strings("The engine's simulation plugins this game uses (\"sage.physics3d\", \"sage.gameplay.*\"). Left out, all; empty, none."),
+            ["kits"] = Strings("The kits this game is built on, by plugin id: \"sage.kits.rpg\"."),
+            ["scene"] = Str("The scene record every world starts in."),
+            ["sage"] = Str("The engine versions this game was made for: \"^0.1\"."),
+            ["version"] = Str("The game's own version, 1.4.0: what a mod's \"gameVersion\" is checked against."),
+        });
+        schema["required"] = new JsonArray("id");
+        return schema;
     }
 }

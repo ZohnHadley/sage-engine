@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sage game.json",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The game's name."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+$",
+      "description": "The game's record namespace."
+    },
+    "assembly": {
+      "type": "string",
+      "description": "The game's assembly, relative to this folder; {config} is the build's configuration. Left out for a game of data only."
+    },
+    "mounts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Content folders, relative to this folder, mounted in order; the last wins."
+    },
+    "modsDirectory": {
+      "type": "string",
+      "description": "The folder, relative to this one, whose subfolders are mods (each with a mod.json). Default \"mods\"."
+    },
+    "modules": {
+      "title": "modules",
+      "type": "object",
+      "properties": {
+        "disable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Engine module ids this game switches off."
+        },
+        "add": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Further assemblies whose modules are added after the game's own."
+        }
+      },
+      "additionalProperties": false
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The engine's simulation plugins this game uses (\"sage.physics3d\", \"sage.gameplay.*\"). Left out, all; empty, none."
+    },
+    "kits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The kits this game is built on, by plugin id: \"sage.kits.rpg\"."
+    },
+    "scene": {
+      "type": "string",
+      "description": "The scene record every world starts in."
+    },
+    "sage": {
+      "type": "string",
+      "description": "The engine versions this game was made for: \"^0.1\"."
+    },
+    "version": {
+      "type": "string",
+      "description": "The game's own version, 1.4.0: what a mod's \"gameVersion\" is checked against."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ]
+}

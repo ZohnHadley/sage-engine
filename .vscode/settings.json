@@ -9,12 +9,22 @@
   // JSON with comments. The schemas apply either way.
   "files.associations": {
     "**/data/**/*.json": "jsonc",
-    "**/game.json": "jsonc"
+    "**/game.json": "jsonc",
+    "**/mod.json": "jsonc"
   },
   "json.schemas": [
     {
       "fileMatch": ["**/data/**/*.json", "!**/bin/**", "!**/obj/**"],
       "url": "./schemas/record.schema.json"
+    },
+    {
+      // game.json and mod.json (phase 4j): the keys their loaders read.
+      "fileMatch": ["**/game.json", "!**/bin/**", "!**/obj/**"],
+      "url": "./schemas/game.schema.json"
+    },
+    {
+      "fileMatch": ["**/mod.json", "!**/bin/**", "!**/obj/**"],
+      "url": "./schemas/mod.schema.json"
     }
   ]
 }

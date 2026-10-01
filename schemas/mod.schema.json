@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sage mod.json",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+$",
+      "description": "The mod's record namespace and mount name (mods/<id>): what its data/ defines is <id>:... It may not be `sage`, the game's id or a plugin's namespace."
+    },
+    "name": {
+      "type": "string",
+      "description": "The name shown to players."
+    },
+    "version": {
+      "type": "string",
+      "description": "The mod's version, 1.2.0."
+    },
+    "author": {
+      "type": "string",
+      "description": "Who made it."
+    },
+    "description": {
+      "type": "string",
+      "description": "What it does."
+    },
+    "game": {
+      "type": "string",
+      "description": "The id of the game this mod is for; \"*\" or left out, any."
+    },
+    "gameVersion": {
+      "type": "string",
+      "description": "A range against the game's own game.json \"version\": \">=0.1\". Left out, any."
+    },
+    "sage": {
+      "type": "string",
+      "description": "The engine versions the mod was made for, as game.json's \"sage\" is: \"^0.1\"."
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Mods that must be active, loaded before this one: { \"other_mod\": \"^1.0\" } (\"*\" for any version)."
+    },
+    "loadAfter": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Mod ids this one loads after, when they are there."
+    },
+    "loadBefore": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Mod ids this one loads before, when they are there."
+    },
+    "incompatible": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Mod ids that refuse this mod when one is loaded before it."
+    },
+    "assemblies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Code mods are phase 9: naming an assembly refuses the mod."
+    },
+    "kind": {
+      "type": "string",
+      "description": "\"data\" (the only kind that loads). \"code\" refuses the mod: code mods are phase 9."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "id"
+  ]
+}
