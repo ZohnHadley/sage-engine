@@ -180,6 +180,28 @@ Sage.Editing.PlacementFields.RelativeTo.init -> void
 Sage.Editing.PlacementFields.Yaw.get -> float
 Sage.Editing.PlacementFields.Yaw.init -> void
 Sage.Editing.Placing
+Sage.Editing.PlayCommands
+Sage.Editing.PlaySession
+Sage.Editing.PlaySession.Camera.get -> System.Func<Sage.Editing.PlayStart?>?
+Sage.Editing.PlaySession.Camera.set -> void
+Sage.Editing.PlaySession.Document.get -> Sage.Editing.EditDocument!
+Sage.Editing.PlaySession.EditWorld.get -> Sage.Simulation.World!
+Sage.Editing.PlaySession.IsPlaying.get -> bool
+Sage.Editing.PlaySession.Play(Sage.Editing.PlayStart? from = null) -> Sage.Simulation.World?
+Sage.Editing.PlaySession.PlaySession(Sage.Editing.EditDocument! document) -> void
+Sage.Editing.PlaySession.Scene.get -> Sage.Core.RecordId
+Sage.Editing.PlaySession.Started -> System.Action<Sage.Simulation.World!>?
+Sage.Editing.PlaySession.Stop() -> bool
+Sage.Editing.PlaySession.Stopped -> System.Action?
+Sage.Editing.PlaySession.Stopping -> System.Action<Sage.Simulation.World!>?
+Sage.Editing.PlaySession.World.get -> Sage.Simulation.World?
+Sage.Editing.PlayStart
+Sage.Editing.PlayStart.Eye.get -> System.Numerics.Vector3
+Sage.Editing.PlayStart.Eye.init -> void
+Sage.Editing.PlayStart.PlayStart() -> void
+Sage.Editing.PlayStart.PlayStart(System.Numerics.Vector3 Eye, float Yaw) -> void
+Sage.Editing.PlayStart.Yaw.get -> float
+Sage.Editing.PlayStart.Yaw.init -> void
 Sage.Editing.PrefabGroup
 Sage.Editing.PrefabGroup.Namespace.get -> string!
 Sage.Editing.PrefabGroup.Namespace.init -> void
@@ -335,6 +357,7 @@ Sage.Editing.WiringModel.Wires.get -> System.Collections.Generic.IReadOnlyList<S
 Sage.Editing.WiringModel.WiringModel(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
 const Sage.Editing.CommandLog.DefaultCapacity = 500 -> int
 const Sage.Editing.EditorPicking.FallbackRadius = 0.35 -> float
+const Sage.Editing.PlaySession.WorldName = "play" -> string!
 const Sage.Editing.ViewportTools.DefaultAngleStep = 15 -> float
 const Sage.Editing.ViewportTools.DefaultGrid = 0.5 -> float
 override Sage.Editing.InspectorGroup.ToString() -> string!
@@ -360,6 +383,8 @@ static Sage.Editing.Placing.Place(Sage.Editing.EditDocument! document, Sage.Core
 static Sage.Editing.Placing.PlaceAt(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, in Sage.Editing.EditorRay ray, float yaw = 0, string! name = "") -> Sage.Simulation.Placement?
 static Sage.Editing.Placing.Surface(Sage.Simulation.World! world, in Sage.Editing.EditorRay ray, float maxDistance = 1000, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> System.Numerics.Vector3?
 static Sage.Editing.Placing.UniqueName(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, string! wanted = "") -> string!
+static Sage.Editing.PlayCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.PlaySession?>! session) -> void
+static Sage.Editing.PlaySession.StandBelow(Sage.Simulation.World! world, System.Numerics.Vector3 eye) -> System.Numerics.Vector3
 static Sage.Editing.RecordDocument.ChildPath(string! parent, string! name) -> string!
 static Sage.Editing.RecordDocument.Open(Sage.Simulation.Engine! engine, string! type, Sage.Core.RecordId id) -> Sage.Editing.RecordDocument?
 static Sage.Editing.RecordDocument.ParseValue(string! text) -> System.Text.Json.Nodes.JsonNode?

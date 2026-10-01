@@ -162,7 +162,19 @@ public sealed class Engine : IDisposable
     public World CreateEditWorld(string name, RecordId scene = default) =>
         CreateWorld(name, editing: true, scene.IsEmpty ? Scenes.Start : scene);
 
-    private World CreateWorld(string name, bool editing, RecordId scene)
+    // A **play world** for play-in-editor (phase 10a, issue #226): a world like `CreateWorld`'s, with the
+    // game's systems and its rules started (so it has its player), in `scene` (the start scene when that is
+    // empty), but with `document` placed from `record` (the editor's copy in memory) wherever the scene
+    // would place it from the record store, or beside the scene when the scene does not name it. Unsaved
+    // edits play; the store and the file are not touched. Throw it away with DestroyWorld.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor (phase 10a)
+    public World CreatePlayWorld(string name, RecordId scene, RecordId document, PlacementsRecord record)
+    {
+        if (scene.IsEmpty) scene = Scenes.Start;
+        return CreateWorld(name, editing: false, scene, document.IsEmpty ? null : new PlayedDocument(scene, document, record));
+    }
+
+    private World CreateWorld(string name, bool editing, RecordId scene, PlayedDocument? played = null)
     {
         // Prefab parts and entity inputs are per engine, and a world's entities are built from them:
         // one added after the first world would exist in some worlds and not others.
@@ -233,6 +245,7 @@ public sealed class Engine : IDisposable
 
         // The start scene (issue #29), placed before the rules start: they find the world populated,
         // and their SpawnPlayer finds the scene's player start.
+        if (played != null) world.Resources.Add(played);   // what the scene places for the editor's document (#226)
         Scenes.Enter(world, scene);
 
         // Now that every module has had its turn, the game's rules may populate the world (16 §3.1). Not

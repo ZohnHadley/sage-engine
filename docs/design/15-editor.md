@@ -599,6 +599,42 @@ draws them and passes the viewport click on.
 - **A wired edit plays**: the wire is in the entity the document spawned, so firing the output ticks the
   input through. (test: AWiredPlateFiresTheDoorOnceTheEditHasRespawnedIt)
 
+## 10l. As built: play-in-editor (#226, 2026-10-01)
+
+**Play makes a second, real world; Stop throws it away** (phase 10a decision 2). The edit world is never
+unpaused: whatever a play does (a door opened, a crate knocked over, a goblin killed) happens in another
+world, and that world is destroyed. `PlaySession` (`src/Sage.Editing/PlaySession.cs`) is the model; the
+host only chooses which world it draws and sends input to.
+
+- **The play world is built as the host builds its main world**, by `Engine.CreatePlayWorld(name, scene,
+  document, record)`: every module furnishes it, the game's rules are made and *started* (so it has its
+  player and whatever `OnWorldStarted` adds), and its Fixed systems run. Its scene is the one the edit
+  world shows (a new level's own scene once it is a record).
+- **The document plays as it is in memory, not as its file says.** The record is the editor's copy
+  (#217), so an unsaved placement, override or wire plays, and the record store and the file are not
+  touched. The world carries it as a resource (`PlayedDocument`), and wherever its scene would place that
+  document from the store (`Scenes.Place`, a streamed scene's buckets, a hot reload's re-placing) it places
+  the copy; a document the scene does not name is placed beside it, as the editor showed it.
+  (test: AWireMadeInTheEditorFiresInPlay, ADocumentTheSceneDoesNotNamePlaysBesideIt)
+- **Stop leaves everything as it was**: the document's record, its history and its dirty state, the edit
+  world's entities, the store. (test: PlayThenStopLeavesTheDocumentAndTheEditWorldAsTheyWere)
+- **The player** is the one the rules spawned at the scene's start. Given a `PlayStart` (an eye and a yaw
+  in degrees; the host passes the free camera) it is moved onto the first surface below the eye
+  (`Placing.Surface` on the edit world, whose physics mirrors the scene), as high above it as the scene's
+  own start stands above the ground below *that* (so a pawn whose origin is its middle starts a metre up),
+  and faces the camera's way (`PlayerInput.RequestView`). Headless, with no camera, it stays at the start.
+- **Console**: `ed_play [x y z [yaw]]` (from the free camera, or from that eye) and `ed_stop`. Both refuse
+  outside an edit world, and a second `ed_play` while playing is refused rather than stacking worlds.
+- **In the host** (`PlayBar`, `src/Sage.Editor/Tools/`): a Play button under the gizmo's toolbar and
+  **Ctrl+P** play; while playing the play world has the screen (`Renderer.ScreenWorld`), the host's input
+  goes to it (`Gameplay` on, `Editor` off, and the player's commands go to its `PlayerInput`), the free
+  camera waits, and the editor's panels give way to a slim bar with a Stop button. **Escape** (the host's
+  `Menu` action, which quits a game run), Ctrl+P and the button all stop; F5 stays the game's quick-save.
+  The console closes on the way in, because an open console takes the keyboard from the game; `~` opens it
+  over the game, and it opens again on the way out if it was open.
+
+**Not built:** simulating in the edit world (Unity's "keep changes"); playing from a selected entity; a
+second viewport showing the edit world while playing.
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
