@@ -17,14 +17,18 @@ internal sealed class JsonSource
     private readonly byte[] _bytes;
     private readonly int _start;   // past a UTF-8 byte order mark, which the JSON reader will not take
 
-    public JsonSource(string name, byte[] bytes)
+    public JsonSource(string name, byte[] bytes, IMount? mount = null)
     {
         Name = name;
+        Mount = mount;
         _bytes = bytes;
         _start = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
     }
 
     public string Name { get; }   // "mount:path"
+
+    // The mount the file was read from: who wrote a record's field, for the content report (4j-2).
+    public IMount? Mount { get; }
 
     public ReadOnlySpan<byte> Utf8 => _bytes.AsSpan(_start);
 

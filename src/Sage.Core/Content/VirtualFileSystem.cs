@@ -261,6 +261,26 @@ public sealed class VirtualFileSystem
                 yield return (path, mount);
     }
 
+    // Every path more than one mount has, in path order: the last mount's file is the one anything
+    // opens, and the others are hidden (05 §3.1). For the content report (4j-2): two mods shipping one
+    // texture. Walks every mount's files, so it is for tools, never a frame. Record files and string
+    // tables are in here too, though every mount's copy of those is read and merged.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (4j-2): may change before 1.0
+    public IReadOnlyList<ShadowedAsset> Shadows()
+    {
+        var providers = new SortedDictionary<string, List<IMount>>(StringComparer.Ordinal);
+        foreach (var mount in _mounts)
+            foreach (var path in mount.Enumerate(null, "*", recursive: true))
+            {
+                if (!providers.TryGetValue(path.Value, out var list)) providers[path.Value] = list = new List<IMount>(2);
+                if (list.Count == 0 || list[^1] != mount) list.Add(mount);
+            }
+        var shadows = new List<ShadowedAsset>();
+        foreach (var (path, list) in providers)
+            if (list.Count > 1) shadows.Add(new ShadowedAsset(VirtualPath.Parse(path), list[^1], list.Take(list.Count - 1).ToList()));
+        return shadows;
+    }
+
     public static void RegisterCommands(CVarRegistry cvars, VirtualFileSystem vfs)
     {
         cvars.RegisterCommand("vfs_which", CVarFlags.None, "vfs_which <path>: which mount provides a file (and which it shadows).", a =>

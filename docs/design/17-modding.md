@@ -70,3 +70,50 @@ public sealed class ModManager                     // Engine service, used durin
 2. Conflict report (depends on the record merge reporting, 05).
 3. Save header mod list (with 09).
 4. C# mod assemblies (later).
+
+### As built (merge provenance and the conflict report, 2026-10-01 — issue 4j-2, F37)
+
+Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`, `Describe`, the
+`mod_conflicts` command), `ContentReport.cs`, `VirtualFileSystem.Shadows`; tests in
+`tests/Sage.Tests/Content/ContentReportTests.cs`. Experimental API, SAGE0132 (MAKING_A_GAME §10b).
+
+- **Every write is kept.** The merge records each write to a record as a path, the file (and so the
+  mount and line) and an op: `define` for each top-level field of a definition, and for a patch `set`,
+  `add` (`field+`), `remove` (`field-`) or `disable`, at the deepest path the patch names —
+  `"stats": { "agility": 4 }` is a set of `stats.agility`. `RecordStore.Writes(type, id)` gives them in
+  the order they apply, a base's first with `Via` naming the base, and a disabled record keeps its own.
+  This replaced the old "last file per top-level field" table, which is now worked out from the writes,
+  so `rec_get` and errors' file:line read the same data; the records themselves are untouched.
+- **`rec_get` shows every writer** of a field that more than one file wrote, each with its file:line,
+  under the field's `<-` line (test: TwoModsSetTheSameField_TheLaterWins_AndItIsAConflict), and says
+  "(via base …)" for an inherited one (test: AnInheritedWriteSaysViaBase). A disabled record says who
+  disabled it.
+- **Which mounts are mods:** a mount named `mods/<id>` (`ContentReport.ModMountPrefix`,
+  `IsModMount`). Phase 4j's boot (4j-3) mounts each mod that way; the engine, a kit, the game and a
+  `--mounts` folder are not mods.
+- **A conflict** (decision 5) is a `set` by one mod overlapping another mod's write of the same path
+  (a path or anything inside it), reported once at the shorter path:
+  `test_item sandbox:sword name: better_blades, rival_trade; rival_trade won`. A nested path is
+  reported at its depth (test: ANestedPathIsReportedAtTheDepthThePatchNamed). Two mods' `+`/`-` on one
+  list never conflict (test: TwoModsAddingToOneList_IsNotAConflict). One mod's `disabled` against
+  another's patch is one (test: AModsDisableAgainstAnothersPatch_IsAConflict). A mod writing over the
+  game, engine or a kit is an override, listed and never a conflict (test:
+  AModPatchingTheGameIsAnOverride_NotAConflict). Two mods shipping one asset path is one; a mod
+  shadowing the game's asset is listed. Record files, string tables and a root `mod.json`/`game.json`
+  are merged or read per mount, so they are never "shadowed" (test:
+  TwoModsShippingOneTexture_IsAConflict_AModShadowingTheGameIsNot).
+- **`ContentReport.Build(records, vfs)`** groups by mount: records added, records patched with each
+  write (marked "overrides game" where a mod patches what is not a mod's), redefinitions (still load
+  errors, applied as patches), skipped patches of records never defined, and the assets it shadows and
+  in whom (test: TheReportListsAdditionsRedefinitionsAndSkippedPatches_ByMount). Conflicts are
+  warnings. **`mod_conflicts [mount]`** prints it, or one mount's part (a mount's name or a mod's id);
+  it is registered with the record commands, so it answers with no mods — a game patching the engine
+  (test: ModConflicts_RunsWithNoMods).
+- **Built when asked**, from the last load's writes and the VFS as it now is, so it is never stale
+  after a reload and costs the load nothing. Keeping the writes costs the load next to nothing: on the
+  Sandbox (176 records) a reload takes and allocates what it did before (about 6 MB in a Debug build),
+  because the writes replaced two per-record dictionaries, and the report takes tens of milliseconds,
+  most of it walking every mount's files (test: TheSandboxsRecordsReloadWithinBudget).
+- **Not done here:** missing references stay load errors at their line rather than report lines;
+  string-table keys two mods both set are not reported; the boot summary and
+  `user://logs/mod_report.txt` are 4j-3's, and `sage mods` is 4j-5's.
