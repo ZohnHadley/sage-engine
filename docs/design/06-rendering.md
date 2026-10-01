@@ -500,10 +500,10 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
   per feature means (16 §"As built (F7)").
 - **Sprites lit by the lamps (later):** `sprite.fx`'s `Lit` technique takes the sun (with its shadows),
   the ambient and the point lights, with wrapped (half-Lambert) shading because a billboard's normal
-  only faces the camera, and it is `sage:sprite_default`'s technique: a sheet that names no material
-  sits in the world's light, and full-bright is `sage:sprite_unlit`. A run of sprites is split where its
+  only faces the camera. It is `sage:sprite_lit`'s technique, which a sheet opts into; `sage:sprite_default`
+  (also named `sage:sprite_unlit`) stays full-bright. A run of sprites is split where its
   four lights change (`LightRules.SameSet`, `Renderer.DrawSprites`), so sprites away from any lamp still
-  batch (test: TwoChoicesAreTheSameSetWhateverTheirOrder) (test: SpritesAreLitByDefault_AndFullBrightIsOptIn).
+  batch (test: TwoChoicesAreTheSameSetWhateverTheirOrder) (test: SpritesAreUnlitByDefault_AndLitIsOptIn).
 - **Not yet:** lightmaps (the right answer for a large level, HL1's), shadows, light entities that switch or
   flicker through entity I/O, and any culling of the light list beyond what `LightRules` does per
   object — a hundred lamps is a hundred structs, and the work that matters is per *draw*. When that

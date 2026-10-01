@@ -107,16 +107,16 @@ public class LightTests
         Assert.True(LightRules.SameSet(ReadOnlySpan<LightSample>.Empty, ReadOnlySpan<LightSample>.Empty));
     }
 
-    // A sprite sits in the world's light by default: the engine's sprite material is the sprite shader's
-    // Lit technique (sun, shadows, ambient and lamps), and full-bright is `sage:sprite_unlit`, by name.
+    // A sprite is full-bright unless its sheet opts into the world's light with `sage:sprite_lit` (the
+    // sprite shader's Lit technique: sun, shadows, ambient and lamps); `sage:sprite_unlit` names the default.
     [Fact]
-    public void SpritesAreLitByDefault_AndFullBrightIsOptIn()
+    public void SpritesAreUnlitByDefault_AndLitIsOptIn()
     {
         string game = System.IO.Path.Combine(TestEnv.FolderAbove("Sage.sln"), "tests", "games", "skeletal");
         using var app = HeadlessApp.ForGame(game).WithEngineContent()
             .OnRegistered(a => a.Records.Register<MaterialRecord>())   // the client's to register; headless asks for it
             .Boot();
-        Assert.Equal("Lit", app.Records.Get<MaterialRecord>(SpriteSheetRecord.DefaultMaterial).Technique);
+        Assert.Equal("Unlit", app.Records.Get<MaterialRecord>(SpriteSheetRecord.DefaultMaterial).Technique);
         Assert.Equal("Lit", app.Records.Get<MaterialRecord>(new RecordId("sage", "sprite_lit")).Technique);
         Assert.Equal("Unlit", app.Records.Get<MaterialRecord>(new RecordId("sage", "sprite_unlit")).Technique);
     }

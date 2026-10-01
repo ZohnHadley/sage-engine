@@ -24,31 +24,30 @@
     "params": { "Albedo": "textures/ground.png" }
   },
   {
-    // Billboard sprites (06 §3.8), lit like the world around them: the sun (and its shadows), the sky's
-    // ambient and the nearby lamps, so a creature darkens at night and glows by a fire. Point sampling and
-    // alpha test give the Daggerfall look; the sheet's texture replaces Albedo per draw, so one material
-    // serves every sheet.
+    // Billboard sprites (06 §3.8): full-bright by default, with fog. Point sampling and alpha test give
+    // the Daggerfall look; the sheet's texture replaces Albedo per draw, so one material serves every sheet.
     "type": "material",
     "id": "sprite_default",
     "effect": "shaders/sprite.mgfxo",
-    "technique": "Lit",
+    "technique": "Unlit",
     "pass": "AlphaTested",
     "cull": "None",
     "sampler": { "filter": "Point", "address": "Clamp" },
     "params": { "Albedo": "textures/white.png", "AlbedoColor": [1, 1, 1, 1], "AlphaCutoff": 0.5 }
   },
   {
-    // The same, by name, for sheets that say so (the default used to be unlit).
+    // Sprites in the world's light: the sun (and its shadows), the sky's ambient and the nearby lamps, so a
+    // creature darkens at night and glows by a fire. A sheet opts in with "material": "sage:sprite_lit".
     "type": "material",
     "id": "sprite_lit",
-    "base": "sprite_default"
+    "base": "sprite_default",
+    "technique": "Lit"
   },
   {
-    // Full-bright sprites that ignore the world's light: icons, markers, glowing things.
+    // Full-bright, by name: the same as the default, for a sheet that wants to say so.
     "type": "material",
     "id": "sprite_unlit",
-    "base": "sprite_default",
-    "technique": "Unlit"
+    "base": "sprite_default"
   },
   {
     // What a particle draws with (06 §3.9, F39): the sprite shader's blended technique, *added* to what
