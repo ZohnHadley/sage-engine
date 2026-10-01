@@ -1,0 +1,31 @@
+[
+  // Post-processing (docs/design/06 "As built (post-processing)", issue 4h-6), namespace "sage". Off until
+  // `r_post 1`; each effect has its own switch too. A game adds a `post_effect` with its own material
+  // (and effect file), or overrides one of these; `"enabled": false` removes one.
+  {
+    // Every post material's state and every param post.fx has (GL has no .fx defaults, 07 §3.3). Point
+    // sampling: at a render scale below 1 the last step upscales as big pixels, the retro look (06 §3.9).
+    "type": "material",
+    "id": "post_copy",
+    "effect": "shaders/post.mgfxo",
+    "technique": "Copy",
+    "pass": "Opaque",
+    "cull": "None",
+    "depthTest": false,
+    "depthWrite": false,
+    "fog": false,
+    "sampler": { "filter": "Point", "address": "Clamp" },
+    "params": {
+      "Exposure": 0, "Contrast": 1.05, "Saturation": 1.05, "ColorFilter": [1, 1, 1],
+      "NightColor": [0.45, 0.6, 1.0], "NightStrength": 0.55,
+      "VignetteStrength": 0.35, "VignetteRadius": 0.45, "VignetteSoftness": 0.55
+    }
+  },
+  { "type": "material", "id": "post_grade", "base": "post_copy", "technique": "Grade" },
+  { "type": "material", "id": "post_vignette", "base": "post_copy", "technique": "Vignette" },
+
+  // Colour grade and exposure, with a blue night tint from the sky (none without a sky).
+  { "type": "post_effect", "id": "grade", "material": "sage:post_grade", "order": 100, "cvar": "r_post_grade" },
+  // Darker corners.
+  { "type": "post_effect", "id": "vignette", "material": "sage:post_vignette", "order": 200, "cvar": "r_post_vignette" }
+]

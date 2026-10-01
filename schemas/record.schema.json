@@ -48,6 +48,7 @@
             "particle",
             "physics_layers",
             "placements",
+            "post_effect",
             "prefab",
             "quest",
             "recoil",
@@ -428,6 +429,21 @@
           },
           "then": {
             "$ref": "placements.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "post_effect"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "post_effect.schema.json"
           }
         },
         {
