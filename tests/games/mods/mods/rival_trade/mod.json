@@ -1,0 +1,15 @@
+{
+  // A second data mod for tests/games/mods (engine issue #200; docs/MODDING.md), written as if by someone
+  // else: it renames the same trader (a conflict with better_blades, which the later mod wins), adds its own
+  // spear to his stock (merged, not a conflict), places a stall, and re-skins better_blades' falchion.
+  // With no constraint between the two, the player's order decides, then the id: rival_trade loads last.
+  "id": "rival_trade",
+  "name": "Rival Trade",
+  "version": "1.0.0",
+  "author": "Sage",
+  "description": "A rival's stall, a spear, and the trader under new management.",
+  "game": "village",
+  "gameVersion": "^1.0",
+  "sage": ">=0.1",
+  "dependencies": {}
+}

@@ -1,0 +1,21 @@
+{
+  // Phase 4j's exit (engine issue #200, REDESIGN §5): a data mod that adds a weapon and patches a trader
+  // loads, and its conflicts are reported (docs/MODDING.md; docs/design/17 "As built (the 4j exit game)").
+  // No C#: a village with a trader whose `inventory` part is his stock, a straw dummy to try a blade on and
+  // a player; the RPG kit brings the shop screen and the hands a blade is held in. `mods/` (game.json's
+  // default "modsDirectory") holds two data mods, found and mounted after the game as `mods/<id>`:
+  //   better_blades  a falchion (an attack and an item) in the trader's stock, and the trader renamed;
+  //   rival_trade    a spear in the stock too, the trader renamed again, a stall placed in the scene, and
+  //                  better_blades' falchion texture re-skinned.
+  // CI validates it with --game-mods, runs `sage mods` and smoke-runs it; tests/Sage.Tests/Games/ModsExitTests.cs
+  // plays it headlessly: the falchion bought, wielded and swung, the conflict report, the order reversed,
+  // a mod switched off, and a save carried across.
+  "name": "Mods",
+  "id": "village",
+  "version": "1.0.0",
+  "plugins": ["sage.gameplay.io", "sage.gameplay.character", "sage.gameplay.attributes",
+              "sage.gameplay.combat", "sage.gameplay.items"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "village"
+}

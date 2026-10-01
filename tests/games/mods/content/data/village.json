@@ -1,0 +1,51 @@
+[
+  // The village (engine issue #200): the game's own content, before any mod. The mods change it from
+  // their own folders; nothing here knows they exist.
+
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+
+  // What the trader sells before any mod: a lantern and bread. `value` is the price (the kit's stub rule
+  // until phase 4f's barter: the value to buy, half of it to sell).
+  { "type": "item", "id": "lantern", "label": "lantern", "weight": 1, "value": 8 },
+  { "type": "item", "id": "bread", "label": "bread", "maxStack": 10, "weight": 0.5, "value": 1 },
+
+  {
+    // The trader: an NPC whose `inventory` part is his stock (the shop screen shows it beside the
+    // player's bag). Both mods add to `items` with `items+` and rename him with `name`.
+    "type": "prefab", "id": "trader", "name": "trader",
+    "parts": {
+      "character": { "layer": "enemy" },
+      "inventory": { "items": [ { "item": "lantern" }, { "item": "bread", "count": 5 } ] }
+    }
+  },
+
+  // A straw dummy, to try a blade on: the engine's character with 40 health and nothing else.
+  { "type": "effect", "id": "straw", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 40 } ] },
+  {
+    "type": "prefab", "id": "dummy", "name": "straw dummy",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "effects": ["straw"] }
+  },
+
+  {
+    // The player: empty hands (the kit's MainHand) and a bag with room for a blade.
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "melee": {},
+      "inventory": { "items": [ { "item": "bread", "count": 2 } ], "capacity": 30 }
+    }
+  },
+
+  {
+    // The square, watched from the south. The trader's placement has no name, so he is called what his
+    // prefab is called: what the mods rename. Every placement has an id, so a save finds it.
+    "type": "scene", "id": "village",
+    "player": { "prefab": "player", "at": [0, 0.1, 8] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0], "id": "floor" },
+      { "prefab": "trader", "at": [0, 0, 0], "yaw": 180, "id": "trader" },
+      { "prefab": "dummy", "at": [8, 0, 0], "yaw": 180, "name": "straw dummy", "id": "dummy" }
+    ]
+  }
+]

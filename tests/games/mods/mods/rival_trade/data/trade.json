@@ -1,0 +1,28 @@
+[
+  // A spear, this mod's: 10 a thrust.
+  {
+    "type": "attack", "id": "spear_thrust", "damage": 10, "damageType": "sage:physical",
+    "reach": 3.0, "radius": 0.25, "arcDegrees": 30,
+    "windupTime": 0.2, "recoverTime": 0.25, "cooldown": 0.6
+  },
+  { "type": "item", "id": "spear", "label": "spear", "slot": "MainHand", "attack": "spear_thrust", "weight": 4, "value": 20 },
+
+  // The same trader as better_blades patches: `items+` merges with its `items+`, and `name` is set by both
+  // (a conflict, reported by `mod_conflicts` and `sage mods`; the mod that loads later wins it).
+  {
+    "type": "prefab", "id": "village:trader", "patch": true,
+    "name": "Rurik's trading post",
+    "parts": { "inventory": { "items+": [ { "item": "spear" } ] } }
+  },
+
+  // A stall beside him, placed by patching the game's scene with `place+`: content, so a save loaded without
+  // this mod drops it, as it drops anything the content no longer places.
+  { "type": "prefab", "id": "stall", "name": "rival's stall", "parts": { "body": { "size": [2, 1, 1] } } },
+  // A handcart nothing places: one spawned in play (`ent_spawn rival_trade:cart`, or a game's spawner) is the
+  // game's to keep, so a save loaded without this mod keeps it as an inert placeholder (4i-2).
+  { "type": "prefab", "id": "cart", "name": "rival's cart", "parts": { "body": { "size": [1, 1, 2] } } },
+  {
+    "type": "scene", "id": "village:village", "patch": true,
+    "place+": [ { "prefab": "stall", "at": [-4, 0.5, 0], "id": "rival_stall" } ]
+  }
+]

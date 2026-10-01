@@ -214,3 +214,47 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
   and reports no conflict (test: TheTemplateMod_LoadsInAGame_AddsItsWeapon_AndPatchesThePlayer). CI's template step validates
   it with `--mods`, runs `sage mods`, puts it in the game's `mods/` and checks `--game-mods`, and checks that a `mod.json`
   with an unknown key fails.
+
+## As built (the 4j exit game, issue 4j-7)
+
+Phase 4j's exit: a data mod that adds a weapon and patches a trader loads, and its conflicts are reported.
+**No engine change was needed**; the game, its two mods and the test are data and a test only. Code:
+`tests/games/mods` (game id `village`, version 1.0.0, on the RPG kit for its shop screen and its hands),
+`tests/Sage.Tests/Games/ModsExitTests.cs`; for modders, [docs/MODDING.md](../MODDING.md).
+
+- **The game:** a trader (an NPC whose `inventory` part is his stock: a lantern and bread; his placement has
+  no name, so he is called what his prefab is called), a straw dummy with 40 health and a player with empty
+  hands. Its `mods/` folder (the default `modsDirectory`) holds `better_blades` and `rival_trade`, which the
+  boot finds and mounts after the game as `mods/<id>`; with no constraint between them they load by id, so
+  `rival_trade` is last. It validates alone and with `--game-mods` (test: TheModsGameValidates_WithItsMods).
+- **better_blades** adds `better_blades:falchion_cut` (an `attack`), `better_blades:falchion` (an `item` for
+  the kit's `MainHand`, worth 30) with its ground sprite on `textures/falchion.png`, and patches
+  `village:trader` with `parts.inventory.items+` and a `name`. **rival_trade** adds a spear the same way,
+  renames the trader too, places a stall with the scene's `place+`, has a cart nothing places, and ships its
+  own `textures/falchion.png`.
+- **Bought, wielded, swung:** the trader stocks lantern, bread, falchion and spear (each mod's `items+`
+  merged); the player buys the falchion through the kit's `rpg:shop` (`ShopView`) with a gamepad, for 30 by
+  the stub price rule, equips it in the main hand, and one cut takes the dummy from 40 to 25
+  (test: ModsExit_TheFalchionIsBoughtFromTheTrader_Wielded_AndLandsAHit).
+- **The report:** `mod_conflicts` says `prefab village:trader name: better_blades, rival_trade; rival_trade won`
+  and `asset textures/falchion.png: better_blades, rival_trade; rival_trade won`, lists each mod's patch of the
+  trader as an override of the game, and says nothing of the two `items+` (test:
+  ModsExit_ModConflictsReportsTheNameAndTheTexture). With the player's `mods.json` ordering `rival_trade`
+  first, `better_blades` wins both (test: ModsExit_WithTheOrderReversed_TheOtherModWins); with `rival_trade`
+  switched off, it is not mounted, its spear and stall are gone and there are no conflicts (test:
+  ModsExit_WithRivalTradeSwitchedOff_ItsItemIsGoneAndNothingIsReported).
+- **A save across a mod change:** saved with both mods after the purchase and an `ent_spawn rival_trade:cart`,
+  then loaded in a fresh app with `rival_trade` switched off: the slot lists both mods and says
+  `mod 'rival_trade' 1.0.0 is not active`, the load warns and happens, the cart is a placeholder that keeps
+  its prefab id, the stall (content the scene no longer places) is dropped, every other saved id is there
+  once, and the falchion is once in the bag and not back in the stock
+  (test: ModsExit_ASaveWithBothLoadedWithOne_WarnsKeepsThePlaceholderAndDoublesNothing).
+- **CI** validates the game alone and with `--game-mods`, runs `sage mods tests/games/mods`, includes it in
+  `sage schema`, and smoke-runs it in the host with `mod_list`, `mod_conflicts` and the shop screen opened.
+- **Differences from the plan:** the game's id is `village`, not `mods`: a game's mounts are named
+  `<game id>/<folder>`, so a game called `mods` would have a mount `mods/content` that the report would take
+  for a mod. `rival_trade` has no `loadAfter: better_blades`, since a constraint beats the player's order and
+  the order could then not be reversed by `mods.json`; it loads last by id instead. The placeholder is a
+  runtime spawn of the mod's prefab (the cart), because an entity a mod's scene patch placed is content that
+  is no longer placed once the mod is gone, and 4i drops those rather than keeping them. Phase 4f's trader
+  record is not filed, so the mods patch the NPC's `inventory` part.

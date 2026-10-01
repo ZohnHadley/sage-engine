@@ -1,0 +1,28 @@
+[
+  // A weapon is an attack (what a swing does) and an item that carries it. A bare id here is this mod's:
+  // `better_blades:falchion_cut`, `better_blades:falchion`. The damage type is the engine's. 15 a cut
+  // against the straw dummy's 40: dead in three.
+  {
+    "type": "attack", "id": "falchion_cut", "damage": 15, "damageType": "sage:physical",
+    "reach": 2.4, "radius": 0.35, "arcDegrees": 90,
+    "windupTime": 0.15, "recoverTime": 0.2, "cooldown": 0.5
+  },
+  // How it looks lying on the ground: one frame of textures/falchion.png (which rival_trade re-skins).
+  {
+    "type": "sprite_sheet", "id": "falchion_flat", "texture": "textures/falchion.png", "directions": 1,
+    "size": [0.4, 0.8], "material": "sage:sprite_lit", "frames": [ { "rect": [0, 0, 16, 32] } ]
+  },
+  {
+    "type": "item", "id": "falchion", "label": "falchion", "slot": "MainHand", "attack": "falchion_cut",
+    "sheet": "falchion_flat", "weight": 3, "value": 30
+  },
+
+  // The game's trader is patched, not redefined: its id is the game's (a bare `trader` would mean
+  // `better_blades:trader`), and only the fields named change. `items+` adds to his stock instead of
+  // replacing it, so another mod adding too is not a conflict; a bare item id is this mod's.
+  {
+    "type": "prefab", "id": "village:trader", "patch": true,
+    "name": "Hilde the bladesmith",
+    "parts": { "inventory": { "items+": [ { "item": "falchion" } ] } }
+  }
+]
