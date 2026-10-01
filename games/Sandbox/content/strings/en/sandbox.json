@@ -26,11 +26,18 @@
     "title": "Map",
     "you": "you",
     "range": { "zero": "Nothing marked within {range} m", "one": "{count} place within {range} m", "other": "{count} places within {range} m" },
-    "hint": "North is up. Esc or N closes",
+    "hint": "North is up. Choose a waystone to travel. Esc or N closes",
     "hut": "the hut",
     "campfire": "campfire",
     "stranger": "the stranger",
-    "watcher": "watcher"
+    "watcher": "watcher",
+    // The open world (4g-7): the crypt, the smith, the road, and travelling from the map.
+    "crypt": "the crypt",
+    "smith": "the smith",
+    "road": "the road east",
+    "travel": "go ({hours} h)",
+    "destinations": "Travel to",
+    "destination": "{label}   {hours} h"
   },
   "menu": {
     "title": "Sandbox",

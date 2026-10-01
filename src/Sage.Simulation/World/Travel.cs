@@ -171,7 +171,13 @@ public static class Travel
             world.Rebase(Terrain.SectorOf(known.At.X, known.At.Z));
             if (!interior) scenes.PrepareGround(world, scene);
         }
-        if (!same) scenes.Load(world, request.Scene, movePlayer: false);
+        if (!same)
+        {
+            scenes.Load(world, request.Scene, movePlayer: false);
+            // Its levels placed and their entities spawned now, not at the next tick: an entry that is a map
+            // entity's targetname is found in a placed level, and the way out is there when the player is (4g-7).
+            MapLoader.EnsureEntities(world);
+        }
 
         var player = Scenes.Player(world);
         if (player.IsNull) Log.Warn(LogCat.World, $"Travel to '{request.Scene}': there is no player to put at '{request.Entry}'");

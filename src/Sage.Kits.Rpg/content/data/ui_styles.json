@@ -21,5 +21,8 @@
 
   // A topic, before and after it was asked (Morrowind greys what you have heard).
   { "type": "ui_style", "id": "topic", "base": "button", "background": "#00000000", "borderWidth": 0, "textColour": "#F0D890" },
-  { "type": "ui_style", "id": "topic_asked", "base": "topic", "textColour": "#A09880" }
+  { "type": "ui_style", "id": "topic_asked", "base": "topic", "textColour": "#A09880" },
+
+  // A discovered travel point on a map that has no map_marker of its own to draw it with (issue 4g-7).
+  { "type": "ui_style", "id": "map_travel", "background": "#60A0F0" }
 ]

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Sage.Kits.Rpg;
@@ -27,6 +28,21 @@ public sealed class RpgConventionsRecord
     [Property(Min = 1, Max = 64, Tooltip = "An inventory grid's size in squares, [columns, rows]: the rows are the least it shows, and it grows " +
                                             "downwards to fit what is carried (issue #98)")]
     public System.Numerics.Vector2 InventoryGrid = new(8, 6);
+
+    // Resting (issue 4g-7, the kit's rest rule over Time.Pass): sleeping is refused with a hostile creature
+    // this near, and the rest screen passes at most RestMaxHours at once. RestEffect, when given, is
+    // applied on waking with the hours slept as its magnitude: "health +5" heals five an hour.
+    [Experimental(RpgKitModule.OpenWorld, UrlFormat = RpgKitModule.ExperimentalUrl)]
+    [Property(Min = 0, Unit = "m", Category = "Rest", Tooltip = "Sleeping is refused while a hostile creature is this near; 0: never refused")]
+    public float RestEnemyRange = 25f;
+
+    [Experimental(RpgKitModule.OpenWorld, UrlFormat = RpgKitModule.ExperimentalUrl)]
+    [Property(Min = 1, Max = 168, Unit = "h", Category = "Rest", Tooltip = "The most the rest screen passes at once")]
+    public int RestMaxHours = 24;
+
+    [Experimental(RpgKitModule.OpenWorld, UrlFormat = RpgKitModule.ExperimentalUrl)]
+    [Property(Category = "Rest", Tooltip = "Applied on waking from a sleep, its magnitude the hours slept (\"health +5\" heals five an hour); empty: none")]
+    public RecordRef<EffectRecord> RestEffect;
 
     // InventoryGrid in whole squares.
     public (int Columns, int Rows) GridSize => (Math.Max((int)MathF.Round(InventoryGrid.X), 1), Math.Max((int)MathF.Round(InventoryGrid.Y), 1));
@@ -84,6 +100,10 @@ public static class RpgConventions
         }
         if (conventions.InventoryGrid.X < 1 || conventions.InventoryGrid.Y < 1)
             check.Error(nameof(RpgConventionsRecord.InventoryGrid), $"a grid is at least [1, 1] squares; it is [{conventions.InventoryGrid.X}, {conventions.InventoryGrid.Y}]");
+        if (conventions.RestMaxHours < 1)
+            check.Error(nameof(RpgConventionsRecord.RestMaxHours), $"a rest is at least an hour; it is {conventions.RestMaxHours}");
+        if (conventions.RestEnemyRange < 0f || float.IsNaN(conventions.RestEnemyRange))
+            check.Error(nameof(RpgConventionsRecord.RestEnemyRange), $"{conventions.RestEnemyRange} is not a distance (0: never refused)");
         try { RecordId.Parse(conventions.SpellNamespace + ":spell", conventions.SpellNamespace); }
         catch (FormatException ex) { check.Error(nameof(RpgConventionsRecord.SpellNamespace), $"'{conventions.SpellNamespace}' is not a record namespace: {ex.Message}"); }
     }

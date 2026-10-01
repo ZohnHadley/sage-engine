@@ -128,7 +128,8 @@
   // ---- the map (issue #99) -------------------------------------------------------------------------
   // Markers only (the kit's `rpg_map`, Sage.Kits.Rpg/MapView.cs): whatever content gave an
   // `map_marker`, placed round you — in the middle, north up — by the `x` and `y` bindings, in a
-  // square so a metre is as long across as down. N opens and closes it.
+  // square so a metre is as long across as down. N opens and closes it. A discovered waystone is a
+  // marker with a button, and a row under the map: choosing either fast travels (4g-7).
   { "type": "ui_style", "id": "map_area", "background": "#0A0C14E6", "border": "#3A3E52", "borderWidth": 1 },
   { "type": "ui_style", "id": "map_label", "base": "ui_text", "textColour": "#D8D8E0" },
   { "type": "ui_style", "id": "map_dot", "background": "#F0D890" },
@@ -150,6 +151,16 @@
       "dot":      { "widget": "label", "parent": "marker", "text": "", "style": "map_dot", "minSize": [8, 8], "vAlign": "Center",
                     "bindings": { "style": "style" } },
       "name":     { "widget": "label", "parent": "marker", "bind": "label", "style": "map_label" },
+      // A discovered waystone is a marker you can choose (the kit's fast travel, 4g-7).
+      "go":       { "widget": "button", "parent": "marker", "text": "@sandbox.map.travel", "args": { "hours": "travelHours" },
+                    "style": "ui_button", "textScale": 1, "bindings": { "visible": "canTravel" } },
+
+      // Every discovered waystone, in any scene: the same journeys as a list (4g-7).
+      "travelTitle": { "widget": "label", "parent": "window", "text": "@sandbox.map.destinations", "style": "ui_dim",
+                       "bindings": { "visible": "hasDestinations" } },
+      "destinations": { "widget": "item_list", "parent": "window", "bind": "destinations", "direction": "Row", "spacing": 6 },
+      "destination":  { "widget": "button", "parent": "destinations", "text": "@sandbox.map.destination",
+                        "args": { "label": "label", "hours": "travelHours" }, "style": "ui_button", "textScale": 1 },
 
       "footer":   { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
       "range":    { "widget": "label", "parent": "footer", "text": "@sandbox.map.range", "args": { "range": "range", "count": "count" },

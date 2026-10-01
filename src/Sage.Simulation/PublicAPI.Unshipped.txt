@@ -1162,3 +1162,4 @@ Sage.Simulation.PointLight.Off -> bool
 Sage.Simulation.InCell
 Sage.Simulation.InCell.InCell() -> void
 Sage.Simulation.InCell.Source -> string!
+static Sage.Simulation.Scenes.Current(Sage.Simulation.World! world) -> Sage.Core.RecordId

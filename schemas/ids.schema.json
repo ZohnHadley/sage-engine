@@ -35,12 +35,14 @@
         "chase",
         "hold_ground",
         "idle",
+        "keep_routine",
         "melee_attack",
         "sage:cast_spell",
         "sage:chase",
         "sage:hold_ground",
         "sage:idle",
-        "sage:melee_attack"
+        "sage:melee_attack",
+        "sandbox:keep_routine"
       ]
     },
     "record:anim_events": {
@@ -172,6 +174,7 @@
         "helmet",
         "mend",
         "padding",
+        "rest_heal",
         "sage:burning",
         "sage:damage",
         "sage:mend",
@@ -180,6 +183,7 @@
         "sandbox:ember_cooldown",
         "sandbox:ember_font",
         "sandbox:fireball_cooldown",
+        "sandbox:rest_heal",
         "sandbox:tough_hide",
         "saves:goblin_build",
         "spend_mana",
@@ -200,7 +204,9 @@
         "sage:player",
         "sandbox:beasts",
         "sandbox:firebugs",
-        "sandbox:hermits"
+        "sandbox:hermits",
+        "sandbox:village",
+        "village"
       ]
     },
     "record:gameplay_conventions": {
@@ -297,7 +303,9 @@
       "type": "string",
       "enum": [
         "camp",
+        "crypt",
         "hut",
+        "sandbox:crypt",
         "sandbox:hut",
         "saves:camp"
       ]
@@ -348,6 +356,7 @@
         "sandbox:gunmetal",
         "sandbox:roof",
         "sandbox:steel",
+        "sandbox:stone",
         "sandbox:wall",
         "sandbox:wood",
         "skeletal:floor",
@@ -359,6 +368,7 @@
         "sprite_lit",
         "sprite_unlit",
         "steel",
+        "stone",
         "terrain_default",
         "unlit_default",
         "wall",
@@ -424,6 +434,7 @@
       "description": "The id of a prefab record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "anvil",
         "beacon",
         "bolt_flight",
         "bolts_pickup",
@@ -436,6 +447,9 @@
         "campfire",
         "crate",
         "crossbow_pickup",
+        "crypt_door",
+        "crypt_exit",
+        "crypt_torch",
         "door",
         "dummy",
         "fence",
@@ -467,6 +481,7 @@
         "player_camera",
         "rain",
         "ring_on_floor",
+        "road_sign",
         "rounds_pickup",
         "runner",
         "sage:logic_branch",
@@ -477,12 +492,16 @@
         "sage:math_remap",
         "sage:player_camera",
         "sage:scripted_camera",
+        "sandbox:anvil",
         "sandbox:bolt_flight",
         "sandbox:bolts_pickup",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
         "sandbox:crossbow_pickup",
+        "sandbox:crypt_door",
+        "sandbox:crypt_exit",
+        "sandbox:crypt_torch",
         "sandbox:door",
         "sandbox:fence",
         "sandbox:fireball_bolt",
@@ -494,10 +513,14 @@
         "sandbox:light",
         "sandbox:pistol_pickup",
         "sandbox:player",
+        "sandbox:road_sign",
         "sandbox:rounds_pickup",
+        "sandbox:smith",
+        "sandbox:spot",
         "sandbox:sword_pickup",
         "sandbox:tree",
         "sandbox:watcher",
+        "sandbox:waystone",
         "saves:floor",
         "saves:goblin",
         "saves:player",
@@ -525,6 +548,8 @@
         "skeletal:sentry",
         "skeletal:trooper",
         "skeletal:walker",
+        "smith",
+        "spot",
         "steps",
         "sword_pickup",
         "tally",
@@ -536,6 +561,7 @@
         "trooper",
         "walker",
         "watcher",
+        "waystone",
         "weapons:dummy",
         "weapons:floor",
         "weapons:helmeted_dummy",
@@ -560,14 +586,20 @@
       ]
     },
     "record:routine": {
-      "description": "The id of a routine record (none is loaded).",
+      "description": "The id of a routine record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:smith",
+        "smith"
+      ]
     },
     "record:rpg_conventions": {
-      "description": "The id of a rpg_conventions record (none is loaded).",
+      "description": "The id of a rpg_conventions record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "rpg",
+        "sandbox:rpg"
+      ]
     },
     "record:rpg_item": {
       "description": "The id of a rpg_item record (none is loaded).",
@@ -581,12 +613,15 @@
         "cameracut:courtyard",
         "camp",
         "courtyard",
+        "crypt",
         "ferry",
         "hall",
         "hello:main",
         "main",
         "range",
+        "sandbox:crypt",
         "sandbox:main",
+        "sandbox:wilds",
         "saves:camp",
         "sceneonly:shed",
         "sceneonly:yard",
@@ -595,6 +630,7 @@
         "skeletal:yard",
         "topicsgame:ferry",
         "weapons:range",
+        "wilds",
         "yard"
       ]
     },
@@ -609,9 +645,11 @@
         "loot",
         "main_menu",
         "map",
+        "rest",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
+        "rpg:rest",
         "rpg:shop",
         "rpg:topics",
         "sandbox:hud",
@@ -739,9 +777,11 @@
         "loot",
         "main_menu",
         "map",
+        "rest",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
+        "rpg:rest",
         "rpg:shop",
         "rpg:topics",
         "sandbox:hud",
@@ -781,6 +821,7 @@
         "map_label",
         "map_person",
         "map_place",
+        "map_travel",
         "map_you",
         "panel",
         "rpg:button",
@@ -788,6 +829,7 @@
         "rpg:cell_held",
         "rpg:cell_item",
         "rpg:hint",
+        "rpg:map_travel",
         "rpg:panel",
         "rpg:text",
         "rpg:title",
@@ -891,12 +933,14 @@
         "chase",
         "hold_ground",
         "idle",
+        "keep_routine",
         "melee_attack",
         "sage:cast_spell",
         "sage:chase",
         "sage:hold_ground",
         "sage:idle",
-        "sage:melee_attack"
+        "sage:melee_attack",
+        "sandbox:keep_routine"
       ]
     },
     "base:anim_events": {
@@ -1028,6 +1072,7 @@
         "helmet",
         "mend",
         "padding",
+        "rest_heal",
         "sage:burning",
         "sage:damage",
         "sage:mend",
@@ -1036,6 +1081,7 @@
         "sandbox:ember_cooldown",
         "sandbox:ember_font",
         "sandbox:fireball_cooldown",
+        "sandbox:rest_heal",
         "sandbox:tough_hide",
         "saves:goblin_build",
         "spend_mana",
@@ -1056,7 +1102,9 @@
         "sage:player",
         "sandbox:beasts",
         "sandbox:firebugs",
-        "sandbox:hermits"
+        "sandbox:hermits",
+        "sandbox:village",
+        "village"
       ]
     },
     "base:gameplay_conventions": {
@@ -1153,7 +1201,9 @@
       "type": "string",
       "enum": [
         "camp",
+        "crypt",
         "hut",
+        "sandbox:crypt",
         "sandbox:hut",
         "saves:camp"
       ]
@@ -1204,6 +1254,7 @@
         "sandbox:gunmetal",
         "sandbox:roof",
         "sandbox:steel",
+        "sandbox:stone",
         "sandbox:wall",
         "sandbox:wood",
         "skeletal:floor",
@@ -1215,6 +1266,7 @@
         "sprite_lit",
         "sprite_unlit",
         "steel",
+        "stone",
         "terrain_default",
         "unlit_default",
         "wall",
@@ -1280,6 +1332,7 @@
       "description": "Another prefab record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "anvil",
         "beacon",
         "bolt_flight",
         "bolts_pickup",
@@ -1293,6 +1346,9 @@
         "crate",
         "creature",
         "crossbow_pickup",
+        "crypt_door",
+        "crypt_exit",
+        "crypt_torch",
         "door",
         "dummy",
         "fence",
@@ -1324,6 +1380,7 @@
         "player_camera",
         "rain",
         "ring_on_floor",
+        "road_sign",
         "rounds_pickup",
         "runner",
         "sage:logic_branch",
@@ -1334,6 +1391,7 @@
         "sage:math_remap",
         "sage:player_camera",
         "sage:scripted_camera",
+        "sandbox:anvil",
         "sandbox:bolt_flight",
         "sandbox:bolts_pickup",
         "sandbox:bunny",
@@ -1341,6 +1399,9 @@
         "sandbox:crate",
         "sandbox:creature",
         "sandbox:crossbow_pickup",
+        "sandbox:crypt_door",
+        "sandbox:crypt_exit",
+        "sandbox:crypt_torch",
         "sandbox:door",
         "sandbox:fence",
         "sandbox:fireball_bolt",
@@ -1352,10 +1413,14 @@
         "sandbox:light",
         "sandbox:pistol_pickup",
         "sandbox:player",
+        "sandbox:road_sign",
         "sandbox:rounds_pickup",
+        "sandbox:smith",
+        "sandbox:spot",
         "sandbox:sword_pickup",
         "sandbox:tree",
         "sandbox:watcher",
+        "sandbox:waystone",
         "saves:floor",
         "saves:goblin",
         "saves:player",
@@ -1383,6 +1448,8 @@
         "skeletal:sentry",
         "skeletal:trooper",
         "skeletal:walker",
+        "smith",
+        "spot",
         "steps",
         "sword_pickup",
         "tally",
@@ -1394,6 +1461,7 @@
         "trooper",
         "walker",
         "watcher",
+        "waystone",
         "weapons:dummy",
         "weapons:floor",
         "weapons:helmeted_dummy",
@@ -1418,14 +1486,20 @@
       ]
     },
     "base:routine": {
-      "description": "The id of a routine record (none is loaded).",
+      "description": "Another routine record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "sandbox:smith",
+        "smith"
+      ]
     },
     "base:rpg_conventions": {
-      "description": "The id of a rpg_conventions record (none is loaded).",
+      "description": "Another rpg_conventions record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "rpg",
+        "sandbox:rpg"
+      ]
     },
     "base:rpg_item": {
       "description": "The id of a rpg_item record (none is loaded).",
@@ -1439,12 +1513,15 @@
         "cameracut:courtyard",
         "camp",
         "courtyard",
+        "crypt",
         "ferry",
         "hall",
         "hello:main",
         "main",
         "range",
+        "sandbox:crypt",
         "sandbox:main",
+        "sandbox:wilds",
         "saves:camp",
         "sceneonly:shed",
         "sceneonly:yard",
@@ -1453,6 +1530,7 @@
         "skeletal:yard",
         "topicsgame:ferry",
         "weapons:range",
+        "wilds",
         "yard"
       ]
     },
@@ -1467,9 +1545,11 @@
         "loot",
         "main_menu",
         "map",
+        "rest",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
+        "rpg:rest",
         "rpg:shop",
         "rpg:topics",
         "sandbox:hud",
@@ -1597,9 +1677,11 @@
         "loot",
         "main_menu",
         "map",
+        "rest",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
+        "rpg:rest",
         "rpg:shop",
         "rpg:topics",
         "sandbox:hud",
@@ -1639,6 +1721,7 @@
         "map_label",
         "map_person",
         "map_place",
+        "map_travel",
         "map_you",
         "panel",
         "rpg:button",
@@ -1646,6 +1729,7 @@
         "rpg:cell_held",
         "rpg:cell_item",
         "rpg:hint",
+        "rpg:map_travel",
         "rpg:panel",
         "rpg:text",
         "rpg:title",

@@ -128,5 +128,31 @@
                        "args": { "balance": "balance" } },
       "message":     { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
       "hint":        { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.shop.hint" }
+    } },
+
+  // ---- rest: how many hours, then sleep or wait (issue 4g-7) ---------------------------------------
+  // The slider is a bar between `less` and `more`; `sleep` is enabled when the kit's rule allows it
+  // (Rest.Can: no enemy near), and `refused` says why not.
+  { "type": "screen", "id": "rest", "layout": "rest", "viewModel": "rpg_rest" },
+  { "type": "ui_layout", "id": "rest", "style": "panel",
+    "nodes": {
+      "window":   { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [360, 0] },
+      "title":    { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.rest.title" },
+      "now":      { "widget": "label", "parent": "window", "style": "text", "bind": "now" },
+      "hours":    { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.rest.hours",
+                    "args": { "count": "hours", "hours": "hours" } },
+      "slider":   { "widget": "stack", "parent": "window", "direction": "row", "spacing": 6 },
+      "less":     { "widget": "button", "parent": "slider", "style": "button", "text": "@rpg.rest.less" },
+      "bar":      { "widget": "bar", "parent": "slider", "style": "weight_bar", "bind": "hours",
+                    "bindings": { "max": "maxHours" }, "minSize": [200, 8], "expand": 1, "vAlign": "center" },
+      "more":     { "widget": "button", "parent": "slider", "style": "button", "text": "@rpg.rest.more" },
+      "buttons":  { "widget": "stack", "parent": "window", "direction": "row", "spacing": 8 },
+      "sleep":    { "widget": "button", "parent": "buttons", "style": "button", "text": "@rpg.rest.sleep",
+                    "bindings": { "enabled": "canSleep" } },
+      "wait":     { "widget": "button", "parent": "buttons", "style": "button", "text": "@rpg.rest.wait",
+                    "bindings": { "enabled": "canWait" } },
+      "refused":  { "widget": "label", "parent": "window", "style": "warning", "bind": "refused" },
+      "message":  { "widget": "label", "parent": "window", "style": "text", "bind": "message" },
+      "hint":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.rest.hint" }
     } }
 ]
