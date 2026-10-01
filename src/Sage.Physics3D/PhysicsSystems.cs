@@ -5,6 +5,8 @@ using System.Numerics;
 
 namespace Sage.Physics3D;
 
+#pragma warning disable SAGE0134, SAGE0124 // joints (phase 4k) and an entity input: the physics plugin ships with the engine that declares them
+
 // The physics tick (docs/design/10 §3):
 //   PrePhysics   new colliders get bodies; kinematic and teleported transforms are pushed into Bepu
 //   Physics      Simulation.Timestep
@@ -48,7 +50,24 @@ internal sealed class PhysicsSyncSystem : ISystem
             var pose = world.Has<GlobalTransform>(entity)
                 ? world.Get<GlobalTransform>(entity).Current
                 : Pose.FromLocal(world.Get<Transform>(entity));
-            world.Add(entity, _space.AddBody(entity, collider, body, pose));
+            var added = _space.AddBody(entity, collider, body, pose);
+            world.Add(entity, added);
+
+            // A dynamic body keeps its velocity in a saved component (BodyMotion, written back each
+            // step): one made from a load starts at it, so a swinging sign carries on swinging. Not in an
+            // edit world, where nothing moves and nothing is saved from the bodies.
+#pragma warning disable SAGE0133 // the edit world flag: physics ships with the engine that declares it
+            bool editing = world.Editing;
+#pragma warning restore SAGE0133
+            if (body.Kind == BodyKind.Dynamic && !editing)
+            {
+                if (world.TryGet<BodyMotion>(entity, out var velocity))
+                {
+                    if (velocity.Linear != Vector3.Zero) _space.SetVelocity(added, velocity.Linear);
+                    if (velocity.Angular != Vector3.Zero) _space.SetAngularVelocity(added, velocity.Angular);
+                }
+                else world.Add(entity, new BodyMotion());
+            }
         }
 
         // Kinematic bodies (and anything gameplay moved directly) follow their transform. A root's local
@@ -98,10 +117,12 @@ internal sealed class PhysicsWriteBackSystem : ISystem
 {
     private readonly PhysicsSpace _space;
     private readonly Query<Transform, Collider, PhysicsBody> _bodies;
+    private readonly Query<PhysicsBody, BodyMotion> _velocities;
 
     public PhysicsWriteBackSystem(World world, PhysicsSpace space)
     {
         _space = space;
+        _velocities = world.Query<PhysicsBody, BodyMotion>();
         _bodies = world.Query<Transform, Collider, PhysicsBody>();
     }
 
@@ -121,6 +142,18 @@ internal sealed class PhysicsWriteBackSystem : ISystem
                 t[n].LocalPosition = c[n].Center == Vector3.Zero
                     ? pose.Position
                     : pose.Position - Vector3.Transform(c[n].Center, pose.Rotation);
+            }
+        }
+
+        foreach (var (handles, velocities, _) in _velocities.Chunks)
+        {
+            var h = handles.Span;
+            var v = velocities.Span;
+            for (int n = 0; n < h.Length; n++)
+            {
+                if (!_space.IsDynamic(h[n])) continue;
+                v[n].Linear = _space.VelocityOf(h[n]);
+                v[n].Angular = _space.AngularVelocityOf(h[n]);
             }
         }
 
@@ -218,6 +251,18 @@ public sealed class PhysicsModule : IModule
         // capsule stands on its point while a box is centred on it (review #44, F31). It is declared in
         // Sage.Simulation beside the other physics data, so a 2D backend owns the same part (issue #30).
 
+        // The joint part's wires (issue #245): Break removes the joint, OnBreak says it went.
+        ctx.Engine.Inputs.Register<Joint>(PhysicsJointIO.Break, static (World world, in IOContext io) =>
+        {
+            ref var joint = ref world.Get<Joint>(io.Self);
+            if (joint.Broken) return;
+            if (!joint.Handle.IsNull) world.Resources.Get<IPhysicsWorld>().RemoveJoint(joint.Handle);
+            joint.Handle = default;
+            joint.Broken = true;
+            world.IO().Fire(world, io.Self, PhysicsJointIO.OnBreak, io.Activator);
+        });
+        ctx.Engine.Outputs.Declare(PhysicsJointIO.OnBreak, "This entity's joint broke (its break force, or the Break input); the activator is what it was joined to.");
+
         _debugDraw = ctx.Engine.CVars.Register("phys_debug", false, CVarFlags.DevOnly,
             "Draw colliders and character capsules (needs r_debugdraw 1).");
         _records.Reloaded += ApplyLayers;
@@ -245,11 +290,14 @@ public sealed class PhysicsModule : IModule
         world.AddSystem(new PhysicsSyncSystem(world, space));
         world.AddSystem(new PhysicsStepSystem(space));
         world.AddSystem(new PhysicsWriteBackSystem(world, space));
+        world.AddSystem(new JointSystem(world, space));
+        world.AddSystem(new JointBreakSystem(space));
         world.AddSystem(new PhysicsDebugSystem(world, _records!, _debugDraw!));   // 10 §9, draws through IPhysicsWorld
 
         // A destroyed entity takes its body with it.
         world.EntityDestroyed += entity =>
         {
+            if (world.TryGet<Joint>(entity, out var joint) && !joint.Handle.IsNull) space.RemoveJoint(joint.Handle);
             if (world.TryGet<PhysicsBody>(entity, out var body)) space.RemoveBody(body);
         };
     }
