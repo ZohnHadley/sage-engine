@@ -28,6 +28,11 @@ public struct RenderStats
     // Items in the sun's caster view this frame (issue 4h-4), drawn into its shadow map: 0 with `r_shadows 0` or at night.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int ShadowCasters;
 
+    // Of `Culled`, the draws fog hid wholly this frame (issue 4h-5, FogMath.CullDistance), and the views the
+    // sky pass drew a sky behind.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int FogCulled;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int Skies;
+
     // Full-screen draws of the post-processing chain this frame (issue 4h-6): 0 while it is off.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int PostSteps;
 }
@@ -76,6 +81,7 @@ public sealed class Renderer : IDisposable
     private readonly Dictionary<AssetPath, int> _textureIds = new();
     private readonly SpriteBatcher _sprites;
     private readonly DebugLineBatch _debugLines;
+    private readonly SkyDome _sky;
     private readonly CVar<bool> _fog;
     private readonly CVar<bool> _spriteFaceCamera;
     private readonly CVar<bool> _wireframe;
@@ -135,6 +141,7 @@ public sealed class Renderer : IDisposable
         _textures.Add(Materials.MissingTexture);  // id 0: the checker placeholder
         _sprites = new SpriteBatcher(_device);
         _debugLines = new DebugLineBatch(_device);
+        _sky = new SkyDome(_device);
 
         var cvars = engine.CVars;
         _fog = settings.Fog;
@@ -146,7 +153,8 @@ public sealed class Renderer : IDisposable
             Log.Info(LogCat.Console, $"  views {LastFrame.Views} ({LastFrame.TargetViews} into render targets, {_targets.Count} target(s)), items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
                                      $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), " +
-                                     $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}; " +
+                                     $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}, " +
+                                     $"fog culled {LastFrame.FogCulled}, skies {LastFrame.Skies}; " +
                                      $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials" + PostStats()));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
@@ -473,13 +481,13 @@ public sealed class Renderer : IDisposable
         _frame++;
         _stats = new RenderStats
         {
-            Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, Lights = s.Lights.Count,
+            Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, FogCulled = s.FogCulled, Lights = s.Lights.Count,
             Bones = s.Bones.Count,
         };
         Plan(s);
         _sprites.FaceCameraPosition = _spriteFaceCamera.Value;
         _wire = _wireframe.Value;
-        var clear = new Color(s.Environment.ClearColor);   // the sky: a clear colour until a Sky pass draws one (4h-5)
+        var clear = new Color(s.Environment.ClearColor);   // the horizon's colour; `sage:sky` draws over it when the world has a sky (4h-5)
         var ctx = Begin(world, s, screen, extracting: false);
         _shadow.Drawn = false;   // until `sage:shadow` draws this world's map
         _shadowMap = null;
@@ -846,6 +854,23 @@ public sealed class Renderer : IDisposable
 
     private int _current;   // the material currently applied to the device
 
+    // `sage:sky` (issue 4h-5): the sky behind what the view's opaque and alpha-tested runs drew, while the
+    // environment says to draw one. Not in a depth-only view: the viewmodel's is drawn over a finished
+    // picture with its depth cleared, where a sky would cover everything.
+    internal void DrawSky(RenderContext ctx)
+    {
+        var s = ctx.Snapshot;
+        if (!s.Environment.DrawSky) return;
+        ref var view = ref s.Views[ctx.View];
+        if (view.DepthOnly || view.ShadowCaster) return;
+        if (!_sky.Ready(_content)) return;
+        int draws = _sky.Draw(view, s.Environment);
+        _current = -1;   // the sky set its own device state
+        _stats.DrawCalls += draws;
+        _stats.Triangles += draws;
+        _stats.Skies++;
+    }
+
     // ---- Sun shadows (issue 4h-4) ----
 
     // This frame's shadow map, for the lit shaders (EffectBinding.SetFrame): set by DrawShadowCasters,
@@ -1084,6 +1109,7 @@ public sealed class Renderer : IDisposable
         }
         _sprites.Dispose();
         _debugLines.Dispose();
+        _sky.Dispose();
         _fullScreen?.Dispose();
         Materials.Dispose();
         _targets.Dispose();
