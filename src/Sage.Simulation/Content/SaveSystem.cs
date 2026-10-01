@@ -170,6 +170,11 @@ public sealed partial class SaveSystem
                 {
                     ["mount"] = c.Mount, ["namespace"] = c.Namespace,
                 }).ToArray()),
+                // The active data mods (phase 4j-4), in load order; their mounts are left out of "content".
+                ["mods"] = new JsonArray(CurrentMods().Select(m => (JsonNode)new JsonObject
+                {
+                    ["id"] = m.Id, ["version"] = m.Version,
+                }).ToArray()),
             };
             File.WriteAllText(Path.Combine(staging, "header.json"), header.ToJsonString(Indented));
 
@@ -871,8 +876,27 @@ public sealed partial class SaveSystem
             .OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase);
 
     // The content mounted now, in priority order.
+    // A mod's mount (`mods/<id>`) is left out: the header's "mods" says it, with the version.
     private IEnumerable<SavedContent> CurrentContent() =>
-        _engine.Vfs.Mounts.Select(m => new SavedContent(m.Name, m.RecordNamespace));
+        _engine.Vfs.Mounts.Where(m => !IsModMount(m.Name)).Select(m => new SavedContent(m.Name, m.RecordNamespace));
+
+    private static bool IsModMount(string mount) => mount.StartsWith("mods/", StringComparison.OrdinalIgnoreCase);
+
+    // The active mods now, in load order (Engine.Mods, phase 4j).
+#pragma warning disable SAGE0132 // Engine.Mods is experimental in the same phase as the header's mods
+    private IEnumerable<SavedMod> CurrentMods() =>
+        _engine.Mods.Active.Select(m => new SavedMod(m.Id, m.Version));
+#pragma warning restore SAGE0132
+
+    internal static List<SavedMod>? ReadMods(JsonObject header)
+    {
+        if (header["mods"] is not JsonArray list) return null;   // written before 4j-4: nothing to compare
+        var mods = new List<SavedMod>();
+        foreach (var node in list)
+            if (node is JsonObject m && m["id"] is JsonValue id && id.TryGetValue(out string? text) && text is { Length: > 0 })
+                mods.Add(new SavedMod(text, m["version"] is JsonValue v && v.TryGetValue(out string? version) ? version ?? "" : ""));
+        return mods;
+    }
 
     internal static List<SavedPlugin>? ReadPlugins(JsonObject header)
     {
@@ -896,9 +920,9 @@ public sealed partial class SaveSystem
 
     // What differs between the plugins and content a header lists and what is loaded now, one line
     // each. Empty when they match, or when the header is from before headers listed them.
-    private List<string> Mismatches(JsonObject header) => Mismatches(ReadPlugins(header), ReadContent(header));
+    private List<string> Mismatches(JsonObject header) => Mismatches(ReadPlugins(header), ReadContent(header), ReadMods(header));
 
-    private List<string> Mismatches(IReadOnlyList<SavedPlugin>? plugins, IReadOnlyList<SavedContent>? content)
+    private List<string> Mismatches(IReadOnlyList<SavedPlugin>? plugins, IReadOnlyList<SavedContent>? content, IReadOnlyList<SavedMod>? mods)
     {
         var result = new List<string>();
         if (plugins != null)
@@ -918,11 +942,25 @@ public sealed partial class SaveSystem
         if (content != null)
         {
             var now = CurrentContent().Select(c => c.Mount).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var then = content.Select(c => c.Mount).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var then = content.Where(c => !IsModMount(c.Mount)).Select(c => c.Mount).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var c in content)
-                if (!now.Contains(c.Mount)) result.Add($"content '{c.Mount}' is not mounted");
+                if (!IsModMount(c.Mount) && !now.Contains(c.Mount)) result.Add($"content '{c.Mount}' is not mounted");
             foreach (var mount in now)
                 if (!then.Contains(mount)) result.Add($"content '{mount}' was not mounted then");
+        }
+        if (mods != null)
+        {
+            var now = CurrentMods().ToDictionary(m => m.Id, m => m.Version, StringComparer.OrdinalIgnoreCase);
+            var then = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var m in mods)
+            {
+                then.Add(m.Id);
+                if (!now.TryGetValue(m.Id, out var version)) result.Add($"mod '{m.Id}' {m.Version} is not active");
+                else if (!string.Equals(version, m.Version, StringComparison.Ordinal))
+                    result.Add($"mod '{m.Id}' was {m.Version} and is {version}");
+            }
+            foreach (var (id, _) in now)
+                if (!then.Contains(id)) result.Add($"mod '{id}' was not active then");
         }
         return result;
     }
@@ -1114,6 +1152,7 @@ public sealed partial class SaveSystem
             var kind = SaveKind.Manual;
             List<SavedPlugin>? plugins = null;
             List<SavedContent>? content = null;
+            List<SavedMod>? mods = null;
             try
             {
                 if (JsonNode.Parse(File.ReadAllText(headerPath)) is JsonObject header)
@@ -1127,6 +1166,7 @@ public sealed partial class SaveSystem
                     kind = ReadKind(header);
                     plugins = ReadPlugins(header);
                     content = ReadContent(header);
+                    mods = ReadMods(header);
                 }
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException)
@@ -1134,7 +1174,8 @@ public sealed partial class SaveSystem
                 /* a broken header still lists, as one that cannot be loaded */
             }
             slots.Add(new SaveSlot(name, saved, format, game, engine, kind,
-                plugins ?? new List<SavedPlugin>(), content ?? new List<SavedContent>(), Mismatches(plugins, content)));
+                plugins ?? new List<SavedPlugin>(), content ?? new List<SavedContent>(),
+                mods ?? new List<SavedMod>(), Mismatches(plugins, content, mods)));
         }
         slots.Sort((a, b) =>
         {
@@ -1196,7 +1237,8 @@ public sealed partial class SaveSystem
 public sealed class SaveSlot
 {
     internal SaveSlot(string name, DateTime savedUtc, int formatVersion, string game, string engineVersion, SaveKind kind,
-                      IReadOnlyList<SavedPlugin> plugins, IReadOnlyList<SavedContent> content, IReadOnlyList<string> mismatches)
+                      IReadOnlyList<SavedPlugin> plugins, IReadOnlyList<SavedContent> content,
+                      IReadOnlyList<SavedMod> mods, IReadOnlyList<string> mismatches)
     {
         Name = name;
         SavedUtc = savedUtc;
@@ -1206,6 +1248,7 @@ public sealed class SaveSlot
         Kind = kind;
         Plugins = plugins;
         Content = content;
+        Mods = mods;
         Mismatches = mismatches;
     }
 
@@ -1235,6 +1278,11 @@ public sealed class SaveSlot
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public IReadOnlyList<SavedContent> Content { get; }
 
+    // The data mods (id and version, in load order) that were active when it was written (phase 4j-4).
+    // Empty for a save from before headers listed them.
+    [Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public IReadOnlyList<SavedMod> Mods { get; }
+
     // How those differ from what is loaded now, one readable line each ("plugin 'x' 0.1.0 is not
     // loaded"): what a load warns about, and what a menu can show beside the slot. It still loads.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
@@ -1254,3 +1302,7 @@ public readonly record struct SavedPlugin(string Id, string Version);
 // plugin's id) and the record namespace it gave bare ids.
 [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
 public readonly record struct SavedContent(string Mount, string Namespace);
+
+// A data mod as a save's header lists it (phase 4j-4): its id and its version when the save was written.
+[Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+public readonly record struct SavedMod(string Id, string Version);
