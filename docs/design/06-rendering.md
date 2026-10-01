@@ -963,7 +963,7 @@ headless; the client only draws it. Experimental, SAGE0130 (MAKING_A_GAME §10b)
   rule in the mesh and skinned extracts, `EffectBinding.SetFrame`'s shadow parameters, and in the shaders
   `common.fxh` (`ShadowViewProj`, `ShadowParams`, `ShadowMap`/`ShadowSampler`, `ShadowLit`) and `lit.fx`
   (`ShadowCaster`, `ShadowCasterSkinned`). Tests: `tests/Sage.Tests/Presentation/ShadowTests.cs`.
-- **Switched on with `r_shadows 1`** (off by default: the Sandbox turns it on in 4h-7); `r_shadow_size`
+- **Switched on with `r_shadows 1`** (off by default; the Sandbox turns it on, 4h-7); `r_shadow_size`
   (texels a side, 256–4096, default 2048) and `r_shadow_distance` (metres of the view the map covers,
   5–500, default 60). `r_stats` adds `shadow casters N` (`RenderStats.ShadowCasters`).
 - **The caster view.** `sage:shadow`'s Extract (before the other extracts) adds one view flagged
@@ -1053,7 +1053,7 @@ Experimental, SAGE0130 (MAKING_A_GAME §10b).
 - **Not yet:** a moon, clouds and a star field that turns with the hours (the stars are fixed to the
   world's axes); fog on the sky above the haze band, so a tall thing culled at the fog's end can pop
   against the gradient above the horizon; particles are never fog-culled. Checked on a GPU only by the
-  Windows shader compile and the smoke run; the Sandbox has no sky until 4h-7 gives it one.
+  Windows shader compile and the smoke run; the Sandbox has had one since 4h-7 (below).
 
 ### As built (post-processing, 2026-09-30 — issue 4h-6)
 A chain of full-screen effects between the screen's views and the UI, and the render scale of §3.9.
@@ -1098,6 +1098,68 @@ Experimental, SAGE0130 (MAKING_A_GAME §10b).
   Windows CI's shader compile only.
 - **Not yet:** HDR targets and bloom (decision 6: they wait for GPU testing on both platforms); anti-aliasing;
   depth-reading effects (the scene target has depth, but no effect is handed it yet).
+
+### As built (the 4h exit, 2026-10-01 — issue 4h-7)
+Phase 4h's exit criterion, "a dusk-to-night transition with shadows in a streamed exterior", on the
+Sandbox's streamed hills (decision 7: terrain needs C#, and entity streaming is 4g's). The Sandbox gained
+a sky, lamps that light themselves and shadows; the engine gained a light switch and two fixes the exit
+found. The headless test checks the maths; the CI smoke run checks the client.
+
+- **Code:** the Sandbox's `content/data/scene.json` (the `sandbox:day` sky, the scene's `environment`, the
+  weather's tints), `content/data/level.json` (the lamp prefab and the `sandbox:lamp` state machine) and
+  `Sandbox.Client/SandboxClientModule.cs` (`r_shadows`); in the engine `PointLight.Off`/`Lit`
+  (`Rendering/Lights.cs`), `LightPart.Off` and `LightsModule`'s inputs (`Sage.Gameplay`), the light
+  extract's check, `WeatherRules.Find` and `GameEvents.EndOfSchedule`. Tests:
+  `tests/Sage.Tests/Presentation/DuskToNightExitTests.cs`, and one each in `LightTests`, `SkyTests` and
+  `GameEventTests`.
+- **The Sandbox at dusk.** Its scene starts at 18:30 under `sandbox:day`, a sky keyed at 0, 6, 12, 17,
+  18:30, 20 and 22 with the sun up from 5:30 to 19:30, exp² fog, and shadows that weaken from 0.9 in the
+  afternoon to none at night. The clock runs at its default, a game minute a second (`time_scale`,
+  `time_set`). Its client turns `r_shadows` on in `Init`: the game's default, before config.cfg and the
+  command line, so `+r_shadows 0` still wins. Rain and snow gained `fogTint`, `skyTint` and fog scales, so a
+  storm darkens the hour's light rather than replacing it.
+- **The exit test** walks the player east from the hut, four metres a tick on the hills, while the clock
+  runs from 18:30. It crosses the sector edge that moves the origin by two sectors at about 18:56, with
+  the sun still up, and then runs a game hour a second to 22:00
+  (test: TheSandboxGoesFromDuskToNight_AcrossASectorEdge_WithShadowsAndLamps). It checks every tick
+  that the sun's light, the ambient and the shadow strength (`ShadowMath.Strength`, as `sage:shadow`
+  uses it) never rise, and that at 22:00 they are zero and the stars are out. It checks that the lamps are
+  dark before sunset and lit from 20:00. At the rebase, it fits the shadow map for the main camera's view
+  before and after, as the client does, with the sun held still. A ground point ten metres ahead stays at
+  the same fraction of a texel, so the grid does not slide. At 21:00 it saves, scrambles the clock and the
+  lamps, and loads: the hour, day, scale and sky come back, the light is the sky at that hour again, and the
+  lamps are lit.
+- **A light switch** (`PointLight.Off`, the part's `"off": true`): `TurnOn`, `TurnOff` and `Toggle` are
+  inputs routed to lights, owned by `sage.gameplay.lights`. So a branch's or a door's `Toggle` is
+  untouched. A light that is off gives nothing (`PointLight.Lit`, which the client's light extract asks).
+  A save from before the field loads its lights as on (test: ALightIsSwitchedByEntityIO).
+- **Lamps by the clock, from data.** The hut's lamps start dark. `sandbox:lamp` is two states whose
+  enter actions fire `TurnOn`/`TurnOff` at `!self`. Its two machine-wide transitions ask
+  `{ "time_between": { "from": 19.5, "to": 5.5 } }` and its `not`, and since a machine-wide transition
+  never goes to the state the machine is in, each fires once a dusk or dawn. No C#.
+- **Weather at dusk composes with the sky.** The Sandbox's rain, rolled in at 19:00, makes the sun, the
+  ambient, the horizon, the zenith and the fog darker, pulls the fog in and softens the shadows. The light
+  is still the dusk's colours, scaled, not the rain record's grey (test: AStormAtDuskInTheSandboxIsDarkerThanClear).
+- **Fix: a world without the client has no `weather` record type** (it is `sage.client`'s), and under a
+  sky, a weather id set by a save or a scene made the sky system throw every tick. It reads as clear now,
+  as a missing record always did (test: WithoutTheClientsWeatherTypeTheWeatherReadsAsClear).
+- **Fix: the event age backstop blamed frame readers during a catch-up.** This was the occasional "WARN
+  Events Dropping 1 CueTriggered … slowest reader: ParticleSystem" in the Sandbox's first frames under
+  llvmpipe with post on. After a slow frame the host runs up to `sim_maxframetime` × tick rate ticks
+  (15 at 60 Hz) before the next frame. `ev_maxage` is 8, and it was checked at the end of every tick. So
+  a cue sent early in the catch-up was dropped before ParticleSystem (FrameUpdate) could read it, and
+  the warning blamed it. Now, once a world has drawn a frame, a tick drops only what every reader has
+  passed, and the age is checked at the end of the frame, when every reader has had its turn. A world
+  that never draws (a server, a test that only ticks) checks every tick, as before
+  (test: AFrameReaderKeepsUpThroughACatchUpLongerThanMaxAge).
+- **The smoke run** (`.github/workflows/ci.yml`): the Sandbox with `r_post 1`, `r_scale 0.5`, the clock set
+  to 19:20 and run through sunset, rain rolled in, then 22:00, with `r_stats` and `r_passes`. `r_stats`
+  shows the lamps come on (`lights 2` after sunset, 0 before) and `shadow casters` with no `(r_shadows 0)`.
+  Without shaders no material builds, so nothing casts and the sky and post steps fall back to clears and
+  copies: the run proves the passes, targets, cvars, clock and weather in the real host, not the picture.
+- **Not yet:** the sun's direction is not quantised, so the grid that holds through a rebase still turns
+  as the sun moves (4h-4); a moon, and lamps that fade rather than switch; NPC schedules, the calendar and
+  waiting on the same clock are 4g's.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

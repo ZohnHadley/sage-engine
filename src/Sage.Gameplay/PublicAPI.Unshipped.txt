@@ -288,3 +288,4 @@ static Sage.Gameplay.ShotRandom.Hash(long tick, int entity, uint shot, uint salt
 static Sage.Gameplay.ShotRandom.Value(long tick, int entity, uint shot, uint salt) -> float
 static Sage.Gameplay.Spread.ConeOf(Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Gameplay.SpreadRecord! spread) -> float
 static Sage.Gameplay.Spread.Deflect(System.Numerics.Vector3 aim, float coneRadians, long tick, int entity, uint shot, int pellet) -> System.Numerics.Vector3
+Sage.Gameplay.LightPart.Off -> bool

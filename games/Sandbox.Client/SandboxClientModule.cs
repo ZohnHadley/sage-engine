@@ -23,7 +23,15 @@ public sealed class SandboxClientModule : IModule
     public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule), typeof(RpgKitClientModule) };
 
     // `box_mesh` (BoxMeshPart, below) is declared, so Init has nothing to register (issue #17).
-    public void Init(ModuleContext ctx) { }
+    //
+    // The Sandbox's own settings: sun shadows on (phase 4h's exit, engine issue 4h-7), where the engine
+    // leaves them off. A value set here, in Init, is the game's default: config.cfg is read after Init and
+    // the command line after that, so `+r_shadows 0` still turns them off.
+    public void Init(ModuleContext ctx)
+    {
+        if (ctx.Engine.CVars.Find("r_shadows") is { } shadows && !shadows.TrySet("1", out var error))
+            Log.Warn(LogCat.Render, $"Sandbox: r_shadows 1 was refused: {error}");
+    }
 
     public void Start(ModuleContext ctx)
     {

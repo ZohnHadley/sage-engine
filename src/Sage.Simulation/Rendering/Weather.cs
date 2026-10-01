@@ -155,9 +155,12 @@ public static class WeatherRules
         return t >= 0.5f ? to : from;
     }
 
+    // A world without the client has no `weather` record type (it is sage.client's): its weather reads as
+    // clear too, rather than throwing from the sky system the first time a save or a scene names one
+    // (found by the 4h exit, issue 4h-7: a headless Sandbox under its sky, with rain set).
     private static WeatherRecord Find(RecordStore records, RecordId id)
     {
-        if (!id.IsEmpty && records.TryGet(id, out WeatherRecord record)) return record;
+        if (!id.IsEmpty && records.TypeNameOf(typeof(WeatherRecord)) != null && records.TryGet(id, out WeatherRecord record)) return record;
         return Fallback;
     }
 

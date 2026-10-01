@@ -621,9 +621,12 @@
       ]
     },
     "record:sky": {
-      "description": "The id of a sky record (none is loaded).",
+      "description": "The id of a sky record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "day",
+        "sandbox:day"
+      ]
     },
     "record:sound": {
       "description": "The id of a sound record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -676,8 +679,10 @@
       "description": "The id of a state_machine record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "lamp",
         "patrol",
         "patrol_armed",
+        "sandbox:lamp",
         "sentry",
         "skeletal:patrol",
         "skeletal:patrol_armed",
@@ -1457,9 +1462,12 @@
       ]
     },
     "base:sky": {
-      "description": "The id of a sky record (none is loaded).",
+      "description": "Another sky record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "day",
+        "sandbox:day"
+      ]
     },
     "base:sound": {
       "description": "Another sound record to inherit every field from, abstract or not.",
@@ -1512,8 +1520,10 @@
       "description": "Another state_machine record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "lamp",
         "patrol",
         "patrol_armed",
+        "sandbox:lamp",
         "sentry",
         "skeletal:patrol",
         "skeletal:patrol_armed",

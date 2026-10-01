@@ -1029,3 +1029,5 @@ Sage.Simulation.PostEffectRecord.Cvar -> string!
 Sage.Simulation.PostEffectRecord.Material -> Sage.Core.RecordId
 Sage.Simulation.PostEffectRecord.Order -> int
 Sage.Simulation.PostEffectRecord.PostEffectRecord() -> void
+Sage.Simulation.PointLight.Lit.get -> bool
+Sage.Simulation.PointLight.Off -> bool

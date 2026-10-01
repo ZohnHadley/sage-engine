@@ -5,7 +5,7 @@ modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3
 
 **Start here:** [`docs/history/handoff-2026-09-30.md`](docs/history/handoff-2026-09-30.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
-tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h), #153 (4i, done), each with sub-issues.
+tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h, done), #153 (4i, done), each with sub-issues.
 
 ## Commands
 ```bash

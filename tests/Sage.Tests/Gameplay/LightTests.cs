@@ -91,4 +91,41 @@ public class LightTests
         for (int i = 0; i < LightRules.PerObject; i++)
             Assert.Equal(first[i].Position.X, second[i].Position.X);
     }
+
+    // The switch (issue 4h-7): a lamp is lit or not by entity I/O, so data can light it at dusk. TurnOn,
+    // TurnOff and Toggle are routed to lights, beside a branch's or a door's Toggle; a light that is off
+    // gives nothing (`Lit`, what the client's light extract asks), and the part can start it dark.
+    [Fact]
+    public void ALightIsSwitchedByEntityIO()
+    {
+        using var app = HeadlessApp.Bare().With(new PhysicsModule(), new EntityIOModule(), new LightsModule())
+            .File("data/lamps.json", """
+                [{ "type": "prefab", "id": "dark_lamp", "parts": { "light": { "range": 6, "off": true } } },
+                 { "type": "prefab", "id": "lamp", "parts": { "light": { "range": 6 } } }]
+                """)
+            .Boot("lights");
+        Assert.Equal(0, app.Records.ErrorCount);
+        var world = app.World;
+        var dark = world.Spawn(new RecordId("sage", "dark_lamp"), Vector3.Zero);
+        var lit = world.Spawn(new RecordId("sage", "lamp"), Vector3.Zero);
+        Assert.False(world.Get<PointLight>(dark).Lit);
+        Assert.True(world.Get<PointLight>(lit).Lit);                       // on by default, as every light was
+
+        var io = world.IO();
+        io.FireInput(dark, "TurnOn");
+        io.FireInput(lit, "TurnOff");
+        world.RunFixed(1f / 60f);
+        Assert.True(world.Get<PointLight>(dark).Lit);
+        Assert.False(world.Get<PointLight>(lit).Lit);
+
+        io.FireInput(dark, "Toggle");
+        io.FireInput(lit, "Toggle");
+        world.RunFixed(1f / 60f);
+        Assert.False(world.Get<PointLight>(dark).Lit);
+        Assert.True(world.Get<PointLight>(lit).Lit);
+
+        // A light with no range or intensity is never lit, whatever the switch says.
+        Assert.False(new PointLight { Colour = Vector3.One, Range = 0f, Intensity = 1f }.Lit);
+        Assert.Equal("sage.gameplay.lights", app.Engine.Registrations.OwnerOf("entity input", "TurnOn@sage:point_light"));
+    }
 }
