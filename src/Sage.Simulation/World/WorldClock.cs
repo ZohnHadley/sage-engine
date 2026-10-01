@@ -7,8 +7,9 @@ namespace Sage.Simulation;
 // The world's clock (issue 4h-2, REDESIGN §4.7): what time of day it is, and how fast it goes.
 //
 // **Minimal on purpose.** A day count, an hour, and a speed: enough for a sky to be dusk and for a lamp to
-// know it is night. The calendar, NPC schedules, waiting and sleeping and fast-travel time are phase 4g's
-// (docs/REDESIGN.md §5), and read this clock; the `sky` record's curve is rendering data, not gameplay.
+// know it is night. The calendar (`Calendar`, `Date`; Calendar.cs) and passing time (`Time.Pass`; Time.cs)
+// are phase 4g's, issue 4g-2; NPC schedules and the rest are 4g's later issues. They read this clock; the
+// `sky` record's curve is rendering data, not gameplay.
 //
 // Saved, as the `clock` resource: `"clock": { "data": { "Day": 2, "Hour": 18.5, "Scale": 60, "Sky": "sage:day" } }`
 // (test: TheClockSurvivesASave). A save from before the clock has no such resource, and loads with the
@@ -41,6 +42,16 @@ public sealed class WorldClock
     // weather rules alone).
     public RecordId Sky { get; set; }
 
+    // The `calendar` record the day count is read by (issue 4g-2); empty: `CalendarRecord.Default`. Saved
+    // with the clock; a save from before it has none, and the world keeps what it has
+    // (test: AClockSavedBeforeTheCalendarStillLoads).
+    public RecordId Calendar { get; set; }
+
+    // Today's date by `calendar` (the default one when none is given), from the day count alone: day, month,
+    // year and weekday (test: MonthsAndYearsWrapInACustomCalendar). `Calendars.Today(world)` finds the
+    // world's own calendar.
+    public GameDate Date(CalendarRecord? calendar = null) => (calendar ?? CalendarRecord.Default).DateOf(Day);
+
     // Total game hours since day 0 began: a number that only goes up, for a schedule to compare.
     [System.Text.Json.Serialization.JsonIgnore]
     public double Elapsed => Day * HoursPerDay + _hour;
@@ -52,6 +63,16 @@ public sealed class WorldClock
         double days = Math.Floor(hours / HoursPerDay);
         Day += (int)days;
         _hour = Wrap(hours);
+    }
+
+    // Moves the clock forward by game hours at once, day and all (issue 4g-2). Only `Time.Pass` calls it:
+    // the simulation does not tick through the hours, a `TimePassed` event tells what cares to catch up.
+    internal void Skip(double hours)
+    {
+        double total = _hour + hours;
+        double days = Math.Floor(total / HoursPerDay);
+        Day += (int)days;
+        _hour = Wrap(total);
     }
 
     // Is it from `from` (inclusive) to `to` (exclusive)? A window may wrap past midnight: 20 to 6 is the
