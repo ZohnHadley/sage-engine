@@ -1,0 +1,23 @@
+[
+  // What the player carries (engine issue #167). The sword deals 12 a swing, so a goblin of 30 is dead in
+  // three and one swing leaves 18. The bow's arrow flies slowly and straight, 15 m/s with no drop and a
+  // range of 300 m, so one loosed into the open sky is still in the air twenty seconds later: there is
+  // always time to save with it mid-flight.
+  {
+    "type": "attack", "id": "sword_swing", "damage": 12, "damageType": "sage:physical",
+    "reach": 2.4, "radius": 0.35, "arcDegrees": 60,
+    "windupTime": 0.2, "recoverTime": 0.2, "cooldown": 0.5
+  },
+  {
+    "type": "attack", "id": "bow_shot", "delivery": "projectile", "damage": 10, "damageType": "sage:physical",
+    "range": 300, "radius": 0.03, "projectileSpeed": 15,
+    "windupTime": 0, "recoverTime": 0.1, "cooldown": 0.6,
+    "ammo": "arrow"
+  },
+
+  { "type": "item", "id": "sword", "label": "sword", "slot": "MainHand", "attack": "sword_swing", "weight": 3 },
+  { "type": "item", "id": "bow", "label": "bow", "slot": "MainHand", "attack": "bow_shot", "weight": 1 },
+  { "type": "item", "id": "arrow", "label": "arrows", "maxStack": 50, "weight": 0.05 },
+  { "type": "item", "id": "bread", "label": "bread", "maxStack": 10, "weight": 0.5 },
+  { "type": "item", "id": "ring", "label": "silver ring", "weight": 0.1 }
+]

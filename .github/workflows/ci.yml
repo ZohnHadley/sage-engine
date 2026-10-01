@@ -131,6 +131,8 @@ jobs:
           "$sage" validate tests/games/topics
           "$sage" validate tests/games/skeletal
           "$sage" validate tests/games/weapons
+          "$sage" validate tests/games/saves
+          "$sage" validate tests/games/saves --mounts tests/games/saves/rebalance=rebalance
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -138,11 +140,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves --out schemas' and commit the result"
             exit 1
           fi
 

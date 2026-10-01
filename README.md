@@ -198,7 +198,7 @@ CI fails when they are stale) and mapped by `.vscode/settings.json`; after addin
 a part or a record, regenerate them:
 
 ```bash
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons --out schemas
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves --out schemas
 ```
 
 [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) §3, "Editing records in VS Code", has the details.

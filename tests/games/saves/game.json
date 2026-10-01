@@ -1,0 +1,16 @@
+{
+  // Phase 4i's exit (engine issue #167, REDESIGN §5): save anywhere, change a prefab and a record, load:
+  // nothing lost and nothing duplicated (docs/design/09 "As built (the 4i exit game)"). No C#: a camp of
+  // placed goblins, a `.map` with a ring on the floor and a counter, and a player with a sword, a bow and
+  // bread to drop. `rebalance/` is a patch mount, not one of the game's: mounted over it, it raises the
+  // goblin prefab's health and adds a goblin to the scene, as a mod or an update would.
+  // CI validates it (alone and with the patch); tests/Sage.Tests/Games/SavesExitTests.cs plays it,
+  // quick-saves, boots a fresh app with the patch and quick-loads.
+  "name": "Saves",
+  "id": "saves",
+  "plugins": ["sage.maps", "sage.gameplay.io", "sage.gameplay.character", "sage.gameplay.attributes",
+              "sage.gameplay.combat", "sage.gameplay.items"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "camp"
+}
