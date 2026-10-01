@@ -3,8 +3,8 @@ using System.Numerics;
 namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/Directory.Build.props
 
 // The Sandbox game's *simulation* (docs/design/01 §4, §3.1): the dogfooding game that grows into the
-// Daggerfall-like vertical slice (TODO milestone). It runs the game's own rules and makes things hop on
-// the Jump action (PlayerCommand, 08 §3.4). Its scene is data — `sandbox:main` in content/data/scene.json,
+// Daggerfall-like vertical slice (TODO milestone). It runs the game's own rules and has a toy `hop` part
+// whose creatures bounce on their own. Its scene is data — `sandbox:main` in content/data/scene.json,
 // named by game.json's "scene" — and the engine places it (issue #29).
 //
 // It references the base engine and nothing else, so all of this is testable headlessly (R15); the HUD
@@ -15,8 +15,6 @@ namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/
 [RequiresPlugin("sage.gameplay.character", ">=0.1")]   // the player it commands and looks through
 public sealed class SandboxModule : IGameModule
 {
-    private ActionId _jump = ActionId.None;
-
     // The simulation depends on gameplay, not on the client: that is the whole point of the split
     // (R15). Sandbox.Client declares the ClientModule dependency for the half that needs a screen.
     public IReadOnlyList<Type> Dependencies => new[] { typeof(ItemsModule), typeof(AIModule) };
@@ -40,10 +38,7 @@ public sealed class SandboxModule : IGameModule
         ctx.Engine.Actions.Register("MainMenu", ActionKind.Button);
     }
 
-    public void Start(ModuleContext ctx)
-    {
-        _jump = ctx.Engine.Actions.Get("Jump");   // registered by CharacterModule (08 §3.2)
-    }
+    public void Start(ModuleContext ctx) { }
 
     public void OnWorldCreated(World world)
     {
@@ -53,7 +48,7 @@ public sealed class SandboxModule : IGameModule
         terrain.Seed = 1;
         terrain.Load(SectorCoord.Zero);
 
-        world.AddSystem(new HopSystem(world, _jump));
+        world.AddSystem(new HopSystem(world));
         world.AddSystem(new TriggerLogSystem(world));
         world.AddSystem(new CombatLogSystem(world));
         world.AddSystem(new FaceCameraSystem(world));
@@ -86,36 +81,39 @@ public sealed class HopPart : IPrefabPart
         ctx.World.Add(ctx.Entity, new Hop { BaseY = ctx.World.Get<Transform>(ctx.Entity).LocalPosition.Y });
 }
 
-// Gameplay phase (Fixed): Jump (from the tick's PlayerCommand, never from the keyboard) launches
-// every hopping entity that is on the ground. A tap shorter than a tick still counts: the command
-// latches presses between ticks (08 §3.4).
+// Gameplay phase (Fixed): every hopping entity bounces on its own, each on its own beat (staggered by
+// entity id) so they don't move in step. They used to launch on the player's Jump, which read as the
+// creatures sharing the player's input; the player's jump is the character controller's alone.
 [System("sandbox.hop", Phase.Gameplay)]
 public sealed class HopSystem : ISystem
 {
-    private const float LaunchSpeed = 3.5f, Gravity = -12f;
+    private const float LaunchSpeed = 3.5f, Gravity = -12f, Period = 2.5f;
     private readonly Query<Transform, Hop> _hoppers;
-    private readonly ActionId _jump;
 
-    public HopSystem(World world, ActionId jump)
+    public HopSystem(World world)
     {
         _hoppers = world.Query<Transform, Hop>();
-        _jump = jump;
+    }
+
+    // Whether the entity's beat falls in this tick: one launch per Period, offset by its id.
+    public static bool Beat(long tick, float dt, int id)
+    {
+        long period = Math.Max(1, (long)MathF.Round(Period / dt));
+        return (tick + id * 37L) % period == 0;
     }
 
     public void Run(in SystemContext ctx)
     {
-        var input = ctx.World.Resources.Get<PlayerInput>();
-        bool jump = input.HasCommand && input.Command.Pressed.Has(_jump);
-        if (jump) Log.Debug(LogCat.Gameplay, $"Jump in the command for tick {input.Command.Tick}");
         float dt = ctx.Tick.Dt;
-        foreach (var (transforms, hops, _) in _hoppers.Chunks)
+        long tick = ctx.Tick.Tick;
+        foreach (var (transforms, hops, entities) in _hoppers.Chunks)
         {
             var t = transforms.Span;
             var h = hops.Span;
             for (int n = 0; n < t.Length; n++)
             {
                 bool grounded = t[n].LocalPosition.Y <= h[n].BaseY;
-                if (jump && grounded) h[n].Velocity = LaunchSpeed;
+                if (grounded && Beat(tick, dt, entities.EntityAt(n).Id)) h[n].Velocity = LaunchSpeed;
                 if (grounded && h[n].Velocity <= 0) continue;
                 h[n].Velocity += Gravity * dt;
                 t[n].LocalPosition.Y = MathF.Max(h[n].BaseY, t[n].LocalPosition.Y + h[n].Velocity * dt);

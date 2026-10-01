@@ -200,7 +200,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 - **Procedural meshes (F13):** `Renderer.CreateMesh`/`DestroyMesh` build GPU buffers the renderer owns and return a `MeshHandle`; a `MeshRenderer` with a handle draws it instead of an asset. Terrain chunks use this (14 "As built"), so they are ordinary mesh items: no separate `TerrainExtract` exists.
 - **Sprites (F1, done):** `SpriteRenderer` + `SpriteExtract` + `SpriteBatcher`.
   - Extract picks the direction group (§3.8) and the animation frame (12), culls, and writes a `SpriteInstance`; the batcher expands the quads from the camera basis (world up for `Cylindrical`, the full basis for `Spherical`) into one `DynamicVertexBuffer`.
-  - One draw per run of sprites sharing a material **and** a texture, so a sheet's creatures batch together. The sheet's texture overrides the material's `Albedo`, so `sage:sprite_default` serves every sheet.
+  - One draw per run of sprites sharing a material **and** a texture, so a sheet's creatures batch together. The sheet's texture overrides the material's `Albedo`, so `sage:sprite_default` serves every sheet. A run is also split where the lamps lighting it change (§"As built (point lights)").
   - Frame UVs are inset by half a texel, or the quad's edge samples the next frame in the atlas.
   - Meshes and sprites are interleaved by pass: each pass draws its meshes, then its sprites. Mixing *transparent* meshes and sprites by depth is not handled yet (nothing is transparent yet).
 - **Not yet (v1 items left):** render scale, `stat render`, `r_snapshot_dump`. (Point lights landed later the same week — see "As built (point lights)".) Instancing stays "later".
@@ -498,8 +498,13 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
   the next list cannot be forgotten. The `light` part also spent an afternoon registered in
   `AnimationModule` (where `sprite` lives); it has its own `LightsModule` now, which is what one module
   per feature means (16 §"As built (F7)").
-- **Not yet:** lightmaps (the right answer for a large level, HL1's), shadows, sprites lit by point
-  lights (`sprite.fx`'s `Lit` technique still takes sun + ambient only), light entities that switch or
+- **Sprites lit by the lamps (later):** `sprite.fx`'s `Lit` technique takes the sun (with its shadows),
+  the ambient and the point lights, with wrapped (half-Lambert) shading because a billboard's normal
+  only faces the camera. It is `sage:sprite_lit`'s technique, which a sheet opts into; `sage:sprite_default`
+  (also named `sage:sprite_unlit`) stays full-bright. A run of sprites is split where its
+  four lights change (`LightRules.SameSet`, `Renderer.DrawSprites`), so sprites away from any lamp still
+  batch (test: TwoChoicesAreTheSameSetWhateverTheirOrder) (test: SpritesAreUnlitByDefault_AndLitIsOptIn).
+- **Not yet:** lightmaps (the right answer for a large level, HL1's), shadows, light entities that switch or
   flicker through entity I/O, and any culling of the light list beyond what `LightRules` does per
   object — a hundred lamps is a hundred structs, and the work that matters is per *draw*. When that
   stops being true the answer is a grid, not a longer loop.

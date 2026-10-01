@@ -41,11 +41,11 @@ public class SandboxSimulationTests
     ]
     """;
 
-    private static (Engine Engine, World World) NewGame()
+    private static (Engine Engine, World World) NewGame(string scene = Scene)
     {
         var app = HeadlessApp.Simulation()
             .With(new SandboxModule())   // the game, with no client half in sight
-            .File("data/scene.json", Scene, ns: "sandbox")
+            .File("data/scene.json", scene, ns: "sandbox")
             .StartScene("sandbox:main")      // what the Sandbox's game.json says
             .Boot("sandbox");
         return (app.Engine, app.World);
@@ -128,6 +128,57 @@ public class SandboxSimulationTests
             // same entity, not a fresh one (review #59 put a new one back; issue #29 keeps it).
             Assert.Single(world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList());
             Assert.True(world.IsAlive(player), "the player should have been kept across the reload");
+        }
+    }
+
+    // The player's Jump is the player's: the hoppers bounce on their own beat and never on the Jump
+    // action (the bug: every `hop` creature used to launch whenever the player jumped).
+    private const string Hoppers = """
+    [
+      { "type": "prefab", "id": "hero", "name": "hero",
+        "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } },
+      { "type": "prefab", "id": "hopper", "name": "hopper", "parts": { "hop": {} } },
+      { "type": "scene", "id": "main", "origin": [512, 0, 512], "relativeTo": "Ground",
+        "player": { "prefab": "hero", "at": [0, 1, 0] },
+        "place": [ { "prefab": "hopper", "at": [3, 0, 0] }, { "prefab": "hopper", "at": [-3, 0, 0] },
+                   { "prefab": "hopper", "at": [0, 0, 3] } ] }
+    ]
+    """;
+
+    [Xunit.Fact]
+    public void TheHoppersDoNotJumpWithThePlayer_TheyHopOnTheirOwn()
+    {
+        var (engine, world) = NewGame(Hoppers);
+        using (engine)
+        {
+            const float dt = 1f / 60f;
+            var player = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList()[0];
+            var hoppers = world.Query<Transform, Hop>().Entities.ToEntityList().ToList();
+            Assert.Equal(3, hoppers.Count);
+            var jump = engine.Actions.Get("Jump");
+            var input = world.Resources.Get<PlayerInput>();
+            var launched = new System.Collections.Generic.HashSet<int>();
+
+            for (int i = 0; i < 400; i++)   // past one beat for every hopper
+            {
+                long tick = world.Tick + 1;
+                bool press = i % 20 == 0 && world.Get<CharacterController>(player).Grounded;
+                input.HasCommand = true;
+                input.Command = new PlayerCommand { Tick = tick, Pressed = press ? default(ActionMask).With(jump) : default };
+                var before = hoppers.Select(h => world.Get<Hop>(h).Velocity).ToList();
+
+                world.RunFixed(dt);
+
+                if (press) Assert.True(world.Get<CharacterController>(player).Velocity.Y > 0, "the player jumps");
+                for (int n = 0; n < hoppers.Count; n++)
+                {
+                    bool launch = before[n] <= 0 && world.Get<Hop>(hoppers[n]).Velocity > 0;
+                    if (!launch) continue;
+                    Assert.True(HopSystem.Beat(tick, dt, hoppers[n].Id), $"a hopper launched off its beat at tick {tick}");
+                    launched.Add(hoppers[n].Id);
+                }
+            }
+            Assert.Equal(hoppers.Count, launched.Count);   // and each one did hop, unprompted
         }
     }
 }
