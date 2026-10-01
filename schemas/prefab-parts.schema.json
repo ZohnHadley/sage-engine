@@ -299,6 +299,14 @@
         }
       ]
     },
+    "ragdoll": {
+      "description": "Prefab part 'ragdoll' (RagdollPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ragdoll"
+        }
+      ]
+    },
     "routine": {
       "description": "Prefab part 'routine' (RoutinePart). A bare value is its \"id\".",
       "anyOf": [
@@ -682,6 +690,11 @@
           },
           "minItems": 3,
           "maxItems": 3
+        },
+        "drop": {
+          "description": "Let go, with a dynamic body of its own, when the owner goes ragdoll (a weapon in a hand) (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1458,6 +1471,32 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'quest_watch' (QuestWatchPart)."
+    },
+    "ragdoll": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "One ragdoll record to use; left out, every ragdoll record for the model. Names a ragdoll record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:ragdoll"
+            }
+          ]
+        },
+        "onDeath": {
+          "description": "Goes ragdoll when it dies. (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "hitImpulse": {
+          "description": "The impulse a damaging hit gives the body nearest where it landed, along the hit. Unit: N*s. At least 0. (float, default 30)",
+          "default": 30,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'ragdoll' (RagdollPart)."
     },
     "routine": {
       "type": "object",

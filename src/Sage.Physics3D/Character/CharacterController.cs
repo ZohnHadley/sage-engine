@@ -25,7 +25,10 @@ internal sealed class CharacterMovementSystem : ISystem
 
     public CharacterMovementSystem(World world, RecordStore records, ActionRegistry actions)
     {
-        _characters = world.Query<Transform, CharacterController, PawnIntent>();
+        // A ragdoll (issue #246) is physics' now: the controller leaves it lying where it fell.
+#pragma warning disable SAGE0134 // the ragdoll's tag: experimental with the rest of phase 4k
+        _characters = world.Query<Transform, CharacterController, PawnIntent>().WithoutAnyTags(Tags.Get<Ragdolled>());
+#pragma warning restore SAGE0134
         _records = records;
         _space = world.Resources.Get<PhysicsSpace>();
         _conventions = CharacterConventions.Of(world);

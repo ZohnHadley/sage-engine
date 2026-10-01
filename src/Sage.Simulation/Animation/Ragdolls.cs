@@ -152,7 +152,7 @@ public sealed class RagdollTable
 
 // Looking a ragdoll up and resolving it (pure data: the bodies themselves are built from the table by the physics side).
 [Experimental(RagdollApi.Experimental, UrlFormat = RagdollApi.Url)]
-public static class Ragdolls
+public static partial class Ragdolls
 {
     private sealed class Cached
     {

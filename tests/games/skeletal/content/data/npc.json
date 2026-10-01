@@ -88,6 +88,8 @@
       // Health to lose, and the boxes a strike finds (hitboxes.json, engine issue #137).
       "attributes": {},
       "hitboxes": {},
+      // Falls as a ragdoll when it dies, with its model's bodies (ragdoll.json, engine issue #246).
+      "ragdoll": {},
       "aim_ik": {
         "joints": [
           { "joint": "spine", "weight": 0.25, "pitchLimit": 30, "yawLimit": 30 },

@@ -31,6 +31,6 @@
   </ItemGroup>
   <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the open vocabularies (SAGE0120) are declared here, and its conditions and actions use the base's (SAGE0120, SAGE0124); movers place brush-map doors (SAGE0122, MapLevels); foot IK is skeletal animation (SAGE0126, #120); the hit pipeline (SAGE0127, #133) is declared here; NPC routines (SAGE0129, 4g-4) are declared here and read the clock (SAGE0130), the calendar (SAGE0129) and the loaded scene (SAGE0121). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0124;SAGE0126;SAGE0127;SAGE0129;SAGE0130</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0124;SAGE0126;SAGE0127;SAGE0129;SAGE0130;SAGE0134</NoWarn>
   </PropertyGroup>
 </Project>

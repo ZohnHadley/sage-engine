@@ -452,6 +452,14 @@
         }
       ]
     },
+    "ragdoll": {
+      "description": "The component sage:ragdoll (Ragdoll), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ragdoll"
+        }
+      ]
+    },
     "rigid_body": {
       "description": "The component sage:rigid_body (RigidBody), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -905,6 +913,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:quest_watch"
+        }
+      ]
+    },
+    "sage:ragdoll": {
+      "description": "Component sage:ragdoll (Ragdoll).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ragdoll"
         }
       ]
     },
@@ -2143,6 +2159,11 @@
           },
           "minItems": 3,
           "maxItems": 3
+        },
+        "drop": {
+          "description": "Let go, with a dynamic body of its own, when the owner goes ragdoll (a weapon in a hand) (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3917,6 +3938,42 @@
       },
       "additionalProperties": false,
       "description": "Component sage:quest_watch (QuestWatch)."
+    },
+    "sage:ragdoll": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "One ragdoll record to use; none = every ragdoll record for the model, in id order. Names a ragdoll record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:ragdoll"
+            }
+          ]
+        },
+        "onDeath": {
+          "description": "Goes ragdoll when it dies (Died) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "hitImpulse": {
+          "description": "The impulse a damaging hit gives the body nearest where it landed, along the hit (on the killing blow, and on a body already down) Unit: N*s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "active": {
+          "description": "Physics has the pose: the bodies are built and the animator is suspended. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "solidCapsule": {
+          "description": "Set while the ragdoll has turned the entity's solid collider into a trigger; Stop makes it solid again. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:ragdoll (Ragdoll)."
     },
     "sage:rigid_body": {
       "type": "object",

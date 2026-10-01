@@ -32,6 +32,9 @@ const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.ModManager.MountPrefix = "mods/" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
+const Sage.Simulation.Ragdolls.FirstGroup = 1073741824 -> int
+const Sage.Simulation.Ragdolls.Input = "Ragdoll" -> string!
+const Sage.Simulation.Ragdolls.SystemId = "sage.animation.ragdoll" -> string!
 const Sage.Simulation.RenderStages.Count = 8 -> int
 const Sage.Simulation.SaveSystem.AutosavePrefix = "autosave" -> string!
 const Sage.Simulation.SaveSystem.QuickLoadAction = "QuickLoad" -> string!
@@ -221,6 +224,7 @@ Sage.Simulation.BoneAttachment
 Sage.Simulation.BoneAttachment.Angles -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachment.Bone -> string!
 Sage.Simulation.BoneAttachment.BoneAttachment() -> void
+Sage.Simulation.BoneAttachment.Drop -> bool
 Sage.Simulation.BoneAttachment.Offset -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachment.Socket -> string!
 Sage.Simulation.BoneAttachment.Target -> Sage.Simulation.Entity
@@ -229,6 +233,7 @@ Sage.Simulation.BoneAttachmentPart.Angles -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachmentPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Simulation.BoneAttachmentPart.Bone -> string!
 Sage.Simulation.BoneAttachmentPart.BoneAttachmentPart() -> void
+Sage.Simulation.BoneAttachmentPart.Drop -> bool
 Sage.Simulation.BoneAttachmentPart.Offset -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachmentPart.Socket -> string!
 Sage.Simulation.BoneAttachments
@@ -644,6 +649,13 @@ Sage.Simulation.PlayerCameraSystem
 Sage.Simulation.PlayerCameraSystem.PlayerCameraSystem(Sage.Simulation.World! world) -> void
 Sage.Simulation.PlayerCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.PoseSampler
+Sage.Simulation.Ragdoll
+Sage.Simulation.Ragdoll.Active -> bool
+Sage.Simulation.Ragdoll.HitImpulse -> float
+Sage.Simulation.Ragdoll.OnDeath -> bool
+Sage.Simulation.Ragdoll.Ragdoll() -> void
+Sage.Simulation.Ragdoll.Record -> Sage.Core.RecordId
+Sage.Simulation.Ragdoll.SolidCapsule -> bool
 Sage.Simulation.RagdollBodyData
 Sage.Simulation.RagdollBodyData.Angles -> System.Numerics.Vector3
 Sage.Simulation.RagdollBodyData.Joint -> Sage.Simulation.RagdollJointData!
@@ -652,6 +664,8 @@ Sage.Simulation.RagdollBodyData.Offset -> System.Numerics.Vector3
 Sage.Simulation.RagdollBodyData.RagdollBodyData() -> void
 Sage.Simulation.RagdollBodyData.Shape -> Sage.Simulation.RagdollShape
 Sage.Simulation.RagdollBodyData.Size -> System.Numerics.Vector3
+Sage.Simulation.Ragdolled
+Sage.Simulation.Ragdolled.Ragdolled() -> void
 Sage.Simulation.RagdollJointData
 Sage.Simulation.RagdollJointData.Axis -> System.Numerics.Vector3
 Sage.Simulation.RagdollJointData.Kind -> Sage.Simulation.RagdollJointKind
@@ -664,6 +678,12 @@ Sage.Simulation.RagdollJointData.TwistMin -> float
 Sage.Simulation.RagdollJointKind
 Sage.Simulation.RagdollJointKind.Ball = 0 -> Sage.Simulation.RagdollJointKind
 Sage.Simulation.RagdollJointKind.Hinge = 1 -> Sage.Simulation.RagdollJointKind
+Sage.Simulation.RagdollPart
+Sage.Simulation.RagdollPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.RagdollPart.HitImpulse -> float
+Sage.Simulation.RagdollPart.OnDeath -> bool
+Sage.Simulation.RagdollPart.RagdollPart() -> void
+Sage.Simulation.RagdollPart.Record -> Sage.Core.RecordId
 Sage.Simulation.RagdollRecord
 Sage.Simulation.RagdollRecord.Bodies -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.RagdollBodyData!>!
 Sage.Simulation.RagdollRecord.Damping -> float
@@ -1208,8 +1228,12 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.MaterialParam.RenderTarget -> string?
 static Sage.Simulation.PrefabExtensions.Spawn(this Sage.Simulation.World! world, Sage.Core.RecordId prefab, System.Numerics.Vector3 position, float yawDegrees, Sage.Simulation.PrefabOverrides? overrides, string? where = null) -> Sage.Simulation.Entity
+static Sage.Simulation.Ragdolls.ApplyImpulse(Sage.Simulation.World! world, Sage.Simulation.Entity entity, System.Numerics.Vector3 impulse, System.Numerics.Vector3? point = null) -> bool
+static Sage.Simulation.Ragdolls.IsActive(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
 static Sage.Simulation.Ragdolls.Resolve(Sage.Core.RecordStore! records, Sage.Simulation.Skeleton! skeleton, Sage.Core.AssetPath model) -> Sage.Simulation.RagdollTable?
 static Sage.Simulation.Ragdolls.Resolve(Sage.Simulation.Skeleton! skeleton, System.Collections.Generic.IReadOnlyList<Sage.Simulation.RagdollRecord!>! records) -> Sage.Simulation.RagdollTable!
+static Sage.Simulation.Ragdolls.Start(Sage.Simulation.World! world, Sage.Simulation.Entity entity, System.Numerics.Vector3? impulse = null, System.Numerics.Vector3? point = null) -> bool
+static Sage.Simulation.Ragdolls.Stop(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
 static Sage.Simulation.RenderStages.IsPerView(Sage.Simulation.RenderStage stage) -> bool
 static Sage.Simulation.RenderStages.Of(Sage.Simulation.RenderPass pass) -> Sage.Simulation.RenderStage
 static Sage.Simulation.RenderStages.SortKeyPass(Sage.Simulation.RenderStage stage) -> int
