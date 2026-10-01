@@ -316,8 +316,8 @@ a game loading the file would place — a re-spawn is a load of that one placeme
 - **The console drives it**: the `doc_*` commands go through the document, and `ed_undo [n]`, `ed_redo
   [n]` and `ed_history` through its log; they live in `Sage.Editing` so a headless test presses them.
   (test: TheConsoleOpensUndoesRedoesAndListsTheHistory)
-- Until the inspector edits overrides (#223), what it changes on the selected entity is kept only for the
-  placement's position and yaw, as a `SetPlacement`; other component edits are not saved, as before.
+- Since #223 (§10i) the inspector edits the document: a field is a `SetOverride`, the placement's own
+  fields a `SetPlacement`.
 
 ## 10f. As built: the editor mode of the host, `-edit` (#219, 2026-10-01)
 
@@ -404,7 +404,120 @@ viewport click on.
   viewport is the dock space's hole) places the prefab and selects its entity, and Escape cancels. It stays
   armed, to place another.
 
-## 10h. As built: the record browser and forms (#224, 2026-10-01)
+## 10h. As built: selecting and moving in the viewport (#221, 2026-10-01)
+
+A click selects, the selection's gizmo is drawn over the picture and dragged, and the editor's keys
+press the editor's commands. What any of it *does* is `Sage.Editing`'s, so a test presses it through the
+console; `ViewportGizmo` (`src/Sage.Editor/Screens/`) only reads the mouse and draws.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `EditorSelection` | `src/Sage.Editing/EditorSelection.cs` | What the outliner, inspector, gizmo and `ed_delete` agree is selected; it moved here from `Sage.Editor` |
+| `ViewportTools` | `src/Sage.Editing/ViewportTools.cs` | Snapping, the gizmo mode, move/turn/delete/duplicate, and their `ed_*` commands |
+| `GizmoDrag` | same file | One drag of a handle: a `SetPlacement` per frame, merged into one |
+| `ViewportCamera` | `src/Sage.Editing/ViewportCamera.cs` | The screen's camera: a ray through a pixel, the pixel of a point, a gizmo's size |
+| `ViewportGizmo` | `src/Sage.Editor/Screens/ViewportGizmo.cs` | Picking on a click, the gizmo and its drag, the keys, a small toolbar |
+
+- **A selection of something the document placed holds the placement, not the entity.** Every edit
+  re-spawns what it touched, so the entity a click found is gone after the first nudge; the selection's
+  entity is always the one the document spawned last, and it clears when the placement leaves the
+  document (a delete, an undone add) or the document closes. Anything else (a scene's own entity) is
+  held as the entity. A click selects the placement an entity belongs to, so a prefab's child selects
+  the placed thing; an outliner row selects exactly its entity.
+  (test: TheConsoleSelectsByNameAndTheSelectionFollowsAReSpawn)
+- **The console drives it**: `ed_select [name]` (a placement by name or id, else an entity by name;
+  nothing clears), `ed_move [name] x y z` (in the document's frame), `ed_rotate [name] yaw` (degrees,
+  kept in (-180, 180]), `ed_delete [name]` and `ed_duplicate [name]`, each on the selection when no name
+  is given. **Each is one undo step**: the merge is closed before and after, so two moves of one thing
+  are two steps and a drag after a move does not fold into it.
+  (tests: MovingAndRotatingFromTheConsoleAreAnUndoStepEach, DeletingClearsTheSelectionAndUndoPutsThePlacementBack)
+- **A duplicate is a copy straight after the original, where it stands, with a name and id of its own**
+  (`corner` → `corner_2`, `corner_2` → `corner_3`), and it is selected, so a drag that follows moves the
+  copy. (test: DuplicatingMakesACopyWithANameOfItsOwnAndSelectsIt)
+- **A drag is one `SetPlacement`.** `GizmoDrag.Begin` closes the merge; each `Update` measures from where
+  the drag began (`TranslateGizmo.Drag` / `RotateGizmo.Drag`, §10c) and does a `SetPlacement` only when
+  the result moved, which merges into the last; `End` closes it on mouse up. A move snaps the result to
+  the grid on the moved axes, a turn snaps its angle. (test: ADragIsOneSetPlacementAndSnapsToTheGrid)
+- **Snapping is `ed_snap [0|1]`, `ed_grid <metres>` (0.5) and `ed_angle <degrees>` (15)**, on by default,
+  and `ed_gizmo move|rotate`. They are commands, not cvars: a tool registered once a world exists comes
+  after `config.cfg` is read, and the cvar seal refuses it. (test: TheSnappingAndTheGizmoAreSetFromTheConsole)
+- **The viewport is the screen** (§10f), so picking needs no rectangle: the pixel under the mouse is a
+  pixel of the free camera's picture, and the mouse is the viewport's wherever ImGui does not want it
+  (the dock's pass-through middle). `ViewportCamera` takes the main view's pose and field of view and
+  the display's size; the gizmo is drawn on ImGui's background draw list (over the world, under the
+  panels) at the pixels `ToScreen` gives, which agree with the ray `RayThrough` casts back.
+  (test: AViewportCameraProjectsAPointToThePixelWhoseRayPassesThroughIt)
+- **The editor's own cameras are not picked.** A `DebugCamera` entity is driven through its
+  `CameraPose`, so its transform stays at the origin, where its fallback sphere would win a click on
+  anything there; `EditorPicking.PickWhere` takes a filter and the viewport leaves out the free and
+  viewport cameras. (test: AClickPicksWhatTheViewportAcceptsAndSelectsItsPlacement)
+- **Keys** (never while ImGui has the keyboard, so typing in the console is safe): Delete (`ed_delete`),
+  Ctrl+D (`ed_duplicate`), Ctrl+Z and Ctrl+Y or Ctrl+Shift+Z (`ed_undo`, `ed_redo`), F (`ed_frame`: the
+  free camera moves back along its own view until the selection is in front of it, 6 m away), **G and R
+  for move and rotate** — not W and E, which fly the camera (`EditorMove` is WASD). A toolbar at the
+  top of the picture sets the gizmo and the snapping too. The outliner's Delete on a placed entity is
+  `ed_delete` now, so it is undoable and saved, rather than destroying the entity behind the document.
+
+**Not built:** multi-select and box select; local-space gizmos and rotation about X and Z (a placement
+has only a yaw); scaling; a gizmo for an entity the document did not place (it is marked, not movable).
+
+## 10i. As built: the inspector on the document (#223, 2026-10-01)
+
+The inspector used to change the live struct (box it, set a field, write it back), which lasted until the
+next re-spawn and never reached a file. **On a placed entity an edit is now an override**: a
+`SetOverride` on the document (§10e), saved with the placement; "revert to prefab" is a `ClearOverride`.
+What the panel shows and does is **`InspectorModel`** (`src/Sage.Editing/InspectorModel.cs`), headless and
+tested; `EntityInspectorWindow` only draws it.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `InspectorModel`, `InspectorGroup`, `InspectorRow` | `src/Sage.Editing/InspectorModel.cs` | One group per component or part, one row per field: value, overridden, provenance, editable; `Set`, `Revert`, `TrySet`, `TryRevert` |
+| `InspectorValue` | `src/Sage.Editing/InspectorValue.cs` | Typed text to the JsonNode an override writes, by the field's `ValueKind` |
+| `InspectorCommands` | `src/Sage.Editing/InspectorCommands.cs` | `ed_set`, `ed_revert`, `ed_inspect` |
+| `EntityInspectorWindow` | `src/Sage.Editor/Screens/` | The placement form, the rows, the override mark, revert buttons, provenance on hover |
+
+- **How a field maps to an override.** A component the prefab names in `components` is a group whose
+  rows write `overrides.components.<the prefab's key>.<field's JSON name>` (the key as the prefab spells
+  it, `timer` or `sage:timer`); its value is the live entity's, which is the prefab's with the overrides
+  merged in. A part the prefab names in `parts` is a group of the part's options (its `[PrefabPart]`
+  class), writing `overrides.parts.<key>.<field>`; its value is the prefab's body with the placement's
+  merged over it, read as the part reads it, so `body.radius` resizes the capsule the part builds. A
+  component the prefab does **not** name (a part's collider, the engine's name and placement tags) is
+  shown read-only, since an override would add a copy the part then fights; `Transform` is the
+  placement's `at` and `yaw`. (tests: EdSetWritesAnOverrideTheRespawnedEntityHasAndASaveAndReopenKeep,
+  PartsArePartOptionsAndThePlacementsOwnFieldsAreAForm)
+- **Overrides survive.** `ed_set gate timer.interval 7` writes `{"timer":{"interval":7}}` on the
+  placement, the re-spawned entity has 7, and after `doc_save`, a reload and `doc_open` it still does.
+  `ed_revert gate timer.interval` takes it away (an emptied body and overrides go with it); both undo and
+  redo, and a revert of what is not overridden is refused. (tests:
+  EdSetWritesAnOverrideTheRespawnedEntityHasAndASaveAndReopenKeep, EdRevertGoesBackToThePrefabAndUndoRedoWalkBoth)
+- **A drag is one undo**: a widget's frames are `SetOverride`s of one field, which merge, and the panel
+  calls `EndMerge` when no item is active, as the transform path does; each console `ed_set` is an edit
+  of its own. (test: ADragOverAFieldIsOneUndo)
+- **Provenance per field**: "this placement (<document>)" when it is overridden; else the last of the
+  prefab's writes (`RecordStore.Writes`, 4j-2) whose path holds the field — the defining file and line, a
+  base prefab's (`via base`), or a mod's patch, with its mount (`InspectorRow.SetBy`); "default" when the
+  prefab, merged from all its files, does not write the field at all. (test:
+  ProvenanceNamesThePrefabsFileAndAPatchingMount)
+- **The placement's own fields are a form**: at, yaw, name and frame (`relativeTo`, "(document)" for
+  none), each a `SetPlacement`; `ed_set <name> at 1 2 3` (or `yaw`, `name`, `relativeTo`) does the same.
+- **Values typed at the console** are read by the field's shape (`InspectorValue.TryParse`): numbers and
+  whole numbers inside the field's Min..Max, bools (`true`, `yes`, `on`, `1`), vectors as `x y z`, `x,y,z` or
+  `[x, y, z]`, enums by name in any case, record ids checked against the records of the type the field
+  names (a bare name another namespace has is written in full; `none` is no record), strings without
+  their quotes, and JSON for lists, maps and objects. A bad value is a console warning and no edit.
+  (test: ConsoleValuesAreReadByTheFieldsShape)
+- **An entity the document did not place** (one the game spawned, a prefab's child, anything when no
+  document is open) has nowhere to save an edit: the model is read-only and `ed_set` refuses it. The
+  ImGui panel **edits those live, as before, under an "Edited live: not saved" note**, so a developer
+  tweaking a running game still can; the choice keeps the dev tools of a play run what they were.
+  (test: AnEntityTheDocumentDidNotPlaceIsReadOnly)
+
+**Not built:** nested object fields of a component (an `Object` row is shown, not edited; `ed_set` takes
+a whole object as JSON), list editing in the panel, and overriding a component the prefab does not name.
+A JSON value with double quotes cannot pass the console's tokenizer; the panel has no such limit.
+
+## 10j. As built: the record browser and forms (#224, 2026-10-01)
 
 **Records are edited as JSON, saved into the file they came from.** `RecordDocument` (Sage.Editing) is one
 record open: `RecordStore.RawJson` (the definition and each patch merged, comments gone: what the files
@@ -463,7 +576,7 @@ inspector) only draws and calls them.
   - asset browser;
   - I/O link view;
   - terrain tools;
-  - prefab override UI;
+  - ~~prefab override UI~~ **done (#223)**, the inspector on the document;
   - the rename/refactor command for asset paths (05 §3.2);
   - multi-document tabs.
 

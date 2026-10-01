@@ -11,6 +11,8 @@
     <NoWarn>$(NoWarn);SAGE0123</NoWarn>
     <!-- The editor's model (Sage.Editing, phase 10a) is SAGE0133 while 10a builds it. -->
     <NoWarn>$(NoWarn);SAGE0133</NoWarn>
+    <!-- The inspector's placement form edits a placement's fields (scenes and placements, SAGE0121; #223). -->
+    <NoWarn>$(NoWarn);SAGE0121</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
