@@ -16,6 +16,8 @@ const Sage.Simulation.DebugCamera.IdlePriority = -2147483647 -> int
 const Sage.Simulation.DebugCamera.OverridePriority = 2147483647 -> int
 const Sage.Simulation.FirstPersonRigSystem.Id = "sage.camera.first_person" -> string!
 const Sage.Simulation.FogMath.Invisible = 0.001953125 -> float
+const Sage.Simulation.JointDesc.DefaultDamping = 1 -> float
+const Sage.Simulation.JointDesc.DefaultStiffness = 30 -> float
 const Sage.Simulation.LogicEntities.OnChanged = "OnChanged" -> string!
 const Sage.Simulation.LogicEntities.OnEqual = "OnEqual" -> string!
 const Sage.Simulation.LogicEntities.OnFalse = "OnFalse" -> string!
@@ -455,6 +457,51 @@ Sage.Simulation.ICellHandoff
 Sage.Simulation.ICellHandoff.Sleeping(Sage.Simulation.World! world, string! cell, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>! roots) -> void
 Sage.Simulation.ICondition
 Sage.Simulation.ICondition.Test(in Sage.Simulation.ConditionContext context, out string! why) -> bool
+Sage.Simulation.IPhysicsWorld.AddBody(Sage.Simulation.Entity entity, in Sage.Simulation.Collider collider, in Sage.Simulation.RigidBody body, in Sage.Simulation.Pose pose, int group) -> Sage.Simulation.PhysicsBody
+Sage.Simulation.IPhysicsWorld.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
+Sage.Simulation.IPhysicsWorld.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.PhysicsBody b, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
+Sage.Simulation.IPhysicsWorld.AngularVelocityOf(in Sage.Simulation.PhysicsBody body) -> System.Numerics.Vector3
+Sage.Simulation.IPhysicsWorld.ApplyImpulse(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 impulse, System.Numerics.Vector3 worldPoint) -> void
+Sage.Simulation.IPhysicsWorld.GroupOf(in Sage.Simulation.PhysicsBody body) -> int
+Sage.Simulation.IPhysicsWorld.JointBroken.get -> System.ReadOnlySpan<Sage.Simulation.JointBroken>
+Sage.Simulation.IPhysicsWorld.JointCount.get -> int
+Sage.Simulation.IPhysicsWorld.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
+Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
+Sage.Simulation.IPhysicsWorld.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.IPhysicsWorld.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
+Sage.Simulation.JointBroken
+Sage.Simulation.JointBroken.A.get -> Sage.Simulation.Entity
+Sage.Simulation.JointBroken.A.init -> void
+Sage.Simulation.JointBroken.B.get -> Sage.Simulation.Entity
+Sage.Simulation.JointBroken.B.init -> void
+Sage.Simulation.JointBroken.Force.get -> float
+Sage.Simulation.JointBroken.Force.init -> void
+Sage.Simulation.JointBroken.Joint.get -> Sage.Simulation.PhysicsJoint
+Sage.Simulation.JointBroken.Joint.init -> void
+Sage.Simulation.JointBroken.JointBroken() -> void
+Sage.Simulation.JointBroken.JointBroken(Sage.Simulation.PhysicsJoint Joint, Sage.Simulation.Entity A, Sage.Simulation.Entity B, float Force) -> void
+Sage.Simulation.JointDesc
+Sage.Simulation.JointDesc.AnchorA -> System.Numerics.Vector3
+Sage.Simulation.JointDesc.AnchorB -> System.Numerics.Vector3
+Sage.Simulation.JointDesc.Axis -> System.Numerics.Vector3
+Sage.Simulation.JointDesc.BreakForce -> float
+Sage.Simulation.JointDesc.Damping -> float
+Sage.Simulation.JointDesc.HingeMax -> float
+Sage.Simulation.JointDesc.HingeMin -> float
+Sage.Simulation.JointDesc.JointDesc() -> void
+Sage.Simulation.JointDesc.Kind -> Sage.Simulation.JointKind
+Sage.Simulation.JointDesc.MaxDistance -> float
+Sage.Simulation.JointDesc.MinDistance -> float
+Sage.Simulation.JointDesc.Rest -> System.Numerics.Quaternion
+Sage.Simulation.JointDesc.Stiffness -> float
+Sage.Simulation.JointDesc.Swing -> float
+Sage.Simulation.JointDesc.TwistMax -> float
+Sage.Simulation.JointDesc.TwistMin -> float
+Sage.Simulation.JointKind
+Sage.Simulation.JointKind.Ball = 0 -> Sage.Simulation.JointKind
+Sage.Simulation.JointKind.Distance = 3 -> Sage.Simulation.JointKind
+Sage.Simulation.JointKind.Fixed = 2 -> Sage.Simulation.JointKind
+Sage.Simulation.JointKind.Hinge = 1 -> Sage.Simulation.JointKind
 Sage.Simulation.JointMask
 Sage.Simulation.JointMask.JointMask(Sage.Simulation.Skeleton! skeleton, float weight = 0) -> void
 Sage.Simulation.JointMask.SetBranch(int joint, float weight) -> void
@@ -580,6 +627,14 @@ Sage.Simulation.ModManager.RestartNeeded.get -> bool
 Sage.Simulation.ModManager.Searched.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.ModManager.Summary() -> string!
 Sage.Simulation.ModManager.WatchManifests() -> System.IDisposable!
+Sage.Simulation.PhysicsJoint
+Sage.Simulation.PhysicsJoint.Id.get -> int
+Sage.Simulation.PhysicsJoint.Id.init -> void
+Sage.Simulation.PhysicsJoint.IsNull.get -> bool
+Sage.Simulation.PhysicsJoint.PhysicsJoint() -> void
+Sage.Simulation.PhysicsJoint.PhysicsJoint(int Id, int Version) -> void
+Sage.Simulation.PhysicsJoint.Version.get -> int
+Sage.Simulation.PhysicsJoint.Version.init -> void
 Sage.Simulation.Placement.Overrides -> Sage.Simulation.PrefabOverrides?
 Sage.Simulation.Placement.Id -> string!
 Sage.Simulation.PlayerCamera
@@ -1081,6 +1136,7 @@ static Sage.Simulation.FogMath.Factor(Sage.Simulation.FogMode mode, float distan
 static Sage.Simulation.FogMath.Hides(float cullDistance, System.Numerics.Vector3 center, float radius) -> bool
 static Sage.Simulation.FogMath.ShaderParam(Sage.Simulation.FogMode mode, float start, float end, float density) -> float
 static Sage.Simulation.GltfAnimationReader.Read(System.IO.Stream! stream, string! name) -> Sage.Simulation.AnimationSet?
+static Sage.Simulation.JointDesc.FromWorld(Sage.Simulation.JointKind kind, in Sage.Simulation.Pose a, in Sage.Simulation.Pose b, System.Numerics.Vector3 worldAnchor, System.Numerics.Vector3 worldAxis = default(System.Numerics.Vector3)) -> Sage.Simulation.JointDesc
 static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity

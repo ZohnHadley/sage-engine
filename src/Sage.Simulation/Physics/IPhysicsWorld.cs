@@ -63,6 +63,54 @@ public interface IPhysicsWorld
     bool IsDynamic(in PhysicsBody body);   // moved by physics: its pose is written back to the transform
     bool IsAwake(in PhysicsBody body);
 
+    // ---- Groups, spin and impulses (issue #242, SAGE0134) -----------------------------------------
+    //
+    // A collision group: bodies sharing a nonzero group never collide with each other (a ragdoll's
+    // limbs and the capsule of the character they belong to); 0 is no group. Layers still apply to
+    // bodies in different groups.
+
+    // AddBody, with the body in `group` from the start.
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    PhysicsBody AddBody(Entity entity, in Collider collider, in RigidBody body, in Pose pose, int group);
+
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    void SetGroup(in PhysicsBody body, int group);
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    int GroupOf(in PhysicsBody body);
+
+    // Radians per second about each world axis.
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    Vector3 AngularVelocityOf(in PhysicsBody body);
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    void SetAngularVelocity(in PhysicsBody body, Vector3 velocity);
+
+    // An impulse (N·s) at a world point: it pushes and, off the centre, spins. Wakes the body.
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    void ApplyImpulse(in PhysicsBody body, Vector3 impulse, Vector3 worldPoint);
+
+    // ---- Joints (issue #242, SAGE0134) ------------------------------------------------------------
+    //
+    // A joint holds two bodies together (JointDesc says how and where, in each body's shape space);
+    // `a` is a body (kinematic or dynamic), `b` a body or a static. Removing a body removes its joints;
+    // a joint that breaks (JointDesc.BreakForce) is removed and reported once in JointBroken.
+
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    PhysicsJoint AddJoint(in PhysicsBody a, in PhysicsBody b, in JointDesc desc);
+
+    // A joint from `a` to the world: AnchorB is a world point, B's space is world space.
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    PhysicsJoint AddJoint(in PhysicsBody a, in JointDesc desc);
+
+    // Removes a joint; a stale or default handle is ignored.
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    void RemoveJoint(in PhysicsJoint joint);
+
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    bool JointExists(in PhysicsJoint joint);
+
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    int JointCount { get; }
+
     // ---- Queries --------------------------------------------------------------------------------
     //
     // Every query takes a LayerMask (default = every layer) and skips triggers unless asked: a trigger
@@ -101,10 +149,15 @@ public interface IPhysicsWorld
     ReadOnlySpan<ContactEvent> ContactBegin { get; }
     ReadOnlySpan<ContactEvent> ContactEnd { get; }
 
+    // Joints that broke during the last step, each once, already removed (JointDesc.BreakForce).
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    ReadOnlySpan<JointBroken> JointBroken { get; }
+
     // ---- Debug draw (10 §9) ---------------------------------------------------------------------
 
     // Draws what the backend actually simulates — shapes where it has them, bounds for brush hulls,
-    // triggers in magenta — within `range` of `around` on the ground plane. PhysicsDebugSystem calls it
-    // for `phys_debug 1`, so every backend draws the same way.
+    // triggers in magenta, joints as yellow lines between their anchors (issue #242) — within `range` of
+    // `around` on the ground plane. PhysicsDebugSystem calls it for `phys_debug 1`, so every backend
+    // draws the same way.
     void DrawDebug(DebugDraw debug, Vector3 around, float range);
 }

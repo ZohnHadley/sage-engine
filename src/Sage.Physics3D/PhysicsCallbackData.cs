@@ -66,23 +66,43 @@ internal sealed class PhysicsCallbackData
         public bool Used;
         public float Friction;
         public float Restitution;
+        public int Group;       // bodies sharing a nonzero group never collide (issue #242)
     }
 
     // ---- Registration (main thread, between steps) ----
 
-    public void RegisterBody(int handle, Entity entity, byte layer, bool trigger, float friction, float restitution, bool contacts = false) =>
-        Register(ref _bodies, handle, entity, layer, trigger, friction, restitution, contacts);
+    public void RegisterBody(int handle, Entity entity, byte layer, bool trigger, float friction, float restitution, bool contacts = false, int group = 0) =>
+        Register(ref _bodies, handle, entity, layer, trigger, friction, restitution, contacts, group);
 
-    public void RegisterStatic(int handle, Entity entity, byte layer, bool trigger, float friction, float restitution, bool contacts = false) =>
-        Register(ref _statics, handle, entity, layer, trigger, friction, restitution, contacts);
+    public void RegisterStatic(int handle, Entity entity, byte layer, bool trigger, float friction, float restitution, bool contacts = false, int group = 0) =>
+        Register(ref _statics, handle, entity, layer, trigger, friction, restitution, contacts, group);
+
+    // A body's or a static's collision group (0 = none). Unknown handles are ignored.
+    public void SetGroup(int handle, bool isStatic, int group)
+    {
+        var entries = isStatic ? _statics : _bodies;
+        if ((uint)handle < (uint)entries.Length && entries[handle].Used) entries[handle].Group = group;
+    }
+
+    public int GroupOf(int handle, bool isStatic)
+    {
+        var entries = isStatic ? _statics : _bodies;
+        return (uint)handle < (uint)entries.Length ? entries[handle].Group : 0;
+    }
+
+    public Entity BodyEntity(int handle, bool isStatic)
+    {
+        var entries = isStatic ? _statics : _bodies;
+        return (uint)handle < (uint)entries.Length ? entries[handle].Entity : default;
+    }
 
     public void UnregisterBody(int handle) { if (handle < _bodies.Length) _bodies[handle] = default; }
     public void UnregisterStatic(int handle) { if (handle < _statics.Length) _statics[handle] = default; }
 
-    private static void Register(ref Entry[] entries, int handle, Entity entity, byte layer, bool trigger, float friction, float restitution, bool contacts)
+    private static void Register(ref Entry[] entries, int handle, Entity entity, byte layer, bool trigger, float friction, float restitution, bool contacts, int group)
     {
         if (handle >= entries.Length) Array.Resize(ref entries, Math.Max(handle + 1, entries.Length * 2));
-        entries[handle] = new Entry { Entity = entity, Layer = layer, Trigger = trigger, Contacts = contacts, Used = true, Friction = friction, Restitution = restitution };
+        entries[handle] = new Entry { Entity = entity, Layer = layer, Trigger = trigger, Contacts = contacts, Used = true, Friction = friction, Restitution = restitution, Group = group };
     }
 
     // ---- Callbacks (worker threads, during the step) ----
@@ -110,6 +130,7 @@ internal sealed class PhysicsCallbackData
         ref var eb = ref EntryOf(b);
         if (!ea.Used || !eb.Used) return true;              // unknown collidables collide by default
         if (ea.Trigger && eb.Trigger) return false;         // two triggers ignore each other
+        if (ea.Group != 0 && ea.Group == eb.Group) return false;   // one collision group (issue #242)
         return Layers.Collide(ea.Layer, eb.Layer);
     }
 

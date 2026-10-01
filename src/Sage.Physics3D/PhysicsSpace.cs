@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using BepuPhysics;
@@ -26,7 +27,10 @@ namespace Sage.Physics3D;
 //
 // Stepping allocates about 40 bytes per tick inside Bepu itself (its stage profiler), with or without
 // the thread dispatcher. That is the only per-frame allocation left in the host (TODO #41).
-public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
+//
+// Joints (issue #242, SAGE0134) are Bepu constraints behind PhysicsJoint handles: PhysicsSpace.Joints.cs.
+#pragma warning disable SAGE0134 // joints and groups: this is the backend that implements them
+public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
 {
     private readonly BufferPool _pool = new();
     private readonly ThreadDispatcher _dispatcher;
@@ -65,7 +69,7 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
 
     public Vector3 Gravity { get; }
     public LayerMatrix Layers => _data.Layers;
-    public int BodyCount => Simulation.Bodies.ActiveSet.Count;
+    public int BodyCount => Simulation.Bodies.ActiveSet.Count - AwakeAnchors();
     public int StaticCount => Simulation.Statics.Count;
     public double LastStepMilliseconds { get; private set; }
 
@@ -77,10 +81,19 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
     public ReadOnlySpan<ContactEvent> ContactBegin => _data.ContactBegin;
     public ReadOnlySpan<ContactEvent> ContactEnd => _data.ContactEnd;
 
+    // Joints that broke this tick (JointDesc.BreakForce), each once.
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public ReadOnlySpan<JointBroken> JointBroken => System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_broken);
+
     // ---- Bodies -------------------------------------------------------------------------------
 
     // Adds an entity's collider to the simulation and returns its handle component.
-    public PhysicsBody AddBody(Entity entity, in Collider collider, in RigidBody body, in Pose pose)
+    public PhysicsBody AddBody(Entity entity, in Collider collider, in RigidBody body, in Pose pose) =>
+        AddBody(entity, collider, body, pose, 0);
+
+    // The same, in a collision group (0 = none): bodies sharing a nonzero group never collide.
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public PhysicsBody AddBody(Entity entity, in Collider collider, in RigidBody body, in Pose pose, int group)
     {
         var shape = ShapeFor(collider, out BodyInertia inertia, body.Mass <= 0 ? 1f : body.Mass);
         var rigidPose = new RigidPose(collider.CenterAt(pose), pose.Rotation);
@@ -90,23 +103,24 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         {
             var description = BodyDescription.CreateDynamic(rigidPose, inertia, new CollidableDescription(shape, 0.1f), new BodyActivityDescription(0.01f));
             var handle = Simulation.Bodies.Add(description);
-            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts);
+            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts, group);
             return new PhysicsBody { Handle = handle.Value, IsStatic = false };
         }
         if (body.Kind == BodyKind.Kinematic)
         {
             var description = BodyDescription.CreateKinematic(rigidPose, new CollidableDescription(shape, 0.1f), new BodyActivityDescription(0.01f));
             var handle = Simulation.Bodies.Add(description);
-            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts);
+            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts, group);
             return new PhysicsBody { Handle = handle.Value, IsStatic = false };
         }
         var staticHandle = Simulation.Statics.Add(new StaticDescription(rigidPose, shape));
-        _data.RegisterStatic(staticHandle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts);
+        _data.RegisterStatic(staticHandle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts, group);
         return new PhysicsBody { Handle = staticHandle.Value, IsStatic = true };
     }
 
     public void RemoveBody(in PhysicsBody body)
     {
+        RemoveJointsOf(body);   // a joint never outlives either of its bodies
         if (body.IsStatic)
         {
             var handle = new StaticHandle(body.Handle);
@@ -244,14 +258,51 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
 
     public bool IsAwake(in PhysicsBody body) => !body.IsStatic && Simulation.Bodies[new BodyHandle(body.Handle)].Awake;
 
+    // ---- Groups, spin and impulses (issue #242) -------------------------------------------------
+
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public void SetGroup(in PhysicsBody body, int group)
+    {
+        _data.SetGroup(body.Handle, body.IsStatic, group);
+        // Pairs already touching keep their contact constraints until Bepu next asks ShouldCollide,
+        // which it does every step for pairs whose bounds overlap: nothing else to refresh.
+    }
+
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public int GroupOf(in PhysicsBody body) => _data.GroupOf(body.Handle, body.IsStatic);
+
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public Vector3 AngularVelocityOf(in PhysicsBody body) =>
+        body.IsStatic ? Vector3.Zero : Simulation.Bodies[new BodyHandle(body.Handle)].Velocity.Angular;
+
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public void SetAngularVelocity(in PhysicsBody body, Vector3 velocity)
+    {
+        if (body.IsStatic) return;
+        var reference = Simulation.Bodies[new BodyHandle(body.Handle)];
+        reference.Velocity.Angular = velocity;
+        reference.Awake = true;
+    }
+
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public void ApplyImpulse(in PhysicsBody body, Vector3 impulse, Vector3 worldPoint)
+    {
+        if (body.IsStatic) return;
+        var reference = Simulation.Bodies[new BodyHandle(body.Handle)];
+        reference.Awake = true;   // first: waking moves the body into the active set
+        reference.ApplyImpulse(impulse, worldPoint - reference.Pose.Position);
+    }
+
     // ---- Stepping -----------------------------------------------------------------------------
 
     internal void Step(float dt)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         _data.BeginStep();
+        _broken.Clear();
         Simulation.Timestep(dt, _dispatcher);
         _data.EndStep();
+        CheckBreaks(dt);
         LastStepMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
 
@@ -380,6 +431,7 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
             {
                 var handle = set.IndexToHandle[i];
                 var body = bodies[handle];
+                if (!body.Collidable.Shape.Exists) continue;   // a joint's world anchor has no shape
                 var reference = new CollidableReference(body.Kinematic ? CollidableMobility.Kinematic : CollidableMobility.Dynamic, handle);
                 DrawShape(debug, body.Collidable.Shape, body.Pose, _data.IsTrigger(reference), around, range);
             }
@@ -391,6 +443,8 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
             var reference = new CollidableReference(Simulation.Statics.IndexToHandle[i]);
             DrawShape(debug, description.Shape, description.Pose, _data.IsTrigger(reference), around, range);
         }
+
+        DrawJoints(debug, around, range);
     }
 
     private void DrawShape(DebugDraw debug, TypedIndex shape, RigidPose pose, bool trigger, Vector3 around, float range)
@@ -663,3 +717,4 @@ public sealed class PhysicsSpace : IPhysicsWorld, IDisposable
         }
     }
 }
+#pragma warning restore SAGE0134

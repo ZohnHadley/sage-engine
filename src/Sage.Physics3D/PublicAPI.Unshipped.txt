@@ -1,1 +1,13 @@
 #nullable enable
+Sage.Physics3D.PhysicsSpace.AddBody(Sage.Simulation.Entity entity, in Sage.Simulation.Collider collider, in Sage.Simulation.RigidBody body, in Sage.Simulation.Pose pose, int group) -> Sage.Simulation.PhysicsBody
+Sage.Physics3D.PhysicsSpace.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
+Sage.Physics3D.PhysicsSpace.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.PhysicsBody b, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
+Sage.Physics3D.PhysicsSpace.AngularVelocityOf(in Sage.Simulation.PhysicsBody body) -> System.Numerics.Vector3
+Sage.Physics3D.PhysicsSpace.ApplyImpulse(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 impulse, System.Numerics.Vector3 worldPoint) -> void
+Sage.Physics3D.PhysicsSpace.GroupOf(in Sage.Simulation.PhysicsBody body) -> int
+Sage.Physics3D.PhysicsSpace.JointBroken.get -> System.ReadOnlySpan<Sage.Simulation.JointBroken>
+Sage.Physics3D.PhysicsSpace.JointCount.get -> int
+Sage.Physics3D.PhysicsSpace.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
+Sage.Physics3D.PhysicsSpace.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
+Sage.Physics3D.PhysicsSpace.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
+Sage.Physics3D.PhysicsSpace.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
