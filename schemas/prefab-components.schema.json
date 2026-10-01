@@ -92,6 +92,14 @@
         }
       ]
     },
+    "cell": {
+      "description": "The component sage:cell (InCell), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:cell"
+        }
+      ]
+    },
     "character_controller": {
       "description": "The component sage:character_controller (CharacterController), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -436,6 +444,14 @@
         }
       ]
     },
+    "routine": {
+      "description": "The component sage:routine (Routine), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:routine"
+        }
+      ]
+    },
     "rpg:item_grid": {
       "description": "Component rpg:item_grid (ItemGridPlacements).",
       "allOf": [
@@ -529,6 +545,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:camera_pose"
+        }
+      ]
+    },
+    "sage:cell": {
+      "description": "Component sage:cell (InCell).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:cell"
         }
       ]
     },
@@ -857,6 +881,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:rigid_body"
+        }
+      ]
+    },
+    "sage:routine": {
+      "description": "Component sage:routine (Routine).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:routine"
         }
       ]
     },
@@ -2277,6 +2309,17 @@
       },
       "additionalProperties": false,
       "description": "Component sage:camera_pose (CameraPose)."
+    },
+    "sage:cell": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "description": "The source this runtime spawn belongs to: `scene:<id>`, or a streamed sector `sector:<scene>:<x>,<z>` (4g-3) (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:cell (InCell)."
     },
     "sage:character_controller": {
       "type": "object",
@@ -3798,6 +3841,21 @@
       },
       "additionalProperties": false,
       "description": "Component sage:rigid_body (RigidBody)."
+    },
+    "sage:routine": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Its daily routine. Names a routine record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:routine"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:routine (Routine)."
     },
     "sage:save_placeholder": {
       "type": "object",

@@ -51,6 +51,7 @@ const Sage.Simulation.ThirdPersonRig.DefaultDistance = 3 -> float
 const Sage.Simulation.ThirdPersonRig.DefaultProbeRadius = 0.25 -> float
 const Sage.Simulation.ThirdPersonRig.DefaultSmoothing = 0.3 -> float
 const Sage.Simulation.ThirdPersonRigSystem.Id = "sage.camera.third_person" -> string!
+const Sage.Simulation.Time.MaxHours = 8760000 -> double
 const Sage.Simulation.Timers.OnTimer = "OnTimer" -> string!
 const Sage.Simulation.Timers.ResetInput = "TimerReset" -> string!
 const Sage.Simulation.Timers.StartInput = "TimerStart" -> string!
@@ -68,6 +69,7 @@ const Sage.Simulation.WorldClock.HoursPerDay = 24 -> double
 override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
 override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
+override Sage.Simulation.GameDate.ToString() -> string!
 Sage.Simulation.ActionAttribute
 Sage.Simulation.ActionAttribute.ActionAttribute(string! id) -> void
 Sage.Simulation.ActionContext
@@ -224,6 +226,26 @@ Sage.Simulation.BoneAttachmentPart.BoneAttachmentPart() -> void
 Sage.Simulation.BoneAttachmentPart.Offset -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachmentPart.Socket -> string!
 Sage.Simulation.BoneAttachments
+Sage.Simulation.CalendarMonth
+Sage.Simulation.CalendarMonth.CalendarMonth() -> void
+Sage.Simulation.CalendarMonth.Days -> int
+Sage.Simulation.CalendarMonth.Name -> string!
+Sage.Simulation.CalendarRecord
+Sage.Simulation.CalendarRecord.CalendarRecord() -> void
+Sage.Simulation.CalendarRecord.DateOf(int day) -> Sage.Simulation.GameDate
+Sage.Simulation.CalendarRecord.DaysIn(int month) -> int
+Sage.Simulation.CalendarRecord.DaysInYear.get -> int
+Sage.Simulation.CalendarRecord.MonthCount.get -> int
+Sage.Simulation.CalendarRecord.MonthName(int month) -> string!
+Sage.Simulation.CalendarRecord.Months -> System.Collections.Generic.List<Sage.Simulation.CalendarMonth!>!
+Sage.Simulation.CalendarRecord.StartWeekday -> int
+Sage.Simulation.CalendarRecord.StartYear -> int
+Sage.Simulation.CalendarRecord.WeekdayCount.get -> int
+Sage.Simulation.CalendarRecord.WeekdayIndex(string! name) -> int
+Sage.Simulation.CalendarRecord.WeekdayName(int weekday) -> string!
+Sage.Simulation.CalendarRecord.WeekdayOf(int day) -> int
+Sage.Simulation.CalendarRecord.Weekdays -> System.Collections.Generic.List<string!>!
+Sage.Simulation.Calendars
 Sage.Simulation.Camera
 Sage.Simulation.Camera.Camera() -> void
 Sage.Simulation.Camera.Enabled -> bool
@@ -399,6 +421,21 @@ Sage.Simulation.FogMode.Exp2 = 1 -> Sage.Simulation.FogMode
 Sage.Simulation.FogMode.Linear = 0 -> Sage.Simulation.FogMode
 Sage.Simulation.FromParentPrefab
 Sage.Simulation.FromParentPrefab.FromParentPrefab() -> void
+Sage.Simulation.GameDate
+Sage.Simulation.GameDate.Day.get -> int
+Sage.Simulation.GameDate.Day.init -> void
+Sage.Simulation.GameDate.GameDate() -> void
+Sage.Simulation.GameDate.GameDate(int Year, int Month, int Day, int Weekday, string! MonthName, string! WeekdayName) -> void
+Sage.Simulation.GameDate.Month.get -> int
+Sage.Simulation.GameDate.Month.init -> void
+Sage.Simulation.GameDate.MonthName.get -> string!
+Sage.Simulation.GameDate.MonthName.init -> void
+Sage.Simulation.GameDate.Weekday.get -> int
+Sage.Simulation.GameDate.Weekday.init -> void
+Sage.Simulation.GameDate.WeekdayName.get -> string!
+Sage.Simulation.GameDate.WeekdayName.init -> void
+Sage.Simulation.GameDate.Year.get -> int
+Sage.Simulation.GameDate.Year.init -> void
 Sage.Simulation.GltfAnimationReader
 Sage.Simulation.GltfAnimationReader.Count.get -> int
 Sage.Simulation.GltfAnimationReader.Forget(Sage.Core.AssetPath path) -> bool
@@ -609,6 +646,8 @@ Sage.Simulation.RenderStage.Sky = 3 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStage.Transparent = 4 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStages
 Sage.Simulation.PrefabRecord.Persist -> bool
+Sage.Simulation.SceneRecord.Streamed -> bool
+Sage.Simulation.SceneRecord.Terrain -> Sage.Core.RecordRef<Sage.Simulation.TerrainRecord!>
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
@@ -747,6 +786,16 @@ Sage.Simulation.StateTransition.StateTransition() -> void
 Sage.Simulation.StateTransition.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Simulation.StateTransition.To -> string!
 Sage.Simulation.StateTransition.When -> Sage.Simulation.ICondition?
+Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainGeneratorKind.Flat = 0 -> Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainGeneratorKind.Hills = 1 -> Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainRecord
+Sage.Simulation.TerrainRecord.Amplitude -> float
+Sage.Simulation.TerrainRecord.Generator -> Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainRecord.Height -> float
+Sage.Simulation.TerrainRecord.Seed -> int
+Sage.Simulation.TerrainRecord.TerrainRecord() -> void
+Sage.Simulation.TerrainRecord.Wavelength -> float
 Sage.Simulation.ThirdPersonRig
 Sage.Simulation.ThirdPersonRig.Boom -> float
 Sage.Simulation.ThirdPersonRig.Collision.get -> Sage.Simulation.LayerMask
@@ -771,6 +820,18 @@ Sage.Simulation.ThirdPersonRigPart.ThirdPersonRigPart() -> void
 Sage.Simulation.ThirdPersonRigSystem
 Sage.Simulation.ThirdPersonRigSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.ThirdPersonRigSystem.ThirdPersonRigSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
+Sage.Simulation.Time
+Sage.Simulation.TimePassed
+Sage.Simulation.TimePassed.FromElapsed.get -> double
+Sage.Simulation.TimePassed.FromElapsed.init -> void
+Sage.Simulation.TimePassed.Hours.get -> double
+Sage.Simulation.TimePassed.Hours.init -> void
+Sage.Simulation.TimePassed.Reason.get -> string!
+Sage.Simulation.TimePassed.Reason.init -> void
+Sage.Simulation.TimePassed.TimePassed() -> void
+Sage.Simulation.TimePassed.TimePassed(double Hours, string! Reason, double FromElapsed, double ToElapsed) -> void
+Sage.Simulation.TimePassed.ToElapsed.get -> double
+Sage.Simulation.TimePassed.ToElapsed.init -> void
 Sage.Simulation.Timers
 Sage.Simulation.ToggleViewSystem
 Sage.Simulation.ToggleViewSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
@@ -853,6 +914,9 @@ Sage.Simulation.WeatherRecord.FogTint -> System.Numerics.Vector3
 Sage.Simulation.WeatherRecord.SkyTint -> System.Numerics.Vector3
 Sage.Simulation.WorldClock
 Sage.Simulation.WorldClock.Advance(double realSeconds) -> void
+Sage.Simulation.WorldClock.Calendar.get -> Sage.Core.RecordId
+Sage.Simulation.WorldClock.Calendar.set -> void
+Sage.Simulation.WorldClock.Date(Sage.Simulation.CalendarRecord? calendar = null) -> Sage.Simulation.GameDate
 Sage.Simulation.WorldClock.Day.get -> int
 Sage.Simulation.WorldClock.Day.set -> void
 Sage.Simulation.WorldClock.Elapsed.get -> double
@@ -892,6 +956,11 @@ static Sage.Simulation.BoneAttachments.Attach(Sage.Simulation.World! world, Sage
 static Sage.Simulation.BoneAttachments.AttachToBone(Sage.Simulation.World! world, Sage.Simulation.Entity child, Sage.Simulation.Entity owner, string! bone, System.Numerics.Vector3 offset = default(System.Numerics.Vector3), System.Numerics.Vector3 angles = default(System.Numerics.Vector3)) -> void
 static Sage.Simulation.BoneAttachments.OffsetMatrix(System.Numerics.Vector3 offset, System.Numerics.Vector3 angles) -> System.Numerics.Matrix4x4
 static Sage.Simulation.BoneAttachments.TryFindSocket(Sage.Core.RecordStore! records, Sage.Core.AssetPath model, string! name, out Sage.Simulation.SkeletonSocket? socket) -> bool
+static Sage.Simulation.CalendarRecord.Default.get -> Sage.Simulation.CalendarRecord!
+static Sage.Simulation.CalendarRecord.InWindow(Sage.Simulation.GameDate date, int fromMonth, int fromDay, int toMonth, int toDay) -> bool
+static Sage.Simulation.Calendars.Of(Sage.Simulation.World! world) -> Sage.Simulation.CalendarRecord!
+static Sage.Simulation.Calendars.Today(Sage.Simulation.World! world) -> Sage.Simulation.GameDate
+static Sage.Simulation.Calendars.Today(Sage.Simulation.World! world, out Sage.Simulation.CalendarRecord! calendar) -> Sage.Simulation.GameDate
 static Sage.Simulation.Camera.Orthographic(float height = 10, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.Camera.Perspective(float fovYDegrees = 45, int priority = 0, float near = 0.1, float far = 1000) -> Sage.Simulation.Camera
 static Sage.Simulation.CameraBlends.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity camera, in Sage.Simulation.CameraView from, float seconds, Sage.Simulation.Ease ease) -> void
@@ -975,6 +1044,7 @@ static Sage.Simulation.StateMachines.SetState(Sage.Simulation.World! world, Sage
 static Sage.Simulation.StateMachines.StateOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> string?
 static Sage.Simulation.ThirdPersonRig.Create(Sage.Simulation.Entity follow = default(Sage.Simulation.Entity), bool enabled = true) -> Sage.Simulation.ThirdPersonRig
 static Sage.Simulation.ThirdPersonRig.DefaultShoulderOffset.get -> System.Numerics.Vector3
+static Sage.Simulation.Time.Pass(Sage.Simulation.World! world, double hours, string! reason = "") -> bool
 static Sage.Simulation.Timers.NextWait(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> float
 static Sage.Simulation.Timers.Start(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> void
 static Sage.Simulation.ToggleViewSystem.Toggle(Sage.Simulation.World! world) -> void
@@ -1023,7 +1093,7 @@ static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simul
 static Sage.Simulation.WorldClock.TryParseHour(string! text, out double hour) -> bool
 Sage.Simulation.AudioMixer.Invalidate(Sage.Core.AssetPath asset) -> int
 *REMOVED*const Sage.Simulation.SaveSystem.FormatVersion = 2 -> int
-const Sage.Simulation.SaveSystem.FormatVersion = 3 -> int
+const Sage.Simulation.SaveSystem.FormatVersion = 4 -> int
 Sage.Simulation.PostEffectRecord
 Sage.Simulation.PostEffectRecord.Cvar -> string!
 Sage.Simulation.PostEffectRecord.Material -> Sage.Core.RecordId
@@ -1031,3 +1101,6 @@ Sage.Simulation.PostEffectRecord.Order -> int
 Sage.Simulation.PostEffectRecord.PostEffectRecord() -> void
 Sage.Simulation.PointLight.Lit.get -> bool
 Sage.Simulation.PointLight.Off -> bool
+Sage.Simulation.InCell
+Sage.Simulation.InCell.InCell() -> void
+Sage.Simulation.InCell.Source -> string!

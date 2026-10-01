@@ -288,7 +288,7 @@ internal static class WorldConsoleCommands
             {
                 if (!world.Resources.TryGet<WorldClock>(out var clock) || clock == null) continue;
                 Log.Info(LogCat.Console,
-                    $"'{world.Name}': day {clock.Day} {WorldClock.Format(clock.Hour)} (x{clock.Scale:0.##} game seconds a second)" +
+                    $"'{world.Name}': day {clock.Day} ({Calendars.Today(world)}) {WorldClock.Format(clock.Hour)} (x{clock.Scale:0.##} game seconds a second)" +
                     (clock.Sky.IsEmpty ? ", no sky" : $", sky {clock.Sky}"));
             }
         });
@@ -307,6 +307,20 @@ internal static class WorldConsoleCommands
                 clock.Hour = hour;
                 Log.Info(LogCat.Console, $"'{world.Name}': {WorldClock.Format(clock.Hour)}");
             }
+        });
+
+        cvars.RegisterCommand("time_pass", CVarFlags.Cheat,
+            "time_pass <hours>: pass game time at once, in every world (one skip at the next tick boundary, one TimePassed event; not `wait`, which pauses a script).", a =>
+        {
+            if (a.Count == 0 || !double.TryParse(a[0], System.Globalization.NumberStyles.Float,
+                                                 System.Globalization.CultureInfo.InvariantCulture, out double hours)
+                || double.IsNaN(hours) || double.IsInfinity(hours) || hours <= 0)
+            {
+                Log.Warn(LogCat.Console, "time_pass <hours>, hours > 0, e.g. time_pass 30");
+                return;
+            }
+            foreach (var world in engine.Worlds)
+                Time.Pass(world, hours, "console");
         });
 
         cvars.RegisterCommand("time_scale", CVarFlags.Cheat,

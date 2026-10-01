@@ -103,7 +103,8 @@ public class VocabularyDeclarationTests
         Assert.Contains(("item_use", "cast", "sage.gameplay.items"), owners);
         Assert.Contains(("ai_schedule_selector", "default", "sage.gameplay.ai"), owners);
         Assert.Contains(("ai_condition", "CanCastAtEnemy", "sage.gameplay.ai"), owners);
-        Assert.Equal(11, vocabularies.Of<IAICondition>().Entries.Count);
+        Assert.Contains(("ai_condition", "in_routine", "sage.gameplay.ai"), owners);   // issue 4g-4
+        Assert.Equal(12, vocabularies.Of<IAICondition>().Entries.Count);
     }
 
     // A plugin switched off takes its entries with it: no quests, no `reach`. What is left is the base's
@@ -114,7 +115,7 @@ public class VocabularyDeclarationTests
         using var app = HeadlessApp.Bare().Build();
         var entries = app.Engine.Vocabularies.All.SelectMany(v => v.Entries.Select(e => (v.Name, e.Id, e.Owner))).ToList();
         Assert.All(entries, e => Assert.Equal("sage.core", e.Owner));
-        Assert.Equal(new[] { "action:add_var", "action:fire", "action:set_var", "condition:all", "condition:anim_finished", "condition:anim_param", "condition:any", "condition:not", "condition:time_between", "condition:var" },
+        Assert.Equal(new[] { "action:add_var", "action:fire", "action:set_var", "condition:all", "condition:anim_finished", "condition:anim_param", "condition:any", "condition:date_between", "condition:not", "condition:time_between", "condition:var", "condition:weekday" },
                      entries.Select(e => $"{e.Name}:{e.Id}").OrderBy(e => e, System.StringComparer.Ordinal));
     }
 }

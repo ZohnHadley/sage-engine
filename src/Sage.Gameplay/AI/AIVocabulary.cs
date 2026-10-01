@@ -58,6 +58,7 @@ public sealed class AIConditionAttribute : VocabularyEntryAttribute<IAICondition
 [AICondition(nameof(AICondition.SpellComingBack), Plugin = "sage.gameplay.ai")]
 [AICondition(nameof(AICondition.Casting), Plugin = "sage.gameplay.ai")]
 [AICondition(nameof(AICondition.RememberEnemy), Plugin = "sage.gameplay.ai")]
+[AICondition("in_routine", Plugin = "sage.gameplay.ai")]   // AICondition.InRoutine (issue 4g-4)
 internal sealed class PerceivedCondition : IAICondition
 {
     public bool Sense(in AIPerception perception) => false;
@@ -182,6 +183,10 @@ public ref struct AIScheduleChoice
     public AIProfileRecord Profile;
     public AIScheduleConventions Schedules;
     public AIConditions Names;
+    // The schedule its routine runs now (issue 4g-4), or empty when it has no routine, no entry is in force,
+    // or the entry's anchor is not in the world. `default` runs it in place of idling.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RecordId Routine;
 
     public readonly bool Has(AICondition condition) => (Conditions & (ulong)condition) != 0;
     public readonly bool Has(string condition) => Names.Has(Conditions, condition);
@@ -215,7 +220,9 @@ internal sealed class DefaultScheduleSelector : IAIScheduleSelector
 {
     public RecordId Choose(in AIScheduleChoice choice) => Situation(in choice);
 
-    // Reach first, then magic, then closing the distance. A creature that can swing and is close
+    // Reach first, then magic, then closing the distance, then its routine (issue 4g-4), then idling. A
+    // fight outranks the day's work, and when it is over the routine's schedule starts again from its first
+    // task, so the creature walks back to where it should be. A creature that can swing and is close
     // enough swings — cheaper, and no mana — and one that cannot swing at all casts instead of
     // walking into reach to do nothing, which is what a caster with no `Melee` used to do.
     public static RecordId Situation(in AIScheduleChoice c)
@@ -230,6 +237,7 @@ internal sealed class DefaultScheduleSelector : IAIScheduleSelector
             // line existed, and it walked a pure caster into melee reach to stand there empty-handed.
             c.Has(AICondition.SpellComingBack) && !c.Has(AICondition.CanMelee) ? schedules.HoldGround :
             c.Has(AICondition.SeeEnemy) || c.Has(AICondition.RememberEnemy) ? schedules.Chase :
+            !c.Routine.IsEmpty ? c.Routine :
             schedules.Idle;
     }
 }

@@ -390,6 +390,49 @@ public class ReconcileTests
         One(third.World, "west");
     }
 
+    // The 4i bug 4g-1 fixes: the state a load holds for a level not placed yet was written back, and laid
+    // on, in whatever frame the world was in by then, so a rebase in between put it a sector out. It is a
+    // dormant cell now, kept with the sector its positions are relative to.
+    [Xunit.Fact]
+    public void PendingStateFollowsARebase()
+    {
+        string saves = TestEnv.NewTempDir();
+        Vector3 levers;
+        using (var first = Run(Files(), saves))
+        {
+            var world = first.World;
+            levers = world.Origin().ToAbsolute(One(world, "levers").GetComponent<Transform>().LocalPosition);
+            world.Get<LogicCounter>(One(world, "levers")).Value = 2;
+            Assert.True(first.Engine.Saves.Save("slot"));
+        }
+
+        string onTerrain = Content.Replace("""{ "type": "map", "id": "room", "file": "maps/room.map" }""",
+                                           """{ "type": "map", "id": "room", "file": "maps/room.map", "onTerrain": true }""");
+        using (var waiting = Run(Files(onTerrain), saves))
+        {
+            var world = waiting.World;
+            Assert.True(waiting.Engine.Saves.Load("slot"));
+            Assert.Empty(Named(world, "levers"));
+            world.Rebase(new SectorCoord(3, 0));
+            Assert.True(waiting.Engine.Saves.Save("again"));
+
+            var file = JsonNode.Parse(File.ReadAllText(Path.Combine(saves, "again", "world_main.json")))!;
+            Assert.Equal(0, (int)file["dormant"]!["map:game:room"]!["sector"]!["x"]!);
+
+            MapLoader.EnsureEntities(world, world.Resources.Get<MapLevels>().Loaded.Single());
+            var placed = One(world, "levers");
+            Assert.Equal(levers, world.Origin().ToAbsolute(placed.GetComponent<Transform>().LocalPosition));
+            Assert.Equal(2f, world.Get<LogicCounter>(placed).Value);
+        }
+
+        using var third = Run(Files(), saves);
+        Assert.True(third.Engine.Saves.Load("again"));
+        Assert.Equal(new SectorCoord(3, 0), third.World.Origin().Sector);
+        var loaded = One(third.World, "levers");
+        Assert.Equal(levers, third.World.Origin().ToAbsolute(loaded.GetComponent<Transform>().LocalPosition));
+        Assert.Equal(2f, third.World.Get<LogicCounter>(loaded).Value);
+    }
+
     // An authored placement `id` wins over the derived one, so reordering the content does not move the
     // saved state to another entity; two placements with one id are a content error.
     [Xunit.Fact]

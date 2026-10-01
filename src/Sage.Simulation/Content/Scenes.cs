@@ -45,6 +45,18 @@ public sealed class SceneRecord
 
     [Property(Tooltip = "What the world is like when the scene starts")]
     public SceneEnvironment Environment = new();
+
+    // Placed sector by sector as the player comes near, and put to sleep with its state as they leave
+    // (4g-3, StreamedScene): for an exterior bigger than one sector. Needs sage.streaming; without it the
+    // scene is placed whole.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    [Property(Tooltip = "Place the scene sector by sector around the player, and put sectors the player leaves to sleep with their state")]
+    public bool Streamed;
+
+    // The built-in ground the scene stands on (4g-3); left out, whatever the game's terrain is.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    [Property(Tooltip = "A terrain record: the ground the world gets when this scene is placed; left out, the game's own")]
+    public RecordRef<TerrainRecord> Terrain;
 }
 
 // A scene's defaults for the world around it. Time of day joins the weather when there is a clock.
@@ -77,6 +89,9 @@ internal sealed class ActiveScene
 
     internal readonly List<MapLevel> Levels = new();
     internal readonly List<RecordId> Documents = new();
+
+    // A streamed scene's sectors (4g-3); null for a scene placed whole.
+    internal StreamedScene? Streamed;
 }
 
 // The engine's scene service (Engine.Scenes).
@@ -145,13 +160,25 @@ public sealed class Scenes
 
     // Everything the world's scene placed, gone: its own placements, its documents' and its levels. The
     // player is not the scene's to take. Returns how many entities went.
+    //
+    // **The scene goes dormant** (4g-1): the state of everything it placed, and the runtime spawns that
+    // belong to it (a dropped sword, an arrow in flight: InCell), are kept, and placing the scene again
+    // lays that state back and spawns those again. The runtime spawns leave the world with it rather than
+    // turning up in the next scene at the same coordinates.
     public int Clear(World world)
     {
         if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null) return 0;
 
         // Before anything goes (4i-3): what the game destroyed is noted, so that placing this scene again
-        // (a hot reload, a `scene_load` back to it) leaves it destroyed.
+        // (a hot reload, a `scene_load` back to it) leaves it destroyed — and, unless a reload or a load is
+        // clearing it (ContentIds.Discarding), its state and its runtime spawns go dormant (4g-1).
         if (!state.Id.IsEmpty) ContentIds.Forget(world, ContentIds.SceneSource(state.Id));
+        // A streamed scene's sectors the same way, each its own cell (4g-3).
+        if (state.Streamed is { } streamed)
+        {
+            streamed.Clear(world);
+            state.Streamed = null;
+        }
 
         int removed = 0;
         foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList())
@@ -206,11 +233,17 @@ public sealed class Scenes
     // placed is left: a load puts the save's tombstones in place there. Levels a person loaded with
     // `map_load` are not the scene's; with `levels` their entities are placed again as well. Returns false
     // when there is no such scene (the world is then left with none).
+    //
+    // Nothing goes dormant here (4g-1): a reload is for seeing the edit, so the live state is not laid back
+    // over it and the runtime spawns stay where they are; a load replaces both with the save's.
     internal bool Replace(World world, RecordId id, Action? cleared = null, bool levels = false)
     {
-        Clear(world);
-        if (levels && world.Resources.TryGet<MapLevels>(out var loaded) && loaded != null)
-            foreach (var level in loaded.Loaded) MapLoader.ForgetEntities(world, level);
+        using (ContentIds.Discarding(world))
+        {
+            Clear(world);
+            if (levels && world.Resources.TryGet<MapLevels>(out var loaded) && loaded != null)
+                foreach (var level in loaded.Loaded) MapLoader.ForgetEntities(world, level);
+        }
         cleared?.Invoke();
 
         if (id.IsEmpty || !_engine.Records.TryGet(id, out SceneRecord scene)) return false;
@@ -223,6 +256,20 @@ public sealed class Scenes
         var state = world.Resources.Get<ActiveScene>();
         state.Id = id;
         string source = ContentIds.SceneSource(id);
+        ApplyTerrain(world, scene);
+
+        // Streamed (4g-3): nothing is placed now but the levels that do not stand on the terrain. The
+        // sectors are placed at tick boundaries as the ring reaches them (TickEnded).
+        if (scene.Streamed && world.Resources.TryGet<SectorRing>(out _))
+        {
+            state.Streamed = StreamedScene.Build(_engine, id, scene);
+            foreach (var map in scene.Maps)
+                if (StreamedScene.PlacedWhole(_engine, map.Id) && MapLoader.Load(world, map.Id) is { } whole) state.Levels.Add(whole);
+            Log.Info(LogCat.World, $"Scene '{id}' streams by sector in '{world.Name}' ({state.Levels.Count} level(s) loaded whole)");
+            return;
+        }
+        if (scene.Streamed)
+            Log.Once(LogCat.World, LogLevel.Warn, $"unstreamed:{id}", $"Scene '{id}' is streamed, but sage.streaming is not loaded: it is placed whole");
 
         int placed = 0;
         for (int i = 0; i < scene.Place.Count; i++)
@@ -256,6 +303,37 @@ public sealed class Scenes
 
         Log.Info(LogCat.World, $"Scene '{id}': {placed} placed and {state.Levels.Count} level(s) loaded in '{world.Name}'");
     }
+
+    // A scene's `terrain` (4g-3): the world's ground becomes that built-in generator. Ground generated from
+    // another is dropped, and the ring generates it again. A scene that names none leaves the game's own.
+    private void ApplyTerrain(World world, SceneRecord scene)
+    {
+        if (scene.Terrain.Id.IsEmpty || !world.Resources.TryGet<Terrain>(out var terrain) || terrain == null) return;
+        if (!_engine.Records.TryGet(scene.Terrain.Id, out TerrainRecord record)) return;   // the load check says so
+        if (BuiltInTerrain.Matches(terrain.Generator, terrain.Seed, record)) return;
+        for (int i = terrain.Sectors.Count - 1; i >= 0; i--) terrain.Unload(terrain.Sectors[i].Coord);
+        terrain.Generator = BuiltInTerrain.Create(record);
+        terrain.Seed = record.Seed;
+        Log.Info(LogCat.Streaming, $"'{world.Name}': ground from terrain '{scene.Terrain.Id}' ({record.Generator}, seed {record.Seed})");
+    }
+
+    // ---- The tick boundary (4g-3) ---------------------------------------------------------------------
+
+    // Called by World.RunFixed once every phase of a tick is done: a streamed scene puts to sleep the sectors
+    // that left the ring and places the ones that came into it. Nothing to do costs a lookup or two.
+    internal void TickEnded(World world)
+    {
+        if (!world.Resources.TryGet<ActiveScene>(out var state) || state?.Streamed is not { } streamed) return;
+        if (!world.Resources.TryGet<SectorRing>(out var ring) || ring == null) return;
+        streamed.Step(world, ring);
+    }
+
+    // What a scene's content would be if it is streamed, for a load to re-key an older save's `scene:`
+    // tombstones and sources by (SaveSystem.Rekey); null for a scene placed whole.
+    internal StreamedScene? StreamedFor(World world, RecordId id) =>
+        !id.IsEmpty && _engine.Records.TryGet(id, out SceneRecord scene) && scene.Streamed && world.Resources.TryGet<SectorRing>(out _)
+            ? StreamedScene.Build(_engine, id, scene)
+            : null;
 
     private void ApplyEnvironment(World world, SceneRecord scene)
     {

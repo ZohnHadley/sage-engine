@@ -21,6 +21,11 @@ namespace Sage.Simulation;
 // right now (a map still waiting for the ground under it, a scene the player has left) keeps its
 // tombstones and its saved state *pending* until it is placed again, and a save writes them back.
 //
+// **Since 4g-1 a source goes dormant with its state** (Cells.cs): forgetting it writes every live entity
+// it placed, and every runtime spawn that belongs to it (InCell), into its dormant cell, and placing it
+// again lays that state back and spawns those again. The state a load holds for a source not placed yet is
+// a dormant cell too, kept with the sector its positions are relative to.
+//
 // A world resource; every world with an engine has one (ContentIds.Baseline adds it when first asked).
 internal sealed class ContentBaseline
 {
@@ -31,14 +36,20 @@ internal sealed class ContentBaseline
     // Sources whose placing is done (Finish) and not yet cleared.
     private readonly HashSet<string> _live = new(StringComparer.Ordinal);
 
-    // What waits for a source to be placed: ids to remove again, and saved entities to lay onto it.
+    // What waits for a source to be placed: ids to remove again, and its state (4g-1: a dormant cell).
     private readonly Dictionary<string, HashSet<PersistentId>> _pendingTombstones = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<JsonObject>> _pendingState = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DormantCell> _dormant = new(StringComparer.Ordinal);
+
+    // While above zero, a source forgotten keeps its tombstones only, and its runtime spawns stay: a hot
+    // reload shows the edit rather than the old state, and a load replaces both anyway.
+    private int _discarding;
 
     public bool IsLive(string source) => _live.Contains(source);
 
-    // True for an id that a live source placed: content's, not the game's.
-    public bool IsBaseline(PersistentId id) => _sourceOf.TryGetValue(id, out var source) && _live.Contains(source);
+    // True for an id that content placed and has not forgotten: content's, not the game's. A source is live
+    // once Finish has run; a streamed sector placed over several ticks (4g-3) is content before that too, so
+    // a save in between writes its entities with their source rather than as the game's own.
+    public bool IsBaseline(PersistentId id) => _sourceOf.ContainsKey(id);
 
     public bool TryGetSource(PersistentId id, out string source) => _sourceOf.TryGetValue(id, out source!);
 
@@ -49,13 +60,18 @@ internal sealed class ContentBaseline
         _sourceOf[id] = source;
     }
 
-    // The source has placed everything it places: it is live, and what waited for it is applied.
+    // The source has placed everything it places: it is live, and what waited for it is applied — its
+    // dead removed, its state laid on, and its runtime spawns back (4g-1).
     internal void Finish(World world, string source)
     {
         _live.Add(source);
         _placed.TryAdd(source, new HashSet<PersistentId>());
 
-        if (_pendingTombstones.Remove(source, out var dead))
+        // A streamed sector's tombstones are kept (4g-3): it is placed again every time the player comes
+        // back, and it never places its dead (StreamedScene.Place asks IsTombstoned), so they must outlive
+        // this. Anything else's are applied once and dropped, as they always were.
+        bool keep = source.StartsWith(ContentIds.SectorPrefix, StringComparison.Ordinal);
+        if (keep ? _pendingTombstones.TryGetValue(source, out var dead) : _pendingTombstones.Remove(source, out dead))
         {
             foreach (var id in dead)
             {
@@ -66,16 +82,21 @@ internal sealed class ContentBaseline
             }
         }
 
-        if (_pendingState.Remove(source, out var saved) && world.Engine is { } engine)
-            engine.Saves.LayOnto(world, saved, $"pending state for {source}");
+        if (_dormant.Remove(source, out var cell) && world.Engine is { } engine)
+            engine.Saves.Wake(world, source, cell);
     }
 
     // The content that placed these is going (a scene cleared, a document closed, a level unloaded).
     // Called *before* its entities are destroyed: the ones already dead then are the ones the game
     // destroyed, and they wait as tombstones in case the source is placed again (a hot reload, a
     // `scene_load` back), so what is dead stays dead.
+    //
+    // And it goes dormant with its state (4g-1): the live ones are written into its dormant cell, and so
+    // are its runtime spawns, which are destroyed here — nothing else would take them out of the world.
     internal void Forget(World world, string source)
     {
+        if (_discarding == 0 && world.Engine is { } engine) Sleep(world, engine, source);
+
         _live.Remove(source);
         if (!_placed.Remove(source, out var ids)) return;
         foreach (var id in ids)
@@ -85,18 +106,96 @@ internal sealed class ContentBaseline
         }
     }
 
-    // A load: what was pending belonged to the game being left. The save's tombstones wait instead.
-    internal void Reset(IReadOnlyDictionary<string, HashSet<PersistentId>> tombstones)
+    // A source that is not in the world takes the runtime spawns that walked into it (4g-3): they sleep in
+    // its dormant cell and come back when it is placed.
+    internal void Doze(World world, string source)
     {
-        _pendingTombstones.Clear();
-        _pendingState.Clear();
-        foreach (var (source, ids) in tombstones) Pending(_pendingTombstones, source).UnionWith(ids);
+        if (_discarding == 0 && world.Engine is { } engine) Sleep(world, engine, source);
     }
 
-    internal void AddPendingState(string source, JsonObject saved)
+    // Whether a source's content placed this id and the game destroyed it, or it left (Leave).
+    internal bool IsTombstoned(string source, PersistentId id) =>
+        _pendingTombstones.TryGetValue(source, out var dead) && dead.Contains(id);
+
+    // A placed root walked out of the sector that placed it (4g-3, StreamedScene.Move): it is that sector's
+    // no longer — tombstoned there, so placing the sector again does not place it twice — and it belongs to
+    // the sector it is in now as that cell's runtime spawn, with its id, its children and its state.
+    internal void Leave(World world, Entity root, PersistentId id, string to)
     {
-        if (!_pendingState.TryGetValue(source, out var list)) _pendingState[source] = list = new List<JsonObject>();
-        list.Add(saved);
+        if (!_sourceOf.TryGetValue(id, out var from)) return;
+        Unregister(root, from);
+        Pending(_pendingTombstones, from).Add(id);
+        if (world.Has<InCell>(root)) world.Get<InCell>(root).Source = to;
+        else world.Add(root, new InCell { Source = to });
+    }
+
+    private void Unregister(Entity entity, string from)
+    {
+        if (entity.TryGetComponent<Persistent>(out var persistent)
+            && _sourceOf.TryGetValue(persistent.Id, out var source) && source == from)
+        {
+            _sourceOf.Remove(persistent.Id);
+            if (_placed.TryGetValue(from, out var ids)) ids.Remove(persistent.Id);
+        }
+        if (entity.ChildCount == 0) return;
+        foreach (var child in entity.ChildEntities)
+            if (child.HasComponent<PrefabChildKey>()) Unregister(child, from);
+    }
+
+    private void Sleep(World world, Engine engine, string source)
+    {
+        var entities = new List<Entity>();
+        if (_live.Contains(source) && _placed.TryGetValue(source, out var ids))
+            foreach (var id in ids)
+                if (world.Resolve(id) is { IsNull: false } placed) entities.Add(placed);
+        var members = Cells.Members(world, source);
+        entities.AddRange(members);
+        if (entities.Count == 0) return;
+
+        var frame = world.Origin().Sector;
+        foreach (var saved in engine.Saves.Capture(world, entities)) Dormant(source, frame).Add(saved, frame);
+
+        foreach (var member in members)
+            if (world.IsAlive(member)) world.Destroy(member);
+        if (members.Count > 0)
+            Log.Debug(LogCat.Save, $"{source}: {members.Count} runtime spawn(s) asleep with it");
+    }
+
+    // A hot reload or a load clears content without keeping its state (see `_discarding`).
+    internal IDisposable Discarding()
+    {
+        _discarding++;
+        return new Scope(this);
+    }
+
+    private sealed class Scope : IDisposable
+    {
+        private ContentBaseline? _baseline;
+        public Scope(ContentBaseline baseline) => _baseline = baseline;
+        public void Dispose()
+        {
+            if (_baseline != null) _baseline._discarding--;
+            _baseline = null;
+        }
+    }
+
+    // A load: what was pending or dormant belonged to the game being left. The save's wait instead.
+    internal void Reset(IReadOnlyDictionary<string, HashSet<PersistentId>> tombstones, IReadOnlyDictionary<string, DormantCell> dormant)
+    {
+        _pendingTombstones.Clear();
+        _dormant.Clear();
+        foreach (var (source, ids) in tombstones) Pending(_pendingTombstones, source).UnionWith(ids);
+        foreach (var (source, cell) in dormant) _dormant[source] = cell;
+    }
+
+    // Saved state for a source not placed now (a format 3 save's, for a level still waiting for its
+    // ground), its positions relative to `frame`.
+    internal void AddPendingState(string source, JsonObject saved, SectorCoord frame) => Dormant(source, frame).Add(saved, frame);
+
+    private DormantCell Dormant(string source, SectorCoord frame)
+    {
+        if (!_dormant.TryGetValue(source, out var cell)) _dormant[source] = cell = new DormantCell(frame);
+        return cell;
     }
 
     // The ids placed by a live source, alive or not.
@@ -117,9 +216,13 @@ internal sealed class ContentBaseline
         return result;
     }
 
-    // Saved state still waiting for its source, written back by a save as it was read.
-    internal IEnumerable<JsonObject> PendingState =>
-        _pendingState.OrderBy(p => p.Key, StringComparer.Ordinal).SelectMany(p => p.Value);
+    // The dormant cells, by source: what a save writes under `dormant` (format 4).
+    internal IEnumerable<(string Source, DormantCell Cell)> DormantCells =>
+        _dormant.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => (p.Key, p.Value));
+
+    internal bool IsDormant(string source) => _dormant.ContainsKey(source);
+
+    internal bool TryGetDormant(string source, out DormantCell cell) => _dormant.TryGetValue(source, out cell!);
 
     private static TSet Pending<TSet>(IDictionary<string, TSet> map, string source) where TSet : new()
     {
@@ -151,6 +254,11 @@ internal static class ContentIds
     public static string SceneSource(RecordId scene) => $"scene:{scene}";
     public static string DocumentSource(RecordId document) => $"placements:{document}";
     public static string MapSource(RecordId level) => $"map:{level}";
+
+    // A streamed scene's sector (4g-3): `sector:<scene>:<x>,<z>`, absolute.
+    public const string SectorPrefix = "sector:";
+    public static string SectorSource(RecordId scene, SectorCoord sector) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{SectorPrefix}{scene}:{sector.X},{sector.Z}");
 
     // A scene placement: the formula scenes have always used, so saves written before 4i-3 still find
     // them (decision 4); an authored `id` wins.
@@ -214,8 +322,13 @@ internal static class ContentIds
 
     public static void Finish(World world, string source) => Baseline(world).Finish(world, source);
 
+    public static void Doze(World world, string source) => Baseline(world).Doze(world, source);
+
     public static void Forget(World world, string source)
     {
         if (world.Resources.TryGet<ContentBaseline>(out var baseline) && baseline != null) baseline.Forget(world, source);
     }
+
+    // Content cleared without going dormant (a hot reload, a load), until disposed.
+    public static IDisposable Discarding(World world) => Baseline(world).Discarding();
 }

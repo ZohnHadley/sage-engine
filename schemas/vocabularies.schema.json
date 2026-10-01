@@ -1812,13 +1812,14 @@
       ]
     },
     "ai_condition:id": {
-      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed.",
+      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed, in_routine.",
       "type": "string",
       "enum": [
         "CanCastAtEnemy",
         "CanMelee",
         "Casting",
         "EnemyInMeleeRange",
+        "InRoutine",
         "LostEnemy",
         "NoEnemy",
         "RememberEnemy",
@@ -1830,6 +1831,7 @@
         "can_melee",
         "casting",
         "enemy_in_melee_range",
+        "in_routine",
         "lost_enemy",
         "no_enemy",
         "remember_enemy",
@@ -2174,6 +2176,35 @@
                 "additionalProperties": false,
                 "description": "ai_condition 'TaskFailed' (PerceivedCondition)."
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "in_routine",
+                      "InRoutine"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: in_routine.",
+                    "enum": [
+                      "in_routine",
+                      "InRoutine"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'in_routine' (PerceivedCondition)."
+              }
             }
           ]
         }
@@ -2269,13 +2300,14 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, any, has_item, has_tag, lacks_tag, not, quest, speaker, standing, time_between, var.",
+      "description": "A condition by id: all, anim_finished, anim_param, any, date_between, has_item, has_tag, lacks_tag, not, quest, speaker, standing, time_between, var, weekday.",
       "type": "string",
       "enum": [
         "All",
         "AnimFinished",
         "AnimParam",
         "Any",
+        "DateBetween",
         "HasItem",
         "HasTag",
         "LacksTag",
@@ -2285,10 +2317,12 @@
         "Standing",
         "TimeBetween",
         "Var",
+        "Weekday",
         "all",
         "anim_finished",
         "anim_param",
         "any",
+        "date_between",
         "has_item",
         "has_tag",
         "lacks_tag",
@@ -2297,7 +2331,8 @@
         "speaker",
         "standing",
         "time_between",
-        "var"
+        "var",
+        "weekday"
       ]
     },
     "condition": {
@@ -2512,6 +2547,59 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'any' (AnyCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "date_between",
+                      "DateBetween"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: date_between.",
+                    "enum": [
+                      "date_between",
+                      "DateBetween"
+                    ]
+                  },
+                  "fromDay": {
+                    "description": "The day of that month it opens on (inclusive) At least 1. (int, default 1)",
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "fromMonth": {
+                    "description": "The month the window opens in (1 is the first month) At least 1. (int, default 1)",
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "toDay": {
+                    "description": "The day of that month it closes on (inclusive); earlier than the opening wraps past the new year. At least 1. (int, default 1)",
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "toMonth": {
+                    "description": "The month it closes in. At least 1. (int, default 1)",
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'date_between' (DateBetweenCondition)."
               }
             },
             {
@@ -2924,6 +3012,61 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'var' (VarCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "weekday",
+                      "Weekday"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "anyOf": {
+                    "description": "Or any of these days of the week. (List<string>)",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "anyOf+": {
+                    "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "anyOf-": {
+                    "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "condition": {
+                    "description": "The condition: weekday.",
+                    "enum": [
+                      "weekday",
+                      "Weekday"
+                    ]
+                  },
+                  "is": {
+                    "description": "The day of the week it must be, as the calendar names it. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'weekday' (WeekdayCondition)."
               }
             }
           ]
@@ -3457,6 +3600,148 @@
           },
           "required": [
             "Any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "date_between": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "fromMonth": {
+                      "description": "The month the window opens in (1 is the first month) At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "fromDay": {
+                      "description": "The day of that month it opens on (inclusive) At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "toMonth": {
+                      "description": "The month it closes in. At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "toDay": {
+                      "description": "The day of that month it closes on (inclusive); earlier than the opening wraps past the new year. At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'date_between' (DateBetweenCondition), in shorthand."
+            },
+            "fromDay": {
+              "description": "The day of that month it opens on (inclusive) At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "fromMonth": {
+              "description": "The month the window opens in (1 is the first month) At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "toDay": {
+              "description": "The day of that month it closes on (inclusive); earlier than the opening wraps past the new year. At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "toMonth": {
+              "description": "The month it closes in. At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "date_between"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "DateBetween": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "fromMonth": {
+                      "description": "The month the window opens in (1 is the first month) At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "fromDay": {
+                      "description": "The day of that month it opens on (inclusive) At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "toMonth": {
+                      "description": "The month it closes in. At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "toDay": {
+                      "description": "The day of that month it closes on (inclusive); earlier than the opening wraps past the new year. At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'date_between' (DateBetweenCondition), in shorthand."
+            },
+            "fromDay": {
+              "description": "The day of that month it opens on (inclusive) At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "fromMonth": {
+              "description": "The month the window opens in (1 is the first month) At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "toDay": {
+              "description": "The day of that month it closes on (inclusive); earlier than the opening wraps past the new year. At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "toMonth": {
+              "description": "The month it closes in. At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "DateBetween"
           ],
           "additionalProperties": false
         },
@@ -4493,6 +4778,156 @@
           },
           "required": [
             "Var"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "anyOf": {
+              "description": "Or any of these days of the week. (List<string>)",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf+": {
+              "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf-": {
+              "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "is": {
+              "description": "The day of the week it must be, as the calendar names it. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "weekday": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "is": {
+                      "description": "The day of the week it must be, as the calendar names it. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "anyOf": {
+                      "description": "Or any of these days of the week. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf+": {
+                      "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf-": {
+                      "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'weekday' (WeekdayCondition), in shorthand."
+            }
+          },
+          "required": [
+            "weekday"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Weekday": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "is": {
+                      "description": "The day of the week it must be, as the calendar names it. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "anyOf": {
+                      "description": "Or any of these days of the week. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf+": {
+                      "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf-": {
+                      "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'weekday' (WeekdayCondition), in shorthand."
+            },
+            "anyOf": {
+              "description": "Or any of these days of the week. (List<string>)",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf+": {
+              "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf-": {
+              "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "is": {
+              "description": "The day of the week it must be, as the calendar names it. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Weekday"
           ],
           "additionalProperties": false
         }

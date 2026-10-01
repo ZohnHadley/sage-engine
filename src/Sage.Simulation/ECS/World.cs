@@ -351,15 +351,24 @@ public sealed class World : IDisposable
     // True while RunFixed is running this world's phases: what a save requested now waits for (4i-6).
     internal bool InFixedTick { get; private set; }
 
+    // A `Time.Pass` asked for during the tick, run at its boundary (issue 4g-2); null when none.
+    internal TimePassRequest? PendingTimePass;
+
     public void RunFixed(float dt)
     {
         InFixedTick = true;
         try { RunFixedPhases(dt); }
         finally { InFixedTick = false; }
 
+        // Time asked to pass (issue 4g-2) goes first, so a save at this boundary has the new time.
+        if (PendingTimePass != null) Time.Run(this);
+
         // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with every
         // phase of it done, and the autosave clock advances. Nothing to do costs a comparison.
         Engine?.Saves.TickEnded(this, dt);
+        // And a streamed scene places, and puts to sleep, the sectors the ring reached or left (4g-3): work
+        // that allocates, so never inside the phases.
+        Engine?.Scenes.TickEnded(this);
     }
 
     private void RunFixedPhases(float dt)
@@ -448,13 +457,15 @@ public sealed class World : IDisposable
 
     public Entity Resolve(PersistentId id) => _persistent.TryGetValue(id, out var e) && IsAlive(e) ? e : default;
 
-    // Adds a Persistent component with a new id (runtime-spawned entities that should be saved).
+    // Adds a Persistent component with a new id (runtime-spawned entities that should be saved), and the
+    // cell it was made in (phase 4g-1, InCell): it goes dormant with that cell and comes back with it.
     public PersistentId MakePersistent(Entity entity)
     {
         if (TryGet(entity, out Persistent existing))
             return existing.Id;
         var id = PersistentId.New();
         Add(entity, new Persistent { Id = id });
+        Cells.Join(this, entity);
         return id;
     }
 

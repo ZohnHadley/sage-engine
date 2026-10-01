@@ -108,6 +108,11 @@
         "weapons:armor_head"
       ]
     },
+    "record:calendar": {
+      "description": "The id of a calendar record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:cue": {
       "description": "The id of a cue record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -554,6 +559,11 @@
         "weapons:pistol_recoil"
       ]
     },
+    "record:routine": {
+      "description": "The id of a routine record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
       "type": "string",
@@ -712,6 +722,11 @@
         "state.invulnerable",
         "vital"
       ]
+    },
+    "record:terrain": {
+      "description": "The id of a terrain record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "record:ui_layout": {
       "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -948,6 +963,11 @@
         "stamina",
         "weapons:armor_head"
       ]
+    },
+    "base:calendar": {
+      "description": "The id of a calendar record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:cue": {
       "description": "Another cue record to inherit every field from, abstract or not.",
@@ -1397,6 +1417,11 @@
         "weapons:pistol_recoil"
       ]
     },
+    "base:routine": {
+      "description": "The id of a routine record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "base:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
       "type": "string",
@@ -1555,6 +1580,11 @@
         "state.invulnerable",
         "vital"
       ]
+    },
+    "base:terrain": {
+      "description": "The id of a terrain record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:ui_layout": {
       "description": "Another ui_layout record to inherit every field from, abstract or not.",

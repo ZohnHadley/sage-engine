@@ -31,6 +31,7 @@
             "anim_graph",
             "attack",
             "attribute",
+            "calendar",
             "cue",
             "damage_type",
             "dialogue",
@@ -52,6 +53,7 @@
             "prefab",
             "quest",
             "recoil",
+            "routine",
             "rpg_conventions",
             "rpg_item",
             "scene",
@@ -63,6 +65,7 @@
             "sprite_sheet",
             "state_machine",
             "tag",
+            "terrain",
             "ui_layout",
             "ui_style",
             "viewmodel",
@@ -174,6 +177,21 @@
           },
           "then": {
             "$ref": "attribute.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "calendar"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "calendar.schema.json"
           }
         },
         {
@@ -495,6 +513,21 @@
           "if": {
             "properties": {
               "type": {
+                "const": "routine"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "routine.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "rpg_conventions"
               }
             },
@@ -654,6 +687,21 @@
           },
           "then": {
             "$ref": "tag.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "terrain"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "terrain.schema.json"
           }
         },
         {
