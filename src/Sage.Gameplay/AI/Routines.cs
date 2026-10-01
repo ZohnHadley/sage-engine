@@ -123,6 +123,9 @@ public static class Routines
         return !id.IsEmpty && records.TryGet(id, out RoutineRecord routine) ? routine : null;
     }
 
+    // The id of the routine an entity follows, or empty (4g-6: an off-screen agent keeps it).
+    internal static RecordId IdOf(World world, Entity entity) => IdOf(world, entity, ProfileOf(world, entity));
+
     private static RecordId IdOf(World world, Entity entity, AIProfileRecord profile) =>
         world.TryGet<Routine>(entity, out var own) && !own.Id.IsEmpty ? own.Id : profile.Routine.Id;
 

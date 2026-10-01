@@ -29,8 +29,8 @@ namespace Sage.Simulation;
 //
 // Since 4g-3 a streamed scene's sectors are cells too (StreamedScene.cs): a runtime spawn made there
 // belongs to the sector it stands in, and an entity that crosses an edge moves to the next one
-// (SectorOwnersSystem). Not here: what moves between scenes (doors, travel and off-screen agents: 4g-5 and
-// 4g-6).
+// (SectorOwnersSystem). Since 4g-6 something may take entities out of a cell as it goes dormant and keep
+// them itself (CellHandoff.cs: the off-screen simulation's agents). Not here: doors and travel (4g-5).
 
 // The cell a runtime spawn belongs to (4g-1): it goes dormant with that cell and comes back with it. Given
 // by `World.MakePersistent` (so by `world.Spawn` of a prefab, a dropped item and a projectile) when the
@@ -132,6 +132,19 @@ internal static class Cells
             xyz[2] = Read(xyz[2]) + offset.Z;
             return;
         }
+    }
+
+    // A saved root's position set to `position` (4g-6: an off-screen agent spawned where it walked to).
+    public static void SetPosition(JsonObject saved, Vector3 position)
+    {
+        if (saved["components"] is not JsonObject components) saved["components"] = components = new JsonObject();
+        if (components[SaveSerializer.TransformId] is not JsonObject entry)
+            components[SaveSerializer.TransformId] = entry = SaveSerializer.Entry(1, new JsonObject());
+        if (entry["data"] is not JsonObject data) entry["data"] = data = new JsonObject();
+        string key = nameof(Transform.LocalPosition);
+        foreach (var (name, _) in data)
+            if (string.Equals(name, key, StringComparison.OrdinalIgnoreCase)) { key = name; break; }
+        data[key] = new JsonArray(position.X, position.Y, position.Z);
     }
 
     private static float Read(JsonNode? node) => node is JsonValue v && v.TryGetValue(out float f) ? f : 0f;
