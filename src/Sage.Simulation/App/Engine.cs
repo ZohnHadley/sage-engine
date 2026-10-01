@@ -79,6 +79,8 @@ public sealed class Engine : IDisposable
             StateMachines.Register(this);
             // Animation graphs and animators (issue #118): SetAnimParam, AnimTrigger, anim_debug.
             Animators.Register(this);
+            // Load doors (issue 4g-5): the `Travel` input, the engine's like scenes.
+            Travel.Register(this);
             // Quick-save and quick-load (issue 4i-6): the engine's, bound to F5 and F9 in engine content.
             Actions.Register(SaveSystem.QuickSaveAction, ActionKind.Button);
             Actions.Register(SaveSystem.QuickLoadAction, ActionKind.Button);
@@ -162,6 +164,8 @@ public sealed class Engine : IDisposable
             world.Resources.Add(new WorldClock());               // time of day (issue 4h-2), saved
             world.AddSystem(new WorldClockSystem(world));
             world.AddSystem(new SkySystem(world));               // lights the world by its `sky`, if it has one
+            world.Resources.Add(new TravelLog());                // discovered travel points (issue 4g-5), saved
+            world.AddSystem(new TravelPointSystem(world));
             world.AddSystem(new CameraDirector(world));
             world.AddSystem(new ScriptedCameraSystem(world));     // holds run out (issue #80)
             world.AddSystem(new CameraInputLockSystem(world));    // a cut may hold the player still

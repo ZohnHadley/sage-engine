@@ -286,6 +286,8 @@ internal sealed class SkySystem : ISystem
     {
         var resources = _world.Resources;
         if (!resources.TryGet<RenderEnvironment>(out var environment) || environment == null) return;
+        // Inside, there is no sky (issue 4g-5): the scene lit the interior when it was placed.
+        if (Interiors.Active(_world)) return;
         if (resources.TryGet<WorldClock>(out var clock) && clock != null
             && resources.TryGet<RecordStore>(out var records) && records != null
             && SkyRules.Current(records, clock) is { } sky

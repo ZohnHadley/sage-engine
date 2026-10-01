@@ -58,6 +58,8 @@ const Sage.Simulation.Timers.StartInput = "TimerStart" -> string!
 const Sage.Simulation.Timers.StopInput = "TimerStop" -> string!
 const Sage.Simulation.ToggleViewSystem.Action = "ToggleView" -> string!
 const Sage.Simulation.ToggleViewSystem.Id = "sage.camera.toggle_view" -> string!
+const Sage.Simulation.Travel.DefaultSpeed = 5000 -> float
+const Sage.Simulation.Travel.TravelInput = "Travel" -> string!
 const Sage.Simulation.Tweens.OnTweenDone = "OnTweenDone" -> string!
 const Sage.Simulation.Tweens.StopInput = "TweenStop" -> string!
 const Sage.Simulation.Tweens.ToInput = "TweenTo" -> string!
@@ -454,6 +456,17 @@ Sage.Simulation.JointMask.Skeleton.get -> Sage.Simulation.Skeleton!
 Sage.Simulation.JointMask.this[int joint].get -> float
 Sage.Simulation.JointMask.this[int joint].set -> void
 Sage.Simulation.JointMask.Weights.get -> System.ReadOnlySpan<float>
+Sage.Simulation.LoadDoor
+Sage.Simulation.LoadDoor.Entry -> string!
+Sage.Simulation.LoadDoor.Hours -> float
+Sage.Simulation.LoadDoor.LoadDoor() -> void
+Sage.Simulation.LoadDoor.Scene -> Sage.Core.RecordId
+Sage.Simulation.LoadDoorPart
+Sage.Simulation.LoadDoorPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LoadDoorPart.Entry -> string!
+Sage.Simulation.LoadDoorPart.Hours -> float
+Sage.Simulation.LoadDoorPart.LoadDoorPart() -> void
+Sage.Simulation.LoadDoorPart.Scene -> Sage.Core.RecordRef<Sage.Simulation.SceneRecord!>
 Sage.Simulation.LogicBranch
 Sage.Simulation.LogicBranch.LogicBranch() -> void
 Sage.Simulation.LogicBranch.Value -> bool
@@ -572,6 +585,7 @@ Sage.Simulation.SaveSystem.QuickSave() -> void
 Sage.Simulation.SaveSystem.RequestLoad(string! slot) -> void
 Sage.Simulation.SaveSystem.RequestSave(string! slot, Sage.Simulation.SaveKind kind = Sage.Simulation.SaveKind.Manual) -> void
 Sage.Simulation.SaveSystem.Save(string! slot, Sage.Simulation.SaveKind kind) -> bool
+Sage.Simulation.SceneEnvironment.Ambient -> System.Numerics.Vector3
 Sage.Simulation.SceneEnvironment.Hour -> float?
 Sage.Simulation.SceneEnvironment.Sky -> Sage.Core.RecordRef<Sage.Simulation.SkyRecord!>
 Sage.Simulation.SavedContent
@@ -646,8 +660,12 @@ Sage.Simulation.RenderStage.Sky = 3 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStage.Transparent = 4 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStages
 Sage.Simulation.PrefabRecord.Persist -> bool
+Sage.Simulation.SceneRecord.Space -> Sage.Simulation.SceneSpace
 Sage.Simulation.SceneRecord.Streamed -> bool
 Sage.Simulation.SceneRecord.Terrain -> Sage.Core.RecordRef<Sage.Simulation.TerrainRecord!>
+Sage.Simulation.SceneSpace
+Sage.Simulation.SceneSpace.Exterior = 0 -> Sage.Simulation.SceneSpace
+Sage.Simulation.SceneSpace.Interior = 1 -> Sage.Simulation.SceneSpace
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
@@ -836,6 +854,30 @@ Sage.Simulation.Timers
 Sage.Simulation.ToggleViewSystem
 Sage.Simulation.ToggleViewSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.ToggleViewSystem.ToggleViewSystem(Sage.Simulation.World! world, Sage.Simulation.ActionRegistry! actions) -> void
+Sage.Simulation.Travel
+Sage.Simulation.TravelDestination
+Sage.Simulation.TravelDestination.At -> System.Numerics.Vector3
+Sage.Simulation.TravelDestination.Label -> string!
+Sage.Simulation.TravelDestination.Name -> string!
+Sage.Simulation.TravelDestination.Scene -> Sage.Core.RecordId
+Sage.Simulation.TravelDestination.TravelDestination() -> void
+Sage.Simulation.TravelDestination.Yaw -> float
+Sage.Simulation.TravelLog
+Sage.Simulation.TravelLog.Find(string! point) -> Sage.Simulation.TravelDestination?
+Sage.Simulation.TravelLog.Points.get -> System.Collections.Generic.List<Sage.Simulation.TravelDestination!>!
+Sage.Simulation.TravelLog.Points.set -> void
+Sage.Simulation.TravelLog.TravelLog() -> void
+Sage.Simulation.TravelPoint
+Sage.Simulation.TravelPoint.Discovered -> bool
+Sage.Simulation.TravelPoint.Label -> string!
+Sage.Simulation.TravelPoint.Radius -> float
+Sage.Simulation.TravelPoint.TravelPoint() -> void
+Sage.Simulation.TravelPointPart
+Sage.Simulation.TravelPointPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.TravelPointPart.Discovered -> bool
+Sage.Simulation.TravelPointPart.Label -> string!
+Sage.Simulation.TravelPointPart.Radius -> float
+Sage.Simulation.TravelPointPart.TravelPointPart() -> void
 Sage.Simulation.TwoBoneIk
 Sage.Simulation.UnknownSavedData
 Sage.Simulation.UnknownSavedData.Components -> string!
@@ -1048,6 +1090,11 @@ static Sage.Simulation.Time.Pass(Sage.Simulation.World! world, double hours, str
 static Sage.Simulation.Timers.NextWait(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> float
 static Sage.Simulation.Timers.Start(ref Sage.Simulation.LogicTimer timer, Sage.Simulation.Entity entity) -> void
 static Sage.Simulation.ToggleViewSystem.Toggle(Sage.Simulation.World! world) -> void
+static Sage.Simulation.Travel.HoursTo(Sage.Simulation.World! world, Sage.Simulation.TravelDestination! destination) -> double
+static Sage.Simulation.Travel.To(Sage.Simulation.World! world, Sage.Core.RecordId scene, string! entry, double hours = 0, string! reason = "travel") -> bool
+static Sage.Simulation.Travel.ToPoint(Sage.Simulation.World! world, string! point) -> bool
+static Sage.Simulation.Travel.Use(Sage.Simulation.World! world, Sage.Simulation.Entity door, Sage.Simulation.Entity user) -> bool
+static Sage.Simulation.TravelLog.Of(Sage.Simulation.World! world) -> Sage.Simulation.TravelLog!
 static Sage.Simulation.TwoBoneIk.Solve(Sage.Simulation.SkeletonPose! pose, int root, int mid, int tip, System.Numerics.Vector3 target) -> bool
 static Sage.Simulation.TwoBoneIk.Solve(Sage.Simulation.SkeletonPose! pose, int root, int mid, int tip, System.Numerics.Vector3 target, System.Numerics.Vector3 pole, float weight = 1, bool keepTipRotation = false) -> bool
 static Sage.Simulation.Vars.Of(Sage.Simulation.World! world) -> Sage.Simulation.Vars!

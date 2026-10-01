@@ -927,6 +927,15 @@
               "type": "null"
             }
           ]
+        },
+        "ambient": {
+          "description": "Interior scenes only: the ambient light, from above and below alike; the sun and sky give none inside. (Vector3)",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
         }
       },
       "additionalProperties": false
@@ -942,6 +951,15 @@
         {
           "$ref": "ids.schema.json#/definitions/record:terrain"
         }
+      ]
+    },
+    "space": {
+      "description": "Exterior (terrain, streaming, sun and sky) or Interior (none of them: lit by its lights and environment.ambient) (SceneSpace, default \"Exterior\")",
+      "default": "Exterior",
+      "type": "string",
+      "enum": [
+        "Exterior",
+        "Interior"
       ]
     }
   },

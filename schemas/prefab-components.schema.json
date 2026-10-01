@@ -244,6 +244,14 @@
         }
       ]
     },
+    "load_door": {
+      "description": "The component sage:load_door (LoadDoor), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:load_door"
+        }
+      ]
+    },
     "logic_branch": {
       "description": "The component sage:logic_branch (LogicBranch), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -684,6 +692,14 @@
         }
       ]
     },
+    "sage:load_door": {
+      "description": "Component sage:load_door (LoadDoor).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:load_door"
+        }
+      ]
+    },
     "sage:logic_branch": {
       "description": "Component sage:logic_branch (LogicBranch).",
       "allOf": [
@@ -972,6 +988,14 @@
         }
       ]
     },
+    "sage:travel_point": {
+      "description": "Component sage:travel_point (TravelPoint).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:travel_point"
+        }
+      ]
+    },
     "sage:tween": {
       "description": "Component sage:tween (Tween).",
       "allOf": [
@@ -1089,6 +1113,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:transform"
+        }
+      ]
+    },
+    "travel_point": {
+      "description": "The component sage:travel_point (TravelPoint), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:travel_point"
         }
       ]
     },
@@ -3069,6 +3101,31 @@
       "additionalProperties": false,
       "description": "Component sage:known_topics (KnownTopics)."
     },
+    "sage:load_door": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "description": "The scene it leads to; the scene the world is in already is fine (a door to another entry) Names a scene record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:scene"
+            }
+          ]
+        },
+        "entry": {
+          "description": "Where in that scene: a placement's name or a map entity's targetname. (string)",
+          "type": "string"
+        },
+        "hours": {
+          "description": "Game hours going through takes (0: none) Unit: h. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:load_door (LoadDoor)."
+    },
     "sage:logic_branch": {
       "type": "object",
       "properties": {
@@ -4245,6 +4302,28 @@
       },
       "additionalProperties": false,
       "description": "Component sage:transform (Transform)."
+    },
+    "sage:travel_point": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "What a map or `travel` calls it; empty: the entity's name. (string)",
+          "type": "string"
+        },
+        "radius": {
+          "description": "How near the player must come to discover it. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "discovered": {
+          "description": "The player has been near it, and can travel to it. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:travel_point (TravelPoint)."
     },
     "sage:tween": {
       "type": "object",

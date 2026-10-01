@@ -195,6 +195,14 @@
         }
       ]
     },
+    "load_door": {
+      "description": "Prefab part 'load_door' (LoadDoorPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/load_door"
+        }
+      ]
+    },
     "logic_branch": {
       "description": "Prefab part 'logic_branch' (LogicBranchPart).",
       "allOf": [
@@ -344,6 +352,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/timer"
+        }
+      ]
+    },
+    "travel_point": {
+      "description": "Prefab part 'travel_point' (TravelPointPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/travel_point"
         }
       ]
     },
@@ -1092,6 +1108,32 @@
       "additionalProperties": false,
       "description": "Prefab part 'light' (LightPart)."
     },
+    "load_door": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "description": "The scene it leads to. Names a scene record. (RecordRef<SceneRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:scene"
+            }
+          ]
+        },
+        "entry": {
+          "description": "Where in that scene: a placement's name or a map entity's targetname. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "hours": {
+          "description": "Game hours going through takes (0: none) Unit: h. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'load_door' (LoadDoorPart)."
+    },
     "logic_branch": {
       "type": "object",
       "properties": {
@@ -1639,6 +1681,29 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'timer' (LogicTimerPart)."
+    },
+    "travel_point": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "What a map or `travel` calls it; empty: the entity's name. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "radius": {
+          "description": "How near the player must come to discover it. Unit: m. At least 0. (float, default 20)",
+          "default": 20,
+          "type": "number",
+          "minimum": 0
+        },
+        "discovered": {
+          "description": "Known from the start, without going there. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'travel_point' (TravelPointPart)."
     },
     "tween": {
       "type": "object",
