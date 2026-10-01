@@ -110,6 +110,7 @@ internal sealed class EditorLayout
         Native.igDockBuilderDockWindow(PalettePanel.Title, left);   // a tab beside the outliner (#222)
         Native.igDockBuilderDockWindow(InspectorTitle, right);
         Native.igDockBuilderDockWindow(RecordsTitle, right);   // a tab beside the inspector
+        Native.igDockBuilderDockWindow(WiringPanel.Title, right);   // a tab beside the inspector (#225)
         Native.igDockBuilderDockWindow(LogPanel.Title, bottom);
         Native.igDockBuilderDockWindow(ConsoleTitle, bottom);
         Native.igDockBuilderFinish(dock);
