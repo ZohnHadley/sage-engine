@@ -21,6 +21,7 @@
     "texture": "textures/creature.png",
     "directions": 8,
     "size": [1.2, 1.8],
+    "material": "sage:sprite_lit",   // in the world's light: dark at night, lit by the campfire
     "frames": [
       { "rect": [0, 0, 64, 96], "pivot": [32, 94] },   { "rect": [64, 0, 64, 96], "pivot": [32, 94] },
       { "rect": [128, 0, 64, 96], "pivot": [32, 94] }, { "rect": [192, 0, 64, 96], "pivot": [32, 94] },
