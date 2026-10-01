@@ -90,6 +90,7 @@ public static class ContentValidation
             Host = HostKind.Server,
             AvailablePlugins = options.AvailablePlugins,
             HostModules = options.GameModule != null ? new IModule[] { options.GameModule } : Array.Empty<IModule>(),
+            Mods = Array.Empty<string>(),   // a game's mods are not validated with it yet: `--mounts` (4j-5 adds --mods)
         });
         foreach (var (directory, ns) in options.Mounts)
         {

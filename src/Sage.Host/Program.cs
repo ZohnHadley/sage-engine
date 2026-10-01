@@ -39,9 +39,24 @@ CrashReporter.Install();
 Log.Info(LogCat.Host, $"Sage {BuildInfo.EngineVersion} ({BuildInfo.Config}), game '{manifest.Name}' ({manifest.Id}), user folder {UserPaths.Root}");
 if (Log.File != null)
     Log.Info(LogCat.Host, $"Log file {Log.File.CurrentPath}");
-foreach (var option in launch.Options.Keys.Where(o => !o.Equals("game", StringComparison.OrdinalIgnoreCase)
-                                                    && !o.Equals("dump-registry", StringComparison.OrdinalIgnoreCase)))
+string[] knownOptions = { "game", "dump-registry", "mods", "nomods" };
+foreach (var option in launch.Options.Keys.Where(o => !knownOptions.Contains(o, StringComparer.OrdinalIgnoreCase)))
     Log.Warn(LogCat.Host, $"Unknown launch option -{option} (ignored)");
+
+// Mods (phase 4j): found in the game's mods folder and user://mods unless named. `-mods <dir>[,<dir>]` loads
+// exactly those folders, in that order; `-nomods` loads none (a clean run, whatever is installed).
+IReadOnlyList<string>? namedMods = null;
+if (launch.Options.ContainsKey("nomods"))
+{
+    namedMods = Array.Empty<string>();
+    if (launch.Options.ContainsKey("mods")) Log.Warn(LogCat.Host, "-nomods and -mods together: -nomods wins, no mods load");
+}
+else if (launch.Options.TryGetValue("mods", out var modsOption))
+{
+    if (string.IsNullOrWhiteSpace(modsOption)) Log.Warn(LogCat.Host, "-mods needs folders, -mods <dir>[,<dir>] (ignored)");
+    else namedMods = modsOption.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                .Select(Path.GetFullPath).ToArray();
+}
 
 // -dump-registry <file>: boot, write everything registered as JSON (RegistryDump, issue #18) and quit.
 // Resolved against the directory it was typed in, before anything changes it.
@@ -66,6 +81,10 @@ try
         ConfigFile = UserPaths.ConfigFile,
         LaunchCommands = launch.Commands,
         OwnsProcessLog = true,   // the one app in this process, so its log cvars are the log's
+        Mods = namedMods,
+        UserModsDirectory = Path.Combine(UserPaths.Root, "mods"),
+        ModListFile = Path.Combine(UserPaths.Root, "mods.json"),   // ModList.DefaultPath
+        ModReportFile = Path.Combine(UserPaths.Logs, "mod_report.txt"),
     });
     app.Register();
 }
@@ -81,7 +100,10 @@ CrashReporter.AddSection("CVars (non-default)", engine.CVars.DumpNonDefault);
 CrashReporter.AddSection("Game / modules / mounts", () =>
     $"Game: {manifest.Name} ({manifest.Id}) from {manifest.Directory}\n" +
     $"Modules: {string.Join(", ", engine.Modules.Modules.Select(m => m.Name))}\n" +
-    $"Mounts: {string.Join(", ", engine.Vfs.Mounts.Select(m => m.ToString()))}");
+    $"Mounts: {string.Join(", ", engine.Vfs.Mounts.Select(m => m.ToString()))}\n" +
+#pragma warning disable SAGE0132 // the mods summary in a crash report: the host ships with the engine that declares it
+    $"{engine.ModManager.Summary()}");
+#pragma warning restore SAGE0132
 
 int exitCode = 0;
 try

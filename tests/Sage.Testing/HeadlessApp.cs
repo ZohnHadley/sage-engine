@@ -84,6 +84,10 @@ public sealed class HeadlessAppBuilder
     private string? _engineContent;
     private HostKind _host = HostKind.Game;
     private string? _startScene;
+    private List<string>? _mods;
+    private string? _userMods;
+    private string? _modList;
+    private string? _modReport;
 
     internal HeadlessAppBuilder(bool includeSimulation, GameManifest? game)
     {
@@ -135,6 +139,31 @@ public sealed class HeadlessAppBuilder
         return this;
     }
 
+    // Exactly these mod folders, in this order, in place of the game's `modsDirectory` (the host's -mods;
+    // none at all is -nomods). Without it a game's mods are found as the host finds them (phase 4j).
+    public HeadlessAppBuilder WithMods(params string[] modFolders)
+    {
+        _mods ??= new List<string>();
+        _mods.AddRange(modFolders);
+        return this;
+    }
+
+    // The player's mods folder (`user://mods`) and list (`user://mods.json`), as the host passes them. A
+    // test gives its own: the user folder is shared by every test in the process.
+    public HeadlessAppBuilder WithUserMods(string? modsDirectory, string? listFile = null)
+    {
+        _userMods = modsDirectory;
+        _modList = listFile;
+        return this;
+    }
+
+    // Where the boot writes its mod report (`user://logs/mod_report.txt` in the host).
+    public HeadlessAppBuilder WithModReport(string path)
+    {
+        _modReport = path;
+        return this;
+    }
+
     public HeadlessAppBuilder InHost(HostKind host)
     {
         _host = host;
@@ -161,6 +190,10 @@ public sealed class HeadlessAppBuilder
             Host = _host,
             HostModules = _modules.ToArray(),
             StartScene = _startScene,
+            Mods = _mods,
+            UserModsDirectory = _userMods,
+            ModListFile = _modList,
+            ModReportFile = _modReport,
         });
         foreach (var fixture in _fixtures.Append(_files).OfType<MountFixture>())
             foreach (var mount in fixture.Mounts)
