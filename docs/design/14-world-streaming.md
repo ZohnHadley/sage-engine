@@ -100,13 +100,69 @@ and the simulation carries on with small numbers, because the frame of reference
   the origin rebases back on the next tick, which is visible in the log as a second rebase.
 - **Console:** `stream_status` (origin, loaded sectors, rebases so far), `stream_radius`,
   `stream_enabled`, `warp`.
-- **Not yet:** LOD past the ring, per-sector asset scopes, **dormancy per sector** (sectors currently
-  keep only their terrain; entities placed in them are not yet saved and restored per sector — that is
-  4g-3, on the cells below), generation on jobs, interiors as separate spaces, and seam-free normals
+- **Not yet:** LOD past the ring, per-sector asset scopes, ~~dormancy per sector~~ (built with 4g-3, on 4g-1's cells:
+  "As built (entities stream by sector)" below), generation on jobs, interiors as separate spaces, and seam-free normals
   across sector edges.
 - **Since 4g-1, a scene goes dormant with its state**: what it placed and the runtime spawns made in it
   are kept, with absolute positions, when the player leaves it, and come back when it is placed again
   (09 "As built (cells go dormant with their state)").
+- **Since 4g-3, entities stream by sector**: see "As built (entities stream by sector)" below.
+
+### As built (entities stream by sector, issue 4g-3, 2026-10-01)
+Streaming loaded terrain only: a scene was placed whole, so an exterior bigger than a sector held every
+goblin in it at once, and the ring did nothing at all without a C# generator, so no data-only game streamed.
+Phase 4g's plan, decisions 2 and 5: a streamed sector is a cell (4g-1), and ground can come from data.
+Code: `src/Sage.Simulation/Content/StreamedScene.cs`, `World/Streaming.cs` (`SectorRing`,
+`SectorOwnersSystem`), `World/TerrainRecord.cs`; experimental SAGE0129.
+
+- **A scene with `"streamed": true`** is put into buckets by absolute sector: its placements, its
+  placements documents' and its `.map` levels that stand on the terrain (`onTerrain`; the others are placed
+  with the scene). Each sector is a source and a cell, `sector:<scene>:<x>,<z>`. Nothing is placed when the
+  scene is; a sector is placed when the ring reaches it and goes dormant, with its state and its runtime
+  spawns, when the ring leaves it. Walk three sectors east and what is behind leaves the world (the count of
+  placed entities drops from three to one), and walking back brings the wounded goblin back at 88 where it
+  stood (test: WalkingThreeSectorsEastPutsWhatIsBehindToSleepAndBringsItBack).
+- **Ids keep 4i's formula** (`ContentIds.ScenePlacement`, `DocumentPlacement`), only the source changes.
+  A sector's tombstones are kept for good, and a dead placement is never placed only to be removed: a
+  goblin killed in (2, 0) stays dead across the sector unloading and loading, a save and a load, and another
+  trip (test: AGoblinKilledInSectorTwoStaysDeadAcrossUnloadReloadSaveAndLoad). An arrow dropped in (2, 0)
+  sleeps with it, through a save and a load, and lies where it fell when the player comes back (test:
+  AnArrowLeftInAnUnloadedSectorSurvives).
+- **Old saves.** A load into a scene that streams re-keys what the save holds under `scene:<id>`
+  (`SaveSystem.Rekey`): tombstones and placed entities' state go to the sector that places them now (prefab
+  children included), a runtime spawn's cell becomes the sector it stands in, a dormant `scene:` cell is
+  split by sector, and a format 2 save's absent placements are tombstoned in their sectors. The format 3
+  golden save, put in a streamed scene with a guard it killed there, loads: the guard's sector is placed
+  without it and keeps its tombstone, and the lantern's cell is its sector (test:
+  AFormat3SaveOfASceneThatStreamsNowLoadsIntoItsSectors).
+- **Rings without a generator.** `SectorRing` is the ring itself, kept by `StreamingSystem` whether or not
+  there is ground (and `warp` works without it); terrain is generated for the ring when there is a
+  generator. A `terrain` record names a built-in one, `Flat` or `Hills` (`seed`, `height`, `amplitude`,
+  `wavelength`), and a scene's `"terrain"` gives the world that ground when it is placed; one that names
+  none leaves the game's own (the Sandbox keeps its C# generator). A data-only game with the hills streams:
+  the ground is generated around the player, a Ground-relative placement stands on it, and the hills follow
+  the player east (test: TheDataOnlyWorldStreams). Both generators are functions of absolute position, so
+  sectors meet without a step, and seeded (test: BuiltInTerrainIsSeamlessAndSeeded).
+- **Crossing an edge** (`SectorOwnersSystem`, Late): a root whose sector is not its owner's moves. A runtime
+  spawn's cell follows it; a placed entity leaves its sector (`ContentBaseline.Leave`: tombstoned there, so
+  it is never placed twice) and becomes the new sector's runtime spawn. A goblin that walks from (0, 0)
+  into (1, 0) stays when (0, 0) sleeps, sleeps and wakes with (1, 0), and is there once (test:
+  ARootThatCrossesASectorEdgeChangesOwner). One that walks out of the ring sleeps in the sector it walked into.
+- **Placement is budgeted, at the tick boundary.** `Scenes.TickEnded` runs after `World.RunFixed`'s phases
+  (after a save asked for in the tick), never inside the fixed schedule: it puts to sleep what left the
+  ring, then places what came in, nearest sector first, at most `stream_place_budget` entities a tick (default
+  64); a sector half placed is finished on the next tick and becomes live only then. Ten stones with a budget
+  of three arrive 3, 6, 9, 10 (test: PlacingASectorIsBudgetedAtTheTickBoundary); a save in between writes
+  the half-placed sector's entities with their source, so a load does not take them for the game's own. A
+  streamed scene at rest ticks without allocating, the owner check and the boundary included (test:
+  AStreamedSceneAtRestAllocatesNothingPerTick). `stream_status` says how many sectors are placed.
+- **Limits.** A placed entity that left its sector is a runtime spawn from then on: a load spawns it from
+  its prefab, so its placement's `overrides` and wires are not reapplied (its saved diff is). A streamed
+  placements document's entities are the sectors', not the document's (`FromPlacements` is not given), so
+  the editor does not read them back. A runtime spawn made directly into a sector outside the ring sleeps
+  there at the next boundary. Levels that
+  stand on terrain are placed and dropped whole with the sector their `at` is in. Interiors, doors and
+  travel are 4g-5.
 
 ## 4. API sketch
 ```csharp

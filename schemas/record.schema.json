@@ -65,6 +65,7 @@
             "sprite_sheet",
             "state_machine",
             "tag",
+            "terrain",
             "ui_layout",
             "ui_style",
             "viewmodel",
@@ -686,6 +687,21 @@
           },
           "then": {
             "$ref": "tag.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "terrain"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "terrain.schema.json"
           }
         },
         {

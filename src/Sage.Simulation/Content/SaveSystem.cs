@@ -546,6 +546,9 @@ public sealed partial class SaveSystem
             if (_engine.Records.TryGet(savedScene, out SceneRecord _)) scene = savedScene;
             else Log.Warn(LogCat.Save, $"{where}: the save's scene '{savedScene}' is not in this game; the world stays in '{scene}'");
         }
+        // A streamed scene's content is kept by sector (4g-3): what an older save, or one from before the
+        // scene was streamed, holds under `scene:` is moved to the sector that places it now.
+        if (_engine.Scenes.StreamedFor(world, scene) is { } streamed) Rekey(file, streamed);
         _engine.Scenes.Replace(world, scene, () => baseline.Reset(file.Tombstones, file.Dormant), levels: true);
         MapLoader.EnsureEntities(world);
         world.FlushCommands();
@@ -573,6 +576,101 @@ public sealed partial class SaveSystem
 
         world.FlushCommands();
         return total;
+    }
+
+    // A save's `scene:<id>` content, for a scene that streams now (4g-3): ids keep 4i's formula, so each is
+    // found in the sector that places it. Tombstones and the state of what content placed move to that
+    // sector's source; a runtime spawn's cell becomes the sector it stands in; a dormant `scene:` cell is
+    // split by sector. A format 2 save had no tombstones: a placement it does not list was destroyed, and
+    // is tombstoned in its sector here, since no sector is placed while the load runs. What the content no
+    // longer places is left as it was, and dropped as any load drops it.
+    private static void Rekey(PreparedWorld file, StreamedScene streamed)
+    {
+        string old = ContentIds.SceneSource(streamed.Scene);
+        var sources = streamed.ContentSources(out var roots);
+
+        void Tombstone(string source, PersistentId id)
+        {
+            if (!file.Tombstones.TryGetValue(source, out var set)) file.Tombstones[source] = set = new HashSet<PersistentId>();
+            set.Add(id);
+        }
+
+        int moved = 0;
+        if (file.Tombstones.Remove(old, out var dead))
+            foreach (var id in dead)
+                if (sources.TryGetValue(id, out var source)) { Tombstone(source, id); moved++; }
+        if (file.AbsentIsDestroyed)
+        {
+            var listed = file.Entities.Select(e => e.Id).ToHashSet();
+            foreach (var id in roots)
+                if (!listed.Contains(id)) { Tombstone(sources[id], id); moved++; }
+        }
+
+        // Live entities: content's to their sector, runtime spawns' cells by where they stand.
+        var frame = file.Origin ?? default;
+        for (int i = 0; i < file.Entities.Count; i++)
+        {
+            var entry = file.Entities[i];
+            if ((entry.Source == old || (entry.Source == null && file.AbsentIsDestroyed)) && sources.TryGetValue(entry.Id, out var source))
+            {
+                entry.Saved["source"] = source;
+                file.Entities[i] = entry with { Source = source };
+                moved++;
+            }
+            else if (entry.Source == null && entry.Parent.IsEmpty && RekeyCell(entry.Saved, old, frame, streamed)) moved++;
+        }
+
+        // A dormant `scene:` cell (the player had left the scene when it was saved): each entry to its sector's
+        // cell, a prefab child to its parent's.
+        if (file.Dormant.Remove(old, out var cell))
+        {
+            var placedIn = new Dictionary<PersistentId, string>();
+            var children = new List<JsonObject>();
+            void Into(string source, JsonObject saved)
+            {
+                if (!file.Dormant.TryGetValue(source, out var into)) file.Dormant[source] = into = new DormantCell(cell.Frame);
+                into.Add(saved, cell.Frame);
+                moved++;
+            }
+            foreach (var saved in cell.Entities)
+            {
+                PersistentId.TryParse((string?)saved["id"], out var id);
+                if (saved.ContainsKey("parent")) { children.Add(saved); continue; }
+                string source;
+                if (sources.TryGetValue(id, out var content))
+                {
+                    source = content;
+                    saved["source"] = source;
+                }
+                else
+                {
+                    Cells.TryPosition(saved, out var at);
+                    var absolute = at + cell.Frame.Origin(Terrain.SectorSize);
+                    source = streamed.SourceOf(Terrain.SectorOf(absolute.X, absolute.Z));
+                    if (Cells.CellOf(saved) == old) Cells.SetCell(saved, source);
+                }
+                placedIn[id] = source;
+                Into(source, saved);
+            }
+            foreach (var saved in children)
+            {
+                PersistentId.TryParse((string?)saved["parent"], out var parent);
+                PersistentId.TryParse((string?)saved["id"], out var id);
+                var source = placedIn.TryGetValue(parent, out var p) ? p : sources.TryGetValue(id, out var c) ? c : old;
+                placedIn[id] = source;
+                Into(source, saved);
+            }
+        }
+        if (moved > 0) Log.Info(LogCat.Save, $"{file.Where}: {moved} entr(ies) of '{old}' moved to its sectors (it streams now)");
+    }
+
+    // A runtime spawn the save gave the scene's cell (From3) belongs to the sector it stands in.
+    private static bool RekeyCell(JsonObject saved, string old, SectorCoord frame, StreamedScene streamed)
+    {
+        if (Cells.CellOf(saved) != old || !Cells.TryPosition(saved, out var at)) return false;
+        var absolute = at + frame.Origin(Terrain.SectorSize);
+        Cells.SetCell(saved, streamed.SourceOf(Terrain.SectorOf(absolute.X, absolute.Z)));
+        return true;
     }
 
     // The spawn path a load's first pass and a cell waking share (4g-1): saved entities into a world whose

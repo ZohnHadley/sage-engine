@@ -46,8 +46,10 @@ internal sealed class ContentBaseline
 
     public bool IsLive(string source) => _live.Contains(source);
 
-    // True for an id that a live source placed: content's, not the game's.
-    public bool IsBaseline(PersistentId id) => _sourceOf.TryGetValue(id, out var source) && _live.Contains(source);
+    // True for an id that content placed and has not forgotten: content's, not the game's. A source is live
+    // once Finish has run; a streamed sector placed over several ticks (4g-3) is content before that too, so
+    // a save in between writes its entities with their source rather than as the game's own.
+    public bool IsBaseline(PersistentId id) => _sourceOf.ContainsKey(id);
 
     public bool TryGetSource(PersistentId id, out string source) => _sourceOf.TryGetValue(id, out source!);
 
@@ -65,7 +67,11 @@ internal sealed class ContentBaseline
         _live.Add(source);
         _placed.TryAdd(source, new HashSet<PersistentId>());
 
-        if (_pendingTombstones.Remove(source, out var dead))
+        // A streamed sector's tombstones are kept (4g-3): it is placed again every time the player comes
+        // back, and it never places its dead (StreamedScene.Place asks IsTombstoned), so they must outlive
+        // this. Anything else's are applied once and dropped, as they always were.
+        bool keep = source.StartsWith(ContentIds.SectorPrefix, StringComparison.Ordinal);
+        if (keep ? _pendingTombstones.TryGetValue(source, out var dead) : _pendingTombstones.Remove(source, out dead))
         {
             foreach (var id in dead)
             {
@@ -98,6 +104,42 @@ internal sealed class ContentBaseline
             if (world.Resolve(id).IsNull) Pending(_pendingTombstones, source).Add(id);
             if (_sourceOf.TryGetValue(id, out var from) && from == source) _sourceOf.Remove(id);
         }
+    }
+
+    // A source that is not in the world takes the runtime spawns that walked into it (4g-3): they sleep in
+    // its dormant cell and come back when it is placed.
+    internal void Doze(World world, string source)
+    {
+        if (_discarding == 0 && world.Engine is { } engine) Sleep(world, engine, source);
+    }
+
+    // Whether a source's content placed this id and the game destroyed it, or it left (Leave).
+    internal bool IsTombstoned(string source, PersistentId id) =>
+        _pendingTombstones.TryGetValue(source, out var dead) && dead.Contains(id);
+
+    // A placed root walked out of the sector that placed it (4g-3, StreamedScene.Move): it is that sector's
+    // no longer — tombstoned there, so placing the sector again does not place it twice — and it belongs to
+    // the sector it is in now as that cell's runtime spawn, with its id, its children and its state.
+    internal void Leave(World world, Entity root, PersistentId id, string to)
+    {
+        if (!_sourceOf.TryGetValue(id, out var from)) return;
+        Unregister(root, from);
+        Pending(_pendingTombstones, from).Add(id);
+        if (world.Has<InCell>(root)) world.Get<InCell>(root).Source = to;
+        else world.Add(root, new InCell { Source = to });
+    }
+
+    private void Unregister(Entity entity, string from)
+    {
+        if (entity.TryGetComponent<Persistent>(out var persistent)
+            && _sourceOf.TryGetValue(persistent.Id, out var source) && source == from)
+        {
+            _sourceOf.Remove(persistent.Id);
+            if (_placed.TryGetValue(from, out var ids)) ids.Remove(persistent.Id);
+        }
+        if (entity.ChildCount == 0) return;
+        foreach (var child in entity.ChildEntities)
+            if (child.HasComponent<PrefabChildKey>()) Unregister(child, from);
     }
 
     private void Sleep(World world, Engine engine, string source)
@@ -213,6 +255,11 @@ internal static class ContentIds
     public static string DocumentSource(RecordId document) => $"placements:{document}";
     public static string MapSource(RecordId level) => $"map:{level}";
 
+    // A streamed scene's sector (4g-3): `sector:<scene>:<x>,<z>`, absolute.
+    public const string SectorPrefix = "sector:";
+    public static string SectorSource(RecordId scene, SectorCoord sector) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{SectorPrefix}{scene}:{sector.X},{sector.Z}");
+
     // A scene placement: the formula scenes have always used, so saves written before 4i-3 still find
     // them (decision 4); an authored `id` wins.
     public static PersistentId ScenePlacement(RecordId scene, int index, Placement placement) =>
@@ -274,6 +321,8 @@ internal static class ContentIds
     }
 
     public static void Finish(World world, string source) => Baseline(world).Finish(world, source);
+
+    public static void Doze(World world, string source) => Baseline(world).Doze(world, source);
 
     public static void Forget(World world, string source)
     {

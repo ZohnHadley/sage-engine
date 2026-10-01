@@ -721,6 +721,11 @@
         "vital"
       ]
     },
+    "record:terrain": {
+      "description": "The id of a terrain record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:ui_layout": {
       "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1571,6 +1576,11 @@
         "state.invulnerable",
         "vital"
       ]
+    },
+    "base:terrain": {
+      "description": "The id of a terrain record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:ui_layout": {
       "description": "Another ui_layout record to inherit every field from, abstract or not.",

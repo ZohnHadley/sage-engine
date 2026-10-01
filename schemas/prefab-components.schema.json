@@ -2314,7 +2314,7 @@
       "type": "object",
       "properties": {
         "source": {
-          "description": "The source this runtime spawn belongs to: `scene:<id>`, or a streamed sector (4g-3) (string)",
+          "description": "The source this runtime spawn belongs to: `scene:<id>`, or a streamed sector `sector:<scene>:<x>,<z>` (4g-3) (string)",
           "type": "string"
         }
       },

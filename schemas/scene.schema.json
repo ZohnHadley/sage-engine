@@ -930,6 +930,19 @@
         }
       },
       "additionalProperties": false
+    },
+    "streamed": {
+      "description": "Place the scene sector by sector around the player, and put sectors the player leaves to sleep with their state. (bool, default false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "terrain": {
+      "description": "A terrain record: the ground the world gets when this scene is placed; left out, the game's own. Names a terrain record. (RecordRef<TerrainRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:terrain"
+        }
+      ]
     }
   },
   "additionalProperties": false

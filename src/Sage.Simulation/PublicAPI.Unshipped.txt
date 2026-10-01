@@ -646,6 +646,8 @@ Sage.Simulation.RenderStage.Sky = 3 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStage.Transparent = 4 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStages
 Sage.Simulation.PrefabRecord.Persist -> bool
+Sage.Simulation.SceneRecord.Streamed -> bool
+Sage.Simulation.SceneRecord.Terrain -> Sage.Core.RecordRef<Sage.Simulation.TerrainRecord!>
 Sage.Simulation.ScriptedCamera.BlendEase -> Sage.Simulation.Ease
 Sage.Simulation.ScriptedCamera.BlendTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendEase -> Sage.Simulation.Ease
@@ -784,6 +786,16 @@ Sage.Simulation.StateTransition.StateTransition() -> void
 Sage.Simulation.StateTransition.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Simulation.StateTransition.To -> string!
 Sage.Simulation.StateTransition.When -> Sage.Simulation.ICondition?
+Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainGeneratorKind.Flat = 0 -> Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainGeneratorKind.Hills = 1 -> Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainRecord
+Sage.Simulation.TerrainRecord.Amplitude -> float
+Sage.Simulation.TerrainRecord.Generator -> Sage.Simulation.TerrainGeneratorKind
+Sage.Simulation.TerrainRecord.Height -> float
+Sage.Simulation.TerrainRecord.Seed -> int
+Sage.Simulation.TerrainRecord.TerrainRecord() -> void
+Sage.Simulation.TerrainRecord.Wavelength -> float
 Sage.Simulation.ThirdPersonRig
 Sage.Simulation.ThirdPersonRig.Boom -> float
 Sage.Simulation.ThirdPersonRig.Collision.get -> Sage.Simulation.LayerMask
