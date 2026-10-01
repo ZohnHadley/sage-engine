@@ -40,6 +40,24 @@ Sage.Editing.EditDocument.Engine.get -> Sage.Simulation.Engine!
 Sage.Editing.EditDocument.EntityOf(Sage.Simulation.Placement! placement) -> Sage.Simulation.Entity
 Sage.Editing.EditDocument.Execute(Sage.Editing.IEditorCommand! command) -> bool
 Sage.Editing.EditDocument.Find(string! nameOrId) -> Sage.Simulation.Placement?
+Sage.Editing.PaletteCommands
+Sage.Editing.Placing
+Sage.Editing.PrefabGroup
+Sage.Editing.PrefabGroup.Namespace.get -> string!
+Sage.Editing.PrefabGroup.Namespace.init -> void
+Sage.Editing.PrefabGroup.PrefabGroup(string! Namespace, System.Collections.Generic.IReadOnlyList<Sage.Core.RecordId>! Prefabs) -> void
+Sage.Editing.PrefabGroup.Prefabs.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.RecordId>!
+Sage.Editing.PrefabGroup.Prefabs.init -> void
+Sage.Editing.PrefabPalette
+Sage.Editing.PrefabPalette.Arm(Sage.Core.RecordId prefab) -> void
+Sage.Editing.PrefabPalette.Armed.get -> Sage.Core.RecordId
+Sage.Editing.PrefabPalette.Count.get -> int
+Sage.Editing.PrefabPalette.Disarm() -> void
+Sage.Editing.PrefabPalette.Groups() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PrefabGroup!>!
+Sage.Editing.PrefabPalette.IsArmed.get -> bool
+Sage.Editing.PrefabPalette.PrefabPalette(Sage.Core.RecordStore! records) -> void
+Sage.Editing.PrefabPalette.Search.get -> string!
+Sage.Editing.PrefabPalette.Search.set -> void
 static Sage.Editing.EditDocument.GameNamespace(Sage.Simulation.Engine! engine) -> string!
 Sage.Editing.EditDocument.History.get -> Sage.Editing.CommandLog!
 Sage.Editing.EditDocument.Id.get -> Sage.Core.RecordId
@@ -125,6 +143,7 @@ Sage.Editing.PlacementFields.At.get -> System.Numerics.Vector3
 Sage.Editing.PlacementFields.At.init -> void
 Sage.Editing.PlacementFields.Name.get -> string!
 Sage.Editing.PlacementFields.Name.init -> void
+static Sage.Editing.PaletteCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
 static Sage.Editing.PlacementFields.Of(Sage.Simulation.Placement! placement) -> Sage.Editing.PlacementFields
 Sage.Editing.PlacementFields.PlacementFields() -> void
 Sage.Editing.PlacementFields.PlacementFields(System.Numerics.Vector3 At, float Yaw, string! Name, Sage.Simulation.PlacementFrame? RelativeTo) -> void
@@ -139,6 +158,10 @@ Sage.Editing.RemovePlacement.Placement.get -> Sage.Simulation.Placement!
 Sage.Editing.RemovePlacement.RemovePlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
 Sage.Editing.RemovePlacement.Undo() -> void
 Sage.Editing.RotateGizmo
+static Sage.Editing.Placing.Place(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, System.Numerics.Vector3 at, float yaw = 0, string! name = "") -> Sage.Simulation.Placement?
+static Sage.Editing.Placing.PlaceAt(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, in Sage.Editing.EditorRay ray, float yaw = 0, string! name = "") -> Sage.Simulation.Placement?
+static Sage.Editing.Placing.Surface(Sage.Simulation.World! world, in Sage.Editing.EditorRay ray, float maxDistance = 1000, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> System.Numerics.Vector3?
+static Sage.Editing.Placing.UniqueName(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, string! wanted = "") -> string!
 static Sage.Editing.RotateGizmo.Drag(in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, float stepDegrees = 0) -> float?
 static Sage.Editing.RotateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size) -> bool
 Sage.Editing.SetOutputs
