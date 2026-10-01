@@ -31,6 +31,11 @@ public struct Animator : IComponent
     public AnimatorLayer[]? Layers;
     [Property(Tooltip = "Each param's value, by name; filled on its first tick")]
     public AnimatorParam[]? Params;
+    // Frozen by Animators.Suspend (issue #244): no stepping, no sampling, and its pose is left to whoever
+    // suspended it (a ragdoll) to rewrite. A new field with a default: saves from before it load unsuspended.
+    [Property(Tooltip = "Frozen by Animators.Suspend: it neither steps nor writes its pose until Resume (a ragdoll owns the pose meanwhile)")]
+    [Experimental(AnimationRagdollApi.Experimental, UrlFormat = AnimationRagdollApi.Url)]
+    public bool Suspended;
 
     // Its pose's slot in the world's AnimatorPoses (0: none yet), and the compiled graph its indices were
     // resolved against. Neither is saved: both are found again after a load.
@@ -67,8 +72,13 @@ public struct AnimatorLayer
     // Entered since the last step, by code (Animators.Play) or as a new animator's initial state: its
     // next step raises the events at the clip's very start too (issue #119). Not saved.
     internal bool Entered;
+    // Fading from a pose snapshot (Animators.PlayFrom, issue #244) rather than from a state: the pose is
+    // the instance's (AnimatorPoses.Instance.Snapshots), never saved, so a load mid-fade has none and
+    // Resolve drops the fade (the layer shows its state directly).
+    internal bool FromSnapshot;
 
-    public readonly bool Fading => From != null;
+    // Cross-fading from a state, or from a pose snapshot (Animators.PlayFrom; From is null then).
+    public readonly bool Fading => From != null || FromSnapshot;
 }
 
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
@@ -120,9 +130,10 @@ public sealed class AnimatorPart : IPrefabPart
 // sample: LOD samples distant ones less often), fills its ModelSpace and registers it in SkeletonPoses,
 // which passes it to SkinPoses. IK and attachments adjust it in Phase.Late, so they never compound.
 // `TryGetPose` hands it out. The pose belongs to the world's AnimatorPoses: never keep it past the tick,
-// never Dispose it.
+// never Dispose it. While the animator is suspended (Suspend, PlayFrom: AnimatorSuspend.cs, #244) the
+// pose stays registered and whoever suspended it rewrites it instead.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
-public static class Animators
+public static partial class Animators
 {
     public const string SystemId = "sage.animation.animator";
     public const string SetParamInput = "SetAnimParam";
@@ -439,6 +450,7 @@ public static class Animators
         if (!world.IsAlive(entity) || !world.Has<Animator>(entity)) return sb.Append(": no animator").ToString();
         ref var a = ref world.Get<Animator>(entity);
         sb.Append(": graph ").Append(a.Graph).Append(", model ").Append(a.Model.IsEmpty ? "(none)" : a.Model.ToString());
+        if (a.Suspended) sb.Append(", suspended");
         if (Compiled(world, a.Graph) is not { } g) return sb.Append(" (no such anim_graph)").ToString();
         AnimatorStepper.Resolve(entity, ref a, g);
         AnimatorPoses.Instance? instance = null;
@@ -453,7 +465,7 @@ public static class Animators
             sb.Append("\n  ").Append(layer.Name).Append(": ").Append(s.State ?? "(none)")
               .Append(CultureInfo.InvariantCulture, $" t={s.Time:F2}s phase={s.Phase:F2}");
             if (s.Fading)
-                sb.Append(CultureInfo.InvariantCulture, $", fading from {s.From} ({s.Fade:F2}/{s.FadeDuration:F2}s {s.FadeEase})");
+                sb.Append(CultureInfo.InvariantCulture, $", fading from {s.From ?? "a pose snapshot"} ({s.Fade:F2}/{s.FadeDuration:F2}s {s.FadeEase})");
             if (s.Index >= 0 && layer.States[s.Index].IsBlend)
             {
                 var state = layer.States[s.Index];
