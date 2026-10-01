@@ -1,6 +1,7 @@
 // Billboard sprites (docs/design/07 §3.2): the quads are expanded on the CPU (06 §3.7), so the
-// vertex shader only transforms them. Techniques: Unlit (alpha-tested, fog — the Daggerfall look),
-// Lit (alpha-tested, sun + hemispheric ambient, fog) and UnlitBlend (transparent, no alpha test).
+// vertex shader only transforms them. Techniques: Lit (alpha-tested, sun with its shadows, hemispheric
+// ambient, the nearby lamps, fog), Unlit (alpha-tested, fog: full-bright) and UnlitBlend (transparent,
+// no alpha test).
 #include "common.fxh"
 
 texture Albedo;
@@ -36,11 +37,40 @@ VSOutput VS(VSInput input)
     return output;
 }
 
+// A billboard has no real normal: it always faces the camera, so plain Lambert would leave it dark
+// whenever a light is off to its side (the sun overhead, a lamp beside it). Wrapped (half-Lambert)
+// lighting lets a light anywhere but straight behind it reach it, strongest from the front.
+float Wrap(float3 n, float3 toLight)
+{
+    return saturate(dot(n, toLight) * 0.5 + 0.5);
+}
+
+float3 SpritePointLights(float3 n, float3 relative)
+{
+    float3 sum = float3(0, 0, 0);
+
+    for (int i = 0; i < MAX_LIGHTS; i++)
+    {
+        if (i >= LightCount) break;
+
+        float3 toLight = LightPositions[i] - relative;
+        float distance = length(toLight);
+        float range = LightColors[i].a;
+        if (distance >= range) continue;
+
+        float falloff = 1.0 - distance / max(range, 0.001);
+        sum += LightColors[i].rgb * (falloff * falloff * Wrap(n, toLight / max(distance, 0.001)));
+    }
+
+    return sum;
+}
+
 float4 Shade(VSOutput input, float lit)
 {
     float4 albedo = tex2D(AlbedoSampler, input.UV) * AlbedoColor * input.Color * Tint;
     float3 n = normalize(input.Normal);
-    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) + SunLight(n), lit);
+    float3 sun = SunColor * Wrap(n, -SunDir) * ShadowLit(input.Relative, n);
+    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) + sun + SpritePointLights(n, input.Relative), lit);
     float3 color = ApplyFog(albedo.rgb * light, length(input.Relative));
     return float4(color, albedo.a);
 }

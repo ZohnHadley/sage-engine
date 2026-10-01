@@ -24,23 +24,31 @@
     "params": { "Albedo": "textures/ground.png" }
   },
   {
-    // Billboard sprites (06 §3.8). Point sampling and alpha test give the Daggerfall look; the sheet's
-    // texture replaces Albedo per draw, so one material serves every sheet.
+    // Billboard sprites (06 §3.8), lit like the world around them: the sun (and its shadows), the sky's
+    // ambient and the nearby lamps, so a creature darkens at night and glows by a fire. Point sampling and
+    // alpha test give the Daggerfall look; the sheet's texture replaces Albedo per draw, so one material
+    // serves every sheet.
     "type": "material",
     "id": "sprite_default",
     "effect": "shaders/sprite.mgfxo",
-    "technique": "Unlit",
+    "technique": "Lit",
     "pass": "AlphaTested",
     "cull": "None",
     "sampler": { "filter": "Point", "address": "Clamp" },
     "params": { "Albedo": "textures/white.png", "AlbedoColor": [1, 1, 1, 1], "AlphaCutoff": 0.5 }
   },
   {
-    // Sprites lit by the sun and ambient, for props that should sit in the world's light.
+    // The same, by name, for sheets that say so (the default used to be unlit).
     "type": "material",
     "id": "sprite_lit",
+    "base": "sprite_default"
+  },
+  {
+    // Full-bright sprites that ignore the world's light: icons, markers, glowing things.
+    "type": "material",
+    "id": "sprite_unlit",
     "base": "sprite_default",
-    "technique": "Lit"
+    "technique": "Unlit"
   },
   {
     // What a particle draws with (06 §3.9, F39): the sprite shader's blended technique, *added* to what

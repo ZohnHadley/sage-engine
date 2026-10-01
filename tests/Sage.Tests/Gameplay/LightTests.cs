@@ -92,6 +92,35 @@ public class LightTests
             Assert.Equal(first[i].Position.X, second[i].Position.X);
     }
 
+    // Sprites batch while the lamps lighting them are the same four (Renderer.DrawSprites): the same
+    // lights in another order still batch, one more or one different does not.
+    [Fact]
+    public void TwoChoicesAreTheSameSetWhateverTheirOrder()
+    {
+        Span<LightSample> a = stackalloc LightSample[] { Lamp(1), Lamp(2) };
+        Span<LightSample> b = stackalloc LightSample[] { Lamp(2), Lamp(1) };
+        Span<LightSample> c = stackalloc LightSample[] { Lamp(1), Lamp(3) };
+
+        Assert.True(LightRules.SameSet(a, b));
+        Assert.False(LightRules.SameSet(a, c));
+        Assert.False(LightRules.SameSet(a, a[..1]));
+        Assert.True(LightRules.SameSet(ReadOnlySpan<LightSample>.Empty, ReadOnlySpan<LightSample>.Empty));
+    }
+
+    // A sprite sits in the world's light by default: the engine's sprite material is the sprite shader's
+    // Lit technique (sun, shadows, ambient and lamps), and full-bright is `sage:sprite_unlit`, by name.
+    [Fact]
+    public void SpritesAreLitByDefault_AndFullBrightIsOptIn()
+    {
+        string game = System.IO.Path.Combine(TestEnv.FolderAbove("Sage.sln"), "tests", "games", "skeletal");
+        using var app = HeadlessApp.ForGame(game).WithEngineContent()
+            .OnRegistered(a => a.Records.Register<MaterialRecord>())   // the client's to register; headless asks for it
+            .Boot();
+        Assert.Equal("Lit", app.Records.Get<MaterialRecord>(SpriteSheetRecord.DefaultMaterial).Technique);
+        Assert.Equal("Lit", app.Records.Get<MaterialRecord>(new RecordId("sage", "sprite_lit")).Technique);
+        Assert.Equal("Unlit", app.Records.Get<MaterialRecord>(new RecordId("sage", "sprite_unlit")).Technique);
+    }
+
     // The switch (issue 4h-7): a lamp is lit or not by entity I/O, so data can light it at dusk. TurnOn,
     // TurnOff and Toggle are routed to lights, beside a branch's or a door's Toggle; a light that is off
     // gives nothing (`Lit`, what the client's light extract asks), and the part can start it dark.

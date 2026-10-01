@@ -836,7 +836,7 @@ public sealed class Renderer : IDisposable
         ref var view = ref s.Views[ctx.View];
         var lights = s.Lights.AsSpan().Slice(view.LightStart, view.LightCount);
         DrawItems(s, view, lights, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
-        DrawSprites(s, view, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
+        DrawSprites(s, view, lights, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
     }
 
     // `sage:debug` (06 §3.4, pass 5): debug geometry, over everything the world drew and under the UI.
@@ -1038,7 +1038,12 @@ public sealed class Renderer : IDisposable
 
     // Sprites in runs of the same material and texture: one draw per run (06 §3.7). The sheet's
     // texture overrides the material's Albedo, so one sprite material serves every sheet.
-    private void DrawSprites(RenderSnapshot s, in RenderView view, int from, int to, bool wire, ref RenderStats stats)
+    private readonly LightSample[] _nextLights = new LightSample[LightRules.PerObject];
+
+    // A run of sprites sharing a material and a texture is one draw, split where the lamps lighting them
+    // change (06 §3.9): a draw carries one set of four, so sprites far from any lamp still batch, and
+    // only the ones in a lamp's reach pay for their own lights.
+    private void DrawSprites(RenderSnapshot s, in RenderView view, ReadOnlySpan<LightSample> lights, int from, int to, bool wire, ref RenderStats stats)
     {
         int run = from;
         while (run < to)
@@ -1059,16 +1064,41 @@ public sealed class Renderer : IDisposable
                 m.Drawn += end - run;
                 m.Effect.World?.SetValue(Matrix.Identity);   // sprite vertices are already in camera-relative space
                 m.Effect.Tint?.SetValue(Vector4.One);
-                foreach (var pass in m.Technique.Passes)
+                bool lit = m.Effect.LightCount != null && lights.Length > 0;
+                int start = run;
+                while (start < end)
                 {
-                    int draws = _sprites.Draw(s.Sprites, s.SpriteOrder, run, end - run, _textures[texture], pass, m.Albedo);
-                    stats.DrawCalls += draws;
-                    stats.Triangles += (end - run) * 2;
+                    int stop = end, count = 0;
+                    if (lit)
+                    {
+                        count = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[start]]), _lights);
+                        stop = start + 1;
+                        while (stop < end)
+                        {
+                            int c = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[stop]]), _nextLights);
+                            if (!LightRules.SameSet(_lights.AsSpan(0, count), _nextLights.AsSpan(0, c))) break;
+                            stop++;
+                        }
+                    }
+                    m.Effect.SetLights(_lights.AsSpan(0, count));
+                    if (count > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = count;
+                    foreach (var pass in m.Technique.Passes)
+                    {
+                        int draws = _sprites.Draw(s.Sprites, s.SpriteOrder, start, stop - start, _textures[texture], pass, m.Albedo);
+                        stats.DrawCalls += draws;
+                        stats.Triangles += (stop - start) * 2;
+                    }
+                    start = stop;
                 }
             }
             run = end;
         }
     }
+
+    // Where a sprite is lit from: half-way up the quad above its pivot, so a lamp at head height lights a
+    // creature as much as one at its feet. Camera-relative, like the view's lights.
+    private static System.Numerics.Vector3 LitAt(in SpriteInstance sprite) =>
+        new(sprite.Center.X, sprite.Center.Y + sprite.Size.Y * (0.5f - (1f - sprite.Pivot.Y)), sprite.Center.Z);
 
     // A 1 m cube (06 §8: the error mesh is drawn, never skipped silently).
     private static MeshData CreateErrorMesh(GraphicsDevice device)
