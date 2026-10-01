@@ -33,6 +33,32 @@ internal sealed class AnimatorPoses
         public Vector3 LastPosition;
         public bool HasLastPosition;
         public bool LoadTried;
+        // Per layer, the frozen pose a PlayFrom fade starts from (issue #244); rented from the snapshot
+        // pool while the fade runs and handed back when it ends.
+        public SkeletonPose?[] Snapshots = Array.Empty<SkeletonPose?>();
+    }
+
+    // Snapshot poses no fade holds, per skeleton: PlayFrom rents one, and it comes back when the fade
+    // ends, so getting up again (a ragdoll's, issue #244) allocates nothing once the pool has met it.
+    private readonly Dictionary<Skeleton, Stack<SkeletonPose>> _snapshotPool = new(ReferenceEqualityComparer.Instance);
+
+    public SkeletonPose RentSnapshot(Skeleton skeleton)
+    {
+        if (_snapshotPool.TryGetValue(skeleton, out var free) && free.Count > 0) return free.Pop();
+        return new SkeletonPose(skeleton);
+    }
+
+    // Hands back the instance's snapshot for `layer` (all of them when layer < 0), if it holds one.
+    public void ReturnSnapshots(Instance instance, int layer = -1)
+    {
+        var held = instance.Snapshots;
+        for (int l = layer < 0 ? 0 : layer; l < held.Length && (layer < 0 || l == layer); l++)
+        {
+            if (held[l] is not { } pose) continue;
+            held[l] = null;
+            if (!_snapshotPool.TryGetValue(pose.Skeleton, out var free)) _snapshotPool.Add(pose.Skeleton, free = new Stack<SkeletonPose>());
+            free.Push(pose);
+        }
     }
 
     public int Count => _slots.Count - 1 - _free.Count;
@@ -66,9 +92,10 @@ internal sealed class AnimatorPoses
     }
 
     // Takes the instance's pose out of SkeletonPoses (when it is the one registered for its entity) and
-    // returns its arrays.
-    public static void Release(Instance instance, SkeletonPoses registered)
+    // returns its arrays (and its snapshots to the pool).
+    public void Release(Instance instance, SkeletonPoses registered)
     {
+        ReturnSnapshots(instance);
         if (instance.Pose is not { } pose) return;
         // A destroyed entity reads as null, so TryGet no longer finds it; Remove still matches its handle
         // (never an entity that reused the id). A live one is left alone if another source registered it.
@@ -153,9 +180,19 @@ internal static class AnimatorStepper
                 s.Time = 0f;
                 s.Phase = 0f;
                 s.From = null;
+                s.FromSnapshot = false;
                 s.Entered = true;
             }
             else s.State = layer.Names[s.Index];
+            // A fade from a pose snapshot (PlayFrom) lives through a hot reload; after a load it has no
+            // snapshot (FromSnapshot is not saved) and is dropped below: the layer shows its state.
+            if (s.FromSnapshot && s.FadeDuration > 0f && float.IsFinite(s.Fade))
+            {
+                s.From = null;
+                s.FromIndex = -1;
+                continue;
+            }
+            s.FromSnapshot = false;
             s.FromIndex = s.From == null ? -1 : layer.IndexOf(s.From);
             if (s.FromIndex < 0 || !(s.FadeDuration > 0f) || !float.IsFinite(s.Fade))
             {
@@ -245,7 +282,13 @@ internal static class AnimatorStepper
             s.Entered = false;
             s.Phase = Advance(state, before, dt, values, instance);
             if (raise) Raise(in events, state, before, s.Phase, entered, pending: false);
-            if (s.Fading)
+            if (s.FromSnapshot)
+            {
+                // A frozen pose (PlayFrom): only the fade's clock moves, and it raises nothing.
+                s.Fade += dt;
+                if (s.Fade + Epsilon >= s.FadeDuration) EndFade(ref s);
+            }
+            else if (s.From != null)
             {
                 var from = layer.States[s.FromIndex];
                 float fromBefore = s.FromPhase;
@@ -446,6 +489,7 @@ internal static class AnimatorStepper
         var target = layer.States[to];
         if (target.Fade > 0f && s.Index >= 0)
         {
+            s.FromSnapshot = false;                 // a fade from a snapshot drops out like an older state
             s.From = s.State;
             s.FromIndex = s.Index;
             s.FromPhase = s.Phase;
@@ -461,9 +505,10 @@ internal static class AnimatorStepper
         s.Entered = true;
     }
 
-    private static void EndFade(ref AnimatorLayer s)
+    internal static void EndFade(ref AnimatorLayer s)
     {
         s.From = null;
+        s.FromSnapshot = false;
         s.FromIndex = -1;
         s.FromPhase = 0f;
         s.Fade = 0f;
@@ -609,7 +654,7 @@ internal static class AnimatorStepper
             ref readonly var s = ref a.Layers![l];
             if (l == 0)
             {
-                float w = Layer(layer, in s, values, instance, pose, scratch);
+                float w = Layer(layer, l, in s, values, instance, pose, scratch);
                 if (w <= 0f) pose.ResetToRest();
                 else if (w < 1f)
                 {
@@ -618,18 +663,28 @@ internal static class AnimatorStepper
                 }
                 continue;
             }
-            float weight = layer.Weight * Layer(layer, in s, values, instance, scratch.Layer, scratch);
+            float weight = layer.Weight * Layer(layer, l, in s, values, instance, scratch.Layer, scratch);
             if (weight > 0f) PoseSampler.Blend(pose, scratch.Layer, weight, instance.Masks[l], pose);
         }
     }
 
     // One layer into `into`: its state, cross-faded from the one it is leaving. Returns how much of the
-    // layer shows (1, or less while fading to or from a state that plays nothing).
-    private static float Layer(AnimGraphRecord.Layer layer, in AnimatorLayer s, AnimatorParam[] values, AnimatorPoses.Instance instance,
+    // layer shows (1, or less while fading to or from a state that plays nothing). A fade from a pose
+    // snapshot (PlayFrom) blends from that frozen pose as from a state.
+    private static float Layer(AnimGraphRecord.Layer layer, int index, in AnimatorLayer s, AnimatorParam[] values, AnimatorPoses.Instance instance,
                                SkeletonPose into, AnimatorScratch scratch)
     {
         bool current = s.Index >= 0 && State(layer.States[s.Index], s.Phase, values, instance, into, scratch.Clip);
-        if (!s.Fading || s.FromIndex < 0) return current ? 1f : 0f;
+        if (s.FromSnapshot)
+        {
+            if (index >= instance.Snapshots.Length || instance.Snapshots[index] is not { } snapshot || snapshot.JointCount != into.JointCount)
+                return current ? 1f : 0f;
+            float g = Easing.Apply(s.FadeEase, s.FadeDuration > 0f ? s.Fade / s.FadeDuration : 1f);
+            if (current) PoseSampler.Blend(snapshot, into, g, null, into);
+            else snapshot.Local.CopyTo(into.Local);
+            return current ? 1f : 1f - g;
+        }
+        if (s.From == null || s.FromIndex < 0) return current ? 1f : 0f;
         float f = Easing.Apply(s.FadeEase, s.FadeDuration > 0f ? s.Fade / s.FadeDuration : 1f);
         var from = layer.States[s.FromIndex];
         if (current)
@@ -680,7 +735,8 @@ internal static class AnimatorStepper
 // anim_lod_distance). Every tick the readers' pose is rewritten from the last sample and registered in
 // #120's SkeletonPoses (which passes it to #117's SkinPoses), and Removed before it goes back to the
 // pool; `aim_pitch`/`aim_yaw` params (degrees) go to the entity's AimIk (radians). Runs after sprite
-// animation; #120's foot IK, aim IK and attachments adjust the pose in Phase.Late.
+// animation; #120's foot IK, aim IK and attachments adjust the pose in Phase.Late. A suspended animator
+// (Animators.Suspend, #244) is skipped: whoever suspended it writes the pose.
 // Animators are gathered in the query and stepped after it, because a transition's `then` may change
 // the world.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
@@ -747,7 +803,26 @@ internal sealed class AnimatorSystem : ISystem
 
             Model(ref a, entity, instance);
             AnimatorStepper.ResolveClips(_world, entity, in a, g, instance);
+            if (a.Suspended)
+            {
+                // Frozen (Animators.Suspend, issue #244): whoever suspended it rewrites the pose. Only a pose
+                // it has never had (a load, a model that just arrived) is sampled once from where it stands,
+                // so it is not shown at rest, and registered.
+                if (instance.Pose != null && instance.SampledTick < 0)
+                {
+                    AnimatorStepper.Resolve(entity, ref a, g);
+                    instance.SampledTick = tick;
+                    AnimatorStepper.Sample(in a, g, instance, Scratch(instance.Pose.Skeleton));
+                    instance.Sampled!.Local.CopyTo(instance.Pose.Local);
+                    PoseSampler.ToModelSpace(instance.Pose.Skeleton, instance.Pose);
+                    _registered.Set(entity, instance.Pose, a.Model);
+                }
+                continue;
+            }
             AnimatorStepper.Step(_world, entity, ref a, g, instance, dt, _then, sink);
+            // A snapshot whose fade ended (or was replaced by a state's) goes back to the pool.
+            for (int l = 0; l < instance.Snapshots.Length; l++)
+                if (instance.Snapshots[l] != null && (l >= a.Layers!.Length || !a.Layers[l].FromSnapshot)) _poses.ReturnSnapshots(instance, l);
             if ((g.AimPitchParam >= 0 || g.AimYawParam >= 0) && _world.Has<AimIk>(entity))
             {
                 ref var aim = ref _world.Get<AimIk>(entity);
@@ -807,7 +882,7 @@ internal sealed class AnimatorSystem : ISystem
             if (set == null) return;
         }
         if (ReferenceEquals(set, instance.Set)) return;
-        AnimatorPoses.Release(instance, _registered);
+        _poses.Release(instance, _registered);
         instance.Set = set;
         instance.Pose = new SkeletonPose(set.Skeleton);
         instance.Sampled = new SkeletonPose(set.Skeleton);
