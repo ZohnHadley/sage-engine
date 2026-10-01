@@ -45,6 +45,6 @@
   </ItemGroup>
   <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the conditions and actions (SAGE0120, moved here from Sage.Gameplay by issue #89), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras as entities (SAGE0123) and phase 4b's logic (SAGE0124: stage 2's condition and action language, easing) and skeletal animation (SAGE0126: skeletons, clips and poses, #116; GPU skinning's SkinMath and SkinnedMeshRenderer, #117; sockets, attachments and IK, #120) and query-only physics layers (SAGE0127, LayerMatrix.QueryOnly, #137) and the render pass registry (SAGE0130, RenderStage, RenderPassAttribute, RenderPassRegistry, issue 4h-1) and phase 4g's cells (SAGE0129, InCell) and phase 4i's saves and prefab overrides and nesting (SAGE0131) are declared here, and an assembly uses its own experimental types freely. -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123;SAGE0124;SAGE0126;SAGE0127;SAGE0129;SAGE0130;SAGE0131</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123;SAGE0124;SAGE0126;SAGE0127;SAGE0129;SAGE0130;SAGE0131;SAGE0132</NoWarn>
   </PropertyGroup>
 </Project>

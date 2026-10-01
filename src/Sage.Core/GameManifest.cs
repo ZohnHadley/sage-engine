@@ -15,7 +15,8 @@ namespace Sage.Core;
 //     "modules": { "disable": [] },
 //     "kits": ["sage.kits.rpg"],                       // kits the game is built on (issue #27)
 //     "scene": "main",                                 // the scene every world starts in (issue #29)
-//     "sage": "^0.1"                                   // the engine versions it was made for (issue #31)
+//     "sage": "^0.1",                                  // the engine versions it was made for (issue #31)
+//     "version": "1.0.0"                               // the game's own version, for a mod's "gameVersion" (4j)
 //   }
 public sealed class GameManifest
 {
@@ -46,6 +47,10 @@ public sealed class GameManifest
     // #31). Checked when the manifest loads, against BuildInfo.EngineSemVersion, so a game run on an engine
     // it was not made for stops with that rather than with whatever broke first. Left out, any engine.
     public string? Sage { get; set; }
+
+    // This game's own version, "1.4.0": what a mod's "gameVersion" range is checked against (phase 4j).
+    // Left out, the check is skipped with a note.
+    public string? Version { get; set; }
 
     public sealed class ModuleSettings
     {
@@ -124,6 +129,11 @@ public sealed class GameManifest
             throw new InvalidDataException($"{path}: \"id\" is required.");
         RecordId.Parse(manifest.Id, manifest.Id);   // the id is the game's record namespace: same rules
         manifest.Directory = Path.GetFullPath(gameDirectory);
+        if (!string.IsNullOrWhiteSpace(manifest.Version))
+        {
+            try { SemVersion.Parse(manifest.Version, $"{path}: \"version\""); }
+            catch (FormatException ex) { throw new InvalidDataException(ex.Message, ex); }
+        }
         manifest.CheckEngine(BuildInfo.EngineSemVersion, BuildInfo.EngineVersion, path);
         return manifest;
     }
