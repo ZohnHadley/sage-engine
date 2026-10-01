@@ -28,6 +28,9 @@ internal sealed class PalettePanel
         _onPlaced = onPlaced;
     }
 
+    // A prefab is armed: the next viewport click places it, so the gizmo leaves that click alone.
+    public bool IsArmed => _palette.IsArmed;
+
     public void Draw()
     {
         if (!ImGui.Begin(Title))
