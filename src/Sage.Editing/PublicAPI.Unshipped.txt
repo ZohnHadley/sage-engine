@@ -1,4 +1,5 @@
 #nullable enable
+<<<<<<< HEAD
 const Sage.Editing.EditorPicking.FallbackRadius = 0.35 -> float
 Sage.Editing.EditorPicking
 Sage.Editing.EditorRay
@@ -18,10 +19,13 @@ Sage.Editing.GizmoHandle.Y = 2 -> Sage.Editing.GizmoHandle
 Sage.Editing.GizmoHandle.YZ = 6 -> Sage.Editing.GizmoHandle
 Sage.Editing.GizmoHandle.Z = 3 -> Sage.Editing.GizmoHandle
 Sage.Editing.GizmoMath
+=======
+>>>>>>> origin/main
 Sage.Editing.IEditorCommand
 Sage.Editing.IEditorCommand.Description.get -> string!
 Sage.Editing.IEditorCommand.Do() -> void
 Sage.Editing.IEditorCommand.Undo() -> void
+<<<<<<< HEAD
 Sage.Editing.PickResult
 Sage.Editing.PickResult.Distance.get -> float
 Sage.Editing.PickResult.Distance.init -> void
@@ -45,3 +49,5 @@ static Sage.Editing.Snap.ToGrid(float value, float step) -> float
 static Sage.Editing.TranslateGizmo.AxisOf(Sage.Editing.GizmoHandle handle) -> System.Numerics.Vector3
 static Sage.Editing.TranslateGizmo.Drag(Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, float grid = 0) -> System.Numerics.Vector3?
 static Sage.Editing.TranslateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size) -> Sage.Editing.GizmoHandle
+=======
+>>>>>>> origin/main
