@@ -61,6 +61,7 @@ public sealed class DevTools : IDisposable
     private readonly EditorLayout _layout = new();
     private readonly LogPanel _log = new();
     private readonly RecordsPanel _records;   // the record browser (#224)
+    private PalettePanel? _palette;   // #222
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -150,6 +151,7 @@ public sealed class DevTools : IDisposable
         _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
         if (_menu != null) _menu.Editing = true;
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
+        _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection.Select(entity));
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
         // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
@@ -285,12 +287,22 @@ public sealed class DevTools : IDisposable
         _outliner?.Draw();
         _inspector?.Draw();
         _records.Draw();
+        _palette?.Draw();
         _log.Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();
         _layout.DrawStatusBar(StatusLine());
+        _palette?.HandleViewport();
     }
+
+    // The ray through a pixel of the screen's view (the free camera's in the editor), for placing by click.
+    private Sage.Editing.EditorRay? ViewportRay(System.Numerics.Vector2 pointer, System.Numerics.Vector2 size) =>
+        _world != null && _world.TryGetMainView(out var view)
+            ? (view.Projection == CameraProjection.Orthographic
+                ? EditorPicking.RayFromOrthographic(new CameraPose(view.Position, view.Rotation), view.OrthoHeight, size, pointer)
+                : EditorPicking.RayFrom(new CameraPose(view.Position, view.Rotation), view.FovY, size, pointer))
+            : null;
 
     // The editor viewport (issue #81): the render target the viewport camera drew this frame (views into
     // targets draw before the screen, and this is after both), shown through ImGui's texture binding.
