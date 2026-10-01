@@ -66,8 +66,8 @@ tools/smoke_run.sh --dotnet-run /tmp/g 3 Shaders Audio  # `dotnet run` a templat
   `new Engine(...)`. Tests that change process-wide state or measure time/allocation go in the
   `ProcessWideState` / `Measurements` collections (`tests/Sage.Tests/Core/TestSupport.cs`).
   The base engine (`Sage.Core` ← `Sage.Simulation` ← `Sage.Physics3D` ← `Sage.Gameplay`, plus `Sage.UI` on
-  the simulation — retained game-UI widgets, headless, #95; one namespace
-  each) has no MonoGame and never references a kit (SAGE0025); tests cannot reference `Sage.Client` —
+  the simulation — retained game-UI widgets, headless, #95; and `Sage.Editing`, the editor's headless
+  model, #216; one namespace each) has no MonoGame and never references a kit (SAGE0025); tests cannot reference `Sage.Client` —
   the smoke run checks the client.
 - **Docs are checked.** An "As built" claim cites the test that proves it (the `test:` marker, see the README); quoted counts are verified.
   A new test changes the count: run `check_docs.py --fix`.

@@ -52,7 +52,8 @@
     <SagePublicApi Condition="'$(SagePublicApi)' == '' And ('$(MSBuildProjectName)' == 'Sage.Core' Or '$(MSBuildProjectName)' == 'Sage.Simulation'
                               Or '$(MSBuildProjectName)' == 'Sage.Physics3D' Or '$(MSBuildProjectName)' == 'Sage.Gameplay'
                               Or '$(MSBuildProjectName)' == 'Sage.Client' Or '$(MSBuildProjectName)' == 'Sage.Kits.Rpg'
-                              Or '$(MSBuildProjectName)' == 'Sage.Kits.Rpg.Client' Or '$(MSBuildProjectName)' == 'Sage.UI')">true</SagePublicApi>
+                              Or '$(MSBuildProjectName)' == 'Sage.Kits.Rpg.Client' Or '$(MSBuildProjectName)' == 'Sage.UI'
+                              Or '$(MSBuildProjectName)' == 'Sage.Editing')">true</SagePublicApi>
   </PropertyGroup>
   <!-- The package's two API-design rules about optional parameters (RS0026, RS0027) are advice, not
        declaration: Log.Info(cat, message, [CallerFilePath] file = "", ...) and friends are meant that way. -->

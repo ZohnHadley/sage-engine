@@ -25,7 +25,7 @@ public class DeclaredApiTests
     // The assemblies with declared API: src/Directory.Build.props sets SagePublicApi for these.
     private static readonly string[] Declared =
     {
-        "Sage.Core", "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Sage.Client", "Sage.Kits.Rpg", "Sage.Kits.Rpg.Client",
+        "Sage.Core", "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Sage.Client", "Sage.Kits.Rpg", "Sage.Kits.Rpg.Client", "Sage.Editing",
     };
 
     private static string Src => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "src");

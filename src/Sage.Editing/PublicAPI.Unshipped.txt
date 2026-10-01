@@ -1,0 +1,5 @@
+#nullable enable
+Sage.Editing.IEditorCommand
+Sage.Editing.IEditorCommand.Description.get -> string!
+Sage.Editing.IEditorCommand.Do() -> void
+Sage.Editing.IEditorCommand.Undo() -> void

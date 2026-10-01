@@ -9,6 +9,8 @@
   <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the editor's free camera and viewport are camera entities drawing into a render target (SAGE0123, issue #81). -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);SAGE0123</NoWarn>
+    <!-- The editor's model (Sage.Editing, phase 10a) is SAGE0133 while 10a builds it. -->
+    <NoWarn>$(NoWarn);SAGE0133</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sage.Client\Sage.Client.csproj" />
+    <!-- The editor's model (phase 10a): this assembly only draws what Sage.Editing decides. -->
+    <ProjectReference Include="..\Sage.Editing\Sage.Editing.csproj" />
     <ProjectReference Include="..\..\third_party\MonoGame.ImGuiNet\Monogame.ImGuiNet.csproj" />
   </ItemGroup>
 
@@ -27,5 +31,6 @@
     <Using Include="Sage.Physics3D" />
     <Using Include="Sage.Gameplay" />
     <Using Include="Sage.Client" />
+    <Using Include="Sage.Editing" />
   </ItemGroup>
 </Project>

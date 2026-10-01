@@ -16,6 +16,9 @@ public static class EngineAssemblies
     // The retained widgets (issue #95): on the simulation, beside physics, below the client.
     public static Assembly UI => typeof(Sage.UI.UiRoot).Assembly;
 
+    // The editor's model (phase 10a, issue #216): on the simulation, headless, below the ImGui editor.
+    public static Assembly Editing => typeof(Sage.Editing.IEditorCommand).Assembly;
+
     // Kernel first, in reference order.
-    public static IReadOnlyList<Assembly> Base { get; } = new[] { Core, Simulation, Physics3D, Gameplay, UI };
+    public static IReadOnlyList<Assembly> Base { get; } = new[] { Core, Simulation, Physics3D, Gameplay, UI, Editing };
 }
