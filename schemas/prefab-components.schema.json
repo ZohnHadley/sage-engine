@@ -2051,6 +2051,11 @@
             },
             "additionalProperties": false
           }
+        },
+        "suspended": {
+          "description": "Frozen by Animators.Suspend: it neither steps nor writes its pose until Resume (a ragdoll owns the pose meanwhile) (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
