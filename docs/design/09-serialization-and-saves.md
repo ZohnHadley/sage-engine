@@ -317,9 +317,49 @@ pack), and a map counter's value was lost.
   removed after the scene is placed again (a child had no id then, and is not counted); what it lists is
   found by id (test: AFormat2SaveOfASceneKeepsItsDeadDead). The format 1 and 2 golden saves still load.
 - **Not yet:** components are still written in full, so a rebalance does not reach a placed entity from
-  an existing save (4i-5 writes a diff); a component the save lacks is left as the content made it
-  rather than removed; `sage validate` does not yet warn about index-derived ids (the plan's decision 4),
+  an existing save, and a component the save lacks is left as the content made it rather than removed
+  (both since closed by 4i-5, below); `sage validate` does not yet warn about index-derived ids (the plan's decision 4),
   and the FGD does not offer the `id` key.
+
+### As built (save what changed, issue 4i-5, 2026-09-30)
+
+Every public field of every component was written in full, so a prefab or a record rebalanced after a
+save never reached an entity from it: the old goblin's health came back over the new prefab's (the 4i
+plan's gap 4). Decision 1 of the plan: diff against the prefab as it was spawned, rather than make every
+saved field opt-in.
+
+- **The baseline** (`SaveDiff.cs`): a prefab spawn notes the entity's components, serialized in the save
+  dialect, once its prefab — with the placement's or the map's overrides, or the parent prefab's body
+  for a child — is applied, and before a name, an id or children are added (`SaveSystem.NoteSpawned`,
+  held by `FromPrefab`). It is taken once per prefab and overrides in each world and shared; after the
+  records are loaded again the next spawn takes a new one, and what was spawned before keeps its own.
+- **A save writes what differs**: an entity with a baseline says `"diff": true`; a component the game
+  left alone is not written; of one it changed, only the top-level fields that differ are (a list, a
+  dictionary or a nested struct is one field, written whole); a component the prefab did not give it is
+  written in full; and **`"removed"`** lists the baseline's components the entity no longer has. Tags
+  are written in full. The transform is always written whole (test: ASaveWritesOnlyTheFieldsTheGameChanged).
+- **A load applies the current prefab, then the diff**: the entity is spawned (or placed again by
+  content, 4i-3) from the prefab as it is now; each saved entry is laid over it field by field
+  (`SaveDiff.Merge`, through the dialect's own field contract); `removed` is taken off again; its tags
+  are the save's exactly. So an untouched goblin gets the raised prefab hit points and the raised
+  record health, and a damaged one keeps its damage and gets the new maximum (test:
+  AnUntouchedGoblinGetsTheRaisedPrefabHealthAndADamagedOneKeepsItsOwn). Overrides and a child's body are
+  part of the baseline: an overridden field stays overridden and the rest follow the prefab (test:
+  OverridesAndAChildsBodyArePartOfWhatIsDiffedAgainst). A component the game added and one it took off
+  both come back as it left them, on a placed and on a spawned goblin, and so does a tag it took off
+  (test: AnAddedAndARemovedComponentRoundTrip); a save of a loaded game is the same diff again (test:
+  ASaveOfALoadedGameStaysADiff).
+- **A runtime spawn is rebuilt where it was saved** (its saved position and rotation), not at the origin,
+  so a part that reads its placement reads what it read when the diff was taken.
+- **The format stays 3**: only an entity marked `diff` is merged; any other entry replaces its component
+  as before, so formats 1, 2 and 3 without diffs read as they did. A format 3 golden save written as
+  diffs is committed and loads (test: AGoldenSaveInTheCurrentFormatLoads), beside formats 1 and 2 (tests:
+  AGoldenSaveFromBeforeStableIdsStillLoads, AGoldenSaveInFormat2Loads).
+- **Limits**: the baseline is shared, so a value a part derives from the placement (a mover's closed
+  position) differs from the first spawn's on every other placement and is written, and does not follow a
+  rebalance. An `[Upgrade]` method sees only the fields a diff wrote. A placed entity's transform is
+  always written, so moving a placement in the content does not move one from an existing save. A
+  component whose JSON is not an object of fields (a custom converter) is written whole when it differs.
 
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the

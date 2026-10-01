@@ -13,6 +13,11 @@ namespace Sage.Simulation;
 public struct FromPrefab : IComponent
 {
     public RecordId Prefab;
+
+    // Its components as its prefab gave them, overrides included, when it was spawned (phase 4i issue
+    // 4i-5): what a save diffs it against, so only what the game changed is written. Shared by every entity
+    // spawned from the same prefab and overrides; null for one that was not spawned (a bare Create).
+    internal SpawnBaseline? Baseline;
 }
 
 // For a saved resource whose data implies something else that has to be rebuilt — a spellbook's

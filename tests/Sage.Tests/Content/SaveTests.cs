@@ -280,6 +280,8 @@ public class SaveTests
     {
         using var fx = new Fixture();
         var hero = Place(fx.World, "hero", "hero", Vector3.Zero);
+        // Hurt, so its attributes differ from its prefab's and are written (a save writes what changed, 4i-5).
+        Effects.Apply(fx.World, hero, Id("hurt"), hero, 5f);
         Tick(fx.World, 10);
         Assert.True(fx.Engine.Saves.Save("slot"));
 
