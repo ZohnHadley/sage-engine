@@ -38,6 +38,10 @@ const Sage.Gameplay.BridgeIO.SetFaction = "SetFaction" -> string!
 const Sage.Gameplay.BridgeIO.SetStage = "SetStage" -> string!
 const Sage.Gameplay.BridgeIO.StartDialogue = "StartDialogue" -> string!
 const Sage.Gameplay.HitDeliveries.Default = "sweep" -> string!
+const Sage.Gameplay.OffscreenFights.Default = "strength" -> string!
+const Sage.Gameplay.OffscreenFights.Range = 12 -> float
+const Sage.Gameplay.OffscreenMap.DoorPart = "load_door" -> string!
+override Sage.Gameplay.OffscreenAgent.ToString() -> string!
 Sage.Gameplay.ActionConventions.Reload -> string!
 Sage.Gameplay.AICondition.InRoutine = 2048 -> Sage.Gameplay.AICondition
 Sage.Gameplay.AIProfileRecord.Routine -> Sage.Core.RecordRef<Sage.Gameplay.RoutineRecord!>
@@ -146,9 +150,70 @@ Sage.Gameplay.HitResult.Target.init -> void
 Sage.Gameplay.Hits
 Sage.Gameplay.IHitDelivery
 Sage.Gameplay.IHitDelivery.Deliver(in Sage.Gameplay.HitContext hit) -> void
+Sage.Gameplay.IOffscreenFight
+Sage.Gameplay.IOffscreenFight.Round(Sage.Gameplay.OffscreenAgent! a, Sage.Gameplay.OffscreenAgent! b, float roll) -> void
 Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
+Sage.Gameplay.Offscreen
+Sage.Gameplay.Offscreen.Corpse -> bool
+Sage.Gameplay.Offscreen.Fight -> string!
+Sage.Gameplay.Offscreen.Offscreen() -> void
+Sage.Gameplay.Offscreen.Speed -> float
+Sage.Gameplay.Offscreen.Strength -> float
+Sage.Gameplay.OffscreenAgent
+Sage.Gameplay.OffscreenAgent.Corpse -> bool
+Sage.Gameplay.OffscreenAgent.Dead -> bool
+Sage.Gameplay.OffscreenAgent.Entity -> System.Collections.Generic.List<System.Text.Json.Nodes.JsonObject!>!
+Sage.Gameplay.OffscreenAgent.Faction -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Fight -> string!
+Sage.Gameplay.OffscreenAgent.Health -> float
+Sage.Gameplay.OffscreenAgent.Id -> string!
+Sage.Gameplay.OffscreenAgent.Lift -> float
+Sage.Gameplay.OffscreenAgent.Name -> string!
+Sage.Gameplay.OffscreenAgent.OffscreenAgent() -> void
+Sage.Gameplay.OffscreenAgent.Prefab -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Routine -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Scene -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Speed -> float
+Sage.Gameplay.OffscreenAgent.Strength -> float
+Sage.Gameplay.OffscreenAgent.TracksHealth -> bool
+Sage.Gameplay.OffscreenAgent.X -> double
+Sage.Gameplay.OffscreenAgent.Y -> double
+Sage.Gameplay.OffscreenAgent.Z -> double
+Sage.Gameplay.OffscreenAgents
+Sage.Gameplay.OffscreenAgents.Add(Sage.Gameplay.OffscreenAgent! agent) -> void
+Sage.Gameplay.OffscreenAgents.AfterLoad(Sage.Simulation.World! world) -> void
+Sage.Gameplay.OffscreenAgents.Agents -> System.Collections.Generic.List<Sage.Gameplay.OffscreenAgent!>!
+Sage.Gameplay.OffscreenAgents.Find(Sage.Simulation.PersistentId id) -> Sage.Gameplay.OffscreenAgent?
+Sage.Gameplay.OffscreenAgents.Minute -> long
+Sage.Gameplay.OffscreenAgents.OffscreenAgents() -> void
+Sage.Gameplay.OffscreenDied
+Sage.Gameplay.OffscreenDied.Agent.get -> Sage.Simulation.PersistentId
+Sage.Gameplay.OffscreenDied.Agent.init -> void
+Sage.Gameplay.OffscreenDied.Faction.get -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenDied.Faction.init -> void
+Sage.Gameplay.OffscreenDied.Killer.get -> Sage.Simulation.PersistentId
+Sage.Gameplay.OffscreenDied.Killer.init -> void
+Sage.Gameplay.OffscreenDied.KillerFaction.get -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenDied.KillerFaction.init -> void
+Sage.Gameplay.OffscreenDied.OffscreenDied() -> void
+Sage.Gameplay.OffscreenDied.OffscreenDied(Sage.Simulation.PersistentId Agent, Sage.Core.RecordId Faction, Sage.Simulation.PersistentId Killer, Sage.Core.RecordId KillerFaction) -> void
+Sage.Gameplay.OffscreenFightAttribute
+Sage.Gameplay.OffscreenFightAttribute.OffscreenFightAttribute(string! id) -> void
+Sage.Gameplay.OffscreenFights
+Sage.Gameplay.OffscreenMap
+Sage.Gameplay.OffscreenMap.AddDoor(Sage.Core.RecordId from, System.Numerics.Vector3 exit, Sage.Core.RecordId to, System.Numerics.Vector3 entry) -> void
+Sage.Gameplay.OffscreenMap.OffscreenMap() -> void
+Sage.Gameplay.OffscreenMap.TryAnchor(Sage.Core.RecordId scene, string! name, out System.Numerics.Vector3 at) -> bool
+Sage.Gameplay.OffscreenMap.TryDoor(Sage.Core.RecordId from, Sage.Core.RecordId to, out System.Numerics.Vector3 exit, out System.Numerics.Vector3 entry) -> bool
+Sage.Gameplay.OffscreenPart
+Sage.Gameplay.OffscreenPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.OffscreenPart.Corpse -> bool
+Sage.Gameplay.OffscreenPart.Fight -> string!
+Sage.Gameplay.OffscreenPart.OffscreenPart() -> void
+Sage.Gameplay.OffscreenPart.Speed -> float
+Sage.Gameplay.OffscreenPart.Strength -> float
 Sage.Gameplay.Projectile.Attack -> Sage.Core.RecordId
 Sage.Gameplay.Projectile.Gravity -> float
 Sage.Gameplay.Projectile.Passed -> Sage.Simulation.Entity
@@ -244,6 +309,7 @@ static Sage.Gameplay.DialogueTopics.Ask(Sage.Simulation.World! world, Sage.Simul
 static Sage.Gameplay.DialogueTopics.Available(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, System.Collections.Generic.List<Sage.Gameplay.AvailableTopic>! into) -> int
 static Sage.Gameplay.DialogueTopics.Knows(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
 static Sage.Gameplay.DialogueTopics.Learn(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
+static Sage.Gameplay.Factions.AreHostile(Sage.Core.RecordStore! records, Sage.Core.RecordId a, Sage.Core.RecordId b) -> bool
 static Sage.Gameplay.HitDeliveries.Check(Sage.Core.Vocabularies! vocabularies, Sage.Gameplay.AttackRecord! attack, Sage.Core.RecordCheck! check) -> void
 static Sage.Gameplay.HitDeliveries.NameOf(Sage.Gameplay.AttackRecord! attack) -> string!
 static Sage.Gameplay.HitDeliveries.Of(Sage.Simulation.World! world, Sage.Gameplay.AttackRecord! attack) -> Sage.Gameplay.IHitDelivery?
@@ -252,6 +318,7 @@ static Sage.Gameplay.Hits.CanBeHurt(Sage.Simulation.World! world, Sage.Simulatio
 static Sage.Gameplay.Hits.Launch(Sage.Simulation.World! world, in Sage.Gameplay.HitRequest request, Sage.Gameplay.AttackRecord! attack) -> Sage.Simulation.Entity
 static Sage.Gameplay.Hits.Ray(Sage.Simulation.IPhysicsWorld! space, Sage.Simulation.Entity attacker, System.Numerics.Vector3 origin, System.Numerics.Vector3 aim, float range, out Sage.Gameplay.HitResult result) -> bool
 static Sage.Gameplay.Hits.Sweep(Sage.Simulation.IPhysicsWorld! space, Sage.Simulation.Entity attacker, System.Numerics.Vector3 origin, System.Numerics.Vector3 aim, float radius, float reach, out Sage.Gameplay.HitResult result) -> bool
+static Sage.Gameplay.OffscreenMap.Of(Sage.Simulation.World! world) -> Sage.Gameplay.OffscreenMap!
 static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.RecordId quest, string! stage) -> bool
 Sage.Gameplay.AnimationConventions.AttackTrigger -> string!
 Sage.Gameplay.AttackRecord.Trigger -> string!

@@ -44,7 +44,7 @@ In `Sage.Simulation` (data, terrain generation), with client parts for terrain m
   3. build the collision heightfield;
   4. instantiate map/procedural entities (baseline), then apply save data (09);
   5. create the sector's `AssetScope`.
-- **Unloading** serializes the sector's persistent entities into the in-memory save cache (**dormancy**), destroys them, and disposes the sector scope. Dormant entities don't simulate. Coarse "offline" simulation hooks (economy, travel) come later (F25/F26).
+- **Unloading** serializes the sector's persistent entities into the in-memory save cache (**dormancy**), destroys them, and disposes the sector scope. Dormant entities don't simulate, except NPCs that opt in to the coarse off-screen simulation (issue 4g-6: design 16 "As built (off-screen simulation)"); economy and travel hooks come later (F25/F26).
 - **Terrain:** per sector a 129×129 height grid (8 m spacing) plus LOD meshes; vertex-coloured / single-texture v1; splat materials later (07).
 - **Fast travel / teleport:** load the target sectors behind a loading screen, rebase the origin, place the player.
 

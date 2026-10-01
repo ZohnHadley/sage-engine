@@ -352,6 +352,10 @@ internal sealed class StreamedScene
         _orphans.Clear();
     }
 
+    // Whether a sector is in the world with everything it places (4g-6: an off-screen agent that walked into
+    // it is spawned there).
+    public bool IsPlaced(SectorCoord sector) => _active.TryGetValue(sector, out var progress) && progress.Done;
+
     // How many sectors are placed, and how many are being placed (stream_status).
     public (int Placed, int Placing) Count()
     {
