@@ -139,6 +139,7 @@ Sage.Simulation.Animator.Graph -> Sage.Core.RecordId
 Sage.Simulation.Animator.Layers -> Sage.Simulation.AnimatorLayer[]?
 Sage.Simulation.Animator.Model -> Sage.Core.AssetPath
 Sage.Simulation.Animator.Params -> Sage.Simulation.AnimatorParam[]?
+Sage.Simulation.Animator.Suspended -> bool
 Sage.Simulation.AnimatorLayer
 Sage.Simulation.AnimatorLayer.AnimatorLayer() -> void
 Sage.Simulation.AnimatorLayer.Fade -> float
@@ -1131,6 +1132,10 @@ static Sage.Simulation.Animators.Describe(Sage.Simulation.World! world, Sage.Sim
 static Sage.Simulation.Animators.GetParam(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name) -> float?
 static Sage.Simulation.Animators.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
 static Sage.Simulation.Animators.Play(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, string? layer = null) -> bool
+static Sage.Simulation.Animators.PlayFrom(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Simulation.SkeletonPose! snapshot, string! state, float fade, string? layer = null) -> bool
+static Sage.Simulation.Animators.Resume(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
+static Sage.Simulation.Animators.Suspend(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
+static Sage.Simulation.Animators.IsSuspended(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
 static Sage.Simulation.Animators.SetParam(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name, bool value) -> bool
 static Sage.Simulation.Animators.SetParam(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name, float value) -> bool
 static Sage.Simulation.Animators.SetTrigger(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name) -> bool
