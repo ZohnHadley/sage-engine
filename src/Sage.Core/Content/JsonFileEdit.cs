@@ -487,6 +487,9 @@ public sealed class JsonFileEdit
             if (At(anchor, "//")) anchor = LineEnd(anchor);
             if (anchor < Text.Length && Text[anchor] != '\n' && Text[anchor] != '\r') anchor = after;
             if (last.Comma >= 0) Splice(new Edit(anchor, anchor, entry + ","));
+            // One edit when both go at the same place: Splice's sort is not stable, and two inserts at one
+            // position could land the entry before the comma that separates it.
+            else if (anchor == last.Value.End) Splice(new Edit(anchor, anchor, "," + entry));
             else Splice(new Edit(last.Value.End, last.Value.End, ","), new Edit(anchor, anchor, entry));
         }
         else

@@ -196,6 +196,31 @@ public class JsonFileEditTests
         Assert.Equal(["      { \"prefab\": \"post\", \"at\": [10, 0, -4], \"name\": \"corner\", \"yaw\": 45 },   // by the gate"], ChangedLines(Placements, edit.Text));
     }
 
+    // A list whose last element has no comma after it (no trailing comma, the usual JSON) gets one before
+    // the element added after it, not after (found by the editor's first save of an added placement).
+    [Fact]
+    public void AnElementAddedAfterOneWithNoCommaIsSeparatedFromIt()
+    {
+        var edit = Edit("""
+            [{
+              "type": "placements", "id": "yard",
+              "place": [
+                { "prefab": "post", "at": [0, 0, 0] }
+              ]
+            }]
+            """);
+        var before = new JsonObject
+        {
+            ["type"] = "placements", ["id"] = "yard",
+            ["place"] = new JsonArray(new JsonObject { ["prefab"] = "post", ["at"] = new JsonArray(0, 0, 0) }),
+        };
+        var after = before.DeepClone().AsObject();
+        after["place"]!.AsArray().Add(new JsonObject { ["prefab"] = "lamp" });
+        Assert.True(edit.PatchRecord("placements", Yard, before, after));
+        var record = JsonNode.Parse(edit.Text)!.AsArray()[0]!;
+        Assert.Equal("lamp", (string?)record["place"]![1]!["prefab"]);
+    }
+
     [Fact]
     public void ABareIdMeansTheFilesNamespace()
     {

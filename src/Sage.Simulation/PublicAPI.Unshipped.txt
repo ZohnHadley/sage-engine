@@ -1209,3 +1209,20 @@ Sage.Simulation.ValidationReport.Conflicts.get -> int
 Sage.Simulation.ValidationReport.ModLines.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.ValidationReport.Mods.get -> Sage.Core.ModLoadResult!
 Sage.Simulation.ValidationReport.ReportLines.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Sage.Simulation.EditorDocument
+*REMOVED*Sage.Simulation.EditorDocument.Available() -> System.Collections.Generic.IEnumerable<Sage.Core.RecordId>!
+*REMOVED*Sage.Simulation.EditorDocument.Changed -> System.Action?
+*REMOVED*Sage.Simulation.EditorDocument.Close(Sage.Simulation.World! world) -> void
+*REMOVED*Sage.Simulation.EditorDocument.Dirty.get -> bool
+*REMOVED*Sage.Simulation.EditorDocument.EditorDocument(Sage.Simulation.Engine! engine) -> void
+*REMOVED*Sage.Simulation.EditorDocument.Id.get -> Sage.Core.RecordId
+*REMOVED*Sage.Simulation.EditorDocument.IsOpen.get -> bool
+*REMOVED*Sage.Simulation.EditorDocument.New(Sage.Simulation.World! world, string! namespaceId) -> void
+*REMOVED*Sage.Simulation.EditorDocument.Open(Sage.Simulation.World! world, Sage.Core.RecordId id) -> bool
+*REMOVED*Sage.Simulation.EditorDocument.Path.get -> string!
+*REMOVED*Sage.Simulation.EditorDocument.Save(Sage.Simulation.World! world) -> bool
+*REMOVED*Sage.Simulation.EditorDocument.Title.get -> string!
+*REMOVED*Sage.Simulation.EditorDocument.Touch() -> void
+static Sage.Simulation.PlacementExtensions.DespawnPlacement(this Sage.Simulation.World! world, Sage.Core.RecordId document, Sage.Simulation.Entity entity) -> void
+static Sage.Simulation.PlacementExtensions.FinishPlacements(this Sage.Simulation.World! world, Sage.Core.RecordId document) -> void
+static Sage.Simulation.PlacementExtensions.SpawnPlacement(this Sage.Simulation.World! world, Sage.Core.RecordId document, Sage.Simulation.PlacementsRecord! record, int index) -> Sage.Simulation.Entity
