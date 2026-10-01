@@ -164,6 +164,43 @@ Sage.Editing.PrefabPalette.IsArmed.get -> bool
 Sage.Editing.PrefabPalette.PrefabPalette(Sage.Core.RecordStore! records) -> void
 Sage.Editing.PrefabPalette.Search.get -> string!
 Sage.Editing.PrefabPalette.Search.set -> void
+Sage.Editing.Problem
+Sage.Editing.Problem.File.get -> string!
+Sage.Editing.Problem.File.init -> void
+Sage.Editing.Problem.Line.get -> int
+Sage.Editing.Problem.Line.init -> void
+Sage.Editing.Problem.Message.get -> string!
+Sage.Editing.Problem.Message.init -> void
+Sage.Editing.Problem.Placement.get -> Sage.Simulation.Placement?
+Sage.Editing.Problem.Placement.init -> void
+Sage.Editing.Problem.PlacementId.get -> string!
+Sage.Editing.Problem.PlacementId.init -> void
+Sage.Editing.Problem.Problem(Sage.Editing.ProblemSeverity Severity, string! File, int Line, string! Message, Sage.Core.RecordId Record = default(Sage.Core.RecordId), string! PlacementId = "", Sage.Simulation.Placement? Placement = null) -> void
+Sage.Editing.Problem.Record.get -> Sage.Core.RecordId
+Sage.Editing.Problem.Record.init -> void
+Sage.Editing.Problem.Severity.get -> Sage.Editing.ProblemSeverity
+Sage.Editing.Problem.Severity.init -> void
+Sage.Editing.ProblemCommands
+Sage.Editing.ProblemGroup
+Sage.Editing.ProblemGroup.File.get -> string!
+Sage.Editing.ProblemGroup.File.init -> void
+Sage.Editing.ProblemGroup.ProblemGroup(string! File, System.Collections.Generic.IReadOnlyList<Sage.Editing.Problem!>! Problems) -> void
+Sage.Editing.ProblemGroup.Problems.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.Problem!>!
+Sage.Editing.ProblemGroup.Problems.init -> void
+Sage.Editing.ProblemList
+Sage.Editing.ProblemList.Changed -> System.Action?
+Sage.Editing.ProblemList.Dispose() -> void
+Sage.Editing.ProblemList.Errors.get -> int
+Sage.Editing.ProblemList.Groups.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.ProblemGroup!>!
+Sage.Editing.ProblemList.Lines() -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.ProblemList.ProblemList(Sage.Simulation.Engine! engine, Sage.Editing.EditDocument? document = null) -> void
+Sage.Editing.ProblemList.Problems.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.Problem!>!
+Sage.Editing.ProblemList.Refresh() -> void
+Sage.Editing.ProblemList.Summary.get -> string!
+Sage.Editing.ProblemList.Warnings.get -> int
+Sage.Editing.ProblemSeverity
+Sage.Editing.ProblemSeverity.Error = 1 -> Sage.Editing.ProblemSeverity
+Sage.Editing.ProblemSeverity.Warning = 0 -> Sage.Editing.ProblemSeverity
 Sage.Editing.RemovePlacement
 Sage.Editing.RemovePlacement.Description.get -> string!
 Sage.Editing.RemovePlacement.Do() -> void
@@ -241,6 +278,8 @@ static Sage.Editing.Placing.Place(Sage.Editing.EditDocument! document, Sage.Core
 static Sage.Editing.Placing.PlaceAt(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, in Sage.Editing.EditorRay ray, float yaw = 0, string! name = "") -> Sage.Simulation.Placement?
 static Sage.Editing.Placing.Surface(Sage.Simulation.World! world, in Sage.Editing.EditorRay ray, float maxDistance = 1000, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> System.Numerics.Vector3?
 static Sage.Editing.Placing.UniqueName(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, string! wanted = "") -> string!
+static Sage.Editing.ProblemCommands.Register(Sage.Core.CVarRegistry! cvars, Sage.Simulation.Engine! engine, System.Func<Sage.Editing.EditDocument?>! document) -> void
+static Sage.Editing.ProblemList.Activate(Sage.Editing.Problem! problem, Sage.Editing.EditorSelection? selection, System.Action<Sage.Core.RecordId>? openRecord) -> bool
 static Sage.Editing.RotateGizmo.Drag(in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, float stepDegrees = 0) -> float?
 static Sage.Editing.RotateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size) -> bool
 static Sage.Editing.Snap.Angle(float radians, float stepDegrees) -> float

@@ -29,6 +29,6 @@
        builds on it; it uses its own types freely, and scenes and placements (SAGE0121) and saves'
        overrides (SAGE0131) are what it edits. -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0133;SAGE0123;SAGE0121;SAGE0131</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0133;SAGE0132;SAGE0123;SAGE0121;SAGE0131</NoWarn>
   </PropertyGroup>
 </Project>

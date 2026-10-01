@@ -130,6 +130,14 @@ public sealed class RecordStore
     public int ErrorCount { get; private set; }
     public int WarningCount { get; private set; }
 
+    // The messages of the last load's errors and warnings, in the order they were logged: what the log
+    // said, kept so the editor's problems panel (phase 10a, #227) can list them without reading the log's
+    // ring, which is the process's and forgets. A message that points into a file starts "mount:path:line:col: ".
+    public IReadOnlyList<string> LoadErrors => _loadErrors;
+    public IReadOnlyList<string> LoadWarnings => _loadWarnings;
+    private readonly List<string> _loadErrors = new();
+    private readonly List<string> _loadWarnings = new();
+
     // Whether an asset a record names that is in no mount is an error (`sage validate`) or a warning
     // (a dev build's load). Shipping does not look: the game has shipped with what it has.
     public bool MissingAssetsAreErrors { get; set; }
@@ -238,6 +246,8 @@ public sealed class RecordStore
         var watch = System.Diagnostics.Stopwatch.StartNew();
         ErrorCount = 0;
         WarningCount = 0;
+        _loadErrors.Clear();
+        _loadWarnings.Clear();
         _redefinitions.Clear();
         _skippedPatches.Clear();
         _disabled.Clear();
@@ -852,12 +862,14 @@ public sealed class RecordStore
     private void Error(string message)
     {
         ErrorCount++;
+        _loadErrors.Add(message);
         Log.Error(LogCat.Records, message);
     }
 
     private void Warn(LogCat category, string message)
     {
         WarningCount++;
+        _loadWarnings.Add(message);
         Log.Warn(category, message);
     }
 

@@ -165,3 +165,5 @@ Sage.Core.PluginContentAttribute
 Sage.Core.PluginContentAttribute.PluginContentAttribute(string! recordNamespace) -> void
 Sage.Core.PluginContentAttribute.RecordNamespace.get -> string!
 override Sage.Core.AssemblyContentMount.ToString() -> string!
+Sage.Core.RecordStore.LoadErrors.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.RecordStore.LoadWarnings.get -> System.Collections.Generic.IReadOnlyList<string!>!

@@ -488,3 +488,25 @@ has only a yaw); scaling; a gizmo for an entity the document did not place (it i
 4. Play-in-editor.
 5. Later panels and external tool bridges (TODO F31, F32). The `.map` bridge (F16) is built and did
    not need the editor — see below.
+
+## 10i. As built: the problems panel (#227, 2026-10-01)
+
+What is wrong with the content and the open document, in one list grouped by file, and a count in the
+status bar. The list is `ProblemList` (`src/Sage.Editing/ProblemList.cs`); `ProblemsPanel`
+(`src/Sage.Editor/Tools/ProblemsPanel.cs`) only draws it, as a tab beside Log and Console.
+
+- **It reads what the running engine already found; nothing is booted.** `RecordStore` now keeps the last
+  load's error and warning messages (`LoadErrors`, `LoadWarnings`), which carry the loader's
+  `mount:path:line:col`; a row splits that into file, line and, when the message is about a record, its
+  id. The content report's conflicts between mods are warnings in the file of the mod that won.
+  (tests: ARecordFileWithAnErrorShowsWithItsFileAndLine_AndARowOpensTheRecord, AModConflictShowsFromTheContentReport)
+- **The open document is checked live**: a placement whose prefab is missing or unnamed (error), a wire
+  whose target is no placement of the document (warning; `!self` and its kin are fine), two placements
+  with one name (warning) or one id (error). Each row carries the placement, so a click selects it.
+  These are read again on every change to the document (a command, an undo, a save); the loader's rows
+  come again on `Records.Reloaded`. While a document is open its own rows from the loader are left out:
+  the live checks stand for them, and would otherwise go stale after the first edit.
+  (tests: AMissingPrefabAndADanglingWireAreListedWithThePlacements_AndFixingThemClears, DuplicateNamesAndIdsAreListed, AReloadRefreshesAndARowSelectsItsPlacement)
+- **A click**: `ProblemList.Activate` selects a placement row through `EditorSelection` and hands a record
+  row to the panel's `OpenRecord` hook (TODO #224: DevTools wires the record browser to it).
+- **`ed_problems`** prints the summary, then each file and its problems. (test: TheConsolePrintsTheProblemsByFile)
