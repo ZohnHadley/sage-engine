@@ -24,14 +24,18 @@ public class AssemblyLayeringTests
         string[] never = { "MonoGame.Framework", "Sage.Client", "Sage.Editor", "Sage.Host", "Sage.Cli", "Sage.Testing" };
         var above = new Dictionary<Assembly, string[]>
         {
-            [EngineAssemblies.Core] = new[] { "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Friflo.Engine.ECS", "BepuPhysics", "BepuUtilities", "SharpGLTF.Core" },
+            [EngineAssemblies.Core] = new[] { "Sage.Simulation", "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Sage.Editing", "Friflo.Engine.ECS", "BepuPhysics", "BepuUtilities", "SharpGLTF.Core" },
             // SharpGLTF is the simulation's since #116 (skeletons and clips are read headlessly), not the kernel's.
-            [EngineAssemblies.Simulation] = new[] { "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "BepuPhysics", "BepuUtilities" },
-            [EngineAssemblies.Physics3D] = new[] { "Sage.Gameplay", "Sage.UI" },
-            [EngineAssemblies.Gameplay] = Array.Empty<string>(),
+            [EngineAssemblies.Simulation] = new[] { "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "Sage.Editing", "BepuPhysics", "BepuUtilities" },
+            [EngineAssemblies.Physics3D] = new[] { "Sage.Gameplay", "Sage.UI", "Sage.Editing" },
+            [EngineAssemblies.Gameplay] = new[] { "Sage.Editing" },
             // The widgets know the simulation (Rect) and nothing of physics or gameplay: a screen's data
             // comes to them from view-models (#98), not by reaching into the world.
-            [EngineAssemblies.UI] = new[] { "Sage.Physics3D", "Sage.Gameplay", "BepuPhysics", "BepuUtilities" },
+            [EngineAssemblies.UI] = new[] { "Sage.Physics3D", "Sage.Gameplay", "Sage.Editing", "BepuPhysics", "BepuUtilities" },
+            // The editor's model (phase 10a, issue #216) edits documents of the simulation's records and
+            // knows nothing of a renderer, physics backend, gameplay or the widgets: picking goes through
+            // IPhysicsWorld, and the ImGui editor above it draws.
+            [EngineAssemblies.Editing] = new[] { "Sage.Physics3D", "Sage.Gameplay", "Sage.UI", "BepuPhysics", "BepuUtilities" },
         };
 
         foreach (var (assembly, forbidden) in above)

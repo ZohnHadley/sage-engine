@@ -44,6 +44,7 @@
     <ProjectReference Include="..\..\src\Sage.Physics3D\Sage.Physics3D.csproj" />
     <ProjectReference Include="..\..\src\Sage.Gameplay\Sage.Gameplay.csproj" />
     <ProjectReference Include="..\..\src\Sage.UI\Sage.UI.csproj" />
+    <ProjectReference Include="..\..\src\Sage.Editing\Sage.Editing.csproj" />
     <!-- The harness every test boots through: HeadlessApp, MountFixture, EventProbe (issue #14). -->
     <ProjectReference Include="..\Sage.Testing\Sage.Testing.csproj" />
     <!-- The generator as a library, not as an analyzer: the tests drive it directly. -->
@@ -62,6 +63,6 @@
   <!-- The tests exercise the experimental API too (issue #31, docs/MAKING_A_GAME.md §10b): the open
        vocabularies (SAGE0120), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras (SAGE0123), phase 4b's logic (SAGE0124: conditions and actions, easing) the retained UI (SAGE0125), skeletal animation (SAGE0126), the hit pipeline (SAGE0127), phase 4g's cells (SAGE0129), render passes (SAGE0130), phase 4i's saves (SAGE0131) and data mods (SAGE0132). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123;SAGE0124;SAGE0125;SAGE0126;SAGE0127;SAGE0129;SAGE0130;SAGE0131;SAGE0132</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0122;SAGE0123;SAGE0124;SAGE0125;SAGE0126;SAGE0127;SAGE0129;SAGE0130;SAGE0131;SAGE0132;SAGE0133</NoWarn>
   </PropertyGroup>
 </Project>
