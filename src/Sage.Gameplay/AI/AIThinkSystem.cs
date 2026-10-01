@@ -16,6 +16,7 @@ internal sealed class AIThinkSystem : ISystem
     private readonly Query<Transform> _players;
     private readonly Entity[] _candidates;   // broad-phase scratch, reused every think (F24)
     private readonly EventReader<Damaged> _damage;
+    private readonly EventReader<TimePassed> _timePassed;   // routines catch up from a skip (issue 4g-4)
     private readonly RecordStore _records;
     private readonly AITaskRegistry _tasks;
     private readonly IPhysicsWorld _space;
@@ -29,6 +30,7 @@ internal sealed class AIThinkSystem : ISystem
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
         _candidates = new Entity[64];
         _damage = world.Events.Reader<Damaged>(this, Schedule.Fixed);
+        _timePassed = world.Events.Reader<TimePassed>(this, Schedule.Fixed);
         _records = records;
         _tasks = tasks;
         _space = world.Resources.Get<IPhysicsWorld>();
@@ -49,6 +51,7 @@ internal sealed class AIThinkSystem : ISystem
 
         Provoked(world, time);
         var conventions = world.Conventions();
+        CatchUp(world, conventions);
 
         foreach (var (transforms, states, intents, entities) in _agents.Chunks)
         {
@@ -68,13 +71,40 @@ internal sealed class AIThinkSystem : ISystem
                     float period = 1f / MathF.Max(profile.ThinkRate, 0.1f);
                     s[n].NextThink = time + period * (0.85f + 0.3f * ((entity.Id % 7) / 7f));   // staggered
                     Perceive(world, entity, ref t[n], ref s[n], profile, time);
+                    bool moved = Routines.Think(world, _records, entity, ref s[n], profile, time, out var routine);
                     Sense(world, entity, ref t[n], ref s[n], profile, time);
-                    ChooseSchedule(world, entity, ref s[n], profile, conventions.Schedules);
+                    ChooseSchedule(world, entity, ref s[n], profile, conventions.Schedules, routine, moved);
                 }
 
                 RunTask(world, entity, ref t[n], ref s[n], ref i[n], profile, dt);
             }
         }
+    }
+
+    // Time was skipped (Time.Pass, issue 4g-2): each creature with a routine is put where the routine has
+    // it now, if it could have walked there (Routines.CatchUp). Read at the start of the tick after the
+    // skip, with the clock already moved.
+    private void CatchUp(World world, GameplayConventionsRecord conventions)
+    {
+        double? elapsed = null;
+        foreach (ref readonly var _ in _timePassed.Read())
+            elapsed = WorldClock.Of(world).Elapsed;
+        if (elapsed is not { } now) return;
+
+        int moved = 0;
+        foreach (var (transforms, states, intents, entities) in _agents.Chunks)
+        {
+            var t = transforms.Span;
+            var s = states.Span;
+            var i = intents.Span;
+            for (int n = 0; n < t.Length; n++)
+            {
+                var profileId = s[n].Profile.IsEmpty ? conventions.AiProfile.Id : s[n].Profile;
+                var profile = !profileId.IsEmpty && _records.TryGet(profileId, out AIProfileRecord found) ? found : FallbackProfile;
+                if (Routines.CatchUp(world, _records, entities.EntityAt(n), ref t[n], ref s[n], ref i[n], profile, now)) moved++;
+            }
+        }
+        if (moved > 0) Log.Info(LogCat.AI, $"'{world.Name}': {moved} creature(s) caught up with their routines");
     }
 
     // What the agent knows: is there an enemy, can it see one, is it in reach (16 §3.4).
@@ -320,7 +350,8 @@ internal sealed class AIThinkSystem : ISystem
     // Which schedule fits what it knows: the profile's selector decides (issue #28), and the engine's
     // own choice — HL1's GetSchedule, in code — is the `default` one (DefaultScheduleSelector). Utility
     // scoring or a behaviour tree is another selector, and nothing about the tasks changes (16 §3.4).
-    private void ChooseSchedule(World world, Entity entity, ref AIState state, AIProfileRecord profile, AIScheduleConventions schedules)
+    private void ChooseSchedule(World world, Entity entity, ref AIState state, AIProfileRecord profile, AIScheduleConventions schedules,
+                                RecordId routine, bool routineMoved)
     {
         var choice = new AIScheduleChoice
         {
@@ -331,10 +362,13 @@ internal sealed class AIThinkSystem : ISystem
             Profile = profile,
             Schedules = schedules,
             Names = _conditions,
+            Routine = routine,
         };
         RecordId wanted = AIScheduleSelectors.Of(world, profile).Choose(in choice);
 
-        if (state.Schedule == wanted) return;
+        // The same schedule, but the routine has moved on (forge to home, both "walk there and stay"): it
+        // starts again, toward the new anchor (issue 4g-4).
+        if (state.Schedule == wanted && !(routineMoved && wanted == routine && !routine.IsEmpty)) return;
         state.Schedule = wanted;
         state.TaskIndex = 0;
         state.TaskTime = 0;

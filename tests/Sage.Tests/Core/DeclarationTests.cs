@@ -38,7 +38,7 @@ public class DeclarationTests
             ["movement_profile"] = "sage.gameplay.character",
             ["attack"] = "sage.gameplay.combat", ["damage_type"] = "sage.gameplay.combat",
             ["hit_location"] = "sage.gameplay.combat", ["hitboxes"] = "sage.gameplay.combat",   // hit locations (#137)
-            ["spread"] = "sage.gameplay.combat", ["recoil"] = "sage.gameplay.combat",
+            ["spread"] = "sage.gameplay.combat", ["recoil"] = "sage.gameplay.combat", ["routine"] = "sage.gameplay.ai",
             ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",

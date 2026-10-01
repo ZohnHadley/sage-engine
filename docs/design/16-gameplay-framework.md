@@ -574,6 +574,53 @@ Creatures walk round things instead of into them.
   machine without knowing its state names; `StateTransition` and `StateMachines.FirstTransition` are the
   rules 4d's animation graph steps with.
 
+### As built (NPC routines, 2026-10-01 — issue 4g-4)
+A smith at the forge by day and at home by night, as data: a routine picks a schedule and a place by the
+hour, and the AI walks there. Generic engine AI, in `Sage.Gameplay/AI`. Experimental, SAGE0129
+(MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Gameplay/AI/Routines.cs` (`RoutineRecord`, `RoutineEntry`, the `sage:routine`
+  component and `routine` part, `Routines`, `RoutineTarget`, the three tasks), with the hooks in
+  `AIThinkSystem` (the think and the `TimePassed` reader), `DefaultScheduleSelector` and
+  `AIProfileRecord.Routine`. Tests: `tests/Sage.Tests/Gameplay/RoutineTests.cs`.
+- **A `routine` record** is a list of `entries`, `{ "from": 8, "to": 20, "days": ["Monday"], "schedule":
+  "work", "at": "forge" }`; the first that holds at the clock's hour is in force. A window may wrap past
+  midnight, `from` equal to `to` is the whole day, and `days` are the world's calendar's weekday names (4g-2);
+  a night that began on a listed day holds until its morning (test:
+  AnEntryOnADayHoldsUntilItsMorningAndAnUnknownDayIsALoadError). A missing schedule or `at`, an hour outside
+  0–24 and a weekday no calendar has are load errors (same test). A creature has one through its
+  `ai_profile`'s `routine`, or its own `routine` part (`"routine": "smith"`), which wins.
+- **Anchors.** `at` names an entity (a placement's `name`, a map entity's `targetname`), found by name once per
+  entry and again every two seconds while missing. With `scene`, the anchor is an entry of that scene; while
+  another scene is loaded the creature has no routine to keep there, idles, and `Routines.Target` reports
+  the scene and the entry with `Elsewhere` set: the seam off-screen simulation (4g-6) takes it through (test:
+  AnAnchorInASceneThatIsNotLoadedIsRecordedNotWalkedTo).
+- **Choosing.** The think sets the engine condition **`in_routine`** (`AICondition.InRoutine`, bit 11) when an
+  entry is in force and its anchor is in the world, and passes the entry's schedule to the selector as
+  `AIScheduleChoice.Routine`. `default` runs it wherever it would have idled, after casting, swinging and
+  chasing, so a fight comes first; when it ends, the routine's schedule starts again from its first task and
+  he walks on (test: AFightInterruptsTheRoutineAndHeGoesBackToIt). `rules` falls back to `default`, and a rule
+  may name `in_routine` itself. When the entry changes the schedule starts again even if both entries name
+  the same one (test: TheSmithWalksToTheForgeAtEightAndHomeAtTwenty).
+- **Tasks.** `MoveToAnchor` (`distance`, default 0.75 m) walks there the way `MoveToTarget` chases: straight
+  while the way is clear, the corners of a grid path when it is not (`MoveToTargetTask.WalkToward`, shared).
+  `FaceAnchor` turns to the way the anchor faces, or toward it from more than 1.25 m. `StayAt` (`distance`,
+  default 2 m) stands there until the entry changes, and fails when pushed further, so the schedule walks
+  back (test: TheSmithWalksToTheForgeAtEightAndHomeAtTwenty).
+- **Passing time** is caught up by arithmetic. The think reads `TimePassed` at the start of the tick after
+  the skip; each creature with an entry in force is teleported to its anchor, facing its way, with the
+  entry's schedule from the first task, if it could have walked there since the entry began (straight-line
+  distance at its movement profile's `walkSpeed`). One that could not walks the rest when play resumes, and
+  one with a live target is left to its fight (test: PassingTimeSnapsTheSmithToWhereHisRoutineHasHim).
+- **Saved** as before: the `routine` component and the AI state's schedule and task index. Which entry is in
+  force and the anchor are internal to `AIState` and never written; they are worked out again after a load,
+  so a creature saved on its way arrives (test: SavedMidWalkHeArrivesAfterALoad). The golden saves are
+  unchanged.
+- **Not yet:** the catch-up does not path-find (a wall between him and the forge does not slow him), and a
+  creature that could not have arrived is not moved part of the way; nothing walks through a door to an
+  anchor in another scene (4g-5 doors, 4g-6 off-screen); the navigation window is 96 m, so an anchor further
+  than that is walked at in a straight line.
+
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).
 - **Ids are indices.** `attribute` and `tag` records become small indices (`GameplayRegistries`), so components hold numbers, not strings: attribute values are parallel arrays, tags a 64-bit set. More than 64 tags is reported rather than silently truncated.

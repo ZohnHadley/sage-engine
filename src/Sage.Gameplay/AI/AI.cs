@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -46,6 +47,10 @@ public enum AICondition : ulong
     // Whether swinging is even an option. Without it a creature with no `Melee` walks into reach and
     // runs a melee schedule that can only fail, once a tick, for ever.
     CanMelee = 1 << 7,
+
+    // Its routine has somewhere for it to be now, and it knows where (issue 4g-4, Routines.cs): an entry is
+    // in force at this hour and its anchor is in the world. Named `in_routine` in content.
+    InRoutine = 1 << 11,
 }
 
 // How an agent senses and fights (16 §3.4). Tuning is data, like movement profiles.
@@ -67,6 +72,12 @@ public sealed class AIProfileRecord
     public string Selector = "";
     // The `rules` selector's: the first rule whose conditions hold names the schedule (AIScheduleRule).
     public List<AIScheduleRule> Rules = new();
+
+    // Its day (issue 4g-4): a `routine` record, which picks a schedule and a place by the hour whenever
+    // nothing more pressing (a fight) does. An entity's own `routine` part wins over this.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "Its daily routine; an entity's own `routine` part wins over it")]
+    public RecordRef<RoutineRecord> Routine;
 
     // The selector named, found once (AIScheduleSelectors.Of): a think must not look it up by name.
     internal IAIScheduleSelector? SelectorInstance;
@@ -129,6 +140,14 @@ public struct AIState : IComponent
     [Transient] public NavPath Path;
     [Transient] public Vector3 LastSeen;    // where the target was when it was last in sight
     [Transient] public float ForgetAt;      // sim time after which it gives up on a target it cannot see
+
+    // Where its routine has it now (issue 4g-4, Routines.cs). Internal, so never saved: the entry is worked
+    // out from the clock and the anchor found by name again after a load.
+    internal int RoutineEntry;             // the entry in force, plus one; 0 is none
+    internal int AnchorFor;                // the RoutineEntry `Anchor` was looked up for
+    internal Entity Anchor;                // the entity it is to be at; null when not found or elsewhere
+    internal bool AnchorElsewhere;         // the anchor is in a scene that is not loaded (4g-6's)
+    internal float AnchorRetryAt;          // sim time to look for a missing anchor again
 }
 
 public enum AITaskStatus { Running, Succeeded, Failed }
@@ -250,6 +269,10 @@ public sealed class AITaskRegistry
         Register("MoveToTarget", new MoveToTargetTask());
         Register("MeleeAttack", new MeleeAttackTask());
         Register("CastSpell", new CastSpellTask());
+        // A routine's (issue 4g-4, Routines.cs).
+        Register("MoveToAnchor", new MoveToAnchorTask());
+        Register("FaceAnchor", new FaceAnchorTask());
+        Register("StayAt", new StayAtTask());
     }
 
     public void Register(string name, IAITask task) => _tasks[name] = task;
@@ -266,6 +289,8 @@ public sealed class AITaskRegistry
         "movetotarget" => MoveToTargetTask.ArgumentName,
         "meleeattack" => MeleeAttackTask.ArgumentName,
         "castspell" => CastSpellTask.ArgumentName,
+        "movetoanchor" => MoveToAnchorTask.ArgumentName,
+        "stayat" => StayAtTask.ArgumentName,
         _ => "<argument>",
     };
 }
@@ -337,18 +362,26 @@ internal sealed class MoveToTargetTask : IAITask
             return AITaskStatus.Succeeded;
         }
 
-        Vector3 steerTo = Navigate(ref c, ref c.State.Path, self, target);
+        WalkToward(ref c, self, target, c.State.Target);
+        return AITaskStatus.Running;
+    }
+
+    // One tick of walking at `goal` (a target, or a routine's anchor): straight while the way is clear, the
+    // corners of a path when it is not, steering off what is ahead. `goalEntity` is left out of the grid,
+    // so the thing walked to does not block its own cell.
+    internal static void WalkToward(ref AITaskContext c, Vector3 self, Vector3 goal, Entity goalEntity)
+    {
+        Vector3 steerTo = Navigate(ref c, ref c.State.Path, self, goal, goalEntity);
 
         float wanted = AIMath.YawTo(self, steerTo);
         wanted += Avoid(ref c, self, wanted);
         c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, wanted, c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
         c.Intent.Move = new Vector2(0, 1);   // forward, in the direction it is facing
-        return AITaskStatus.Running;
     }
 
     // Where to walk next: the target itself when nothing is in the way, otherwise the next corner of a
     // path. Returns the point to steer at, and keeps the path in step as the creature walks it.
-    private static Vector3 Navigate(ref AITaskContext c, ref NavPath path, Vector3 self, Vector3 target)
+    private static Vector3 Navigate(ref AITaskContext c, ref NavPath path, Vector3 self, Vector3 target, Entity goalEntity)
     {
         path.ReplanIn -= c.Dt;
         path.CheckIn -= c.Dt;
@@ -378,7 +411,7 @@ internal sealed class MoveToTargetTask : IAITask
         if (stale && c.World.Resources.TryGet<Navigation>(out var nav) && nav != null)
         {
             nav.Plan(c.World, c.Space, self, target, c.Movement.Radius, c.Movement.StepHeight,
-                     c.Movement.MaxSlopeDegrees, c.Entity, c.State.Target, ref path);
+                     c.Movement.MaxSlopeDegrees, c.Entity, goalEntity, ref path);
             path.ReplanIn = path.NoWayThrough ? NoRouteSeconds : ReplanSeconds;
         }
 

@@ -1812,13 +1812,14 @@
       ]
     },
     "ai_condition:id": {
-      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed.",
+      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed, in_routine.",
       "type": "string",
       "enum": [
         "CanCastAtEnemy",
         "CanMelee",
         "Casting",
         "EnemyInMeleeRange",
+        "InRoutine",
         "LostEnemy",
         "NoEnemy",
         "RememberEnemy",
@@ -1830,6 +1831,7 @@
         "can_melee",
         "casting",
         "enemy_in_melee_range",
+        "in_routine",
         "lost_enemy",
         "no_enemy",
         "remember_enemy",
@@ -2173,6 +2175,35 @@
                 },
                 "additionalProperties": false,
                 "description": "ai_condition 'TaskFailed' (PerceivedCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "in_routine",
+                      "InRoutine"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: in_routine.",
+                    "enum": [
+                      "in_routine",
+                      "InRoutine"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'in_routine' (PerceivedCondition)."
               }
             }
           ]

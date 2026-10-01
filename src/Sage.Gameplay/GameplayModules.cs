@@ -428,6 +428,8 @@ public sealed class AIModule : IModule
         var vocabularies = ctx.Engine.Vocabularies;
         _records.AddCheck<AIScheduleRecord>((schedule, check) => AIChecks.Schedule(vocabularies, schedule, check));
         _records.AddCheck<AIProfileRecord>((profile, check) => AIChecks.Profile(vocabularies, profile, check));
+        var records = _records;
+        _records.AddCheck<RoutineRecord>((routine, check) => RoutineChecks.Check(records, routine, check));
         _aiDebug = ctx.Engine.CVars.Register("ai_debug", false, CVarFlags.DevOnly,
             "Draw what each creature can see and what it is chasing (needs r_debugdraw 1).");
 
