@@ -16,6 +16,7 @@ public static class EditorCommands
     public static void Register(CVarRegistry cvars, Func<EditDocument?> document)
     {
         PaletteCommands.Register(cvars, document);   // ed_palette, ed_place (#222)
+        Wiring.Register(cvars, document);            // ed_wire, ed_unwire, ed_wires (#225)
 
         cvars.RegisterCommand("doc_new", CVarFlags.DevOnly, "doc_new [id]: start an empty placements document.", a =>
         {

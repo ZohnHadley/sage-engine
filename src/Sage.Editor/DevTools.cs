@@ -66,6 +66,7 @@ public sealed class DevTools : IDisposable
     private readonly EditorLayout _layout = new();
     private readonly LogPanel _log = new();
     private PalettePanel? _palette;   // #222
+    private WiringPanel? _wiring;     // #225
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -155,6 +156,7 @@ public sealed class DevTools : IDisposable
         _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
         if (_menu != null) _menu.Editing = true;
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
+        _wiring = new WiringPanel(_selection!, _pickable);
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
@@ -301,16 +303,19 @@ public sealed class DevTools : IDisposable
     {
         _menu?.Draw(_game);
         _layout.BeginFrame();
-        if (_world != null && _selection != null && _palette is not { IsArmed: true }) _gizmo.Draw(_world, _selection, _pickable);
+        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();
         _palette?.Draw();
+        _wiring?.Draw();
+        if (_world != null) _wiring?.DrawLines(_world);
         _log.Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();
         _layout.DrawStatusBar(StatusLine());
         _palette?.HandleViewport();
+        if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);
     }
 
     // The ray through a pixel of the screen's view (the free camera's in the editor), for placing by click.

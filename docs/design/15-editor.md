@@ -460,6 +460,45 @@ console; `ViewportGizmo` (`src/Sage.Editor/Screens/`) only reads the mouse and d
 
 **Not built:** multi-select and box select; local-space gizmos and rotation about X and Z (a placement
 has only a yaw); scaling; a gizmo for an entity the document did not place (it is marked, not movable).
+## 10i. As built: wiring entity I/O (#225)
+
+`Sage.Editing` holds the model and the console; the ImGui "I/O" panel (`WiringPanel`, Sage.Editor) only
+draws them and passes the viewport click on.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `Wiring` | `src/Sage.Editing/Wiring.cs` | `Add`, `Update`, `Remove`, `Check`, `NameIt`; `ed_wire`, `ed_unwire`, `ed_wires` |
+| `WiringModel` | same file | One placement's wires, the outputs on offer, the inputs a target takes, and `Lines` for the viewport |
+| `WiringPanel` | `src/Sage.Editor/Tools/WiringPanel.cs` | The panel (a tab beside the inspector), the pick-a-target flow, the lines |
+
+- **Every edit is a `SetOutputs`** (§10e) with the wires as the placement would then hold them, so each is
+  one undo step and the placement's entity is re-spawned carrying the new `IOConnections`.
+  `Remove` takes several wires in one step. (tests: EdWireAddsAConnectionToTheDocumentAndTheRespawnedEntity,
+  WiringUndoesAndRedoesAsOneStepAndUnwireTakesWiresAway, AWireIsEditedInPlaceAndTheOutputsOnOfferAreDeclaredOrUsedInTheDocument)
+- **A wire finds its target by name**, so `Wiring.Check` resolves the name to a placement of the document, else
+  any entity of the world, and asks `EntityInputs.Takes` of *that entity*: an input only a component takes
+  (`Toggle` is a relay's) is refused for a target without the component, and the refusal lists what the target
+  does take. `!self`, `!activator` and `!caller` are not checked against a target; an input only content
+  listens for (a state machine's `on`) is accepted, as nothing here says who hears it. A refused wire changes
+  nothing and logs nothing to the history. (test: AnInputTheTargetCannotTakeIsRefusedAndTheReasonListsWhatItTakes)
+- **A target with no name is refused**, and the panel offers `Wiring.NameIt`: a name from its prefab, made
+  unique, as a `SetPlacement` step of its own. (test: ATargetWithNoNameCannotBeWiredUntilItIsNamed)
+- **Outputs are free text with suggestions.** Nothing says which outputs one component can fire; the engine's
+  declared `EntityOutputs` are offered with their descriptions, then the names the document's wires already
+  use. `requires` is kept as it is (shown, not edited: a condition has no form yet).
+- **Console**: `ed_wire <from> <output> <to> <input> [delay] [value]` (the value is the rest of the line),
+  `ed_unwire <from> <index|output>` (the number `ed_wires` prints, or every wire of an output) and
+  `ed_wires <name>`.
+- **The panel**: the selection's wires, each with its delay and value editable (applied when the field lets
+  go, so typing is one undo step), then the add flow: an output (text and a combo), "pick target" (the next
+  viewport click or an outliner row, Esc cancels; the wired placement stays selected, and the gizmo leaves
+  the click alone), an input combo of what the target takes, a delay and a value. Lines are drawn on the
+  background draw list between each wired pair of the document (`WiringModel.Lines`, projected by
+  `ViewportCamera.ToScreen`), the selection's in and out bright, with an arrowhead and the wire's output and
+  input. (test: EdWireAddsAConnectionToTheDocumentAndTheRespawnedEntity, for the lines' ends)
+- **A wired edit plays**: the wire is in the entity the document spawned, so firing the output ticks the
+  input through. (test: AWiredPlateFiresTheDoorOnceTheEditHasRespawnedIt)
+
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;

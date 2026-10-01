@@ -225,6 +225,45 @@ const Sage.Editing.CommandLog.DefaultCapacity = 500 -> int
 const Sage.Editing.EditorPicking.FallbackRadius = 0.35 -> float
 const Sage.Editing.ViewportTools.DefaultAngleStep = 15 -> float
 const Sage.Editing.ViewportTools.DefaultGrid = 0.5 -> float
+Sage.Editing.WireInput
+Sage.Editing.WireInput.Components.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.WireInput.Components.init -> void
+Sage.Editing.WireInput.Global.get -> bool
+Sage.Editing.WireInput.Global.init -> void
+Sage.Editing.WireInput.Name.get -> string!
+Sage.Editing.WireInput.Name.init -> void
+Sage.Editing.WireInput.WireInput() -> void
+Sage.Editing.WireInput.WireInput(string! Name, System.Collections.Generic.IReadOnlyList<string!>! Components, bool Global) -> void
+Sage.Editing.WireLine
+Sage.Editing.WireLine.From.get -> System.Numerics.Vector3
+Sage.Editing.WireLine.From.init -> void
+Sage.Editing.WireLine.Index.get -> int
+Sage.Editing.WireLine.Index.init -> void
+Sage.Editing.WireLine.Source.get -> Sage.Simulation.Placement!
+Sage.Editing.WireLine.Source.init -> void
+Sage.Editing.WireLine.To.get -> System.Numerics.Vector3?
+Sage.Editing.WireLine.To.init -> void
+Sage.Editing.WireLine.Wire.get -> Sage.Simulation.Connection!
+Sage.Editing.WireLine.Wire.init -> void
+Sage.Editing.WireLine.WireLine() -> void
+Sage.Editing.WireLine.WireLine(Sage.Simulation.Placement! Source, int Index, Sage.Simulation.Connection! Wire, System.Numerics.Vector3 From, System.Numerics.Vector3? To) -> void
+Sage.Editing.WireOutput
+Sage.Editing.WireOutput.Declared.get -> bool
+Sage.Editing.WireOutput.Declared.init -> void
+Sage.Editing.WireOutput.Description.get -> string!
+Sage.Editing.WireOutput.Description.init -> void
+Sage.Editing.WireOutput.Name.get -> string!
+Sage.Editing.WireOutput.Name.init -> void
+Sage.Editing.WireOutput.WireOutput() -> void
+Sage.Editing.WireOutput.WireOutput(string! Name, string! Description, bool Declared) -> void
+Sage.Editing.Wiring
+Sage.Editing.WiringModel
+Sage.Editing.WiringModel.Document.get -> Sage.Editing.EditDocument!
+Sage.Editing.WiringModel.InputsOf(string! target) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireInput>!
+Sage.Editing.WiringModel.Outputs() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireOutput>!
+Sage.Editing.WiringModel.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.WiringModel.Wires.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Connection!>!
+Sage.Editing.WiringModel.WiringModel(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
 static Sage.Editing.EditDocument.GameNamespace(Sage.Simulation.Engine! engine) -> string!
 static Sage.Editing.EditTarget.TryResolve(Sage.Core.RecordStore! records, Sage.Core.RecordId startScene, string? text, out Sage.Editing.EditTarget target, out string! error) -> bool
 static Sage.Editing.EditorCommands.History(Sage.Editing.EditDocument! document) -> string!
@@ -256,3 +295,15 @@ static Sage.Editing.ViewportTools.OriginOf(Sage.Editing.EditDocument! document, 
 static Sage.Editing.ViewportTools.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditorSelection?>! selection) -> Sage.Editing.ViewportTools!
 static Sage.Editing.ViewportTools.Rotate(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, float yawDegrees) -> void
 static Sage.Editing.ViewportTools.UniqueName(Sage.Editing.EditDocument! document, string! wanted) -> string!
+static Sage.Editing.Wiring.Add(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, Sage.Simulation.Connection! wire, out string? error) -> bool
+static Sage.Editing.Wiring.Check(Sage.Editing.EditDocument! document, string! target, string! input) -> string?
+static Sage.Editing.Wiring.Describe(Sage.Simulation.Connection! wire) -> string!
+static Sage.Editing.Wiring.InputsOf(Sage.Simulation.Engine! engine, Sage.Simulation.Entity entity) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireInput>!
+static Sage.Editing.Wiring.IsSpecial(string! target) -> bool
+static Sage.Editing.Wiring.NameIt(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> string!
+static Sage.Editing.Wiring.NameOf(Sage.Simulation.Placement! placement) -> string?
+static Sage.Editing.Wiring.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
+static Sage.Editing.Wiring.Remove(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, params int[]! indices) -> int
+static Sage.Editing.Wiring.TargetEntity(Sage.Editing.EditDocument! document, string! target) -> Sage.Simulation.Entity
+static Sage.Editing.Wiring.Update(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, int index, Sage.Simulation.Connection! wire, out string? error) -> bool
+static Sage.Editing.WiringModel.Lines(Sage.Editing.EditDocument! document) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireLine>!
