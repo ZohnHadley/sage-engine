@@ -297,7 +297,7 @@ public sealed class Scenes
             Log.Once(LogCat.World, LogLevel.Warn, $"interior-streamed:{id}", $"Scene '{id}' is an interior and streamed: an interior has no ring, so it is placed whole");
         else if (scene.Streamed && world.Resources.TryGet<SectorRing>(out _))
         {
-            state.Streamed = StreamedScene.Build(_engine, id, scene);
+            state.Streamed = StreamedScene.Build(_engine, id, scene, world);
             foreach (var map in scene.Maps)
                 if (StreamedScene.PlacedWhole(_engine, map.Id) && MapLoader.Load(world, map.Id) is { } whole) state.Levels.Add(whole);
             Log.Info(LogCat.World, $"Scene '{id}' streams by sector in '{world.Name}' ({state.Levels.Count} level(s) loaded whole)");
@@ -327,8 +327,17 @@ public sealed class Scenes
 
         foreach (var document in scene.Placements)
         {
-            placed += world.SpawnPlacements(document.Id);
+            // A play world's document is the editor's copy, edits not yet saved and all (issue #226).
+            placed += PlayedDocument.TryGet(_engine, world, document.Id, out var record)
+                ? world.SpawnPlacements(document.Id, record)
+                : world.SpawnPlacements(document.Id);   // which says that there is no such record
             state.Documents.Add(document.Id);
+        }
+        // And one the scene does not name, which the editor showed beside it.
+        if (PlayedDocument.Beside(world, id, scene) is { } played)
+        {
+            placed += world.SpawnPlacements(played.Id, played.Record);
+            state.Documents.Add(played.Id);
         }
 
         // Levels after placements: a `.map` spawns its own entities, and they should land in a world
@@ -457,7 +466,7 @@ public sealed class Scenes
     internal StreamedScene? StreamedFor(World world, RecordId id) =>
         !id.IsEmpty && _engine.Records.TryGet(id, out SceneRecord scene) && scene.Streamed && scene.Space == SceneSpace.Exterior
         && world.Resources.TryGet<SectorRing>(out _)
-            ? StreamedScene.Build(_engine, id, scene)
+            ? StreamedScene.Build(_engine, id, scene, world)
             : null;
 
     private void ApplyEnvironment(World world, SceneRecord scene, bool setHour = true)

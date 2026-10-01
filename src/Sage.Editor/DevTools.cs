@@ -66,6 +66,8 @@ public sealed class DevTools : IDisposable
     private readonly EditorLayout _layout = new();
     private readonly LogPanel _log = new();
     private PalettePanel? _palette;   // #222
+    private PlaySession? _play;       // play-in-editor (#226): ed_play, ed_stop
+    private PlayBar? _playBar;
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -113,6 +115,10 @@ public sealed class DevTools : IDisposable
 
     public bool IsEditing => _editing;
 
+    // The play world while the editor plays its document (#226): the host ticks input into it and Escape stops it.
+    public World? PlayWorld => _play?.World;
+    public void StopPlaying() => _engine.CVars.Execute("ed_stop", ExecSource.Console);
+
     // What ImGui is doing with the mouse and keyboard this frame: with no dev tools, nothing is, which
     // is why the host holds these as constants in a Shipping build.
     public bool WantsMouse => ImGuiNET.ImGui.GetIO().WantCaptureMouse;
@@ -135,6 +141,8 @@ public sealed class DevTools : IDisposable
         _outliner = new EntityOutlinerWindow(world, _selection);
         _inspector = new EntityInspectorWindow(world, _engine.Components, _selection, _document);
         _menu = new EditorUI(_document, _camFree, _viewport);
+        _play = new PlaySession(_document) { Camera = () => new PlayStart(_camera.Position.ToNumerics(), SageMath.YawOf(_camera.Rotation.ToNumerics()) * 180f / MathF.PI) };
+        _playBar = new PlayBar(_play, () => _renderer, _console, _engine.CVars);
         _freeCamera = default;
         _viewportCamera = default;
         // The client's renderer, for the viewport's target: there is none in a host without the client.
@@ -207,6 +215,7 @@ public sealed class DevTools : IDisposable
         EditorCommands.Register(cvars, () => _document);
         // Selecting and moving (issue #221): ed_select, ed_move, ed_rotate, ed_delete, ed_duplicate, the snapping.
         _tools = ViewportTools.Register(cvars, () => _selection);
+        PlayCommands.Register(cvars, () => _play);   // ed_play, ed_stop (#226)
         _gizmo = new ViewportGizmo(_tools, cvars);
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
@@ -238,6 +247,7 @@ public sealed class DevTools : IDisposable
     {
         var world = _world;
         if (world == null) { _camera.Update(time); return; }
+        if (_play is { IsPlaying: true }) return;   // the free camera waits in the edit world while the game has the screen
 
         bool free = _camFree.Value || _editing;   // the editor's screen is the free camera's
         // It flies while something shows it: the screen (cam_free, or no other camera there last frame)
@@ -278,6 +288,16 @@ public sealed class DevTools : IDisposable
     public void Draw(GameTime time)
     {
         _gui.BeginLayout(time);
+        if (_editing && _playBar is { Playing: true })
+        {
+            // Playing (#226): the game's screen, a slim bar to stop it, and the console if `~` opened it.
+            if (_console.IsOpen) _layout.BeginFrame();
+            _console.Draw();
+            _playBar.DrawPlaying();
+            _stats.Draw();
+            _gui.EndLayout();
+            return;
+        }
         if (_editing)
         {
             DrawEditor();
@@ -305,6 +325,7 @@ public sealed class DevTools : IDisposable
         _outliner?.Draw();
         _inspector?.Draw();
         _palette?.Draw();
+        _playBar?.DrawButton();
         _log.Draw();
         _console.Draw();
         DrawViewport();

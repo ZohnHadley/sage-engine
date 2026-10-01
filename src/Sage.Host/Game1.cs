@@ -26,6 +26,7 @@ public class Game1 : Game
     // Fields marked `= null!` are set in Initialize, which MonoGame calls once the graphics device
     // exists and before the first Update or Draw. The boot sequence moves out of Game1 in phase 1 (#10).
     private World world = null!;
+    private World inputWorld = null!;   // the world the player's commands go to: `world`, or the editor's play world
     private RecordHotReload recordHotReload = null!;
     private IDisposable? modWatch;   // dev: a changed mod.json says "restart to apply" (4j-3)
     private CVar<bool> recHotReload = null!;
@@ -57,6 +58,11 @@ public class Game1 : Game
     // world is an edit world, nothing in it is simulated, and the free camera has the screen.
     private readonly string? edit;
     private bool Editing => edit != null;
+#if SAGE_DEV
+    private World PlayerWorld => dev.PlayWorld ?? world;
+#else
+    private World PlayerWorld => world;
+#endif
 
     internal Game1(SageApp app, string? dumpRegistry = null, string? edit = null)
     {
@@ -160,6 +166,7 @@ public class Game1 : Game
         // Sampled every frame whether or not anything reads it: a game without the character plugin
         // has no pawn to command, and its PlayerInput is only ever written (issue #13).
         playerInput = world.Resources.GetOrAdd(() => new PlayerInput());
+        inputWorld = world;
 
 #if SAGE_DEV
         dev.OnWorldCreated(world);
@@ -257,8 +264,14 @@ public class Game1 : Game
 #endif
         // The editor (`-edit`) reads its own map and nothing walks: there is no pawn. A game run has no
         // Editor context at all, so the editor's keys never reach a played game.
-        actions.SetActive(InputContext.Editor, Editing);
-        actions.SetActive(InputContext.Gameplay, !Editing);
+        // Playing in the editor (#226) is a game run again until it stops.
+#if SAGE_DEV
+        bool playing = dev.PlayWorld != null;
+#else
+        const bool playing = false;
+#endif
+        actions.SetActive(InputContext.Editor, Editing && !playing);
+        actions.SetActive(InputContext.Gameplay, !Editing || playing);
 #if SAGE_DEV
         actions.SetActive(InputContext.Console, dev.ConsoleIsOpen);
 #else
@@ -277,10 +290,18 @@ public class Game1 : Game
         {
 #if SAGE_DEV
             if (dev.ConsoleIsOpen) dev.CloseConsole();
+            else if (playing) dev.StopPlaying();   // Escape leaves play, not the editor (#226)
             else if (!Editing) Exit();
 #else
             Exit();
 #endif
+        }
+
+        // The player's world: the play world while the editor plays (#226), else the one the host made.
+        if (PlayerWorld != inputWorld)
+        {
+            inputWorld = PlayerWorld;
+            playerInput = inputWorld.Resources.GetOrAdd(() => new PlayerInput());
         }
 
         // Everything since the last tick goes into the next PlayerCommand; look applies at frame rate (08 §3.4).
@@ -320,8 +341,8 @@ public class Game1 : Game
     // The player's world gets the command for the tick it is about to run; the others tick without one.
     private void BeforeTick(World ticking)
     {
-        if (ticking != world) return;
-        playerInput.Command = latch.Sample(world.Tick + 1);   // the tick this command is for
+        if (ticking != inputWorld) return;
+        playerInput.Command = latch.Sample(ticking.Tick + 1);   // the tick this command is for
         playerInput.HasCommand = true;
     }
 

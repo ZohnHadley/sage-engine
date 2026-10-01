@@ -1210,6 +1210,7 @@ Sage.Simulation.ValidationReport.ModLines.get -> System.Collections.Generic.IRea
 Sage.Simulation.ValidationReport.Mods.get -> Sage.Core.ModLoadResult!
 Sage.Simulation.ValidationReport.ReportLines.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.Engine.CreateEditWorld(string! name, Sage.Core.RecordId scene = default(Sage.Core.RecordId)) -> Sage.Simulation.World!
+Sage.Simulation.Engine.CreatePlayWorld(string! name, Sage.Core.RecordId scene, Sage.Core.RecordId document, Sage.Simulation.PlacementsRecord! record) -> Sage.Simulation.World!
 Sage.Simulation.SageApp.CreateEditWorld(string! name, Sage.Core.RecordId scene = default(Sage.Core.RecordId)) -> Sage.Simulation.World!
 Sage.Simulation.World.Editing.get -> bool
 Sage.Simulation.RunCondition.EvenWhenEditing = 4 -> Sage.Simulation.RunCondition
