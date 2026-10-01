@@ -56,6 +56,15 @@ internal sealed class StreamedScene
 
     public RecordId Scene { get; }
 
+    private void AddDocument(RecordId document, PlacementsRecord record)
+    {
+        for (int i = 0; i < record.Place.Count; i++)
+        {
+            var placement = record.Place[i];
+            Add(placement, record.Origin, record.RelativeTo, ContentIds.DocumentPlacement(document, i, placement), $"placements {document}");
+        }
+    }
+
     private sealed class Bucket
     {
         public readonly List<Item> Items = new();
@@ -74,7 +83,8 @@ internal sealed class StreamedScene
 
     // ---- building the buckets -------------------------------------------------------------------------
 
-    public static StreamedScene Build(Engine engine, RecordId id, SceneRecord scene)
+    // `world`, when given, may be a play world (issue #226): its document is the editor's copy, not the store's.
+    public static StreamedScene Build(Engine engine, RecordId id, SceneRecord scene, World? world = null)
     {
         var streamed = new StreamedScene(engine, id);
         for (int i = 0; i < scene.Place.Count; i++)
@@ -84,14 +94,10 @@ internal sealed class StreamedScene
         }
         foreach (var document in scene.Placements)
         {
-            if (!engine.Records.TryGet(document.Id, out PlacementsRecord record)) continue;   // the load check says so
-            for (int i = 0; i < record.Place.Count; i++)
-            {
-                var placement = record.Place[i];
-                streamed.Add(placement, record.Origin, record.RelativeTo, ContentIds.DocumentPlacement(document.Id, i, placement),
-                             $"placements {document.Id}");
-            }
+            if (!PlayedDocument.TryGet(engine, world, document.Id, out var record)) continue;   // the load check says so
+            streamed.AddDocument(document.Id, record);
         }
+        if (PlayedDocument.Beside(world, id, scene) is { } played) streamed.AddDocument(played.Id, played.Record);
         foreach (var map in scene.Maps)
             if (engine.Records.TryGet(map.Id, out MapRecord record) && record.OnTerrain)
                 streamed.BucketOf(Terrain.SectorOf(record.At.X, record.At.Z)).Maps.Add(map.Id);

@@ -25,8 +25,7 @@ internal sealed class ProblemsPanel : IDisposable
         _selection = selection;
     }
 
-    // TODO(#224): DevTools sets this to the record browser's open-by-id when RecordEditor lands; until
-    // then a record row is only listed.
+    // A record row opens the record in the record browser (DevTools sets it to RecordsPanel.OpenById).
     public Action<RecordId>? OpenRecord { get; set; }
 
     // "2 errors, 1 warning" for the status bar.
