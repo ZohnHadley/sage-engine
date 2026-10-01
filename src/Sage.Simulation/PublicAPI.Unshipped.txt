@@ -1165,3 +1165,11 @@ Sage.Simulation.InCell
 Sage.Simulation.InCell.InCell() -> void
 Sage.Simulation.InCell.Source -> string!
 static Sage.Simulation.Scenes.Current(Sage.Simulation.World! world) -> Sage.Core.RecordId
+Sage.Simulation.SaveSlot.Mods.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SavedMod>!
+Sage.Simulation.SavedMod
+Sage.Simulation.SavedMod.Id.get -> string!
+Sage.Simulation.SavedMod.Id.init -> void
+Sage.Simulation.SavedMod.SavedMod() -> void
+Sage.Simulation.SavedMod.SavedMod(string! Id, string! Version) -> void
+Sage.Simulation.SavedMod.Version.get -> string!
+Sage.Simulation.SavedMod.Version.init -> void
