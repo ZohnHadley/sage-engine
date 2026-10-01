@@ -50,6 +50,8 @@ public sealed class Engine : IDisposable
         Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Parts), (key, body, _) => PrefabChecks.BodyType(Prefabs, key, body));
         // Sockets name a model and a joint (issue #120).
         Records.AddCheck<SkeletonSocketsRecord>(BoneAttachments.Check);
+        // A ragdoll names a model and bodies with shapes, masses and limits (issue #243).
+        Records.AddCheck<RagdollRecord>(Ragdolls.Check);
         // Clip events name a model, and each a time and a name (issue #119).
         Records.AddCheck<AnimEventsRecord>(AnimEvents.Check);
         // First-person arms name a model, and a weapon a socket (issue #121).

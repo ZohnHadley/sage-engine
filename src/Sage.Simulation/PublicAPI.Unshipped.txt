@@ -589,12 +589,70 @@ Sage.Simulation.PlayerCameraSystem
 Sage.Simulation.PlayerCameraSystem.PlayerCameraSystem(Sage.Simulation.World! world) -> void
 Sage.Simulation.PlayerCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.PoseSampler
+Sage.Simulation.RagdollBodyData
+Sage.Simulation.RagdollBodyData.Angles -> System.Numerics.Vector3
+Sage.Simulation.RagdollBodyData.Joint -> Sage.Simulation.RagdollJointData!
+Sage.Simulation.RagdollBodyData.Mass -> float
+Sage.Simulation.RagdollBodyData.Offset -> System.Numerics.Vector3
+Sage.Simulation.RagdollBodyData.RagdollBodyData() -> void
+Sage.Simulation.RagdollBodyData.Shape -> Sage.Simulation.RagdollShape
+Sage.Simulation.RagdollBodyData.Size -> System.Numerics.Vector3
+Sage.Simulation.RagdollJointData
+Sage.Simulation.RagdollJointData.Axis -> System.Numerics.Vector3
+Sage.Simulation.RagdollJointData.Kind -> Sage.Simulation.RagdollJointKind
+Sage.Simulation.RagdollJointData.Max -> float
+Sage.Simulation.RagdollJointData.Min -> float
+Sage.Simulation.RagdollJointData.RagdollJointData() -> void
+Sage.Simulation.RagdollJointData.Swing -> float
+Sage.Simulation.RagdollJointData.TwistMax -> float
+Sage.Simulation.RagdollJointData.TwistMin -> float
+Sage.Simulation.RagdollJointKind
+Sage.Simulation.RagdollJointKind.Ball = 0 -> Sage.Simulation.RagdollJointKind
+Sage.Simulation.RagdollJointKind.Hinge = 1 -> Sage.Simulation.RagdollJointKind
+Sage.Simulation.RagdollRecord
+Sage.Simulation.RagdollRecord.Bodies -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.RagdollBodyData!>!
+Sage.Simulation.RagdollRecord.Damping -> float
+Sage.Simulation.RagdollRecord.Friction -> float
+Sage.Simulation.RagdollRecord.Model -> Sage.Core.AssetPath
+Sage.Simulation.RagdollRecord.RagdollRecord() -> void
+Sage.Simulation.RagdollRecord.SettleSpeed -> float
+Sage.Simulation.RagdollRecord.SettleTime -> float
+Sage.Simulation.Ragdolls
+Sage.Simulation.RagdollShape
+Sage.Simulation.RagdollShape.Box = 2 -> Sage.Simulation.RagdollShape
+Sage.Simulation.RagdollShape.Capsule = 1 -> Sage.Simulation.RagdollShape
+Sage.Simulation.RagdollShape.None = 0 -> Sage.Simulation.RagdollShape
+Sage.Simulation.RagdollShape.Sphere = 3 -> Sage.Simulation.RagdollShape
+Sage.Simulation.RagdollTable
+Sage.Simulation.RagdollTable.Bodies.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ResolvedRagdollBody!>!
+Sage.Simulation.RagdollTable.BodyOfJoint(int joint) -> int
+Sage.Simulation.RagdollTable.Count.get -> int
+Sage.Simulation.RagdollTable.Damping.get -> float
+Sage.Simulation.RagdollTable.Friction.get -> float
+Sage.Simulation.RagdollTable.SettleSpeed.get -> float
+Sage.Simulation.RagdollTable.SettleTime.get -> float
 Sage.Simulation.RenderEnvironment.DrawSky -> bool
 Sage.Simulation.RenderEnvironment.FogDensity -> float
 Sage.Simulation.RenderEnvironment.FogMode -> Sage.Simulation.FogMode
 Sage.Simulation.RenderEnvironment.ShadowStrength -> float
 Sage.Simulation.RenderEnvironment.Stars -> float
 Sage.Simulation.RenderEnvironment.Zenith -> System.Numerics.Vector3
+Sage.Simulation.ResolvedRagdollBody
+Sage.Simulation.ResolvedRagdollBody.Axis.get -> System.Numerics.Vector3
+Sage.Simulation.ResolvedRagdollBody.HingeMax.get -> float
+Sage.Simulation.ResolvedRagdollBody.HingeMin.get -> float
+Sage.Simulation.ResolvedRagdollBody.Joint.get -> int
+Sage.Simulation.ResolvedRagdollBody.JointKind.get -> Sage.Simulation.RagdollJointKind
+Sage.Simulation.ResolvedRagdollBody.Mass.get -> float
+Sage.Simulation.ResolvedRagdollBody.Name.get -> string!
+Sage.Simulation.ResolvedRagdollBody.Offset.get -> System.Numerics.Vector3
+Sage.Simulation.ResolvedRagdollBody.Parent.get -> int
+Sage.Simulation.ResolvedRagdollBody.Rotation.get -> System.Numerics.Quaternion
+Sage.Simulation.ResolvedRagdollBody.Shape.get -> Sage.Simulation.RagdollShape
+Sage.Simulation.ResolvedRagdollBody.Size.get -> System.Numerics.Vector3
+Sage.Simulation.ResolvedRagdollBody.Swing.get -> float
+Sage.Simulation.ResolvedRagdollBody.TwistMax.get -> float
+Sage.Simulation.ResolvedRagdollBody.TwistMin.get -> float
 Sage.Simulation.SageAppOptions.ModListFile.get -> string?
 Sage.Simulation.SageAppOptions.ModListFile.init -> void
 Sage.Simulation.SageAppOptions.ModReportFile.get -> string?
@@ -1094,6 +1152,8 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.MaterialParam.RenderTarget -> string?
 static Sage.Simulation.PrefabExtensions.Spawn(this Sage.Simulation.World! world, Sage.Core.RecordId prefab, System.Numerics.Vector3 position, float yawDegrees, Sage.Simulation.PrefabOverrides? overrides, string? where = null) -> Sage.Simulation.Entity
+static Sage.Simulation.Ragdolls.Resolve(Sage.Core.RecordStore! records, Sage.Simulation.Skeleton! skeleton, Sage.Core.AssetPath model) -> Sage.Simulation.RagdollTable?
+static Sage.Simulation.Ragdolls.Resolve(Sage.Simulation.Skeleton! skeleton, System.Collections.Generic.IReadOnlyList<Sage.Simulation.RagdollRecord!>! records) -> Sage.Simulation.RagdollTable!
 static Sage.Simulation.RenderStages.IsPerView(Sage.Simulation.RenderStage stage) -> bool
 static Sage.Simulation.RenderStages.Of(Sage.Simulation.RenderPass pass) -> Sage.Simulation.RenderStage
 static Sage.Simulation.RenderStages.SortKeyPass(Sage.Simulation.RenderStage stage) -> int

@@ -634,6 +634,14 @@
         "thin_the_wood"
       ]
     },
+    "record:ragdoll": {
+      "description": "The id of a ragdoll record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "mannequin",
+        "skeletal:mannequin"
+      ]
+    },
     "record:recoil": {
       "description": "The id of a recoil record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1607,6 +1615,14 @@
       "enum": [
         "sandbox:thin_the_wood",
         "thin_the_wood"
+      ]
+    },
+    "base:ragdoll": {
+      "description": "Another ragdoll record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "mannequin",
+        "skeletal:mannequin"
       ]
     },
     "base:recoil": {

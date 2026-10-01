@@ -52,6 +52,7 @@
             "post_effect",
             "prefab",
             "quest",
+            "ragdoll",
             "recoil",
             "routine",
             "rpg_conventions",
@@ -492,6 +493,21 @@
           },
           "then": {
             "$ref": "quest.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "ragdoll"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "ragdoll.schema.json"
           }
         },
         {
