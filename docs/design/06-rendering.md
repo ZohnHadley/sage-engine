@@ -169,7 +169,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 - Per frame: one **sun** (direction, colour), **hemispheric ambient** (sky colour, ground colour), **fog** (linear or exp², colour, start/end/density).
 - Per object: up to **4 point lights**, the strongest by influence, chosen per draw by `LightRules.Nearest` (`r_lights`; 4 is what SM3's constant budget affords). Built — see "As built (point lights)" below.
 - Sprites use the same inputs. The normal faces the camera for cylindrical sprites, or the material can be marked unlit (+ fog), which is the Daggerfall look.
-- **Render scale:** the scene can render into a lower-resolution target and be upscaled with point filtering (`r_scale 0.5`) for a retro look and cheap performance. UI always renders at full resolution.
+- **Render scale:** the scene can render into a lower-resolution target and be upscaled with point filtering (`r_scale 0.5`) for a retro look and cheap performance. UI always renders at full resolution. Built in issue 4h-6: "As built (post-processing)".
 
 ### 3.10 Debug drawing
 
@@ -320,7 +320,7 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
 - **Cvars:**
   - `r_instancing`, `r_instancing_min`;
   - `r_lights` (Archive; off is sun + ambient only);
-  - `r_scale`;
+  - `r_scale` (Archive, 0.25 to 1; built, 4h-6), `r_post`, `r_post_grade`, `r_post_vignette` (Archive);
   - `r_vsync` (01);
   - `r_fog`;
   - `r_wireframe` (DevOnly);
@@ -1055,6 +1055,50 @@ Experimental, SAGE0130 (MAKING_A_GAME §10b).
   against the gradient above the horizon; particles are never fog-culled. Checked on a GPU only by the
   Windows shader compile and the smoke run; the Sandbox has no sky until 4h-7 gives it one.
 
+### As built (post-processing, 2026-09-30 — issue 4h-6)
+A chain of full-screen effects between the screen's views and the UI, and the render scale of §3.9.
+Experimental, SAGE0130 (MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Simulation/Rendering/PostProcess.cs` (headless: the `post_effect` record,
+  `PostChainPlan`), `src/Sage.Client/Rendering/PostProcess.cs` (the `sage:post` pass and `PostChain`, which
+  reads the records and cvars), the screen redirect and `DrawPostChain` in `Renderer`,
+  `engine_content/shaders/post.fx` and `engine_content/data/post.json`. Tests:
+  `tests/Sage.Tests/Presentation/PostProcessTests.cs`.
+- **A `post_effect` record** names a `material` (effect, technique, params and sampler, 07 §3.3), an
+  `order` and a `cvar` that switches it (a bool, or a number where 0 is off; none: always on). Effects run
+  by order, then id (test: EffectsRunByOrderThenId_EachSwitchedByItsCvar); a mod removes one of the
+  engine's with a disabling patch, like any record. `r_post` (default 0) switches the whole chain.
+- **The plan is headless** (`PostChainPlan.Plan`): with nothing on the frame is exactly what it was, the
+  screen's views drawn straight into the back buffer (test: NoEffectsMeansNoChain_TheViewsDrawStraightToTheScreen);
+  effects switched off are skipped (test: DisabledEffectsAreSkipped); the first reads `sage:scene`, each
+  writes the one of `sage:post0`/`sage:post1` the step before did not, and the last writes the screen
+  (test: TheChainPingPongsItsTargets_AndTheLastWritesTheScreen).
+- **Drawing:** while the chain is on, "the screen" a screen view or a pass in a per-view stage binds is
+  `sage:scene` (Color with Depth24), and each screen view's viewport is scaled with it, so a split screen's
+  halves stay halves. Views into other targets (`r_testview 2`'s map, the editor viewport) are not
+  redirected, so nothing is post-processed twice. Then `sage:post` (PostProcess) draws a clip-space quad a
+  step through the effect's material; the engine sets `Source`, `SourceSize` and `Night`, which a post
+  material therefore does not (and `MaterialCache` does not ask it for). A game's PostProcess passes run
+  after it, on the back buffer, and the UI (Overlay) draws over the result at full size.
+- **The render scale** (`r_scale`, 0.25 to 1, with or without `r_post`): `sage:scene` and the ping-pong pair
+  are the screen's size times the scale, and the last step writes the full-size screen through the
+  material's sampler, point by default, so the picture upscales as big pixels. With no effect on it is one
+  plain copy (test: ARenderScaleDrawsTheSceneSmaller_AndAloneIsOneCopy).
+- **The engine's effects** (`engine_content/data/post.json`): `sage:grade` (order 100, `r_post_grade`):
+  exposure in stops, a night tint, saturation, contrast and a colour filter; `sage:vignette` (order 200,
+  `r_post_vignette`). Their materials inherit every param `post.fx` has from `sage:post_copy`, since GL
+  ignores `.fx` defaults (test: TheEnginesEffectsAndTheirMaterialsLoad). LDR in and out, exposure in the
+  grade (decision 6).
+- **The night tint** reads the sky, not the light: `PostChainPlan.Night` is 0 while the sun is up, rises as
+  it sets and is 1 once it is well under the horizon; with no sky it is 0 and the grade is only a grade
+  (test: TheNightTintFollowsTheSky).
+- **See it:** `r_post 1`, `r_scale 0.5`; `r_stats` adds `post N step(s), scene WxH`. Under Xvfb the shaders
+  aren't compiled, so each effect falls back to a plain copy (its material can't be built): the smoke run
+  proves the targets, the redirect and the chain's steps, not the picture. `post.fx` is checked by the
+  Windows CI's shader compile only.
+- **Not yet:** HDR targets and bloom (decision 6: they wait for GPU testing on both platforms); anti-aliasing;
+  depth-reading effects (the scene target has depth, but no effect is handed it yet).
+
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
 
@@ -1066,6 +1110,6 @@ Nothing changes: a client renders its own world's snapshot. A dedicated server d
 1. ~~`RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO R9, #25).
 2. ~~Sort keys + material-based drawing (with 07)~~ **Done 2026-09-22** (radix sort later).
 3. ~~Sprite batcher + `SpriteRenderer` + 8-direction selection~~ **Done 2026-09-22** (TODO F1; with 12).
-4. ~~Lighting/fog/ambient~~ **Done 2026-09-22** (sun, hemispheric ambient, fog) and ~~point lights~~ **Done 2026-09-24** ("As built (point lights)"). Render scale left (TODO F2).
+4. ~~Lighting/fog/ambient~~ **Done 2026-09-22** (sun, hemispheric ambient, fog) and ~~point lights~~ **Done 2026-09-24** ("As built (point lights)"). Render scale done in issue 4h-6 ("As built (post-processing)").
 5. `DebugDraw` + `r_stats` + the overlay (TODO F5). *`r_stats` done in step 6.*
 6. Instancing experiment behind `r_instancing` (later).

@@ -19,7 +19,9 @@ namespace Sage.Simulation;
 // 1. *JSON, not tagged binary.* Component ids and field names are the stable identity. Binary is a
 //    format change, which is what the upgrader mechanism (§3.6) exists for, and a save you can read in
 //    a text editor is worth a great deal while the save system is the thing being debugged.
-// 2. *No visited-sector rule yet.* Every persistent entity is still written in full (4i-5 writes a diff).
+// 2. *No visited-sector rule yet.* Every persistent entity is written. Since 4i-5 one spawned from a
+//    prefab is written as a **diff against its prefab as spawned** (SaveDiff), so a rebalance reaches
+//    what the game never changed.
 //    **A load reconciles** (issue 4i-3, format 3): what content places — scenes, placements documents,
 //    `.map`s and the children of their prefabs — is placed again from the content as it is now, the
 //    save's **tombstones** remove what the game destroyed, and the saved state is laid onto what matches
@@ -62,7 +64,11 @@ public sealed class SaveSystem
     {
         _engine = engine;
         _serializer = new SaveSerializer(engine.Components);
+        // A record reloaded is updated in place, so a prefab's baseline cannot tell by the instance (4i-5).
+        engine.Records.Reloaded += () => _recordsLoaded++;
     }
+
+    private int _recordsLoaded;
 
     // ---- saved world resources ----------------------------------------------------------------------
 
@@ -211,7 +217,15 @@ public sealed class SaveSystem
                 saved["prefab"] = from.Prefab.ToString();
             if (entity.Name is { Length: > 0 } named)
                 saved["name"] = named;
-            var components = _serializer.WriteComponents(world, entity, json);
+            // Spawned from a prefab: only what differs from it as spawned, and what it lost (4i-5, SaveDiff).
+            var asSpawned = world.TryGet<FromPrefab>(entity, out var spawned) ? spawned.Baseline : null;
+            var removed = new JsonArray();
+            var components = _serializer.WriteComponents(world, entity, json, asSpawned, removed);
+            if (asSpawned != null)
+            {
+                saved["diff"] = true;
+                if (removed.Count > 0) saved["removed"] = removed;
+            }
             var tags = _serializer.WriteTags(world, entity);
             // What the save said that this game has no component or tag for, back as it was (issue 4i-2).
             if (world.TryGet<UnknownSavedData>(entity, out var unknown))
@@ -473,6 +487,7 @@ public sealed class SaveSystem
         // Anything else the game made, and is spawned again from its prefab — with its prefab's children,
         // which find their saved state by their derived ids rather than being spawned a second time.
         var rebuilt = new List<(Entity Entity, JsonObject Saved, bool Matched)>();
+        var dialect = SaveJson.For(world, _engine.Records, _converters);
         var placeholders = new List<(Entity Entity, JsonObject Saved)>();
         var children = new List<PreparedEntity>();
         int dropped = 0;
@@ -491,10 +506,13 @@ public sealed class SaveSystem
             }
 
             // Spawned from its prefab so the *parts* come back — a character's capsule, controller and
-            // intent were never in the save because the prefab puts them there (F31).
+            // intent were never in the save because the prefab puts them there (F31). Spawned where it was
+            // saved, so a part that reads its placement (a mover's closed position, a character's yaw)
+            // reads that rather than the origin, as it did when its diff was taken (4i-5).
             Entity entity = default;
             if (prefab.IsEmpty) entity = world.Create(Transform.Identity);
-            else if (_engine.Records.TryGet(prefab, out PrefabRecord _)) entity = world.SpawnWithoutId(prefab);
+            else if (_engine.Records.TryGet(prefab, out PrefabRecord _))
+                entity = world.SpawnWithoutId(prefab, SavedTransform(saved, dialect, where));
 
             if (entity.IsNull)
             {
@@ -528,7 +546,6 @@ public sealed class SaveSystem
             Log.Info(LogCat.Save, $"{where}: {dropped} saved entit(ies) the content no longer places were dropped");
 
         // Pass two: the state.
-        var dialect = SaveJson.For(world, _engine.Records, _converters);
         foreach (var (entity, saved, matched) in rebuilt)
             LayState(world, entity, saved, matched, dialect, where);
 
@@ -553,17 +570,35 @@ public sealed class SaveSystem
     private static RecordId CurrentScene(World world) =>
         world.Resources.TryGet<ActiveScene>(out var active) && active != null ? active.Id : default;
 
+    // The transform a saved entity stood at, or the identity when it has none that reads.
+    private Transform SavedTransform(JsonObject saved, JsonSerializerOptions dialect, string where)
+    {
+        if (saved["components"] is not JsonObject components || components[SaveSerializer.TransformId] is not JsonObject entry)
+            return Transform.Identity;
+        int version = _engine.Components.DeclarationOf(typeof(Transform))?.Version ?? 1;
+        var value = SaveSerializer.ReadEntry(typeof(Transform), SaveSerializer.TransformId, version, entry.DeepClone(), dialect,
+                                             $"{where}: component '{SaveSerializer.TransformId}'");
+        return value is Transform transform ? transform : Transform.Identity;
+    }
+
     // One saved entity's state onto an entity that exists. `matched`: content placed it (or its parent's
     // prefab did), so its tags are the save's exactly — a tag the game took off stays off. Its components
     // are laid over what content gave it; one the save does not have is left as content made it.
+    //
+    // A diffed entity (`"diff": true`, 4i-5): its prefab, as it is now, has already been applied — by the
+    // spawn or by content placing it — and each saved entry is laid over that field by field; its
+    // `removed` are taken off; its tags are the save's exactly, as a matched entity's are.
     private void LayState(World world, Entity entity, JsonObject saved, bool matched, JsonSerializerOptions dialect, string where)
     {
         var unknown = new JsonObject();
         var unknownTags = new JsonArray();
         var components = saved["components"] as JsonObject;
+        bool diff = saved["diff"] is JsonValue flag && flag.TryGetValue(out bool yes) && yes;
         if (components != null)
-            _serializer.ReadComponents(world, entity, components, dialect, where, unknown);
-        if (matched) _serializer.ClearTags(entity);
+            _serializer.ReadComponents(world, entity, components, dialect, where, unknown, merge: diff);
+        if (diff && saved["removed"] is JsonArray removed)
+            _serializer.RemoveComponents(entity, removed);
+        if (matched || diff) _serializer.ClearTags(entity);
         if (saved["tags"] is JsonArray tags)
             _serializer.ReadTags(world, entity, tags, where, unknownTags);
         if (unknown.Count > 0 || unknownTags.Count > 0)
@@ -591,6 +626,26 @@ public sealed class SaveSystem
         var dialect = SaveJson.For(world, _engine.Records, _converters);
         foreach (var (entity, saved) in found)
             LayState(world, entity, saved, matched: true, dialect, where);
+    }
+
+    // ---- what a prefab spawned as (4i-5) --------------------------------------------------------------
+
+    // Called by a prefab spawn once the prefab (with `overrides`) is applied and before anything else is
+    // done to the entity: notes its components as they are now as the baseline a save diffs it against
+    // (SaveDiff). Taken once per prefab and overrides in each world, and shared.
+    internal void NoteSpawned(World world, Entity entity, RecordId prefab, PrefabRecord record, PrefabOverrides? overrides)
+    {
+        if (!world.Has<FromPrefab>(entity)) return;
+        var baselines = world.Resources.GetOrAdd(() => new PrefabBaselines());
+        baselines.Since(_recordsLoaded);
+        string key = PrefabBaselines.KeyOf(overrides);
+        if (!baselines.TryGet(prefab, record, key, out var baseline))
+        {
+            baselines.Dialect ??= SaveJson.For(world, _engine.Records, _converters);
+            baseline = new SpawnBaseline(_serializer.WriteComponents(world, entity, baselines.Dialect, baseline: null, removed: null, quiet: true));
+            baselines.Add(prefab, record, key, baseline);
+        }
+        world.Get<FromPrefab>(entity).Baseline = baseline;
     }
 
     // ---- the header's plugins and content (issue 4i-2) ---------------------------------------------

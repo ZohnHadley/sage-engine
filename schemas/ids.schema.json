@@ -302,11 +302,17 @@
         "mannequin_red",
         "particle_additive",
         "particle_blend",
+        "post_copy",
+        "post_grade",
+        "post_vignette",
         "roof",
         "sage:error",
         "sage:lit_default",
         "sage:particle_additive",
         "sage:particle_blend",
+        "sage:post_copy",
+        "sage:post_grade",
+        "sage:post_vignette",
         "sage:sprite_default",
         "sage:sprite_lit",
         "sage:terrain_default",
@@ -379,6 +385,16 @@
       "enum": [
         "sandbox:yard",
         "yard"
+      ]
+    },
+    "record:post_effect": {
+      "description": "The id of a post_effect record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "grade",
+        "sage:grade",
+        "sage:vignette",
+        "vignette"
       ]
     },
     "record:prefab": {
@@ -1094,11 +1110,17 @@
         "mannequin_red",
         "particle_additive",
         "particle_blend",
+        "post_copy",
+        "post_grade",
+        "post_vignette",
         "roof",
         "sage:error",
         "sage:lit_default",
         "sage:particle_additive",
         "sage:particle_blend",
+        "sage:post_copy",
+        "sage:post_grade",
+        "sage:post_vignette",
         "sage:sprite_default",
         "sage:sprite_lit",
         "sage:terrain_default",
@@ -1171,6 +1193,16 @@
       "enum": [
         "sandbox:yard",
         "yard"
+      ]
+    },
+    "base:post_effect": {
+      "description": "Another post_effect record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "grade",
+        "sage:grade",
+        "sage:vignette",
+        "vignette"
       ]
     },
     "base:prefab": {

@@ -48,5 +48,6 @@ Sage.Client.UiDraw.PopClip() -> void
 Sage.Client.UiDraw.PushClip(float x, float y, float width, float height) -> void
 Sage.Client.RenderStats.Bones -> int
 Sage.Client.RenderStats.Skinned -> int
+Sage.Client.RenderStats.PostSteps -> int
 Sage.Client.RenderStats.FogCulled -> int
 Sage.Client.RenderStats.Skies -> int
