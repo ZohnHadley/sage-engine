@@ -205,7 +205,8 @@ jobs:
           # nothing simulated, no player) with the `yard` placements document open, the docked layout, the free
           # camera on the screen flying on the Editor context's EditorMove, a crate selected for the inspector
           # and the status bar, the layout reset and the viewport window on. EditModeTests has the edit world.
-          SAGE_SMOKE_ARGS='-edit yard' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ent_select crate by the door\n+in_axis EditorMove 0 1 1\n+wait 1\n+ed_layout\n+ed_viewport 1\n+wait 1\n+in_contexts' \
+          # Then it is moved, turned, framed, duplicated, the copy deleted and all undone (#221, ViewportToolsTests).
+          SAGE_SMOKE_ARGS='-edit yard' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ent_select crate by the door\n+ed_select crate by the door\n+ed_move 3 0 2\n+ed_rotate 45\n+ed_frame\n+ed_duplicate\n+wait 1\n+ed_delete\n+ed_undo 4\n+in_axis EditorMove 0 1 1\n+wait 1\n+ed_layout\n+ed_viewport 1\n+wait 1\n+in_contexts' \
             tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
           # A widget screen (issue #97): the Sandbox's status screen opened by its key, walked with the
           # D-pad actions, closed with Back, then opened and closed from the console, fades and all.

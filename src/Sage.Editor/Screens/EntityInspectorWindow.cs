@@ -235,14 +235,3 @@ internal sealed class EntityInspectorWindow
     private static object As(FieldMetadata field, RecordId id) =>
         field.Type == typeof(RecordId) ? id : Activator.CreateInstance(field.Type, id)!;
 }
-
-// What the outliner and the inspector agree about. One entity, because multi-select wants the command
-// log to be worth having (F30).
-internal sealed class EditorSelection
-{
-    public Entity Entity { get; private set; }
-
-    public void Select(Entity entity) => Entity = entity;
-    public void Clear() => Entity = default;
-    public bool Is(Entity entity) => !Entity.IsNull && Entity.Id == entity.Id;
-}

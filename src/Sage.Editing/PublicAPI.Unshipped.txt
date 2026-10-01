@@ -1,4 +1,6 @@
 #nullable enable
+const Sage.Editing.ViewportTools.DefaultAngleStep = 15 -> float
+const Sage.Editing.ViewportTools.DefaultGrid = 0.5 -> float
 Sage.Editing.AddPlacement
 Sage.Editing.AddPlacement.AddPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index = -1) -> void
 Sage.Editing.AddPlacement.Description.get -> string!
@@ -40,6 +42,51 @@ Sage.Editing.EditDocument.Engine.get -> Sage.Simulation.Engine!
 Sage.Editing.EditDocument.EntityOf(Sage.Simulation.Placement! placement) -> Sage.Simulation.Entity
 Sage.Editing.EditDocument.Execute(Sage.Editing.IEditorCommand! command) -> bool
 Sage.Editing.EditDocument.Find(string! nameOrId) -> Sage.Simulation.Placement?
+Sage.Editing.EditorSelection
+Sage.Editing.EditorSelection.Changed -> System.Action?
+Sage.Editing.EditorSelection.Clear() -> void
+Sage.Editing.EditorSelection.Document.get -> Sage.Editing.EditDocument!
+Sage.Editing.EditorSelection.EditorSelection(Sage.Editing.EditDocument! document) -> void
+Sage.Editing.EditorSelection.Entity.get -> Sage.Simulation.Entity
+Sage.Editing.EditorSelection.Is(Sage.Simulation.Entity entity) -> bool
+Sage.Editing.EditorSelection.IsEmpty.get -> bool
+Sage.Editing.EditorSelection.Placement.get -> Sage.Simulation.Placement?
+Sage.Editing.EditorSelection.Select(Sage.Simulation.Entity entity) -> void
+Sage.Editing.EditorSelection.Select(Sage.Simulation.Placement! placement) -> void
+Sage.Editing.EditorSelection.SelectPlaced(Sage.Simulation.Entity entity) -> void
+Sage.Editing.EditorSelection.World.get -> Sage.Simulation.World!
+Sage.Editing.GizmoDrag
+Sage.Editing.GizmoDrag.End() -> void
+Sage.Editing.GizmoDrag.Handle.get -> Sage.Editing.GizmoHandle
+Sage.Editing.GizmoDrag.Mode.get -> Sage.Editing.GizmoMode
+Sage.Editing.GizmoDrag.Origin.get -> System.Numerics.Vector3
+Sage.Editing.GizmoDrag.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.GizmoDrag.Update(in Sage.Editing.EditorRay ray, float grid = 0, float angleStep = 0) -> bool
+Sage.Editing.GizmoMode
+Sage.Editing.GizmoMode.Move = 0 -> Sage.Editing.GizmoMode
+Sage.Editing.GizmoMode.Rotate = 1 -> Sage.Editing.GizmoMode
+Sage.Editing.ViewportCamera
+Sage.Editing.ViewportCamera.RayThrough(System.Numerics.Vector2 pixel) -> Sage.Editing.EditorRay?
+Sage.Editing.ViewportCamera.Size.get -> System.Numerics.Vector2
+Sage.Editing.ViewportCamera.Size.init -> void
+Sage.Editing.ViewportCamera.SizeAt(System.Numerics.Vector3 origin, float pixels) -> float
+Sage.Editing.ViewportCamera.ToScreen(System.Numerics.Vector3 point) -> System.Numerics.Vector2?
+Sage.Editing.ViewportCamera.View.get -> Sage.Simulation.CameraView
+Sage.Editing.ViewportCamera.View.init -> void
+Sage.Editing.ViewportCamera.ViewportCamera() -> void
+Sage.Editing.ViewportCamera.ViewportCamera(Sage.Simulation.CameraView View, System.Numerics.Vector2 Size) -> void
+Sage.Editing.ViewportTools
+Sage.Editing.ViewportTools.AngleStep.get -> float
+Sage.Editing.ViewportTools.AngleStep.set -> void
+Sage.Editing.ViewportTools.AngleStepDegrees.get -> float
+Sage.Editing.ViewportTools.Grid.get -> float
+Sage.Editing.ViewportTools.Grid.set -> void
+Sage.Editing.ViewportTools.GridStep.get -> float
+Sage.Editing.ViewportTools.Mode.get -> Sage.Editing.GizmoMode
+Sage.Editing.ViewportTools.Mode.set -> void
+Sage.Editing.ViewportTools.Snap.get -> bool
+Sage.Editing.ViewportTools.Snap.set -> void
+Sage.Editing.ViewportTools.ViewportTools() -> void
 static Sage.Editing.EditDocument.GameNamespace(Sage.Simulation.Engine! engine) -> string!
 Sage.Editing.EditDocument.History.get -> Sage.Editing.CommandLog!
 Sage.Editing.EditDocument.Id.get -> Sage.Core.RecordId
@@ -67,6 +114,7 @@ Sage.Editing.EditTarget.EditTarget() -> void
 Sage.Editing.EditTarget.EditTarget(Sage.Core.RecordId Scene, Sage.Core.RecordId Document) -> void
 Sage.Editing.EditTarget.Scene.get -> Sage.Core.RecordId
 Sage.Editing.EditTarget.Scene.init -> void
+static Sage.Editing.EditorPicking.PickWhere(Sage.Simulation.World! world, in Sage.Editing.EditorRay ray, System.Func<Sage.Simulation.Entity, bool>! accept, float maxDistance = 1000) -> Sage.Editing.PickResult?
 static Sage.Editing.EditTarget.TryResolve(Sage.Core.RecordStore! records, Sage.Core.RecordId startScene, string? text, out Sage.Editing.EditTarget target, out string! error) -> bool
 Sage.Editing.EditorCommands
 static Sage.Editing.EditorCommands.History(Sage.Editing.EditDocument! document) -> string!
@@ -92,6 +140,7 @@ Sage.Editing.GizmoHandle.Y = 2 -> Sage.Editing.GizmoHandle
 Sage.Editing.GizmoHandle.YZ = 6 -> Sage.Editing.GizmoHandle
 Sage.Editing.GizmoHandle.Z = 3 -> Sage.Editing.GizmoHandle
 Sage.Editing.GizmoMath
+static Sage.Editing.GizmoDrag.Begin(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.GizmoMode mode, Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay) -> Sage.Editing.GizmoDrag?
 static Sage.Editing.GizmoMath.ScreenConstantSize(System.Numerics.Vector3 cameraPosition, System.Numerics.Vector3 origin, float fovY, float viewportHeight, float pixels) -> float
 Sage.Editing.IEditorCommand
 Sage.Editing.IEditorCommand.Description.get -> string!
@@ -176,3 +225,11 @@ static Sage.Editing.TranslateGizmo.Drag(Sage.Editing.GizmoHandle handle, in Sage
 static Sage.Editing.TranslateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size) -> Sage.Editing.GizmoHandle
 const Sage.Editing.CommandLog.DefaultCapacity = 500 -> int
 const Sage.Editing.EditorPicking.FallbackRadius = 0.35 -> float
+static Sage.Editing.ViewportTools.Delete(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
+static Sage.Editing.ViewportTools.Duplicate(Sage.Editing.EditorSelection! selection, Sage.Simulation.Placement! placement) -> Sage.Simulation.Placement?
+static Sage.Editing.ViewportTools.FramePosition(System.Numerics.Vector3 target, System.Numerics.Quaternion rotation, float distance) -> System.Numerics.Vector3
+static Sage.Editing.ViewportTools.Move(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, System.Numerics.Vector3 at) -> void
+static Sage.Editing.ViewportTools.OriginOf(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> System.Numerics.Vector3
+static Sage.Editing.ViewportTools.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditorSelection?>! selection) -> Sage.Editing.ViewportTools!
+static Sage.Editing.ViewportTools.Rotate(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, float yawDegrees) -> void
+static Sage.Editing.ViewportTools.UniqueName(Sage.Editing.EditDocument! document, string! wanted) -> string!

@@ -61,7 +61,12 @@ internal sealed class EntityOutlinerWindow
 
             if (ImGui.BeginPopupContextItem($"ctx_{entity.Id}"))
             {
-                if (ImGui.MenuItem("Delete")) _world.Destroy(entity);
+                // One of the open document's placements goes as an edit (undoable, saved); anything else is just destroyed.
+                if (ImGui.MenuItem("Delete"))
+                {
+                    if (_selection is { Document.IsOpen: true } s && s.Document.PlacementOf(entity) is { } placement) ViewportTools.Delete(s.Document, placement);
+                    else _world.Destroy(entity);
+                }
                 ImGui.EndPopup();
             }
 
