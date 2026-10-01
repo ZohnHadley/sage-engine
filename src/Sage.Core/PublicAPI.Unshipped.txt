@@ -165,3 +165,5 @@ Sage.Core.PluginContentAttribute
 Sage.Core.PluginContentAttribute.PluginContentAttribute(string! recordNamespace) -> void
 Sage.Core.PluginContentAttribute.RecordNamespace.get -> string!
 override Sage.Core.AssemblyContentMount.ToString() -> string!
+Sage.Core.RecordStore.MountOf(string! type, Sage.Core.RecordId id) -> Sage.Core.IMount?
+Sage.Core.RecordStore.RawJson(string! type, Sage.Core.RecordId id) -> System.Text.Json.Nodes.JsonObject?

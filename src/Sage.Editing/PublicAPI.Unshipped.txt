@@ -1,5 +1,4 @@
 #nullable enable
-const Sage.Editing.PlaySession.WorldName = "play" -> string!
 Sage.Editing.AddPlacement
 Sage.Editing.AddPlacement.AddPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index = -1) -> void
 Sage.Editing.AddPlacement.Description.get -> string!
@@ -114,6 +113,38 @@ Sage.Editing.IEditorCommand.Description.get -> string!
 Sage.Editing.IEditorCommand.Do() -> void
 Sage.Editing.IEditorCommand.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
 Sage.Editing.IEditorCommand.Undo() -> void
+Sage.Editing.InspectorCommands
+Sage.Editing.InspectorGroup
+Sage.Editing.InspectorGroup.Id.get -> string!
+Sage.Editing.InspectorGroup.Key.get -> string!
+Sage.Editing.InspectorGroup.Note.get -> string?
+Sage.Editing.InspectorGroup.Rows.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorRow!>!
+Sage.Editing.InspectorGroup.Section.get -> Sage.Editing.OverrideSection?
+Sage.Editing.InspectorModel
+Sage.Editing.InspectorModel.Document.get -> Sage.Editing.EditDocument?
+Sage.Editing.InspectorModel.Entity.get -> Sage.Simulation.Entity
+Sage.Editing.InspectorModel.Find(string! path) -> Sage.Editing.InspectorRow?
+Sage.Editing.InspectorModel.FromDocument.get -> bool
+Sage.Editing.InspectorModel.Groups.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorGroup!>!
+Sage.Editing.InspectorModel.Placement.get -> Sage.Simulation.Placement?
+Sage.Editing.InspectorModel.Revert(Sage.Editing.InspectorRow! row, out string! error) -> bool
+Sage.Editing.InspectorModel.Rows.get -> System.Collections.Generic.IEnumerable<Sage.Editing.InspectorRow!>!
+Sage.Editing.InspectorModel.Set(Sage.Editing.InspectorRow! row, System.Text.Json.Nodes.JsonNode? value, out string! error) -> bool
+Sage.Editing.InspectorModel.ToNode(object? value) -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.InspectorModel.TryRevert(string! path, out string! error) -> bool
+Sage.Editing.InspectorModel.TrySet(string! path, string! text, out string! error) -> bool
+Sage.Editing.InspectorModel.World.get -> Sage.Simulation.World!
+Sage.Editing.InspectorRow
+Sage.Editing.InspectorRow.Editable.get -> bool
+Sage.Editing.InspectorRow.Field.get -> Sage.Core.FieldMetadata!
+Sage.Editing.InspectorRow.Group.get -> Sage.Editing.InspectorGroup!
+Sage.Editing.InspectorRow.Overridden.get -> bool
+Sage.Editing.InspectorRow.OverrideValue.get -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.InspectorRow.Path.get -> string!
+Sage.Editing.InspectorRow.Provenance.get -> string!
+Sage.Editing.InspectorRow.SetBy.get -> Sage.Core.RecordWrite?
+Sage.Editing.InspectorRow.Value.get -> object?
+Sage.Editing.InspectorValue
 Sage.Editing.LogView
 Sage.Editing.LogView.Categories.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
 Sage.Editing.LogView.IsShown(string! category) -> bool
@@ -187,6 +218,39 @@ Sage.Editing.PrefabPalette.IsArmed.get -> bool
 Sage.Editing.PrefabPalette.PrefabPalette(Sage.Core.RecordStore! records) -> void
 Sage.Editing.PrefabPalette.Search.get -> string!
 Sage.Editing.PrefabPalette.Search.set -> void
+Sage.Editing.RecordDocument
+Sage.Editing.RecordDocument.Changed -> System.Action?
+Sage.Editing.RecordDocument.Dirty.get -> bool
+Sage.Editing.RecordDocument.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.RecordDocument.Get(string! path) -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.RecordDocument.History.get -> Sage.Editing.CommandLog!
+Sage.Editing.RecordDocument.Id.get -> Sage.Core.RecordId
+Sage.Editing.RecordDocument.IsEdited(string! path) -> bool
+Sage.Editing.RecordDocument.Meta.get -> Sage.Core.TypeMetadata?
+Sage.Editing.RecordDocument.MetaAt(string! path) -> Sage.Core.FieldMetadata?
+Sage.Editing.RecordDocument.Original.get -> System.Text.Json.Nodes.JsonObject!
+Sage.Editing.RecordDocument.Provenance(string! path) -> string?
+Sage.Editing.RecordDocument.RawText.get -> string!
+Sage.Editing.RecordDocument.Redo() -> bool
+Sage.Editing.RecordDocument.Save() -> bool
+Sage.Editing.RecordDocument.SavedTo.get -> string!
+Sage.Editing.RecordDocument.SavesAsPatch.get -> bool
+Sage.Editing.RecordDocument.Set(string! path, System.Text.Json.Nodes.JsonNode? value) -> bool
+Sage.Editing.RecordDocument.Sources() -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.RecordDocument.Title.get -> string!
+Sage.Editing.RecordDocument.Type.get -> string!
+Sage.Editing.RecordDocument.Undo() -> bool
+Sage.Editing.RecordDocument.Working.get -> System.Text.Json.Nodes.JsonObject!
+Sage.Editing.RecordEditor
+Sage.Editing.RecordEditor.Changed -> System.Action?
+Sage.Editing.RecordEditor.Close() -> void
+Sage.Editing.RecordEditor.Current.get -> Sage.Editing.RecordDocument?
+Sage.Editing.RecordEditor.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.RecordEditor.Ids(string! type, string! search = "") -> Sage.Core.RecordId[]!
+Sage.Editing.RecordEditor.Open(string! type, Sage.Core.RecordId id) -> bool
+Sage.Editing.RecordEditor.RecordEditor(Sage.Simulation.Engine! engine) -> void
+Sage.Editing.RecordEditor.Register(Sage.Core.CVarRegistry! cvars) -> void
+Sage.Editing.RecordEditor.Types() -> string![]!
 Sage.Editing.RemovePlacement
 Sage.Editing.RemovePlacement.Description.get -> string!
 Sage.Editing.RemovePlacement.Do() -> void
@@ -220,6 +284,14 @@ Sage.Editing.SetPlacement.Placement.get -> Sage.Simulation.Placement!
 Sage.Editing.SetPlacement.SetPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.PlacementFields fields) -> void
 Sage.Editing.SetPlacement.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
 Sage.Editing.SetPlacement.Undo() -> void
+Sage.Editing.SetRecordValue
+Sage.Editing.SetRecordValue.Description.get -> string!
+Sage.Editing.SetRecordValue.Do() -> void
+Sage.Editing.SetRecordValue.Path.get -> string!
+Sage.Editing.SetRecordValue.SetRecordValue(Sage.Editing.RecordDocument! document, string! path, System.Text.Json.Nodes.JsonNode? value) -> void
+Sage.Editing.SetRecordValue.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
+Sage.Editing.SetRecordValue.Undo() -> void
+Sage.Editing.SetRecordValue.Value.get -> System.Text.Json.Nodes.JsonNode?
 Sage.Editing.Snap
 Sage.Editing.TranslateGizmo
 Sage.Editing.ViewportCamera
@@ -244,10 +316,52 @@ Sage.Editing.ViewportTools.Mode.set -> void
 Sage.Editing.ViewportTools.Snap.get -> bool
 Sage.Editing.ViewportTools.Snap.set -> void
 Sage.Editing.ViewportTools.ViewportTools() -> void
+Sage.Editing.WireInput
+Sage.Editing.WireInput.Components.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.WireInput.Components.init -> void
+Sage.Editing.WireInput.Global.get -> bool
+Sage.Editing.WireInput.Global.init -> void
+Sage.Editing.WireInput.Name.get -> string!
+Sage.Editing.WireInput.Name.init -> void
+Sage.Editing.WireInput.WireInput() -> void
+Sage.Editing.WireInput.WireInput(string! Name, System.Collections.Generic.IReadOnlyList<string!>! Components, bool Global) -> void
+Sage.Editing.WireLine
+Sage.Editing.WireLine.From.get -> System.Numerics.Vector3
+Sage.Editing.WireLine.From.init -> void
+Sage.Editing.WireLine.Index.get -> int
+Sage.Editing.WireLine.Index.init -> void
+Sage.Editing.WireLine.Source.get -> Sage.Simulation.Placement!
+Sage.Editing.WireLine.Source.init -> void
+Sage.Editing.WireLine.To.get -> System.Numerics.Vector3?
+Sage.Editing.WireLine.To.init -> void
+Sage.Editing.WireLine.Wire.get -> Sage.Simulation.Connection!
+Sage.Editing.WireLine.Wire.init -> void
+Sage.Editing.WireLine.WireLine() -> void
+Sage.Editing.WireLine.WireLine(Sage.Simulation.Placement! Source, int Index, Sage.Simulation.Connection! Wire, System.Numerics.Vector3 From, System.Numerics.Vector3? To) -> void
+Sage.Editing.WireOutput
+Sage.Editing.WireOutput.Declared.get -> bool
+Sage.Editing.WireOutput.Declared.init -> void
+Sage.Editing.WireOutput.Description.get -> string!
+Sage.Editing.WireOutput.Description.init -> void
+Sage.Editing.WireOutput.Name.get -> string!
+Sage.Editing.WireOutput.Name.init -> void
+Sage.Editing.WireOutput.WireOutput() -> void
+Sage.Editing.WireOutput.WireOutput(string! Name, string! Description, bool Declared) -> void
+Sage.Editing.Wiring
+Sage.Editing.WiringModel
+Sage.Editing.WiringModel.Document.get -> Sage.Editing.EditDocument!
+Sage.Editing.WiringModel.InputsOf(string! target) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireInput>!
+Sage.Editing.WiringModel.Outputs() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireOutput>!
+Sage.Editing.WiringModel.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.WiringModel.Wires.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Connection!>!
+Sage.Editing.WiringModel.WiringModel(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
 const Sage.Editing.CommandLog.DefaultCapacity = 500 -> int
 const Sage.Editing.EditorPicking.FallbackRadius = 0.35 -> float
+const Sage.Editing.PlaySession.WorldName = "play" -> string!
 const Sage.Editing.ViewportTools.DefaultAngleStep = 15 -> float
 const Sage.Editing.ViewportTools.DefaultGrid = 0.5 -> float
+override Sage.Editing.InspectorGroup.ToString() -> string!
+override Sage.Editing.InspectorRow.ToString() -> string!
 static Sage.Editing.EditDocument.GameNamespace(Sage.Simulation.Engine! engine) -> string!
 static Sage.Editing.EditTarget.TryResolve(Sage.Core.RecordStore! records, Sage.Core.RecordId startScene, string? text, out Sage.Editing.EditTarget target, out string! error) -> bool
 static Sage.Editing.EditorCommands.History(Sage.Editing.EditDocument! document) -> string!
@@ -258,6 +372,11 @@ static Sage.Editing.EditorPicking.RayFrom(Sage.Simulation.CameraPose camera, flo
 static Sage.Editing.EditorPicking.RayFromOrthographic(Sage.Simulation.CameraPose camera, float orthoHeight, System.Numerics.Vector2 viewportSize, System.Numerics.Vector2 screenPoint) -> Sage.Editing.EditorRay?
 static Sage.Editing.GizmoDrag.Begin(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.GizmoMode mode, Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay) -> Sage.Editing.GizmoDrag?
 static Sage.Editing.GizmoMath.ScreenConstantSize(System.Numerics.Vector3 cameraPosition, System.Numerics.Vector3 origin, float fovY, float viewportHeight, float pixels) -> float
+static Sage.Editing.InspectorCommands.Describe(Sage.Editing.InspectorModel! model) -> string!
+static Sage.Editing.InspectorCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
+static Sage.Editing.InspectorModel.Of(Sage.Editing.EditDocument? document, Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Editing.InspectorModel!
+static Sage.Editing.InspectorValue.Format(object? value) -> string!
+static Sage.Editing.InspectorValue.TryParse(Sage.Core.FieldMetadata! field, string! text, out System.Text.Json.Nodes.JsonNode? value, out string! error, Sage.Core.RecordStore? records = null, string! defaultNamespace = "sage") -> bool
 static Sage.Editing.PaletteCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
 static Sage.Editing.PlacementFields.Of(Sage.Simulation.Placement! placement) -> Sage.Editing.PlacementFields
 static Sage.Editing.Placing.Place(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, System.Numerics.Vector3 at, float yaw = 0, string! name = "") -> Sage.Simulation.Placement?
@@ -266,6 +385,9 @@ static Sage.Editing.Placing.Surface(Sage.Simulation.World! world, in Sage.Editin
 static Sage.Editing.Placing.UniqueName(Sage.Editing.EditDocument! document, Sage.Core.RecordId prefab, string! wanted = "") -> string!
 static Sage.Editing.PlayCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.PlaySession?>! session) -> void
 static Sage.Editing.PlaySession.StandBelow(Sage.Simulation.World! world, System.Numerics.Vector3 eye) -> System.Numerics.Vector3
+static Sage.Editing.RecordDocument.ChildPath(string! parent, string! name) -> string!
+static Sage.Editing.RecordDocument.Open(Sage.Simulation.Engine! engine, string! type, Sage.Core.RecordId id) -> Sage.Editing.RecordDocument?
+static Sage.Editing.RecordDocument.ParseValue(string! text) -> System.Text.Json.Nodes.JsonNode?
 static Sage.Editing.RotateGizmo.Drag(in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, float stepDegrees = 0) -> float?
 static Sage.Editing.RotateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size) -> bool
 static Sage.Editing.Snap.Angle(float radians, float stepDegrees) -> float
@@ -281,3 +403,16 @@ static Sage.Editing.ViewportTools.OriginOf(Sage.Editing.EditDocument! document, 
 static Sage.Editing.ViewportTools.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditorSelection?>! selection) -> Sage.Editing.ViewportTools!
 static Sage.Editing.ViewportTools.Rotate(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, float yawDegrees) -> void
 static Sage.Editing.ViewportTools.UniqueName(Sage.Editing.EditDocument! document, string! wanted) -> string!
+static Sage.Editing.Wiring.Add(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, Sage.Simulation.Connection! wire, out string? error) -> bool
+static Sage.Editing.Wiring.Check(Sage.Editing.EditDocument! document, string! target, string! input) -> string?
+static Sage.Editing.Wiring.Describe(Sage.Simulation.Connection! wire) -> string!
+static Sage.Editing.Wiring.InputsOf(Sage.Simulation.Engine! engine, Sage.Simulation.Entity entity) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireInput>!
+static Sage.Editing.Wiring.IsSpecial(string! target) -> bool
+static Sage.Editing.Wiring.NameIt(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> string!
+static Sage.Editing.Wiring.NameOf(Sage.Simulation.Placement! placement) -> string?
+static Sage.Editing.Wiring.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
+static Sage.Editing.Wiring.Remove(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, params int[]! indices) -> int
+static Sage.Editing.Wiring.TargetEntity(Sage.Editing.EditDocument! document, string! target) -> Sage.Simulation.Entity
+static Sage.Editing.Wiring.Update(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, int index, Sage.Simulation.Connection! wire, out string? error) -> bool
+static Sage.Editing.WiringModel.Lines(Sage.Editing.EditDocument! document) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireLine>!
+static readonly Sage.Editing.InspectorModel.PlacementFieldNames -> System.Collections.Generic.IReadOnlyList<string!>!

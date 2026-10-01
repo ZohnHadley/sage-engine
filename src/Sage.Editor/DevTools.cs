@@ -65,9 +65,11 @@ public sealed class DevTools : IDisposable
     private bool _editing;
     private readonly EditorLayout _layout = new();
     private readonly LogPanel _log = new();
+    private readonly RecordsPanel _records;   // the record browser (#224)
     private PalettePanel? _palette;   // #222
     private PlaySession? _play;       // play-in-editor (#226): ed_play, ed_stop
     private PlayBar? _playBar;
+    private WiringPanel? _wiring;     // #225
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -79,6 +81,7 @@ public sealed class DevTools : IDisposable
         _pickable = e => e != _freeCamera && e != _viewportCamera;
         _camera = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0)) { Position = new Vector3(0, 0, 1) };
         _console = new DevConsoleWindow(cvars, engine.Core);
+        _records = new RecordsPanel(new RecordEditor(engine));
         _stats = new StatOverlay(cvars, engine.Core);
 
         _camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
@@ -163,6 +166,7 @@ public sealed class DevTools : IDisposable
         _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
         if (_menu != null) _menu.Editing = true;
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
+        _wiring = new WiringPanel(_selection!, _pickable);
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
@@ -213,6 +217,8 @@ public sealed class DevTools : IDisposable
         // The document's commands (doc_*, ed_undo, ed_redo, ed_history) are Sage.Editing's, so tests press
         // them too (issue #217).
         EditorCommands.Register(cvars, () => _document);
+        _records.Editor.Register(cvars);   // ed_rec_* (#224)
+        InspectorCommands.Register(cvars, () => _document);   // ed_set, ed_revert, ed_inspect (#223)
         // Selecting and moving (issue #221): ed_select, ed_move, ed_rotate, ed_delete, ed_duplicate, the snapping.
         _tools = ViewportTools.Register(cvars, () => _selection);
         PlayCommands.Register(cvars, () => _play);   // ed_play, ed_stop (#226)
@@ -321,17 +327,21 @@ public sealed class DevTools : IDisposable
     {
         _menu?.Draw(_game);
         _layout.BeginFrame();
-        if (_world != null && _selection != null && _palette is not { IsArmed: true }) _gizmo.Draw(_world, _selection, _pickable);
+        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();
+        _records.Draw();
         _palette?.Draw();
         _playBar?.DrawButton();
+        _wiring?.Draw();
+        if (_world != null) _wiring?.DrawLines(_world);
         _log.Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();
         _layout.DrawStatusBar(StatusLine());
         _palette?.HandleViewport();
+        if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);
     }
 
     // The ray through a pixel of the screen's view (the free camera's in the editor), for placing by click.
