@@ -6,9 +6,18 @@ using System.Linq;
 
 // `sage <verb> ...` (src/Sage.Cli/Sage.Cli.csproj).
 //
-//   sage validate <game> [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]
-//   sage schema <game> [<game> ...] [--out <dir>] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]
-//               [--client <Sage.Client.dll>]
+//   sage validate <game> [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]
+//   sage schema <game> [<game> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...]
+//               [--engine-content <dir>] [--client <Sage.Client.dll>]
+//   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
+//
+// --mods names a mod (a folder with a mod.json) or a folder of mods; each mod.json is read, the mods are
+// ordered as the game would order them (dependencies, loadAfter, loadBefore, then the order given) and
+// mounted after the game's as `mods/<id>`; a mod that would be refused at boot is reported. --game-mods adds
+// the mods in the game's own `modsDirectory`. --mounts stays for a bare patch folder with no mod.json.
+// `mods` lists the order and the refusals and prints the content report (what each mod added and patched,
+// where mods conflict, which assets are shadowed): it uses the game's own mods too, exits 1 on a refusal
+// or a content error, and a conflict is a warning (phase 4j, 4j-5).
 //
 // `validate` boots the game headlessly and runs every content check (issue #22). `schema` boots each
 // game the same way and writes JSON Schemas for its records, components and parts, with the ids its
@@ -18,12 +27,14 @@ using System.Linq;
 return args.Length == 0 ? Usage()
     : args[0] == "validate" ? Validate(args[1..])
     : args[0] == "schema" ? Schema(args[1..])
+    : args[0] == "mods" ? Mods(args[1..])
     : Usage();
 
 static int Usage()
 {
-    Console.Error.WriteLine("usage: sage validate <game folder> [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]");
-    Console.Error.WriteLine("       sage schema <game folder> [<game folder> ...] [--out <dir>] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>] [--client <Sage.Client.dll>]");
+    Console.Error.WriteLine("usage: sage validate <game folder> [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]");
+    Console.Error.WriteLine("       sage schema <game folder> [<game folder> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>] [--client <Sage.Client.dll>]");
+    Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
     return 2;
 }
 
@@ -38,6 +49,28 @@ static int Validate(string[] args)
     Console.WriteLine($"{Path.GetFullPath(game)}: {report.Records} records, {report.Errors.Count} error(s), {report.Warnings.Count} warning(s)" +
                       (options.EngineContent != null ? $" (engine content: {options.EngineContent})" : " (no engine content found)"));
     return report.Ok ? 0 : 1;
+}
+
+// The load order, the refusals and the content report. Conflicts are warnings; a refused mod or a content
+// error is exit code 1.
+static int Mods(string[] args)
+{
+    if (Options.Parse(args, allowOut: false) is not { Games.Count: 1 } options) return Usage();
+    string game = options.Games[0];
+    var report = Headless(() => ContentValidation.Run(options.For(game, gameMods: true)));
+
+    foreach (string line in report.ModLines) Console.WriteLine(line);
+    Console.WriteLine();
+    foreach (string line in report.ReportLines) Console.WriteLine(line);
+    Console.WriteLine();
+    // The refusals are listed above; the log's lines about them would say them twice.
+    foreach (string warning in report.Warnings.Where(w => !w.StartsWith("Mods: Mod '", StringComparison.OrdinalIgnoreCase)))
+        Console.WriteLine($"WARN  {warning}");
+    foreach (string error in report.Errors) Console.WriteLine($"ERROR {error}");
+    int refused = report.Mods.Refused.Count;
+    Console.WriteLine($"{Path.GetFullPath(game)}: {report.Mods.Active.Count} mod(s) active, {refused} refused, {report.Conflicts} conflict(s), " +
+                      $"{report.Errors.Count} error(s)");
+    return refused == 0 && report.Ok ? 0 : 1;
 }
 
 // Boots each game, collects what it declares and loads into one catalog, and writes the schemas. The
@@ -98,9 +131,13 @@ sealed class Options
     public string? Out { get; private set; }
     public string? Client { get; private set; }
 
-    public ValidateOptions For(string game, Action<Engine>? inspect = null) => new()
+    public List<string> Mods { get; } = new();
+    public bool GameMods { get; private set; }
+
+    public ValidateOptions For(string game, Action<Engine>? inspect = null, bool gameMods = false) => new()
     {
         GameDirectory = game, EngineContentDirectory = EngineContent, Mounts = Mounts, Inspect = inspect,
+        Mods = Mods, GameMods = GameMods || gameMods,
         AvailablePlugins = BasePlugins.All(),
     };
 
@@ -119,6 +156,14 @@ sealed class Options
                     break;
                 case "--client" when allowOut && i + 1 < args.Length:
                     options.Client = args[++i];
+                    break;
+                case "--game-mods":
+                    options.GameMods = true;
+                    break;
+                case "--mods":
+                    // Every argument up to the next option is a mod folder, or a folder of mods.
+                    while (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+                        options.Mods.Add(args[++i]);
                     break;
                 case "--mounts":
                     // Every argument up to the next option is a mount: "mods/extra" (its folder name is its

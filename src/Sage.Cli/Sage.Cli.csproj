@@ -11,6 +11,8 @@
     <AssemblyName>sage</AssemblyName>
     <!-- Declares nothing, so there is nothing to generate. -->
     <SageGenerators>false</SageGenerators>
+    <!-- Data mods (phase 4j) are experimental: sage mods reads the load order and the report. -->
+    <NoWarn>$(NoWarn);SAGE0132</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

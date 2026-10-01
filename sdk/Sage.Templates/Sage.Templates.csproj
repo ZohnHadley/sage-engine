@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Packs the `dotnet new` templates (issue #32): sage-game (a simulation half and a client half),
-    sage-game-data (no C#: game.json and records, the engine's scene) and sage-mod-data (a stub data mod).
+    sage-game-data (no C#: game.json and records, the engine's scene) and sage-mod-data (a data mod).
     Install with `dotnet new install <feed>/Sage.Templates.<version>.nupkg`, or straight from
     sdk/Sage.Templates/content/<name> while working on one (then give its sdkVersion parameter a version
     the feed has, since the default is filled in only by the pack).

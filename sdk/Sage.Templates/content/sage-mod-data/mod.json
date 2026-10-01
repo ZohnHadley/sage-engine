@@ -1,15 +1,23 @@
 {
-  // A data mod (docs/design/17-modding.md). A stub for now: nothing reads mod.json until data mods land
-  // (REDESIGN Stage B, 4j). The records in data/ are real, and can be checked against the game today:
-  //   sage validate <game folder> --mounts <this folder>=mymod
+  // A data mod (docs/design/17-modding.md). Put this folder in the game's `mods/` folder (game.json's
+  // "modsDirectory"), or in `user://mods`, and the game mounts it after its own content at the next start;
+  // check it before that with
+  //   sage mods <game folder> --mods <this folder>
+  //   sage validate <game folder> --mods <this folder>
   // `id` is the mod's record namespace, as a game's is: what data/ defines is `mymod:...`.
   "id": "mymod",
   "name": "MyMod",
   "version": "0.1.0",
+  "author": "",
+  "description": "A falchion for the player's hands.",
+  // The game this mod is for, and which of its versions (a range against game.json's "version"; a game
+  // with none is not checked).
   "game": "targetgame",
   "gameVersion": ">=0.1",
   // The engine versions the mod was made for, as game.json's "sage" is (issue #31).
   "sage": ">=0.1",
-  "dependencies": [],
+  // Mods that must be active, loaded before this one: { "other_mod": "^1.0" }.
+  "dependencies": {},
+  // Order, when those mods are there: the later mod wins where two change the same field.
   "loadAfter": []
 }

@@ -1199,3 +1199,13 @@ Sage.Simulation.SavedMod.SavedMod() -> void
 Sage.Simulation.SavedMod.SavedMod(string! Id, string! Version) -> void
 Sage.Simulation.SavedMod.Version.get -> string!
 Sage.Simulation.SavedMod.Version.init -> void
+const Sage.Simulation.RecordSchemas.Game = "game.schema.json" -> string!
+const Sage.Simulation.RecordSchemas.Mod = "mod.schema.json" -> string!
+Sage.Simulation.ValidateOptions.GameMods.get -> bool
+Sage.Simulation.ValidateOptions.GameMods.init -> void
+Sage.Simulation.ValidateOptions.Mods.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.ValidateOptions.Mods.init -> void
+Sage.Simulation.ValidationReport.Conflicts.get -> int
+Sage.Simulation.ValidationReport.ModLines.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.ValidationReport.Mods.get -> Sage.Core.ModLoadResult!
+Sage.Simulation.ValidationReport.ReportLines.get -> System.Collections.Generic.IReadOnlyList<string!>!

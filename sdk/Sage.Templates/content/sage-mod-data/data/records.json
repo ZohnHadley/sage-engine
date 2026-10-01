@@ -1,7 +1,18 @@
 [
   // A new thing, in this mod's namespace: `mymod:crate`, placeable like any prefab.
-  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } }
+  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } },
 
-  // Changing a record of the game or the engine is a patch: only the fields named change, e.g.
-  //   { "type": "gameplay_conventions", "id": "sage:default_conventions", "patch": true, "health": "hp" }
+  // A weapon is an attack (what a swing does) and an item that carries it: `mymod:falchion_swing` and
+  // `mymod:falchion` (add "slot": "MainHand" when the game's kit registers equipment slots). A bare id here is in this mod's namespace; the damage type is the engine's.
+  {
+    "type": "attack", "id": "falchion_swing", "damage": 30, "damageType": "sage:physical",
+    "reach": 2.2, "radius": 0.35, "arcDegrees": 100,
+    "windupTime": 0.15, "recoverTime": 0.2, "cooldown": 0.5
+  },
+  { "type": "item", "id": "falchion", "label": "falchion", "attack": "falchion_swing", "weight": 3 },
+
+  // Changing a record of the game or the engine is a patch: only the fields named change. The id is the
+  // game's (a bare id would mean `mymod:player`), and `sage mods` shows it among what this mod patched.
+  // Two mods that set the same field are a conflict, reported and won by the one that loads later.
+  { "type": "prefab", "id": "targetgame:player", "patch": true, "name": "wanderer" }
 ]
