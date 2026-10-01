@@ -875,6 +875,18 @@ public sealed class RecordStore
         return colon >= 0 && colon + 1 < file.Length ? file[(colon + 1)..] : null;
     }
 
+    // The record as the files wrote it, merged (definition, then each patch in load order), as a copy to
+    // change: its fields without `type`, `id`, `patch` and the other meta keys, but with `base`. What a
+    // record form shows and edits (issue #224); not what the game holds, which is this plus the base's
+    // fields, built into the record's type. Null when nothing of that id was loaded.
+    public JsonObject? RawJson(string type, RecordId id) =>
+        _raw.TryGetValue((type, id), out var record) ? (JsonObject)record.Fields.DeepClone() : null;
+
+    // The mount the record's defining file is in (FileOf's file), null when it came from no mount or was
+    // never loaded. A save into it is a change in place when it can be written to, a patch elsewhere.
+    public IMount? MountOf(string type, RecordId id) =>
+        _raw.TryGetValue((type, id), out var record) ? record.Source.File.Mount : null;
+
     // Where a loaded record, or a field inside it ("Tasks[2]"), is written: "game:data/ai.json:14:9".
     // For problems found after the load — a task name only a world's registry can judge — so they point
     // at a line like the load's own errors do. The bare id when the record came from no file.

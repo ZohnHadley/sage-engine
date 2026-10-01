@@ -517,6 +517,48 @@ tested; `EntityInspectorWindow` only draws it.
 a whole object as JSON), list editing in the panel, and overriding a component the prefab does not name.
 A JSON value with double quotes cannot pass the console's tokenizer; the panel has no such limit.
 
+## 10j. As built: the record browser and forms (#224, 2026-10-01)
+
+**Records are edited as JSON, saved into the file they came from.** `RecordDocument` (Sage.Editing) is one
+record open: `RecordStore.RawJson` (the definition and each patch merged, comments gone: what the files
+say, not the built object with its defaults and bases), a working copy, and a `CommandLog` of its own, so
+its undo is apart from the placements document's. `RecordEditor` holds the one that is open and the
+`ed_rec_*` console commands; the ImGui "Records" panel (`Sage.Editor`, docked as a tab beside the
+inspector) only draws and calls them.
+
+- **A field is set by a command**, `SetRecordValue`, at a path such as `components.timer.interval` or
+  `items[2]` (a name matches ignoring case; an index may be one past the end of its list, which adds an
+  element). Undo puts back the old value, or removes the field and the objects it made on the way, and a
+  drag of one field is one edit. (test: ARecordIsOpenedAsItsJsonAndANestedFieldIsSetAndUndone,
+  AFieldTheRecordDidNotHaveIsRemovedAgainByUndoAndTheObjectsItMadeWithIt, ADragOfOneFieldIsOneEditAndAnUnreachablePathChangesNothing)
+- **A console value is a JSON literal** (`ed_rec_set hp 120`, `name "Bob"`, `at [1,2,3]`, `tags {a: 1}`),
+  and anything that is not one is a string (`name Bob`). The console takes double quotes off an argument,
+  so in a list or an object a bare word is a string as well (`[a, b]` is two). This is a private parser of
+  Sage.Editing's, not the inspector's by `ValueKind` (#223): the record's JSON is untyped here, so the
+  literal says what it is. (test: AConsoleValueIsAJsonLiteralOrElseAString)
+- **Save writes where the record came from.** A record defined in a file of the game's own mount is
+  changed in place with `JsonFileEdit.PatchRecord`: comments, key order and the neighbouring records stay.
+  A record defined anywhere else (the engine's content, a kit, a mod) is saved the way a mod changes one:
+  a `"patch": true` record in the game's own `data/patches/<type>_<namespace>_<name>.json` naming only
+  what changed (objects merge field by field, a list is written whole), with the log saying the record is
+  not the game's. A second save adds to that patch, or to a patch file of the record the game already had.
+  A patch cannot remove a field, so a removal is reported and left. Either way the records are reloaded
+  (the hot reload path), the reloaded record becomes the saved copy, and a later file that patches the
+  value again is warned about. (test: ASaveGoesIntoTheFileTheRecordCameFromAndKeepsItsComments,
+  ARecordFromAnotherMountIsSavedAsAPatchInTheGamesFolderAndTheMergedRecordShowsIt)
+- **The game's mount** is the last folder mount that is neither the engine's (`sage`) nor a mod's: where
+  a patch goes.
+- **Provenance per field** is `RecordStore.Writes`: `RecordDocument.Provenance(path)` is the last write to
+  the field or into it (`set components.timer.interval  game:data/things.json:5:22`), shown in the form's
+  tooltips, and `Sources()` lists the files that wrote the record. `MetaAt(path)` walks the type's metadata
+  (an object's fields, a list's item) for the range, tooltip, enum values and record type the form's
+  widgets follow. (test: AFormKnowsAFieldsDeclarationAndWhereItCameFrom)
+- **Console**: `ed_rec_open <type> <id>`, `ed_rec_set <path> <value>`, `ed_rec_get [path]`, `ed_rec_save`,
+  `ed_rec_undo`, `ed_rec_redo`, `ed_rec_close`; Ctrl+Z / Ctrl+Shift+Z / Ctrl+S act on the Records panel
+  while it has the focus. (test: TheConsoleOpensSetsUndoesAndSavesARecord)
+- **The form is drawn over the JSON**, not with the inspector's widgets: those edit a field of a boxed
+  struct (`FieldMetadata.Set`), which a JSON value is not. Both read the same metadata, so ranges, units,
+  enums and record pickers agree.
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;

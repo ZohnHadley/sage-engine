@@ -36,6 +36,7 @@ internal sealed class EditorLayout
     public const string OutlinerTitle = "Outliner";
     public const string InspectorTitle = "Inspector";
     public const string ConsoleTitle = "Console";
+    public const string RecordsTitle = "Records";
 
     private const string HostTitle = "##sage_editor_dock_host";
     private bool _buildLayout = true;   // on the first frame, and after `ed_layout`
@@ -108,6 +109,7 @@ internal sealed class EditorLayout
         Native.igDockBuilderDockWindow(OutlinerTitle, left);
         Native.igDockBuilderDockWindow(PalettePanel.Title, left);   // a tab beside the outliner (#222)
         Native.igDockBuilderDockWindow(InspectorTitle, right);
+        Native.igDockBuilderDockWindow(RecordsTitle, right);   // a tab beside the inspector
         Native.igDockBuilderDockWindow(LogPanel.Title, bottom);
         Native.igDockBuilderDockWindow(ConsoleTitle, bottom);
         Native.igDockBuilderFinish(dock);
