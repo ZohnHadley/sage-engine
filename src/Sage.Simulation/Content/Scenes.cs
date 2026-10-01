@@ -139,6 +139,7 @@ public sealed class Scenes
             world.Teleport(player, where);
         }
         Log.Info(LogCat.World, $"'{world.Name}' is in scene '{state.Id}'");
+        _engine.Saves.SceneChanged();   // an autosave at the end of the next tick (4i-6)
         return true;
     }
 

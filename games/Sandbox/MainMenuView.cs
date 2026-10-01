@@ -10,7 +10,9 @@ namespace Sandbox;
 // Activate is where it acts (IViewModel.Activate): a slot's row loads that slot and closes the menu, so
 // the world under it is the restored one; `save` writes a new slot, which appears at the top of the
 // list; `resume` closes the menu; `quit` runs the host's `quit` (a headless app has none: nothing
-// happens). A slot this build cannot read is listed, greyed, and says why when chosen.
+// happens). A slot this build cannot read is listed, greyed, and says why when chosen. Each row also has
+// Overwrite, which saves over that slot, and Delete, which removes it, and says whether it is a quick-save
+// or an autosave (issue 4i-6; F5 and F9 are the engine's, not this menu's).
 [ViewModel("sandbox_main_menu")]
 public sealed class MainMenuView : IViewModel
 {
@@ -18,6 +20,7 @@ public sealed class MainMenuView : IViewModel
     {
         public string Name { get; internal set; } = "";
         public string When { get; internal set; } = "";
+        public string Kind { get; internal set; } = "";   // a string key, or empty for a save the player named
         public bool CanLoad { get; internal set; }
         public bool CannotLoad => !CanLoad;
         public SaveSlot? Save { get; internal set; }
@@ -58,6 +61,14 @@ public sealed class MainMenuView : IViewModel
             slot.Name = save.Name;
             slot.When = save.SavedUtc == default ? "" : save.SavedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             slot.CanLoad = save.CanLoad;
+#pragma warning disable SAGE0131   // SaveSlot.Kind: phase 4i's experimental save API, which this menu shows
+            slot.Kind = save.Kind switch
+            {
+                SaveKind.Quick => "@sandbox.menu.kind_quick",
+                SaveKind.Auto => "@sandbox.menu.kind_auto",
+                _ => "",
+            };
+#pragma warning restore SAGE0131
             Slots.Add(slot);
         }
     }
@@ -65,7 +76,21 @@ public sealed class MainMenuView : IViewModel
     public bool Activate(Widget widget, in UiBindContext context)
     {
         if (context.World is not { Engine: { } engine } world) return false;
-        if (UiScreen.RowOf(widget) is Slot slot) return Load(world, engine, slot);
+        if (UiScreen.RowOf(widget) is Slot slot)
+        {
+            switch (widget.Name)
+            {
+                case "overwrite":
+                    Say(engine.Saves.Save(slot.Name) ? "@sandbox.menu.overwritten" : "@sandbox.menu.save_failed", slot.Name);
+                    return true;
+                case "delete":
+#pragma warning disable SAGE0131   // SaveSystem.Delete: phase 4i's experimental save API
+                    Say(engine.Saves.Delete(slot.Name) ? "@sandbox.menu.deleted" : "@sandbox.menu.delete_failed", slot.Name);
+#pragma warning restore SAGE0131
+                    return true;
+            }
+            return Load(world, engine, slot);
+        }
 
         switch (widget.Name)
         {

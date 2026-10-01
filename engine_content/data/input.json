@@ -1,8 +1,9 @@
 [
   // Engine input maps (docs/design/08 §3.2–3.3). Actions are registered by modules (ClientModule
   // registers the client's own: Console, editor and UI; GameplayModule registers the simulation's:
-  // Move, Jump, Run, Crouch, ToggleView, Attack, Reload, Use); games add maps for their own actions, and player rebinds
-  // will be patches.
+  // Move, Jump, Run, Crouch, ToggleView, Attack, Reload, Use; the engine itself registers QuickSave and
+  // QuickLoad, issue 4i-6); games add maps for their own actions, and player rebinds will be patches. A
+  // game moves F5/F9 with a patch of these maps, or binds them in its own map as well.
   {
     // Active while the console is open; consumes all other keyboard input.
     "type": "input_map",
@@ -32,6 +33,8 @@
       "MenuAlternate": [ { "key": "Delete" }, { "gamepad": "X" } ],
       "MenuBack":      [ { "key": "Escape" }, { "gamepad": "B" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
+      "QuickSave":     [ { "key": "F5" } ],
+      "QuickLoad":     [ { "key": "F9" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   },
@@ -51,6 +54,8 @@
       "ToggleView":    [ { "key": "V" }, { "gamepad": "RightStickButton" } ],
       "Menu":          [ { "key": "Escape" }, { "gamepad": "Start" }, { "gamepad": "Back" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
+      "QuickSave":     [ { "key": "F5" } ],
+      "QuickLoad":     [ { "key": "F9" } ],
       "ToggleConsole": [ { "key": "OemTilde" } ]
     }
   }

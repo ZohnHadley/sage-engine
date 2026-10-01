@@ -79,6 +79,9 @@ public sealed class Engine : IDisposable
             StateMachines.Register(this);
             // Animation graphs and animators (issue #118): SetAnimParam, AnimTrigger, anim_debug.
             Animators.Register(this);
+            // Quick-save and quick-load (issue 4i-6): the engine's, bound to F5 and F9 in engine content.
+            Actions.Register(SaveSystem.QuickSaveAction, ActionKind.Button);
+            Actions.Register(SaveSystem.QuickLoadAction, ActionKind.Button);
         }
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
@@ -166,6 +169,7 @@ public sealed class Engine : IDisposable
             world.AddSystem(new LogicTimerSystem(world));         // sage:timer and sage:tween (issue #90)
             world.AddSystem(new TweenSystem(world));
             world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
+            world.AddSystem(new QuickSaveKeysSystem(world, this)); // F5 and F9 (issue 4i-6)
             // Skeletal poses and what follows them (issue #120): whoever animates a skeleton registers
             // its pose here; aim IK and bone attachments adjust and follow it in the Late phase, and the
             // registration passes through to SkinPoses, which skinned meshes are drawn from (#117).
