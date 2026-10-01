@@ -266,7 +266,22 @@ jobs:
           dotnet new sage-mod-data -n MyMod -o "$games/MyMod" --game mygame
           ( cd "$games/MyGame" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
           ( cd "$games/MyData" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
-          src/Sage.Cli/bin/Debug/net8.0/sage validate "$games/MyGame" --mounts "$games/MyMod=mymod"
+          # The mod through its mod.json (phase 4j): validated with the game, and `sage mods` lists the order
+          # and the report and exits 1 on a refused mod or a content error. Then the mod put where a game
+          # finds its mods, and the game's own mods folder checked the same way.
+          sage=src/Sage.Cli/bin/Debug/net8.0/sage
+          $sage validate "$games/MyGame" --mods "$games/MyMod"
+          $sage mods "$games/MyGame" --mods "$games/MyMod" | tee "$games/mods.log"
+          grep -q "1 mod(s) active, 0 refused" "$games/mods.log" || { echo "::error::the template mod was not loaded"; exit 1; }
+          grep -q "added item: mymod:falchion" "$games/mods.log" || { echo "::error::the template mod's weapon was not added"; exit 1; }
+          mkdir -p "$games/MyGame/mods" && cp -r "$games/MyMod" "$games/MyGame/mods/mymod"
+          $sage mods "$games/MyGame"
+          $sage validate "$games/MyGame" --game-mods
+          rm -r "$games/MyGame/mods"
+          # A mod.json key the loader does not know is an error here too, not a surprise at boot.
+          cp "$games/MyMod/mod.json" "$games/mod.json.bak" && sed -i 's/"loadAfter"/"loadafter_typo"/' "$games/MyMod/mod.json"
+          if $sage mods "$games/MyGame" --mods "$games/MyMod"; then echo "::error::a mod.json with an unknown key loaded"; exit 1; fi
+          mv "$games/mod.json.bak" "$games/MyMod/mod.json"
 
           echo 'namespace MyGame; public sealed class Store { public Friflo.Engine.ECS.EntityStore? Inner; }' > "$games/MyGame/Simulation/Friflo.cs"
           if ( cd "$games/MyGame" && dotnet build > "$games/sage0050.log" 2>&1 ); then

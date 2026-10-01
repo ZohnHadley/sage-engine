@@ -26,6 +26,14 @@ public sealed class ValidateOptions
     // Further folders mounted after the game's, in order, as a mod would be: (directory, namespace).
     public IReadOnlyList<(string Directory, string Namespace)> Mounts { get; init; } = Array.Empty<(string, string)>();
 
+    // Mods to load with the game (phase 4j, 4j-5), as the game would at boot: each folder is a mod (it has a
+    // mod.json) or a folder of mods (its subfolders with one). They are ordered as ModManager orders them,
+    // in the order given where nothing else decides, and mounted after the game's as `mods/<id>`.
+    public IReadOnlyList<string> Mods { get; init; } = Array.Empty<string>();
+
+    // Also load the mods in the game's own `modsDirectory` (game.json), before the ones named in Mods.
+    public bool GameMods { get; init; }
+
     // The game's module, when the caller already has it loaded (a test that references the game): the
     // manifest's assembly is then not loaded again from disk, as HeadlessApp.ForGame does.
     public IGameModule? GameModule { get; init; }
@@ -45,6 +53,18 @@ public sealed class ValidationReport
     public List<string> Errors { get; } = new();
     public List<string> Warnings { get; } = new();
     public int Records { get; internal set; }
+
+    // The mods the run found and what became of them (phase 4j): active in load order, refused with a
+    // reason, switched off. Empty when no mods were named.
+    public ModLoadResult Mods { get; internal set; } = ModLoadResult.Empty;
+
+    // The mod manager's lines (load order, refusals) and the content report's lines (what each mount added
+    // and patched, the conflicts between mods, shadowed assets), as `mod_conflicts` prints them.
+    public IReadOnlyList<string> ModLines { get; internal set; } = Array.Empty<string>();
+    public IReadOnlyList<string> ReportLines { get; internal set; } = Array.Empty<string>();
+
+    // How many conflicts between mods the content report found: warnings, not errors (decision 5).
+    public int Conflicts { get; internal set; }
     public bool Ok => Errors.Count == 0;
 }
 
@@ -90,7 +110,7 @@ public static class ContentValidation
             Host = HostKind.Server,
             AvailablePlugins = options.AvailablePlugins,
             HostModules = options.GameModule != null ? new IModule[] { options.GameModule } : Array.Empty<IModule>(),
-            Mods = Array.Empty<string>(),   // a game's mods are not validated with it yet: `--mounts` (4j-5 adds --mods)
+            Mods = ModFolders(options, manifest),
         });
         foreach (var (directory, ns) in options.Mounts)
         {
@@ -113,9 +133,43 @@ public static class ContentValidation
         app.Configure();
         app.LoadContent();
         report.Records = app.Engine.Records.Count;
+        report.Mods = app.Engine.Mods;
+        var content = ContentReport.Build(app.Engine.Records, app.Engine.Vfs);
+        report.ModLines = app.Engine.ModManager.ListLines().ToList();
+        report.ReportLines = content.Lines();
+        report.Conflicts = content.Conflicts.Count;
         options.Inspect?.Invoke(app.Engine);
         app.Start();
         app.CreateWorld("validate");   // the game's rules run: its scene is placed, its prefabs spawn
+    }
+
+    // The mod folders to hand SageApp: the game's own mods directory (GameMods), then each of options.Mods.
+    // A folder with a mod.json is a mod; otherwise its subfolders that have one are, and the rest are said
+    // to be skipped, as a boot's scan does.
+    private static List<string> ModFolders(ValidateOptions options, GameManifest manifest)
+    {
+        var folders = new List<string>();
+        if (options.GameMods && !string.IsNullOrWhiteSpace(manifest.ModsDirectory))
+        {
+            string own = Path.Combine(manifest.Directory, manifest.ModsDirectory);
+            if (Directory.Exists(own)) Expand(own, folders);
+        }
+        foreach (string dir in options.Mods)
+        {
+            if (!Directory.Exists(dir)) throw new DirectoryNotFoundException($"no mods folder {Path.GetFullPath(dir)}");
+            Expand(dir, folders);
+        }
+        return folders;
+    }
+
+    private static void Expand(string dir, List<string> folders)
+    {
+        if (File.Exists(Path.Combine(dir, "mod.json"))) { folders.Add(dir); return; }
+        foreach (string sub in Directory.GetDirectories(dir).OrderBy(d => d, StringComparer.Ordinal))
+        {
+            if (File.Exists(Path.Combine(sub, "mod.json"))) folders.Add(sub);
+            else Log.Warn(LogCat.Mods, $"{sub} has no mod.json, so it is not a mod (skipped)");
+        }
     }
 
     private const string ClientPlugin = "sage.client";

@@ -170,7 +170,7 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
   ARefusedModIsNotMountedAndTheGameStillBoots).
 - **Named mods replace discovery**: `-mods <dir>[,<dir>]` (`SageAppOptions.Mods`) loads exactly those folders in the order
   given, without the player's list; `-nomods` (an empty list) loads none (test: NamedModsReplaceDiscoveryAndNoneMeansNone).
-  `sage validate` and `sage schema` pass an empty list for now: `--mounts` stays how they take a mod until 4j-5.
+  `sage validate` and `sage schema` take `--mods` and `--game-mods` (4j-5, below); `--mounts` stays for a bare patch folder.
 - **Console:** `mod_list` (active in load order, switched off, refused with the reason), `mod_order` (this run's order, the
   player's order and the next start's), and `mod_enable <id>`, `mod_disable <id>`, `mod_move <id> <n>`, which write
   `user://mods.json` and say "applies at next start": nothing is remounted now, since the VFS has no unmount (decision 3).
@@ -186,3 +186,31 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
   test: AChangedModJsonSaysRestartToApply).
 - **Saves** list `Engine.Mods.Active` (4j-4), which the boot now fills; their mounts are the `mods/<id>` the save header
   leaves out of `content`.
+
+## As built (`sage` with mods, the schema and the template, issue 4j-5)
+
+- **Code:** `src/Sage.Cli/Program.cs` (`validate`, `schema`, `mods`), `ValidateOptions.Mods` / `GameMods` and
+  `ValidationReport.Mods` / `ModLines` / `ReportLines` / `Conflicts` (`ContentValidation`), `ManifestSchemas` in
+  `RecordSchemas.cs`, and the `sage-mod-data` template. Experimental, SAGE0132.
+- **`--mods <dir> ...`** names a mod (a folder with a `mod.json`) or a folder of mods (its subfolders with one; the rest are
+  skipped with the boot's warning). `--game-mods` adds the game's own `modsDirectory`. The folders go to `SageApp` as
+  `SageAppOptions.Mods`, so the mods are read, ordered (dependencies, `loadAfter`, `loadBefore`, then the order given),
+  refused and mounted after the game's as `mods/<id>` exactly as a boot does it, not by a second implementation (test:
+  AModNamedWithMods_IsReadOrderedAndMounted_AfterTheGame, AFolderOfMods_HoldsEachSubfolderWithAModJson_AndSkipsTheRest,
+  GameMods_AreTheModsInTheGamesOwnModsDirectory, TheOrderIsTheModManagers_NotTheOrderOnTheCommandLine). A refused mod is a
+  warning in the log and is listed with its reason; the game still validates (test:
+  ARefusedMod_IsReportedWithItsReason_AndTheGameStillValidates). A data error in a mod's records is an error (test:
+  ADataErrorInAMod_FailsValidation).
+- **`sage mods <game> [--mods ...]`** prints the load order and the refusals (`ModManager.ListLines`), then the content
+  report (`ContentReport.Lines`: what each mount added and patched, conflicts between mods, shadowed assets), then the
+  log's warnings and errors, and a summary line. It always includes the game's own mods. It exits 1 on a refused mod or a
+  content error; a conflict is a warning and exits 0 (test: TwoModsSettingOneField_ConflictAsAWarning_NotAnError).
+- **The schemas:** `sage schema` also writes `mod.schema.json` and `game.schema.json` (the keys the two loaders read; an
+  unknown key is refused, as the loaders refuse it). `.vscode/settings.json` maps them onto `**/mod.json` and
+  `**/game.json` (test: TheModSchema_AcceptsTheTemplatesModJson_AndRefusesAnUnknownKey,
+  TheGameSchema_AcceptsEveryGamesGameJson, TheWorkspaceSettings_MapModJsonAndGameJsonOntoTheirSchemas).
+- **The template** `sage-mod-data` is no longer a stub: `dependencies` is `{}`, and its `data/` has a new prefab, a weapon
+  (an `attack` and an `item` that carries it) and a patch of the game's `player`. It loads in a game made from `sage-game`
+  and reports no conflict (test: TheTemplateMod_LoadsInAGame_AddsItsWeapon_AndPatchesThePlayer). CI's template step validates
+  it with `--mods`, runs `sage mods`, puts it in the game's `mods/` and checks `--game-mods`, and checks that a `mod.json`
+  with an unknown key fails.
