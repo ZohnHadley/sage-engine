@@ -66,7 +66,7 @@ public sealed class ModManager                     // Engine service, used durin
 - **Later:** C# mod assemblies, an in-game mod manager UI, `.pak` packaging tool, Steam Workshop, per-field conflict UI in the editor (15).
 
 ## 14. Build steps
-1. `ModManager`: discovery, manifests, load order, mounting (with 05; TODO F37). *The pieces it builds on exist since migration step 5: VFS mounts with shadowing, per-mount record namespaces, the per-field patch merge and `rec_get`'s per-field origin (05 §3.6). `game.json` already has `modsDirectory`.*
+1. `ModManager`: discovery, manifests, load order, mounting (with 05; F37; built in 4j-1 and 4j-3, "As built" below). *The pieces it builds on exist since migration step 5: VFS mounts with shadowing, per-mount record namespaces, the per-field patch merge and `rec_get`'s per-field origin (05 §3.6). `game.json` already has `modsDirectory`.*
 2. Conflict report (depends on the record merge reporting, 05).
 3. Save header mod list (with 09).
 4. C# mod assemblies (later).
@@ -75,7 +75,7 @@ public sealed class ModManager                     // Engine service, used durin
 
 - **Code:** `src/Sage.Core/Mods/` (`ModManifest.cs`, `ModLoadOrder.cs`, `ModList.cs`), `GameManifest.Version`, and an
   empty `Engine.Mods` slot (a `ModLoadResult`) that 4j-3 fills at boot. All of it is experimental, SAGE0132
-  (MAKING_A_GAME §10b). Nothing mounts a mod yet.
+  (MAKING_A_GAME §10b). Nothing mounted a mod yet; 4j-3 does (below).
 - **`mod.json`** is read as strictly as `game.json`: an unknown key is an error (test: AnUnknownKeyInAModJsonIsAnErrorAsInGameJson).
   Fields: `id`, `name`, `version`, `author`, `description`, `game`, `gameVersion`, `sage`, `dependencies` (`{ "id": "range" }`),
   `loadAfter`, `loadBefore`, `incompatible` (test: AManifestReadsEveryField). The id follows the namespace rules, and a
@@ -103,3 +103,40 @@ public sealed class ModManager                     // Engine service, used durin
 - **`ModList`** is `user://mods.json`, `{ "order": [...], "disabled": [...] }`, saved through a temp file and a move (test:
   ModListRoundTripsAndAMissingFileIsTheDefault). A file that cannot be read is the default list and a warning, never a
   crash (test: ABadModsJsonFallsBackToTheDefaultWithAWarning).
+
+## As built (mods at boot, issue 4j-3)
+
+- **Code:** `src/Sage.Simulation/App/ModManager.cs`, `SageApp.MountMods`, `SageAppOptions.Mods` / `UserModsDirectory` /
+  `ModListFile` / `ModReportFile`, `Engine.ModManager`, the host's `-mods` / `-nomods` (`Sage.Host/Program.cs`), and
+  `HeadlessApp.WithMods` / `WithUserMods` / `WithModReport`. Experimental, SAGE0132.
+- **Found in two folders** (plan decision 2): `<game>/<modsDirectory>/*/mod.json` and `user://mods/*/mod.json`, ordered by
+  `ModLoadOrder` and the player's `user://mods.json`, and each active mod's folder is mounted after the game's as
+  `mods/<id>` in the record namespace `<id>` (test: ModsAreFoundInTheGamesFolderAndThePlayersAndMountedAfterTheGame). A
+  folder there without a `mod.json` is skipped with a warning. The same id in both folders is an error in the `Mods` log;
+  the player's copy is used and the game's is refused (test: TheSameIdInBothFoldersIsAnErrorAndThePlayersCopyIsUsed).
+- **The player's list** orders the mods and switches them off; the last mod wins a field (test:
+  ThePlayersListOrdersTheModsAndSwitchesThemOff).
+- **A refused mod is not mounted and the game still boots**: an unreadable `mod.json` (refused by its folder's name), code,
+  another game, a missing dependency, or a kit's content namespace (the loaded plugins' `[PluginContent]` namespaces are
+  passed to `Resolve` as reserved). The `Mods` log gets one summary line, `Mods: 1 active (good 1.0.0), 5 refused, 0
+  switched off`, then a warning per refusal with its reason and a line per note (test:
+  ARefusedModIsNotMountedAndTheGameStillBoots).
+- **Named mods replace discovery**: `-mods <dir>[,<dir>]` (`SageAppOptions.Mods`) loads exactly those folders in the order
+  given, without the player's list; `-nomods` (an empty list) loads none (test: NamedModsReplaceDiscoveryAndNoneMeansNone).
+  `sage validate` and `sage schema` pass an empty list for now: `--mounts` stays how they take a mod until 4j-5.
+- **Console:** `mod_list` (active in load order, switched off, refused with the reason), `mod_order` (this run's order, the
+  player's order and the next start's), and `mod_enable <id>`, `mod_disable <id>`, `mod_move <id> <n>`, which write
+  `user://mods.json` and say "applies at next start": nothing is remounted now, since the VFS has no unmount (decision 3).
+  A mod the list did not name joins it where it loads now, so a change does not reorder the rest; an unknown id is an
+  error naming the mods there are (test: TheConsoleWritesThePlayersListForTheNextStartAndChangesNothingNow).
+  `ModManager.Enable` / `Disable` / `Move` / `Next` are the same for a mods screen (4j-6).
+- **`user://logs/mod_report.txt`** is written once records have loaded: the summary, the load order with folders, the
+  switched off, the refused and the notes (test: TheBootWritesAModReport). The per-mod content report (records added and
+  patched, conflicts, shadowed assets) is 4j-2's `ContentReport`, which goes into `ModManager.WriteBootReport`, the one
+  seam left for it.
+- **Hot reload:** a mod is a folder mount like the game's, so `RecordHotReload` and the client's asset watchers cover its
+  `data/`, `strings/` and assets (test: EditingAModsRecordHotReloadsIt). In a dev build, a changed or new `mod.json`
+  warns "restart to apply" once per file (`ModManager.WatchManifests`, started by the host beside `RecordHotReload`;
+  test: AChangedModJsonSaysRestartToApply).
+- **Saves** list `Engine.Mods.Active` (4j-4), which the boot now fills; their mounts are the `mods/<id>` the save header
+  leaves out of `content`.

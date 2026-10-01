@@ -56,6 +56,21 @@ public sealed class SageAppOptions
     // #11). The executable's app does; a test, a tool or a second app in the same process leaves the
     // log as the host set it (CoreCVars.OwnsProcessLog).
     public bool OwnsProcessLog { get; init; }
+
+    // Mods (phase 4j, issue 4j-3; ModManager). Null: found in the game's `modsDirectory` and in
+    // UserModsDirectory. A list: exactly these mod folders, in this order, and nothing found (the host's
+    // -mods; empty is -nomods); the player's list is not applied to them.
+    public IReadOnlyList<string>? Mods { get; init; }
+
+    // The player's own mods folder, `user://mods`, looked in before the game's. Null: only the game's.
+    public string? UserModsDirectory { get; init; }
+
+    // The player's choices, `user://mods.json` (ModList): order and switched off. Null: every mod on, in
+    // id order, and mod_enable / mod_disable / mod_move have nowhere to write.
+    public string? ModListFile { get; init; }
+
+    // `user://logs/mod_report.txt`, written once content has loaded. Null: not written.
+    public string? ModReportFile { get; init; }
 }
 
 // The order an app goes through. Each step checks it comes after the one before, so a host that
@@ -104,6 +119,7 @@ public sealed class SageApp : IDisposable
             app.AddModules();
             app.MountPlugins();
             app.MountGame();
+            app.MountMods();
         }
         catch
         {
@@ -114,8 +130,8 @@ public sealed class SageApp : IDisposable
     }
 
     // Engine content first, then the content the loaded plugins carry (a kit's, issue #98), then the
-    // game's mounts in order: later wins (05 §3.1), so a game patches a kit as it patches the engine.
-    // Mods: F37.
+    // game's mounts in order, then the mods (MountMods): later wins (05 §3.1), so a game patches a kit as
+    // it patches the engine, and a mod patches the game.
     private void MountEngine()
     {
         if (_options.EngineContentDirectory is { } engineContent)
@@ -143,6 +159,22 @@ public sealed class SageApp : IDisposable
         if (Game is { } game)
             foreach (string mount in game.Mounts)
                 Engine.Vfs.Mount(new FolderMount($"{game.Id}/{mount}", Path.Combine(game.Directory, mount), game.Id));
+    }
+
+    // Mods, after the game (phase 4j, issue 4j-3): found or named, ordered, and each active one mounted as
+    // `mods/<id>` in the namespace `<id>`. A bare engine (no game) has none unless a list names some. A mod
+    // may not take the engine's, the game's or a loaded plugin's content namespace (`rpg`).
+    private void MountMods()
+    {
+        if (Game == null && _options.Mods == null) return;
+        var reserved = Engine.Modules.Modules
+            .Select(m => System.Reflection.CustomAttributeExtensions.GetCustomAttribute<PluginContentAttribute>(m.GetType())?.RecordNamespace)
+            .OfType<string>();
+        var mods = ModManager.Discover(_options, Game, reserved);
+        Engine.ModManager = mods;
+        Engine.Mods = mods.Loaded;
+        mods.Mount(Engine.Vfs);
+        mods.LogSummary();
     }
 
     private void AddModules()
@@ -261,6 +293,7 @@ public sealed class SageApp : IDisposable
         Engine.Records.RegisterCommands(CVars);
         Engine.Saves.RegisterCommands(CVars);
         Engine.Scenes.RegisterCommands(CVars);   // scene_load (issue #29)
+        Engine.ModManager.RegisterCommands(CVars);   // mod_list, mod_order, mod_enable/disable/move (4j-3)
         // Entity and scale commands work on any world, so every host has them, not only the one with
         // a window: a server's console and a test can spawn and list entities too.
         WorldConsoleCommands.Register(CVars, Engine);
@@ -282,7 +315,19 @@ public sealed class SageApp : IDisposable
         Engine.Actions.Seal.Seal("content was loaded");
         Engine.Vocabularies.Seal("content was loaded");   // records name their entries (issue #28)
         Engine.Records.Load(Engine.Vfs);   // seals record types
+        WriteModReport();
         ChooseStartScene();
+    }
+
+    // `user://logs/mod_report.txt` (4j-3). A report that can't be written is a warning: the game still runs.
+    private void WriteModReport()
+    {
+        if (_options.ModReportFile is not { } path) return;
+        try { Engine.ModManager.WriteBootReport(path, Engine.Records, Engine.Vfs); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn(LogCat.Mods, $"Couldn't write {path}: {ex.Message}");
+        }
     }
 
     // game.json's `"scene"` (or StartScene), which must name a scene record: a typo there is a load

@@ -28,6 +28,7 @@ const Sage.Simulation.LogicEntities.OnNotEqual = "OnNotEqual" -> string!
 const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
+const Sage.Simulation.ModManager.MountPrefix = "mods/" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
 const Sage.Simulation.RenderStages.Count = 8 -> int
 const Sage.Simulation.SaveSystem.AutosavePrefix = "autosave" -> string!
@@ -396,6 +397,7 @@ Sage.Simulation.Ease.SmootherStep = 29 -> Sage.Simulation.Ease
 Sage.Simulation.Ease.SmoothStep = 28 -> Sage.Simulation.Ease
 Sage.Simulation.Easing
 Sage.Simulation.Engine.Animations.get -> Sage.Simulation.GltfAnimationReader!
+Sage.Simulation.Engine.ModManager.get -> Sage.Simulation.ModManager!
 Sage.Simulation.Engine.Mods.get -> Sage.Core.ModLoadResult!
 Sage.Simulation.Engine.Mods.set -> void
 Sage.Simulation.EntityInputs.ComponentsTaking(string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -562,6 +564,22 @@ Sage.Simulation.MathRemapPart.InMin -> float
 Sage.Simulation.MathRemapPart.MathRemapPart() -> void
 Sage.Simulation.MathRemapPart.OutMax -> float
 Sage.Simulation.MathRemapPart.OutMin -> float
+Sage.Simulation.ModManager
+Sage.Simulation.ModManager.Choices.get -> Sage.Core.ModList!
+Sage.Simulation.ModManager.Disable(string! id) -> void
+Sage.Simulation.ModManager.Enable(string! id) -> void
+Sage.Simulation.ModManager.Found.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>!
+Sage.Simulation.ModManager.ListFile.get -> string?
+Sage.Simulation.ModManager.ListLines() -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Simulation.ModManager.Loaded.get -> Sage.Core.ModLoadResult!
+Sage.Simulation.ModManager.Move(string! id, int position) -> void
+Sage.Simulation.ModManager.Named.get -> bool
+Sage.Simulation.ModManager.Next() -> Sage.Core.ModLoadResult!
+Sage.Simulation.ModManager.PlayerOrder() -> System.Collections.Generic.List<string!>!
+Sage.Simulation.ModManager.RestartNeeded.get -> bool
+Sage.Simulation.ModManager.Searched.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.ModManager.Summary() -> string!
+Sage.Simulation.ModManager.WatchManifests() -> System.IDisposable!
 Sage.Simulation.Placement.Overrides -> Sage.Simulation.PrefabOverrides?
 Sage.Simulation.Placement.Id -> string!
 Sage.Simulation.PlayerCamera
@@ -576,6 +594,14 @@ Sage.Simulation.RenderEnvironment.FogMode -> Sage.Simulation.FogMode
 Sage.Simulation.RenderEnvironment.ShadowStrength -> float
 Sage.Simulation.RenderEnvironment.Stars -> float
 Sage.Simulation.RenderEnvironment.Zenith -> System.Numerics.Vector3
+Sage.Simulation.SageAppOptions.ModListFile.get -> string?
+Sage.Simulation.SageAppOptions.ModListFile.init -> void
+Sage.Simulation.SageAppOptions.ModReportFile.get -> string?
+Sage.Simulation.SageAppOptions.ModReportFile.init -> void
+Sage.Simulation.SageAppOptions.Mods.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Sage.Simulation.SageAppOptions.Mods.init -> void
+Sage.Simulation.SageAppOptions.UserModsDirectory.get -> string?
+Sage.Simulation.SageAppOptions.UserModsDirectory.init -> void
 Sage.Simulation.SaveKind
 Sage.Simulation.SaveKind.Auto = 2 -> Sage.Simulation.SaveKind
 Sage.Simulation.SaveKind.Manual = 0 -> Sage.Simulation.SaveKind

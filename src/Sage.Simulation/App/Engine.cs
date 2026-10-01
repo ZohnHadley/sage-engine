@@ -136,6 +136,11 @@ public sealed class Engine : IDisposable
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (phase 4j): may change before 1.0
     public ModLoadResult Mods { get; set; } = ModLoadResult.Empty;
 
+    // What was found, and the player's choices for the next start: mod_enable / mod_disable / mod_move and
+    // a mods screen go through it (4j-3). An app with no game has an empty one.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (phase 4j): may change before 1.0
+    public ModManager ModManager { get; internal set; } = ModManager.None();
+
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }
     public CoreCVars Core { get; }

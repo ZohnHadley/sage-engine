@@ -27,6 +27,7 @@ public class Game1 : Game
     // exists and before the first Update or Draw. The boot sequence moves out of Game1 in phase 1 (#10).
     private World world = null!;
     private RecordHotReload recordHotReload = null!;
+    private IDisposable? modWatch;   // dev: a changed mod.json says "restart to apply" (4j-3)
     private CVar<bool> recHotReload = null!;
 
 
@@ -132,7 +133,12 @@ public class Game1 : Game
         // systems in OnWorldCreated; the game spawns its scene there.
         app.LoadContent();
         if (BuildInfo.IsDevBuild)
+        {
             recordHotReload = new RecordHotReload(engine.Records, engine.Vfs);
+#pragma warning disable SAGE0132 // the host ships with the engine that declares the mods API
+            modWatch = engine.ModManager.WatchManifests();
+#pragma warning restore SAGE0132
+        }
         engine.Modules.ProvideHostService(new ClientHost(this));
         engine.Modules.ProvideHostService(devices);
         engine.Modules.ProvideHostService(actions);
@@ -289,6 +295,7 @@ public class Game1 : Game
     protected override void UnloadContent()
     {
         recordHotReload?.Dispose();
+        modWatch?.Dispose();
         base.UnloadContent();
     }
 
