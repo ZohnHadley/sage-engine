@@ -79,7 +79,7 @@ public class SandboxScreensTests
         var row = slots.Child(0);
         Assert.Same(slot, row.Data);                                         // the row is the slot it shows
         Assert.Equal("before", ((Label)row.Find("slotName")!).Text);
-        stack.Update(ClickOn(layer, row));
+        stack.Update(ClickOn(layer, row.Find("slotName")!));   // the name: the row's buttons are its own (4i-6)
 
         Assert.Equal("@sandbox.menu.loaded", menu.Message);
         Assert.False(stack.IsOpen);                                          // the menu closed over the restored world
@@ -124,13 +124,52 @@ public class SandboxScreensTests
         var row = Enumerable.Range(0, slots.ChildCount).Select(slots.Child).Single(r => r.Data == unreadable);
         Assert.True(row.Find("unreadable")!.Visible);
         stack.Update(UiInput.Wait(0f));
-        stack.Update(ClickOn(layer, row));
+        stack.Update(ClickOn(layer, row.Find("slotName")!));   // the name: the row's buttons are its own (4i-6)
         Assert.Equal("@sandbox.menu.cannot_load", menu.Message);
         Assert.True(stack.IsOpen);
 
         stack.Update(UiInput.Wait(0f));                                      // laid out again round the longer message
         stack.Update(ClickOn(layer, layer.Content.Find("resume")!));
         Assert.False(stack.IsOpen);
+    }
+
+    // Each row's Overwrite saves over its slot and Delete removes it (issue 4i-6); a quick-save's row says so.
+    [Fact]
+    public void TheMainMenuOverwritesAndDeletesASlot()
+    {
+        using var app = Boot();
+        var world = app.World;
+        CameraRigTests.Step(world);
+        var saves = app.Engine.Saves;
+        Assert.True(saves.Save("mine"));
+        var written = saves.Slots.Single().SavedUtc;
+        Thread.Sleep(20);
+        saves.QuickSave();
+
+        var stack = Stack(world);
+        var layer = stack.Open(MainMenu, new UiBindContext(world, Player(world)));
+        stack.Update(UiInput.Wait(0f));
+        var menu = (MainMenuView)layer.Screen!.ViewModel!;
+        var slots = (ItemList)layer.Content.Find("slots")!;
+        Widget RowOf(string name) =>
+            Enumerable.Range(0, slots.ChildCount).Select(slots.Child).Single(r => ((MainMenuView.Slot)r.Data!).Name == name);
+        Assert.Equal("quick", ((Label)RowOf(SaveSystem.QuickSlot).Find("slotKind")!).Text);
+        Assert.Equal("", ((Label)RowOf("mine").Find("slotKind")!).Text);
+
+        stack.Update(ClickOn(layer, RowOf("mine").Find("overwrite")!));
+        Assert.Equal("@sandbox.menu.overwritten", menu.Message);
+        Assert.Equal("mine", menu.MessageSlot);
+        Assert.True(stack.IsOpen);                                           // overwriting leaves the menu up
+        Assert.True(saves.Slots.Single(s => s.Name == "mine").SavedUtc > written);
+        Assert.Equal(2, menu.SlotCount);
+
+        stack.Update(UiInput.Wait(0f));
+        stack.Update(ClickOn(layer, RowOf(SaveSystem.QuickSlot).Find("delete")!));
+        Assert.Equal("@sandbox.menu.deleted", menu.Message);
+        Assert.Equal("Deleted quick.", ((Label)layer.Content.Find("message")!).Text);
+        Assert.False(saves.Exists(SaveSystem.QuickSlot));
+        Assert.Equal("mine", Assert.Single(menu.Slots).Name);
+        Assert.True(stack.IsOpen);
     }
 
     // SaveSystem.Slots: every slot's header, newest first, read once and again only after a save, a new

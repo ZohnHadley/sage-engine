@@ -30,6 +30,10 @@ const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
 const Sage.Simulation.RenderStages.Count = 8 -> int
+const Sage.Simulation.SaveSystem.AutosavePrefix = "autosave" -> string!
+const Sage.Simulation.SaveSystem.QuickLoadAction = "QuickLoad" -> string!
+const Sage.Simulation.SaveSystem.QuickSaveAction = "QuickSave" -> string!
+const Sage.Simulation.SaveSystem.QuickSlot = "quick" -> string!
 const Sage.Simulation.ShadowMath.DefaultCasterReach = 200 -> float
 const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
 const Sage.Simulation.ShadowMath.DefaultSize = 2048 -> int
@@ -517,6 +521,20 @@ Sage.Simulation.RenderEnvironment.FogMode -> Sage.Simulation.FogMode
 Sage.Simulation.RenderEnvironment.ShadowStrength -> float
 Sage.Simulation.RenderEnvironment.Stars -> float
 Sage.Simulation.RenderEnvironment.Zenith -> System.Numerics.Vector3
+Sage.Simulation.SaveKind
+Sage.Simulation.SaveKind.Auto = 2 -> Sage.Simulation.SaveKind
+Sage.Simulation.SaveKind.Manual = 0 -> Sage.Simulation.SaveKind
+Sage.Simulation.SaveKind.Quick = 1 -> Sage.Simulation.SaveKind
+Sage.Simulation.SaveSlot.Kind.get -> Sage.Simulation.SaveKind
+Sage.Simulation.SaveSystem.Autosave() -> void
+Sage.Simulation.SaveSystem.Delete(string! slot) -> bool
+Sage.Simulation.SaveSystem.HasPendingRequests.get -> bool
+Sage.Simulation.SaveSystem.NextAutosaveSlot() -> string!
+Sage.Simulation.SaveSystem.QuickLoad() -> void
+Sage.Simulation.SaveSystem.QuickSave() -> void
+Sage.Simulation.SaveSystem.RequestLoad(string! slot) -> void
+Sage.Simulation.SaveSystem.RequestSave(string! slot, Sage.Simulation.SaveKind kind = Sage.Simulation.SaveKind.Manual) -> void
+Sage.Simulation.SaveSystem.Save(string! slot, Sage.Simulation.SaveKind kind) -> bool
 Sage.Simulation.SceneEnvironment.Hour -> float?
 Sage.Simulation.SceneEnvironment.Sky -> Sage.Core.RecordRef<Sage.Simulation.SkyRecord!>
 Sage.Simulation.SavedContent

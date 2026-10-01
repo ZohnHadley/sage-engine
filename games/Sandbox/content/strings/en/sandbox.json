@@ -45,6 +45,13 @@
     "loaded": "Loaded {slot}.",
     "load_failed": "Could not load {slot}: see the log.",
     "cannot_load": "{slot} was saved in a format this build does not read.",
-    "hint": "Enter loads the save chosen. Esc or F10 closes."
+    "overwrite": "Overwrite",
+    "delete": "Delete",
+    "overwritten": "Saved over {slot}.",
+    "deleted": "Deleted {slot}.",
+    "delete_failed": "Could not delete {slot}: see the log.",
+    "kind_quick": "quick",
+    "kind_auto": "auto",
+    "hint": "Enter loads the save chosen. F5 quick-saves, F9 quick-loads. Esc or F10 closes."
   }
 }

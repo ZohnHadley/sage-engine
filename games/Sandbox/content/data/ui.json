@@ -161,7 +161,9 @@
 
   // ---- the main menu (issue #99) -------------------------------------------------------------------
   // Resume, Save and Quit, and every save there is to load (SaveSystem.Slots) over the `sandbox_main_menu`
-  // view-model (Sandbox/MainMenuView.cs). F10 opens it; choosing a save loads it and closes the menu.
+  // view-model (Sandbox/MainMenuView.cs). F10 opens it; choosing a save loads it and closes the menu; each
+  // row's Overwrite saves over it and Delete removes it (issue 4i-6), and says whether it is a quick-save
+  // or an autosave.
   { "type": "ui_layout", "id": "main_menu", "style": "ui_text",
     "nodes": {
       "window":   { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10, "minSize": [520, 0] },
@@ -180,7 +182,10 @@
       "slotName": { "widget": "label", "parent": "slot", "bind": "name", "expand": 1 },
       "unreadable": { "widget": "label", "parent": "slot", "text": "@sandbox.menu.unreadable", "style": "ui_dim",
                     "bindings": { "visible": "cannotLoad" } },
+      "slotKind": { "widget": "label", "parent": "slot", "bind": "kind", "style": "ui_dim" },
       "slotWhen": { "widget": "label", "parent": "slot", "bind": "when", "style": "ui_dim", "textAlign": "End" },
+      "overwrite": { "widget": "button", "parent": "slot", "text": "@sandbox.menu.overwrite", "style": "ui_button" },
+      "delete":   { "widget": "button", "parent": "slot", "text": "@sandbox.menu.delete", "style": "ui_button" },
 
       "message":  { "widget": "label", "parent": "window", "bind": "message", "args": { "slot": "messageSlot" }, "style": "ui_dim" },
       "hint":     { "widget": "label", "parent": "window", "text": "@sandbox.menu.hint", "style": "ui_dim", "textScale": 1 }

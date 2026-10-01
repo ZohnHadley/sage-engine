@@ -361,6 +361,50 @@ saved field opt-in.
   always written, so moving a placement in the content does not move one from an existing save. A
   component whose JSON is not an object of fields (a custom converter) is written whole when it differs.
 
+### As built (quick-save and autosave, issue 4i-6, 2026-10-01)
+
+`save` and `load` ran whenever they were called, and the only way in was the console or the Sandbox's
+menu. Now a save can be asked for from anywhere and still never runs mid-tick, F5 and F9 quick-save and
+quick-load, and autosaves rotate (`SaveRequests.cs`, experimental SAGE0131).
+
+- **A save runs at a tick boundary.** `RequestSave`, `RequestLoad`, `QuickSave`, `QuickLoad` and
+  `Autosave` asked for during a world's tick (a system, a trigger, a key read in Commands) are queued and
+  run when that tick ends: `World.RunFixed` calls the save system once every phase is done. Asked for
+  between ticks (the console, a menu) they are already at a boundary and run at once. `Save` and `Load`
+  called mid-tick become requests the same way, and return true for "asked". So a save asked for in
+  Gameplay is not written by Late, and what Late changes is in it (test:
+  ASaveAskedForMidTickRunsAtTheTickBoundary).
+- **Several in one tick: the saves first, then one load.** Every request was made about the tick that
+  just ran, so the saves record it and the load replaces it. Two saves to one slot are one write (the
+  later kind wins), two loads are the last asked for, and there is one autosave at most (test:
+  SavesAskedForInOneTickRunBeforeTheLoad).
+- **F5 and F9** are the engine's `QuickSave` and `QuickLoad` button actions, registered by the Engine and
+  bound in engine content's `gameplay` and `ui` input maps. A game moves them with its own `input_map` or
+  a patch of those (plan decision 7). `QuickSaveKeysSystem` (`sage.saves.quick_keys`, Commands) reads
+  them from the tick's `PlayerCommand`, not from a pawn, so they work with no player and while a screen is
+  open. They write and read the `quick` slot, as the `quicksave` and `quickload` commands do; `save` with
+  no slot is a quick-save (test: AQuickSaveThenAQuickLoadRoundTrips).
+- **Autosaves** go into `autosave1`…`autosaveN` (`save_autosave_slots`, default 3): the first slot that
+  does not exist, then the one written longest ago (test: AutosavesRotateAndReuseTheOldestSlot). One is
+  taken every `save_autosave_interval` seconds of simulation time (default 300; 0 turns the timer off),
+  counted on the engine's first world from the last save or load of any kind. Another is taken at the end
+  of the first tick after `Scenes.Load` (`scene_load`), so it records the new scene settled, and once
+  however many worlds changed. A load is not a scene change. `save_autosave 0` stops both;
+  `Autosave()` and the `autosave` command still work (test: AnAutosaveRunsOnASceneChangeAndOnTheTimer).
+- **A slot says its kind.** The header has `"kind"` (`quick`, `auto` or `manual`), `SaveSlot.Kind` reads
+  it, and `saves` lists it. A header from before has none, and that reads as Manual (test:
+  SlotsReportTheirKind).
+- **`Delete(slot)`** (and `save_delete`) removes a slot's folder and its staging folder, and the listing
+  follows (test: DeletingASlotRemovesIt).
+- **The Sandbox's main menu** gives each row Overwrite and Delete buttons and shows a quick-save's or an
+  autosave's kind. A click on the rest of the row still loads it (test: TheMainMenuOverwritesAndDeletesASlot).
+- **Limits.** A tick boundary is per world: with two worlds, a request runs when the world that asked
+  ends its tick, which is a boundary for that world and the one between ticks for the other. F5 and F9
+  are read in a tick, so a game paused with no ticks does not hear them; the console and a menu run
+  between ticks and are not held up.
+  The slot names are fixed (`quick`, `autosave<n>`); a slot the player names `autosave2` takes part in
+  the rotation.
+
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
 spells a player composed are the *world's*, not any one entity's.

@@ -49,7 +49,7 @@ namespace Sage.Simulation;
 // Format 3 (4i-3) adds the world's scene, each entity content placed has the `source` that placed it (a
 // prefab's child the game spawned names its `parent`), and `tombstones` lists, by source, what content
 // placed that the game destroyed.
-public sealed class SaveSystem
+public sealed partial class SaveSystem
 {
     public const int FormatVersion = 3;
 
@@ -124,10 +124,21 @@ public sealed class SaveSystem
 
     // ---- writing ------------------------------------------------------------------------------------
 
-    // Saves every world the engine has. Called at a tick boundary, never mid-tick: a save taken
-    // half-way through a phase would catch components some systems had updated and others had not.
-    public bool Save(string slot)
+    // Saves every world the engine has, as a manual save. Called at a tick boundary, never mid-tick: a
+    // save taken half-way through a phase would catch components some systems had updated and others had
+    // not. Called during a tick (by a system), it is a request instead and runs when the tick ends (4i-6).
+    public bool Save(string slot) => Save(slot, SaveKind.Manual);
+
+    // The same, saying which kind of save it is (4i-6): the header keeps it, and SaveSlot.Kind reads it.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public bool Save(string slot, SaveKind kind)
     {
+        if (IsMidTick)
+        {
+            RequestSave(slot, kind);
+            return true;
+        }
+
         string directory = SlotDirectory(slot);
         // Written beside the real folder and moved into place, so a crash mid-save leaves the previous
         // save intact rather than half of two (09 §3.6).
@@ -144,6 +155,7 @@ public sealed class SaveSystem
                 ["game"] = UserPaths.GameId,
                 ["engineVersion"] = BuildInfo.EngineVersion,
                 ["savedUtc"] = DateTime.UtcNow.ToString("o"),
+                ["kind"] = KindName(kind),   // quick, auto or manual (4i-6)
                 ["worlds"] = new JsonArray(_engine.Worlds.Select(w => (JsonNode)w.Name!).ToArray()),
                 // What made the world it holds (REDESIGN §4.5, issue 4i-2): a load compares these with what
                 // is loaded now and says what differs, and a load menu shows it (SaveSlot.Mismatches).
@@ -169,7 +181,8 @@ public sealed class SaveSystem
             if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
             Directory.Move(staging, directory);
             _slots = null;   // the listing a menu shows has a new or newer slot in it
-            Log.Info(LogCat.Save, $"Saved '{slot}': {total} entities across {_engine.Worlds.Count} world(s)");
+            _sinceAutosave = 0;   // the autosave clock counts from the last save of any kind
+            Log.Info(LogCat.Save, $"Saved '{slot}' ({KindName(kind)}): {total} entities across {_engine.Worlds.Count} world(s)");
             return true;
         }
         // Everything, on purpose: a save is the one operation where a leaked half-written folder is
@@ -317,8 +330,16 @@ public sealed class SaveSystem
     // upgraded, and every entity's id, prefab and name is read, before any world is touched: a save
     // that is corrupt anywhere is refused whole and the game is left as it was. What is left to do
     // after that point is laying data that has already been read onto the worlds.
+    //
+    // Called during a tick, it is a request and runs when the tick ends (4i-6), as Save does.
     public bool Load(string slot)
     {
+        if (IsMidTick)
+        {
+            RequestLoad(slot);
+            return true;
+        }
+
         string directory = SlotDirectory(slot);
         if (!Exists(slot)) { Log.Warn(LogCat.Save, $"No save '{slot}' in {Root}"); return false; }
 
@@ -372,6 +393,7 @@ public sealed class SaveSystem
         foreach (var world in _engine.Worlds)
             world.Resources.Get<GameRules>().OnLoaded(world);
 
+        _sinceAutosave = 0;   // a load is a fresh start for the autosave clock
         Log.Info(LogCat.Save, $"Loaded '{slot}': {total} entities");
         return true;
     }
@@ -876,6 +898,7 @@ public sealed class SaveSystem
             DateTime saved = default;
             int format = 0;
             string game = "", engine = "";
+            var kind = SaveKind.Manual;
             List<SavedPlugin>? plugins = null;
             List<SavedContent>? content = null;
             try
@@ -888,6 +911,7 @@ public sealed class SaveSystem
                     format = header["formatVersion"] is JsonValue f && f.TryGetValue(out int n) ? n : 0;
                     game = header["game"] is JsonValue g && g.TryGetValue(out string? id) ? id ?? "" : "";
                     engine = header["engineVersion"] is JsonValue e && e.TryGetValue(out string? v) ? v ?? "" : "";
+                    kind = ReadKind(header);
                     plugins = ReadPlugins(header);
                     content = ReadContent(header);
                 }
@@ -896,7 +920,7 @@ public sealed class SaveSystem
             {
                 /* a broken header still lists, as one that cannot be loaded */
             }
-            slots.Add(new SaveSlot(name, saved, format, game, engine,
+            slots.Add(new SaveSlot(name, saved, format, game, engine, kind,
                 plugins ?? new List<SavedPlugin>(), content ?? new List<SavedContent>(), Mismatches(plugins, content)));
         }
         slots.Sort((a, b) =>
@@ -911,19 +935,26 @@ public sealed class SaveSystem
 
     public void RegisterCommands(CVarRegistry cvars)
     {
-        cvars.RegisterCommand("save", CVarFlags.None, "save [slot]: write a save (default slot \"quick\").", a =>
-            Save(a.Count > 0 ? a[0] : "quick"));
+        cvars.RegisterCommand("save", CVarFlags.None, "save [slot]: write a save (no slot: a quick-save, as quicksave).", a =>
+        {
+            if (a.Count > 0) Save(a[0], SaveKind.Manual);
+            else Save(QuickSlot, SaveKind.Quick);
+        });
 
-        cvars.RegisterCommand("load", CVarFlags.None, "load [slot]: read a save back (default slot \"quick\").", a =>
-            Load(a.Count > 0 ? a[0] : "quick"));
+        cvars.RegisterCommand("load", CVarFlags.None, "load [slot]: read a save back (no slot: the quick-save).", a =>
+            Load(a.Count > 0 ? a[0] : QuickSlot));
+
+        RegisterQuickCommands(cvars);
 
         cvars.RegisterCommand("saves", CVarFlags.None, "What saves exist.", _ =>
         {
             int n = 0;
+            Rescan();
+            var kinds = Slots.ToDictionary(s => s.Name, s => KindName(s.Kind), StringComparer.Ordinal);
             foreach (var (slot, saved, entities) in List())
             {
                 string when = saved == default ? "unknown" : saved.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-                Log.Info(LogCat.Console, $"  {slot,-20} {when}   {entities} entities");
+                Log.Info(LogCat.Console, $"  {slot,-20} {kinds.GetValueOrDefault(slot, "manual"),-7} {when}   {entities} entities");
                 n++;
             }
             Log.Info(LogCat.Console, n == 0 ? $"no saves in {Root}" : $"{n} save(s) in {Root}");
@@ -951,7 +982,7 @@ public sealed class SaveSystem
 // One save on disk, as its header describes it (SaveSystem.Slots, issue #99): what a load menu lists.
 public sealed class SaveSlot
 {
-    internal SaveSlot(string name, DateTime savedUtc, int formatVersion, string game, string engineVersion,
+    internal SaveSlot(string name, DateTime savedUtc, int formatVersion, string game, string engineVersion, SaveKind kind,
                       IReadOnlyList<SavedPlugin> plugins, IReadOnlyList<SavedContent> content, IReadOnlyList<string> mismatches)
     {
         Name = name;
@@ -959,6 +990,7 @@ public sealed class SaveSlot
         FormatVersion = formatVersion;
         Game = game;
         EngineVersion = engineVersion;
+        Kind = kind;
         Plugins = plugins;
         Content = content;
         Mismatches = mismatches;
@@ -976,6 +1008,11 @@ public sealed class SaveSlot
     // The game id and engine version that wrote it.
     public string Game { get; }
     public string EngineVersion { get; }
+
+    // Who asked for it (issue 4i-6): a quick-save, an autosave or a save the player named. A save from
+    // before headers said is Manual.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public SaveKind Kind { get; }
 
     // The runtime plugins (id and version) and the content mounts that were loaded when it was written
     // (issue 4i-2). Empty for a save from before headers listed them.

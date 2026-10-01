@@ -348,7 +348,21 @@ public sealed class World : IDisposable
 
     // One simulation tick: copy poses for interpolation, then every Fixed phase in order, applying
     // buffered structural changes after each and propagating transforms after PostPhysics and Late.
+    // True while RunFixed is running this world's phases: what a save requested now waits for (4i-6).
+    internal bool InFixedTick { get; private set; }
+
     public void RunFixed(float dt)
+    {
+        InFixedTick = true;
+        try { RunFixedPhases(dt); }
+        finally { InFixedTick = false; }
+
+        // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with every
+        // phase of it done, and the autosave clock advances. Nothing to do costs a comparison.
+        Engine?.Saves.TickEnded(this, dt);
+    }
+
+    private void RunFixedPhases(float dt)
     {
         _lastTick = new TickTime(_lastTick.Tick + 1, dt, _lastTick.SimTime + dt);
         Log.SetTick(_lastTick.Tick);
