@@ -460,9 +460,6 @@ public static class PrefabExtensions
             world.SetParent(entity, parent);
             entity.AddTag<FromParentPrefab>();   // dies with it (World.Destroy)
         }
-        // Only the root of a runtime spawn: a child is re-spawned by its parent on load, so a *random* id of
-        // its own would duplicate it (FromParentPrefab, #161); SpawnPlaced derives the children's from this.
-        if (persist && parent.IsNull && record.Persist) world.MakePersistent(entity);
         if (overrides is { IsEmpty: false })
             world.Add(entity, new PrefabOverridden { Overrides = overrides.Clone() });   // for ent_dump and the editor
         Populate(world, entity, record, prefab);
@@ -476,6 +473,12 @@ public static class PrefabExtensions
         // What it was spawned as, for a save to diff it against (4i-5): before its children, a name or
         // an id are added, none of which is the prefab's.
         engine.Saves.NoteSpawned(world, entity, prefab, asAuthored, overrides);
+
+        // Only the root of a runtime spawn: a child is re-spawned by its parent on load, so a *random* id of
+        // its own would duplicate it (FromParentPrefab, #161); SpawnPlaced derives the children's from this.
+        // After the baseline, because the id comes with the cell it was made in (4g-1, InCell), which is not
+        // the prefab's: in the baseline it would never be written, and a load would lose it.
+        if (persist && parent.IsNull && record.Persist) world.MakePersistent(entity);
 
         if (record.Children.Count == 0) return entity;
         if (depth >= PrefabOverriding.MaxDepth)

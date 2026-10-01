@@ -43,7 +43,8 @@ public struct ChainedUpgrades : IComponent
 // Golden saves (docs/REDESIGN.md §4.5, issue #20): a save written by each released format must still
 // load. `Saves/format1` was written by main before components had stable ids — keyed by C# type name,
 // with no versions — `Saves/format2` by the format that gave them ids, and `Saves/format3` by the
-// reconciling format (4i-3) once it wrote a prefab-spawned entity as a diff against its prefab (4i-5). Both are committed files, not written by the
+// reconciling format (4i-3) once it wrote a prefab-spawned entity as a diff against its prefab (4i-5), and `Saves/format4` by the
+// format that keeps dormant cells (4g-1). All are committed files, not written by the
 // test, because the point is that a *file from the past* loads: a save written and read by the same
 // build proves nothing about that.
 //
@@ -72,7 +73,10 @@ public class GoldenSaveTests
                    "melee": { "attack": "fists" }, "inventory": { "capacity": 40 } } },
       { "type": "prefab", "id": "goblin", "name": "goblin",
         "components": { "ai_state": { "schedule": "sage:idle" } },
-        "parts": { "character": { "layer": "enemy" }, "attributes": {} } }
+        "parts": { "character": { "layer": "enemy" }, "attributes": {} } },
+      { "type": "prefab", "id": "guard", "name": "guard", "parts": { "attributes": {} } },
+      { "type": "scene", "id": "vault", "place": [ { "prefab": "guard", "at": [2, 0, 2], "name": "guard", "id": "guard" } ] },
+      { "type": "scene", "id": "yard" }
     ]
     """;
 
@@ -165,9 +169,8 @@ public class GoldenSaveTests
     // Format 3, written as diffs (4i-5): the hero and the goblin carry only what the game changed from their
     // prefabs, and are rebuilt from the prefabs with that laid over them.
     [Fact]
-    public void AGoldenSaveInTheCurrentFormatLoads()
+    public void AGoldenSaveInFormat3Loads()
     {
-        Assert.Equal(3, SaveSystem.FormatVersion);
         using var app = NewApp(Golden(3));
         var world = app.Engine.CreateWorld("main");
         using var log = new CaptureSink();
@@ -182,6 +185,40 @@ public class GoldenSaveTests
         Assert.True((bool)saved["diff"]!);
         Assert.False(saved["components"]!.AsObject().ContainsKey("sage:attributes"));
         Assert.Equal(100f, world.Attribute(world.Resolve(PersistentId.FromName("goblin")), Id("health")));
+    }
+
+    // Format 4 (4g-1): the same world, in the yard, with the vault it came from dormant — a wounded guard
+    // and a loaf dropped on its floor — kept in the sector it was played in while the world has rebased
+    // since. The vault wakes with both, the loaf where it fell.
+    [Fact]
+    public void AGoldenSaveInTheCurrentFormatLoads()
+    {
+        Assert.Equal(4, SaveSystem.FormatVersion);
+        using var app = NewApp(Golden(4));
+        var world = app.Engine.CreateWorld("main");
+        using var log = new CaptureSink();
+
+        Assert.True(app.Engine.Saves.Load("golden"));
+        AssertTheGoldenWorld(world, schedule: "");
+        Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn && e.Message.Contains("golden/world_main"));
+        Assert.Equal(new SectorCoord(1, 0), world.Origin().Sector);
+        Assert.Empty(world.Query<Pickup>().Entities.ToEntityList());
+        var guardId = ContentIds.Authored("scene:sage:vault", "guard")!.Value;
+        Assert.True(world.Resolve(guardId).IsNull);
+
+        var file = JsonNode.Parse(File.ReadAllText(Path.Combine(Golden(4), "golden", "world_main.json")))!;
+        Assert.Equal(0, (int)file["dormant"]!["scene:sage:vault"]!["sector"]!["x"]!);
+
+        Assert.True(app.Engine.Scenes.Load(world, Id("vault")));
+        var guard = world.Resolve(guardId);
+        Assert.Equal(75f, world.Attribute(guard, Id("health")));
+        var loaf = Assert.Single(world.Query<Pickup>().Entities.ToEntityList());
+        Assert.Equal(new Vector3(4, 0, 6), world.Origin().ToAbsolute(world.Get<Transform>(loaf).LocalPosition));
+        Assert.Equal(2, world.Get<Pickup>(loaf).Count);
+        Assert.Equal("scene:sage:vault", world.Get<InCell>(loaf).Source);
+        // The yard's goblin went to sleep in its place; the hero did not.
+        Assert.True(world.Resolve(PersistentId.FromName("goblin")).IsNull);
+        Assert.False(world.Resolve(PersistentId.FromName("hero")).IsNull);
     }
 
     // The other half of the acceptance test: the same rename with no upgrader is an error that names
@@ -288,6 +325,17 @@ public class GoldenSaveTests
 
         using var app = NewApp(target);
         var world = app.Engine.CreateWorld("main");
+
+        // Since format 4 (4g-1): a vault left dormant, with a wounded guard and a loaf dropped on its floor,
+        // and the world rebased since, so the vault's sector is not the file's origin.
+        app.CVars.Execute("save_autosave 0");   // a scene change would autosave into the golden folder
+        Assert.True(app.Engine.Scenes.Load(world, Id("vault")));
+        var guard = world.Resolve(ContentIds.Authored("scene:sage:vault", "guard")!.Value);
+        Effects.Apply(world, guard, Id("hurt"), guard, 25f);
+        world.SpawnPickup(Id("bread"), 2, new Vector3(4, 0, 6));
+        Assert.True(app.Engine.Scenes.Load(world, Id("yard")));
+        world.Rebase(new SectorCoord(1, 0));
+
         var ground = world.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
         world.Add(ground, Collider.Box(new Vector3(200, 1, 200)));
 
