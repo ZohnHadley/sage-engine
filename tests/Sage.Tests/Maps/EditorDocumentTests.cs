@@ -91,6 +91,60 @@ public class EditorDocumentTests
         }
     }
 
+    // Saving writes into the file as a person left it (issue #218): what did not change stays byte for
+    // byte, comments and the records beside the document included, and a move is the line that moved.
+    [Fact]
+    public void SavingChangesOnlyWhatChangedInTheFile()
+    {
+        var (engine, fixture) = NewEngine();
+        string written = """
+            // The yard.
+            [
+              { "type": "prefab", "id": "post", "components": { "transform": {} } },   // kept
+              {
+                "type": "placements",
+                "id": "yard",
+                "place": [
+                  { "prefab": "post", "at": [10, 0, -4], "name": "corner" },   // by the gate
+                  { "prefab": "post", "at": [12, 0, -4], "name": "middle" },
+                ],
+              },
+            ]
+            """;
+        fixture.Write("game", "data/yard.json", written);
+        using (engine)
+        {
+            engine.Records.Reload();
+            var world = engine.CreateWorld("edit");
+            var document = new EditorDocument(engine);
+            Assert.True(document.Open(world, new RecordId("sandbox", "yard")));
+            string path = document.Path;
+            string before = File.ReadAllText(path);
+
+            Assert.True(document.Save(world));
+            Assert.Equal(before, File.ReadAllText(path));   // nothing changed, nothing written differently
+
+            foreach (var entity in world.Query<Transform, FromPlacements>().Entities)
+                if (entity.Name == "middle") entity.GetComponent<Transform>().LocalPosition = new Vector3(13, 0, -4);
+            Assert.True(document.Save(world));
+
+            string[] a = before.Split('\n'), b = File.ReadAllText(path).Split('\n');
+            Assert.Equal(a.Length, b.Length);
+            var changed = Assert.Single(System.Linq.Enumerable.Range(0, a.Length), i => a[i] != b[i]);
+            Assert.Contains("\"at\": [13, 0, -4], \"name\": \"middle\"", b[changed]);
+            Assert.Contains("// The yard.", b[0]);
+
+            // A second save writes from the first, not from what was opened.
+            Assert.True(document.Save(world));
+            Assert.Equal(string.Join('\n', b), File.ReadAllText(path));
+
+            engine.Records.Reload();
+            Assert.True(engine.Records.TryGet(new RecordId("sandbox", "post"), out PrefabRecord _));
+            Assert.True(engine.Records.TryGet(new RecordId("sandbox", "yard"), out PlacementsRecord record));
+            Assert.Equal(new Vector3(13, 0, -4), record.Place[1].At);
+        }
+    }
+
     [Fact]
     public void ClosingTakesBackWhatItPutInTheWorld()
     {

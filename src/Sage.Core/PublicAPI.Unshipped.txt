@@ -4,6 +4,23 @@ Sage.Core.EntryValueAttribute
 Sage.Core.EntryValueAttribute.EntryValueAttribute() -> void
 Sage.Core.GameManifest.Version.get -> string?
 Sage.Core.GameManifest.Version.set -> void
+Sage.Core.JsonFileEdit
+Sage.Core.JsonFileEdit.AddRecord(object! record) -> void
+Sage.Core.JsonFileEdit.Changed.get -> bool
+Sage.Core.JsonFileEdit.Contains(string! type, Sage.Core.RecordId id) -> bool
+Sage.Core.JsonFileEdit.JsonFileEdit(string! text, System.Text.Json.JsonSerializerOptions? options = null) -> void
+Sage.Core.JsonFileEdit.Namespace.get -> string?
+Sage.Core.JsonFileEdit.Namespace.init -> void
+Sage.Core.JsonFileEdit.PatchRecord(string! type, Sage.Core.RecordId id, object! before, object! after) -> bool
+Sage.Core.JsonFileEdit.Read(string! type, Sage.Core.RecordId id, string! path) -> System.Text.Json.Nodes.JsonNode?
+Sage.Core.JsonFileEdit.ReadRecord(string! type, Sage.Core.RecordId id) -> System.Text.Json.Nodes.JsonNode?
+Sage.Core.JsonFileEdit.Remove(string! type, Sage.Core.RecordId id, string! path) -> bool
+Sage.Core.JsonFileEdit.RemoveRecord(string! type, Sage.Core.RecordId id) -> bool
+Sage.Core.JsonFileEdit.Save(string! path) -> void
+Sage.Core.JsonFileEdit.Set(string! type, Sage.Core.RecordId id, string! path, object? value) -> bool
+Sage.Core.JsonFileEdit.SetRecord(string! type, Sage.Core.RecordId id, object! record) -> void
+Sage.Core.JsonFileEdit.Text.get -> string!
+Sage.Core.JsonFileEdit.ToNode(object? value) -> System.Text.Json.Nodes.JsonNode?
 Sage.Core.ModList
 Sage.Core.ModList.Disabled.get -> System.Collections.Generic.List<string!>!
 Sage.Core.ModList.Disabled.set -> void
@@ -123,6 +140,7 @@ Sage.Core.Vocabulary.Shorthand.get -> bool
 Sage.Core.VocabularyAttribute.Shorthand.get -> bool
 Sage.Core.VocabularyAttribute.Shorthand.set -> void
 static readonly Sage.Core.ModLoadResult.Empty -> Sage.Core.ModLoadResult!
+static Sage.Core.JsonFileEdit.Open(string! path, System.Text.Json.JsonSerializerOptions? options = null) -> Sage.Core.JsonFileEdit!
 static Sage.Core.ModList.DefaultPath.get -> string!
 static Sage.Core.ModList.Load(string! path, out string? warning) -> Sage.Core.ModList!
 static Sage.Core.ModLoadOrder.Resolve(System.Collections.Generic.IEnumerable<Sage.Core.ModManifest!>! found, Sage.Core.ModList? userList, Sage.Core.GameManifest! game, Sage.Core.SemVersion engine, System.Collections.Generic.IEnumerable<string!>? reservedIds = null) -> Sage.Core.ModLoadResult!

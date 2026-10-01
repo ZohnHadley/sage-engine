@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Sage.Simulation;
 
@@ -22,6 +23,7 @@ namespace Sage.Simulation;
 public sealed class EditorDocument
 {
     private readonly Engine _engine;
+    private JsonObject? _saved;   // the document as last opened or saved: a save writes what changed since
 
     public EditorDocument(Engine engine) => _engine = engine;
 
@@ -67,6 +69,7 @@ public sealed class EditorDocument
         Id = id;
         Path = FileFor(id);
         world.SpawnPlacements(id, record);
+        _saved = Written(world.ReadPlacements(id));
         Dirty = false;
         Log.Info(LogCat.Editor, $"Opened '{id}' ({record.Place.Count} placement(s)) from {(Path.Length > 0 ? Path : "memory")}");
         Changed?.Invoke();
@@ -78,12 +81,13 @@ public sealed class EditorDocument
         if (IsOpen) world.ClearPlacements(Id);
         Id = default;
         Path = "";
+        _saved = null;
         Dirty = false;
         Changed?.Invoke();
     }
 
-    // Writes the world back out as the file a game will load. The document is one record in a file of
-    // its own, which keeps a save from touching whatever else a game keeps beside it.
+    // Writes the world back out into the file a game will load, touching only this document's record
+    // and, within it, only what changed.
     public bool Save(World world)
     {
         if (!IsOpen) return false;
@@ -96,40 +100,24 @@ public sealed class EditorDocument
         }
 
         var record = world.ReadPlacements(Id);
-        var file = new Dictionary<string, object?>
-        {
-            ["type"] = "placements",
-            ["id"] = Id.Name,
-        };
-        // The document's frame (issue #29), only when it has one: most documents are absolute metres.
-        if (record.Origin != default) file["origin"] = record.Origin;
-        if (record.RelativeTo != PlacementFrame.World) file["relativeTo"] = record.RelativeTo;
-        file["place"] = record.Place;
+        var file = Written(record);
 
         try
         {
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-            // The record store's own options, not fresh ones: they carry the field naming and the
-            // Vector3 converter that make this a *record* rather than a similar-looking object. Written
-            // with defaults, the first save produced `"Prefab"` and `{"X":518,...}`, which the loader
-            // that has to read it back would not recognise.
-            // Camel case for writing, because that is how every other record file in the repository
-            // reads. The loader does not care — its options are case-insensitive — but a person editing
-            // the file afterwards does.
-            var options = new JsonSerializerOptions(_engine.Records.Json)
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                // A placement's own `relativeTo` is optional: left out, it is the document's.
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-            };
-            string json = JsonSerializer.Serialize(new[] { file }, options);
-
-            // Written whole and moved into place, so an interrupted save cannot leave a half-file that
-            // the record loader will refuse on the next start (09 §3.3 does the same for saves).
-            string temporary = path + ".tmp";
-            File.WriteAllText(temporary, json);
-            File.Move(temporary, path, overwrite: true);
+            // Into the file as it stands (issue #218): only what changed since the document was opened
+            // or last saved is written, so comments, key order, the other records in the file and the
+            // fields it leaves at their defaults stay as a person wrote them. A document the file does
+            // not hold yet (a new one) is added to it, or makes it. JsonFileEdit writes the file whole
+            // and moves it into place, so an interrupted save cannot leave half a file behind.
+            var edit = JsonFileEdit.Open(path, _engine.Records.Json);
+            if (_saved == null || !edit.PatchRecord("placements", Id, _saved, file)) edit.SetRecord("placements", Id, file);
+            edit.Save(path);
+            _saved = file;
+        }
+        catch (JsonException ex)
+        {
+            Log.Error(LogCat.Editor, $"Could not save '{Id}' to {path}: it is not a record file ({ex.Message})");
+            return false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -142,6 +130,19 @@ public sealed class EditorDocument
         Log.Info(LogCat.Editor, $"Saved '{Id}' ({record.Place.Count} placement(s)) to {path}");
         Changed?.Invoke();
         return true;
+    }
+
+    // The document as its file says it, in the record store's dialect (its converters, camel case,
+    // enums as strings): what a save compares with the last one. The frame (issue #29) only when it has
+    // one: most documents are absolute metres.
+    private JsonObject Written(PlacementsRecord record)
+    {
+        var dialect = new JsonFileEdit("", _engine.Records.Json);
+        var file = new JsonObject { ["type"] = "placements", ["id"] = Id.Name };
+        if (record.Origin != default) file["origin"] = dialect.ToNode(record.Origin);
+        if (record.RelativeTo != PlacementFrame.World) file["relativeTo"] = dialect.ToNode(record.RelativeTo);
+        file["place"] = dialect.ToNode(record.Place);
+        return file;
     }
 
     // Documents this game has, for the Open menu.
