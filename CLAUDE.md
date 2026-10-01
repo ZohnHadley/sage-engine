@@ -5,7 +5,7 @@ modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3
 
 **Start here:** [`docs/history/handoff-2026-09-30.md`](docs/history/handoff-2026-09-30.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
-tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h, done), #153 (4i, done), #182 (4g, done), #200 (4j, done), each with sub-issues.
+tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h, done), #153 (4i, done), #182 (4g, done), #200 (4j, done), #215 (10a, the editor, done; guide docs/EDITOR.md), each with sub-issues.
 
 ## Commands
 ```bash
@@ -20,8 +20,8 @@ python3 tools/check_docs.py --tests <count>             # docs against the regis
 src/Sage.Cli/bin/Debug/net8.0/sage validate games/Sandbox # content checks, headless; exits 1 on errors (--mounts dir[=ns] ...)
 src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut \
     tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves \
-    tests/games/open-world tests/games/mods --out schemas   # JSON Schemas for VS Code; rerun after adding a
-                                                        # field/component/part/record (CI diffs schemas/)
+    tests/games/open-world tests/games/mods tests/games/editor --out schemas   # JSON Schemas for VS Code; rerun
+                                                        # after adding a field/component/part/record (CI diffs schemas/)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
 dotnet run --project games/Hello -c Development         # a Sage.Sdk game runs itself (host -game <folder>);
                                                         # the host never guesses a game without -game

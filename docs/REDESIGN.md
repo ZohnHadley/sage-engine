@@ -1335,7 +1335,7 @@ body position, documented rather than synced. SAGE0127. Details: docs/design/16 
 |---|---|---|
 | **8** | Designer logic polish: AI behaviour trees (§4.3 stage 4), per-entity map keys, problems panel, `sage validate` in templates | a quest with a door, a counter and a custom-BT creature, built with no C# |
 | **9** | Full modding (code mods, `.sagemod` packages, namespaced assets, keyed list merge) and save headers (§4.4, §4.5) [F37, F27] | two conflicting example mods (data and code) show the report; saves survive mod changes |
-| **10** | Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
+| **10** | **10a done** (#215: #216–#228, 10-1 to 10-13; pulled forward on the owner's request, 2026-10-01). The `Sage.Editing` model, commands and the command log, file-preserving write-back, the `-edit` mode of the dev host, picking and gizmos, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, the problems panel, and the exit game `tests/games/editor` (10-13); the guide is docs/EDITOR.md. 10b is next: brushes, the asset browser, the behaviour-tree view and the conditions editor. Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
 | **gate** | Scripting decision (§4.3 stage 5), informed by what the phase-5 samples needed | a written decision with evidence, replacing or confirming D3 |
 
 **Why this order.**
@@ -1346,6 +1346,10 @@ body position, documented rather than synced. SAGE0127. Details: docs/design/16 
 - Phases 1–3 still bake in what the later work needs (stable ids, metadata, documents, per-plugin
   registrations), so it is additive and not a rewrite.
 - The one exception is **4j**. Data mods are cheap on the existing VFS, and this genre lives on them.
+- **Phase 10a** was pulled forward too (2026-10-01, the owner's request): the editor's first half, on the
+  documents, overrides and metadata phases 1–4 already built.
+
+*As built, 10a (issue #228, 2026-10-01): the exit game.* `tests/games/editor` has no C# and no kit: a pressure plate (a trigger `body`), a door (a `body` and a `mover`), a crate and a light, and an empty level whose placements document holds only a hand-written comment. Through the editor's console commands alone, on a copy of the game, the level is opened, the plate and the door placed, moved and turned, the door's `mover.seconds` overridden to 0.5, the plate wired to the door's `Open`, two steps undone and redone, and the level played unsaved: the player put on the plate opens the door in half a second. Stop leaves the document, its history and the edit world as they were; the save keeps the comment; a plain boot with no editor loads the same placements, override and wire, and the plate opens the door there too (test: ADesignerBuildsALevelFromPrefabsInTheEditorAndTheGameLoadsWhatTheySaved). A level made from nothing with `doc_level` boots as a scene of its own (test: ANewLevelMadeInTheEditorIsASceneTheGameBoots). One engine fix: `ed_set door mover.seconds` reached the read-only component the `mover` part builds rather than the part, and now reaches the part. CI validates the game, includes it in `sage schema` and smoke-runs the host with `-edit level` on it. Details: docs/design/15 §10n; for designers, docs/EDITOR.md.
 
 **What deliberately waits:** multiplayer (keep the readiness rules), visual scripting, DesktopVK, AOT,
 and 2D skeletal animation.

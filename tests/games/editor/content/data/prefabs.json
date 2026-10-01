@@ -1,0 +1,13 @@
+[
+  // What the palette offers. A pressure plate is a trigger volume that fires OnStartTouch when something
+  // steps into it; the door is solid geometry with a mover that slides it two metres aside when sent Open.
+  // "seconds" is how long the trip takes: the field the exit overrides on the placed door.
+  { "type": "prefab", "id": "plate", "name": "pressure plate", "parts": { "body": { "size": [2, 1, 2], "trigger": true } } },
+  { "type": "prefab", "id": "door", "name": "door", "parts": { "body": { "size": [2, 3, 0.2] }, "mover": { "open": [2, 0, 0], "seconds": 2 } } },
+  { "type": "prefab", "id": "crate", "name": "crate", "parts": { "body": { "size": [1, 1, 1], "mass": 10 } } },
+  { "type": "prefab", "id": "light", "name": "light", "parts": { "light": { "colour": [1, 0.85, 0.6], "range": 8, "intensity": 1.2 } } },
+
+  // The level's own: the ground, and who plays.
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+  { "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } }
+]

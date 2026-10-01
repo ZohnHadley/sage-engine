@@ -1,0 +1,11 @@
+[
+  // The level: a floor, a player start, and the placements document the editor fills in. game.json starts
+  // every world here; `-edit level` (or `-edit level_placements`) opens it in the editor.
+  {
+    "type": "scene",
+    "id": "level",
+    "player": { "prefab": "player", "at": [0, 1, 8] },
+    "placements": ["level_placements"],
+    "place": [ { "prefab": "floor", "at": [0, -0.5, 0] } ]
+  }
+]

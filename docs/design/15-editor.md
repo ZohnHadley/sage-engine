@@ -657,22 +657,60 @@ status bar. The list is `ProblemList` (`src/Sage.Editing/ProblemList.cs`); `Prob
   row to the panel's `OpenRecord` hook (DevTools sets it to the record browser's `OpenById`, §10j).
 - **`ed_problems`** prints the summary, then each file and its problems. (test: TheConsolePrintsTheProblemsByFile)
 
+## 10n. As built: the phase 10a exit (#228)
+
+**A designer builds a level from prefabs (place, tune, wire, undo, play, save) without touching JSON, and
+the file they saved loads in the game** (REDESIGN §5 row 10). `tests/games/editor` is the proof: a game
+with no C# and no kit, four prefabs on engine parts only (a pressure plate, a `body` trigger; a door, a
+`body` with a `mover`; a crate; a `light`), and an empty level, the scene `level` with a floor and a player
+start naming `level_placements`, which holds a hand-written comment and an empty `place`.
+`EditorExitTests` (`tests/Sage.Tests/Editing/`) drives the editor only through its console commands, on a
+copy of the game in a temporary folder, with the same command sets DevTools registers and the edit world
+`-edit level` makes. The guide for designers is [docs/EDITOR.md](../EDITOR.md).
+
+- **End to end**: `doc_open level_placements`, `ed_place` the plate and the door, `ed_move` and
+  `ed_rotate` both (the door through the selection), `ed_set door mover.seconds 0.5`, `ed_wire plate
+  OnStartTouch door Open`; `ed_undo 2` takes the wire and the override away from the document and the
+  world, `ed_redo 2` puts them back. `ed_play` plays the unsaved level; the player put on the plate opens
+  the door in half a second (the override, not the prefab's two). `ed_stop` leaves the document, its
+  history and the edit world as they were; `doc_save` writes the file the document came from, with no
+  problem listed. The saved file still holds the comment above the list it now fills, and a plain boot
+  (`HeadlessApp.ForGame`, no editor) loads the same placements, override and wire, and the plate opens the
+  door there too. (test: ADesignerBuildsALevelFromPrefabsInTheEditorAndTheGameLoadsWhatTheySaved)
+- **A level from nothing**: `doc_level storeroom`, a crate and a lamp placed, the lamp's `light.range`
+  overridden, the crate duplicated and moved, saved; a game started in `editor:storeroom` has them where
+  the editor put them. (test: ANewLevelMadeInTheEditorIsASceneTheGameBoots)
+- **The game is clean**: it validates with no error and no warning of its own, the palette offers the
+  four prefabs, and `-edit level_placements` names the document in the scene that places it.
+  (test: TheEditorGameValidatesAndOffersItsPrefabs)
+- **One fix.** `ed_set door mover.seconds` was refused: the `mover` part builds a `sage:mover` component,
+  and `InspectorModel.Find` took the first group the name matched, the component, which the inspector
+  shows read-only. Without a `components.` or `parts.` prefix a row that can be edited now wins, so a
+  part's field is reached by its part's name. (test: ADesignerBuildsALevelFromPrefabsInTheEditorAndTheGameLoadsWhatTheySaved)
+- **CI**: `sage validate tests/games/editor`, the game in the `sage schema` list (and `SchemaTests`), and
+  a smoke run of the host with `-edit level` on it that places, overrides, wires, undoes and redoes, plays
+  for a second, stops and lists the problems, without saving; the Sandbox's `-edit yard` run stays.
+
 ## 11. v1 scope vs later
+
+**Phase 10a is done (#215, exit #228, §10n)**: the v1 list below is built. Phase 10b is next: brushes and
+block-out geometry, the asset browser, the behaviour-tree view and the conditions and actions editor.
+
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
   - ~~the outliner~~ **done**;
   - ~~an editable inspector~~ **done**, from reflection until 09's generator;
   - ~~place a prefab~~ **done (#222)**;
-  - the translate gizmo;
-  - undo/redo;
-  - play-in-editor;
+  - ~~the translate gizmo~~ **done (#221)**, with picking;
+  - ~~undo/redo~~ **done (#217)**, the command log;
+  - ~~play-in-editor~~ **done (#226)**;
   - ~~log and console panels~~ **done (#219)**, docked in the editor mode;
-  - log category `Editor`.
+  - ~~log category `Editor`~~ **done**.
 - **Later:**
-  - rotate/scale gizmos;
-  - record editor;
+  - ~~rotate~~ **done (#221)**, about Y only; scale gizmos;
+  - ~~record editor~~ **done (#224)**, the record browser;
   - asset browser;
-  - I/O link view;
+  - ~~I/O link view~~ **done (#225)**, the I/O panel and wire lines;
   - terrain tools;
   - ~~prefab override UI~~ **done (#223)**, the inspector on the document;
   - the rename/refactor command for asset paths (05 §3.2);

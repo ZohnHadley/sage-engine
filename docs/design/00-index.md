@@ -22,7 +22,7 @@ Status: designed 2026-09-22 and largely built since. Each doc's "As built" secti
 | [12-animation](12-animation.md) | Sprite animation now, skeletal later | short |
 | [13-ui](13-ui.md) | ImGui for dev tools; runtime UI choice | short |
 | [14-world-streaming](14-world-streaming.md) | Sectors, streaming rings, origin rebasing, interiors, dormancy | short |
-| [15-editor](15-editor.md) | Editor documents, command log, undo, inspector | short |
+| [15-editor](15-editor.md) | Editor documents, command log, undo, inspector; for designers, [EDITOR.md](../EDITOR.md) | short |
 | [16-gameplay-framework](16-gameplay-framework.md) | `GameRules`, Controller/Pawn, abilities, AI | short |
 | [17-modding](17-modding.md) | Load order, record merge, trusted C# mods | short |
 

@@ -140,6 +140,8 @@ jobs:
           "$sage" validate tests/games/mods
           "$sage" validate tests/games/mods --game-mods
           "$sage" mods tests/games/mods
+          # Phase 10a's exit (issue #228): the editor's test game, an empty level and four prefabs.
+          "$sage" validate tests/games/editor
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -147,11 +149,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor --out schemas' and commit the result"
             exit 1
           fi
 
@@ -267,6 +269,12 @@ jobs:
           # headlessly). Same allowances as above.
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+mod_list\n+mod_conflicts\n+ui_open rpg:shop\n+wait 2\n+ui_close all' \
             tools/smoke_run.sh "$host" tests/games/mods 3 Shaders Audio Records Input
+          # Phase 10a's exit (issue #228): the editor on its test game, `-edit level` (an empty level). The plate
+          # and the door placed, the door's speed overridden, the plate wired to it, two steps undone and
+          # redone, a second of play and back, and the problems listed. Nothing is saved here, so the repository
+          # stays as it was; EditorExitTests saves, and boots what it saved. Same allowances as above.
+          SAGE_SMOKE_ARGS='-edit level' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ed_palette\n+ed_place plate 0 0.5 2 0 plate\n+ed_place door 0 1.5 -4 180 door\n+ed_set door mover.seconds 0.5\n+ed_wire plate OnStartTouch door Open\n+ed_undo 2\n+ed_redo 2\n+ed_history\n+wait 1\n+ed_play\n+wait 2\n+ed_stop\n+wait 1\n+ed_problems\n+doc_status' \
+            tools/smoke_run.sh "$host" tests/games/editor 5 Shaders Audio Records Input
 
       # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
       # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.
