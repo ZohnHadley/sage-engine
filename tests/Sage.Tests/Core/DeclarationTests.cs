@@ -48,6 +48,7 @@ public class DeclarationTests
             ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
             ["state_machine"] = RegistrationOwners.Core,   // the engine's, like timers (#92)
             ["skeleton_sockets"] = RegistrationOwners.Core,   // sockets on a model's skeleton (#120)
+            ["ragdoll"] = RegistrationOwners.Core,            // the bodies a model falls apart into (issue #243)
             ["sky"] = RegistrationOwners.Core,                // the sky over a day (issue 4h-2)
             ["calendar"] = RegistrationOwners.Core,           // what the day count means as a date (issue 4g-2)
             ["terrain"] = RegistrationOwners.Core,            // built-in ground for a data-only game (issue 4g-3)
@@ -66,7 +67,7 @@ public class DeclarationTests
     public void APluginThatIsNotLoadedRegistersNothing()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "placements", "prefab", "scene", "skeleton_sockets", "sky", "state_machine", "terrain", "viewmodel" }, app.Records.TypeNames);
+        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "placements", "prefab", "ragdoll", "scene", "skeleton_sockets", "sky", "state_machine", "terrain", "viewmodel" }, app.Records.TypeNames);
     }
 
     // Plugin ids on declarations are strings, and one naming a plugin in another assembly (the client)
