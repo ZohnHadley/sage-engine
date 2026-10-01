@@ -58,7 +58,7 @@ skeletal animation (4d) are done; weapons and combat on one hit pipeline (4e, #1
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1222 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1224 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: ragdolls, mod loading, a standalone editor (today's
 is a dev-build overlay on the running game), and multiplayer. The roadmap in [`TODO.md`](TODO.md) says
@@ -198,7 +198,7 @@ CI fails when they are stale) and mapped by `.vscode/settings.json`; after addin
 a part or a record, regenerate them:
 
 ```bash
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons --out schemas
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves --out schemas
 ```
 
 [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) §3, "Editing records in VS Code", has the details.

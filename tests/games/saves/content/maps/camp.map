@@ -1,0 +1,20 @@
+// The camp's level (engine issue #167), written by hand: no brushes, only two point entities, each with
+// an id the save keeps it by. 32 units to the metre, z up: the ring lies at (6, 0, 4) in the scene and
+// the tally stands at (0, 0, 12). Taking the ring adds one to the tally.
+{
+"classname" "worldspawn"
+"message" "The goblin camp"
+}
+{
+"classname" "ring_on_floor"
+"origin" "192 -128 0"
+"targetname" "ring"
+"id" "ring"
+"OnPickedUp" "tally,Add"
+}
+{
+"classname" "tally"
+"origin" "0 -384 0"
+"targetname" "tally"
+"id" "tally"
+}

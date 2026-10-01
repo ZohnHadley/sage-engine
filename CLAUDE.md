@@ -5,7 +5,7 @@ modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3
 
 **Start here:** [`docs/history/handoff-2026-09-30.md`](docs/history/handoff-2026-09-30.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
-tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), each with sub-issues.
+tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h), #153 (4i, done), each with sub-issues.
 
 ## Commands
 ```bash
@@ -18,8 +18,10 @@ dotnet build Sage.sln -c Development -p:SageSkipShaders=true   # then the regist
     -dump-registry ../../../../../user/registry.json)   # what check_docs reads; Windows: no xvfb-run
 python3 tools/check_docs.py --tests <count>             # docs against the registry dump; --fix rewrites counts
 src/Sage.Cli/bin/Debug/net8.0/sage validate games/Sandbox # content checks, headless; exits 1 on errors (--mounts dir[=ns] ...)
-src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut --out schemas   # JSON Schemas for VS Code;
-                                                        # rerun after adding a field/component/part/record (CI diffs schemas/)
+src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut \
+    tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves \
+    --out schemas                                       # JSON Schemas for VS Code; rerun after adding a
+                                                        # field/component/part/record (CI diffs schemas/)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
 dotnet run --project games/Hello -c Development         # a Sage.Sdk game runs itself (host -game <folder>);
                                                         # the host never guesses a game without -game

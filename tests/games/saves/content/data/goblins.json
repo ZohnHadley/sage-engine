@@ -1,0 +1,15 @@
+[
+  // Goblins (engine issue #167): a character with the engine's attributes, and its build, an instant
+  // effect that sets its health when it is spawned. A prefab's health is data the save does not own: an
+  // untouched goblin is written as "nothing changed" and comes back with whatever the prefab says now
+  // (4i-5), while one the player hurt keeps its own.
+  { "type": "effect", "id": "goblin_build", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 30 } ] },
+  {
+    "type": "prefab", "id": "goblin", "name": "goblin",
+    "parts": {
+      "character": { "layer": "enemy" },
+      "attributes": {},
+      "effects": ["goblin_build"]
+    }
+  }
+]
