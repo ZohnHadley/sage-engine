@@ -351,11 +351,17 @@ public sealed class World : IDisposable
     // True while RunFixed is running this world's phases: what a save requested now waits for (4i-6).
     internal bool InFixedTick { get; private set; }
 
+    // A `Time.Pass` asked for during the tick, run at its boundary (issue 4g-2); null when none.
+    internal TimePassRequest? PendingTimePass;
+
     public void RunFixed(float dt)
     {
         InFixedTick = true;
         try { RunFixedPhases(dt); }
         finally { InFixedTick = false; }
+
+        // Time asked to pass (issue 4g-2) goes first, so a save at this boundary has the new time.
+        if (PendingTimePass != null) Time.Run(this);
 
         // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with every
         // phase of it done, and the autosave clock advances. Nothing to do costs a comparison.

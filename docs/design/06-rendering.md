@@ -919,7 +919,8 @@ Time of day, the light over a day, and weather on top of it, all headless: the c
   `time` prints it; `time_set 18:30` (or `18.5`) and `time_scale 120` are cheats (test: TheConsoleSetsTheClock).
   It is saved as the `clock` resource; a save from before it has none and loads, leaving the world's own
   clock (tests: TheClockSurvivesASave, AnOldSaveWithoutAClockStillLoads; the golden saves still load).
-  The calendar, schedules, waiting and sleeping are phase 4g's and read this clock.
+  The calendar and passing time are issue 4g-2's ("As built (the calendar and passing time)"); schedules and
+  resting are the rest of phase 4g's and read this clock.
 - **`time_between`** is a condition of the 4b vocabulary: `{ "time_between": { "from": 19, "to": 6 } }`. The
   window is from inclusive to exclusive and wraps past midnight; equal ends are an empty window
   (test: TimeBetweenWrapsPastMidnight).
@@ -1158,8 +1159,48 @@ found. The headless test checks the maths; the CI smoke run checks the client.
   Without shaders no material builds, so nothing casts and the sky and post steps fall back to clears and
   copies: the run proves the passes, targets, cvars, clock and weather in the real host, not the picture.
 - **Not yet:** the sun's direction is not quantised, so the grid that holds through a rebase still turns
-  as the sun moves (4h-4); a moon, and lamps that fade rather than switch; NPC schedules, the calendar and
-  waiting on the same clock are 4g's.
+  as the sun moves (4h-4); a moon, and lamps that fade rather than switch; NPC schedules on the same clock are
+  4g's (the calendar and passing time are built: "As built (the calendar and passing time)").
+
+### As built (the calendar and passing time, 2026-10-01 — issue 4g-2)
+What the clock's day count means as a date, and a way to move the clock a long way at once. Headless, in
+`Sage.Simulation/World`. Experimental, SAGE0129 (MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Simulation/World/Calendar.cs` (`CalendarRecord`, `CalendarMonth`, `GameDate`,
+  `Calendars`, the `weekday` and `date_between` conditions), `src/Sage.Simulation/World/Time.cs`
+  (`Time.Pass`, `TimePassed`), `WorldClock.Calendar`/`Date`, the `time_pass` command in
+  `WorldConsoleCommands`, and the tick-boundary hook in `World.RunFixed`. Tests:
+  `tests/Sage.Tests/Gameplay/CalendarTests.cs`.
+- **A `calendar` record** names `months` (`name`, `days`), `weekdays`, `startYear` and `startWeekday` (which
+  weekday the clock's day 0 is). Day 0 is the first day of the first month of `startYear`.
+  `CalendarRecord.DateOf(day)` and `WorldClock.Date(calendar)` walk the months, so months and years wrap by
+  arithmetic, and a day before day 0 still has a date (test: MonthsAndYearsWrapInACustomCalendar). A world
+  chooses one with `WorldClock.Calendar`; with none (or a record that is gone) it has
+  `CalendarRecord.Default`: twelve months of the usual lengths, no leap years, Monday to Sunday, year 1, day 0
+  a Monday (test: TheDefaultCalendarHasMonday). There are no leap years or moons yet: the year is the sum of
+  the months.
+- **`weekday`** is `{ "weekday": { "is": "Monday" } }` or `{ "weekday": { "anyOf": ["Saturday", "Sunday"] } }`,
+  by the world's calendar's names, case ignored (test: WeekdayReadsMonday). **`date_between`** is
+  `{ "date_between": { "fromMonth": 12, "fromDay": 1, "toMonth": 2, "toDay": 28 } }`: a window of the year,
+  both ends included, wrapping past the new year (test: DateBetweenWrapsPastTheNewYear).
+- **`Time.Pass(world, hours, reason)`** asks for a skip at the world's next tick boundary (the same place a
+  save runs): when the fixed phases of the tick have all finished, and before the tick's save, so no system
+  sees the hour change under it (test: TimePassesAtTheTickBoundary). Asked with no tick running, it runs at
+  once. Several requests in one tick are one skip: the hours add up, and the one event carries the first
+  reason (test: SeveralRequestsInATickAreOneSkip). It refuses hours that are not positive, finite and at most
+  a thousand years.
+- **A skip is an event, not ticks.** It moves the clock (day and hour) at once and sends one `TimePassed`
+  (`Hours`, `Reason`, `FromElapsed`, `ToElapsed`), which a reader sees at the start of the next tick, with the
+  clock already at the new time. Nothing ticks hour by hour, and `Scale` stays the rate the clock runs at
+  while played (test: PassingTimeNeverTicksTheSimulation). Schedules and the off-screen simulation (4g-4,
+  4g-6) catch up from the event.
+- **`time_pass <hours>`** (a cheat; `wait` is a script pause) does it in every world, reason `console`
+  (test: TimePass30MovesToTheNextDayAndFiresOnce). `time` prints the date as well.
+- **Saved** with the clock: `Calendar` is one more field of the `clock` resource, and a clock saved before it
+  loads with none, keeping its day count (tests: TheCalendarSurvivesASave, AClockSavedBeforeTheCalendarStillLoads;
+  the format 2 and 3 golden saves still load).
+- **Not yet:** nothing reads `TimePassed` (routines are 4g-4, the off-screen simulation 4g-6, rest and wait
+  screens 4g-7); a scene cannot choose a calendar, as it can a sky.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
