@@ -1,4 +1,6 @@
 #nullable enable
+override Sage.Editing.InspectorGroup.ToString() -> string!
+override Sage.Editing.InspectorRow.ToString() -> string!
 Sage.Editing.AddPlacement
 Sage.Editing.AddPlacement.AddPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index = -1) -> void
 Sage.Editing.AddPlacement.Description.get -> string!
@@ -40,6 +42,39 @@ Sage.Editing.EditDocument.Engine.get -> Sage.Simulation.Engine!
 Sage.Editing.EditDocument.EntityOf(Sage.Simulation.Placement! placement) -> Sage.Simulation.Entity
 Sage.Editing.EditDocument.Execute(Sage.Editing.IEditorCommand! command) -> bool
 Sage.Editing.EditDocument.Find(string! nameOrId) -> Sage.Simulation.Placement?
+Sage.Editing.InspectorCommands
+Sage.Editing.InspectorGroup
+Sage.Editing.InspectorGroup.Id.get -> string!
+Sage.Editing.InspectorGroup.Key.get -> string!
+Sage.Editing.InspectorGroup.Note.get -> string?
+Sage.Editing.InspectorGroup.Rows.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorRow!>!
+Sage.Editing.InspectorGroup.Section.get -> Sage.Editing.OverrideSection?
+Sage.Editing.InspectorModel
+Sage.Editing.InspectorModel.Document.get -> Sage.Editing.EditDocument?
+Sage.Editing.InspectorModel.Entity.get -> Sage.Simulation.Entity
+Sage.Editing.InspectorModel.Find(string! path) -> Sage.Editing.InspectorRow?
+Sage.Editing.InspectorModel.FromDocument.get -> bool
+Sage.Editing.InspectorModel.Groups.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorGroup!>!
+Sage.Editing.InspectorModel.Placement.get -> Sage.Simulation.Placement?
+Sage.Editing.InspectorModel.Revert(Sage.Editing.InspectorRow! row, out string! error) -> bool
+Sage.Editing.InspectorModel.Rows.get -> System.Collections.Generic.IEnumerable<Sage.Editing.InspectorRow!>!
+Sage.Editing.InspectorModel.Set(Sage.Editing.InspectorRow! row, System.Text.Json.Nodes.JsonNode? value, out string! error) -> bool
+Sage.Editing.InspectorModel.ToNode(object? value) -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.InspectorModel.TryRevert(string! path, out string! error) -> bool
+Sage.Editing.InspectorModel.TrySet(string! path, string! text, out string! error) -> bool
+Sage.Editing.InspectorModel.World.get -> Sage.Simulation.World!
+Sage.Editing.InspectorRow
+Sage.Editing.InspectorRow.Editable.get -> bool
+Sage.Editing.InspectorRow.Field.get -> Sage.Core.FieldMetadata!
+Sage.Editing.InspectorRow.Group.get -> Sage.Editing.InspectorGroup!
+Sage.Editing.InspectorRow.Overridden.get -> bool
+Sage.Editing.InspectorRow.OverrideValue.get -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.InspectorRow.Path.get -> string!
+Sage.Editing.InspectorRow.Provenance.get -> string!
+Sage.Editing.InspectorRow.SetBy.get -> Sage.Core.RecordWrite?
+Sage.Editing.InspectorRow.Value.get -> object?
+Sage.Editing.InspectorValue
+static readonly Sage.Editing.InspectorModel.PlacementFieldNames -> System.Collections.Generic.IReadOnlyList<string!>!
 static Sage.Editing.EditDocument.GameNamespace(Sage.Simulation.Engine! engine) -> string!
 Sage.Editing.EditDocument.History.get -> Sage.Editing.CommandLog!
 Sage.Editing.EditDocument.Id.get -> Sage.Core.RecordId
@@ -125,6 +160,11 @@ Sage.Editing.PlacementFields.At.get -> System.Numerics.Vector3
 Sage.Editing.PlacementFields.At.init -> void
 Sage.Editing.PlacementFields.Name.get -> string!
 Sage.Editing.PlacementFields.Name.init -> void
+static Sage.Editing.InspectorCommands.Describe(Sage.Editing.InspectorModel! model) -> string!
+static Sage.Editing.InspectorCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
+static Sage.Editing.InspectorModel.Of(Sage.Editing.EditDocument? document, Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Editing.InspectorModel!
+static Sage.Editing.InspectorValue.Format(object? value) -> string!
+static Sage.Editing.InspectorValue.TryParse(Sage.Core.FieldMetadata! field, string! text, out System.Text.Json.Nodes.JsonNode? value, out string! error, Sage.Core.RecordStore? records = null, string! defaultNamespace = "sage") -> bool
 static Sage.Editing.PlacementFields.Of(Sage.Simulation.Placement! placement) -> Sage.Editing.PlacementFields
 Sage.Editing.PlacementFields.PlacementFields() -> void
 Sage.Editing.PlacementFields.PlacementFields(System.Numerics.Vector3 At, float Yaw, string! Name, Sage.Simulation.PlacementFrame? RelativeTo) -> void

@@ -196,6 +196,7 @@ public sealed class DevTools : IDisposable
         // The document's commands (doc_*, ed_undo, ed_redo, ed_history) are Sage.Editing's, so tests press
         // them too (issue #217).
         EditorCommands.Register(cvars, () => _document);
+        InspectorCommands.Register(cvars, () => _document);   // ed_set, ed_revert, ed_inspect (#223)
 
         cvars.RegisterCommand("ent_select", CVarFlags.DevOnly, "ent_select <name>: select an entity for the inspector.", a =>
         {
