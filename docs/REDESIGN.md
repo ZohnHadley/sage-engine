@@ -919,6 +919,11 @@ because it edits the live play world (`DevTools.cs:84-87`).
     headless by `ShadowMath`, drawn from a caster view that keeps opaque meshes, terrain and skinned
     meshes only (a material's `castShadows`), read by the lit shaders with a 2×2 PCF; strength from the
     sky (docs/design/06 "As built (sun shadows)", SAGE0130).
+  - *As built (issue 4h-5, 2026-09-30).* The Sky-stage pass, `sage:sky`: a gradient from the sky
+    record's horizon to its zenith, hazed to the fog colour at the horizon, a sun disc, and stars by
+    night (`SkyRules.ColorAt`, `StarsAt`); linear or exp² fog (`FogMath`, `fogMode`, `fogDensity`), and
+    opaque things wholly past where fog is complete are culled. No sky record, no change (docs/design/06
+    "As built (sky and fog)", SAGE0130).
 - **UI:**
   - Keep `Screen`/`Panel` as view-models.
   - Add `ui_style` and `ui_layout` records (fonts, colours, anchors, templates) used by `PanelView` and

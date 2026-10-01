@@ -15,6 +15,7 @@ const Sage.Simulation.CameraMath.MaxFovY = 3.1241393 -> float
 const Sage.Simulation.DebugCamera.IdlePriority = -2147483647 -> int
 const Sage.Simulation.DebugCamera.OverridePriority = 2147483647 -> int
 const Sage.Simulation.FirstPersonRigSystem.Id = "sage.camera.first_person" -> string!
+const Sage.Simulation.FogMath.Invisible = 0.001953125 -> float
 const Sage.Simulation.LogicEntities.OnChanged = "OnChanged" -> string!
 const Sage.Simulation.LogicEntities.OnEqual = "OnEqual" -> string!
 const Sage.Simulation.LogicEntities.OnFalse = "OnFalse" -> string!
@@ -39,6 +40,11 @@ const Sage.Simulation.ShadowMath.DefaultSize = 2048 -> int
 const Sage.Simulation.ShadowMath.MinElevation = 0.01 -> float
 const Sage.Simulation.SkinMath.Influences = 4 -> int
 const Sage.Simulation.SkinMath.MaxBones = 64 -> int
+const Sage.Simulation.SkyRules.HazeBand = 0.12 -> float
+const Sage.Simulation.SkyRules.StarsOut = 0.15 -> float
+const Sage.Simulation.SkyRules.SunDiscGain = 4 -> float
+const Sage.Simulation.SkyRules.SunDiscInner = 0.9997 -> float
+const Sage.Simulation.SkyRules.SunDiscOuter = 0.99955 -> float
 const Sage.Simulation.StateMachines.OnStateChanged = "OnStateChanged" -> string!
 const Sage.Simulation.StateMachines.SetStateInput = "SetState" -> string!
 const Sage.Simulation.ThirdPersonRig.DefaultDistance = 3 -> float
@@ -387,6 +393,10 @@ Sage.Simulation.FirstPersonRigPart.ShowBody -> bool
 Sage.Simulation.FirstPersonRigSystem
 Sage.Simulation.FirstPersonRigSystem.FirstPersonRigSystem(Sage.Simulation.World! world, Sage.Core.RecordStore! records) -> void
 Sage.Simulation.FirstPersonRigSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
+Sage.Simulation.FogMath
+Sage.Simulation.FogMode
+Sage.Simulation.FogMode.Exp2 = 1 -> Sage.Simulation.FogMode
+Sage.Simulation.FogMode.Linear = 0 -> Sage.Simulation.FogMode
 Sage.Simulation.FromParentPrefab
 Sage.Simulation.FromParentPrefab.FromParentPrefab() -> void
 Sage.Simulation.GltfAnimationReader
@@ -505,7 +515,11 @@ Sage.Simulation.PlayerCameraSystem
 Sage.Simulation.PlayerCameraSystem.PlayerCameraSystem(Sage.Simulation.World! world) -> void
 Sage.Simulation.PlayerCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.PoseSampler
+Sage.Simulation.RenderEnvironment.DrawSky -> bool
+Sage.Simulation.RenderEnvironment.FogDensity -> float
+Sage.Simulation.RenderEnvironment.FogMode -> Sage.Simulation.FogMode
 Sage.Simulation.RenderEnvironment.ShadowStrength -> float
+Sage.Simulation.RenderEnvironment.Stars -> float
 Sage.Simulation.RenderEnvironment.Zenith -> System.Numerics.Vector3
 Sage.Simulation.SaveKind
 Sage.Simulation.SaveKind.Auto = 2 -> Sage.Simulation.SaveKind
@@ -664,6 +678,7 @@ Sage.Simulation.SkyKey
 Sage.Simulation.SkyKey.AmbientGround -> System.Numerics.Vector3
 Sage.Simulation.SkyKey.AmbientSky -> System.Numerics.Vector3
 Sage.Simulation.SkyKey.Fog -> System.Numerics.Vector3
+Sage.Simulation.SkyKey.FogDensity -> float
 Sage.Simulation.SkyKey.FogEnd -> float
 Sage.Simulation.SkyKey.FogStart -> float
 Sage.Simulation.SkyKey.Horizon -> System.Numerics.Vector3
@@ -673,6 +688,7 @@ Sage.Simulation.SkyKey.SkyKey() -> void
 Sage.Simulation.SkyKey.Sun -> System.Numerics.Vector3
 Sage.Simulation.SkyKey.Zenith -> System.Numerics.Vector3
 Sage.Simulation.SkyRecord
+Sage.Simulation.SkyRecord.FogMode -> Sage.Simulation.FogMode
 Sage.Simulation.SkyRecord.Keys -> System.Collections.Generic.List<Sage.Simulation.SkyKey!>!
 Sage.Simulation.SkyRecord.Lean -> float
 Sage.Simulation.SkyRecord.SkyRecord() -> void
@@ -686,6 +702,8 @@ Sage.Simulation.SkyState.AmbientSky.get -> System.Numerics.Vector3
 Sage.Simulation.SkyState.AmbientSky.init -> void
 Sage.Simulation.SkyState.Fog.get -> System.Numerics.Vector3
 Sage.Simulation.SkyState.Fog.init -> void
+Sage.Simulation.SkyState.FogDensity.get -> float
+Sage.Simulation.SkyState.FogDensity.init -> void
 Sage.Simulation.SkyState.FogEnd.get -> float
 Sage.Simulation.SkyState.FogEnd.init -> void
 Sage.Simulation.SkyState.FogStart.get -> float
@@ -695,7 +713,9 @@ Sage.Simulation.SkyState.Horizon.init -> void
 Sage.Simulation.SkyState.ShadowStrength.get -> float
 Sage.Simulation.SkyState.ShadowStrength.init -> void
 Sage.Simulation.SkyState.SkyState() -> void
-Sage.Simulation.SkyState.SkyState(System.Numerics.Vector3 SunDirection, float SunElevation, System.Numerics.Vector3 SunColor, System.Numerics.Vector3 AmbientSky, System.Numerics.Vector3 AmbientGround, System.Numerics.Vector3 Horizon, System.Numerics.Vector3 Zenith, System.Numerics.Vector3 Fog, float FogStart, float FogEnd, float ShadowStrength) -> void
+Sage.Simulation.SkyState.SkyState(System.Numerics.Vector3 SunDirection, float SunElevation, System.Numerics.Vector3 SunColor, System.Numerics.Vector3 AmbientSky, System.Numerics.Vector3 AmbientGround, System.Numerics.Vector3 Horizon, System.Numerics.Vector3 Zenith, System.Numerics.Vector3 Fog, float FogStart, float FogEnd, float ShadowStrength, float FogDensity = 0, float Stars = 0) -> void
+Sage.Simulation.SkyState.Stars.get -> float
+Sage.Simulation.SkyState.Stars.init -> void
 Sage.Simulation.SkyState.SunColor.get -> System.Numerics.Vector3
 Sage.Simulation.SkyState.SunColor.init -> void
 Sage.Simulation.SkyState.SunDirection.get -> System.Numerics.Vector3
@@ -905,6 +925,11 @@ static Sage.Simulation.Easing.TryParse(System.ReadOnlySpan<char> text, out Sage.
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
+static Sage.Simulation.FogMath.CullDistance(Sage.Simulation.FogMode mode, float start, float end, float density = 0) -> float
+static Sage.Simulation.FogMath.Density(float start, float end, float density) -> float
+static Sage.Simulation.FogMath.Factor(Sage.Simulation.FogMode mode, float distance, float start, float end, float density = 0) -> float
+static Sage.Simulation.FogMath.Hides(float cullDistance, System.Numerics.Vector3 center, float radius) -> bool
+static Sage.Simulation.FogMath.ShaderParam(Sage.Simulation.FogMode mode, float start, float end, float density) -> float
 static Sage.Simulation.GltfAnimationReader.Read(System.IO.Stream! stream, string! name) -> Sage.Simulation.AnimationSet?
 static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
@@ -936,9 +961,14 @@ static Sage.Simulation.PoseSampler.Sample(Sage.Simulation.AnimationClip! clip, f
 static Sage.Simulation.PoseSampler.ToModelSpace(Sage.Simulation.Skeleton! skeleton, Sage.Simulation.SkeletonPose! pose) -> void
 static Sage.Simulation.PoseSampler.ToModelSpace(Sage.Simulation.Skeleton! skeleton, Sage.Simulation.SkeletonPose! pose, int firstJoint) -> void
 static Sage.Simulation.SkyRules.Apply(Sage.Simulation.SkyRecord! sky, double hour, Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather, Sage.Simulation.RenderEnvironment! environment) -> void
+static Sage.Simulation.SkyRules.ColorAt(Sage.Simulation.RenderEnvironment! environment, System.Numerics.Vector3 direction) -> System.Numerics.Vector3
 static Sage.Simulation.SkyRules.Current(Sage.Core.RecordStore! records, Sage.Simulation.WorldClock? clock) -> Sage.Simulation.SkyRecord?
 static Sage.Simulation.SkyRules.Evaluate(Sage.Simulation.SkyRecord! sky, double hour) -> Sage.Simulation.SkyState
+static Sage.Simulation.SkyRules.Gradient(System.Numerics.Vector3 horizon, System.Numerics.Vector3 zenith, float elevation) -> System.Numerics.Vector3
+static Sage.Simulation.SkyRules.Haze(float elevation) -> float
+static Sage.Simulation.SkyRules.StarsAt(float sunElevation) -> float
 static Sage.Simulation.SkyRules.SunAt(Sage.Simulation.SkyRecord! sky, double hour) -> (System.Numerics.Vector3 ToSun, float Elevation)
+static Sage.Simulation.SkyRules.SunDisc(System.Numerics.Vector3 direction, System.Numerics.Vector3 sunDirection) -> float
 static Sage.Simulation.StateMachines.FirstTransition(System.Collections.Generic.IReadOnlyList<Sage.Simulation.StateTransition!>? transitions, string? input, float timeInState, in Sage.Simulation.ConditionContext context) -> Sage.Simulation.StateTransition?
 static Sage.Simulation.StateMachines.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
 static Sage.Simulation.StateMachines.SetState(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity)) -> bool
