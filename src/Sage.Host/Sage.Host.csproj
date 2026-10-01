@@ -57,5 +57,6 @@
     <Using Include="Sage.Gameplay" />
     <Using Include="Sage.Client" />
     <Using Include="Sage.Editor" Condition="'$(Configuration)' != 'Shipping'" />
+    <Using Include="Sage.Editing" Condition="'$(Configuration)' != 'Shipping'" />
   </ItemGroup>
 </Project>

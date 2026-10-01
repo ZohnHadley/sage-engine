@@ -39,7 +39,7 @@ CrashReporter.Install();
 Log.Info(LogCat.Host, $"Sage {BuildInfo.EngineVersion} ({BuildInfo.Config}), game '{manifest.Name}' ({manifest.Id}), user folder {UserPaths.Root}");
 if (Log.File != null)
     Log.Info(LogCat.Host, $"Log file {Log.File.CurrentPath}");
-string[] knownOptions = { "game", "dump-registry", "mods", "nomods" };
+string[] knownOptions = { "game", "dump-registry", "mods", "nomods", "edit" };
 foreach (var option in launch.Options.Keys.Where(o => !knownOptions.Contains(o, StringComparer.OrdinalIgnoreCase)))
     Log.Warn(LogCat.Host, $"Unknown launch option -{option} (ignored)");
 
@@ -64,6 +64,18 @@ string? dumpRegistry = launch.Options.TryGetValue("dump-registry", out var dumpP
     ? Path.GetFullPath(dumpPath) : null;
 if (launch.Options.ContainsKey("dump-registry") && dumpRegistry == null)
     Log.Warn(LogCat.Host, "-dump-registry needs a file name (ignored)");
+
+// -edit [placements-or-scene]: the editor (phase 10a, issue #219). The app boots as it always does; then,
+// instead of the main world, the host makes an edit world from the document (Game1). A dev build only: a
+// Shipping host has no editor in it, so it says so and plays.
+string? edit = launch.Options.ContainsKey("edit") ? launch.Options["edit"] ?? "" : null;
+#if !SAGE_DEV
+if (edit != null)
+{
+    Log.Warn(LogCat.Host, "-edit: a Shipping build has no editor (ignored)");
+    edit = null;
+}
+#endif
 
 // What this app is: the game, engine content beside the executable, the simulation modules and the
 // client (a server would leave the client out). The game assembly must be loaded before the first World
@@ -111,7 +123,7 @@ try
 #if SAGE_DEV
     _ = typeof(DevTools).Assembly;   // Sage.Editor: loaded before the first World (03 §3.1)
 #endif
-    using var game = new Game1(app, dumpRegistry);
+    using var game = new Game1(app, dumpRegistry, edit);
     game.Run();
 }
 catch (SageFatalException fatal) when (fatal.Reported)

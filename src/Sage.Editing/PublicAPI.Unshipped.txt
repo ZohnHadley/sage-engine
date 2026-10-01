@@ -1,5 +1,23 @@
 #nullable enable
+Sage.Editing.EditTarget
+Sage.Editing.EditTarget.Document.get -> Sage.Core.RecordId
+Sage.Editing.EditTarget.Document.init -> void
+Sage.Editing.EditTarget.EditTarget() -> void
+Sage.Editing.EditTarget.EditTarget(Sage.Core.RecordId Scene, Sage.Core.RecordId Document) -> void
+Sage.Editing.EditTarget.Scene.get -> Sage.Core.RecordId
+Sage.Editing.EditTarget.Scene.init -> void
 Sage.Editing.IEditorCommand
 Sage.Editing.IEditorCommand.Description.get -> string!
 Sage.Editing.IEditorCommand.Do() -> void
 Sage.Editing.IEditorCommand.Undo() -> void
+Sage.Editing.LogView
+Sage.Editing.LogView.Categories.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+Sage.Editing.LogView.IsShown(string! category) -> bool
+Sage.Editing.LogView.Lines.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.LogEntry>!
+Sage.Editing.LogView.LogView(Sage.Core.RingBufferLogSink! ring) -> void
+Sage.Editing.LogView.MinLevel.get -> Sage.Core.LogLevel
+Sage.Editing.LogView.MinLevel.set -> void
+Sage.Editing.LogView.Only(string? category) -> void
+Sage.Editing.LogView.Refresh() -> bool
+Sage.Editing.LogView.Show(string! category, bool shown) -> void
+static Sage.Editing.EditTarget.TryResolve(Sage.Core.RecordStore! records, Sage.Core.RecordId startScene, string? text, out Sage.Editing.EditTarget target, out string! error) -> bool

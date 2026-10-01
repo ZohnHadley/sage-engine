@@ -151,16 +151,27 @@ public sealed class Engine : IDisposable
 
     // Creating a world initializes the ECS schema: every assembly that defines component types must
     // already be loaded (the host loads them first; see docs/design/03 §3.1).
-    public World CreateWorld(string name)
+    public World CreateWorld(string name) => CreateWorld(name, editing: false, Scenes.Start);
+
+    // An **edit world** (phase 10a, issue #219): furnished like any world (every module's resources and
+    // systems, the game's rules) and placed with `scene`, the game's start scene when that is empty, but
+    // `World.Editing`, so none of its Fixed systems run, and its rules are never started: no player is
+    // spawned, and nothing the rules do on starting happens. What the editor shows is the scene as its
+    // files say, under a free camera. With no scene and no start scene, the world is empty.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor (phase 10a)
+    public World CreateEditWorld(string name, RecordId scene = default) =>
+        CreateWorld(name, editing: true, scene.IsEmpty ? Scenes.Start : scene);
+
+    private World CreateWorld(string name, bool editing, RecordId scene)
     {
         // Prefab parts and entity inputs are per engine, and a world's entities are built from them:
         // one added after the first world would exist in some worlds and not others.
         Prefabs.Seal.Seal("the first world was created");
         Inputs.Seal.Seal("the first world was created");
         Outputs.Seal.Seal("the first world was created");
-        var world = new World(name, this);
+        var world = new World(name, this) { Editing = editing };   // before any module sees it
         _worlds.Add(world);
-        Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active)");
+        Log.Info(LogCat.World, $"World '{name}' created ({_worlds.Count} active){(editing ? ", for editing" : "")}");
 
         // Cameras are the engine's, like scenes (issue #76): every world resolves its camera entities
         // into CameraViews, whatever plugins it has. Added before any plugin's systems, which is what
@@ -222,10 +233,11 @@ public sealed class Engine : IDisposable
 
         // The start scene (issue #29), placed before the rules start: they find the world populated,
         // and their SpawnPlayer finds the scene's player start.
-        Scenes.Enter(world);
+        Scenes.Enter(world, scene);
 
-        // Now that every module has had its turn, the game's rules may populate the world (16 §3.1).
-        rules.OnWorldStarted(world);
+        // Now that every module has had its turn, the game's rules may populate the world (16 §3.1). Not
+        // an edit world's: it shows the document, without a player or anything else the rules would add.
+        if (!editing) rules.OnWorldStarted(world);
         return world;
     }
 

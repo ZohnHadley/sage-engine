@@ -100,6 +100,15 @@ public sealed class World : IDisposable
     // Frame systems (camera, UI, rendering) keep running (01 §5.2).
     public bool Paused { get; set; }
 
+    // An **edit world** (phase 10a, issue #219, 15 §3): built from a document for the editor to show, not
+    // to play. No Fixed-schedule system runs in it, whatever its run condition — nothing walks, falls,
+    // thinks or counts the hours — while its ticks still propagate transforms (an edited placement moves)
+    // and every Frame system (cameras, extraction, rendering, the UI) runs as in any world. The tick
+    // boundary's travel, passing time and saves are a play world's, so they wait too. Set when the world
+    // is made (`Engine.CreateEditWorld`) and never changed: play-in-editor makes a second world to play.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor (phase 10a)
+    public bool Editing { get; internal set; }
+
     public long Tick => _lastTick.Tick;
     public double SimTime => _lastTick.SimTime;
     internal TickTime LastTick => _lastTick;
@@ -365,13 +374,17 @@ public sealed class World : IDisposable
 
         // A door used or a journey asked for (issue 4g-5) first: the scene changes, and the hours it took
         // join any other time asked to pass this tick.
-        if (PendingTravel != null) Travel.Run(this);
-        // Time asked to pass (issue 4g-2) goes next, so a save at this boundary has the new time.
-        if (PendingTimePass != null) Time.Run(this);
+        // None of it in an edit world (issue #219): it is a document on screen, not a game in progress.
+        if (!Editing)
+        {
+            if (PendingTravel != null) Travel.Run(this);
+            // Time asked to pass (issue 4g-2) goes next, so a save at this boundary has the new time.
+            if (PendingTimePass != null) Time.Run(this);
 
-        // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with every
-        // phase of it done, and the autosave clock advances. Nothing to do costs a comparison.
-        Engine?.Saves.TickEnded(this, dt);
+            // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with
+            // every phase of it done, and the autosave clock advances. Nothing to do costs a comparison.
+            Engine?.Saves.TickEnded(this, dt);
+        }
         // And a streamed scene places, and puts to sleep, the sectors the ring reached or left (4g-3): work
         // that allocates, so never inside the phases.
         Engine?.Scenes.TickEnded(this);
@@ -436,7 +449,8 @@ public sealed class World : IDisposable
         }
     }
 
-    private bool ShouldRun(SystemInfo s) => s.Condition switch
+    // An edit world runs no Fixed system at all, not even an `Always` one (issue #219).
+    private bool ShouldRun(SystemInfo s) => Editing && PhaseInfo.ScheduleOf(s.Phase) == Schedule.Fixed ? false : s.Condition switch
     {
         RunCondition.Always => true,
         RunCondition.WhenNotPaused => !Paused,

@@ -1209,3 +1209,6 @@ Sage.Simulation.ValidationReport.Conflicts.get -> int
 Sage.Simulation.ValidationReport.ModLines.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.ValidationReport.Mods.get -> Sage.Core.ModLoadResult!
 Sage.Simulation.ValidationReport.ReportLines.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.Engine.CreateEditWorld(string! name, Sage.Core.RecordId scene = default(Sage.Core.RecordId)) -> Sage.Simulation.World!
+Sage.Simulation.SageApp.CreateEditWorld(string! name, Sage.Core.RecordId scene = default(Sage.Core.RecordId)) -> Sage.Simulation.World!
+Sage.Simulation.World.Editing.get -> bool

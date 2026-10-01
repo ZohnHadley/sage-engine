@@ -13,6 +13,7 @@
 # --dotnet-run runs a Sage.Sdk game project instead (issue #32): `dotnet run` in <game-dir>, which
 # builds it and starts the Player host the SDK names with -game on that folder. SAGE_SMOKE_COMMANDS, one
 # console command per line, runs before the quit (e.g. $'+wait 1\n+in_axis Move 0 1 2', a walk).
+# SAGE_SMOKE_ARGS, launch options separated by spaces, go before them: `-edit yard` runs the editor (#219).
 #
 # The log is found from what the host prints ("Log file ...", "user folder ..."), so it works wherever the
 # user folder is: <repo>/user/<game id>/logs for a dev build in this repository, the platform's app-data
@@ -26,6 +27,8 @@ shift $(( $# < 3 ? $# : 3 ))
 allowed=("$@")
 
 commands=()
+options=()
+[ -n "${SAGE_SMOKE_ARGS:-}" ] && read -r -a options <<< "$SAGE_SMOKE_ARGS"
 if [ -n "${SAGE_SMOKE_COMMANDS:-}" ]; then
     while IFS= read -r line; do [ -n "$line" ] && commands+=("$line"); done <<< "$SAGE_SMOKE_COMMANDS"
 fi
@@ -39,10 +42,10 @@ trap 'rm -f "$out" "$started"' EXIT
 status=0
 if [ -z "$host_dir" ]; then
     ( cd "$game_dir" && timeout $((seconds + 600)) xvfb-run -a -s "-screen 0 1024x768x24" \
-        dotnet run -- "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
+        dotnet run -- "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
 else
     ( cd "$host_dir" && timeout $((seconds + 60)) xvfb-run -a -s "-screen 0 1024x768x24" \
-        ./Sage.Host -game "$game_dir" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
+        ./Sage.Host -game "$game_dir" "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
 fi
 
 # The log this run wrote: the one the host printed, else the newest one written since it started in the

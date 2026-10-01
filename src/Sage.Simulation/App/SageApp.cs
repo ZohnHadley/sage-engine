@@ -365,6 +365,17 @@ public sealed class SageApp : IDisposable
         return Engine.CreateWorld(name);
     }
 
+    // The editor's world (phase 10a, issue #219): `Engine.CreateEditWorld` at the same stage a world is
+    // made. A dev host's `-edit` makes this one instead of the main world.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor (phase 10a)
+    public World CreateEditWorld(string name, RecordId scene = default)
+    {
+        if (Stage is not (AppStage.Started or AppStage.Running))
+            throw new InvalidOperationException($"CreateEditWorld('{name}') needs a started app; it is {Stage}. Call Start first.");
+        Stage = AppStage.Running;
+        return Engine.CreateEditWorld(name, scene);
+    }
+
     // `+command` launch arguments, in order. Once, with a world up (like Source's +map).
     public void RunLaunchCommands()
     {

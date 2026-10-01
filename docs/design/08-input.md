@@ -97,7 +97,7 @@ Text typed into UI fields (the console, name entry, editor fields) comes from Mo
   - `m_sensitivity` and `m_invert_y` (Archive), which also drive the editor camera, whose look is now a plain radians-per-pixel rate (#39).
 - **Fixed on the way (#40):** the keyboard and mouse listeners rolled their previous state at the *end* of `Update`, so every polled edge (`IsKeyPressed`…) read false afterwards, and Escape-to-quit never worked. They now roll at the start.
 - **Not yet:**
-  - an `Editor` input map (the editor camera still reads devices, §14 step 4);
+  - ~~an `Editor` input map~~ **done (#219)**: `editor`, with `EditorMove`, on only in the editor mode (15 §10c); the free camera's right-drag look still reads the mouse (§14 step 4);
   - mouse capture (it comes with a possessed pawn);
   - `bind`/`unbind` + `user://input.json` (§14 step 5);
   - `in_showactions`, `joy_deadzone` (dead zones are per binding);

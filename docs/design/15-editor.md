@@ -201,6 +201,58 @@ editor, per-entity overrides, play-in-editor, and an inspector generated from de
 than reflection (09 §3.2). Editing runs against the live world, so `pause 1` before moving things — the
 simulation will otherwise drop a crate while you inspect it.
 
+## 10c. As built: the editor mode of the host, `-edit` (#219, 2026-10-01)
+
+**The editor is a mode of the dev host** (phase 10a decision 2): `Sage.Host -game <folder> -edit
+[placements-or-scene]` boots the game exactly as a run does, then makes an **edit world** where the main
+world would have been, opens the document, and lays the screen out for editing. A Shipping build has no
+editor and says so (`-edit` is ignored with a warning); a dev run without `-edit` is what it was.
+
+- **An edit world runs no Fixed system**, whatever its run condition, `Always` included: nothing walks,
+  falls, thinks or counts the hours. Its ticks still propagate transforms, so a placement an edit moves
+  moves on screen, and every Frame system (cameras, extraction, drawing, the UI) runs as in any world.
+  The tick boundary's travel, passing time and saves wait too; a streamed scene's sectors are still placed.
+  It is a flag the world is made with (`World.Editing`, set by `Engine.CreateEditWorld` /
+  `SageApp.CreateEditWorld`), not `pause`: a paused world is a game waiting to go on, and play-in-editor
+  (#226) makes a second, real world rather than unpausing this one.
+  (test: AnEditWorldRunsNoFixedSystemButItsFrameSystemsAndTransformsRun,
+  APlayWorldBesideAnEditWorldStillPlays)
+- **It is the scene as its files say**, placed by the scene service as a run would place it, with the
+  game's modules and rules installed, but the rules are never *started*: no player, and nothing a game's
+  `OnWorldStarted` adds, nor after a hot reload or a `scene_load`, which place it again without one. The
+  free camera starts at the scene's player start.
+  (test: AnEditWorldIsPlacedWithTheSceneButHasNoPlayer)
+- **What `-edit` opens** (`EditTarget`, Sage.Editing): nothing named, the start scene and the first
+  placements document it names; a scene, that scene and its first document; a placements document, that
+  document in the first scene that names it, else in the start scene (the Sandbox's `-edit yard`). A name
+  that is neither is an error in the log, and the start scene opens instead.
+  (test: TheEditArgumentNamesASceneOrADocument)
+  The document is today's `EditorDocument`, opened in one place (`DevTools.BeginEditing`), which is where
+  #217's `EditDocument` takes over.
+- **The layout is ImGui's docking.** ImGui.NET 1.90 is built from the docking branch, so `DockSpace` is
+  there; the DockBuilder that sets up a default arrangement is ImGui's internal API with no C# binding, so
+  its six functions are declared against the cimgui library ImGui.NET already loads (`EditorLayout`). The
+  outliner is on the left, the inspector on the right, the **log panel** and the console are tabs along
+  the bottom, and a **status bar** under them says the document, saved or modified, the selection, the
+  world and the camera. Panels can be dragged and re-docked; `ed_layout` (View → Reset layout) puts them
+  back.
+- **The viewport is the screen itself.** The dock space's central node is a pass-through: the world the
+  renderer drew on the back buffer shows in the middle, and the mouse there is the free camera's, because
+  ImGui does not capture it over the hole. No second camera, no texture to bind, no size to keep in step;
+  `ed_viewport`'s window is still there for a second view. The panels cover the picture's edges rather
+  than squeezing it, which a picking tool (#221) has to allow for.
+- **The `Editor` input context** has a map now (`engine_content/data/input.json`, `editor`): `EditorMove`
+  on WASD, the console key and Escape. In the editor it is on and `Gameplay` is off, so a scene's screen
+  keys and a pawn's actions never fire; in a run it is off, so the editor's keys never reach a game (it
+  used to be set on with nothing bound). The free camera flies on `EditorMove` in the editor, needs no
+  pawn, and turns on a right-drag as before. Escape does not quit the editor; File → Exit or `quit` does.
+- **The log panel** shows the log's ring (`Log.Ring`, the last 2000 lines) at or above a level, without
+  the categories hidden, with "only this one" per category. What to show is `LogView` (Sage.Editing),
+  re-filtered only when the ring or the filter changes. (test: TheLogPanelFiltersTheRingByLevelAndCategory)
+- **CI runs it**: `tools/smoke_run.sh` passes `SAGE_SMOKE_ARGS` before the commands, and the Linux job
+  runs the Sandbox with `-edit yard`, selecting a crate, flying, resetting the layout and opening the
+  viewport window.
+
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
@@ -210,7 +262,7 @@ simulation will otherwise drop a crate while you inspect it.
   - the translate gizmo;
   - undo/redo;
   - play-in-editor;
-  - log and console panels;
+  - ~~log and console panels~~ **done (#219)**, docked in the editor mode;
   - log category `Editor`.
 - **Later:**
   - rotate/scale gizmos;
