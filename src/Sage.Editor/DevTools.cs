@@ -26,6 +26,7 @@ public sealed class DevTools : IDisposable
     // (REDESIGN §4.6), drawn by a camera entity like any other view and shown in an ImGui window.
     public const string ViewportTarget = "editor";
     private const int ViewportWidth = 480, ViewportHeight = 270;
+    private const float FrameDistance = 6f;   // metres from what F frames
     private const string FreeCameraName = "editor free camera", ViewportCameraName = "editor viewport camera";
 
     private readonly Game _game;
@@ -37,7 +38,11 @@ public sealed class DevTools : IDisposable
     private readonly CVar<bool> _camFree;
     private readonly CVar<bool> _viewport;
     private readonly CVar<bool> _showEntities;
-    private readonly EditorSelection _selection = new();
+    // What is selected (Sage.Editing, issue #221): one per document, so made with each world's.
+    private EditorSelection? _selection;
+    private ViewportTools _tools = null!;   // the viewport's settings and commands (#221), registered with the rest
+    private ViewportGizmo _gizmo = null!;
+    private readonly Func<Entity, bool> _pickable;   // what a click can select: not the editor's own cameras
 
     // The camera entities the free camera drives (DebugCamera): one on the screen, overriding it while
     // `cam_free` is on and idle (drawing only where nothing else does) otherwise; one into the viewport's
@@ -60,6 +65,7 @@ public sealed class DevTools : IDisposable
     private bool _editing;
     private readonly EditorLayout _layout = new();
     private readonly LogPanel _log = new();
+    private PalettePanel? _palette;   // #222
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -68,6 +74,7 @@ public sealed class DevTools : IDisposable
         var cvars = engine.CVars;
 
         _gui = new ImGuiRenderer(game);
+        _pickable = e => e != _freeCamera && e != _viewportCamera;
         _camera = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0)) { Position = new Vector3(0, 0, 1) };
         _console = new DevConsoleWindow(cvars, engine.Core);
         _stats = new StatOverlay(cvars, engine.Core);
@@ -123,8 +130,8 @@ public sealed class DevTools : IDisposable
     {
         _world = world;
         _document = new EditDocument(world);
-        // A command re-spawns what it changed: the selection follows its placement to the new entity.
-        _document.Respawned += (old, now) => { if (_selection.Is(old)) { if (now.IsNull) _selection.Clear(); else _selection.Select(now); } };
+        // The selection holds a placement, so it follows its re-spawns to the new entity (#221).
+        _selection = new EditorSelection(_document);
         _outliner = new EntityOutlinerWindow(world, _selection);
         _inspector = new EntityInspectorWindow(world, _engine.Components, _selection, _document);
         _menu = new EditorUI(_document, _camFree, _viewport);
@@ -148,6 +155,7 @@ public sealed class DevTools : IDisposable
         _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
         if (_menu != null) _menu.Editing = true;
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
+        _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
         // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
@@ -178,8 +186,9 @@ public sealed class DevTools : IDisposable
             ? $"{document.Id}  {(document.Dirty ? "modified" : "saved")}"
             : "no document";
         var world = _world;
-        string selected = world != null && !_selection.Entity.IsNull && world.IsAlive(_selection.Entity)
-            ? World.Describe(_selection.Entity) : "nothing selected";
+        var selection = _selection?.Entity ?? default;
+        string selected = world != null && !selection.IsNull && world.IsAlive(selection)
+            ? World.Describe(selection) : "nothing selected";
         return $"{doc}   |   {selected}   |   {world?.Name} ({world?.EntityCount ?? 0} entities)   |   camera {_camera.Position.X:F1} {_camera.Position.Y:F1} {_camera.Position.Z:F1}";
     }
 
@@ -197,14 +206,27 @@ public sealed class DevTools : IDisposable
         // them too (issue #217).
         EditorCommands.Register(cvars, () => _document);
         InspectorCommands.Register(cvars, () => _document);   // ed_set, ed_revert, ed_inspect (#223)
+        // Selecting and moving (issue #221): ed_select, ed_move, ed_rotate, ed_delete, ed_duplicate, the snapping.
+        _tools = ViewportTools.Register(cvars, () => _selection);
+        _gizmo = new ViewportGizmo(_tools, cvars);
+
+        cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
+        {
+            if (_selection is not { } s || s.Entity.IsNull) { Log.Warn(LogCat.Console, "ed_frame: nothing selected"); return; }
+            var target = s.Placement is { } placement ? ViewportTools.OriginOf(s.Document, placement)
+                : s.Entity.TryGetComponent<GlobalTransform>(out var global) ? global.Current.Position : System.Numerics.Vector3.Zero;
+            var at = ViewportTools.FramePosition(target, _camera.Rotation.ToNumerics(), FrameDistance);
+            _camera.Position = new Vector3(at.X, at.Y, at.Z);
+            _placed = true;
+        });
 
         cvars.RegisterCommand("ent_select", CVarFlags.DevOnly, "ent_select <name>: select an entity for the inspector.", a =>
         {
-            if (_world is not { } world) { Log.Warn(LogCat.Console, "no world yet"); return; }
-            if (a.Count == 0) { _selection.Clear(); Log.Info(LogCat.Console, "selection cleared"); return; }
+            if (_world is not { } world || _selection is not { } selection) { Log.Warn(LogCat.Console, "no world yet"); return; }
+            if (a.Count == 0) { selection.Clear(); Log.Info(LogCat.Console, "selection cleared"); return; }
             var entity = world.FindByName(a.Rest);
             if (entity.IsNull) { Log.Warn(LogCat.Console, $"ent_select: no entity named '{a.Rest}'"); return; }
-            _selection.Select(entity);
+            selection.Select(entity);
             Log.Info(LogCat.Console, $"selected {World.Describe(entity)}");
         });
     }
@@ -280,14 +302,25 @@ public sealed class DevTools : IDisposable
     {
         _menu?.Draw(_game);
         _layout.BeginFrame();
+        if (_world != null && _selection != null && _palette is not { IsArmed: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();
+        _palette?.Draw();
         _log.Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();
         _layout.DrawStatusBar(StatusLine());
+        _palette?.HandleViewport();
     }
+
+    // The ray through a pixel of the screen's view (the free camera's in the editor), for placing by click.
+    private Sage.Editing.EditorRay? ViewportRay(System.Numerics.Vector2 pointer, System.Numerics.Vector2 size) =>
+        _world != null && _world.TryGetMainView(out var view)
+            ? (view.Projection == CameraProjection.Orthographic
+                ? EditorPicking.RayFromOrthographic(new CameraPose(view.Position, view.Rotation), view.OrthoHeight, size, pointer)
+                : EditorPicking.RayFrom(new CameraPose(view.Position, view.Rotation), view.FovY, size, pointer))
+            : null;
 
     // The editor viewport (issue #81): the render target the viewport camera drew this frame (views into
     // targets draw before the screen, and this is after both), shown through ImGui's texture binding.

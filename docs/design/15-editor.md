@@ -316,7 +316,7 @@ a game loading the file would place — a re-spawn is a load of that one placeme
 - **The console drives it**: the `doc_*` commands go through the document, and `ed_undo [n]`, `ed_redo
   [n]` and `ed_history` through its log; they live in `Sage.Editing` so a headless test presses them.
   (test: TheConsoleOpensUndoesRedoesAndListsTheHistory)
-- Since #223 (§10g) the inspector edits the document: a field is a `SetOverride`, the placement's own
+- Since #223 (§10i) the inspector edits the document: a field is a `SetOverride`, the placement's own
   fields a `SetPlacement`.
 
 ## 10f. As built: the editor mode of the host, `-edit` (#219, 2026-10-01)
@@ -376,7 +376,92 @@ editor and says so (`-edit` is ignored with a warning); a dev run without `-edit
   runs the Sandbox with `-edit yard`, selecting a crate, flying, resetting the layout and opening the
   viewport window.
 
-## 10g. As built: the inspector on the document (#223, 2026-10-01)
+## 10g. As built: the prefab palette and placing (#222)
+
+`Sage.Editing` holds the model; the ImGui panel (`PalettePanel`, Sage.Editor) only draws it and passes the
+viewport click on.
+
+- **The palette.** `PrefabPalette` lists every `prefab` record by namespace, narrowed by a search: each
+  whitespace-separated word must appear, in any case, in the prefab's full id, and a namespace with no match
+  is left out. Abstract prefabs (templates a `base` names) are not offered; a prefab that is only a child of
+  another is (there is no flag for it). `Arm` / `Disarm` hold the prefab the next click places.
+  (test: ThePaletteListsPrefabsByNamespaceAndTheSearchNarrowsThem)
+- **Where a click lands.** `Placing.Surface(world, ray)` is the first collider the physics raycast finds
+  (terrain included, since the edit world mirrors it), else the plane y = 0; null for a ray that meets
+  neither. It deliberately ignores `EditorPicking.Pick`'s fallback spheres: a prefab put down by clicking
+  on another's marker would sit on a sphere nothing draws.
+  (test: PlacingOnAColliderLandsOnItsTopAndOnEmptyGroundAtYZero)
+- **Placing.** `Placing.Place(document, prefab, at, yaw, name)` is one `AddPlacement`, so it is one undo.
+  The name is the wanted one or the prefab's, made unique among placements' names and ids with `_2`, `_3`
+  ...; `PlaceAt` does the same on a ray's surface. `at` is in the document's frame (absolute metres unless
+  it says `relativeTo`); the edit world has no origin shift, so a click's point is used as it is.
+  (test: EdPlaceAddsAPlacementWithAUniqueNameAndUndoRemovesIt)
+- **Console.** `ed_palette [search]` prints the list; `ed_place <prefab> [x y z] [yaw] [name]` places it.
+  With no position it places at the origin (headless there is no camera to stand in front of); `x y z` is
+  all three or none, then an optional yaw in degrees, then the name (the rest of the line).
+- **The panel.** A "Palette" tab beside the outliner: search box, a tree by namespace, click a prefab to arm
+  it (click again to disarm). While armed the panel says so; the next left click ImGui does not want (the
+  viewport is the dock space's hole) places the prefab and selects its entity, and Escape cancels. It stays
+  armed, to place another.
+
+## 10h. As built: selecting and moving in the viewport (#221, 2026-10-01)
+
+A click selects, the selection's gizmo is drawn over the picture and dragged, and the editor's keys
+press the editor's commands. What any of it *does* is `Sage.Editing`'s, so a test presses it through the
+console; `ViewportGizmo` (`src/Sage.Editor/Screens/`) only reads the mouse and draws.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `EditorSelection` | `src/Sage.Editing/EditorSelection.cs` | What the outliner, inspector, gizmo and `ed_delete` agree is selected; it moved here from `Sage.Editor` |
+| `ViewportTools` | `src/Sage.Editing/ViewportTools.cs` | Snapping, the gizmo mode, move/turn/delete/duplicate, and their `ed_*` commands |
+| `GizmoDrag` | same file | One drag of a handle: a `SetPlacement` per frame, merged into one |
+| `ViewportCamera` | `src/Sage.Editing/ViewportCamera.cs` | The screen's camera: a ray through a pixel, the pixel of a point, a gizmo's size |
+| `ViewportGizmo` | `src/Sage.Editor/Screens/ViewportGizmo.cs` | Picking on a click, the gizmo and its drag, the keys, a small toolbar |
+
+- **A selection of something the document placed holds the placement, not the entity.** Every edit
+  re-spawns what it touched, so the entity a click found is gone after the first nudge; the selection's
+  entity is always the one the document spawned last, and it clears when the placement leaves the
+  document (a delete, an undone add) or the document closes. Anything else (a scene's own entity) is
+  held as the entity. A click selects the placement an entity belongs to, so a prefab's child selects
+  the placed thing; an outliner row selects exactly its entity.
+  (test: TheConsoleSelectsByNameAndTheSelectionFollowsAReSpawn)
+- **The console drives it**: `ed_select [name]` (a placement by name or id, else an entity by name;
+  nothing clears), `ed_move [name] x y z` (in the document's frame), `ed_rotate [name] yaw` (degrees,
+  kept in (-180, 180]), `ed_delete [name]` and `ed_duplicate [name]`, each on the selection when no name
+  is given. **Each is one undo step**: the merge is closed before and after, so two moves of one thing
+  are two steps and a drag after a move does not fold into it.
+  (tests: MovingAndRotatingFromTheConsoleAreAnUndoStepEach, DeletingClearsTheSelectionAndUndoPutsThePlacementBack)
+- **A duplicate is a copy straight after the original, where it stands, with a name and id of its own**
+  (`corner` → `corner_2`, `corner_2` → `corner_3`), and it is selected, so a drag that follows moves the
+  copy. (test: DuplicatingMakesACopyWithANameOfItsOwnAndSelectsIt)
+- **A drag is one `SetPlacement`.** `GizmoDrag.Begin` closes the merge; each `Update` measures from where
+  the drag began (`TranslateGizmo.Drag` / `RotateGizmo.Drag`, §10c) and does a `SetPlacement` only when
+  the result moved, which merges into the last; `End` closes it on mouse up. A move snaps the result to
+  the grid on the moved axes, a turn snaps its angle. (test: ADragIsOneSetPlacementAndSnapsToTheGrid)
+- **Snapping is `ed_snap [0|1]`, `ed_grid <metres>` (0.5) and `ed_angle <degrees>` (15)**, on by default,
+  and `ed_gizmo move|rotate`. They are commands, not cvars: a tool registered once a world exists comes
+  after `config.cfg` is read, and the cvar seal refuses it. (test: TheSnappingAndTheGizmoAreSetFromTheConsole)
+- **The viewport is the screen** (§10f), so picking needs no rectangle: the pixel under the mouse is a
+  pixel of the free camera's picture, and the mouse is the viewport's wherever ImGui does not want it
+  (the dock's pass-through middle). `ViewportCamera` takes the main view's pose and field of view and
+  the display's size; the gizmo is drawn on ImGui's background draw list (over the world, under the
+  panels) at the pixels `ToScreen` gives, which agree with the ray `RayThrough` casts back.
+  (test: AViewportCameraProjectsAPointToThePixelWhoseRayPassesThroughIt)
+- **The editor's own cameras are not picked.** A `DebugCamera` entity is driven through its
+  `CameraPose`, so its transform stays at the origin, where its fallback sphere would win a click on
+  anything there; `EditorPicking.PickWhere` takes a filter and the viewport leaves out the free and
+  viewport cameras. (test: AClickPicksWhatTheViewportAcceptsAndSelectsItsPlacement)
+- **Keys** (never while ImGui has the keyboard, so typing in the console is safe): Delete (`ed_delete`),
+  Ctrl+D (`ed_duplicate`), Ctrl+Z and Ctrl+Y or Ctrl+Shift+Z (`ed_undo`, `ed_redo`), F (`ed_frame`: the
+  free camera moves back along its own view until the selection is in front of it, 6 m away), **G and R
+  for move and rotate** — not W and E, which fly the camera (`EditorMove` is WASD). A toolbar at the
+  top of the picture sets the gizmo and the snapping too. The outliner's Delete on a placed entity is
+  `ed_delete` now, so it is undoable and saved, rather than destroying the entity behind the document.
+
+**Not built:** multi-select and box select; local-space gizmos and rotation about X and Z (a placement
+has only a yaw); scaling; a gizmo for an entity the document did not place (it is marked, not movable).
+
+## 10i. As built: the inspector on the document (#223, 2026-10-01)
 
 The inspector used to change the live struct (box it, set a field, write it back), which lasted until the
 next re-spawn and never reached a file. **On a placed entity an edit is now an override**: a
@@ -437,7 +522,7 @@ A JSON value with double quotes cannot pass the console's tokenizer; the panel h
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
   - ~~the outliner~~ **done**;
   - ~~an editable inspector~~ **done**, from reflection until 09's generator;
-  - place a prefab;
+  - ~~place a prefab~~ **done (#222)**;
   - the translate gizmo;
   - undo/redo;
   - play-in-editor;

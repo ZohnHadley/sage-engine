@@ -45,18 +45,27 @@ public static class EditorPicking
     // The nearest thing along `ray` within `maxDistance`: a collider by the physics raycast (a world
     // with no physics has none), and every entity with a GlobalTransform and no collider by its
     // fallback sphere. `ignore` leaves one entity out (the editor camera). Null when nothing is hit.
-    public static PickResult? Pick(World world, in EditorRay ray, float maxDistance = 1000f, Entity ignore = default)
+    public static PickResult? Pick(World world, in EditorRay ray, float maxDistance = 1000f, Entity ignore = default) =>
+        Nearest(world, ray, null, maxDistance, ignore);
+
+    // The same, taking only what `accept` says yes to (issue #221: the viewport leaves out the editor's
+    // own cameras, which stand where the ray starts). A collider it refuses still hides what is behind it,
+    // since the raycast stops there; a camera has none.
+    public static PickResult? PickWhere(World world, in EditorRay ray, Func<Entity, bool> accept, float maxDistance = 1000f) =>
+        Nearest(world, ray, accept, maxDistance, default);
+
+    private static PickResult? Nearest(World world, in EditorRay ray, Func<Entity, bool>? accept, float maxDistance, Entity ignore)
     {
         PickResult? best = null;
         if (world.Resources.TryGet<IPhysicsWorld>(out var physics) && physics is not null)
         {
             RayHit hit = physics.Raycast(ray.Origin, ray.Direction, maxDistance, ignore: ignore);
-            if (hit.Hit) best = new PickResult(hit.Entity, hit.Position, hit.Distance);
+            if (hit.Hit && (accept == null || accept(hit.Entity))) best = new PickResult(hit.Entity, hit.Position, hit.Distance);
         }
 
         foreach (Entity entity in world.Query<GlobalTransform>().Entities)
         {
-            if (entity == ignore || entity.HasComponent<Collider>()) continue;
+            if (entity == ignore || entity.HasComponent<Collider>() || (accept != null && !accept(entity))) continue;
             Vector3 centre = entity.GetComponent<GlobalTransform>().Current.Position;
             float? distance = RaySphere(ray, centre, FallbackRadius);
             if (distance is not { } d || d > maxDistance || (best is { } b && b.Distance <= d)) continue;
