@@ -63,6 +63,15 @@
       "default": 0.3,
       "type": "number"
     },
+    "fogMode": {
+      "description": "How fog thickens with distance: Linear (start to end) or Exp2 (soft, then closing in fast; issue 4h-5) Category: Fog. (FogMode, default \"Linear\")",
+      "default": "Linear",
+      "type": "string",
+      "enum": [
+        "Linear",
+        "Exp2"
+      ]
+    },
     "keys": {
       "description": "The keyframes, by hour; any order, any number. One is a sky that never changes. (List<SkyKey>)",
       "type": "array",
@@ -136,6 +145,11 @@
           },
           "fogEnd": {
             "description": "Where fog is complete. Unit: m. At least 0. (float)",
+            "type": "number",
+            "minimum": 0
+          },
+          "fogDensity": {
+            "description": "Exp2 fog only: how thick it is per metre past fogStart; 0 makes it complete at fogEnd. Unit: 1/m. At least 0. (float)",
             "type": "number",
             "minimum": 0
           },
@@ -225,6 +239,11 @@
             "type": "number",
             "minimum": 0
           },
+          "fogDensity": {
+            "description": "Exp2 fog only: how thick it is per metre past fogStart; 0 makes it complete at fogEnd. Unit: 1/m. At least 0. (float)",
+            "type": "number",
+            "minimum": 0
+          },
           "shadow": {
             "description": "How dark shadows are (0: none, 1: full); the sun's own height fades it too. Range: 0 to 1. (float)",
             "type": "number",
@@ -308,6 +327,11 @@
           },
           "fogEnd": {
             "description": "Where fog is complete. Unit: m. At least 0. (float)",
+            "type": "number",
+            "minimum": 0
+          },
+          "fogDensity": {
+            "description": "Exp2 fog only: how thick it is per metre past fogStart; 0 makes it complete at fogEnd. Unit: 1/m. At least 0. (float)",
             "type": "number",
             "minimum": 0
           },

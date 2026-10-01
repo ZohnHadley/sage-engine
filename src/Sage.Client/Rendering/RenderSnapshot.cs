@@ -81,13 +81,17 @@ internal struct EnvironmentParams
 {
     public Vector3 ClearColor;
     public Vector3 FogColor;
-    public Vector4 FogParams;        // start, end, enabled (0/1), 0
+    public Vector4 FogParams;        // start, end, enabled (0/1), exp² (0: linear; FogMath.ShaderParam)
+    public float FogCull;            // past this, fog hides an opaque fogged thing wholly: not drawn (issue 4h-5); +inf: none
     public Vector3 SunDirection;
     public Vector3 SunColor;
     public Vector3 AmbientSky;
     public Vector3 AmbientGround;
     public float Time;
     public float ShadowStrength;     // ShadowMath.Strength: 0 draws no shadow (issue 4h-4)
+    public bool DrawSky;             // `sage:sky` draws (issue 4h-5); else the sky is ClearColor
+    public Vector3 Zenith;
+    public float Stars;
 }
 
 // The frame's shadow map (issue 4h-4), written by `sage:shadow`: which view holds the casters, and what
@@ -166,6 +170,20 @@ internal sealed class RenderSnapshot
     }
 
     public int Culled;                   // items rejected by frustum culling this frame, every view
+    public int FogCulled;                // of those, rejected because fog hides them wholly (issue 4h-5)
+
+    // Whether fog hides a camera-relative sphere drawn with `material` in `view` wholly (FogMath.Hides):
+    // an opaque or alpha-tested material with fog on, in a view drawn with fog (not the sun's caster view,
+    // whose casters may shade what is near). Counted as culled when it does.
+    internal bool FogHides(ref RenderView view, MaterialRuntime material, Vector3 center, float radius)
+    {
+        if (view.ShadowCaster || material.Fog <= 0f || material.Pass == RenderPass.Transparent) return false;
+        if (!FogMath.Hides(Environment.FogCull, center.ToNumerics(), radius)) return false;
+        Culled++;
+        FogCulled++;
+        view.Culled++;
+        return true;
+    }
     public bool HasView => Views.Count > 0;
 
     // The main view (`MainView`), for what is drawn once on the screen: floating numbers, the HUD.
@@ -211,6 +229,7 @@ internal sealed class RenderSnapshot
     {
         foreach (var pool in _pools) pool.Clear();
         Culled = 0;
+        FogCulled = 0;
         MainView = -1;
         Shadow.View = -1;
         Shadow.Drawn = false;

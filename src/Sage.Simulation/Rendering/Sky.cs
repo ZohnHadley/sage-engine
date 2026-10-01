@@ -39,6 +39,9 @@ public sealed class SkyRecord
     [Property(Tooltip = "How far the sun's path leans toward the south (z), 0 is straight overhead", Category = "Sun")]
     public float Lean = 0.3f;
 
+    [Property(Tooltip = "How fog thickens with distance: Linear (start to end) or Exp2 (soft, then closing in fast; issue 4h-5)", Category = "Fog")]
+    public FogMode FogMode = FogMode.Linear;
+
     [Property(Tooltip = "The keyframes, by hour; any order, any number. One is a sky that never changes")]
     public List<SkyKey> Keys = new();
 }
@@ -65,6 +68,8 @@ public sealed class SkyKey
     public float FogStart = 30f;
     [Property(Min = 0, Unit = "m", Tooltip = "Where fog is complete")]
     public float FogEnd = 200f;
+    [Property(Min = 0, Unit = "1/m", Tooltip = "Exp2 fog only: how thick it is per metre past fogStart; 0 makes it complete at fogEnd")]
+    public float FogDensity;
     [Property(Min = 0, Max = 1, Tooltip = "How dark shadows are (0: none, 1: full); the sun's own height fades it too")]
     public float Shadow = 1f;
 }
@@ -82,7 +87,9 @@ public readonly record struct SkyState(
     Vector3 Fog,
     float FogStart,
     float FogEnd,
-    float ShadowStrength);     // zero when the sun is down
+    float ShadowStrength,      // zero when the sun is down
+    float FogDensity = 0f,     // exp² only; 0: complete at FogEnd (FogMath.Density)
+    float Stars = 0f);         // how much the stars show, 0 by day to 1 at night (SkyRules.StarsAt; issue 4h-5)
 
 [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
 public static class SkyRules
@@ -126,7 +133,9 @@ public static class SkyRules
             Fog: Vector3.Lerp(a.Fog, b.Fog, t),
             FogStart: Lerp(a.FogStart, b.FogStart, t),
             FogEnd: Lerp(a.FogEnd, b.FogEnd, t),
-            ShadowStrength: Math.Clamp(Lerp(a.Shadow, b.Shadow, t), 0f, 1f) * daylight);
+            ShadowStrength: Math.Clamp(Lerp(a.Shadow, b.Shadow, t), 0f, 1f) * daylight,
+            FogDensity: Lerp(a.FogDensity, b.FogDensity, t),
+            Stars: StarsAt(elevation));
     }
 
     // Which two keys an hour lies between and how far, wrapping: before the first key it is between the
@@ -156,6 +165,58 @@ public static class SkyRules
     }
 
     private static readonly SkyKey Default = new();
+
+    // ---- What the sky pass draws (issue 4h-5) ----------------------------------------------------------
+    //
+    // `sky.fx` is these functions in HLSL, over the camera's view ray: a gradient from the horizon colour
+    // to the zenith's, fog's haze along the horizon, and a sun disc. Stars are hashed from the direction
+    // on the GPU; how *much* they show is `StarsAt`, from the sun, so "are there stars at 21:00" is a
+    // number (test: TheSkyAtNineAtNightAgainstNoon).
+
+    // How far below the horizon the sun must be (sin of its elevation) for the stars to be all out; they
+    // start to show as it sets.
+    public const float StarsOut = 0.15f;
+
+    // The band above the horizon (sin of elevation) the fog's colour hazes over: at the horizon the sky is
+    // the fog, so a hill fogged away meets a sky of its own colour.
+    public const float HazeBand = 0.12f;
+
+    // The sun disc's angular radius (cosines: fully inside, and its soft edge) and its brightness over the
+    // sun's colour.
+    public const float SunDiscInner = 0.99970f;   // ~1.4°
+    public const float SunDiscOuter = 0.99955f;   // ~1.7°
+    public const float SunDiscGain = 4f;
+
+    // How much the stars show with the sun at this sin(elevation): 0 while it is up, 1 once it is
+    // `StarsOut` below the horizon.
+    public static float StarsAt(float sunElevation) => Smooth(-sunElevation / StarsOut);
+
+    // The sky's gradient at a sin(elevation): the horizon colour at and below the horizon, the zenith's
+    // overhead, most of the change low down, where the eye sees it.
+    public static Vector3 Gradient(Vector3 horizon, Vector3 zenith, float elevation) =>
+        Vector3.Lerp(horizon, zenith, MathF.Sqrt(Math.Clamp(elevation, 0f, 1f)));
+
+    // How much fog colour covers the sky at a sin(elevation): all of it at and below the horizon, none
+    // above `HazeBand`.
+    public static float Haze(float elevation) => 1f - Smooth(elevation / HazeBand);
+
+    // How much of the sun disc covers a view direction (0 to 1). The disc is where the light comes from:
+    // `sunDirection` is the way the light travels.
+    public static float SunDisc(Vector3 direction, Vector3 sunDirection)
+    {
+        float c = Vector3.Dot(Vector3.Normalize(direction), -Vector3.Normalize(sunDirection));
+        return Smooth((c - SunDiscOuter) / (SunDiscInner - SunDiscOuter));
+    }
+
+    // The sky's colour along a view direction, from what the environment says now (stars aside): what
+    // `sky.fx` draws behind everything, the same maths.
+    public static Vector3 ColorAt(RenderEnvironment environment, Vector3 direction)
+    {
+        var d = Vector3.Normalize(direction);
+        var sky = Gradient(environment.ClearColor, environment.Zenith, d.Y);
+        if (environment.Fog) sky = Vector3.Lerp(sky, environment.FogColor, Haze(d.Y));
+        return sky + environment.SunColor * (SunDiscGain * SunDisc(d, environment.SunDirection));
+    }
 
     // ---- Putting the sky in the world --------------------------------------------------------------
 
@@ -189,6 +250,13 @@ public static class SkyRules
         environment.FogStart = state.FogStart * Lerp(from.FogStartScale, to.FogStartScale, t);
         environment.FogEnd = state.FogEnd * Lerp(from.FogEndScale, to.FogEndScale, t);
         environment.ShadowStrength = state.ShadowStrength * sun;   // a heavy sky casts soft shadows
+
+        // Issue 4h-5: the sky pass draws, fog takes the sky's curve, and a heavy sky hides the stars.
+        float endScale = Lerp(from.FogEndScale, to.FogEndScale, t);
+        environment.DrawSky = true;
+        environment.FogMode = sky.FogMode;
+        environment.FogDensity = state.FogDensity > 0f ? state.FogDensity / MathF.Max(endScale, 0.01f) : 0f;
+        environment.Stars = state.Stars * Math.Clamp(sun, 0f, 1f);
     }
 
     private static float Smooth(float x)
@@ -210,18 +278,28 @@ internal sealed class SkySystem : ISystem
     public const string Id = "sage.world.sky";
 
     private readonly World _world;
+    private bool _drew;   // this system turned the sky pass on: it turns it off when the sky goes
 
     public SkySystem(World world) => _world = world;
 
     public void Run(in SystemContext ctx)
     {
         var resources = _world.Resources;
-        if (!resources.TryGet<WorldClock>(out var clock) || clock == null) return;
-        if (!resources.TryGet<RecordStore>(out var records) || records == null) return;
-        if (SkyRules.Current(records, clock) is not { } sky) return;
-        if (!resources.TryGet<Weather>(out var weather) || weather == null) return;
         if (!resources.TryGet<RenderEnvironment>(out var environment) || environment == null) return;
-
-        SkyRules.Apply(sky, clock.Hour, records, weather, environment);
+        if (resources.TryGet<WorldClock>(out var clock) && clock != null
+            && resources.TryGet<RecordStore>(out var records) && records != null
+            && SkyRules.Current(records, clock) is { } sky
+            && resources.TryGet<Weather>(out var weather) && weather != null)
+        {
+            SkyRules.Apply(sky, clock.Hour, records, weather, environment);
+            _drew = true;
+        }
+        else if (_drew)
+        {
+            // The sky was taken away (a scene without one, a cleared clock): the pass stops drawing, and
+            // the rest of the light stays where the sky left it until the game sets its own.
+            environment.DrawSky = false;
+            _drew = false;
+        }
     }
 }

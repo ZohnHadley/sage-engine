@@ -90,6 +90,18 @@ public sealed class RenderEnvironment
     public Vector3 Zenith = new(0.333f, 0.420f, 0.184f);     // the sky overhead (ClearColor is the horizon's)
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public float ShadowStrength = 1f;                        // 0 (none, as at night) to 1 (full)
+
+    // The sky pass and fog (issue 4h-5, FogMath and SkyRules). `DrawSky` draws the gradient (ClearColor at
+    // the horizon, Zenith overhead), the sun disc and `Stars` behind the world; the sky system turns it on
+    // while the world has a sky record, and a game may turn it on itself. Off, the sky is the clear colour.
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public bool DrawSky;
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float Stars;                                      // 0 (day) to 1 (night)
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public FogMode FogMode = FogMode.Linear;
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float FogDensity;                                 // exp² only, per metre; 0: complete at FogEnd
 }
 
 public enum RenderPass { Opaque, AlphaTested, Transparent }

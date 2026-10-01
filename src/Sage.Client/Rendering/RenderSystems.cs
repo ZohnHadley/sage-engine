@@ -54,7 +54,17 @@ internal sealed class CameraExtract : ISystem
         ref var env = ref s.Environment;
         env.ClearColor = e.ClearColor;
         env.FogColor = e.FogColor;
-        env.FogParams = new Vector4(e.FogStart, e.FogEnd, e.Fog && _renderer.FogEnabled ? 1f : 0f, 0f);
+        bool fog = e.Fog && _renderer.FogEnabled;
+        env.FogParams = new Vector4(e.FogStart, e.FogEnd, fog ? 1f : 0f, FogMath.ShaderParam(e.FogMode, e.FogStart, e.FogEnd, e.FogDensity));
+        // Fog hides what is past its cull distance only against a background of its own colour: the sky
+        // pass hazes the horizon to it, and without a sky the clear colour must be it — else a game that
+        // set them apart would see its fogged silhouettes vanish (issue 4h-5).
+        env.FogCull = fog && (e.DrawSky || e.ClearColor == e.FogColor)
+            ? FogMath.CullDistance(e.FogMode, e.FogStart, e.FogEnd, e.FogDensity)
+            : float.PositiveInfinity;
+        env.DrawSky = e.DrawSky;
+        env.Zenith = e.Zenith;
+        env.Stars = e.Stars;
         env.SunDirection = Vector3.Normalize(e.SunDirection);
         env.SunColor = e.SunColor;
         env.AmbientSky = e.AmbientSky;
@@ -175,6 +185,7 @@ internal sealed class MeshExtract : ISystem
                         Matrix partWorld = part.Bone * world;
                         Vector3 center = Vector3.Transform(part.Bounds.Center, partWorld);
                         float radius = part.Bounds.Radius * MaxScale(partWorld);
+                        if (s.FogHides(ref view, material, center, radius)) continue;   // past the fog (4h-5)
                         if (!frustum.Intersects(new BoundingSphere(center + cullOffset, radius)))
                         {
                             s.Culled++;
@@ -275,7 +286,7 @@ internal sealed class SkinnedMeshExtract : ISystem
 
                 var draws = new Draws
                 {
-                    Snapshot = s, Mesh = mesh, MeshId = meshId, MaterialId = materialId, Pass = material.Pass, Layer = sr.Layer,
+                    Snapshot = s, Mesh = mesh, MeshId = meshId, MaterialId = materialId, Material = material, Pass = material.Pass, Layer = sr.Layer,
                     Pose = g[n].Interpolated(alpha).ToMatrix(),   // System.Numerics → MonoGame (implicit)
                     Hidden = hiding ? id : 0,
                     Casts = ShadowMath.Casts(material.Pass, material.CastShadows),
@@ -290,6 +301,7 @@ internal sealed class SkinnedMeshExtract : ISystem
     {
         public RenderSnapshot Snapshot;
         public MeshData Mesh;
+        public MaterialRuntime Material;
         public int MeshId, MaterialId, Hidden;
         public RenderPass Pass;
         public byte Layer;
@@ -308,8 +320,11 @@ internal sealed class SkinnedMeshExtract : ISystem
             Matrix world = Pose;
             world.Translation -= view.CameraPosition;
             var bounds = Mesh.Parts[0].Bounds;
-            Vector3 center = Vector3.Transform(bounds.Center, world) + (view.CameraPosition - s.CullOrigins[v]);
-            if (s.Frustum(v).Intersects(new BoundingSphere(center, bounds.Radius * MeshExtract.MaxScale(world)))) return true;
+            Vector3 center = Vector3.Transform(bounds.Center, world);
+            float radius = bounds.Radius * MeshExtract.MaxScale(world);
+            if (s.FogHides(ref view, Material, center, radius)) return false;   // past the fog (4h-5)
+            center += view.CameraPosition - s.CullOrigins[v];
+            if (s.Frustum(v).Intersects(new BoundingSphere(center, radius))) return true;
             s.Culled++;
             view.Culled++;
             return false;
@@ -567,6 +582,7 @@ internal sealed class SpriteExtract : ISystem
                     // Bounding sphere around the quad, for culling: the pivot may be at the feet, so the
                     // sphere is centred half a height up and sized by the diagonal.
                     Vector3 center = position - camera;
+                    if (s.FogHides(ref view, material, center + Vector3.Up * (size.Y * 0.5f), radius)) continue;   // past the fog (4h-5)
                     if (!s.Frustum(v).Intersects(new BoundingSphere(center + Vector3.Up * (size.Y * 0.5f) + (camera - s.CullOrigins[v]), radius)))
                     {
                         s.Culled++;

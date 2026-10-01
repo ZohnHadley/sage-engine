@@ -19,7 +19,8 @@ float3 SunColor;
 float3 AmbientSky;
 float3 AmbientGround;
 float3 FogColor;
-float4 FogParams;       // x = start, y = end (metres), z = 1 if fog is on for this view
+float4 FogParams;       // x = start, y = end (metres), z = 1 if fog is on for this view,
+                        // w = 0 for linear fog, else exp²'s density scaled for exp2() (issue 4h-5)
 float Time;
 
 // ---- Object ----
@@ -105,10 +106,21 @@ float3 PointLights(float3 n, float3 relative)
     return sum;
 }
 
+// How much fog covers a point `distance` metres away: `FogMath.Factor` (Sage.Simulation), whose tests are
+// this function's. Linear from start to end; exp² past the start when FogParams.w > 0. Pixel shader only,
+// so no vertex shader gains a constant.
+float FogFactor(float distance)
+{
+    float x = max(distance - FogParams.x, 0);
+    float linearFog = saturate(x / max(FogParams.y - FogParams.x, 0.001));
+    float k = FogParams.w * x;
+    float exp2Fog = saturate(1 - exp2(-k * k));
+    return FogParams.w > 0 ? exp2Fog : linearFog;
+}
+
 float3 ApplyFog(float3 color, float distance)
 {
-    float f = saturate((distance - FogParams.x) / max(FogParams.y - FogParams.x, 0.001));
-    return lerp(color, FogColor, f * FogParams.z * FogEnabled);
+    return lerp(color, FogColor, FogFactor(distance) * FogParams.z * FogEnabled);
 }
 
 void AlphaTest(float alpha, float cutoff)

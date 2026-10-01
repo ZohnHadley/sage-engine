@@ -101,6 +101,7 @@ public sealed class ClientModule : IModule
         Passes.Add(new ShadowPass(_rendererCVars));   // the sun's shadow map (issue 4h-4)
         Passes.Add(new OpaquePass());
         Passes.Add(new AlphaTestedPass());
+        Passes.Add(new SkyPass());                    // the sky behind them (issue 4h-5)
         Passes.Add(new TransparentPass());
         Passes.Add(new DebugLinesPass());
         Passes.Add(new PostProcessPass());
