@@ -117,3 +117,36 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
 - **Not done here:** missing references stay load errors at their line rather than report lines;
   string-table keys two mods both set are not reported; the boot summary and
   `user://logs/mod_report.txt` are 4j-3's, and `sage mods` is 4j-5's.
+
+## As built (mod manifests and the load order, issue 4j-1)
+
+- **Code:** `src/Sage.Core/Mods/` (`ModManifest.cs`, `ModLoadOrder.cs`, `ModList.cs`), `GameManifest.Version`, and an
+  empty `Engine.Mods` slot (a `ModLoadResult`) that 4j-3 fills at boot. All of it is experimental, SAGE0132
+  (MAKING_A_GAME §10b). Nothing mounts a mod yet.
+- **`mod.json`** is read as strictly as `game.json`: an unknown key is an error (test: AnUnknownKeyInAModJsonIsAnErrorAsInGameJson).
+  Fields: `id`, `name`, `version`, `author`, `description`, `game`, `gameVersion`, `sage`, `dependencies` (`{ "id": "range" }`),
+  `loadAfter`, `loadBefore`, `incompatible` (test: AManifestReadsEveryField). The id follows the namespace rules, and a
+  bad id, version or range is an error naming the file (test: ABrokenManifestIsAnErrorThatSaysWhat). `assemblies` and
+  `"kind": "code"` are known only so a code mod is refused by name.
+- **`game.json` gains an optional `version`**, which `gameVersion` is checked against; a malformed one is an error
+  (test: GameJsonTakesAVersionAndRejectsAMalformedOne). Without it the `gameVersion` check is skipped and
+  `ModLoadResult.Notes` says so (test: WithoutAGameVersionTheCheckIsSkippedWithANote).
+- **`ModLoadOrder.Resolve(found, userList, game, engine, reservedIds)`** returns the active mods in order, the refused with
+  a reason each, the disabled, and notes. It never throws for a mod's fault. The sort is a stable topological sort over
+  dependencies, `loadAfter` and `loadBefore` (a name that is not installed is ignored by the last two); among the mods free
+  to go next the user's order decides, then the id (tests: WithNoConstraintsTheOrderIsTheUsersThenTheId,
+  ADependencyLoadsBeforeItsDependentWhateverTheUsersOrderSays, LoadAfterAndLoadBeforeOrderModsAndIgnoreOnesThatAreNotThere,
+  TheSortIsStableAndFreeModsKeepTheUsersOrderAroundAConstraint, AModTheListDoesNotKnowIsOnAndGoesAtTheEnd,
+  ADisabledModIsListedAndNotActive).
+- **Refusals**, each with its reason: a missing dependency, one outside its range, or one the user switched off, and then
+  whatever depended on the refused mod (tests: AMissingDependencyRefusesTheModAndItsDependents,
+  ADependencyOutsideItsRangeIsRefused, ADependencyTheUserSwitchedOffSaysSo); a cycle, naming its members, while mods that
+  merely wait on a cycle through `loadAfter` still load (test: ACycleRefusesItsMembersAndNamesThemButNotInnocentBystanders);
+  incompatibility with an earlier mod, either side naming the other, so the later one is out (test:
+  AModIncompatibleWithAnEarlierOneIsRefusedAndTheEarlierOneStays); the wrong `game`, `gameVersion` or `sage` (test:
+  TheWrongGameGameVersionOrEngineRefusesAMod); code (test: AModThatAsksForCodeIsRefused); an id that is `sage`, the game's or
+  a kit's content namespace (test: AModMayNotTakeTheEnginesTheGamesOrAKitsNamespace); and a second mod with an id already
+  found (test: TheSameIdTwiceRefusesTheSecond). The caller passes the kits' content namespaces as `reservedIds`.
+- **`ModList`** is `user://mods.json`, `{ "order": [...], "disabled": [...] }`, saved through a temp file and a move (test:
+  ModListRoundTripsAndAMissingFileIsTheDefault). A file that cannot be read is the default list and a warning, never a
+  crash (test: ABadModsJsonFallsBackToTheDefaultWithAWarning).
