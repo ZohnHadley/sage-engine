@@ -42,16 +42,41 @@ public sealed class RecordStore
         public required JsonObject Fields;          // merged, meta keys removed except "base"
         public required string DefinedIn;
         public required RecordSource Source;         // where the defining record is written
-        public readonly Dictionary<string, string> FieldOrigins = new(StringComparer.Ordinal);   // top-level field → file
-        // top-level field → the record (file and position) that set it, for errors that say file:line:column
-        public readonly Dictionary<string, RecordSource> FieldSources = new(StringComparer.OrdinalIgnoreCase);
+
+        // Every write to the record, in load order (4j-2): which file and mount set, added to, removed
+        // from or disabled what, at the deepest path the file named. What rec_get, the content report
+        // and errors' file:line all read. Compact on purpose: one small struct per top-level field a
+        // definition writes and per leaf a patch writes; paths are only built for nested writes.
+        public readonly List<FieldWrite> Writes = new();
+
+        // The record this one inherits from, once bases are resolved: its writes are this record's
+        // too, "via base", for the fields this record does not write itself.
+        public RawRecord? Base;
+
+        // The record (file and position) that last wrote top-level `field`, here or in a base; null
+        // when none did.
+        public RecordSource? SourceOf(string field)
+        {
+            for (int i = Writes.Count - 1; i >= 0; i--)
+                if (Writes[i].Op != RecordWriteOp.Disable && FieldWrite.IsUnder(Writes[i].Path, field)) return Writes[i].Source;
+            return Base?.SourceOf(field);
+        }
+
+        // "game:data/items.json" for the file that last wrote top-level `field`, with "(via base …)"
+        // when it was inherited; null when nothing wrote it.
+        public string? OriginOf(string field)
+        {
+            for (int i = Writes.Count - 1; i >= 0; i--)
+                if (Writes[i].Op != RecordWriteOp.Disable && FieldWrite.IsUnder(Writes[i].Path, field)) return Writes[i].Source.File.Name;
+            return Base?.OriginOf(field) is { } inherited ? $"{inherited} (via base {Base.Id})" : null;
+        }
 
         // Where to point a person at `path` ("$.tasks[1]", or a field name): the file that set that
         // field, at the deepest part of the path that file wrote; the record itself when no file did.
         public string At(string? path)
         {
             string? field = JsonSource.FieldOf(path);
-            return field != null && FieldSources.TryGetValue(field, out var source) ? source.At(path) : Source.At();
+            return field != null && SourceOf(field) is { } source ? source.At(path) : Source.At();
         }
         public bool Disabled;
         public bool Abstract;
@@ -68,6 +93,12 @@ public sealed class RecordStore
     // lives in the save (09 §3.1), so this is a cache, not a store of record.
     private readonly Dictionary<(string Type, RecordId Id), object> _runtime = new();
     private readonly Dictionary<(string Type, RecordId Id), RawRecord> _raw = new();
+
+    // What the last load did that left no record behind, for the content report (4j-2): records a
+    // patch disabled (their writes), redefinitions, and patches of records that were never defined.
+    private readonly Dictionary<(string Type, RecordId Id), RawRecord> _disabled = new();
+    private readonly List<(string Type, RecordId Id, RecordSource Source, RecordSource Existing)> _redefinitions = new();
+    private readonly List<(string Type, RecordId Id, RecordSource Source)> _skippedPatches = new();
     private readonly JsonSerializerOptions _json;
     private VirtualFileSystem? _vfs;
 
@@ -207,6 +238,9 @@ public sealed class RecordStore
         var watch = System.Diagnostics.Stopwatch.StartNew();
         ErrorCount = 0;
         WarningCount = 0;
+        _redefinitions.Clear();
+        _skippedPatches.Clear();
+        _disabled.Clear();
         var raw = ReadAndMerge(vfs);
         ResolveBases(raw);
         var built = Build(raw);
@@ -293,7 +327,7 @@ public sealed class RecordStore
                 using (var bytes = new MemoryStream())
                 {
                     stream.CopyTo(bytes);
-                    file = new JsonSource(name, bytes.ToArray());
+                    file = new JsonSource(name, bytes.ToArray(), mount);
                 }
             }
             catch (IOException ex)
@@ -355,23 +389,34 @@ public sealed class RecordStore
                 if (isPatch)
                 {
                     Warn(LogCat.Records, $"{source.At()}: patch for {type} {id}, which isn't defined (yet) in load order; skipped");
+                    _skippedPatches.Add((type, id, source));
                     continue;
                 }
                 var record = new RawRecord { Id = id, Type = type, Fields = new JsonObject(), DefinedIn = file, Source = source };
-                MergeInto(record.Fields, fields, record, source);
+                MergeInto(record.Fields, fields, record.Writes, source, null, define: true);
                 record.Disabled = disabled;
+                if (disabled) record.Writes.Add(new FieldWrite("", source, RecordWriteOp.Disable));
                 record.Abstract = (bool?)obj["abstract"] ?? false;
                 raw[key] = record;
                 continue;
             }
 
             if (!isPatch)
+            {
                 Error($"{source.At()}: {type} {id} is already defined at {existing.Source.At()}; use \"patch\": true to change it. Treated as a patch.");
+                _redefinitions.Add((type, id, source, existing.Source));
+            }
             // The record's own bare ids are written out too, in its own namespace, so that a list the
             // patch adds to or removes from compares like with like ("tags-": ["sage:x"] against "x").
             if (foreign) existing.Fields = QualifyFields(existing.Fields, type, id.Namespace);
-            MergeInto(existing.Fields, fields, existing, source);
-            if (obj.ContainsKey("disabled")) existing.Disabled = disabled;
+            MergeInto(existing.Fields, fields, existing.Writes, source, null, define: false);
+            if (obj.ContainsKey("disabled"))
+            {
+                existing.Disabled = disabled;
+                // Disabling is a write of the whole record; "disabled": false puts it back, which is a
+                // write of that flag.
+                existing.Writes.Add(new FieldWrite(disabled ? "" : "disabled", source, disabled ? RecordWriteOp.Disable : RecordWriteOp.Set));
+            }
             if (obj.ContainsKey("abstract")) existing.Abstract = (bool?)obj["abstract"] ?? false;
             Log.Debug(LogCat.Records, $"{file} patches {type} {id}");
         }
@@ -379,6 +424,7 @@ public sealed class RecordStore
         foreach (var key in raw.Where(kv => kv.Value.Disabled).Select(kv => kv.Key).ToList())
         {
             Log.Debug(LogCat.Records, $"{key.Item1} {key.Item2} disabled by a patch");
+            _disabled[key] = raw[key];
             raw.Remove(key);
         }
         return raw;
@@ -414,16 +460,20 @@ public sealed class RecordStore
         return copy;
     }
 
-    // Per-field merge (05 §3.5). `record` (top level only) tracks which file set each field (rec_get)
-    // and where, for errors.
-    private static void MergeInto(JsonObject target, JsonObject patch, RawRecord? record, RecordSource source)
+    // Per-field merge (05 §3.5). `writes`, when given, gets one entry per write (4j-2): for a
+    // definition (`define`) one per top-level field; for a patch one at the deepest path it names, so a
+    // patch of `"stats": { "agility": 5 }` is a set of `stats.agility` and `"parts": { "inv": { "items+":
+    // […] } }` an add to `parts.inv.items`. `prefix` is the path of `target` inside the record.
+    private static void MergeInto(JsonObject target, JsonObject patch, List<FieldWrite>? writes, RecordSource source, string? prefix, bool define)
     {
         foreach (var (key, value) in patch)
         {
             string field = key;
+            RecordWriteOp op;
             if (key.EndsWith('+') && key.Length > 1)
             {
                 field = key[..^1];
+                op = RecordWriteOp.Add;
                 var list = target[field] as JsonArray ?? new JsonArray();
                 if (value is JsonArray add) foreach (var item in add) list.Add(item?.DeepClone());
                 target[field] = list;
@@ -431,6 +481,7 @@ public sealed class RecordStore
             else if (key.EndsWith('-') && key.Length > 1)
             {
                 field = key[..^1];
+                op = RecordWriteOp.Remove;
                 if (target[field] is JsonArray list && value is JsonArray remove)
                 {
                     foreach (var r in remove)
@@ -439,15 +490,17 @@ public sealed class RecordStore
                 }
             }
             else if (value is JsonObject childPatch && target[key] is JsonObject childTarget)
-                MergeInto(childTarget, childPatch, null, source);
-            else
-                target[key] = value?.DeepClone();
-
-            if (record != null)
             {
-                record.FieldOrigins[field] = source.File.Name;
-                record.FieldSources[field] = source;
+                MergeInto(childTarget, childPatch, writes, source, writes == null ? null : prefix == null ? key : $"{prefix}.{key}", define);
+                continue;
             }
+            else
+            {
+                op = define ? RecordWriteOp.Define : RecordWriteOp.Set;
+                target[key] = value?.DeepClone();
+            }
+
+            writes?.Add(new FieldWrite(prefix == null ? field : $"{prefix}.{field}", source, op));
         }
     }
 
@@ -497,18 +550,13 @@ public sealed class RecordStore
                     merged.Remove("base");
                     var own = (JsonObject)record.Fields.DeepClone();
                     own.Remove("base");
-                    MergeInto(merged, own, null, record.Source);
+                    MergeInto(merged, own, null, record.Source, null, define: false);
                     record.Fields.Clear();
                     foreach (var (k, v) in merged) record.Fields[k] = v?.DeepClone();
-                    foreach (var (field, origin) in raw[(key.Type, baseId)].FieldOrigins)
-                        record.FieldOrigins.TryAdd(field, $"{origin} (via base {baseId})");
-                    foreach (var (field, source) in raw[(key.Type, baseId)].FieldSources)
-                        record.FieldSources.TryAdd(field, source);
+                    record.Base = raw[(key.Type, baseId)];
                 }
             }
             record.Fields.Remove("base");
-            record.FieldOrigins.Remove("base");
-            record.FieldSources.Remove("base");
             resolved.Add(key);
             chain.Remove(key);
             return record.Fields;
@@ -815,23 +863,16 @@ public sealed class RecordStore
 
     // ---- Tools ------------------------------------------------------------------------------------
 
-    // The merged record as JSON plus the file each top-level field came from (rec_get).
-    // The file a record's fields came from, or null when nothing of that id was loaded. An editor saves
+    // The file a record is defined in, or null when nothing of that id was loaded. An editor saves
     // a record back where it found it (15 §3, F28) — writing it to a file named after the record instead
     // would leave two definitions of the same id, which is the one thing the record loader cannot sort
     // out for itself.
     public string? FileOf(string type, RecordId id)
     {
         if (!_raw.TryGetValue((type, id), out var record)) return null;
-        foreach (var origin in record.FieldOrigins.Values)
-        {
-            // "mount:path" or "mount:path (via base …)": the file is the part before the space.
-            int space = origin.IndexOf(' ');
-            string file = space < 0 ? origin : origin[..space];
-            int colon = file.IndexOf(':');
-            if (colon >= 0 && colon + 1 < file.Length) return file[(colon + 1)..];
-        }
-        return null;
+        string file = record.Source.File.Name;   // "mount:path"
+        int colon = file.IndexOf(':');
+        return colon >= 0 && colon + 1 < file.Length ? file[(colon + 1)..] : null;
     }
 
     // Where a loaded record, or a field inside it ("Tasks[2]"), is written: "game:data/ai.json:14:9".
@@ -840,12 +881,62 @@ public sealed class RecordStore
     public string Where(string type, RecordId id, string? path = null) =>
         _raw.TryGetValue((type, id), out var raw) ? raw.At(path) : id.ToString();
 
+    // Every write the last load made to a record, in the order they apply (4j-2): what its bases wrote
+    // first, deepest base first, each `Via` that base, then the record's own definition and patches.
+    // A record a patch disabled still has its writes; one never loaded has none. What rec_get and the
+    // content report (`mod_conflicts`) are made of.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (4j-2): may change before 1.0
+    public IReadOnlyList<RecordWrite> Writes(string type, RecordId id)
+    {
+        if (!_raw.TryGetValue((type, id), out var record) && !_disabled.TryGetValue((type, id), out record)) return Array.Empty<RecordWrite>();
+        var writes = new List<RecordWrite>();
+        Add(record, default);
+        return writes;
+
+        void Add(RawRecord r, RecordId via)
+        {
+            if (r.Base != null) Add(r.Base, via.IsEmpty ? r.Base.Id : via);
+            foreach (var write in r.Writes) writes.Add(new RecordWrite(write, via));
+        }
+    }
+
+    // For the content report: every record the last load read, disabled ones included, with its own
+    // writes (not its bases'), and what it did that left no record.
+    internal IEnumerable<(string Type, RecordId Id, RecordSource Source, bool Disabled, List<FieldWrite> Writes)> Provenance() =>
+        _raw.Values.Concat(_disabled.Values).Select(r => (r.Type, r.Id, r.Source, r.Disabled, r.Writes));
+
+    internal IReadOnlyList<(string Type, RecordId Id, RecordSource Source, RecordSource Existing)> Redefinitions => _redefinitions;
+    internal IReadOnlyList<(string Type, RecordId Id, RecordSource Source)> SkippedPatches => _skippedPatches;
+
+    // The mounts the last load read from; null before it.
+    internal VirtualFileSystem? Vfs => _vfs;
+
+    // The merged record, the file each top-level field came from and, where more than one file wrote
+    // a field, every write to it in order (rec_get).
     public string Describe(string type, RecordId id)
     {
-        if (!_raw.TryGetValue((type, id), out var raw)) return $"{type} {id}: not found";
+        if (!_raw.TryGetValue((type, id), out var raw))
+        {
+            if (!_disabled.TryGetValue((type, id), out raw)) return $"{type} {id}: not found";
+            var by = raw.Writes.LastOrDefault(w => w.Op == RecordWriteOp.Disable);
+            return $"{type} {id}: disabled" + (by.Path == null ? "" : $" by {by.Source.At("disabled")}");
+        }
         var lines = new List<string> { $"{type} {id} (defined in {raw.DefinedIn})", raw.Fields.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) };
-        foreach (var (field, file) in raw.FieldOrigins.OrderBy(kv => kv.Key, StringComparer.Ordinal))
-            lines.Add($"  {field} <- {file}");
+        var writes = Writes(type, id);
+        var fields = new SortedSet<string>(StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var write in writes)
+        {
+            string field = FieldWrite.TopLevel(write.Path);
+            if (field.Length > 0 && field != "base" && field != "disabled" && seen.Add(field)) fields.Add(field);
+        }
+        foreach (var field in fields)
+        {
+            lines.Add($"  {field} <- {raw.OriginOf(field)}");
+            var touching = writes.Where(w => FieldWrite.IsUnder(w.Path, field)).ToList();
+            if (touching.Select(w => w.File).Distinct(StringComparer.Ordinal).Count() > 1)
+                foreach (var write in touching) lines.Add($"      {write}");
+        }
         return string.Join('\n', lines);
     }
 
@@ -866,5 +957,12 @@ public sealed class RecordStore
             Log.Info(LogCat.Console, Describe(a[0], Resolve(a[0], a[1])));
         });
         cvars.RegisterCommand("rec_reload", CVarFlags.None, "Reload and re-merge all record files.", _ => Reload());
+        // With the record commands, so it answers with no mods too: a game patching a kit (4j-2).
+        cvars.RegisterCommand("mod_conflicts", CVarFlags.None, "mod_conflicts [mount]: what each mount added, patched and shadowed, and where mods conflict.", a =>
+        {
+            if (_vfs == null) { Log.Warn(LogCat.Console, "mod_conflicts: no content is loaded"); return; }
+            var report = ContentReport.Build(this, _vfs);
+            foreach (var line in report.Lines(a.Count > 0 ? a[0] : null)) Log.Info(LogCat.Console, line);
+        });
     }
 }
