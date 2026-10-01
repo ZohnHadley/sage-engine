@@ -89,26 +89,47 @@ public static class PlacementExtensions
     public static int SpawnPlacements(this World world, RecordId document, PlacementsRecord record)
     {
         int spawned = 0;
-        string source = ContentIds.DocumentSource(document);
         for (int i = 0; i < record.Place.Count; i++)
-        {
-            var placement = record.Place[i];
-            var at = world.PlacementPosition(placement, record.Origin, record.RelativeTo);
-            var entity = world.SpawnWithoutId(placement.Prefab.Id, at, placement.Yaw, placement.Overrides, $"placements {document}");
-            if (entity.IsNull) continue;
-
-            if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
-            PlacementWires.Attach(world, entity, placement);
-            world.Add(entity, new FromPlacements { Document = document });
-            // A stable identity, so a save finds this same thing again (4i-3).
-            ContentIds.Place(world, source, entity, ContentIds.DocumentPlacement(document, i, placement));
-            spawned++;
-        }
+            if (!world.SpawnPlacement(document, record, i).IsNull) spawned++;
         // What a save said about this document (its dead, its state) is applied now it is placed.
-        ContentIds.Finish(world, source);
+        world.FinishPlacements(document);
 
         Log.Info(LogCat.Editor, $"Placements '{document}': {spawned} of {record.Place.Count} placed in '{world.Name}'");
         return spawned;
+    }
+
+    // One placement of a document (issue #217): what SpawnPlacements does for each, so an editor can put
+    // back the one it changed without touching the rest. Its stable identity comes from its `id`, else its
+    // index in the list (4i-3). The null entity when its prefab does not exist (logged by the spawn).
+    public static Entity SpawnPlacement(this World world, RecordId document, PlacementsRecord record, int index)
+    {
+        var placement = record.Place[index];
+        var at = world.PlacementPosition(placement, record.Origin, record.RelativeTo);
+        var entity = world.SpawnWithoutId(placement.Prefab.Id, at, placement.Yaw, placement.Overrides, $"placements {document}");
+        if (entity.IsNull) return entity;
+
+        if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
+        PlacementWires.Attach(world, entity, placement);
+        world.Add(entity, new FromPlacements { Document = document });
+        // A stable identity, so a save finds this same thing again (4i-3).
+        ContentIds.Place(world, ContentIds.DocumentSource(document), entity, ContentIds.DocumentPlacement(document, index, placement));
+        return entity;
+    }
+
+    // The document has placed everything (SpawnPlacement, one by one): what a save said about it — its
+    // dead, its state — is laid on now.
+    public static void FinishPlacements(this World world, RecordId document) =>
+        ContentIds.Finish(world, ContentIds.DocumentSource(document));
+
+    // Takes one placed entity (and the children its prefab placed) out of the world as if it had never
+    // been placed (issue #217): an editor re-spawning or removing a placement. Unlike the game destroying
+    // it, this leaves no tombstone and puts no state to sleep, so placing it again places it afresh.
+    public static void DespawnPlacement(this World world, RecordId document, Entity entity)
+    {
+        if (!world.IsAlive(entity)) return;
+        if (world.Resources.TryGet<ContentBaseline>(out var baseline) && baseline != null)
+            baseline.Withdraw(entity, ContentIds.DocumentSource(document));
+        world.Destroy(entity);
     }
 
     // Where a placement stands, in the simulation's frame (issue #29): `at` measured from what its

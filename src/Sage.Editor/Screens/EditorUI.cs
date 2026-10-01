@@ -12,15 +12,13 @@ namespace Sage.Editor;
 // it has unsaved changes, because an editor that does not is an editor you lose work in.
 internal class EditorUI
 {
-    private readonly EditorDocument _document;
-    private readonly World _world;
+    private readonly EditDocument _document;
     private readonly List<RecordId> _available = new();
     private readonly CVar<bool> _camFree;
     private readonly CVar<bool> _viewport;
 
-    public EditorUI(World world, EditorDocument document, CVar<bool> camFree, CVar<bool> viewport)
+    public EditorUI(EditDocument document, CVar<bool> camFree, CVar<bool> viewport)
     {
-        _world = world;
         _document = document;
         _camFree = camFree;
         _viewport = viewport;
@@ -32,7 +30,7 @@ internal class EditorUI
 
         if (ImGui.BeginMenu("File"))
         {
-            if (ImGui.MenuItem("New")) _document.New(_world, NamespaceOfGame());
+            if (ImGui.MenuItem("New")) _document.New();
 
             if (ImGui.BeginMenu("Open"))
             {
@@ -40,15 +38,24 @@ internal class EditorUI
                 _available.AddRange(_document.Available());
                 if (_available.Count == 0) ImGui.TextDisabled("no placements records");
                 foreach (var id in _available)
-                    if (ImGui.MenuItem(id.ToString())) _document.Open(_world, id);
+                    if (ImGui.MenuItem(id.ToString())) _document.Open(id);
                 ImGui.EndMenu();
             }
 
-            if (ImGui.MenuItem("Save", "", false, _document.IsOpen)) _document.Save(_world);
-            if (ImGui.MenuItem("Close", "", false, _document.IsOpen)) _document.Close(_world);
+            if (ImGui.MenuItem("Save", "", false, _document.IsOpen)) _document.Save();
+            if (ImGui.MenuItem("Close", "", false, _document.IsOpen)) _document.Close();
 
             ImGui.Separator();
             if (ImGui.MenuItem("Exit")) game.Exit();
+            ImGui.EndMenu();
+        }
+
+        // The document's history (issue #217): ed_undo and ed_redo.
+        if (ImGui.BeginMenu("Edit"))
+        {
+            var log = _document.History;
+            if (ImGui.MenuItem(log.CanUndo ? $"Undo {log.Entries[log.Position - 1].Description}" : "Undo", "ed_undo", false, log.CanUndo)) _document.Undo();
+            if (ImGui.MenuItem(log.CanRedo ? $"Redo {log.Entries[log.Position].Description}" : "Redo", "ed_redo", false, log.CanRedo)) _document.Redo();
             ImGui.EndMenu();
         }
 
@@ -65,14 +72,5 @@ internal class EditorUI
         ImGui.TextDisabled(_document.Title);
 
         ImGui.EndMainMenuBar();
-    }
-
-    // A new document belongs to the game that is loaded, because that is whose content folder it will
-    // be saved into.
-    private string NamespaceOfGame()
-    {
-        foreach (var mount in _world.Engine!.Vfs.Mounts)
-            if (mount.RecordNamespace != "sage") return mount.RecordNamespace;
-        return "sage";
     }
 }

@@ -174,7 +174,7 @@ placement that named a frame of its own comes back in the document's.
 | Piece | Where | What it does |
 |---|---|---|
 | `Placement` / `PlacementsRecord` | `src/Sage.Simulation/Content/Placements.cs` | The document's content, and spawning it into a world, reading it back, clearing it |
-| `EditorDocument` | `src/Sage.Simulation/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable |
+| `EditorDocument` | was `src/Sage.Simulation/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable. Replaced by `EditDocument` in `Sage.Editing` (#217, §10c) |
 | `EntityOutlinerWindow` / `EntityInspectorWindow` | `src/Sage.Editor/Screens/` | List and select; edit a component by boxing it, changing a field and writing it back |
 | `DevTools` | `src/Sage.Editor/DevTools.cs` | Everything a developer sees, in one class the host holds behind `SAGE_DEV` |
 
@@ -200,6 +200,59 @@ placement that named a frame of its own comes back in the document's.
 editor, per-entity overrides, play-in-editor, and an inspector generated from declared metadata rather
 than reflection (09 §3.2). Editing runs against the live world, so `pause 1` before moving things — the
 simulation will otherwise drop a crate while you inspect it.
+
+## 10c. As built: the command log and the document (issue #217, phase 10a, 2026-10-01)
+
+**The document is the source of truth and the world is derived from it** (§3), which F28's
+`EditorDocument` had the other way round: it spawned a record into the world and saved by reading the
+world back. `EditDocument` (`src/Sage.Editing/EditDocument.cs`) copies the `placements` record when it
+opens, and every change is a command that changes the copy and then re-spawns **only the placements it
+touched**; saving writes the copy. Nothing is read back from the world, so what the editor shows is what
+a game loading the file would place — a re-spawn is a load of that one placement
+(`world.SpawnPlacement`, beside `SpawnPlacements`; `DespawnPlacement` takes one out without a tombstone).
+
+| Piece | Where | What it does |
+|---|---|---|
+| `IEditorCommand` | `src/Sage.Editing/IEditorCommand.cs` | `Description`, `Do`, `Undo`, and `TryMerge` (default: never) |
+| `CommandLog` | `src/Sage.Editing/CommandLog.cs` | Execute, undo, redo, merging, a cap, `SavedPosition`, `Dirty`, `Changed` |
+| `EditDocument` | `src/Sage.Editing/EditDocument.cs` | Open, new, new level, close, save; the entity ↔ placement map |
+| `AddPlacement`, `RemovePlacement`, `SetPlacement`, `SetOverride`, `ClearOverride`, `SetOutputs` | `src/Sage.Editing/PlacementCommands.cs` | The edits a document takes |
+| `EditorCommands` | `src/Sage.Editing/EditorCommands.cs` | `doc_new`, `doc_level`, `doc_open`, `doc_save`, `doc_close`, `doc_status`, `ed_undo`, `ed_redo`, `ed_history` |
+
+- **One list and a position in it.** A new command drops the redo stack; a capped log forgets its oldest
+  command. **Dirty is "the position is not the saved one"**, not a flag: undoing back to the save makes a
+  document clean, undoing past it makes it dirty, and a save point that was capped away or dropped with a
+  redo stack leaves it dirty until the next save.
+  (tests: UndoAndRedoWalkTheLogAndANewCommandDropsTheRedoStack, ADocumentIsDirtyAgainAfterAnUndoPastTheSavePoint,
+  TheCapForgetsTheOldestCommandsAndASavePointWithThem, ADocumentSaysWhenItHasUnsavedWork)
+- **A drag is one command**: a command done straight after another of the same target folds into it
+  (`TryMerge`) until `EndMerge` (the mouse came up, or an undo), and nothing merges into the command at
+  the save point. (test: ADragsFramesAreOneCommandUntilTheGestureEnds)
+- **Each command undoes and redoes exactly, re-spawning one placement.** `SetPlacement` sets `at`, `yaw`,
+  `name` and `relativeTo` (`PlacementFields`); `SetOverride`/`ClearOverride` set or take away one field of
+  one component or part in the shape a placement writes (`"overrides": { "components": { "timer":
+  { "interval": 7 } } }`), on the body the prefab already names under another spelling, and an emptied
+  body or overrides go with the last field; `SetOutputs` replaces the wires.
+  (tests: AddingAPlacementSpawnsItAndUndoTakesItAway, RemovingAPlacementAndUndoingPutsItBackWhereItWas,
+  SetPlacementReSpawnsOnlyThePlacementItChanged, AnOverrideIsOneFieldOfOneComponentOrPartAndRevertsToThePrefab,
+  SettingOutputsWiresThePlacedEntityAndUndoUnwiresIt, AReSpawnTakesThePrefabsChildrenWithIt)
+- **A re-spawn keeps its placement's identity.** Commands hold the `Placement` object, and the document
+  maps it to its entity both ways; `Respawned(old, new)` lets a selection follow it (DevTools' does), and
+  the new entity has the persistent id the old one had. A placement the editor adds gets a stable `id`
+  (its name, else its prefab's, made unique), so its identity in saves does not hang on its index; one
+  without an `id` that an insertion or removal moved is re-spawned with the id a load would now give it.
+  (test: AReSpawnKeepsItsPlacementIdentity)
+- **A new level is a scene naming a new placements document** (`doc_level crypt`: `crypt` places
+  `crypt_placements`); the first save writes both, each a file of its own.
+  (test: ANewLevelIsASceneNamingANewPlacementsDocument)
+- **Save has one writer** (`EditDocument.WriteRecord`): it replaces the document's record in the file it
+  came from and keeps the file's other records (not yet its comments or layout: that is the
+  file-preserving writer of #218, which goes in at that one call site). (test: WhatIsSavedIsWhatAGameWillLoad)
+- **The console drives it**: the `doc_*` commands go through the document, and `ed_undo [n]`, `ed_redo
+  [n]` and `ed_history` through its log; they live in `Sage.Editing` so a headless test presses them.
+  (test: TheConsoleOpensUndoesRedoesAndListsTheHistory)
+- Until the inspector edits overrides (#223), what it changes on the selected entity is kept only for the
+  placement's position and yaw, as a `SetPlacement`; other component edits are not saved, as before.
 
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**

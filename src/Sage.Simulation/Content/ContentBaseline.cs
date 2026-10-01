@@ -152,6 +152,10 @@ internal sealed class ContentBaseline
         return true;
     }
 
+    // A placed root is taken back by the content that placed it (an editor re-spawning or removing a
+    // placement, issue #217): no longer its source's, and no tombstone either, since nothing destroyed it.
+    internal void Withdraw(Entity root, string source) => Unregister(root, source);
+
     private void Unregister(Entity entity, string from)
     {
         if (entity.TryGetComponent<Persistent>(out var persistent)

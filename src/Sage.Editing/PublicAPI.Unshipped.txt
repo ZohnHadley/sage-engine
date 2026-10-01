@@ -1,5 +1,118 @@
 #nullable enable
+const Sage.Editing.CommandLog.DefaultCapacity = 500 -> int
+Sage.Editing.AddPlacement
+Sage.Editing.AddPlacement.AddPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index = -1) -> void
+Sage.Editing.AddPlacement.Description.get -> string!
+Sage.Editing.AddPlacement.Do() -> void
+Sage.Editing.AddPlacement.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.AddPlacement.Undo() -> void
+Sage.Editing.ClearOverride
+Sage.Editing.ClearOverride.ClearOverride(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.OverrideSection section, string! id, string! field) -> void
+Sage.Editing.ClearOverride.Description.get -> string!
+Sage.Editing.ClearOverride.Do() -> void
+Sage.Editing.ClearOverride.Field.get -> string!
+Sage.Editing.ClearOverride.Id.get -> string!
+Sage.Editing.ClearOverride.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.ClearOverride.Section.get -> Sage.Editing.OverrideSection
+Sage.Editing.ClearOverride.Undo() -> void
+Sage.Editing.CommandLog
+Sage.Editing.CommandLog.CanRedo.get -> bool
+Sage.Editing.CommandLog.CanUndo.get -> bool
+Sage.Editing.CommandLog.Capacity.get -> int
+Sage.Editing.CommandLog.Changed -> System.Action?
+Sage.Editing.CommandLog.Clear() -> void
+Sage.Editing.CommandLog.CommandLog(int capacity = 500) -> void
+Sage.Editing.CommandLog.Dirty.get -> bool
+Sage.Editing.CommandLog.EndMerge() -> void
+Sage.Editing.CommandLog.Entries.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.IEditorCommand!>!
+Sage.Editing.CommandLog.Execute(Sage.Editing.IEditorCommand! command) -> void
+Sage.Editing.CommandLog.MarkSaved() -> void
+Sage.Editing.CommandLog.Position.get -> int
+Sage.Editing.CommandLog.Redo() -> bool
+Sage.Editing.CommandLog.SavedPosition.get -> int
+Sage.Editing.CommandLog.Undo() -> bool
+Sage.Editing.EditDocument
+Sage.Editing.EditDocument.Available() -> System.Collections.Generic.IEnumerable<Sage.Core.RecordId>!
+Sage.Editing.EditDocument.Changed -> System.Action?
+Sage.Editing.EditDocument.Close() -> void
+Sage.Editing.EditDocument.Dirty.get -> bool
+Sage.Editing.EditDocument.EditDocument(Sage.Simulation.World! world, int historyCapacity = 500) -> void
+Sage.Editing.EditDocument.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.EditDocument.EntityOf(Sage.Simulation.Placement! placement) -> Sage.Simulation.Entity
+Sage.Editing.EditDocument.Execute(Sage.Editing.IEditorCommand! command) -> bool
+Sage.Editing.EditDocument.Find(string! nameOrId) -> Sage.Simulation.Placement?
+Sage.Editing.EditDocument.History.get -> Sage.Editing.CommandLog!
+Sage.Editing.EditDocument.Id.get -> Sage.Core.RecordId
+Sage.Editing.EditDocument.IndexOf(Sage.Simulation.Placement! placement) -> int
+Sage.Editing.EditDocument.IsOpen.get -> bool
+Sage.Editing.EditDocument.New(Sage.Core.RecordId id = default(Sage.Core.RecordId)) -> void
+Sage.Editing.EditDocument.NewLevel(Sage.Core.RecordId scene) -> Sage.Core.RecordId
+Sage.Editing.EditDocument.Open(Sage.Core.RecordId id) -> bool
+Sage.Editing.EditDocument.Path.get -> string!
+Sage.Editing.EditDocument.PlacementOf(Sage.Simulation.Entity entity) -> Sage.Simulation.Placement?
+Sage.Editing.EditDocument.Placements.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
+Sage.Editing.EditDocument.Record.get -> Sage.Simulation.PlacementsRecord!
+Sage.Editing.EditDocument.Redo() -> bool
+Sage.Editing.EditDocument.Respawned -> System.Action<Sage.Simulation.Entity, Sage.Simulation.Entity>?
+Sage.Editing.EditDocument.Save() -> bool
+Sage.Editing.EditDocument.Scene.get -> Sage.Core.RecordId
+Sage.Editing.EditDocument.Title.get -> string!
+Sage.Editing.EditDocument.Undo() -> bool
+Sage.Editing.EditDocument.UniqueId(string! wanted) -> string!
+Sage.Editing.EditDocument.World.get -> Sage.Simulation.World!
+Sage.Editing.EditorCommands
 Sage.Editing.IEditorCommand
 Sage.Editing.IEditorCommand.Description.get -> string!
 Sage.Editing.IEditorCommand.Do() -> void
+Sage.Editing.IEditorCommand.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
 Sage.Editing.IEditorCommand.Undo() -> void
+Sage.Editing.OverrideSection
+Sage.Editing.OverrideSection.Component = 0 -> Sage.Editing.OverrideSection
+Sage.Editing.OverrideSection.Part = 1 -> Sage.Editing.OverrideSection
+Sage.Editing.PlacementFields
+Sage.Editing.PlacementFields.At.get -> System.Numerics.Vector3
+Sage.Editing.PlacementFields.At.init -> void
+Sage.Editing.PlacementFields.Name.get -> string!
+Sage.Editing.PlacementFields.Name.init -> void
+Sage.Editing.PlacementFields.PlacementFields() -> void
+Sage.Editing.PlacementFields.PlacementFields(System.Numerics.Vector3 At, float Yaw, string! Name, Sage.Simulation.PlacementFrame? RelativeTo) -> void
+Sage.Editing.PlacementFields.RelativeTo.get -> Sage.Simulation.PlacementFrame?
+Sage.Editing.PlacementFields.RelativeTo.init -> void
+Sage.Editing.PlacementFields.Yaw.get -> float
+Sage.Editing.PlacementFields.Yaw.init -> void
+Sage.Editing.RemovePlacement
+Sage.Editing.RemovePlacement.Description.get -> string!
+Sage.Editing.RemovePlacement.Do() -> void
+Sage.Editing.RemovePlacement.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.RemovePlacement.RemovePlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
+Sage.Editing.RemovePlacement.Undo() -> void
+Sage.Editing.SetOutputs
+Sage.Editing.SetOutputs.Description.get -> string!
+Sage.Editing.SetOutputs.Do() -> void
+Sage.Editing.SetOutputs.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.SetOutputs.SetOutputs(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, System.Collections.Generic.IEnumerable<Sage.Simulation.Connection!>! outputs) -> void
+Sage.Editing.SetOutputs.Undo() -> void
+Sage.Editing.SetOverride
+Sage.Editing.SetOverride.Description.get -> string!
+Sage.Editing.SetOverride.Do() -> void
+Sage.Editing.SetOverride.Field.get -> string!
+Sage.Editing.SetOverride.Id.get -> string!
+Sage.Editing.SetOverride.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.SetOverride.Section.get -> Sage.Editing.OverrideSection
+Sage.Editing.SetOverride.SetOverride(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.OverrideSection section, string! id, string! field, System.Text.Json.Nodes.JsonNode? value) -> void
+Sage.Editing.SetOverride.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
+Sage.Editing.SetOverride.Undo() -> void
+Sage.Editing.SetOverride.Value.get -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.SetPlacement
+Sage.Editing.SetPlacement.After.get -> Sage.Editing.PlacementFields
+Sage.Editing.SetPlacement.Before.get -> Sage.Editing.PlacementFields
+Sage.Editing.SetPlacement.Description.get -> string!
+Sage.Editing.SetPlacement.Do() -> void
+Sage.Editing.SetPlacement.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.SetPlacement.SetPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.PlacementFields fields) -> void
+Sage.Editing.SetPlacement.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
+Sage.Editing.SetPlacement.Undo() -> void
+static Sage.Editing.EditDocument.GameNamespace(Sage.Simulation.Engine! engine) -> string!
+static Sage.Editing.EditorCommands.History(Sage.Editing.EditDocument! document) -> string!
+static Sage.Editing.EditorCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
+static Sage.Editing.PlacementFields.Of(Sage.Simulation.Placement! placement) -> Sage.Editing.PlacementFields
