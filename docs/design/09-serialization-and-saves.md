@@ -443,6 +443,21 @@ lost and nothing duplicated. `tests/games/saves` proves it headless, with no C#
   says so when it does not, so the wires silently never fire; and a test that leaves a `PlayerCommand`
   in `PlayerInput` with a button pressed presses it again on the next tick (F9 then loaded twice).
 
+### As built (saves name their mods, issue 4j-4, 2026-10-01)
+
+- **The header gains `mods`**: each active data mod's `id` and `version`, in load order, read from
+  `Engine.Mods` (phase 4j). `SaveSlot.Mods` gives a menu the same (test:
+  ASaveListsItsModsAndLeavesTheirMountsOutOfContent). The format stays 4: the key is additive.
+- **A mod's mount (`mods/<id>`) is left out of `content`**, when written and when compared, so a
+  difference is said once, as a mod (same test).
+- **Three more mismatch lines**, on the slot and in the load's warning: `mod 'x' 1.2.0 is not active`,
+  `mod 'x' was 1.1.0 and is 1.2.0` and `mod 'x' was not active then` (test:
+  AModAtAnotherVersionAndAModNotThereBeforeAreSaid). A save still loads, with no hash and no refusal
+  (decision 6): what a missing mod added is a placeholder, as for any missing prefab (test:
+  ALoadWithoutAModWarnsNamingItAndKeepsTheModsEntityAsAPlaceholder). A header without `mods` (every
+  save from before this, the golden ones included) compares as matching (test:
+  ASaveFromBeforeHeadersListedModsSaysNothingAboutThem). Experimental (SAGE0132): `SaveSlot.Mods`, `SavedMod`.
+
 ### As built (cells go dormant with their state, issue 4g-1, 2026-10-01)
 
 Leaving content lost its state: `ContentBaseline.Forget` kept only tombstones, so a goblin wounded in a

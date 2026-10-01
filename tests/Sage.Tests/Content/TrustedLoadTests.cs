@@ -237,14 +237,14 @@ public class TrustedLoadTests
         var plugins = header["plugins"]!.AsArray();
         plugins.Add(new JsonObject { ["id"] = "mod.gone", ["version"] = "1.2.0" });
         plugins.Single(p => (string?)p!["id"] == "sage.gameplay.items")!["version"] = "0.0.1";
-        header["content"]!.AsArray().Add(new JsonObject { ["mount"] = "mods/gone", ["namespace"] = "gone" });
+        header["content"]!.AsArray().Add(new JsonObject { ["mount"] = "extras/gone", ["namespace"] = "gone" });
         File.WriteAllText(path, header.ToJsonString());
 
         app.Engine.Saves.Rescan();
         slot = app.Engine.Saves.Slots.Single(s => s.Name == "slot");
         Assert.Contains("plugin 'mod.gone' 1.2.0 is not loaded", slot.Mismatches);
         Assert.Contains(slot.Mismatches, m => m.StartsWith("plugin 'sage.gameplay.items' was 0.0.1 and is ", StringComparison.Ordinal));
-        Assert.Contains("content 'mods/gone' is not mounted", slot.Mismatches);
+        Assert.Contains("content 'extras/gone' is not mounted", slot.Mismatches);
 
         using var log = new CaptureSink();
         Assert.True(app.Engine.Saves.Load("slot"));
