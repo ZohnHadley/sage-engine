@@ -820,6 +820,26 @@ public sealed partial class SaveSystem
         Log.Debug(LogCat.Save, $"{source}: woke with {count} entit(ies)");
     }
 
+    // An entity something kept out of the world spawned again (4g-6, CellContent.Restore): its save entries
+    // (the root's first, then the children its prefab placed), the root put at `position` in the frame the
+    // world is in now, through the load's own path. The root, or null when an entity with its id is already
+    // in the world (nothing is spawned twice) or it could not be rebuilt.
+    internal Entity Revive(World world, IReadOnlyList<JsonObject> saved, System.Numerics.Vector3 position, string where)
+    {
+        if (saved.Count == 0 || saved[0]["id"] is not JsonValue idValue || !idValue.TryGetValue(out string? text)
+            || !PersistentId.TryParse(text, out var id)) return default;
+        if (!world.Resolve(id).IsNull)
+        {
+            Log.Warn(LogCat.Save, $"{where}: {text} is already in the world; not spawned a second time");
+            return default;
+        }
+        var entries = new JsonNode?[saved.Count];
+        for (int i = 0; i < saved.Count; i++) entries[i] = saved[i].DeepClone();
+        Cells.SetPosition((JsonObject)entries[0]!, position);
+        Restore(world, ReadEntities(entries, where), SaveJson.For(world, _engine.Records, _converters), where, ContentIds.Baseline(world));
+        return world.Resolve(id);
+    }
+
     // ---- what a prefab spawned as (4i-5) --------------------------------------------------------------
 
     // Called by a prefab spawn once the prefab (with `overrides`) is applied and before anything else is

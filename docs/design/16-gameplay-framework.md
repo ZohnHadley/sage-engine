@@ -617,9 +617,60 @@ hour, and the AI walks there. Generic engine AI, in `Sage.Gameplay/AI`. Experime
   so a creature saved on its way arrives (test: SavedMidWalkHeArrivesAfterALoad). The golden saves are
   unchanged.
 - **Not yet:** the catch-up does not path-find (a wall between him and the forge does not slow him), and a
-  creature that could not have arrived is not moved part of the way; nothing walks through a door to an
-  anchor in another scene (4g-5 doors, 4g-6 off-screen); the navigation window is 96 m, so an anchor further
+  creature that could not have arrived is not moved part of the way; nothing loaded walks through a door to
+  an anchor in another scene (4g-5 doors; off-screen agents do since 4g-6, "As built (off-screen simulation)"); the navigation window is 96 m, so an anchor further
   than that is walked at in a straight line.
+
+### As built (off-screen simulation, 2026-10-01 — issue 4g-6)
+A-Life-lite: an NPC keeps its routine, and a fight still happens, while the player is somewhere else. Generic
+engine, in `Sage.Gameplay`; the seam it stands on is in `Sage.Simulation`. Experimental, SAGE0129
+(MAKING_A_GAME §10b).
+
+- **Code:** `src/Sage.Gameplay/World/Offscreen.cs` (the `sage:offscreen` component and `offscreen` part,
+  `OffscreenAgent`, the saved `OffscreenAgents` table, `OffscreenDied`, the `offscreen_fight` vocabulary and its
+  `strength` entry, `OffscreenMap`, `OffscreenSystem`); the seam `src/Sage.Simulation/Content/CellHandoff.cs`
+  (`ICellHandoff`, `CellContent`), called from `ContentBaseline.Sleep`; `Factions.AreHostile`. Tests:
+  `tests/Sage.Tests/Gameplay/OffscreenTests.cs`.
+- **Opt in** with the `offscreen` part: `speed` (m/s; 0 is its movement profile's walking speed), `strength`
+  (default 1), `corpse` (default true) and `fight` (an `offscreen_fight` entry, default `strength`). Nothing
+  else is simulated.
+- **Going.** When the cell it is in goes dormant (a streamed sector the player leaves, a scene left: 4g-1,
+  4g-3), the cell offers its roots to its handoffs before writing its state; the off-screen system takes the
+  living ones with the part (`CellContent.Release`) and they do not sleep in the cell. Each becomes an
+  agent in the world's saved `offscreen` resource: its id, prefab, name, scene, absolute position (doubles)
+  and height above the ground, faction, health (the conventions' attribute), routine, speed, strength, and its
+  save entries. The content that placed it has it as a tombstone from then on (plan decision 3), so placing
+  that sector again never places it twice (test: AnNpcThatWalkedWhileUnloadedAppearsWhereItWalkedTo).
+- **A step is one game minute.** Fights first: agents in one scene within `OffscreenFights.Range` (12 m) whose
+  factions are hostile (`Factions.AreHostile`: either side's table says so) fight one round, each at most
+  once a minute, paired west to east. The round is the `fight` entry of the one with the lower id;
+  `strength` weighs strength × health, rolls `ShotRandom` on the minute and both ids, and the winner takes its
+  strength from the loser's health. At zero the loser is dead, `OffscreenDied` is raised, and one whose part
+  says `"corpse": false` leaves the table. Then the rest walk in a straight line at their speed toward the
+  anchor of their routine's entry in force (4g-4), found by name in the *content* (`OffscreenMap`: every named
+  placement of every scene), so the result does not depend on what is loaded. An anchor in another scene is
+  reached through a door: to the door's position, out at its entry in the other scene, on to the anchor (test:
+  AnAgentChangesSceneThroughADoor).
+- **Ticking or skipping, the same steps.** Ticking, the system (`sage.ai.offscreen`, Commands, before the
+  think) catches up with the clock within `offscreen_budget` agent-steps a tick; a `TimePassed` skip (4g-2)
+  runs every minute it covers at once. The table saves the minute reached, so two runs, and a run saved and
+  loaded half way, end the same (test: TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime). A step
+  allocates nothing (test: FiveHundredAgentsStepWithoutAllocating).
+- **Back.** When an agent's scene is the world's and, if it streams, its sector is placed
+  (`CellContent.IsLive`, checked after every step and whenever a cell is placed or a save loaded), it is
+  spawned there from its save entries (`CellContent.Restore`, the load's own path) as a runtime spawn of that
+  cell, on the ground at the height it left at, with the health the fights left it, dead with the dead tag
+  if it died, and its AI starting its routine afresh. An id already in the world is never spawned again
+  (test: TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime).
+- **Console:** `offscreen_status` lists each world's agents; `offscreen_budget` is the per-tick catch-up.
+- **Deviations from the plan.** `Factions.Between(records, a, b)` already answered for two factions without
+  entities; what was missing was the symmetric question, `AreHostile`. Doors are read from content as 4g-5's
+  `load_door` part (`{ "scene", "entry" }`, on the prefab or the placement's overrides); until 4g-5 lands no
+  content has one, so the door test adds its door in code (`OffscreenMap.AddDoor`).
+- **Not yet:** an NPC joins the table only when its cell first goes dormant, so one in a sector the player has
+  never placed stays where it was put; a live NPC whose anchor is in another scene idles until its cell
+  sleeps (it does not walk to the door in view); anchors are placements only (not a `.map`'s targetnames);
+  movement ignores terrain and walls; the kit's attribute-based fight rule is the kit's to add (decision 4).
 
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).

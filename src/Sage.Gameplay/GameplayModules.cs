@@ -412,6 +412,7 @@ public sealed class AIModule : IModule
     private CVar<float>? _navCell;
     private CVar<int>? _navNodes;
     private CVar<int>? _navPlans;
+    private CVar<int>? _offscreenBudget;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(CombatModule) };
 
@@ -445,6 +446,28 @@ public sealed class AIModule : IModule
             "Cells one search may look at before giving up, so a sealed room costs a known amount.", 64, 9216);
         _navPlans = ctx.Engine.CVars.Register("nav_plans", 4, CVarFlags.Cheat,
             "Plans allowed per tick across every creature; the rest wait a tick.", 1, 64);
+
+        // Off-screen simulation (issue 4g-6): how much of it a tick may do while catching up with the clock.
+        _offscreenBudget = ctx.Engine.CVars.Register("offscreen_budget", OffscreenSystem.DefaultBudget, CVarFlags.Archive,
+            "Off-screen agent steps (an agent, a game minute) a tick may run catching up with the clock; a skip of time runs them all.", 100, 1000000);
+        var engine = ctx.Engine;
+        _records.Reloaded += () =>
+        {
+            foreach (var world in engine.Worlds)
+                if (world.Resources.TryGet<OffscreenMap>(out var map) && map != null) map.Invalidate();
+        };
+        ctx.Engine.CVars.RegisterCommand("offscreen_status", CVarFlags.None,
+            "The off-screen agents of each world: how many, how many dead, and the game minute simulated to.", _ =>
+        {
+            foreach (var world in engine.Worlds)
+            {
+                if (!world.Resources.TryGet<OffscreenAgents>(out var table) || table == null) continue;
+                int dead = 0;
+                foreach (var agent in table.Agents) if (agent.Dead) dead++;
+                Log.Info(LogCat.Console, $"'{world.Name}': {table.Agents.Count} off-screen agent(s), {dead} dead, at minute {table.Minute}");
+                foreach (var agent in table.Agents) Log.Info(LogCat.Console, $"  {agent}{(agent.Dead ? " (dead)" : "")}");
+            }
+        });
 
         ctx.Engine.CVars.RegisterCommand("nav_stats", CVarFlags.None,
             "What navigation has been asked for and what it cost.", _ =>
@@ -505,6 +528,9 @@ public sealed class AIModule : IModule
             PlansPerTick = _navPlans!.Value,
         });
         world.AddSystem(new AIDebugSystem(world, _records!, _aiDebug!));   // 16 §11
+        // Off-screen simulation (issue 4g-6): the saved table of agents, and what steps it.
+        world.Resources.Add(new OffscreenAgents());
+        world.AddSystem(new OffscreenSystem(world, _records!, _offscreenBudget));
         world.AddSystem(new NavDebugSystem(world, _navEnabled!, _navDebug!, _navCell!, _navNodes!, _navPlans!));
     }
 }

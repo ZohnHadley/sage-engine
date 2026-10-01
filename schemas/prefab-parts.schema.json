@@ -259,6 +259,14 @@
         }
       ]
     },
+    "offscreen": {
+      "description": "Prefab part 'offscreen' (OffscreenPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/offscreen"
+        }
+      ]
+    },
     "particles": {
       "description": "Prefab part 'particles' (ParticlesPart).",
       "allOf": [
@@ -1358,6 +1366,42 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'mover' (MoverPart)."
+    },
+    "offscreen": {
+      "type": "object",
+      "properties": {
+        "speed": {
+          "description": "How fast it walks off-screen; 0 = its movement profile's walking speed. Unit: m/s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "strength": {
+          "description": "How hard it fights off-screen: its weight in a round (with its health) and the health it takes when it wins one. At least 0. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0
+        },
+        "corpse": {
+          "description": "Whether it leaves a corpse when it dies off-screen; false, it is gone. (bool, default true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "fight": {
+          "description": "The rule its off-screen fights are settled by: an offscreen_fight entry. (string, default \"strength\")",
+          "default": "strength",
+          "anyOf": [
+            {
+              "$ref": "vocabularies.schema.json#/definitions/offscreen_fight:id"
+            },
+            {
+              "const": ""
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'offscreen' (OffscreenPart)."
     },
     "particles": {
       "type": "object",
