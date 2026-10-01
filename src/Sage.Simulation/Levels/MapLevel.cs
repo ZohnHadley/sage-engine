@@ -121,6 +121,25 @@ public sealed class MapLevel
 
         return false;
     }
+
+    // Where the point entity with this `targetname` stands (a load door's entry, 4g-5), whether or not it
+    // spawned anything: the same conversion as TryFindPoint. False when there is none or the level is not
+    // placed yet.
+    internal bool TryFindNamed(string targetName, out Vector3 at, out float yaw)
+    {
+        at = Vector3.Zero;
+        yaw = 0f;
+        if (!Placed || string.IsNullOrEmpty(targetName)) return false;
+        foreach (var entity in PointEntities)
+        {
+            if (!entity.Keys.TryGetValue("targetname", out var name) || !string.Equals(name, targetName, StringComparison.Ordinal)) continue;
+            entity.TryGetVector("origin", out var origin);
+            at = Position + Space.ToEngine(origin);
+            yaw = entity.GetFloat("angle") - 90f;
+            return true;
+        }
+        return false;
+    }
 }
 
 // One brush entity: its brushes, where its own origin is, and what it became once spawned.
@@ -180,6 +199,26 @@ public sealed class MapLevels
 
 internal static class MapLoader
 {
+    // The `targetname`s a map's entities have, added to `names`, without loading it (a load door's check,
+    // 4g-5). False when the file cannot be read or parsed: the map's own load says why.
+    public static bool TryTargetNames(Engine engine, MapRecord record, HashSet<string> names)
+    {
+        var path = record.File.Path;
+        if (record.File.IsEmpty || engine.Vfs.Which(path) is not { } mount) return false;
+        string text;
+        try
+        {
+            using var stream = mount.Open(path);
+            using var reader = new StreamReader(stream);
+            text = reader.ReadToEnd();
+        }
+        catch (IOException) { return false; }
+        if (!MapFile.TryParse(text, out var file, out _)) return false;
+        foreach (var entity in file.Entities)
+            if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name)) names.Add(name);
+        return true;
+    }
+
     // Reads a `.map` record into a world: parse, build the brushes, place the point entities. Returns
     // null and logs when it cannot, because a level that fails to load must not take the game with it —
     // a mapper wants to fix it and try again, in the same session.

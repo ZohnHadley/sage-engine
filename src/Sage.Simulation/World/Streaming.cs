@@ -100,6 +100,12 @@ public sealed class StreamingModule : IModule
         foreach (var world in engine.Worlds)
         {
             var terrain = world.Resources.Get<Terrain>();
+            if (world.Resources.TryGet<SectorRing>(out var ring) && ring is { Suspended: true })
+            {
+                // Inside there is no ground to warp across (4g-5): leave by a door, or `travel`.
+                Log.Warn(LogCat.Console, $"'{world.Name}' is in an interior: warp works outside (use a door or `travel`)");
+                continue;
+            }
 
             // **In this order, and the order is the whole of it (14 §3).** Rebase first so the numbers
             // are small, then generate the ground, *then* put the player on it. Placing first is what
@@ -131,7 +137,7 @@ public sealed class StreamingModule : IModule
         // The terrain is this plugin's (issue #13): a game without streaming has none, and everything
         // that reads it (collision, navigation, levels, the renderer) copes with that.
         world.Resources.Add(new Terrain { Origin = world.Origin() });
-        world.Resources.Add(new SectorRing());
+        world.Resources.Add(new SectorRing { Radius = Math.Clamp(_radius!.Value, 0, 8) });
 
         // Late in the tick: everything has moved by now, so the ring is computed from where the player
         // actually ended up, and a rebase lands between ticks rather than in the middle of one.
@@ -173,6 +179,12 @@ internal sealed class SectorRing
 
     // Entities placed per tick at most (`stream_place_budget`).
     public int Budget = 64;
+
+    // `stream_radius` as last read: how far travel generates ground before the player arrives (4g-5).
+    public int Radius = 1;
+
+    // The world's scene is an interior (4g-5): no ring, no terrain, until an exterior is placed again.
+    public bool Suspended;
 }
 
 [System("sage.streaming.sectors", Phase.Late)]
@@ -215,7 +227,8 @@ internal sealed class StreamingSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        if (!_enabled.Value) return;
+        _ring.Radius = Math.Clamp(_radius.Value, 0, 8);
+        if (!_enabled.Value || _ring.Suspended) return;   // an interior has no ring (4g-5)
 
         CollectSources();
         if (_sourceSectors.Count == 0) return;
