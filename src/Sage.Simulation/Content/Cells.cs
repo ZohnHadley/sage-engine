@@ -27,9 +27,10 @@ namespace Sage.Simulation;
 //   state a load holds for a source not placed yet (a level waiting for its ground) is a dormant cell too,
 //   which fixes 4i's latent "pending state is origin-relative" bug.
 //
-// Not here: what decides a runtime spawn's cell beyond the world's scene (4g-3 gives a streamed scene's
-// spawns their sector, and moves an entity to the next one when it crosses an edge), and anything that
-// moves between cells (doors, travel and off-screen agents: 4g-5 and 4g-6).
+// Since 4g-3 a streamed scene's sectors are cells too (StreamedScene.cs): a runtime spawn made there
+// belongs to the sector it stands in, and an entity that crosses an edge moves to the next one
+// (SectorOwnersSystem). Not here: what moves between scenes (doors, travel and off-screen agents: 4g-5 and
+// 4g-6).
 
 // The cell a runtime spawn belongs to (4g-1): it goes dormant with that cell and comes back with it. Given
 // by `World.MakePersistent` (so by `world.Spawn` of a prefab, a dropped item and a projectile) when the
@@ -39,7 +40,7 @@ namespace Sage.Simulation;
 [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
 public struct InCell : IComponent
 {
-    [Property(Tooltip = "The source this runtime spawn belongs to: `scene:<id>`, or a streamed sector (4g-3)")]
+    [Property(Tooltip = "The source this runtime spawn belongs to: `scene:<id>`, or a streamed sector `sector:<scene>:<x>,<z>` (4g-3)")]
     public string Source;
 }
 
@@ -71,17 +72,24 @@ internal sealed class DormantCell
 
 internal static class Cells
 {
-    // The cell a runtime spawn made now belongs to: the world's scene. (4g-3: in a streamed scene, the
-    // sector the entity stands in.) Null when the world has no scene, and then it belongs to none.
-    public static string? Current(World world) =>
-        world.Resources.TryGet<ActiveScene>(out var scene) && scene is { Id.IsEmpty: false }
-            ? ContentIds.SceneSource(scene.Id)
-            : null;
+    // The cell a runtime spawn made now belongs to: the world's scene, or in a streamed scene the sector
+    // it stands in (4g-3). Null when the world has no scene, and then it belongs to none.
+    public static string? Current(World world, Entity entity)
+    {
+        if (!world.Resources.TryGet<ActiveScene>(out var scene) || scene is not { Id.IsEmpty: false }) return null;
+        if (scene.Streamed is { } streamed && world.TryGet<Transform>(entity, out var transform))
+        {
+            var sector = world.Origin().SectorOf(transform.LocalPosition);
+            streamed.Joined(sector);   // made in a sector that is not in the world: it sleeps there
+            return streamed.SourceOf(sector);
+        }
+        return ContentIds.SceneSource(scene.Id);
+    }
 
     // A runtime spawn joins the world's current cell (World.MakePersistent).
     public static void Join(World world, Entity entity)
     {
-        if (world.Has<InCell>(entity) || Current(world) is not { } cell) return;
+        if (world.Has<InCell>(entity) || Current(world, entity) is not { } cell) return;
         world.Add(entity, new InCell { Source = cell });
     }
 
@@ -127,6 +135,36 @@ internal static class Cells
     }
 
     private static float Read(JsonNode? node) => node is JsonValue v && v.TryGetValue(out float f) ? f : 0f;
+
+    // A saved entry's position (a root's: its transform's `LocalPosition`), in the frame it was written in.
+    public static bool TryPosition(JsonObject saved, out Vector3 position)
+    {
+        position = default;
+        if (saved["components"] is not JsonObject components
+            || components[SaveSerializer.TransformId] is not JsonObject entry
+            || entry["data"] is not JsonObject data) return false;
+        foreach (var (name, value) in data)
+        {
+            if (!string.Equals(name, nameof(Transform.LocalPosition), StringComparison.OrdinalIgnoreCase)) continue;
+            if (value is not JsonArray { Count: 3 } xyz) return false;
+            position = new Vector3(Read(xyz[0]), Read(xyz[1]), Read(xyz[2]));
+            return true;
+        }
+        return false;
+    }
+
+    // A saved entry's cell (`sage:cell`), or null.
+    public static string? CellOf(JsonObject saved) =>
+        saved["components"] is JsonObject components && components[CellId] is JsonObject entry
+        && entry["data"] is JsonObject data && data[nameof(InCell.Source)] is JsonValue value && value.TryGetValue(out string? source)
+            ? source
+            : null;
+
+    public static void SetCell(JsonObject saved, string source)
+    {
+        if (saved["components"] is not JsonObject components) saved["components"] = components = new JsonObject();
+        components[CellId] = SaveSerializer.Entry(1, new JsonObject { [nameof(InCell.Source)] = source });
+    }
 
     private static bool IsRoot(JsonObject saved)
     {

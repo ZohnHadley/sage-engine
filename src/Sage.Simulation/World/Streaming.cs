@@ -18,8 +18,12 @@ namespace Sage.Simulation;
 //   * **rebase** when the source is more than 1.5 sectors from the origin sector.
 //
 // What this does *not* do is decide what a sector contains. It loads the heightfield; the client's
-// mesh system and physics' collision system react to that, and the entities that live in a sector come
-// back through the save (09 §3.4) when maps exist. Dormancy is listed in 14 §3 and not built.
+// mesh system and physics' collision system react to that. The ring itself (SectorRing) is what a
+// streamed scene's content follows (4g-3, StreamedScene): a sector in the ring is placed at a tick
+// boundary, and one that leaves it goes dormant with its state (4g-1's cells).
+//
+// **The ring runs without a generator** (4g-3): a world with no ground still has sectors, so a streamed
+// scene in a game with no terrain, or whose terrain comes from a `terrain` record set later, streams.
 
 // Tag: the world loads around this. The player has it; a followed companion or a remote camera could
 // too, and each one keeps its own ring.
@@ -42,6 +46,7 @@ public sealed class StreamingModule : IModule
 {
     private CVar<int>? _radius;
     private CVar<bool>? _enabled;
+    private CVar<int>? _budget;
 
     public void Init(ModuleContext ctx)
     {
@@ -49,6 +54,8 @@ public sealed class StreamingModule : IModule
             "Sectors of terrain kept loaded around the player, each 1024 m (14 §3). 1 = a 3x3 ring.");
         _enabled = ctx.Engine.CVars.Register("stream_enabled", true, CVarFlags.None,
             "Load and unload terrain around the player, and move the origin to follow (R6, F14).");
+        _budget = ctx.Engine.CVars.Register("stream_place_budget", 64, CVarFlags.Archive,
+            "Entities a streamed scene places per tick at most, as sectors come into the ring (4g-3).", 1, 100000);
         ctx.Engine.CVars.RegisterCommand("warp", CVarFlags.Cheat,
             "warp <x> <z>: put the player at these absolute metres; the world streams in around them.", a =>
         {
@@ -70,6 +77,13 @@ public sealed class StreamingModule : IModule
                 var origin = world.Origin();
                 Log.Info(LogCat.Console, $"{world.Name}: {origin}, {terrain.Sectors.Count} sector(s) loaded, " +
                                          $"{origin.Rebases} rebase(s) so far");
+                if (world.Resources.TryGet<SectorRing>(out var ring) && ring != null)
+                {
+                    string content = world.Resources.TryGet<ActiveScene>(out var scene) && scene?.Streamed is { } streamed
+                        ? $"; scene '{streamed.Scene}' streams: {streamed.Count().Placed} sector(s) placed, {streamed.Count().Placing} being placed"
+                        : "";
+                    Log.Info(LogCat.Console, $"  ring: {ring.Live.Count} sector(s){content}");
+                }
                 foreach (var sector in terrain.Sectors)
                     Log.Info(LogCat.Console, $"  {sector.Coord}  corner {terrain.CornerOf(sector.Coord).X:F0},{terrain.CornerOf(sector.Coord).Z:F0} m");
             }
@@ -86,7 +100,6 @@ public sealed class StreamingModule : IModule
         foreach (var world in engine.Worlds)
         {
             var terrain = world.Resources.Get<Terrain>();
-            if (terrain.Generator == null) continue;
 
             // **In this order, and the order is the whole of it (14 §3).** Rebase first so the numbers
             // are small, then generate the ground, *then* put the player on it. Placing first is what
@@ -94,10 +107,12 @@ public sealed class StreamingModule : IModule
             // read a ground height of zero, and fell 1.6 km before the terrain caught up.
             world.Rebase(destination);
 
+            // Without a generator there is no ground to wait for (4g-3): the ring follows on the next tick.
             int radius = Math.Clamp(_radius!.Value, 0, 8);
-            for (int z = -radius; z <= radius; z++)
-                for (int x = -radius; x <= radius; x++)
-                    terrain.Load(new SectorCoord(destination.X + x, destination.Z + z));
+            if (terrain.Generator != null)
+                for (int z = -radius; z <= radius; z++)
+                    for (int x = -radius; x <= radius; x++)
+                        terrain.Load(new SectorCoord(destination.X + x, destination.Z + z));
 
             var origin = world.Origin();
             foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList())
@@ -116,10 +131,13 @@ public sealed class StreamingModule : IModule
         // The terrain is this plugin's (issue #13): a game without streaming has none, and everything
         // that reads it (collision, navigation, levels, the renderer) copes with that.
         world.Resources.Add(new Terrain { Origin = world.Origin() });
+        world.Resources.Add(new SectorRing());
 
         // Late in the tick: everything has moved by now, so the ring is computed from where the player
         // actually ended up, and a rebase lands between ticks rather than in the middle of one.
-        world.AddSystem(new StreamingSystem(world, _radius!, _enabled!));
+        world.AddSystem(new StreamingSystem(world, _radius!, _enabled!, _budget!));
+        // And what crossed a sector edge this tick belongs to the sector it is in now (4g-3).
+        world.AddSystem(new SectorOwnersSystem(world));
 
         // Whatever a sector owns goes when the sector does. The terrain raises this; the sweep is here
         // because the entities are the world's, not the terrain resource's.
@@ -139,14 +157,34 @@ public sealed class StreamingModule : IModule
     }
 }
 
+// The sectors streaming keeps around its sources (4g-3), whether or not there is ground in them: what a
+// streamed scene's content follows. Absolute, like terrain sectors. A world resource of sage.streaming.
+internal sealed class SectorRing
+{
+    // In the ring now: within `stream_radius` of a source, and kept until past it plus the margin.
+    public readonly HashSet<SectorCoord> Live = new();
+
+    // The ring has been computed at least once: before that, an empty ring means "not known yet", not
+    // "nothing is live", and a streamed scene waits rather than putting everything to sleep.
+    public bool Ready;
+
+    // The sector of the first source: what a streamed scene places first.
+    public SectorCoord Centre;
+
+    // Entities placed per tick at most (`stream_place_budget`).
+    public int Budget = 64;
+}
+
 [System("sage.streaming.sectors", Phase.Late)]
 internal sealed class StreamingSystem : ISystem
 {
     private readonly World _world;
     private readonly Terrain _terrain;
+    private readonly SectorRing _ring;
     private readonly Origin _origin;
     private readonly CVar<int> _radius;
     private readonly CVar<bool> _enabled;
+    private readonly CVar<int> _budget;
 
     private readonly Query<Transform> _sources;
     private readonly Query<Transform> _players;
@@ -160,13 +198,15 @@ internal sealed class StreamingSystem : ISystem
     private const int KeepMargin = 1;
     private const float RebaseDistance = 1.5f;
 
-    public StreamingSystem(World world, CVar<int> radius, CVar<bool> enabled)
+    public StreamingSystem(World world, CVar<int> radius, CVar<bool> enabled, CVar<int> budget)
     {
         _world = world;
         _terrain = world.Resources.Get<Terrain>();
+        _ring = world.Resources.Get<SectorRing>();
         _origin = world.Origin();
         _radius = radius;
         _enabled = enabled;
+        _budget = budget;
         _sources = world.Query<Transform>().AllTags(Tags.Get<StreamingSource>());
         // Before a game marks anything, the local player is the obvious source: a world streaming
         // around nothing would unload the ground under the only thing standing on it.
@@ -175,20 +215,22 @@ internal sealed class StreamingSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        if (!_enabled.Value || _terrain.Generator == null) return;
+        if (!_enabled.Value) return;
 
         CollectSources();
         if (_sourceSectors.Count == 0) return;
 
         int radius = Math.Clamp(_radius.Value, 0, 8);
+        bool ground = _terrain.Generator != null;
 
-        // Load the ring around each source.
+        // Load the ring around each source: the sectors (4g-3), and their ground when there is a generator.
         foreach (var centre in _sourceSectors)
             for (int z = -radius; z <= radius; z++)
                 for (int x = -radius; x <= radius; x++)
                 {
                     var coord = new SectorCoord(centre.X + x, centre.Z + z);
-                    if (!_terrain.IsLoaded(coord)) _terrain.Load(coord);
+                    _ring.Live.Add(coord);
+                    if (ground && !_terrain.IsLoaded(coord)) _terrain.Load(coord);
                 }
 
         // Drop anything past the ring plus its margin. Collected first, because unloading raises an
@@ -198,6 +240,14 @@ internal sealed class StreamingSystem : ISystem
         for (int i = 0; i < loaded.Count; i++)
             if (!WithinAnySource(loaded[i].Coord, radius + KeepMargin)) _stale.Add(loaded[i].Coord);
         for (int i = 0; i < _stale.Count; i++) _terrain.Unload(_stale[i]);
+
+        _stale.Clear();
+        foreach (var coord in _ring.Live)
+            if (!WithinAnySource(coord, radius + KeepMargin)) _stale.Add(coord);
+        for (int i = 0; i < _stale.Count; i++) _ring.Live.Remove(_stale[i]);
+        _ring.Ready = true;
+        _ring.Centre = _sourceSectors[0];
+        _ring.Budget = _budget.Value;
 
         // And the origin follows, once the nearest source is far enough that precision would suffer.
         var nearest = _sourceSectors[0];
@@ -242,4 +292,60 @@ internal sealed class StreamingSystem : ISystem
 
     private static float Distance(SectorCoord a, SectorCoord b) =>
         MathF.Max(MathF.Abs(a.X - b.X), MathF.Abs(a.Z - b.Z));
+}
+
+// A root that crosses a sector edge in a streamed scene belongs to the sector it is in now (4g-3; 14 §3:
+// "when a root crosses a sector edge, its sector is updated", in Late). A runtime spawn's cell is moved;
+// one the sector placed leaves it — tombstoned there, so placing that sector again does not place it a
+// second time — and becomes the new sector's runtime spawn (StreamedScene.Move). One that walks into a
+// sector outside the ring goes to sleep there at the tick boundary.
+//
+// Allocates nothing unless something crossed: it runs in the fixed schedule.
+[System("sage.streaming.owners", Phase.Late)]
+internal sealed class SectorOwnersSystem : ISystem
+{
+    private readonly World _world;
+    private readonly Origin _origin;
+    private readonly Query<Transform, Persistent> _roots;
+    private readonly List<(Entity Entity, SectorCoord Now, bool Placed)> _moves = new();
+
+    public SectorOwnersSystem(World world)
+    {
+        _world = world;
+        _origin = world.Origin();
+        _roots = world.Query<Transform, Persistent>();
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        if (!_world.Resources.TryGet<ActiveScene>(out var scene) || scene?.Streamed is not { } streamed) return;
+        _world.Resources.TryGet<ContentBaseline>(out var baseline);
+
+        foreach (var (transforms, persistents, entities) in _roots.Chunks)
+        {
+            var t = transforms.Span;
+            var p = persistents.Span;
+            for (int n = 0; n < t.Length; n++)
+            {
+                var entity = entities.EntityAt(n);
+                if (!entity.Parent.IsNull) continue;
+
+                string? owner;
+                bool placed = false;
+                if (_world.TryGet<InCell>(entity, out var cell)) owner = cell.Source;
+                else if (baseline != null && baseline.TryGetSource(p[n].Id, out var source)) { owner = source; placed = true; }
+                else continue;
+
+                if (owner == null || !streamed.Owns(owner, out var was, out bool known)) continue;
+                var now = _origin.SectorOf(t[n].LocalPosition);
+                if (known && now == was) continue;
+                _moves.Add((entity, now, placed));
+            }
+        }
+        if (_moves.Count == 0) return;
+
+        foreach (var (entity, now, placed) in _moves)
+            if (_world.IsAlive(entity)) streamed.Move(_world, entity, now, placed);
+        _moves.Clear();
+    }
 }
