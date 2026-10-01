@@ -97,6 +97,27 @@ public class EditModeTests
         Assert.True(cave.FindByName("yard rock").IsNull);
     }
 
+    // Physics is mirrored in an edit world but not stepped: colliders get bodies (`sage.physics.sync` runs
+    // EvenWhenEditing), so the editor picks by raycast, while a dynamic crate hangs where it was placed.
+    [Fact]
+    public void TheEditorPicksCollidersInAnEditWorldWhereNothingFalls()
+    {
+        using var app = HeadlessApp.Bare().With(new PhysicsModule()).Build();
+        var world = app.App.CreateEditWorld("edit");
+        var wall = world.Create(Transform.At(new Vector3(0, 0, -5)), "wall");
+        world.Add(wall, Collider.Box(new Vector3(2, 2, 2)));
+        var crate = world.Create(Transform.At(new Vector3(0, 5, -5)), "crate");
+        world.Add(crate, Collider.Box(new Vector3(1, 1, 1)));
+        world.Add(crate, RigidBody.Dynamic(10f));
+
+        for (int i = 0; i < 30; i++) world.RunFixed(1f / 60f);
+
+        Assert.True(world.Has<PhysicsBody>(crate));
+        Assert.Equal(new Vector3(0, 5, -5), world.Get<Transform>(crate).LocalPosition);   // not stepped
+        Assert.Equal(wall, EditorPicking.Pick(world, new EditorRay(Vector3.Zero, -Vector3.UnitZ))!.Value.Entity);
+        Assert.Equal(crate, EditorPicking.Pick(world, new EditorRay(new Vector3(0, 5, 0), -Vector3.UnitZ))!.Value.Entity);
+    }
+
     // A game run is untouched: a world beside the edit world plays, with its player and its systems.
     [Fact]
     public void APlayWorldBesideAnEditWorldStillPlays()

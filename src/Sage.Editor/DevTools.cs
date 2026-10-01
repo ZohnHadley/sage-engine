@@ -51,7 +51,7 @@ public sealed class DevTools : IDisposable
     private bool _viewportFocused, _viewportHovered;   // last frame's, for the free camera's input
 
     private World? _world;
-    private EditorDocument? _document;
+    private EditDocument? _document;
     private EditorUI? _menu;
     private EntityOutlinerWindow? _outliner;
     private EntityInspectorWindow? _inspector;
@@ -122,10 +122,12 @@ public sealed class DevTools : IDisposable
     public void OnWorldCreated(World world)
     {
         _world = world;
-        _document = new EditorDocument(_engine);
+        _document = new EditDocument(world);
+        // A command re-spawns what it changed: the selection follows its placement to the new entity.
+        _document.Respawned += (old, now) => { if (_selection.Is(old)) { if (now.IsNull) _selection.Clear(); else _selection.Select(now); } };
         _outliner = new EntityOutlinerWindow(world, _selection);
         _inspector = new EntityInspectorWindow(world, _engine.Components, _selection, _document);
-        _menu = new EditorUI(world, _document, _camFree, _viewport);
+        _menu = new EditorUI(_document, _camFree, _viewport);
         _freeCamera = default;
         _viewportCamera = default;
         // The client's renderer, for the viewport's target: there is none in a host without the client.
@@ -161,9 +163,9 @@ public sealed class DevTools : IDisposable
         }
         _placed = true;
 
-        // **The one place the editor's document is opened from a launch line.** It is the 4-era
-        // EditorDocument for now; issue #217's EditDocument (Sage.Editing) takes its place here.
-        if (!target.Document.IsEmpty) _document.Open(_world, target.Document);
+        // **The one place the editor's document is opened from a launch line**: the EditDocument (#217)
+        // bound to this world, whose edits are commands and which `doc_*` / `ed_undo` act on from here on.
+        if (!target.Document.IsEmpty) _document.Open(target.Document);
         Log.Info(LogCat.Editor, $"Editing '{_world.Name}': scene {(target.Scene.IsEmpty ? "(none)" : target.Scene.ToString())}, " +
                                 $"document {(_document.IsOpen ? _document.Title : "(none: File > New or doc_open)")}");
     }
@@ -191,47 +193,19 @@ public sealed class DevTools : IDisposable
     {
         var cvars = _engine.CVars;
 
-        cvars.RegisterCommand("doc_new", CVarFlags.DevOnly, "doc_new: start an empty placements document.",
-            _ => { if (Current(out var world, out var document)) document.New(world, NamespaceOfGame()); });
-
-        cvars.RegisterCommand("doc_open", CVarFlags.DevOnly, "doc_open <id>: open a placements document.", a =>
-        {
-            if (!Current(out var world, out var document)) return;
-            if (a.Count == 0) { Log.Warn(LogCat.Console, "doc_open <id>   (see rec_list placements)"); return; }
-            var id = _engine.Records.Resolve("placements", a[0]);
-            if (!id.IsEmpty) document.Open(world, id);
-        });
-
-        cvars.RegisterCommand("doc_save", CVarFlags.DevOnly, "doc_save: write the open document back to its file.",
-            _ => { if (Current(out var world, out var document)) document.Save(world); });
-
-        cvars.RegisterCommand("doc_close", CVarFlags.DevOnly, "doc_close: close the document, removing what it placed.",
-            _ => { if (Current(out var world, out var document)) document.Close(world); });
-
-        cvars.RegisterCommand("doc_status", CVarFlags.None, "doc_status: what is open, and whether it is saved.",
-            _ => Log.Info(LogCat.Console, _document is { IsOpen: true } document
-                ? $"{document.Title} — {(document.Path.Length > 0 ? document.Path : "never saved")}"
-                : "no document open"));
+        // The document's commands (doc_*, ed_undo, ed_redo, ed_history) are Sage.Editing's, so tests press
+        // them too (issue #217).
+        EditorCommands.Register(cvars, () => _document);
 
         cvars.RegisterCommand("ent_select", CVarFlags.DevOnly, "ent_select <name>: select an entity for the inspector.", a =>
         {
-            if (!Current(out var world, out _)) return;
+            if (_world is not { } world) { Log.Warn(LogCat.Console, "no world yet"); return; }
             if (a.Count == 0) { _selection.Clear(); Log.Info(LogCat.Console, "selection cleared"); return; }
             var entity = world.FindByName(a.Rest);
             if (entity.IsNull) { Log.Warn(LogCat.Console, $"ent_select: no entity named '{a.Rest}'"); return; }
             _selection.Select(entity);
             Log.Info(LogCat.Console, $"selected {World.Describe(entity)}");
         });
-    }
-
-    // The world the document commands act on; before there is one, they say so and do nothing.
-    private bool Current(out World world, out EditorDocument document)
-    {
-        world = _world!;
-        document = _document!;
-        if (_world != null && _document != null) return true;
-        Log.Warn(LogCat.Console, "no world yet: the editor's document commands work once a world exists");
-        return false;
     }
 
     // The free camera runs at display rate, before the frame's FrameUpdate, so the director sees this
@@ -348,13 +322,6 @@ public sealed class DevTools : IDisposable
         }
         ImGui.End();
         if (!open) _viewport.Value = false;
-    }
-
-    private string NamespaceOfGame()
-    {
-        foreach (var mount in _engine.Vfs.Mounts)
-            if (mount.RecordNamespace != "sage") return mount.RecordNamespace;
-        return "sage";
     }
 
     public void Dispose()

@@ -21,9 +21,9 @@ internal sealed class EntityInspectorWindow
     private readonly World _world;
     private readonly ComponentSchema _schema;
     private readonly EditorSelection _selection;
-    private readonly EditorDocument _document;
+    private readonly EditDocument _document;
 
-    public EntityInspectorWindow(World world, ComponentSchema schema, EditorSelection selection, EditorDocument document)
+    public EntityInspectorWindow(World world, ComponentSchema schema, EditorSelection selection, EditDocument document)
     {
         _world = world;
         _schema = schema;
@@ -55,6 +55,7 @@ internal sealed class EntityInspectorWindow
             ImGui.TextDisabled($"placed by {from.Document}");
         ImGui.Separator();
 
+        bool moved = false;
         foreach (var component in entity.Components)
         {
             // Headed by the stable id a prefab or a save would write (issue #16); Friflo's own
@@ -85,11 +86,30 @@ internal sealed class EntityInspectorWindow
             if (changed)
             {
                 _schema.Write(entity, component.Type, boxed);
-                _document.Touch();
+                moved |= component.Type == typeof(Transform);
             }
         }
 
+        // Until the inspector edits overrides (issue #223), what it changes on the entity is not kept,
+        // except where the document's own placement stands: that goes back as a SetPlacement, which
+        // re-spawns the entity (the selection follows it) and merges a drag's frames into one edit.
+        if (moved) Capture(entity);
+        if (!ImGui.IsAnyItemActive()) _document.History.EndMerge();
+
         ImGui.End();
+    }
+
+    private void Capture(Entity entity)
+    {
+        if (_document.PlacementOf(entity) is not { } placement) return;
+        var record = _document.Record;
+        var transform = entity.GetComponent<Transform>();
+        var fields = PlacementFields.Of(placement) with
+        {
+            At = _world.PlacementAt(transform.LocalPosition, record.Origin, placement.RelativeTo ?? record.RelativeTo),
+            Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI + 0f,
+        };
+        _document.Execute(new SetPlacement(_document, placement, fields));
     }
 
     // One field, as whatever widget fits it. Anything this does not know how to edit is shown and left

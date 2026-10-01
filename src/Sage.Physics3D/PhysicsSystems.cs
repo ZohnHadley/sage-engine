@@ -10,8 +10,11 @@ namespace Sage.Physics3D;
 //   Physics      Simulation.Timestep
 //   PostPhysics  dynamic bodies are written back to Transform; trigger overlaps are published
 
-// PrePhysics: keeps Bepu's contents in step with the world's colliders.
-[System("sage.physics.sync", Phase.PrePhysics, After = new[] { "sage.physics.terrain" })]
+// PrePhysics: keeps Bepu's contents in step with the world's colliders. In an edit world as well (issue
+// #219): it only mirrors the world into Bepu, and the editor picks by raycasting what it mirrored.
+#pragma warning disable SAGE0133 // the edit world's run condition: physics ships with the engine that declares it
+[System("sage.physics.sync", Phase.PrePhysics, After = new[] { "sage.physics.terrain" }, Condition = RunCondition.EvenWhenEditing)]
+#pragma warning restore SAGE0133
 internal sealed class PhysicsSyncSystem : ISystem
 {
     private readonly PhysicsSpace _space;
@@ -133,7 +136,9 @@ internal sealed class PhysicsWriteBackSystem : ISystem
 
 // PrePhysics: gives loaded terrain sectors a collision mesh (14 §3, closes F13's collision gap).
 // One static mesh per sector; with streaming this becomes per chunk and is built on a job (F14).
-[System("sage.physics.terrain", Phase.PrePhysics)]
+#pragma warning disable SAGE0133 // as sage.physics.sync: the ground is pickable in the editor too (#219)
+[System("sage.physics.terrain", Phase.PrePhysics, Condition = RunCondition.EvenWhenEditing)]
+#pragma warning restore SAGE0133
 internal sealed class TerrainCollisionSystem : ISystem
 {
     private readonly PhysicsSpace _space;

@@ -449,8 +449,10 @@ public sealed class World : IDisposable
         }
     }
 
-    // An edit world runs no Fixed system at all, not even an `Always` one (issue #219).
-    private bool ShouldRun(SystemInfo s) => Editing && PhaseInfo.ScheduleOf(s.Phase) == Schedule.Fixed ? false : s.Condition switch
+    // An edit world runs no Fixed system but an `EvenWhenEditing` one, not even an `Always` one (issue #219).
+    private bool ShouldRun(SystemInfo s) => Editing && PhaseInfo.ScheduleOf(s.Phase) == Schedule.Fixed
+        ? s.Condition == RunCondition.EvenWhenEditing
+        : s.Condition switch
     {
         RunCondition.Always => true,
         RunCondition.WhenNotPaused => !Paused,

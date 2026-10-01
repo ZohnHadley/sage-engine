@@ -174,7 +174,7 @@ placement that named a frame of its own comes back in the document's.
 | Piece | Where | What it does |
 |---|---|---|
 | `Placement` / `PlacementsRecord` | `src/Sage.Simulation/Content/Placements.cs` | The document's content, and spawning it into a world, reading it back, clearing it |
-| `EditorDocument` | `src/Sage.Simulation/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable |
+| `EditorDocument` | was `src/Sage.Simulation/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable. Replaced by `EditDocument` in `Sage.Editing` (#217, §10e) |
 | `EntityOutlinerWindow` / `EntityInspectorWindow` | `src/Sage.Editor/Screens/` | List and select; edit a component by boxing it, changing a field and writing it back |
 | `DevTools` | `src/Sage.Editor/DevTools.cs` | Everything a developer sees, in one class the host holds behind `SAGE_DEV` |
 
@@ -201,14 +201,132 @@ editor, per-entity overrides, play-in-editor, and an inspector generated from de
 than reflection (09 §3.2). Editing runs against the live world, so `pause 1` before moving things — the
 simulation will otherwise drop a crate while you inspect it.
 
-## 10c. As built: the editor mode of the host, `-edit` (#219, 2026-10-01)
+## 10c. As built: picking and gizmo maths (10-5, #220)
+
+`Sage.Editing`, headless, System.Numerics only: what the viewport decides, so `Sage.Editor` only draws it.
+
+- **A ray from a camera and a pixel.** `EditorPicking.RayFrom(CameraPose, fovY, viewportSize, screenPoint)`
+  follows `CameraMath`'s conventions (looks down -Z, screen right is +X, pixel origin top left) and passes
+  through the point `CameraMath.View` and `Perspective` project to that pixel (test:
+  ARayAgreesWithTheViewAndProjectionMatrices). `RayFromOrthographic` gives parallel rays (test:
+  AnOrthographicRayIsParallelAndOffsetByThePixel).
+- **Picking.** `EditorPicking.Pick(world, ray)` takes the nearest of the physics raycast and a fallback
+  for entities with no `Collider` (test: PickingTakesTheNearestColliderAndReportsWhereTheRayMetIt). Headless
+  code has no render mesh bounds (the client loads meshes), so the fallback is a sphere of
+  `EditorPicking.FallbackRadius` (0.35 m) at the entity's position; a collider in front still wins (test:
+  AnEntityWithNoColliderIsPickedByItsFallbackSphereAndLosesToANearerCollider). A world with no physics
+  plugin picks by the fallback alone (test: PickingWorksInAWorldWithNoPhysicsAtAll).
+- **Translate gizmo.** `TranslateGizmo.HitTest` finds the X, Y, Z axis or XY, XZ, YZ plane handle, the
+  planes winning where they sit between axes (test: TheTranslateGizmoFindsAxisAndPlaneHandles). `Drag`
+  turns two rays into a delta in origin space, with grid snapping applied to the result on the moved axes
+  (tests: ADragAlongAnAxisMovesOnlyThatAxisByHowFarThePointerWent,
+  ADragOnAPlaneMovesBothAxesAndGridSnapsTheResult). A ray parallel to the axis or plane, or a plane behind
+  the camera, gives no delta (test: ADragHasNoAnswerForARayParallelToItsAxisOrPlaneOrAPlaneBehindTheCamera).
+- **Rotate about Y.** `RotateGizmo.HitTest` and `Drag`: the angle is positive as
+  `Quaternion.CreateFromAxisAngle(UnitY, a)` turns, takes the short way over the seam, and snaps to
+  `stepDegrees` (tests: TheRotateRingIsHitOnItsCircleOnly,
+  ARotateDragGivesTheAngleAboutYInTheDirectionQuaternionsTurn, ARotateDragHasNoAnswerOnTheAxisOrParallelToThePlane).
+- **Screen-constant size.** `GizmoMath.ScreenConstantSize` (test: AGizmoKeepsItsPixelSizeAtAnyDistance);
+  `Snap.ToGrid` and `Snap.Angle` (test: SnapRoundsToTheGridAndTheAngleStepAndZeroMeansOff).
+
+## 10d. As built: file-preserving write-back (#218, 2026-10-01)
+
+A save used to serialise the document's record and write the file whole, so it lost the comments, the
+key order, the one-line vectors and any record kept beside the document (REDESIGN §4.6). **`JsonFileEdit`**
+(`src/Sage.Core/Content/JsonFileEdit.cs`, SAGE0133) edits a record file's text instead: a small JSONC
+parser keeps where every value starts and ends, an edit splices one value's text, and the file is
+parsed again before the next. It finds a record by `type` and `id` in a file holding one record or an
+array of them (a bare id means the mount's namespace), and it replaces, adds or removes a record, or
+sets or removes a value at a path inside one (`place[3].at`, `overrides.components.health.max`).
+
+- **Nothing changed, nothing rewritten:** a record set to what the file already says leaves the text
+  byte for byte, byte order mark and line endings included. Numbers compare as values, so `1` is `1.0`.
+  (tests: AFileNothingChangedInIsWrittenBackByteForByte, SavingKeepsTheFilesByteOrderMarkAndLineEndings)
+- **Only the difference is written.** Setting an object or array, or a whole record, compares it with
+  the file key by key and element by element, so a moved placement is the number that moved: one line
+  in a file with one-line vectors, one number in a file that spreads them over lines. (tests:
+  MovingOnePlacementChangesOneLine, AVectorWrittenOverManyLinesChangesOnlyTheNumberThatMoved)
+- **Comments, key order and the other records stay**, a removed value takes its own lines with it, and
+  a value added to a list goes after the last one's comment rather than before it.
+  (tests: CommentsAndTheOtherRecordsStay, RecordsAreReplacedAddedAndRemovedInPlace,
+  ValuesAreSetAndRemovedAtAPathInsideARecord)
+- **New values are in the record store's dialect** (its converters, camel case, enums by name, nulls
+  left out), arrays of numbers and strings on one line and objects indented like their neighbours.
+  (test: NewValuesAreWrittenInTheRecordStoresDialect)
+- **`PatchRecord(before, after)` is what the document saves with.** A program's record spells out
+  fields the file leaves at their defaults (`"yaw": 0`, `"outputs": []`), so comparing it with the file
+  would write them all. The document (`EditDocument` since #217, §10e) keeps it as it was opened or last saved and writes
+  only what changed since; a document the file does not hold (a new one) is added, or makes the file.
+  (tests: APatchWritesOnlyWhatChangedBetweenTwoVersions, SavingChangesOnlyWhatChangedInTheFile)
+
+**Not built:** comments above a removed value stay where they were, and a list's element is matched by
+its index, so removing one from the middle rewrites the ones after it. A record merged from patches in
+other mounts is written to the file that defined it; a patch file of its own is the record editor's
+(#224).
+
+## 10e. As built: the command log and the document (issue #217, phase 10a, 2026-10-01)
+
+**The document is the source of truth and the world is derived from it** (§3), which F28's
+`EditorDocument` had the other way round: it spawned a record into the world and saved by reading the
+world back. `EditDocument` (`src/Sage.Editing/EditDocument.cs`) copies the `placements` record when it
+opens, and every change is a command that changes the copy and then re-spawns **only the placements it
+touched**; saving writes the copy. Nothing is read back from the world, so what the editor shows is what
+a game loading the file would place — a re-spawn is a load of that one placement
+(`world.SpawnPlacement`, beside `SpawnPlacements`; `DespawnPlacement` takes one out without a tombstone).
+
+| Piece | Where | What it does |
+|---|---|---|
+| `IEditorCommand` | `src/Sage.Editing/IEditorCommand.cs` | `Description`, `Do`, `Undo`, and `TryMerge` (default: never) |
+| `CommandLog` | `src/Sage.Editing/CommandLog.cs` | Execute, undo, redo, merging, a cap, `SavedPosition`, `Dirty`, `Changed` |
+| `EditDocument` | `src/Sage.Editing/EditDocument.cs` | Open, new, new level, close, save; the entity ↔ placement map |
+| `AddPlacement`, `RemovePlacement`, `SetPlacement`, `SetOverride`, `ClearOverride`, `SetOutputs` | `src/Sage.Editing/PlacementCommands.cs` | The edits a document takes |
+| `EditorCommands` | `src/Sage.Editing/EditorCommands.cs` | `doc_new`, `doc_level`, `doc_open`, `doc_save`, `doc_close`, `doc_status`, `ed_undo`, `ed_redo`, `ed_history` |
+
+- **One list and a position in it.** A new command drops the redo stack; a capped log forgets its oldest
+  command. **Dirty is "the position is not the saved one"**, not a flag: undoing back to the save makes a
+  document clean, undoing past it makes it dirty, and a save point that was capped away or dropped with a
+  redo stack leaves it dirty until the next save.
+  (tests: UndoAndRedoWalkTheLogAndANewCommandDropsTheRedoStack, ADocumentIsDirtyAgainAfterAnUndoPastTheSavePoint,
+  TheCapForgetsTheOldestCommandsAndASavePointWithThem, ADocumentSaysWhenItHasUnsavedWork)
+- **A drag is one command**: a command done straight after another of the same target folds into it
+  (`TryMerge`) until `EndMerge` (the mouse came up, or an undo), and nothing merges into the command at
+  the save point. (test: ADragsFramesAreOneCommandUntilTheGestureEnds)
+- **Each command undoes and redoes exactly, re-spawning one placement.** `SetPlacement` sets `at`, `yaw`,
+  `name` and `relativeTo` (`PlacementFields`); `SetOverride`/`ClearOverride` set or take away one field of
+  one component or part in the shape a placement writes (`"overrides": { "components": { "timer":
+  { "interval": 7 } } }`), on the body the prefab already names under another spelling, and an emptied
+  body or overrides go with the last field; `SetOutputs` replaces the wires.
+  (tests: AddingAPlacementSpawnsItAndUndoTakesItAway, RemovingAPlacementAndUndoingPutsItBackWhereItWas,
+  SetPlacementReSpawnsOnlyThePlacementItChanged, AnOverrideIsOneFieldOfOneComponentOrPartAndRevertsToThePrefab,
+  SettingOutputsWiresThePlacedEntityAndUndoUnwiresIt, AReSpawnTakesThePrefabsChildrenWithIt)
+- **A re-spawn keeps its placement's identity.** Commands hold the `Placement` object, and the document
+  maps it to its entity both ways; `Respawned(old, new)` lets a selection follow it (DevTools' does), and
+  the new entity has the persistent id the old one had. A placement the editor adds gets a stable `id`
+  (its name, else its prefab's, made unique), so its identity in saves does not hang on its index; one
+  without an `id` that an insertion or removal moved is re-spawned with the id a load would now give it.
+  (test: AReSpawnKeepsItsPlacementIdentity)
+- **A new level is a scene naming a new placements document** (`doc_level crypt`: `crypt` places
+  `crypt_placements`); the first save writes both, each a file of its own.
+  (test: ANewLevelIsASceneNamingANewPlacementsDocument)
+- **Save has one writer** (`EditDocument.WriteRecord`, on §10d's `JsonFileEdit`): the document keeps
+  its record as last opened or saved and `PatchRecord`s only what changed since into the file it came
+  from, so comments, layout, the other records and the defaults the file leaves out stay; a document the
+  file does not hold yet (a new one, a new level's scene) is set whole.
+  (tests: WhatIsSavedIsWhatAGameWillLoad, SavingChangesOnlyWhatChangedInTheFile)
+- **The console drives it**: the `doc_*` commands go through the document, and `ed_undo [n]`, `ed_redo
+  [n]` and `ed_history` through its log; they live in `Sage.Editing` so a headless test presses them.
+  (test: TheConsoleOpensUndoesRedoesAndListsTheHistory)
+- Until the inspector edits overrides (#223), what it changes on the selected entity is kept only for the
+  placement's position and yaw, as a `SetPlacement`; other component edits are not saved, as before.
+
+## 10f. As built: the editor mode of the host, `-edit` (#219, 2026-10-01)
 
 **The editor is a mode of the dev host** (phase 10a decision 2): `Sage.Host -game <folder> -edit
 [placements-or-scene]` boots the game exactly as a run does, then makes an **edit world** where the main
 world would have been, opens the document, and lays the screen out for editing. A Shipping build has no
 editor and says so (`-edit` is ignored with a warning); a dev run without `-edit` is what it was.
 
-- **An edit world runs no Fixed system**, whatever its run condition, `Always` included: nothing walks,
+- **An edit world runs no Fixed system** but an `EvenWhenEditing` one (below), `Always` included: nothing walks,
   falls, thinks or counts the hours. Its ticks still propagate transforms, so a placement an edit moves
   moves on screen, and every Frame system (cameras, extraction, drawing, the UI) runs as in any world.
   The tick boundary's travel, passing time and saves wait too; a streamed scene's sectors are still placed.
@@ -217,6 +335,11 @@ editor and says so (`-edit` is ignored with a warning); a dev run without `-edit
   (#226) makes a second, real world rather than unpausing this one.
   (test: AnEditWorldRunsNoFixedSystemButItsFrameSystemsAndTransformsRun,
   APlayWorldBesideAnEditWorldStillPlays)
+- **Physics is mirrored, not stepped.** A system that only copies the world into a service the editor
+  reads says `RunCondition.EvenWhenEditing`, which runs it in an edit world as well: `sage.physics.sync`
+  (colliders get bodies, kinematic poses follow) and `sage.physics.terrain` (the ground's collision). So
+  `EditorPicking.Pick` raycasts an edit world as it does a played one, and a dynamic crate hangs where it
+  was placed, because `sage.physics.step` does not run. (test: TheEditorPicksCollidersInAnEditWorldWhereNothingFalls)
 - **It is the scene as its files say**, placed by the scene service as a run would place it, with the
   game's modules and rules installed, but the rules are never *started*: no player, and nothing a game's
   `OnWorldStarted` adds, nor after a hot reload or a `scene_load`, which place it again without one. The
@@ -227,8 +350,8 @@ editor and says so (`-edit` is ignored with a warning); a dev run without `-edit
   document in the first scene that names it, else in the start scene (the Sandbox's `-edit yard`). A name
   that is neither is an error in the log, and the start scene opens instead.
   (test: TheEditArgumentNamesASceneOrADocument)
-  The document is today's `EditorDocument`, opened in one place (`DevTools.BeginEditing`), which is where
-  #217's `EditDocument` takes over.
+  The document is #217's `EditDocument` on the edit world, opened in one place (`DevTools.BeginEditing`);
+  from there its commands, `doc_*` and `ed_undo`/`ed_redo` act on it, and the status bar shows its title.
 - **The layout is ImGui's docking.** ImGui.NET 1.90 is built from the docking branch, so `DockSpace` is
   there; the DockBuilder that sets up a default arrangement is ImGui's internal API with no C# binding, so
   its six functions are declared against the cimgui library ImGui.NET already loads (`EditorLayout`). The
