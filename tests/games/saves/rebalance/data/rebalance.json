@@ -1,0 +1,11 @@
+[
+  // A patch over tests/games/saves (engine issue #167), mounted after the game the way a mod or an update
+  // is: the goblin prefab is rebalanced to 60 health, and a fourth goblin joins the camp. A save written
+  // before it keeps what the player did; what the player left alone takes the patch.
+  { "type": "effect", "id": "hardy_goblin", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 60 } ] },
+  { "type": "prefab", "id": "saves:goblin", "patch": true, "parts": { "effects": ["rebalance:hardy_goblin"] } },
+  {
+    "type": "scene", "id": "saves:camp", "patch": true,
+    "place+": [ { "prefab": "saves:goblin", "at": [-6, 0, -6], "yaw": 180, "name": "newcomer goblin", "id": "newcomer" } ]
+  }
+]

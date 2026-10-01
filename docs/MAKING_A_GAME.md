@@ -644,7 +644,7 @@ with every id the content loaded — mods included when you mount them:
 
 ```bash
 dotnet build Sage.sln -c Development -p:SageSkipShaders=true
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons --out schemas   # this repository's
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves --out schemas   # this repository's
 src/Sage.Cli/bin/Development/net8.0/sage schema games/YourGame --mounts mods/better_swords=swords --out schemas
 ```
 

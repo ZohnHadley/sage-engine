@@ -1,0 +1,38 @@
+[
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+
+  {
+    // The player: a sword, a bow and its arrows, and bread to drop.
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "melee": {},
+      "inventory": { "items": [
+        { "item": "sword" }, { "item": "bow" }, { "item": "arrow", "count": 10 }, { "item": "bread", "count": 2 } ] }
+    }
+  },
+
+  // The ring on the camp's floor and the counter it bumps when it is taken (maps/camp.map).
+  { "type": "prefab", "id": "ring_on_floor", "name": "ring", "parts": { "pickup": { "item": "ring" } } },
+  { "type": "prefab", "id": "tally", "name": "tally", "parts": { "logic_counter": { "min": 0, "max": 5 } } },
+  { "type": "map", "id": "camp", "file": "maps/camp.map" },
+
+  {
+    // The camp, watched from the south: three goblins in a row, ten metres apart so a swing at one never
+    // reaches another. Each placement has an authored id, so a save finds it however the list is
+    // reordered (4i-3). The doomed goblin's death bumps the map's tally too: a wire from a scene
+    // placement to a map entity.
+    "type": "scene",
+    "id": "camp",
+    "maps": ["camp"],
+    "player": { "prefab": "player", "at": [0, 0.1, 8] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0], "id": "floor" },
+      { "prefab": "goblin", "at": [-10, 0, 0], "yaw": 180, "name": "doomed goblin", "id": "doomed",
+        "outputs": [ { "output": "OnDeath", "target": "tally", "input": "Add" } ] },
+      { "prefab": "goblin", "at": [0, 0, 0], "yaw": 180, "name": "wounded goblin", "id": "wounded" },
+      { "prefab": "goblin", "at": [10, 0, 0], "yaw": 180, "name": "spared goblin", "id": "spared" }
+    ]
+  }
+]

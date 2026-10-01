@@ -405,6 +405,44 @@ quick-load, and autosaves rotate (`SaveRequests.cs`, experimental SAGE0131).
   The slot names are fixed (`quick`, `autosave<n>`); a slot the player names `autosave2` takes part in
   the rotation.
 
+### As built (the 4i exit game, issue 4i-7, 2026-10-01)
+
+Phase 4i's exit (REDESIGN §5, issue #167): save anywhere, change a prefab and a record, load: nothing
+lost and nothing duplicated. `tests/games/saves` proves it headless, with no C#
+(`tests/Sage.Tests/Games/SavesExitTests.cs`).
+
+- **The game.** A scene, `camp`, places three goblins with authored ids (`doomed`, `wounded`, `spared`)
+  and a floor, and loads a `.map` (`maps/camp.map`, hand-written, no brushes) with a ring on the floor
+  and a `logic_counter` tally, each with an `id` key. The ring's `OnPickedUp` and the doomed goblin's
+  `OnDeath` (a scene placement's wire to a map entity) each add one to the tally. A goblin is the
+  engine's character and attributes with an instant effect, `goblin_build`, that sets its health to 30;
+  the player carries a sword (12 a swing), a bow whose arrow flies straight at 15 m/s for 300 m, arrows
+  and bread. Plugins: maps, entity I/O, character, attributes, combat and items, and the RPG kit for
+  the main hand.
+- **The patch.** `tests/games/saves/rebalance/` is not one of the game's mounts: mounted after it in
+  its own namespace, as a mod or an update is, it patches the goblin prefab to a new effect that sets
+  60, and adds a fourth goblin (`newcomer`) to the scene with `place+`.
+- **The run.** Through `PlayerCommand`s, as the client's input is: three swings kill the doomed goblin
+  (12, 12, 6), one leaves the wounded one at 18, the spared one is left alone, Use takes the ring (the
+  tally is at 2), bread is dropped, an arrow is loosed into the sky, and F5 quick-saves. The save
+  writes the spared goblin with no `sage:attributes` (nothing changed, 4i-5), the wounded one's, and a
+  tombstone for the ring under `map:saves:camp`. A fresh app with the patch boots (every goblin at 60,
+  the newcomer placed, the ring back on the floor) and F9 quick-loads (test:
+  SavesExit_AQuickSaveSurvivesARebalanceWithNothingLostOrDoubled):
+  - every persistent id the save had is there once, and the newcomer's: nothing doubled, nothing lost;
+  - the doomed goblin is dead (the dead tag, 0 health), the wounded one keeps 18, the spared one has
+    the patch's 60, and so does the newcomer;
+  - the ring is in the pack and not on the floor; the dropped bread is where it fell, and the pack has
+    the one left;
+  - the arrow is back with its id, where it was, still the player's, and flies on after the load;
+  - the tally is at 2, and an `Add` takes it to 3.
+- **Validated** alone and with the patch (test: TheSavesGameValidates); CI runs `sage validate` both
+  ways, includes the game in `sage schema` and smoke-runs it in the real host.
+- **No engine change was needed.** Two things the exit showed that are not 4i's: a data-only game whose
+  map or placements carry wires must list `sage.gameplay.io`, and nothing (`sage validate` included)
+  says so when it does not, so the wires silently never fire; and a test that leaves a `PlayerCommand`
+  in `PlayerInput` with a button pressed presses it again on the next tick (F9 then loaded twice).
+
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
 spells a player composed are the *world's*, not any one entity's.
