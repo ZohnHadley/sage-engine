@@ -1,0 +1,14 @@
+{
+  // A data mod for tests/games/mods (engine issue #200; docs/MODDING.md): a falchion, and the trader who
+  // sells it. Its folder is its mount root, mounted after the game as `mods/better_blades`, and its id is its
+  // record namespace: what data/ defines is `better_blades:...`.
+  "id": "better_blades",
+  "name": "Better Blades",
+  "version": "1.0.0",
+  "author": "Sage",
+  "description": "A falchion, sold by the village trader.",
+  "game": "village",
+  "gameVersion": "^1.0",
+  "sage": ">=0.1",
+  "dependencies": {}
+}

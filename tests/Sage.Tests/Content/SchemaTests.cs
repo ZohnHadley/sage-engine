@@ -21,7 +21,7 @@ public class SchemaTests
 
     private static SchemaValidator Validator() => new(Committed);
 
-    // What `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world` writes, less the client halves'
+    // What `sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods` writes, less the client halves'
     // parts: the tests cannot load Sage.Client (it is MonoGame), so its `audio` and `particles` and the Sandbox's
     // `box_mesh` are named but not described here.
     private static SortedDictionary<string, string> Generate(params (string Directory, string Namespace)[] mounts)
@@ -37,7 +37,8 @@ public class SchemaTests
                                                                       ("tests/games/skeletal", null),
                                                                       ("tests/games/weapons", null),
                                                                       ("tests/games/saves", null),
-                                                                      ("tests/games/open-world", null) })
+                                                                      ("tests/games/open-world", null),
+                                                                      ("tests/games/mods", null) })
         {
             var report = ContentValidation.Run(new ValidateOptions
             {
