@@ -205,6 +205,7 @@ public sealed class DevTools : IDisposable
         // The document's commands (doc_*, ed_undo, ed_redo, ed_history) are Sage.Editing's, so tests press
         // them too (issue #217).
         EditorCommands.Register(cvars, () => _document);
+        InspectorCommands.Register(cvars, () => _document);   // ed_set, ed_revert, ed_inspect (#223)
         // Selecting and moving (issue #221): ed_select, ed_move, ed_rotate, ed_delete, ed_duplicate, the snapping.
         _tools = ViewportTools.Register(cvars, () => _selection);
         _gizmo = new ViewportGizmo(_tools, cvars);

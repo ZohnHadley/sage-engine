@@ -6,18 +6,28 @@ using ImGuiNET;
 
 namespace Sage.Editor;
 
-// The editable inspector (docs/design/15 §3, TODO F28).
+// The editable inspector (docs/design/15 §3, TODO F28; issue #223 for the document).
 //
-// A component is a **struct**, so editing one is: box it, change a field, put the box back. That is what
-// `ComponentSchema.Write` is for, and it is why this cannot simply hold a reference and poke at it.
+// **On the document, an edit is an override.** For an entity the open document placed, what is shown is
+// Sage.Editing's `InspectorModel`: the placement's own fields (at, yaw, name, frame) as a form, then each
+// component the prefab names and each part, one row per field, and a change is a `SetOverride` the
+// document saves (a drag's frames merge into one undo); an overridden field is marked and has a revert
+// button (`ClearOverride`), and hovering a field says who set it (the prefab's file and line, a mod's
+// patch, or this placement). What the prefab does not name — a part's collider, the transform — is shown
+// and left alone.
 //
-// The fields come from the metadata table (issue #18), not from reflection: each has its JSON name,
-// its range (a drag clamps to Min/Max), its unit (shown in the number), its tooltip (on hover), its
-// category (fields are grouped under it), its enum values (a dropdown) and, for a RecordId, the record
-// type it names — so the widget is a dropdown of the records of that type instead of a text box. The
-// setters are generated code that writes the boxed struct in place.
+// **Anything else is edited live, and says so.** An entity the game spawned, a prefab's child, or anything
+// in a world with no document open has no placement to write to; its components are edited in place, as
+// this window always did, under a "not saved" note — a developer tweaking a running game still can.
+//
+// A component is a **struct**, so a live edit is: box it, change a field, put the box back
+// (`ComponentSchema.Write`). The fields come from the metadata table (issue #18), not from reflection:
+// each has its JSON name, its range (a drag clamps to Min/Max), its unit, its tooltip, its category, its
+// enum values (a dropdown) and, for a RecordId, the record type it names (a dropdown of those records).
 internal sealed class EntityInspectorWindow
 {
+    private static readonly Vector4 OverriddenColour = new(1f, 0.78f, 0.3f, 1f);
+
     private readonly World _world;
     private readonly ComponentSchema _schema;
     private readonly EditorSelection _selection;
@@ -51,11 +61,98 @@ internal sealed class EntityInspectorWindow
         }
 
         ImGui.Text(World.Describe(entity));
+        var model = InspectorModel.Of(_document, _world, entity);
+        if (model.FromDocument) DrawDocument(model);
+        else DrawLive(entity);
+
+        // A drag is one edit: its frames merge until nothing is held (the transform path does the same).
+        if (!ImGui.IsAnyItemActive()) _document.History.EndMerge();
+
+        ImGui.End();
+    }
+
+    // ---- On the document ---------------------------------------------------------------------------
+
+    private void DrawDocument(InspectorModel model)
+    {
+        var placement = model.Placement!;
+        ImGui.TextDisabled($"placement of {_document.Id}: edits are saved with it");
+        ImGui.Separator();
+        DrawPlacement(placement);
+
+        foreach (var group in model.Groups)
+        {
+            string title = group.Rows.Any(r => r.Overridden) ? $"{group} *" : group.ToString();
+            if (!ImGui.CollapsingHeader($"{title}###{group.Section}.{group.Key}")) continue;
+            if (group.Section == null && group.Note != null) ImGui.TextDisabled(group.Note);
+
+            string? category = null;
+            foreach (var row in group.Rows.OrderBy(r => r.Field.Category ?? "", StringComparer.Ordinal))
+            {
+                if (row.Field.Category != category)
+                {
+                    category = row.Field.Category;
+                    if (category != null) ImGui.SeparatorText(category);
+                }
+                DrawRow(model, row);
+            }
+        }
+    }
+
+    private void DrawRow(InspectorModel model, InspectorRow row)
+    {
+        string label = $"{row.Field.JsonName}##{row.Group.Section}.{row.Path}";
+        if (row.Overridden) ImGui.PushStyleColor(ImGuiCol.Text, OverriddenColour);
+        bool changed = row.Editable ? Widget(label, row.Field, row.Value, out object? edited) : ReadOnly(row.Field, row.Value, out edited);
+        if (row.Overridden) ImGui.PopStyleColor();
+
+        if (ImGui.IsItemHovered())
+        {
+            string tip = row.Field.Tooltip ?? row.Field.TypeName;
+            if (row.Provenance.Length > 0) tip += $"\nset by {row.Provenance}";
+            ImGui.SetTooltip(tip);
+        }
+        if (changed && !model.Set(row, model.ToNode(edited), out string error) && error.Length > 0)
+            Log.Warn(LogCat.Editor, error);
+
+        if (row.Overridden)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton($"revert##{row.Group.Section}.{row.Path}") && !model.Revert(row, out string why))
+                Log.Warn(LogCat.Editor, why);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Back to the prefab's value");
+        }
+    }
+
+    // The placement's own fields: a SetPlacement each, merged over a drag.
+    private void DrawPlacement(Placement placement)
+    {
+        var fields = PlacementFields.Of(placement);
+        var at = fields.At;
+        float yaw = fields.Yaw;
+        string name = fields.Name;
+        string[] frames = { "(document)", nameof(PlacementFrame.World), nameof(PlacementFrame.Origin), nameof(PlacementFrame.Ground) };
+        int frame = fields.RelativeTo is { } f ? (int)f + 1 : 0;
+
+        bool changed = false;
+        changed |= ImGui.DragFloat3("at##placement", ref at, 0.05f, 0f, 0f, "%.3f m");
+        changed |= ImGui.DragFloat("yaw##placement", ref yaw, 0.5f, 0f, 0f, "%.1f deg");
+        changed |= ImGui.InputText("name##placement", ref name, 128);
+        changed |= ImGui.Combo("relativeTo##placement", ref frame, frames, frames.Length);
+        if (!changed) return;
+        _document.Execute(new SetPlacement(_document, placement, new PlacementFields(
+            at, yaw, name, frame == 0 ? null : (PlacementFrame)(frame - 1))));
+    }
+
+    // ---- Live -------------------------------------------------------------------------------------------
+
+    private void DrawLive(Entity entity)
+    {
         if (entity.TryGetComponent<FromPlacements>(out var from))
-            ImGui.TextDisabled($"placed by {from.Document}");
+            ImGui.TextDisabled($"placed by {from.Document}, which is not the open document");
+        ImGui.TextDisabled("Edited live: not saved.");
         ImGui.Separator();
 
-        bool moved = false;
         foreach (var component in entity.Components)
         {
             // Headed by the stable id a prefab or a save would write (issue #16); Friflo's own
@@ -78,52 +175,38 @@ internal sealed class EntityInspectorWindow
                     category = field.Category;
                     if (category != null) ImGui.SeparatorText(category);
                 }
-                changed |= Field(id, field, boxed);
+                object? value = field.Get?.Invoke(boxed);
+                string label = $"{field.JsonName}##{id}.{field.Name}";
+                bool edited = field.Editable && field.Set != null
+                    ? Widget(label, field, value, out object? now) : ReadOnly(field, value, out now);
+                if (edited)
+                {
+                    field.Set!(boxed, now);
+                    changed = true;
+                }
                 if (field.Tooltip != null && ImGui.IsItemHovered())
                     ImGui.SetTooltip(field.Transient ? field.Tooltip + " (not saved)" : field.Tooltip);
             }
 
-            if (changed)
-            {
-                _schema.Write(entity, component.Type, boxed);
-                moved |= component.Type == typeof(Transform);
-            }
+            if (changed) _schema.Write(entity, component.Type, boxed);
         }
-
-        // Until the inspector edits overrides (issue #223), what it changes on the entity is not kept,
-        // except where the document's own placement stands: that goes back as a SetPlacement, which
-        // re-spawns the entity (the selection follows it) and merges a drag's frames into one edit.
-        if (moved) Capture(entity);
-        if (!ImGui.IsAnyItemActive()) _document.History.EndMerge();
-
-        ImGui.End();
     }
 
-    private void Capture(Entity entity)
+    // ---- Widgets --------------------------------------------------------------------------------------
+
+    private static bool ReadOnly(FieldMetadata field, object? value, out object? edited)
     {
-        if (_document.PlacementOf(entity) is not { } placement) return;
-        var record = _document.Record;
-        var transform = entity.GetComponent<Transform>();
-        var fields = PlacementFields.Of(placement) with
-        {
-            At = _world.PlacementAt(transform.LocalPosition, record.Origin, placement.RelativeTo ?? record.RelativeTo),
-            Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI + 0f,
-        };
-        _document.Execute(new SetPlacement(_document, placement, fields));
+        ImGui.TextDisabled($"{field.JsonName}: {InspectorValue.Format(value)}");
+        edited = null;
+        return false;
     }
 
-    // One field, as whatever widget fits it. Anything this does not know how to edit is shown and left
-    // alone — a read-only row is honest, and an inspector that silently refuses edits is not.
-    private bool Field(string component, FieldMetadata field, object boxed)
+    // One field, as whatever widget fits it; `edited` is the new value, of the field's own type. Anything
+    // this does not know how to edit is shown and left alone — a read-only row is honest, and an inspector
+    // that silently refuses edits is not.
+    private bool Widget(string label, FieldMetadata field, object? value, out object? edited)
     {
-        string label = $"{field.JsonName}##{component}.{field.Name}";
-        object? value = field.Get?.Invoke(boxed);
-        if (!field.Editable || field.Set == null)
-        {
-            ImGui.TextDisabled($"{field.JsonName}: {value}");
-            return false;
-        }
-
+        edited = null;
         float min = field.Min is { } lo ? (float)lo : 0f;
         float max = field.Max is { } hi ? (float)hi : 0f;
         bool clamped = field.Min != null || field.Max != null;
@@ -135,54 +218,50 @@ internal sealed class EntityInspectorWindow
         {
             case ValueKind.Number when value is float number:
             {
-                float edited = number;
-                if (!ImGui.DragFloat(label, ref edited, 0.05f, min, max, format)) return false;
-                field.Set(boxed, edited);
+                if (!ImGui.DragFloat(label, ref number, 0.05f, min, max, format)) return false;
+                edited = number;
                 return true;
             }
             case ValueKind.Number when value is double number:
             {
-                float edited = (float)number;
-                if (!ImGui.DragFloat(label, ref edited, 0.05f, min, max, format)) return false;
-                field.Set(boxed, (double)edited);
+                float f = (float)number;
+                if (!ImGui.DragFloat(label, ref f, 0.05f, min, max, format)) return false;
+                edited = (double)f;
                 return true;
             }
             case ValueKind.Integer when value != null:
             {
-                int edited = Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture);
+                int whole = Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture);
                 int iMin = field.Min is { } a ? (int)a : 0, iMax = field.Max is { } b ? (int)b : 0;
                 if (clamped && field.Max == null) iMax = int.MaxValue;
-                if (!ImGui.DragInt(label, ref edited, 1f, iMin, iMax, field.Unit != null ? "%d " + field.Unit : "%d")) return false;
-                field.Set(boxed, Convert.ChangeType(edited, Nullable.GetUnderlyingType(field.Type) ?? field.Type,
-                                                    System.Globalization.CultureInfo.InvariantCulture));
+                if (!ImGui.DragInt(label, ref whole, 1f, iMin, iMax, field.Unit != null ? "%d " + field.Unit : "%d")) return false;
+                edited = Convert.ChangeType(whole, Nullable.GetUnderlyingType(field.Type) ?? field.Type,
+                                            System.Globalization.CultureInfo.InvariantCulture);
                 return true;
             }
             case ValueKind.Bool when value is bool flag:
             {
-                bool edited = flag;
-                if (!ImGui.Checkbox(label, ref edited)) return false;
-                field.Set(boxed, edited);
+                if (!ImGui.Checkbox(label, ref flag)) return false;
+                edited = flag;
                 return true;
             }
             case ValueKind.Vector3 when value is Vector3 vector:
             {
-                var edited = vector;
-                if (!ImGui.DragFloat3(label, ref edited, 0.05f, min, max, format)) return false;
-                field.Set(boxed, edited);
+                if (!ImGui.DragFloat3(label, ref vector, 0.05f, min, max, format)) return false;
+                edited = vector;
                 return true;
             }
             case ValueKind.Vector2 when value is Vector2 vector:
             {
-                var edited = vector;
-                if (!ImGui.DragFloat2(label, ref edited, 0.05f, min, max, format)) return false;
-                field.Set(boxed, edited);
+                if (!ImGui.DragFloat2(label, ref vector, 0.05f, min, max, format)) return false;
+                edited = vector;
                 return true;
             }
             case ValueKind.String:
             {
-                string edited = value as string ?? "";
-                if (!ImGui.InputText(label, ref edited, 128)) return false;
-                field.Set(boxed, edited);
+                string text = value as string ?? "";
+                if (!ImGui.InputText(label, ref text, 128)) return false;
+                edited = text;
                 return true;
             }
             case ValueKind.Enum when value is Enum choice:
@@ -190,23 +269,23 @@ internal sealed class EntityInspectorWindow
                 var names = field.EnumValues.ToArray();
                 int index = Array.IndexOf(names, choice.ToString());
                 if (!ImGui.Combo(label, ref index, names, names.Length) || index < 0) return false;
-                field.Set(boxed, Enum.Parse(Nullable.GetUnderlyingType(field.Type) ?? field.Type, names[index]));
+                edited = Enum.Parse(Nullable.GetUnderlyingType(field.Type) ?? field.Type, names[index]);
                 return true;
             }
             case ValueKind.RecordId when value is RecordId current:
-                return RecordField(label, field, boxed, current);
+                return RecordField(label, field, current, out edited);
             case ValueKind.RecordId when value is IRecordRef typed:   // RecordRef<T>
-                return RecordField(label, field, boxed, typed.Id);
+                return RecordField(label, field, typed.Id, out edited);
             default:
-                ImGui.TextDisabled($"{field.JsonName}: {value}");
-                return false;
+                return ReadOnly(field, value, out edited);
         }
     }
 
     // A reference to a record: the records of the type it names, as a dropdown. One whose field does not
     // say ([RecordRef] missing) is shown and left alone, because a free-text id is how typos get in.
-    private bool RecordField(string label, FieldMetadata field, object boxed, RecordId current)
+    private bool RecordField(string label, FieldMetadata field, RecordId current, out object? edited)
     {
+        edited = null;
         if (field.RecordType == null || _world.Engine is not { } engine)
         {
             ImGui.TextDisabled($"{field.JsonName}: {current}");
@@ -217,13 +296,13 @@ internal sealed class EntityInspectorWindow
         {
             if (ImGui.Selectable("(none)", current.IsEmpty))
             {
-                field.Set!(boxed, As(field, default));
+                edited = As(field, default);
                 changed = true;
             }
             foreach (var id in engine.Records.Ids(field.RecordType).OrderBy(i => i.ToString(), StringComparer.Ordinal))
             {
                 if (!ImGui.Selectable(id.ToString(), id == current)) continue;
-                field.Set!(boxed, As(field, id));
+                edited = As(field, id);
                 changed = true;
             }
             ImGui.EndCombo();
