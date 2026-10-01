@@ -27,6 +27,9 @@ public struct RenderStats
 
     // Items in the sun's caster view this frame (issue 4h-4), drawn into its shadow map: 0 with `r_shadows 0` or at night.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int ShadowCasters;
+
+    // Full-screen draws of the post-processing chain this frame (issue 4h-6): 0 while it is off.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int PostSteps;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -91,6 +94,13 @@ public sealed class Renderer : IDisposable
     private long _frame;
     private long _viewStamp;   // one per view drawn: an effect's frame-tier parameters are per view
 
+    // Post-processing (issue 4h-6): while `_toScene` is set, "the screen" a view or a pass binds is
+    // `sage:scene` at `_sceneSize` (the render scale's), which the PostProcess stage then draws out.
+    private readonly PostChain _post;
+    private bool _toScene;
+    private int _sceneTarget = NotBound;
+    private Point _sceneSize;
+
     internal Renderer(ClientHost host, ContentService content, Engine engine, RendererCVars settings, RenderPasses passes)
     {
         if (!passes.IsSealed) throw new InvalidOperationException("The render passes are ordered when they are sealed; seal them before the renderer is made.");
@@ -110,6 +120,7 @@ public sealed class Renderer : IDisposable
         Materials = new MaterialCache(_device, content, engine.Records, _targets);
         _targets.Changed += Materials.Invalidate;   // a remade target: materials sampling it rebuild
         engine.Records.Reloaded += Materials.Invalidate;
+        _post = new PostChain(engine.Records, engine.CVars, settings, Materials);
 
         // An asset changed on disk (05 §3.6, F32). The renderer holds textures by index and a built
         // material holds them by reference, so both have to let go: the table is repointed at the new
@@ -136,7 +147,7 @@ public sealed class Renderer : IDisposable
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
                                      $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), " +
                                      $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}; " +
-                                     $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials"));
+                                     $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials" + PostStats()));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
             foreach (var (id, record, m) in Materials.Entries)
@@ -156,6 +167,10 @@ public sealed class Renderer : IDisposable
     }
 
     internal GraphicsDevice Device => _device;
+
+    // The r_stats line's tail: the post chain, when it drew last frame (issue 4h-6).
+    private string PostStats() => LastFrame.PostSteps == 0 ? "" :
+        $"; post {LastFrame.PostSteps} step(s), scene {_sceneSize.X}x{_sceneSize.Y}";
 
     // ---- Screen and render targets (issue #77) ----
 
@@ -469,6 +484,12 @@ public sealed class Renderer : IDisposable
         _shadow.Drawn = false;   // until `sage:shadow` draws this world's map
         _shadowMap = null;
 
+        // Post-processing (issue 4h-6): with the chain on, the screen's views draw into `sage:scene`
+        // (at the render scale's size) instead of the back buffer; PostProcess draws it out below.
+        // Views into other targets (a minimap, an editor viewport) are not redirected, so nothing is
+        // post-processed twice.
+        _toScene = screen && PreparePost();
+
         // Shadow: once, before any view (`sage:shadow`, issue 4h-4). A pass there binds its own target.
         _bound = NotBound;
         _passBound = false;
@@ -495,9 +516,17 @@ public sealed class Renderer : IDisposable
             else if (_bound != NotBound) _device.SetRenderTarget(null);
         }
         var back = TargetSize(RenderViewPlan.Screen);
-        _device.Viewport = new Viewport(0, 0, back.X, back.Y);
+        if (_toScene)
+        {
+            // The scene is drawn; from here "the screen" is the back buffer again, which the chain binds.
+            _toScene = false;
+            _bound = NotBound;
+        }
+        else _device.Viewport = new Viewport(0, 0, back.X, back.Y);
 
-        // PostProcess: once, on the screen, over every view (4h-6's chain).
+        // PostProcess: once, on the screen, over every view (`sage:post`, the post_effect chain, then a
+        // game's passes on the back buffer).
+        _stats.PostSteps = screen ? _post.Count : 0;
         if (screen && _passes.In(RenderStage.PostProcess).Length > 0)
         {
             RunFrameStage(ctx, RenderStage.PostProcess);
@@ -574,8 +603,9 @@ public sealed class Renderer : IDisposable
     // Draw into `target` from now on, over what it holds, all of it.
     private void Rebind(int target)
     {
-        _device.SetRenderTarget(target == RenderViewPlan.Screen ? null : _targets.Texture(target));
-        var size = TargetSize(target);
+        bool scene = target == RenderViewPlan.Screen && _toScene;
+        _device.SetRenderTarget(scene ? _targets.Texture(_sceneTarget) : target == RenderViewPlan.Screen ? null : _targets.Texture(target));
+        var size = scene ? _sceneSize : TargetSize(target);
         _device.Viewport = new Viewport(0, 0, size.X, size.Y);
         _bound = target;
         _passBound = false;
@@ -590,17 +620,103 @@ public sealed class Renderer : IDisposable
     }
 
     // RenderContext.DrawFullScreen: the texture over the current viewport, through a sprite batch.
-    internal void DrawFullScreen(Texture2D texture, Effect? effect, BlendState? blend)
+    internal void DrawFullScreen(Texture2D texture, Effect? effect, BlendState? blend, SamplerState? sampler = null)
     {
         _fullScreen ??= new SpriteBatch(_device);
         var viewport = _device.Viewport;
-        _fullScreen.Begin(SpriteSortMode.Immediate, blend ?? BlendState.Opaque, SamplerState.LinearClamp,
+        _fullScreen.Begin(SpriteSortMode.Immediate, blend ?? BlendState.Opaque, sampler ?? SamplerState.LinearClamp,
                           DepthStencilState.None, RasterizerState.CullNone, effect);
         _fullScreen.Draw(texture, new Rectangle(0, 0, viewport.Width, viewport.Height), Color.White);
         _fullScreen.End();
         _current = -1;   // the batch set its own device state
         _stats.DrawCalls++;
         _stats.Triangles += 2;
+    }
+
+    // ---- Post-processing (issue 4h-6) ----
+
+    // Plans this frame's chain (PostChain, PostChainPlan): true when it is on, with `sage:scene` declared
+    // at the render scale's size (colour and depth: the views draw into it as into the screen) and the
+    // ping-pong pair beside it (colour only) when a step writes them.
+    private bool PreparePost()
+    {
+        if (!_post.Prepare(TargetSize(RenderViewPlan.Screen))) return false;
+        _sceneSize = _post.SceneSize;
+        _sceneTarget = _targets.Declare(PostChainPlan.SceneTarget, _sceneSize.X, _sceneSize.Y, SurfaceFormat.Color, DepthFormat.Depth24);
+        foreach (var step in _post.Steps)
+            if (step.Destination is PostTarget.Post0 or PostTarget.Post1)
+                _targets.Declare(PostChainPlan.TargetName(step.Destination), _sceneSize.X, _sceneSize.Y, SurfaceFormat.Color, DepthFormat.None);
+        return true;
+    }
+
+    private int PostTargetId(PostTarget target) =>
+        target == PostTarget.Scene ? _sceneTarget : _targets.Id(PostChainPlan.TargetName(target));
+
+    // Where a view draws in its target: its viewport, scaled down with the scene when the screen's
+    // views draw into `sage:scene` at a render scale below 1 (a split screen's halves stay halves).
+    private Rectangle ViewRect(in RenderView view)
+    {
+        if (!_toScene || view.Target != RenderViewPlan.Screen) return view.Viewport;
+        var back = TargetSize(RenderViewPlan.Screen);
+        if (_sceneSize == back) return view.Viewport;
+        float sx = _sceneSize.X / (float)back.X, sy = _sceneSize.Y / (float)back.Y;
+        var r = view.Viewport;
+        int x0 = (int)MathF.Round(r.X * sx), y0 = (int)MathF.Round(r.Y * sy);
+        int x1 = (int)MathF.Round(r.Right * sx), y1 = (int)MathF.Round(r.Bottom * sy);
+        return new Rectangle(x0, y0, Math.Max(1, x1 - x0), Math.Max(1, y1 - y0));
+    }
+
+    // A full-screen quad, already in clip space: what post.fx's vertex shader passes through.
+    private static readonly VertexPositionTexture[] PostQuad =
+    {
+        new(new Vector3(-1f, 1f, 0f), new Vector2(0f, 0f)),
+        new(new Vector3(1f, 1f, 0f), new Vector2(1f, 0f)),
+        new(new Vector3(-1f, -1f, 0f), new Vector2(0f, 1f)),
+        new(new Vector3(1f, -1f, 0f), new Vector2(1f, 1f)),
+    };
+
+    // `sage:post`: the frame's chain, a full-screen draw a step, each reading the target the one before
+    // wrote and the last writing the back buffer at full size (the UI draws over it in Overlay). An
+    // effect's material is drawn with its own technique, params and sampler (point by default, so a
+    // render scale upscales as big pixels); the engine sets Source, SourceSize and Night.
+    internal void DrawPostChain(RenderContext ctx)
+    {
+        var steps = _post.Steps;
+        if (steps.Length == 0) return;
+        float night = _post.Night(ctx.World);
+        for (int i = 0; i < steps.Length; i++)
+        {
+            var step = steps[i];
+            var source = _targets.Texture(PostTargetId(step.Source));
+            Rebind(step.Destination == PostTarget.Screen ? RenderViewPlan.Screen : PostTargetId(step.Destination));
+            var m = step.Effect < 0 ? null : Materials.Get(_post.Material(step.Effect));
+            if (m == null || m.IsError)
+            {
+                // A plain copy: the render scale's upscale with no effect on, or an effect whose material
+                // did not build (the material cache logged why) - the picture goes through unchanged.
+                DrawFullScreen(source, null, null, SamplerState.PointClamp);
+                continue;
+            }
+
+            MaterialCache.Apply(_device, m, wireframe: false);
+            _device.BlendState = BlendState.Opaque;
+            _device.DepthStencilState = DepthStencilState.None;
+            _device.RasterizerState = RasterizerState.CullNone;
+            var effect = m.Effect.Effect;
+            effect.Parameters["Source"]?.SetValue(source);
+            effect.Parameters["SourceSize"]?.SetValue(new Vector4(source.Width, source.Height, 1f / source.Width, 1f / source.Height));
+            effect.Parameters["Night"]?.SetValue(night);
+            foreach (var pass in m.Technique.Passes)
+            {
+                pass.Apply();
+                _device.DrawUserPrimitives(PrimitiveType.TriangleStrip, PostQuad, 0, 2);
+                _stats.DrawCalls++;
+                _stats.Triangles += 2;
+            }
+            if (m.DrawnFrame != _frame) { m.DrawnFrame = _frame; m.Drawn = 0; }
+            m.Drawn++;
+        }
+        _current = -1;   // the chain set its own device state
     }
 
     // Plans the frame (RenderViewPlan): the views' draw order, and each view's run of items and sprites
@@ -640,14 +756,15 @@ public sealed class Renderer : IDisposable
     {
         ref var view = ref s.Views[index];
         _viewStamp++;
-        _device.Viewport = new Viewport(view.Viewport);
+        var rect = ViewRect(view);
+        _device.Viewport = new Viewport(rect);
         if (view.DepthOnly)
         {
             // Over what the target already holds (the viewmodel pass, issue #121): only depth is
             // cleared, so what this view draws is in front of everything drawn before it.
             if (!view.FullTarget)
             {
-                _device.ScissorRectangle = view.Viewport;
+                _device.ScissorRectangle = rect;
                 _device.RasterizerState = ScissorClear;
             }
             _device.Clear(ClearOptions.DepthBuffer, clear, 1f, 0);
@@ -658,7 +775,7 @@ public sealed class Renderer : IDisposable
         {
             // A part of the target: clear only that part (Bind cleared the whole target already
             // when this view is all of it).
-            _device.ScissorRectangle = view.Viewport;
+            _device.ScissorRectangle = rect;
             _device.RasterizerState = ScissorClear;
             _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, clear, 1f, 0);
             _device.RasterizerState = RasterizerState.CullCounterClockwise;
@@ -694,7 +811,7 @@ public sealed class Renderer : IDisposable
                     // state are put back before the next pass draws.
                     _current = -1;
                     if (_bound != view.Target || _passBound) Rebind(view.Target);
-                    _device.Viewport = new Viewport(view.Viewport);
+                    _device.Viewport = new Viewport(rect);
                 }
             }
             item = itemEnd;
@@ -990,6 +1107,13 @@ internal sealed class RendererCVars
     public readonly CVar<int> ShadowSize;
     public readonly CVar<float> ShadowDistance;
 
+    // Post-processing (issue 4h-6): the post_effect chain, the engine's two effects' switches, and the
+    // render scale (06 §3.9), which works with the chain off too.
+    public readonly CVar<bool> Post;
+    public readonly CVar<float> Scale;
+    public readonly CVar<bool> PostGrade;
+    public readonly CVar<bool> PostVignette;
+
     public RendererCVars(CVarRegistry cvars)
     {
         Fog = cvars.Register("r_fog", true, CVarFlags.None, "Distance fog (the environment's fog settings).");
@@ -1010,5 +1134,14 @@ internal sealed class RendererCVars
             "The sun's shadow map, in texels a side.", 256, 4096);
         ShadowDistance = cvars.Register("r_shadow_distance", ShadowMath.DefaultDistance, CVarFlags.None,
             "How far from the camera the sun's shadows reach, in metres (the map covers this slice of the view).", 5f, 500f);
+        Post = cvars.Register("r_post", false, CVarFlags.Archive,
+            "Post-processing (issue 4h-6): the screen is drawn into sage:scene and through the post_effect chain (colour grade, vignette) before the UI.");
+        Scale = cvars.Register("r_scale", 1f, CVarFlags.Archive,
+            "Render scale (06 §3.9): the world is drawn at this fraction of the screen and upscaled with point filtering; the UI stays at full size.",
+            PostChainPlan.MinScale, 1f);
+        PostGrade = cvars.Register("r_post_grade", true, CVarFlags.Archive,
+            "The colour grade and exposure post effect (sage:grade), with the sky's night tint; needs r_post 1.");
+        PostVignette = cvars.Register("r_post_vignette", true, CVarFlags.Archive,
+            "The vignette post effect (sage:vignette); needs r_post 1.");
     }
 }
