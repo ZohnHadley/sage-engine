@@ -174,7 +174,7 @@ placement that named a frame of its own comes back in the document's.
 | Piece | Where | What it does |
 |---|---|---|
 | `Placement` / `PlacementsRecord` | `src/Sage.Simulation/Content/Placements.cs` | The document's content, and spawning it into a world, reading it back, clearing it |
-| `EditorDocument` | was `src/Sage.Simulation/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable. Replaced by `EditDocument` in `Sage.Editing` (#217, §10c) |
+| `EditorDocument` | was `src/Sage.Simulation/Content/EditorDocument.cs` | Open, save, close, dirty. **Engine-side on purpose**: it is records and files with no screen in it, which is what makes it testable. Replaced by `EditDocument` in `Sage.Editing` (#217, §10e) |
 | `EntityOutlinerWindow` / `EntityInspectorWindow` | `src/Sage.Editor/Screens/` | List and select; edit a component by boxing it, changing a field and writing it back |
 | `DevTools` | `src/Sage.Editor/DevTools.cs` | Everything a developer sees, in one class the host holds behind `SAGE_DEV` |
 
@@ -201,7 +201,70 @@ editor, per-entity overrides, play-in-editor, and an inspector generated from de
 than reflection (09 §3.2). Editing runs against the live world, so `pause 1` before moving things — the
 simulation will otherwise drop a crate while you inspect it.
 
-## 10c. As built: the command log and the document (issue #217, phase 10a, 2026-10-01)
+## 10c. As built: picking and gizmo maths (10-5, #220)
+
+`Sage.Editing`, headless, System.Numerics only: what the viewport decides, so `Sage.Editor` only draws it.
+
+- **A ray from a camera and a pixel.** `EditorPicking.RayFrom(CameraPose, fovY, viewportSize, screenPoint)`
+  follows `CameraMath`'s conventions (looks down -Z, screen right is +X, pixel origin top left) and passes
+  through the point `CameraMath.View` and `Perspective` project to that pixel (test:
+  ARayAgreesWithTheViewAndProjectionMatrices). `RayFromOrthographic` gives parallel rays (test:
+  AnOrthographicRayIsParallelAndOffsetByThePixel).
+- **Picking.** `EditorPicking.Pick(world, ray)` takes the nearest of the physics raycast and a fallback
+  for entities with no `Collider` (test: PickingTakesTheNearestColliderAndReportsWhereTheRayMetIt). Headless
+  code has no render mesh bounds (the client loads meshes), so the fallback is a sphere of
+  `EditorPicking.FallbackRadius` (0.35 m) at the entity's position; a collider in front still wins (test:
+  AnEntityWithNoColliderIsPickedByItsFallbackSphereAndLosesToANearerCollider). A world with no physics
+  plugin picks by the fallback alone (test: PickingWorksInAWorldWithNoPhysicsAtAll).
+- **Translate gizmo.** `TranslateGizmo.HitTest` finds the X, Y, Z axis or XY, XZ, YZ plane handle, the
+  planes winning where they sit between axes (test: TheTranslateGizmoFindsAxisAndPlaneHandles). `Drag`
+  turns two rays into a delta in origin space, with grid snapping applied to the result on the moved axes
+  (tests: ADragAlongAnAxisMovesOnlyThatAxisByHowFarThePointerWent,
+  ADragOnAPlaneMovesBothAxesAndGridSnapsTheResult). A ray parallel to the axis or plane, or a plane behind
+  the camera, gives no delta (test: ADragHasNoAnswerForARayParallelToItsAxisOrPlaneOrAPlaneBehindTheCamera).
+- **Rotate about Y.** `RotateGizmo.HitTest` and `Drag`: the angle is positive as
+  `Quaternion.CreateFromAxisAngle(UnitY, a)` turns, takes the short way over the seam, and snaps to
+  `stepDegrees` (tests: TheRotateRingIsHitOnItsCircleOnly,
+  ARotateDragGivesTheAngleAboutYInTheDirectionQuaternionsTurn, ARotateDragHasNoAnswerOnTheAxisOrParallelToThePlane).
+- **Screen-constant size.** `GizmoMath.ScreenConstantSize` (test: AGizmoKeepsItsPixelSizeAtAnyDistance);
+  `Snap.ToGrid` and `Snap.Angle` (test: SnapRoundsToTheGridAndTheAngleStepAndZeroMeansOff).
+
+## 10d. As built: file-preserving write-back (#218, 2026-10-01)
+
+A save used to serialise the document's record and write the file whole, so it lost the comments, the
+key order, the one-line vectors and any record kept beside the document (REDESIGN §4.6). **`JsonFileEdit`**
+(`src/Sage.Core/Content/JsonFileEdit.cs`, SAGE0133) edits a record file's text instead: a small JSONC
+parser keeps where every value starts and ends, an edit splices one value's text, and the file is
+parsed again before the next. It finds a record by `type` and `id` in a file holding one record or an
+array of them (a bare id means the mount's namespace), and it replaces, adds or removes a record, or
+sets or removes a value at a path inside one (`place[3].at`, `overrides.components.health.max`).
+
+- **Nothing changed, nothing rewritten:** a record set to what the file already says leaves the text
+  byte for byte, byte order mark and line endings included. Numbers compare as values, so `1` is `1.0`.
+  (tests: AFileNothingChangedInIsWrittenBackByteForByte, SavingKeepsTheFilesByteOrderMarkAndLineEndings)
+- **Only the difference is written.** Setting an object or array, or a whole record, compares it with
+  the file key by key and element by element, so a moved placement is the number that moved: one line
+  in a file with one-line vectors, one number in a file that spreads them over lines. (tests:
+  MovingOnePlacementChangesOneLine, AVectorWrittenOverManyLinesChangesOnlyTheNumberThatMoved)
+- **Comments, key order and the other records stay**, a removed value takes its own lines with it, and
+  a value added to a list goes after the last one's comment rather than before it.
+  (tests: CommentsAndTheOtherRecordsStay, RecordsAreReplacedAddedAndRemovedInPlace,
+  ValuesAreSetAndRemovedAtAPathInsideARecord)
+- **New values are in the record store's dialect** (its converters, camel case, enums by name, nulls
+  left out), arrays of numbers and strings on one line and objects indented like their neighbours.
+  (test: NewValuesAreWrittenInTheRecordStoresDialect)
+- **`PatchRecord(before, after)` is what the document saves with.** A program's record spells out
+  fields the file leaves at their defaults (`"yaw": 0`, `"outputs": []`), so comparing it with the file
+  would write them all. The document (`EditDocument` since #217, §10e) keeps it as it was opened or last saved and writes
+  only what changed since; a document the file does not hold (a new one) is added, or makes the file.
+  (tests: APatchWritesOnlyWhatChangedBetweenTwoVersions, SavingChangesOnlyWhatChangedInTheFile)
+
+**Not built:** comments above a removed value stay where they were, and a list's element is matched by
+its index, so removing one from the middle rewrites the ones after it. A record merged from patches in
+other mounts is written to the file that defined it; a patch file of its own is the record editor's
+(#224).
+
+## 10e. As built: the command log and the document (issue #217, phase 10a, 2026-10-01)
 
 **The document is the source of truth and the world is derived from it** (§3), which F28's
 `EditorDocument` had the other way round: it spawned a record into the world and saved by reading the
@@ -245,9 +308,11 @@ a game loading the file would place — a re-spawn is a load of that one placeme
 - **A new level is a scene naming a new placements document** (`doc_level crypt`: `crypt` places
   `crypt_placements`); the first save writes both, each a file of its own.
   (test: ANewLevelIsASceneNamingANewPlacementsDocument)
-- **Save has one writer** (`EditDocument.WriteRecord`): it replaces the document's record in the file it
-  came from and keeps the file's other records (not yet its comments or layout: that is the
-  file-preserving writer of #218, which goes in at that one call site). (test: WhatIsSavedIsWhatAGameWillLoad)
+- **Save has one writer** (`EditDocument.WriteRecord`, on §10d's `JsonFileEdit`): the document keeps
+  its record as last opened or saved and `PatchRecord`s only what changed since into the file it came
+  from, so comments, layout, the other records and the defaults the file leaves out stay; a document the
+  file does not hold yet (a new one, a new level's scene) is set whole.
+  (tests: WhatIsSavedIsWhatAGameWillLoad, SavingChangesOnlyWhatChangedInTheFile)
 - **The console drives it**: the `doc_*` commands go through the document, and `ed_undo [n]`, `ed_redo
   [n]` and `ed_history` through its log; they live in `Sage.Editing` so a headless test presses them.
   (test: TheConsoleOpensUndoesRedoesAndListsTheHistory)

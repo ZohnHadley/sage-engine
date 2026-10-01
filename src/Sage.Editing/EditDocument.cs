@@ -33,6 +33,7 @@ public sealed class EditDocument
     private PlacementsRecord _record = new();
     private bool _neverSaved;      // a new document is unsaved work until it is first written
     private RecordId _newScene;    // a new level's scene, written beside the document on its first save
+    private JsonObject? _saved;    // the document as last opened or saved: a save writes what changed since
 
     public EditDocument(World world, int historyCapacity = CommandLog.DefaultCapacity)
     {
@@ -93,6 +94,7 @@ public sealed class EditDocument
         Close();
         if (id.IsEmpty) id = new RecordId(GameNamespace(Engine), "untitled");
         Begin(id, new PlacementsRecord(), "");
+        _saved = null;
         _neverSaved = true;
         Log.Info(LogCat.Editor, $"New document '{id}'");
         Changed?.Invoke();
@@ -127,6 +129,7 @@ public sealed class EditDocument
         _record = new PlacementsRecord();
         Id = default;
         Scene = _newScene = default;
+        _saved = null;
         Path = "";
         _neverSaved = false;
         History.Clear();
@@ -141,6 +144,7 @@ public sealed class EditDocument
         _neverSaved = false;
         for (int i = 0; i < record.Place.Count; i++) Map(record.Place[i], World.SpawnPlacement(id, record, i));
         World.FinishPlacements(id);
+        _saved = PlacementsJson();
         History.Clear();
     }
 
@@ -276,21 +280,27 @@ public sealed class EditDocument
             return false;
         }
 
-        var writes = new List<(string Path, RecordId Id, JsonObject Record)> { (path, Id, PlacementsJson()) };
+        var current = PlacementsJson();
+        string scenePath = "";
         if (!_newScene.IsEmpty)
         {
-            string scenePath = FileFor(_newScene, "scene");
+            scenePath = FileFor(_newScene, "scene");
             if (scenePath.Length == 0)
             {
                 Log.Error(LogCat.Editor, $"Nowhere to save the scene '{_newScene}'");
                 return false;
             }
-            if (!File.Exists(scenePath)) writes.Add((scenePath, _newScene, SceneJson(_newScene, Id)));
         }
 
         try
         {
-            foreach (var (file, id, record) in writes) WriteRecord(file, id, record);
+            WriteRecord(path, "placements", Id, _saved, current);
+            if (scenePath.Length > 0 && !File.Exists(scenePath)) WriteRecord(scenePath, "scene", _newScene, null, SceneJson(_newScene, Id));
+        }
+        catch (JsonException ex)
+        {
+            Log.Error(LogCat.Editor, $"Could not save '{Id}' to {path}: it is not a record file ({ex.Message})");
+            return false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -298,6 +308,7 @@ public sealed class EditDocument
             return false;
         }
 
+        _saved = current;
         Path = path;
         _neverSaved = false;
         _newScene = default;
@@ -306,62 +317,30 @@ public sealed class EditDocument
         return true;
     }
 
-    // **The one place a record reaches a file.** Today the file is parsed and written again whole: the
-    // record replaces the one of its type and id (or is added), and the file's other records stay, though
-    // its comments and layout do not. A file-preserving writer (issue #218: replace this record in place,
-    // keep the comments and the formatting) goes here and nowhere else.
-    private static void WriteRecord(string path, RecordId id, JsonObject record)
+    // **The one place a record reaches a file** (issue #218's JsonFileEdit): into the file as it stands,
+    // writing only what changed between `before` (the record as last opened or saved) and `after`, so
+    // comments, key order, the other records in the file and the fields it leaves at their defaults stay
+    // as a person wrote them. With no `before` (a new document), or a file that does not hold the record
+    // (yet), the record is set whole: added to the file, or making it. The file is written whole and moved
+    // into place, so an interrupted save cannot leave half a file behind.
+    private void WriteRecord(string path, string type, RecordId id, JsonObject? before, JsonObject after)
     {
-        var file = new JsonArray();
-        if (File.Exists(path))
-        {
-            var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
-            try
-            {
-                if (JsonNode.Parse(File.ReadAllText(path), documentOptions: options) is JsonArray existing) file = existing;
-            }
-            catch (JsonException ex)
-            {
-                // A file the loader cannot read either: not overwritten blind, which could lose the rest.
-                throw new IOException($"{path} is not a JSON array of records ({ex.Message})", ex);
-            }
-        }
-
-        string type = (string)record["type"]!;
-        int at = -1;
-        for (int i = 0; i < file.Count && at < 0; i++)
-            if (file[i] is JsonObject other && (string?)other["type"] == type
-                && (string?)other["id"] is { } written && (written == id.Name || written == id.ToString()))
-                at = i;
-        if (at >= 0) file[at] = record;
-        else file.Add(record);
-
-        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-        string json = file.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        // Written whole and moved into place, so an interrupted save cannot leave a half-file that the
-        // record loader will refuse on the next start (09 §3.3 does the same for saves).
-        string temporary = path + ".tmp";
-        File.WriteAllText(temporary, json);
-        File.Move(temporary, path, overwrite: true);
+        var edit = JsonFileEdit.Open(path, Engine.Records.Json);
+        if (before == null || !edit.PatchRecord(type, id, before, after)) edit.SetRecord(type, id, after);
+        edit.Save(path);
     }
 
-    // The record as a file holds it, in the record store's own dialect: its options carry the converters
-    // that make this a record rather than a similar-looking object (with defaults the first F28 save
-    // wrote `"Prefab"` and `{"X":518,...}`), and camel case is how every record file reads.
+    // The record as its file says it, in the record store's own dialect (JsonFileEdit.ToNode: its
+    // converters, camel case, enums as strings): what a save compares with the last one. With default
+    // options the first F28 save wrote `"Prefab"` and `{"X":518,...}`.
     private JsonObject PlacementsJson()
     {
-        var options = new JsonSerializerOptions(Engine.Records.Json)
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            // A placement's own `relativeTo` is optional: left out, it is the document's.
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        };
+        var dialect = new JsonFileEdit("", Engine.Records.Json);
         var file = new JsonObject { ["type"] = "placements", ["id"] = Id.Name };
         // The document's frame (issue #29), only when it has one: most documents are absolute metres.
-        if (_record.Origin != default) file["origin"] = JsonSerializer.SerializeToNode(_record.Origin, options);
-        if (_record.RelativeTo != PlacementFrame.World) file["relativeTo"] = JsonSerializer.SerializeToNode(_record.RelativeTo, options);
-        var place = JsonSerializer.SerializeToNode(_record.Place, options)!.AsArray();
+        if (_record.Origin != default) file["origin"] = dialect.ToNode(_record.Origin);
+        if (_record.RelativeTo != PlacementFrame.World) file["relativeTo"] = dialect.ToNode(_record.RelativeTo);
+        var place = dialect.ToNode(_record.Place)!.AsArray();
         // What a placement leaves out is what it does not have: no id (one derived from its place), no wires.
         foreach (var placement in place.OfType<JsonObject>())
         {
