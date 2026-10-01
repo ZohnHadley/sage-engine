@@ -1,0 +1,17 @@
+{
+  // Phase 4g's exit (engine issue #190, REDESIGN §5): walk from an exterior into a dungeon and back; an NPC
+  // keeps its schedule across a day while you are away (docs/design/14 "As built (the 4g exit game)"). No
+  // C# and no kit: a streamed valley on the built-in hills, a village with a smith who works at the forge
+  // by day and sleeps at home by night, guards at the north gate and bandits who raid it by day, and a
+  // crypt door two sectors east that leads into a `.map` interior with a skeleton in it.
+  // CI validates it and smoke-runs it; tests/Sage.Tests/Games/OpenWorldExitTests.cs plays it headlessly:
+  // into the crypt at 07:00, the skeleton killed, a sword dropped, 26 hours' rest, a save and a load, and
+  // out again at 09:00 the next day.
+  "name": "Open world",
+  "id": "openworld",
+  "plugins": ["sage.physics3d", "sage.streaming", "sage.maps", "sage.gameplay.io", "sage.gameplay.character",
+              "sage.gameplay.attributes", "sage.gameplay.combat", "sage.gameplay.items", "sage.gameplay.ai",
+              "sage.gameplay.factions", "sage.gameplay.lights"],
+  "mounts": ["content"],
+  "scene": "valley"
+}

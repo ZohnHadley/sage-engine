@@ -133,6 +133,7 @@ jobs:
           "$sage" validate tests/games/weapons
           "$sage" validate tests/games/saves
           "$sage" validate tests/games/saves --mounts tests/games/saves/rebalance=rebalance
+          "$sage" validate tests/games/open-world
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -140,11 +141,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world --out schemas' and commit the result"
             exit 1
           fi
 
@@ -232,6 +233,12 @@ jobs:
           # Phase 4i's exit (issue #167): placed goblins, a map's ring and tally, a dropped item and an arrow
           # to save and load (SavesExitTests plays it headlessly). Same allowances as above.
           tools/smoke_run.sh "$host" tests/games/saves 3 Shaders Audio Records Input
+          # Phase 4g's exit (issue #190): a streamed valley on the built-in hills, a smith on a routine, guards
+          # and bandits off-screen, and a `.map` crypt behind a load door (OpenWorldExitTests plays it
+          # headlessly). Into the crypt by the Travel input, 26 hours pass, out again, and the off-screen
+          # table listed. Same allowances as above.
+          SAGE_SMOKE_COMMANDS=$'+wait 2\n+sv_cheats 1\n+ent_fire player Travel "crypt crypt_in"\n+wait 2\n+time_pass 26\n+wait 1\n+ent_fire way_out Travel\n+wait 2\n+offscreen_status' \
+            tools/smoke_run.sh "$host" tests/games/open-world 4 Shaders Audio Records Input
 
       # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
       # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.

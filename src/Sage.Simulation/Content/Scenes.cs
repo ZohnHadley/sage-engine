@@ -82,7 +82,7 @@ public sealed class SceneEnvironment
 
     [Property(Tooltip = "The sky the scene's world is lit by (issue 4h-2); left out, the world's own (none: the light the game set)")]
     public RecordRef<SkyRecord> Sky;
-    [Property(Min = 0, Max = 24, Unit = "h", Tooltip = "The hour the scene starts at; left out, the clock's")]
+    [Property(Min = 0, Max = 24, Unit = "h", Tooltip = "The hour the scene starts at, when the world starts there or scene_load places it (travel keeps the clock); left out, the clock's")]
     public float? Hour;
 
     // An interior's light besides its lights (4g-5): there is no sky to give any.
@@ -166,7 +166,9 @@ public sealed class Scenes
         }
         Clear(world);
         Place(world, id, scene);
-        ApplyEnvironment(world, scene);
+        // A journey (Travel, movePlayer false) does not set the clock: the hour a scene starts at is for
+        // starting there, and coming back through a door at 06:00 must not make it dusk again (4g-7).
+        ApplyEnvironment(world, scene, setHour: movePlayer);
 
         var state = world.Resources.Get<ActiveScene>();
         var player = Player(world);
@@ -456,12 +458,12 @@ public sealed class Scenes
             ? StreamedScene.Build(_engine, id, scene)
             : null;
 
-    private void ApplyEnvironment(World world, SceneRecord scene)
+    private void ApplyEnvironment(World world, SceneRecord scene, bool setHour = true)
     {
         if (world.Resources.TryGet<WorldClock>(out var clock) && clock != null)
         {
             if (!scene.Environment.Sky.Id.IsEmpty) clock.Sky = scene.Environment.Sky.Id;
-            if (scene.Environment.Hour is { } hour) clock.Hour = hour;
+            if (setHour && scene.Environment.Hour is { } hour) clock.Hour = hour;
         }
         if (scene.Environment.Weather.Id.IsEmpty || !world.Resources.TryGet<Weather>(out var weather) || weather == null) return;
         // Settled at once: a scene starts in its weather rather than watching it roll in.

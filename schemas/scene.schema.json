@@ -916,7 +916,7 @@
           ]
         },
         "hour": {
-          "description": "The hour the scene starts at; left out, the clock's. Unit: h. Range: 0 to 24. (float?)",
+          "description": "The hour the scene starts at, when the world starts there or scene_load places it (travel keeps the clock); left out, the clock's. Unit: h. Range: 0 to 24. (float?)",
           "anyOf": [
             {
               "type": "number",

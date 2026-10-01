@@ -35,7 +35,9 @@
         "chase",
         "hold_ground",
         "idle",
+        "keep_to_routine",
         "melee_attack",
+        "openworld:keep_to_routine",
         "sage:cast_spell",
         "sage:chase",
         "sage:hold_ground",
@@ -75,6 +77,7 @@
         "claws",
         "crossbow_shot",
         "default_attack",
+        "openworld:staff_blow",
         "pistol_shot",
         "sage:default_attack",
         "sandbox:claws",
@@ -83,6 +86,7 @@
         "sandbox:sword_swing",
         "saves:bow_shot",
         "saves:sword_swing",
+        "staff_blow",
         "sword_swing",
         "weapons:crossbow_shot",
         "weapons:pistol_shot",
@@ -171,6 +175,7 @@
         "goblin_build",
         "helmet",
         "mend",
+        "openworld:skeleton_build",
         "padding",
         "sage:burning",
         "sage:damage",
@@ -182,6 +187,7 @@
         "sandbox:fireball_cooldown",
         "sandbox:tough_hide",
         "saves:goblin_build",
+        "skeleton_build",
         "spend_mana",
         "tough_hide",
         "vigour",
@@ -193,14 +199,20 @@
       "description": "The id of a faction record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "bandits",
         "beasts",
         "firebugs",
+        "guards",
         "hermits",
+        "openworld:bandits",
+        "openworld:guards",
+        "openworld:villagers",
         "player",
         "sage:player",
         "sandbox:beasts",
         "sandbox:firebugs",
-        "sandbox:hermits"
+        "sandbox:hermits",
+        "villagers"
       ]
     },
     "record:gameplay_conventions": {
@@ -269,6 +281,9 @@
         "bow",
         "bread",
         "crossbow",
+        "hammer",
+        "openworld:hammer",
+        "openworld:sword",
         "pistol",
         "pistol_round",
         "pistol_rounds",
@@ -297,7 +312,9 @@
       "type": "string",
       "enum": [
         "camp",
+        "crypt",
         "hut",
+        "openworld:crypt",
         "sandbox:hut",
         "saves:camp"
       ]
@@ -310,6 +327,8 @@
         "brass",
         "bunny",
         "crate",
+        "crypt_floor",
+        "crypt_wall",
         "door",
         "dummy",
         "dummy_helmeted",
@@ -321,6 +340,8 @@
         "mannequin_blue",
         "mannequin_green",
         "mannequin_red",
+        "openworld:crypt_floor",
+        "openworld:crypt_wall",
         "particle_additive",
         "particle_blend",
         "post_copy",
@@ -422,6 +443,7 @@
       "description": "The id of a prefab record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "bandit",
         "beacon",
         "bolt_flight",
         "bolts_pickup",
@@ -434,6 +456,7 @@
         "campfire",
         "crate",
         "crossbow_pickup",
+        "crypt_door",
         "door",
         "dummy",
         "fence",
@@ -444,6 +467,7 @@
         "floor",
         "gate",
         "goblin",
+        "guard",
         "hello:player",
         "helmeted_dummy",
         "hermit",
@@ -458,8 +482,19 @@
         "logic_counter",
         "logic_relay",
         "logic_timer",
+        "marker",
         "math_remap",
         "npc",
+        "openworld:bandit",
+        "openworld:crypt_door",
+        "openworld:guard",
+        "openworld:marker",
+        "openworld:player",
+        "openworld:skeleton",
+        "openworld:smith",
+        "openworld:torch",
+        "openworld:way_out",
+        "openworld:well",
         "pistol_pickup",
         "player",
         "player_camera",
@@ -523,21 +558,26 @@
         "skeletal:sentry",
         "skeletal:trooper",
         "skeletal:walker",
+        "skeleton",
+        "smith",
         "steps",
         "sword_pickup",
         "tally",
         "topicsgame:ferryman",
         "topicsgame:player",
         "topicsgame:rain",
+        "torch",
         "tree",
         "trigger_zone",
         "trooper",
         "walker",
         "watcher",
+        "way_out",
         "weapons:dummy",
         "weapons:floor",
         "weapons:helmeted_dummy",
-        "weapons:player"
+        "weapons:player",
+        "well"
       ]
     },
     "record:quest": {
@@ -558,9 +598,14 @@
       ]
     },
     "record:routine": {
-      "description": "The id of a routine record (none is loaded).",
+      "description": "The id of a routine record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "openworld:raid",
+        "openworld:smith",
+        "raid",
+        "smith"
+      ]
     },
     "record:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
@@ -579,10 +624,13 @@
         "cameracut:courtyard",
         "camp",
         "courtyard",
+        "crypt",
         "ferry",
         "hall",
         "hello:main",
         "main",
+        "openworld:crypt",
+        "openworld:valley",
         "range",
         "sandbox:main",
         "saves:camp",
@@ -592,6 +640,7 @@
         "shed",
         "skeletal:yard",
         "topicsgame:ferry",
+        "valley",
         "weapons:range",
         "yard"
       ]
@@ -722,9 +771,12 @@
       ]
     },
     "record:terrain": {
-      "description": "The id of a terrain record (none is loaded).",
+      "description": "The id of a terrain record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "hills",
+        "openworld:hills"
+      ]
     },
     "record:ui_layout": {
       "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -889,7 +941,9 @@
         "chase",
         "hold_ground",
         "idle",
+        "keep_to_routine",
         "melee_attack",
+        "openworld:keep_to_routine",
         "sage:cast_spell",
         "sage:chase",
         "sage:hold_ground",
@@ -929,6 +983,7 @@
         "claws",
         "crossbow_shot",
         "default_attack",
+        "openworld:staff_blow",
         "pistol_shot",
         "sage:default_attack",
         "sandbox:claws",
@@ -937,6 +992,7 @@
         "sandbox:sword_swing",
         "saves:bow_shot",
         "saves:sword_swing",
+        "staff_blow",
         "sword_swing",
         "weapons:crossbow_shot",
         "weapons:pistol_shot",
@@ -1025,6 +1081,7 @@
         "goblin_build",
         "helmet",
         "mend",
+        "openworld:skeleton_build",
         "padding",
         "sage:burning",
         "sage:damage",
@@ -1036,6 +1093,7 @@
         "sandbox:fireball_cooldown",
         "sandbox:tough_hide",
         "saves:goblin_build",
+        "skeleton_build",
         "spend_mana",
         "tough_hide",
         "vigour",
@@ -1047,14 +1105,20 @@
       "description": "Another faction record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "bandits",
         "beasts",
         "firebugs",
+        "guards",
         "hermits",
+        "openworld:bandits",
+        "openworld:guards",
+        "openworld:villagers",
         "player",
         "sage:player",
         "sandbox:beasts",
         "sandbox:firebugs",
-        "sandbox:hermits"
+        "sandbox:hermits",
+        "villagers"
       ]
     },
     "base:gameplay_conventions": {
@@ -1123,6 +1187,9 @@
         "bow",
         "bread",
         "crossbow",
+        "hammer",
+        "openworld:hammer",
+        "openworld:sword",
         "pistol",
         "pistol_round",
         "pistol_rounds",
@@ -1151,7 +1218,9 @@
       "type": "string",
       "enum": [
         "camp",
+        "crypt",
         "hut",
+        "openworld:crypt",
         "sandbox:hut",
         "saves:camp"
       ]
@@ -1164,6 +1233,8 @@
         "brass",
         "bunny",
         "crate",
+        "crypt_floor",
+        "crypt_wall",
         "door",
         "dummy",
         "dummy_helmeted",
@@ -1175,6 +1246,8 @@
         "mannequin_blue",
         "mannequin_green",
         "mannequin_red",
+        "openworld:crypt_floor",
+        "openworld:crypt_wall",
         "particle_additive",
         "particle_blend",
         "post_copy",
@@ -1276,6 +1349,7 @@
       "description": "Another prefab record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "bandit",
         "beacon",
         "bolt_flight",
         "bolts_pickup",
@@ -1289,6 +1363,7 @@
         "crate",
         "creature",
         "crossbow_pickup",
+        "crypt_door",
         "door",
         "dummy",
         "fence",
@@ -1299,6 +1374,7 @@
         "floor",
         "gate",
         "goblin",
+        "guard",
         "hello:player",
         "helmeted_dummy",
         "hermit",
@@ -1313,8 +1389,19 @@
         "logic_counter",
         "logic_relay",
         "logic_timer",
+        "marker",
         "math_remap",
         "npc",
+        "openworld:bandit",
+        "openworld:crypt_door",
+        "openworld:guard",
+        "openworld:marker",
+        "openworld:player",
+        "openworld:skeleton",
+        "openworld:smith",
+        "openworld:torch",
+        "openworld:way_out",
+        "openworld:well",
         "pistol_pickup",
         "player",
         "player_camera",
@@ -1379,21 +1466,26 @@
         "skeletal:sentry",
         "skeletal:trooper",
         "skeletal:walker",
+        "skeleton",
+        "smith",
         "steps",
         "sword_pickup",
         "tally",
         "topicsgame:ferryman",
         "topicsgame:player",
         "topicsgame:rain",
+        "torch",
         "tree",
         "trigger_zone",
         "trooper",
         "walker",
         "watcher",
+        "way_out",
         "weapons:dummy",
         "weapons:floor",
         "weapons:helmeted_dummy",
-        "weapons:player"
+        "weapons:player",
+        "well"
       ]
     },
     "base:quest": {
@@ -1414,9 +1506,14 @@
       ]
     },
     "base:routine": {
-      "description": "The id of a routine record (none is loaded).",
+      "description": "Another routine record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "openworld:raid",
+        "openworld:smith",
+        "raid",
+        "smith"
+      ]
     },
     "base:rpg_conventions": {
       "description": "The id of a rpg_conventions record (none is loaded).",
@@ -1435,10 +1532,13 @@
         "cameracut:courtyard",
         "camp",
         "courtyard",
+        "crypt",
         "ferry",
         "hall",
         "hello:main",
         "main",
+        "openworld:crypt",
+        "openworld:valley",
         "range",
         "sandbox:main",
         "saves:camp",
@@ -1448,6 +1548,7 @@
         "shed",
         "skeletal:yard",
         "topicsgame:ferry",
+        "valley",
         "weapons:range",
         "yard"
       ]
@@ -1578,9 +1679,12 @@
       ]
     },
     "base:terrain": {
-      "description": "The id of a terrain record (none is loaded).",
+      "description": "Another terrain record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "hills",
+        "openworld:hills"
+      ]
     },
     "base:ui_layout": {
       "description": "Another ui_layout record to inherit every field from, abstract or not.",
