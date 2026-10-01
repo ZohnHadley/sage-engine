@@ -100,10 +100,13 @@ and the simulation carries on with small numbers, because the frame of reference
   the origin rebases back on the next tick, which is visible in the log as a second rebase.
 - **Console:** `stream_status` (origin, loaded sectors, rebases so far), `stream_radius`,
   `stream_enabled`, `warp`.
-- **Not yet:** LOD past the ring, per-sector asset scopes, **dormancy** (sectors currently keep only
-  their terrain; entities placed in them are not yet saved and restored per sector — that needs maps,
-  09 §3.4), generation on jobs, interiors as separate spaces, and seam-free normals across sector
-  edges.
+- **Not yet:** LOD past the ring, per-sector asset scopes, **dormancy per sector** (sectors currently
+  keep only their terrain; entities placed in them are not yet saved and restored per sector — that is
+  4g-3, on the cells below), generation on jobs, interiors as separate spaces, and seam-free normals
+  across sector edges.
+- **Since 4g-1, a scene goes dormant with its state**: what it placed and the runtime spawns made in it
+  are kept, with absolute positions, when the player leaves it, and come back when it is placed again
+  (09 "As built (cells go dormant with their state)").
 
 ## 4. API sketch
 ```csharp
