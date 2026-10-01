@@ -376,7 +376,35 @@ editor and says so (`-edit` is ignored with a warning); a dev run without `-edit
   runs the Sandbox with `-edit yard`, selecting a crate, flying, resetting the layout and opening the
   viewport window.
 
-## 10g. As built: selecting and moving in the viewport (#221, 2026-10-01)
+## 10g. As built: the prefab palette and placing (#222)
+
+`Sage.Editing` holds the model; the ImGui panel (`PalettePanel`, Sage.Editor) only draws it and passes the
+viewport click on.
+
+- **The palette.** `PrefabPalette` lists every `prefab` record by namespace, narrowed by a search: each
+  whitespace-separated word must appear, in any case, in the prefab's full id, and a namespace with no match
+  is left out. Abstract prefabs (templates a `base` names) are not offered; a prefab that is only a child of
+  another is (there is no flag for it). `Arm` / `Disarm` hold the prefab the next click places.
+  (test: ThePaletteListsPrefabsByNamespaceAndTheSearchNarrowsThem)
+- **Where a click lands.** `Placing.Surface(world, ray)` is the first collider the physics raycast finds
+  (terrain included, since the edit world mirrors it), else the plane y = 0; null for a ray that meets
+  neither. It deliberately ignores `EditorPicking.Pick`'s fallback spheres: a prefab put down by clicking
+  on another's marker would sit on a sphere nothing draws.
+  (test: PlacingOnAColliderLandsOnItsTopAndOnEmptyGroundAtYZero)
+- **Placing.** `Placing.Place(document, prefab, at, yaw, name)` is one `AddPlacement`, so it is one undo.
+  The name is the wanted one or the prefab's, made unique among placements' names and ids with `_2`, `_3`
+  ...; `PlaceAt` does the same on a ray's surface. `at` is in the document's frame (absolute metres unless
+  it says `relativeTo`); the edit world has no origin shift, so a click's point is used as it is.
+  (test: EdPlaceAddsAPlacementWithAUniqueNameAndUndoRemovesIt)
+- **Console.** `ed_palette [search]` prints the list; `ed_place <prefab> [x y z] [yaw] [name]` places it.
+  With no position it places at the origin (headless there is no camera to stand in front of); `x y z` is
+  all three or none, then an optional yaw in degrees, then the name (the rest of the line).
+- **The panel.** A "Palette" tab beside the outliner: search box, a tree by namespace, click a prefab to arm
+  it (click again to disarm). While armed the panel says so; the next left click ImGui does not want (the
+  viewport is the dock space's hole) places the prefab and selects its entity, and Escape cancels. It stays
+  armed, to place another.
+
+## 10h. As built: selecting and moving in the viewport (#221, 2026-10-01)
 
 A click selects, the selection's gizmo is drawn over the picture and dragged, and the editor's keys
 press the editor's commands. What any of it *does* is `Sage.Editing`'s, so a test presses it through the
@@ -432,13 +460,12 @@ console; `ViewportGizmo` (`src/Sage.Editor/Screens/`) only reads the mouse and d
 
 **Not built:** multi-select and box select; local-space gizmos and rotation about X and Z (a placement
 has only a yaw); scaling; a gizmo for an entity the document did not place (it is marked, not movable).
-
 ## 11. v1 scope vs later
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
   - ~~the outliner~~ **done**;
   - ~~an editable inspector~~ **done**, from reflection until 09's generator;
-  - place a prefab;
+  - ~~place a prefab~~ **done (#222)**;
   - the translate gizmo;
   - undo/redo;
   - play-in-editor;
