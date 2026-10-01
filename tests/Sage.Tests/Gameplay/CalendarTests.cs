@@ -341,8 +341,10 @@ public class CalendarTests
         clock.Calendar = default; clock.Day = 9; clock.Hour = 3;
         using var log = new CaptureSink();
         Assert.True(app.Engine.Saves.Load("old"));
-        // the sink hears the whole process, so look only at what this load could have warned about
-        Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn
+        // the sink hears the whole process (other tests log a bad calendar too), so look only at what this
+        // load, on this thread, could have warned about
+        int thread = Environment.CurrentManagedThreadId;
+        Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn && e.ThreadId == thread
             && (e.Message.Contains("clock", StringComparison.OrdinalIgnoreCase)
                 || e.Message.Contains("calendar", StringComparison.OrdinalIgnoreCase)
                 || e.Message.Contains("world_calendar")));
