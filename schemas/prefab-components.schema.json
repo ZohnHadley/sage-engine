@@ -2555,6 +2555,20 @@
           "default": false,
           "type": "boolean"
         },
+        "groundVelocity": {
+          "description": "Not saved. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
         "crouching": {
           "description": "Crouched: the capsule is the profile's crouch height. (bool, default false)",
           "default": false,
@@ -3940,6 +3954,21 @@
           "description": "(float, default 0)",
           "default": 0,
           "type": "number"
+        },
+        "onBlocked": {
+          "description": "(MoverBlocked, default \"Reverse\")",
+          "default": "Reverse",
+          "type": "string",
+          "enum": [
+            "Reverse",
+            "Stop",
+            "Crush"
+          ]
+        },
+        "blocked": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

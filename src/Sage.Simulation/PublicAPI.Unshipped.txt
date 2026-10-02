@@ -1477,3 +1477,7 @@ Sage.Simulation.OverlapHit.Depth -> float
 Sage.Simulation.OverlapHit.Entity -> Sage.Simulation.Entity
 Sage.Simulation.OverlapHit.Normal -> System.Numerics.Vector3
 Sage.Simulation.OverlapHit.OverlapHit() -> void
+Sage.Simulation.IPhysicsWorld.Overlap(in Sage.Simulation.PhysicsBody body, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false) -> int
+Sage.Simulation.IPhysicsWorld.MakeKinematic(in Sage.Simulation.PhysicsBody body) -> Sage.Simulation.PhysicsBody
+Sage.Simulation.IPhysicsWorld.MoveKinematic(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 position, System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.CharacterController.GroundVelocity -> System.Numerics.Vector3

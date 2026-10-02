@@ -562,7 +562,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `ragdoll` | falls as a ragdoll — on death, a hit, the `Ragdoll` input (an impulse "x y z" as its parameter) or from code — with the bodies and joints of its model's `ragdoll` records, settles (the `OnSettled` output) and gets back up (the `GetUp` input) — `record` (one `ragdoll` record; empty: every one for the model), `onDeath` (true), `hitImpulse` (N·s), `getUpAfter` (seconds after it has come to rest; 0 = only when told; never once it has died), `getUpBack`/`getUpFront` (the animator states it gets up with, `getup_back`/`getup_front`), `getUpFade` (issues #246–#249, SAGE0134; design/12) |
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
-| `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17) |
+| `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260) |
 | `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
@@ -964,7 +964,7 @@ a named *input* on another entity:
 "OnUse" "!self,Open"                       target,input[,parameter,delay,times]
 ```
 
-Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`,
+Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`, `OnBlocked` (a mover, with what blocked it as the activator),
 `OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
@@ -1809,8 +1809,8 @@ Worth knowing before you plan around it:
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`
   (docs/MODDING.md); there are no code mods, no `.sagemod` zips and no namespaced asset paths yet — two
   mods shipping one texture is reported as a conflict and the later one wins. Those are phase 9.
-- **Saves cover the simulation, not your UI state**, and a mover is a moving static, so a door will not
-  push a player leaning on it.
+- **Saves cover the simulation, not your UI state.** A mover slides; it pushes a player out of its way,
+  shoves a crate (#260) and carries whoever stands on it (#261), but it does not swing on a hinge yet (#266).
 
 ---
 

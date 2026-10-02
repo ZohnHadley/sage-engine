@@ -52,6 +52,7 @@ public struct CharacterController : IComponent
     [Transient] public Vector3 GroundNormal;  // GroundCheck overwrites all three every tick
     [Transient] public bool Grounded;
     [Transient] public bool OnSteep;        // touching a surface steeper than the slope limit: it slides down it
+    [Transient] public Vector3 GroundVelocity;   // how fast what it stands on moves (a lift, issue #261): it is carried along
     [Property(Tooltip = "Crouched: the capsule is the profile's crouch height")]
     public bool Crouching;
     // On a ladder (issue #263). Not saved: a character loaded inside a ladder volume in mid-air catches it

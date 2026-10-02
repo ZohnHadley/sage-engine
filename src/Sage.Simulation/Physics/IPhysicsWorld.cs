@@ -51,6 +51,16 @@ public interface IPhysicsWorld
     // Moves a static the engine built (a door, a lift) and refreshes its bounds.
     void MoveStatic(in PhysicsBody body, Vector3 position);
 
+    // Turns a static the engine built (a mover's brush) into a kinematic body, same shape, place, entity
+    // and layer, and returns its new handle (issue #261); a body, or a static a joint is anchored to, is
+    // returned as it is.
+    PhysicsBody MakeKinematic(in PhysicsBody body);
+
+    // Puts a kinematic body where the entity is at `position` and moving at `velocity`, so what rests on
+    // it is carried and a character standing on it can read its speed (issue #261). A static is moved as
+    // MoveStatic does.
+    void MoveKinematic(in PhysicsBody body, Vector3 position, Vector3 velocity);
+
     // Where the body's shape is (its centre, not the entity's origin: see Collider.Center).
     Pose PoseOf(in PhysicsBody body);
 
@@ -152,6 +162,11 @@ public interface IPhysicsWorld
     // only a positive depth is reported.
     int Overlap(in Collider shape, in Pose at, Span<OverlapHit> results, LayerMask mask = default,
                 bool includeTriggers = false, Entity ignore = default);
+
+    // The same for a body or static already in the space, where it is now: what a mover has just moved
+    // into (issue #260). Normal is the way out for `body`, so the way out for what it hit is -Normal. The
+    // body's own entity is left out.
+    int Overlap(in PhysicsBody body, Span<OverlapHit> results, LayerMask mask = default, bool includeTriggers = false);
 
     // ---- Events (read in PostPhysics; valid until the next step) --------------------------------
 
