@@ -444,7 +444,7 @@ Creatures walk round things instead of into them.
   a three-walled pen — concave on purpose, because a fence can be escaped by sliding along it and so
   cannot tell steering and planning apart.
 - **Not built here:** a navmesh for brush-built interiors and a coarse graph for travelling across sectors
-  (both arrived with #264, below), doors and other links a path has to *act* on, crowds avoiding each
+  (both arrived with #264, below), doors and other links a path has to *act* on (#265, below), crowds avoiding each
   other (creatures are left out of the stamp on purpose), and paths that cost ground differently (mud,
   water, roads).
 
@@ -468,8 +468,8 @@ Creatures walk round things instead of into them.
   creature stands in, whatever the budget); they are kept (least
   recently used out past 2048) and dropped when a level is placed or unloaded, a terrain sector loads or
   unloads, or a static collider appears, moves or goes (`NavWorldGeometry`, test:
-  AStaticColliderAddedAfterTheBakeIsInTheNextPlan). What moves — a dynamic crate, a door, a creature — is
-  not baked; the creature's steering and #265 answer for those.
+  AStaticColliderAddedAfterTheBakeIsInTheNextPlan). What moves was not baked here; #265 (below) bakes a
+  body at rest and makes a door a crossing, and a creature is still left to steering.
 - **Two searches.** A coarse A* over each tile's regions (its connected pieces, linked where their spans
   link across an edge) plans the whole way; a tile it has not baked yet is one optimistic node, so a long
   way costs a few nodes per tile and not a bake per tile. A span A* then runs inside the first eight
@@ -487,7 +487,48 @@ Creatures walk round things instead of into them.
   now says how many plans each answered and how many tiles are baked.
 - **Not done:** one body size (the default movement profile's) is baked, so a much bigger creature is
   planned for as if it were a person; `nav_debug` still draws the grid and the corners, not the mesh;
-  doors, movers and dynamic obstacles are #265; off-screen agents still walk straight (#284).
+  off-screen agents still walk straight (#284).
+
+### As built (doors, off-mesh links and things that move, issue #265, 2026-10-02)
+- **A door is a crossing, keyed off `Mover`** (`src/Sage.Gameplay/Navigation/NavLinks.cs`). Every mover
+  taller than a step with somewhere to go is a door to the planner, whether a map's brush entity or a
+  prefab's `mover` part, and whether physics has it static or kinematic. The mesh is baked as if it were
+  open (`NavWorldGeometry` leaves it out), the spans under its *closed* footprint (grown by the body's
+  radius) cost a little more while it is shut, and a path through it stops on its far side with the door
+  as its crossing (test: ADoorIsACrossingAndThePathStopsOnItsFarSide). The creature walks to the near
+  side, fires `Open` at it (itself the activator) whenever it is neither open nor opening, stands facing
+  it until it is fully open, walks through and plans again; it gives up after six seconds. Headlessly, a
+  creature walks up to a closed door between two rooms, waits for it and reaches the player in the other
+  (test: ACreatureOpensAClosedDoorAndWalksThroughIt). A door creatures may not open is `"nav_door": {
+  "locked": true }` (the `sage:nav_door` component): while it is not fully open it is baked as a wall, so
+  the planner says there is no way rather than walking into it (test: ALockedDoorIsAWallToThePlanner).
+- **Off-mesh links are data**: the `nav_link` part (the `sage:nav_link` component; a map sets it on a game's
+  prefab with `"nav_link.end" "2 -3 0"`, `"nav_link.kind" "Drop"`), from where the entity stands to `end`
+  in world axes, one way unless `twoWay`, with an extra `cost`, switched by `Enable`/`Disable`. The
+  planner resolves each link near a plan to the two spans it joins and gives it to both searches as an
+  edge — the coarse one between their regions, the fine one between the spans — and a path over it stops
+  at its far end (test: ALinkIsAnEdgeOneWayUnlessItSaysTwoWay). **How a creature crosses each kind**
+  (`MoveToTargetTask.Cross`, steering off while it does): *Walk* and *Drop* walk to the far end, off the
+  edge if that is where it is; *Jump* launches from the ground on an arc peaking 0.6 m over the higher
+  end and steers it to land on the far end, re-aiming every tick because air control bleeds it; *Ladder*
+  climbs straight up (or down) at 2 m/s pressed toward the far side and steps off at the top (until
+  ladders, #263, give it a volume); *Teleport* is put at the far end at once. A creature on a walled
+  ledge walks away from its target to the opening, drops and comes round (test:
+  ACreatureDropsFromALedgeByALink; without the link it stays up there, test:
+  WithoutTheLinkTheCreatureStaysOnTheLedge), and the other three each get it across a gap or up a
+  platform (test: EachKindOfLinkIsCrossed).
+- **Things that move are baked once they stop.** A dynamic body slower than 5 cm/s, a kinematic one where
+  it stands, and a mover too low to be a door (a lift's floor) are baked like static colliders, snapped
+  outward to the 25 cm cells so a body settling by millimetres drops nothing; characters still are not.
+  Whatever changes what a plan would say — the solids, a locked door shutting, a link added, moved or
+  switched — moves `Navigation.Version`, and a creature following a path planned at an older version
+  plans again at its next look ahead (five times a second) rather than at its next re-plan: a crate that
+  comes to rest in the doorway a creature is heading for sends it through the other one (test:
+  ACreatureReplansWhenABlockerComesToRestInItsWay).
+- **Not done:** riding a lift or a moving platform (a lift is baked where it is, not a link); the local
+  grid fallback still stamps a closed prefab door as a wall and knows no links; `sage validate` does not
+  count a level's links when it asks whether a marker can be reached; a link is resolved only within
+  48 m of a plan's ends, so a teleport to the far side of the world is used once a creature is near it.
 
 ### As built (conventions, the `Died` event and the narrative plugins, issue #26, 2026-09-29)
 - **`gameplay_conventions`** (`src/Sage.Gameplay/Conventions/GameplayConventions.cs`, owned by `sage.gameplay.attributes`): one record says which attribute is health, which tags are dead and invulnerable, the default damage type, attack, movement and AI profiles, the player's faction, the attribute spellmaker spells cost, the five schedules the AI's built-in choice picks (`idle`, `chase`, `meleeAttack`, `castSpell`, `holdGround`) and the action names combat, items, abilities, AI and the character controller read. The engine ships `sage:default_conventions` in `engine_content/data/conventions.json` (with a `sage:player` faction in `factions.json`) and code reads it with `world.Conventions()` (test: TheEngineShipsItsConventionsAsOneRecord); a game patches it, which is how it renames health to hp (test: AGameRenamesHealthToHpByChangingOneRecord). Fourteen `new RecordId("sage", …)` constants are gone from `Sage.Gameplay` and `Sage.Physics3D` and the Sandbox's two literals with them; a test greps those folders and `games/` for any that come back (test: NoGameplayCodeNamesAnEngineRecordId).

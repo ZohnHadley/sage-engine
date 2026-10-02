@@ -566,6 +566,8 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260); `angle`, `axis` (default up) and `pivot` swing it on a hinge, in its own frame (`"angle": 90, "pivot": [-0.5, 0, 0]` is a door hinged on its west edge); `path`, stops after the shut one (a lift's floors, the last is open), `speed` instead of `seconds` (m/s, or deg/s for a door), `locked` (#266) |
 | `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
+| `nav_door` | beside a `mover`: `locked` — creatures do not open it, and while it is not fully open it is a wall to the planner (without it a creature opens a door in its way and waits, #265) |
+| `nav_link` | an off-mesh link from here to `end` (metres, world axes) — `kind` (`Walk`, `Jump`, `Drop`, `Ladder`, `Teleport`), `twoWay`, `cost`, `startDisabled`; `Enable`/`Disable` switch it; on a prefab of your own a map places it with `"nav_link.end" "2 -3 0"` (#265) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
 | `attributes` | health and the rest, from `attribute` records |
@@ -586,7 +588,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Thirty here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Thirty-two here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and

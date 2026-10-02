@@ -174,6 +174,34 @@ Sage.Gameplay.IOffscreenFight.Round(Sage.Gameplay.OffscreenAgent! a, Sage.Gamepl
 Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
+Sage.Gameplay.NavDoor
+Sage.Gameplay.NavDoor.Locked -> bool
+Sage.Gameplay.NavDoor.NavDoor() -> void
+Sage.Gameplay.NavDoorPart
+Sage.Gameplay.NavDoorPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.NavDoorPart.Locked -> bool
+Sage.Gameplay.NavDoorPart.NavDoorPart() -> void
+Sage.Gameplay.NavLink
+Sage.Gameplay.NavLink.Cost -> float
+Sage.Gameplay.NavLink.Disabled -> bool
+Sage.Gameplay.NavLink.End -> System.Numerics.Vector3
+Sage.Gameplay.NavLink.Kind -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLink.NavLink() -> void
+Sage.Gameplay.NavLink.TwoWay -> bool
+Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Drop = 2 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Jump = 1 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Ladder = 3 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Teleport = 4 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Walk = 0 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkPart
+Sage.Gameplay.NavLinkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.NavLinkPart.Cost -> float
+Sage.Gameplay.NavLinkPart.End -> System.Numerics.Vector3
+Sage.Gameplay.NavLinkPart.Kind -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkPart.NavLinkPart() -> void
+Sage.Gameplay.NavLinkPart.StartDisabled -> bool
+Sage.Gameplay.NavLinkPart.TwoWay -> bool
 Sage.Gameplay.Mover.ClosedRotation -> System.Numerics.Quaternion
 Sage.Gameplay.Mover.Halt -> float
 Sage.Gameplay.Mover.Locked -> bool

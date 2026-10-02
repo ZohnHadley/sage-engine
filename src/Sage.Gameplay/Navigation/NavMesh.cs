@@ -690,17 +690,29 @@ internal sealed class NavMesh
     private readonly List<int> _route = new();
     private readonly List<int> _fine = new();
     private readonly List<int> _neighbours = new();
+    private readonly List<float> _neighbourCost = new();
     private int _search;
 
     // Plans from one absolute position to another. Writes corners (absolute) and returns how many;
     // `CannotAnswer` means the mesh has nothing to say here (no geometry, or an end off it) and the
     // caller should fall back to the local grid.
     public NavMeshAnswer Plan(Vector3 from, Vector3 to, NavGeometry geometry, int maxNodes,
-                              Span<Vector3> corners, out int count, out bool reachedGoal)
+                              Span<Vector3> corners, out int count, out bool reachedGoal) =>
+        Plan(from, to, geometry, null, maxNodes, corners, out count, out reachedGoal, out _);
+
+    // The same, with doors and off-mesh links (#265). When the way goes through a door or over a link the
+    // corners stop at its far side, and `crossing` says at which corner it starts and what it is: the
+    // creature acts on it there and plans again from the far side.
+    public NavMeshAnswer Plan(Vector3 from, Vector3 to, NavGeometry geometry, NavCrossings? crossings, int maxNodes,
+                              Span<Vector3> corners, out int count, out bool reachedGoal, out NavMeshCrossing crossing)
     {
         count = 0;
         reachedGoal = false;
+        crossing = default;
         LastNodes = 0;
+        _crossings = null;
+        _edges.Clear();
+        _doors.Clear();
         if (corners.Length == 0) return NavMeshAnswer.CannotAnswer;
 
         // The tile it stands in is baked whatever the budget says: without it there is no answer at all,
@@ -717,6 +729,8 @@ internal sealed class NavMesh
             goal = FindSpan(to);
             if (goal < 0) return NavMeshAnswer.CannotAnswer;   // standing on something the mesh does not have
         }
+
+        ResolveCrossings(from, to, geometry, crossings);
 
         // ---- coarse: regions across tiles ----
         _nodeCount = 0;
@@ -748,10 +762,11 @@ internal sealed class NavMesh
             if (current == goalNode) { found = true; break; }
 
             Neighbours(current, geometry);
-            foreach (int next in _neighbours)
+            for (int k = 0; k < _neighbours.Count; k++)
             {
+                int next = _neighbours[k];
                 if (_nodes[next].Closed) continue;
-                float cost = _nodes[current].Cost + XZ(_nodes[current].At, _nodes[next].At);
+                float cost = _nodes[current].Cost + _neighbourCost[k];
                 if (_nodes[next].Parent != -2 && cost >= _nodes[next].Cost) continue;
                 _nodes[next].Cost = cost;
                 _nodes[next].Parent = current;
@@ -796,20 +811,11 @@ internal sealed class NavMesh
             if (corridorHasGoal ? current == goal : IsExit(current, _route[last], exitNode)) { end = current; break; }
 
             for (int dir = 0; dir < 8; dir++)
-            {
-                int next = Step(current, dir);
-                if (next < 0 || !InCorridor(next, last)) continue;
-                var nextTile = TileAt(next);
-                int nextSpan = next & SpanMask;
-                if (nextTile.Visited[nextSpan] == -_search) continue;
-                float cost = tile.Cost[span] + (dir < 4 ? Cell : Cell * 1.41421356f);
-                if (nextTile.Visited[nextSpan] == _search && cost >= nextTile.Cost[nextSpan]) continue;
-                nextTile.Visited[nextSpan] = _search;
-                nextTile.Cost[nextSpan] = cost;
-                nextTile.From[nextSpan] = current;
-                nextTile.LastUsed = _useClock;
-                _fineOpen.Push(next, cost + XYZ(PositionOf(next), aim));
-            }
+                Relax(current, Step(current, dir), tile.Cost[span] + (dir < 4 ? Cell : Cell * 1.41421356f), last, aim);
+
+            // And over any link that starts here (#265).
+            foreach (var edge in _edges)
+                if (edge.From == current) Relax(current, edge.To, tile.Cost[span] + edge.Cost, last, aim);
         }
         LastNodes = nodes;
         if (end < 0)
@@ -823,7 +829,32 @@ internal sealed class NavMesh
         for (int at = end; at != -1; at = TileAt(at).From[at & SpanMask]) _fine.Add(at);
         _fine.Reverse();
 
-        count = Straighten(corners, out bool whole);
+        if (FirstCrossing(out int before, out int after, out crossing))
+        {
+            // Walk up to it, then its far side, and no further: the creature acts on it and plans again.
+            count = Straighten(corners[..^1], before, out bool reachedIt);
+            if (!reachedIt)
+            {
+                crossing = default;   // the corners ran out first: the crossing is for a later plan
+                return NavMeshAnswer.Found;
+            }
+            if (crossing.Kind == NavCrossing.Door)
+            {
+                crossing.Corner = count - 1;
+                corners[count++] = PositionOf(_fine[after]);
+            }
+            else
+            {
+                var edge = _edges[crossing.Index];
+                corners[count - 1] = edge.FromAt;
+                crossing.Corner = count - 1;
+                crossing.Index = edge.Link;
+                corners[count++] = edge.ToAt;
+            }
+            return NavMeshAnswer.Found;
+        }
+
+        count = Straighten(corners, _fine.Count - 1, out bool whole);
         if (corridorHasGoal && whole)
         {
             // The goal is what was asked for, not the middle of its cell.
@@ -831,6 +862,138 @@ internal sealed class NavMesh
             reachedGoal = true;
         }
         return NavMeshAnswer.Found;
+    }
+
+    // ---- doors and links (#265) -----------------------------------------------------------------------
+
+    // A link as the search sees it: from one span to another, for what it costs, and where its ends are.
+    private struct LinkEdge
+    {
+        public int From, To;
+        public int Link;               // index in NavCrossings.Links
+        public Vector3 FromAt, ToAt;
+        public float Cost;
+    }
+
+    private readonly List<LinkEdge> _edges = new();
+    private readonly List<int> _doors = new();     // the doors near this plan, indices in NavCrossings.Doors
+    private NavCrossings? _crossings;
+
+    // How far from the two ends of a plan a door or a link is looked at, in metres. A plan only ever
+    // covers the next few tiles exactly; anything further is for a later plan.
+    private const float CrossingReach = 48f;
+
+    // What walking under a closed door costs over walking under an open one, in metres: enough to take an
+    // open way of about the same length, not so much that it walks round the building.
+    private const float ClosedDoorCost = 2f;
+
+    // The links near the plan as edges between spans, and the doors near it. A link whose ends are on
+    // tiles that cannot be baked this tick is left out of this plan, not waited for.
+    private void ResolveCrossings(Vector3 from, Vector3 to, NavGeometry geometry, NavCrossings? crossings)
+    {
+        _crossings = crossings;
+        if (crossings == null) return;
+        var min = Vector3.Min(from, to) - new Vector3(CrossingReach);
+        var max = Vector3.Max(from, to) + new Vector3(CrossingReach);
+
+        for (int i = 0; i < crossings.Links.Count; i++)
+        {
+            var link = crossings.Links[i];
+            if (!Near(link.Start, min, max) && !Near(link.End, min, max)) continue;
+            if (!TryBake(TileOf(link.Start.X), TileOf(link.Start.Z), geometry) ||
+                !TryBake(TileOf(link.End.X), TileOf(link.End.Z), geometry)) continue;
+            int a = FindSpan(link.Start), b = FindSpan(link.End);
+            if (a < 0 || b < 0 || a == b) continue;
+            float cost = Vector3.Distance(link.Start, link.End) + link.Cost;
+            _edges.Add(new LinkEdge { From = a, To = b, Link = i, FromAt = link.Start, ToAt = link.End, Cost = cost });
+            if (link.TwoWay)
+                _edges.Add(new LinkEdge { From = b, To = a, Link = i, FromAt = link.End, ToAt = link.Start, Cost = cost });
+        }
+
+        for (int i = 0; i < crossings.Doors.Count; i++)
+        {
+            var door = crossings.Doors[i];
+            if (door.Max.X < min.X || door.Min.X > max.X || door.Max.Z < min.Z || door.Min.Z > max.Z) continue;
+            _doors.Add(i);
+        }
+    }
+
+    private static bool Near(Vector3 p, Vector3 min, Vector3 max) =>
+        p.X >= min.X && p.X <= max.X && p.Z >= min.Z && p.Z <= max.Z;
+
+    // The door whose closed footprint a span is under, grown by the body's radius (a body in the doorway
+    // is in the door's way), or -1.
+    private int DoorAt(int packed)
+    {
+        if (_doors.Count == 0) return -1;
+        var p = PositionOf(packed);
+        float r = Agent.Radius;
+        foreach (int i in _doors)
+        {
+            var door = _crossings!.Doors[i];
+            if (p.X < door.Min.X - r || p.X > door.Max.X + r || p.Z < door.Min.Z - r || p.Z > door.Max.Z + r) continue;
+            if (p.Y < door.Min.Y - Agent.StepHeight || p.Y > door.Max.Y) continue;
+            return i;
+        }
+        return -1;
+    }
+
+    // One step of the fine search, from `current` to `next` for a total of `cost` so far.
+    private void Relax(int current, int next, float cost, int last, Vector3 aim)
+    {
+        if (next < 0 || !InCorridor(next, last)) return;
+        var nextTile = TileAt(next);
+        int nextSpan = next & SpanMask;
+        if (nextTile.Visited[nextSpan] == -_search) return;
+        int door = DoorAt(next);
+        if (door >= 0 && !_crossings!.Doors[door].Open) cost += ClosedDoorCost * Cell;
+        if (nextTile.Visited[nextSpan] == _search && cost >= nextTile.Cost[nextSpan]) return;
+        nextTile.Visited[nextSpan] = _search;
+        nextTile.Cost[nextSpan] = cost;
+        nextTile.From[nextSpan] = current;
+        nextTile.LastUsed = _useClock;
+        _fineOpen.Push(next, cost + XYZ(PositionOf(next), aim));
+    }
+
+    // The first door or link along the fine path: `before` is the last span short of it, `after` the
+    // first beyond it (a door's: the first span out from under it).
+    private bool FirstCrossing(out int before, out int after, out NavMeshCrossing crossing)
+    {
+        before = after = -1;
+        crossing = default;
+        if (_edges.Count == 0 && _doors.Count == 0) return false;
+
+        for (int k = 0; k < _fine.Count; k++)
+        {
+            int door = DoorAt(_fine[k]);
+            if (door >= 0)
+            {
+                before = Math.Max(k - 1, 0);
+                after = k;
+                while (after + 1 < _fine.Count && DoorAt(_fine[after]) == door && !IsLinkStep(after)) after++;
+                crossing = new NavMeshCrossing { Kind = NavCrossing.Door, Index = door };
+                return true;
+            }
+            if (k + 1 < _fine.Count && LinkStep(k) is int edge and >= 0)
+            {
+                before = k;
+                after = k + 1;
+                var link = _crossings!.Links[_edges[edge].Link];
+                crossing = new NavMeshCrossing { Kind = NavCrossings.Of(link.Kind), Index = edge };
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool IsLinkStep(int k) => k + 1 < _fine.Count && LinkStep(k) >= 0;
+
+    // The edge the fine path took from `_fine[k]` to `_fine[k + 1]`, or -1 when that was a step.
+    private int LinkStep(int k)
+    {
+        for (int e = 0; e < _edges.Count; e++)
+            if (_edges[e].From == _fine[k] && _edges[e].To == _fine[k + 1]) return e;
+        return -1;
     }
 
     private static float XZ(Vector3 a, Vector3 b)
@@ -871,6 +1034,7 @@ internal sealed class NavMesh
     private void Neighbours(int node, NavGeometry geometry)
     {
         _neighbours.Clear();
+        _neighbourCost.Clear();
         var n = _nodes[node];
         for (int d = 0; d < 4; d++)
         {
@@ -878,7 +1042,7 @@ internal sealed class NavMesh
             NavTile? tile = n.Slot >= 0 ? _slots[n.Slot] : null;
             if (tile != null && (tile.RegionSides[n.Region] & (1 << d)) == 0) continue;
             int nx = n.Tx + Dx[d], nz = n.Tz + Dz[d];
-            if (!TryBake(nx, nz, geometry)) { AddNeighbour(TileNode(nx, nz)); continue; }
+            if (!TryBake(nx, nz, geometry)) { AddNeighbour(TileNode(nx, nz), node); continue; }
             var other = Tile(nx, nz)!;
             other.LastUsed = ++_useClock;
 
@@ -886,7 +1050,7 @@ internal sealed class NavMesh
             {
                 // From the unknown: any region of the neighbour on the shared edge.
                 for (int r = 0; r < other.RegionCount; r++)
-                    if ((other.RegionSides[r] & (1 << back)) != 0) AddNeighbour(RegionNode(other.Slot, r));
+                    if ((other.RegionSides[r] & (1 << back)) != 0) AddNeighbour(RegionNode(other.Slot, r), node);
                 continue;
             }
 
@@ -900,15 +1064,29 @@ internal sealed class NavMesh
                     if (tile.Region[s] != n.Region) continue;
                     int link = tile.Links[s * 4 + d];
                     if (link < 0) continue;
-                    AddNeighbour(RegionNode(other.Slot, other.Region[link & SpanMask]));
+                    AddNeighbour(RegionNode(other.Slot, other.Region[link & SpanMask]), node);
                 }
             }
         }
+
+        // The regions a link from this one lands in (#265), for what walking to it and over it costs.
+        if (n.Slot < 0) return;
+        foreach (var edge in _edges)
+        {
+            if ((edge.From >> SpanBits) != n.Slot || _slots[n.Slot]!.Region[edge.From & SpanMask] != n.Region) continue;
+            int target = RegionNode(edge.To >> SpanBits, TileAt(edge.To).Region[edge.To & SpanMask]);
+            if (target == node) continue;
+            AddNeighbour(target, node, XZ(n.At, edge.FromAt) + edge.Cost + XZ(edge.ToAt, _nodes[target].At));
+        }
     }
 
-    private void AddNeighbour(int node)
+    private void AddNeighbour(int next, int from, float cost = -1f)
     {
-        if (!_neighbours.Contains(node)) _neighbours.Add(node);
+        if (cost < 0f) cost = XZ(_nodes[from].At, _nodes[next].At);
+        int i = _neighbours.IndexOf(next);
+        if (i >= 0) { _neighbourCost[i] = MathF.Min(_neighbourCost[i], cost); return; }
+        _neighbours.Add(next);
+        _neighbourCost.Add(cost);
     }
 
     private bool InCorridor(int packed, int last)
@@ -928,6 +1106,9 @@ internal sealed class NavMesh
         var last = _nodes[lastNode];
         if (tile.Slot != last.Slot || tile.Region[span] != last.Region) return false;
         var exit = _nodes[exitNode];
+        if (exit.Slot >= 0)
+            foreach (var edge in _edges)
+                if (edge.From == packed && (edge.To >> SpanBits) == exit.Slot && TileAt(edge.To).Region[edge.To & SpanMask] == exit.Region) return true;
         for (int d = 0; d < 4; d++)
         {
             if (exit.Slot >= 0)
@@ -1027,18 +1208,20 @@ internal sealed class NavMesh
     // stops being clear (NavGrid.Straighten's rule), then the path's last span. `whole` is false when the
     // corners ran out first: the last one is then a real corner, not the end, and every leg is still a
     // straight walk — the creature plans again from there.
-    private int Straighten(Span<Vector3> corners, out bool whole)
+    //
+    // `end` is the last span of the path to straighten (a crossing's near side stops it short).
+    private int Straighten(Span<Vector3> corners, int end, out bool whole)
     {
         int written = 0;
         int anchor = _fine[0];
-        for (int i = 1; i < _fine.Count - 1; i++)
+        for (int i = 1; i < end; i++)
         {
             if (LineIsClear(anchor, _fine[i + 1])) continue;
             corners[written++] = PositionOf(_fine[i]);
             anchor = _fine[i];
             if (written == corners.Length) { whole = false; return written; }
         }
-        corners[written++] = PositionOf(_fine[^1]);
+        corners[written++] = PositionOf(_fine[end]);
         whole = true;
         return written;
     }

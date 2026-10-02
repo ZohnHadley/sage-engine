@@ -283,6 +283,22 @@
         }
       ]
     },
+    "nav_door": {
+      "description": "Prefab part 'nav_door' (NavDoorPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/nav_door"
+        }
+      ]
+    },
+    "nav_link": {
+      "description": "Prefab part 'nav_link' (NavLinkPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/nav_link"
+        }
+      ]
+    },
     "offscreen": {
       "description": "Prefab part 'offscreen' (OffscreenPart).",
       "allOf": [
@@ -1675,6 +1691,66 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'mover' (MoverPart)."
+    },
+    "nav_door": {
+      "type": "object",
+      "properties": {
+        "locked": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'nav_door' (NavDoorPart)."
+    },
+    "nav_link": {
+      "type": "object",
+      "properties": {
+        "end": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "kind": {
+          "description": "(NavLinkKind, default \"Walk\")",
+          "default": "Walk",
+          "type": "string",
+          "enum": [
+            "Walk",
+            "Jump",
+            "Drop",
+            "Ladder",
+            "Teleport"
+          ]
+        },
+        "twoWay": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "cost": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "startDisabled": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'nav_link' (NavLinkPart)."
     },
     "offscreen": {
       "type": "object",
