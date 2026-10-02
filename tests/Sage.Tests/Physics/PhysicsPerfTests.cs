@@ -168,6 +168,52 @@ public class PhysicsPerfTests
         Assert.InRange(physics.PoseOf(body).Position.Y, 0.45f, 0.55f);           // which is on the floor
         Assert.Equal(offset.X, physics.PoseOf(body).Position.X, 1);
     }
+    // A steady-state step with workers allocated 152 bytes now and then (#434's Windows run): Bepu's
+    // workers take narrow-phase jobs as they come free, so which worker reports which trigger pair
+    // changes every step, and the stepping thread's own buffer (worker 0) grew the first time it drew
+    // nine pairs, whenever that came. Every worker's buffer now holds the busiest step's whole count
+    // before each step, and there is one buffer per worker however many workers are asked for.
+    [Xunit.Fact]
+    public void EveryWorkerBufferHoldsTheBusiestStep()
+    {
+        using var engine = JointTests.NewEngine();
+        var world = engine.CreateWorld("busy");
+        var space = world.Resources.Get<Sage.Physics3D.PhysicsSpace>();
+        space.UseWorkers(3);
+        var bodies = BusyScene(world);
+        var physics = world.Resources.Get<IPhysicsWorld>();
+        var reporter = world.Create(Transform.At(new Vector3(-6, 3, 0.6f)), "reporter");   // reports its contacts
+        var reporterBody = physics.AddBody(reporter, Collider.Sphere(0.3f) with { ReportContacts = true }, RigidBody.Dynamic(1f), At(new Vector3(-6, 3, 0.6f)));
+        var data = space.CallbackData;
+        Assert.Equal(space.WorkerThreads, data.WorkerBuffers);
+
+        var thrown = world.Get<PhysicsBody>(bodies[12]);
+        var before = data.BufferHeadroom();
+        for (int tick = 0; tick < 240; tick++)
+        {
+            if (tick % 40 == 0)
+            {
+                physics.SetPose(thrown, Collider.Sphere(0.2f), At(new Vector3(-6, 3, 0)));
+                physics.SetVelocity(thrown, new Vector3(8, 2, 0));
+                physics.SetPose(reporterBody, Collider.Sphere(0.3f), At(new Vector3(-6, 3, 0.6f)));
+                physics.SetVelocity(reporterBody, new Vector3(8, 1, 0));
+            }
+            world.RunFixed(Dt);
+            var now = data.BufferHeadroom();
+            // Each step began with every buffer able to take all of the busiest step before it.
+            Assert.True(now.TriggerCapacity >= before.TriggerPeak, $"tick {tick}: a trigger buffer of {now.TriggerCapacity} against a peak of {before.TriggerPeak}");
+            Assert.True(now.ContactCapacity >= before.ContactPeak, $"tick {tick}: a contact buffer of {now.ContactCapacity} against a peak of {before.ContactPeak}");
+            before = now;
+        }
+        Assert.True(before.TriggerPeak > 8, $"the crates in the zone give more trigger pairs than a list's first capacity ({before.TriggerPeak})");
+        Assert.True(before.ContactPeak > 0, "the reporter reports its contacts");
+
+        space.UseWorkers(7);   // more workers than this machine may have cores: still one buffer each
+        Assert.Equal(7, data.WorkerBuffers);
+        Assert.True(data.BufferHeadroom().TriggerCapacity >= before.TriggerPeak);
+        space.UseWorkers(0);
+        Assert.Equal(1, data.WorkerBuffers);
+    }
 }
 
 // Issue #273: the physics step allocates nothing. The 40 bytes a tick long put down to Bepu's profiler
