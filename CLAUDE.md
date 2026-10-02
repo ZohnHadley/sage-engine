@@ -88,6 +88,9 @@ tools/smoke_run.sh --dotnet-run /tmp/g 3 Shaders Audio  # `dotnet run` a templat
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+graphify-out/ is git-ignored and nothing installs Graphify automatically: in a fresh clone or cloud session, run
+`uv tool install graphifyy` (PyPI `graphifyy`, double y) then `graphify update .` (about 30 s, local, no API calls),
+or type `/graphify` and the skill in `.claude/skills/graphify/` does both.
 
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
