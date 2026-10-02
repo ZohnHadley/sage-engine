@@ -54,7 +54,7 @@ In `Sage.Simulation` (data, terrain generation), with client parts for terrain m
 - **Meshes:** `TerrainMeshSystem` (FrameUpdate) builds the chunk meshes of any sector it hasn't drawn yet: 4×4 chunks of 32×32 cells, each its own `Renderer.CreateMesh` and its own entity with a `MeshRenderer` holding the **`MeshHandle`** (R9: subsystems own the data, components hold handles). Chunks are ordinary mesh items, so they cull, sort and draw with everything else — there is no separate `TerrainExtract`.
 - **Material:** `sage:terrain_default` (one tiling ground texture over `lit.fx`). Splat materials come with LOD.
 - **Ground height:** `Terrain.HeightAt/NormalAt/OnGround` sample the heightfield bilinearly. The Sandbox places its scene with them.
-- **Collision (F6, done):** `TerrainCollisionSystem` gives every loaded sector one static Bepu mesh (10 "As built"), so things actually rest on the ground. `HeightAt` stays as the cheap query for placement and AI.
+- **Collision (F6, done):** `TerrainCollisionSystem` gives every loaded sector one static Bepu mesh (10 "As built"; sixteen chunk meshes since #277, see "As built (the far ring, asset scopes and jobs)"), so things actually rest on the ground. `HeightAt` stays as the cheap query for placement and AI.
 - **`SectorCoord` exists but nothing rebases yet:** everything lives in sector (0, 0) and chunk vertices are absolute world positions. Sector-local transforms, `Origin` and rebasing are R6; until then the terrain must stay near the origin for float precision.
 - **Edges:** normals at a sector's border are computed from its own clamped heights, so neighbouring sectors will show a faint seam until streaming samples across them (F14).
 - **Superseded 2026-09-24** by "As built (rings and rebasing)" below — sector-local transforms, `Origin`
@@ -100,9 +100,10 @@ and the simulation carries on with small numbers, because the frame of reference
   the origin rebases back on the next tick, which is visible in the log as a second rebase.
 - **Console:** `stream_status` (origin, loaded sectors, rebases so far), `stream_radius`,
   `stream_enabled`, `warp`.
-- **Not yet:** LOD past the ring, per-sector asset scopes, ~~dormancy per sector~~ (built with 4g-3, on 4g-1's cells:
-  "As built (entities stream by sector)" below), generation on jobs, interiors as separate spaces, and seam-free normals
-  across sector edges.
+- **Not yet:** ~~LOD past the ring, per-sector asset scopes~~ (built with #277: "As built (the far ring, asset scopes
+  and jobs)" below), ~~dormancy per sector~~ (built with 4g-3, on 4g-1's cells: "As built (entities stream by
+  sector)" below), ~~generation on jobs~~ (#277), interiors as separate spaces (#291), and ~~seam-free normals across
+  sector edges~~ (#277).
 - **Since 4g-1, a scene goes dormant with its state**: what it placed and the runtime spawns made in it
   are kept, with absolute positions, when the player leaves it, and come back when it is placed again
   (09 "As built (cells go dormant with their state)").
@@ -110,6 +111,60 @@ and the simulation carries on with small numbers, because the frame of reference
 - **Since 4g-5, interiors are scenes behind load doors, and fast travel exists**: see "As built (doors,
   interiors and travel)" below.
 - **Phase 4g's exit** puts all of it in one data-only game: "As built (the 4g exit game)" just below.
+
+### As built (the far ring, asset scopes and jobs, issue #277, 2026-10-02)
+Issue #277 (4m-3) answers "Not yet" above: a world you can see further than you can walk, sectors that give
+their GPU memory back, generation off the main thread, and no seam in the lighting where sectors meet. The
+done criterion is a scale test: a far ring four sectors out at the same steady tick, and three sector edges
+crossed with no spike (test: AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike).
+
+- **Three rings, decided by the simulation** (`StreamingSystem`, deterministic, in sector order): **full**
+  within `stream_radius` (simulated: ground, collision, placed content), **ahead** — the ring plus one,
+  generated on the thread pool before it is needed — and **far**, out to `stream_far_radius` (default 4, so
+  nine sectors across in sight and three simulated). Full and far never overlap; a far sector that comes
+  into the full ring leaves the far one as its ground arrives, and a full sector left behind becomes far
+  (test: WalkingPromotesFarSectorsOneATickAndDemotesWhatIsLeftBehind).
+- **The far ring is presentation only** (`SectorLod`, `World/SectorLod.cs`): each far sector has a coarse
+  copy of its ground (17x17, 64 m cells, made by the game's own generator at that resolution on a job) and the
+  **far looks** of a streamed scene's placements there — a prefab says how it looks from afar with `"far"`:
+  a low-detail `mesh`, or a box of `size` standing on the ground (test:
+  TheFarRingHasCoarseGroundAndFarLooksPastTheFullRing). Nothing far is an entity in the simulation, nothing
+  simulates and nothing is saved; when the coarse ground arrives depends on the thread pool, which is why
+  nothing in the simulation reads it. The client (`FarLodSystem`) draws a sector as one ground mesh with a
+  skirt hiding the step to the 8 m ground, one merged mesh of boxes a material, and an entity per far model;
+  the camera's far plane (`Camera.Far`, 1000 m by default) decides how much of it is on screen.
+- **Walking costs one sector a tick.** A source whose own sector has ground loads the rest of its ring
+  `stream_load_budget` sectors a tick (default 1), nearest first; a source standing where there is no ground
+  — the first tick, a jump, `warp` — loads its whole ring at once, because it is about to fall otherwise
+  (test: AJumpLoadsItsWholeRingAtOnce). A sector made live while walking is `TerrainSector.Budgeted`: physics
+  builds its collision as sixteen 32x32-cell chunks, four a tick, and the client its chunk meshes four a
+  frame. Before this, one sector's 32,768-triangle collision tree cost 75–100 ms in a Debug build, three of
+  them in the tick the edge was crossed; now the worst tick of the walk is under 30 ms there.
+- **Generation on jobs, the same ground.** `Terrain.Prefetch` starts a sector on the thread pool; `Load` takes
+  the result, waits for a job a worker is part-way through, or runs one no worker has claimed yet right there
+  (Lazy's claim) — so a world is the same with `stream_jobs` on or off, bit for bit (test:
+  GenerationOnJobsIsTheSameGroundAsOnTheMainThread). `ITerrainGenerator.Generate` therefore runs on worker
+  threads and must be a function of its arguments. Changing the generator or the seed drops what was
+  generated ahead (test: ChangingTheGeneratorDropsWhatWasGeneratedAhead).
+- **Seam-free normals.** Vertex normals are worked out once, at generation, by central differences — and past
+  the sector's edge from the generator itself when it is an `ITerrainSampler` (the built-in generators, the
+  Sandbox's and Hello's are). Two sectors then agree on the normal of every vertex they share (test:
+  SectorEdgeNormalsMatchTheNeighboursSoLightingHasNoSeam). A generator that is not a sampler keeps the old
+  clamped edge.
+- **Per-sector asset scopes** (`SectorAssets`). Every live `MeshRenderer` and `SkinnedMeshRenderer` holds a
+  reference to its mesh path, counted from the world's structural events. What a leaving sector destroys —
+  its terrain's `SectorOwned` entities, a dormant sector's placed content, a far sector's looks — is destroyed
+  inside `SectorAssets.Leave()`: a path whose count reaches zero there is released, as is every renderer-built
+  mesh (`MeshRenderer.Handle`) those entities held. The client frees the buffers on its next frame
+  (`Renderer.UnloadMesh`, `DestroyMesh`), so terrain chunks no longer leak. A path something else still draws
+  is kept; one whose last user goes outside a sector's unload (a projectile, the player's sword) is the game's
+  scope and stays loaded (test: ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept).
+- **Console:** `stream_status` adds the far ring, generations here and on jobs, and released assets;
+  `stream_far_radius`, `stream_load_budget`, `stream_jobs`.
+- **Limits.** Far looks are read when a sector enters the far ring: one that walked away or died since is
+  still drawn there until the sector comes back. A mesh path changed in place on a live component is not
+  re-counted. Textures and sounds have no scopes yet (#308), and there is still one streaming source ring per
+  source with no priorities (#290). A scene change (not a sector leaving) does not release its meshes.
 
 ### As built (the 4g exit game, issue 4g-8, 2026-10-01)
 Phase 4g's exit (REDESIGN §5, issue #190): walk from an exterior into a dungeon and back; an NPC keeps its
@@ -331,7 +386,7 @@ public interface ITerrainGenerator { void Generate(SectorCoord s, Span<float> he
   - one interior space type;
   - `stream_debug` overlay (sector grid, loaded/loading, origin);
   - log category `Streaming`.
-- **Later:** LOD rings, HLOD for distant objects, splat texturing, several streaming sources, offline simulation, one-file-per-entity maps (09 §3.4).
+- **Later:** ~~LOD rings, HLOD for distant objects~~ (the far ring, #277), splat texturing, several streaming sources, offline simulation, one-file-per-entity maps (09 §3.4).
 
 ## 12. Multiplayer-later notes
 The server tracks one streaming source per player. Origin space becomes per client (camera-relative only), and physics would need per-region simulations for players far apart (10 Later). That's why simulation positions are sector + local rather than a single floating origin.

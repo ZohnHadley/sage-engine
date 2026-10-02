@@ -71,21 +71,24 @@ public sealed class HelloRules : GameRules
 // used gentle two-metre hills, and standing in them the world looked like a flat green wall, because
 // nothing within a hundred metres changed height enough to cast a shadow or turn away from the sun.
 // A first landscape should look like one.
-public sealed class RollingHills : ITerrainGenerator
+public sealed class RollingHills : ITerrainGenerator, ITerrainSampler
 {
     public void Generate(SectorCoord sector, Heightfield heights, int seed)
     {
         Vector3 corner = sector.Origin(Terrain.SectorSize);
-        float spacing = heights.Spacing;
+        double spacing = heights.Spacing;
 
         for (int z = 0; z < heights.Resolution; z++)
             for (int x = 0; x < heights.Resolution; x++)
-            {
-                float worldX = corner.X + x * spacing;
-                float worldZ = corner.Z + z * spacing;
-                heights[x, z] = MathF.Sin(worldX * 0.012f) * 9f
-                              + MathF.Cos(worldZ * 0.009f) * 7f
-                              + MathF.Sin((worldX + worldZ) * 0.05f) * 1.2f;
-            }
+                heights[x, z] = SampleHeight(corner.X + x * spacing, corner.Z + z * spacing, seed);
+    }
+
+    // The same hills at any point: streaming asks past a sector's edge so the lighting has no seam there.
+    public float SampleHeight(double absoluteX, double absoluteZ, int seed)
+    {
+        float worldX = (float)absoluteX, worldZ = (float)absoluteZ;
+        return MathF.Sin(worldX * 0.012f) * 9f
+             + MathF.Cos(worldZ * 0.009f) * 7f
+             + MathF.Sin((worldX + worldZ) * 0.05f) * 1.2f;
     }
 }

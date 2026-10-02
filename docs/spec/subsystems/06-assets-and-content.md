@@ -123,7 +123,7 @@ Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` an
 | REQ-ASSET-14 | Records shall hot reload in a running game without a restart. | Must | Done | test: Reload_UpdatesInstancesInPlace |
 | REQ-ASSET-15 | Textures, models, sounds and compiled effects shall hot reload individually, and a failed reload shall keep the old asset. | Should | Done (client; smoke run) | `Sage.Client/Assets/AssetHotReload.cs`; test: ReplacingAFileStopsItsOneShotsRestartsItsLoopsAndLeavesOthersAlone |
 | REQ-ASSET-16 | A changed `.fx` source shall be recompiled and swapped in, with compile errors in the log and a visible fallback on failure. | Should | Done for the game and engine (Windows or Wine); mods open | `Sage.Client/Assets/ShaderRecompiler.cs`; mods: #400 |
-| REQ-ASSET-17 | Assets shall have scopes (sector, game, UI), ref-counted release, eviction on unload and an upload budget. | Must | Not started | #308, #277 |
+| REQ-ASSET-17 | Assets shall have scopes (sector, game, UI), ref-counted release, eviction on unload and an upload budget. | Must | Partial: sector scopes for meshes, ref-counted (test: `ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept`); textures, sounds, UI scope and an upload budget open | #308 |
 | REQ-ASSET-18 | Textures shall load with mipmaps and optional compression, and the loader shall read the formats art tools write. | Should | Partial: PNG, JPG, BMP, TGA, GIF load; no mips | #317 |
 | REQ-ASSET-19 | A cook step shall produce binary meshes and compressed textures for Shipping, loaded when present. | Could | Not started | #302 |
 | REQ-ASSET-20 | Prefabs and scenes shall reload into running worlds. | Could | Not started | #287 |
@@ -150,7 +150,7 @@ Milestone R1, Tooling and the first release (epic #292):
 - #302 R1-10 Cooked asset formats and a cook step for Shipping (P3)
 - #301 R1-9 An in-game problems list without the editor (P3)
 
-Milestone 4m, World, logic and saves: #277 4m-3 Streaming: LOD/HLOD past the ring, per-sector asset scopes, generation on jobs (P1); #287 4m-13 Hot reload for data beyond records (P3).
+Milestone 4m, World, logic and saves: #287 4m-13 Hot reload for data beyond records (P3).
 
 Milestone 10b, Editor part 2: #366 10b-1 Asset browser and material preview (P1).
 

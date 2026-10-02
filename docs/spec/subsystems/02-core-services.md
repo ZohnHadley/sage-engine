@@ -101,7 +101,7 @@ Not built: `stat render` and `stat assets`, a Chrome-trace export of profiler sc
 | REQ-CORE-11 | Provide console history and Tab completion for commands, cvars and record ids. | Should | Partial (`CVarRegistry.Complete` exists, not wired) | #299 |
 | REQ-CORE-12 | Provide a visual logger, `stat render`, `stat assets` and a trace export. | Could | Not started | #300 |
 | REQ-CORE-13 | Give each app in a process its own log sinks, user folder and crash report. | Should | Not started | #49 |
-| REQ-CORE-14 | Offer a job system on the thread pool for decoding and generation, with main-thread completion. | Should | Not started | #277 (streaming on jobs); design 02 §4.5 |
+| REQ-CORE-14 | Offer a job system on the thread pool for decoding and generation, with main-thread completion. | Should | Partial: terrain generation on the thread pool with main-thread completion (test: `GenerationOnJobsIsTheSameGroundAsOnTheMainThread`); no general job API | design 02 §4.5 |
 | REQ-CORE-15 | Expose content errors in a shipped game without the editor (`problems` command and badge). | Should | Not started | #301 |
 | REQ-CORE-16 | Offer world and per-system time scale, pause and hit-stop. | Should | Not started | #283 |
 | REQ-CORE-17 | Version the engine from git tags and check plugin, kit and game ranges against it. | Must | Done | `BuildInfo.EngineSemVersion`; first tag pending (#295) |
@@ -117,7 +117,6 @@ R1, Tooling and the first release (milestone 3):
 
 4m, World, logic and saves (milestone 2):
 - #283 4m-9 Time scale, pause and hit-stop as world services (P2)
-- #277 4m-3 Streaming: LOD/HLOD past the ring, per-sector asset scopes, generation on jobs (P1)
 
 Existing: #49 per-app log, user folder and crash reporter (P2).
 

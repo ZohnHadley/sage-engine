@@ -1602,3 +1602,12 @@ Sage.Simulation.IPhysicsWorld.SetShape(in Sage.Simulation.PhysicsBody body, in S
 Sage.Simulation.ColliderPart
 Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
 Sage.Simulation.ColliderPart.ColliderPart() -> void
+Sage.Simulation.FarLook
+Sage.Simulation.FarLook.FarLook() -> void
+Sage.Simulation.FarLook.Material -> Sage.Core.RecordId
+Sage.Simulation.FarLook.Mesh -> Sage.Core.AssetPath
+Sage.Simulation.FarLook.Size -> System.Numerics.Vector3
+Sage.Simulation.ITerrainSampler
+Sage.Simulation.ITerrainSampler.SampleHeight(double absoluteX, double absoluteZ, int seed) -> float
+Sage.Simulation.PrefabRecord.Far -> Sage.Simulation.FarLook?
+Sage.Simulation.TerrainSector.Budgeted -> bool

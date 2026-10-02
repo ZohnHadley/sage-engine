@@ -52,6 +52,13 @@ public sealed class PrefabRecord
     [Property(Tooltip = "Prefabs placed inside this one: parented to it and destroyed with it")]
     public List<PrefabChild> Children = new();
 
+    // How it looks from the far ring (issue #277): a streamed scene's placement of this prefab in a sector
+    // past the full-detail ring is drawn as this — a low-detail mesh, or a box of `size` — instead of not at
+    // all, so a tower or a town is on the horizon before you get there. Left out, nothing is drawn far away.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    [Property(Tooltip = "How a streamed placement of this prefab is drawn from the far ring: a low-detail mesh or a box")]
+    public FarLook? Far;
+
     // Set when content loading checked this body (PrefabChecks, issue #22): what is wrong with it was
     // said then, at its line, so a spawn says it again only at Debug rather than once per goblin.
     [System.Text.Json.Serialization.JsonIgnore] public bool CheckedAtLoad { get; set; }

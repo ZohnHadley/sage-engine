@@ -1,6 +1,6 @@
 # 14 · World, streaming and time
 
-> Status: built and tested for the 4g exit game; streaming is synchronous and has no LOD, and the calendar and time services are minimal. Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
+> Status: built and tested for the 4g exit game; streaming has a far ring of coarse ground and far looks, per-sector asset scopes, generation on jobs and budgeted per-chunk collision (#277); the calendar and time services are minimal. Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes, the far ring). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
 
 ## 1. Purpose and scope
 
@@ -12,18 +12,19 @@ It deliberately does not do the following. Entity storage, scenes and prefabs ar
 
 - `SectorCoord` addressing, sector-local root transforms, the `Origin` resource and rebasing of every position-holder between ticks.
 - The streaming ring: load within `stream_radius`, unload past `stream_radius + 1`, rebase past 1.5 sectors, all with hysteresis.
-- Built-in terrain: heightfields of 129 by 129 samples, the `terrain` record and its `Flat` and `Hills` generators, and the `ITerrainGenerator` seam for a game's own.
+- Built-in terrain: heightfields of 129 by 129 samples, the `terrain` record and its `Flat` and `Hills` generators, and the `ITerrainGenerator` seam for a game's own (with `ITerrainSampler` for seam-free edge normals).
+- The far ring (`stream_far_radius`): coarse ground and far looks (`PrefabRecord.Far`) past the full ring, generation ahead on jobs (`stream_jobs`), a load budget while walking (`stream_load_budget`), and per-sector asset scopes (`SectorAssets`).
 - Streamed scenes: placements, placements documents and `.map` levels bucketed by sector, placed within a per-tick budget at the tick boundary.
 - Cells: dormancy with state, runtime spawns owned by a cell, waking, absolute positions across rebases.
 - Interiors (`"space": "interior"`), load doors, travel points, `Travel.To` and `travel`.
 - The world clock, calendar record, `Time.Pass` skips and the `TimePassed` event.
 - The `ICellHandoff` seam for what keeps simulating while a cell sleeps.
 
-Not responsible for: LOD past the ring, HLOD, asset scopes per sector (open, #277), several streaming sources (#290), interiors as separate spaces (#291).
+Not responsible for: mesh LOD groups and instancing ([07-rendering](07-rendering.md), #305), the asset server's scopes for textures and sounds and a memory budget (#308), several streaming sources (#290), interiors as separate spaces (#291).
 
 ## 3. Placement and dependencies
 
-Sector, origin, terrain, travel and clock code is in `src/Sage.Simulation/World`; cells, scenes and the streamed scene are in `src/Sage.Simulation/Content`; map levels are in `src/Sage.Simulation/Levels`. It sits in the simulation assembly with no MonoGame. `Sage.Physics3D` references it for `TerrainCollisionSystem`. `Sage.Gameplay` references it for `OffscreenSystem` (`src/Sage.Gameplay/World/Offscreen.cs`). `Sage.Client` consumes `Terrain` to build chunk meshes and subscribes to `Origin.Rebased`. Kits never appear in this code.
+Sector, origin, terrain, travel and clock code is in `src/Sage.Simulation/World`; cells, scenes and the streamed scene are in `src/Sage.Simulation/Content`; map levels are in `src/Sage.Simulation/Levels`. It sits in the simulation assembly with no MonoGame. `Sage.Physics3D` references it for `TerrainCollisionSystem`. `Sage.Gameplay` references it for `OffscreenSystem` (`src/Sage.Gameplay/World/Offscreen.cs`). `Sage.Client` consumes `Terrain` to build chunk meshes, `SectorLod` to draw the far ring and `SectorAssets` to free a sector's buffers, and subscribes to `Origin.Rebased`. Kits never appear in this code.
 
 Plugins: `sage.streaming` (`StreamingModule`) installs the `Terrain` resource and the ring, so a world without it has no sectors; the records `scene`, `terrain` and `calendar` and the parts `load_door` and `travel_point` register under the core owner; `sage.gameplay.ai` owns the `offscreen` part and table. Most of this area is `[Experimental("SAGE0129")]`.
 
@@ -36,6 +37,9 @@ Plugins: `sage.streaming` (`StreamingModule`) installs the `Terrain` resource an
 | `Origin` | `World/Origin.cs` | The origin sector, `ToAbsolute`/`ToOrigin`, event `Rebased(offset)`; `world.Rebase(sector)`. |
 | `StreamingSource` | `World/Streaming.cs` | Tag on what the ring follows (the player). |
 | `StreamingSystem`, `SectorRing`, `SectorOwnersSystem` | `World/Streaming.cs` | The ring, and crossing-an-edge ownership (both Phase.Late). |
+| `SectorLod`, `FarSector`, `FarLook` | `World/SectorLod.cs` | The far ring: coarse ground and far looks past the full ring, drawn by the client's `FarLodSystem` (#277). |
+| `SectorAssets` | `World/SectorAssets.cs` | Per-sector asset scopes: mesh paths ref-counted by live users, released when a leaving sector let go of the last one (#277). |
+| `ITerrainSampler` | `World/Terrain.cs` | A generator's height at any point, for seam-free edge normals (#277). |
 | `Scenes`, `StreamedScene` | `Content/Scenes.cs`, `StreamedScene.cs` | Place and clear scenes; `Current(world)`; the tick-boundary placement. |
 | `Cells`, `InCell`, `ICellHandoff` | `Content/Cells.cs`, `CellHandoff.cs` | Dormant store, cell ownership, the hand-off seam. |
 | `Travel`, `TravelLog` | `World/Travel.cs` | `To`, `ToPoint`, `Use`, `HoursTo`; the saved list of discovered points. |
@@ -72,11 +76,11 @@ Going dormant writes live entities and the cell's runtime spawns as save entries
 
 ## 7. Threading, memory and performance
 
-All of it runs on the main thread; terrain and sector generation is synchronous, which is the known source of a stall at a sector edge (REQ-PERF-05 in the [SRS](../SRS.md); generation on jobs is #277). A streamed scene at rest allocates nothing per tick (test: `AStreamedSceneAtRestAllocatesNothingPerTick`), and an off-screen step allocates nothing (test: `FiveHundredAgentsStepWithoutAllocating`). Placement is budgeted so a sector arrives over several ticks (test: `PlacingASectorIsBudgetedAtTheTickBoundary`).
+Terrain generation runs on the thread pool: the ring plus one is generated ahead and the far ring's coarse ground on jobs, and the results are the same ground as a main-thread generation (test: `GenerationOnJobsIsTheSameGroundAsOnTheMainThread`). Everything else runs on the main thread. While walking, at most `stream_load_budget` sectors (default 1) become live a tick and physics builds at most four of a sector's sixteen collision chunks a tick, so crossing an edge does not stall (REQ-PERF-05 in the [SRS](../SRS.md); test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`). A streamed scene at rest allocates nothing per tick (test: `AStreamedSceneAtRestAllocatesNothingPerTick`), and an off-screen step allocates nothing (test: `FiveHundredAgentsStepWithoutAllocating`). Placement is budgeted so a sector arrives over several ticks (test: `PlacingASectorIsBudgetedAtTheTickBoundary`).
 
 ## 8. Errors and diagnostics
 
-A door to a missing scene or entry, with the nearest name, and a placed door with no scene are load errors, so `sage validate` reports them (test: `ADoorToAMissingSceneOrEntryIsALoadError`). `Time.Pass` warns and refuses a non-positive, non-finite or over-large amount, or a world with no clock. Log categories are `Streaming` and `World`. Debug with `stream_status` (origin, placed sectors, rebases), `offscreen_status`, `time`, and `warp`.
+A door to a missing scene or entry, with the nearest name, and a placed door with no scene are load errors, so `sage validate` reports them (test: `ADoorToAMissingSceneOrEntryIsALoadError`). `Time.Pass` warns and refuses a non-positive, non-finite or over-large amount, or a world with no clock. Log categories are `Streaming` and `World`. Debug with `stream_status` (origin, placed sectors, rebases, the far ring, generation here and on jobs, released assets), `offscreen_status`, `time`, and `warp`.
 
 ## 9. Requirements
 
@@ -94,7 +98,7 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 | REQ-WORLD-10 | A calendar shall give months, weekdays and years from the clock. | Must | Done | test: `MonthsAndYearsWrapInACustomCalendar` |
 | REQ-WORLD-11 | The reference open-world game shall run headless: dungeon trip, a day passes, NPC keeps its schedule, nothing doubled. | Must | Done | test: `OpenWorldExit_AwayADayInTheCrypt_TheSmithKeptHisScheduleAndNothingIsDoubled` |
 | REQ-WORLD-12 | NPCs shall keep routines and fight off-screen, deterministically, with no per-step allocation. | Should | Partial: straight-line movement, only after a cell first sleeps | test: `TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime`; #284 |
-| REQ-WORLD-13 | Streaming shall not stall a frame: generation on jobs, LOD and HLOD past the ring, per-sector asset scopes. | Must | Not started | #277 |
+| REQ-WORLD-13 | Streaming shall not stall a frame: generation on jobs, LOD and HLOD past the ring, per-sector asset scopes. | Must | Done | test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`, `TheFarRingHasCoarseGroundAndFarLooksPastTheFullRing`, `ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept`, `SectorEdgeNormalsMatchTheNeighboursSoLightingHasNoSeam` |
 | REQ-WORLD-14 | Prefabs shall nest and keep per-placement overrides across sectors. | Should | Not started | #279 |
 | REQ-WORLD-15 | The world shall offer a time scale, pause and hit-stop as services. | Should | Not started | #283 |
 | REQ-WORLD-16 | The calendar shall add seasons, moon phases, leap years and scheduled events. | Could | Not started | #289 |
@@ -105,7 +109,6 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 
 Milestone 2 (epic #274).
 
-- #277 4m-3 Streaming: LOD/HLOD past the ring, per-sector asset scopes, generation on jobs (P1)
 - #279 4m-5 Prefabs: nested prefabs, per-placement part overrides, overrides kept across sectors (P1)
 - #278 4m-4 Saves: remove live unsaved entities on load, and the remaining "Limits" (P1, shared with [15-saves](15-saves.md))
 - #283 4m-9 Time scale, pause and hit-stop as world services (P2)
@@ -114,7 +117,7 @@ Milestone 2 (epic #274).
 - #290 4m-16 Several streaming sources and per-source rings (P3)
 - #291 4m-17 Interiors as separate spaces and companions through doors (P3)
 
-Related: #308 4n-4 AssetServer scopes and memory budget (P1), #307 4n-3 terrain splat materials and seam-free normals (P1).
+Related: #308 4n-4 AssetServer scopes and memory budget (P1), #307 4n-3 terrain splat materials (P1).
 
 ## 11. References
 
