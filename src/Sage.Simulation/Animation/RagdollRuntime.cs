@@ -73,7 +73,7 @@ public sealed class RagdollPart : IPrefabPart
     [Property(Min = 0, Unit = "N*s", Tooltip = "The impulse a damaging hit gives the body nearest where it landed, along the hit")]
     public float HitImpulse = 30f;
     // Getting up (issue #247, RagdollGetUp.cs): kept in their own component, sage:ragdoll_get_up.
-    [Property(Min = 0, Unit = "s", Tooltip = "Gets up by itself this long after going down (never once it has died); 0 = only when told (the GetUp input)")]
+    [Property(Min = 0, Unit = "s", Tooltip = "Gets up by itself this long after it has come to rest (never once it has died); 0 = only when told (the GetUp input)")]
     public float GetUpAfter;
     [Property(Tooltip = "The animator state it gets up with from lying face up")]
     public string GetUpBack = RagdollGetUp.DefaultBack;

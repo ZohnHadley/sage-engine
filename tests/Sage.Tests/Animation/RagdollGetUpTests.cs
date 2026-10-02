@@ -26,7 +26,8 @@ public class RagdollGetUpTests
     private static readonly RecordId Knockdown = new("getup", "knockdown");
 
     private static HeadlessApp Yard() =>
-        HeadlessApp.ForGame(NpcLocomotionTests.Game("skeletal")).WithEngineContent().File("data/getup.json", Records, "getup").Boot();
+        NpcLocomotionTests.WithoutExitPair(HeadlessApp.ForGame(NpcLocomotionTests.Game("skeletal")).WithEngineContent()
+            .File("data/getup.json", Records, "getup").Boot());
 
     private static void Step(World world, int ticks = 1) => NpcLocomotionTests.Step(world, ticks);
 

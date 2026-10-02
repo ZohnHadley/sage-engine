@@ -71,14 +71,48 @@
   },
 
   {
-    // Watched from the south: four lanes running east from x = -6, the nearest at z = 1, and the sentry
-    // side-on at the front left. Yaw -90 faces +X (0 faces -Z), up the lane.
+    // Phase 4k's exit (engine issue #249): stand three seconds, then go ragdoll with a shove (the `Ragdoll`
+    // input's parameter is an impulse, N·s, world: -X throws it backwards, onto its back, as it faces +X). The
+    // placement wires its OnSettled to its own `Settled`, which moves this machine on; the tumbler's
+    // `getUpAfter` gets it up, and four seconds after it settled (1.5 s down, 1.6 s of getup clip, the fade
+    // into idle) it is standing again and goes round.
+    "type": "state_machine",
+    "id": "tumble",
+    "initial": "stand",
+    "states": {
+      "stand": { "transitions": [ { "to": "fall", "after": 3 } ] },
+      "fall":  { "enter": [ { "fire": "!self", "input": "Ragdoll", "parameter": "-40 0 0" } ],
+                 "transitions": [ { "to": "down", "on": "Settled" } ] },
+      "down":  { "transitions": [ { "to": "stand", "after": 4 } ] }
+    }
+  },
+  // Killed: an instant effect that takes far more health than anybody has.
+  { "type": "effect", "id": "lethal", "modifiers": [ { "attribute": "sage:health", "op": "Add", "value": -10000 } ] },
+  {
+    // Two seconds standing, then dead (ApplyEffect lethal at itself): it falls as a ragdoll and stays down.
+    "type": "state_machine",
+    "id": "doomed",
+    "initial": "alive",
+    "states": {
+      "alive": { "transitions": [ { "to": "dead", "after": 2 } ] },
+      "dead":  { "enter": [ { "fire": "!self", "input": "ApplyEffect", "parameter": "lethal" } ] }
+    }
+  },
+
+  {
+    // Watched from the south: four lanes running east from x = -6, the nearest at z = 1, and the sentry,
+    // the tumbler and the casualty side-on in a row in front of them, from the left. Yaw -90 faces +X
+    // (0 faces -Z), up the lane.
     "type": "scene",
     "id": "yard",
     "player": { "prefab": "player", "at": [0, 0.1, 9] },
     "place": [
       { "prefab": "floor", "at": [0, -0.5, 0] },
       { "prefab": "sentry", "at": [-4.5, 0, 4], "yaw": -90, "name": "sentry" },
+      // Phase 4k's exit: the tumbler, knocked over and back up, and the casualty, killed and left lying.
+      { "prefab": "tumbler", "at": [-1.5, 0, 4], "yaw": -90, "name": "tumbler",
+        "outputs": [ { "output": "OnSettled", "target": "!self", "input": "Settled" } ] },
+      { "prefab": "casualty", "at": [1.5, 0, 4], "yaw": -90, "name": "casualty" },
       { "prefab": "trooper", "at": [-6, 0, 1], "yaw": -90, "name": "trooper",
         "outputs": [ { "output": "OnTweenDone", "target": "!self", "input": "Arrived" } ] },
       { "prefab": "walker", "at": [-6, 0, -2], "yaw": -90, "name": "walker",
