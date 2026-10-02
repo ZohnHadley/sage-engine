@@ -15,9 +15,32 @@
     "nodes": [ { "id": "greet", "text": "The way up is open.", "options": [ { "text": "Thanks.", "end": true } ] } ]
   },
 
-  // A counter that stops at three, and a relay that notes, in a var, that it fired.
+  // A counter that stops at three, and a relay that notes, in a var, that it fired. Then, with the base's
+  // words alone (issue #275), if the keeper is there and the lift beside him in this scene: a line for the
+  // player, a second later a reward spawned at the keeper and the crate cleared away, an hour passed, a note.
   { "type": "prefab", "id": "steps", "name": "steps", "parts": { "logic_counter": { "min": 0, "max": 3 } } },
-  { "type": "prefab", "id": "finale", "name": "finale", "parts": { "logic_relay": { "then": [ { "add_var": "sequence_done" } ] } } },
+  {
+    "type": "prefab", "id": "finale", "name": "finale",
+    "parts": { "logic_relay": {
+      "then": [
+        { "add_var": "sequence_done" },
+        { "message": "The keeper nods.", "kind": "Good" },
+        { "wait": 1 },
+        { "spawn_prefab": "crate", "at": "keeper", "offset": [0, 1, 0], "name": "reward" },
+        { "destroy": "falling crate" },
+        { "pass_time": 1 },
+        { "log": "scripted-sequence: the reward is out" },
+        { "set_var": "reward_given", "value": 1 }
+      ]
+    } }
+  },
+  {
+    "type": "prefab", "id": "reward_check", "name": "reward check",
+    "parts": { "logic_relay": {
+      "requires": { "all": [ { "entity_exists": "keeper" }, { "distance_to": "keeper", "from": "lift", "max": 1 }, { "in_scene": "hall" } ] },
+      "then": [ { "add_var": "keeper_reached" } ]
+    } }
+  },
 
   {
     "type": "scene",
@@ -64,8 +87,12 @@
       },
       {
         "prefab": "finale", "at": [0, 0, 0], "name": "finale",
-        "outputs": [ { "output": "OnTrigger", "target": "!self", "input": "Say", "parameter": "The sequence is done." } ]
-      }
+        "outputs": [
+          { "output": "OnTrigger", "target": "!self", "input": "Say", "parameter": "The sequence is done." },
+          { "output": "OnTrigger", "target": "reward check", "input": "Trigger" }
+        ]
+      },
+      { "prefab": "reward_check", "at": [0, 0, 0], "name": "reward check" }
     ]
   }
 ]

@@ -18,27 +18,58 @@ namespace Sage.Gameplay;
 
 // ---- gameplay's conditions ----------------------------------------------------------------------
 
+// `{ "has_tag": "alerted" }` asks the subject; `"entity": "guard"` (a name, or !other) asks anyone (#275).
 [Condition("has_tag", Plugin = "sage.gameplay.attributes")]
 internal sealed class HasTagCondition : ICondition
 {
-    [EntryValue] public RecordRef<TagRecord> Tag;
+    [EntryValue, Property(Tooltip = "The gameplay tag it must have")]
+    public RecordRef<TagRecord> Tag;
+    [Property(Tooltip = "Who is asked: an entity's name, or !subject / !other; empty: the subject")]
+    public string Entity = "";
+
+    private Entity _found;
 
     public bool Test(in ConditionContext c, out string why)
     {
         why = "not yet";
-        return Tag.IsEmpty || c.World.HasTag(c.Subject, Tag);
+        return Tag.IsEmpty || c.World.HasTag(GameplayWords.Who(in c, Entity, ref _found), Tag);
     }
 }
 
 [Condition("lacks_tag", Plugin = "sage.gameplay.attributes")]
 internal sealed class LacksTagCondition : ICondition
 {
-    [EntryValue] public RecordRef<TagRecord> Tag;
+    [EntryValue, Property(Tooltip = "The gameplay tag it must not have")]
+    public RecordRef<TagRecord> Tag;
+    [Property(Tooltip = "Who is asked: an entity's name, or !subject / !other; empty: the subject")]
+    public string Entity = "";
+
+    private Entity _found;
 
     public bool Test(in ConditionContext c, out string why)
     {
         why = "already done";
-        return Tag.IsEmpty || !c.World.HasTag(c.Subject, Tag);
+        return Tag.IsEmpty || !c.World.HasTag(GameplayWords.Who(in c, Entity, ref _found), Tag);
+    }
+}
+
+// `{ "is_alive": "boss" }`: in the world and not dead (the conventions' `dead` tag, which running out of
+// health gives). Something with no health at all is alive while it is there (#275).
+[Condition("is_alive", Plugin = "sage.gameplay.attributes")]
+internal sealed class IsAliveCondition : ICondition
+{
+    [EntryValue, Property(Tooltip = "Who: an entity's name, or !subject / !other")]
+    public string Entity = LogicTargets.Subject;
+
+    private Entity _found;
+
+    public bool Test(in ConditionContext c, out string why)
+    {
+        why = "dead";
+        var who = LogicTargets.Find(c.World, Entity, c.Subject, c.Other, ref _found);
+        if (!c.World.IsAlive(who)) return false;
+        var dead = c.World.Conventions().Dead;
+        return dead.IsEmpty || !c.World.HasTag(who, dead);
     }
 }
 
@@ -186,6 +217,54 @@ internal sealed class FinishQuestAction : IAction
     {
         if (!Quest.IsEmpty) Quests.Finish(c.World, Quest);
     }
+}
+
+// `{ "set_tag": "alerted" }` gives the subject a gameplay tag; `"target": "guard"` gives it to anyone, and
+// `"on": false` takes it away (#275).
+[Action("set_tag", Plugin = "sage.gameplay.attributes")]
+internal sealed class SetTagAction : IAction
+{
+    [EntryValue, Property(Tooltip = "The gameplay tag")]
+    public RecordRef<TagRecord> Tag;
+    [Property(Tooltip = "Who: an entity's name, or !subject / !other")]
+    public string Target = LogicTargets.Subject;
+    [Property(Tooltip = "Give it (on) or take it away (off)")]
+    public bool On = true;
+
+    public void Run(in ActionContext c)
+    {
+        if (Tag.IsEmpty) return;
+        var who = LogicTargets.Find(c.World, Target, c.Subject, c.Other);
+        if (!c.World.IsAlive(who)) return;
+        if (On) c.World.AddTag(who, Tag);
+        else c.World.RemoveTag(who, Tag);
+    }
+}
+
+// `{ "cue": "bell_toll", "at": "!other" }`: raises a cue there (CueTriggered), which presentation turns into
+// the cue record's sound and particles (#275). With no `at`, at the subject.
+[Action("cue", Plugin = "sage.gameplay.abilities")]
+internal sealed class CueAction : IAction
+{
+    [EntryValue, Property(Tooltip = "The cue to raise")]
+    public RecordRef<CueRecord> Cue;
+    [Property(Tooltip = "Where: an entity's name, or !subject / !other")]
+    public string At = LogicTargets.Subject;
+
+    public void Run(in ActionContext c)
+    {
+        if (Cue.IsEmpty) return;
+        var at = LogicTargets.Find(c.World, At, c.Subject, c.Other);
+        if (!c.World.TryGet<GlobalTransform>(at, out var where)) return;
+        c.World.Events.Send(new CueTriggered(Cue.Id, at, where.Current.Position));
+    }
+}
+
+internal static class GameplayWords
+{
+    // Whom a gameplay condition asks: `entity` when it names one, else the subject.
+    public static Entity Who(in ConditionContext c, string entity, ref Entity cache) =>
+        entity.Length == 0 ? c.Subject : LogicTargets.Find(c.World, entity, c.Subject, c.Other, ref cache);
 }
 
 // ---- the shorthand ---------------------------------------------------------------------------------
