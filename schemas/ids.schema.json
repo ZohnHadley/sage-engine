@@ -2078,9 +2078,11 @@
         "sage:player_controlled",
         "sage:ragdolled",
         "sage:streaming_source",
+        "sage:unsaved",
         "sage:viewmodel_layer",
         "sandbox:faces_camera",
         "streaming_source",
+        "unsaved",
         "viewmodel_layer"
       ]
     }

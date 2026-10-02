@@ -118,6 +118,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-20 | Physics materials and surface types shall be records on colliders, terrain layers and brush textures, returned in hit results. | Should | Done (#270) | test: ABrushFaceIsTheSurfaceItsTextureNames; test: ATerrainLayerIsTheSurfaceOfTheGroundItCovers; test: AFootstepPicksItsCueFromTheSurfaceUnderfoot |
 | REQ-PHYS-21 | Bodies shall follow a floating-origin rebase, including sleeping ones and statics. | Must | Done | test: PhysicsBodiesRebaseWithTheWorld |
 | REQ-PHYS-22 | A steady-state step shall allocate nothing, hitbox cost shall be budgeted, and runs shall be cross-run deterministic. | Should | Partial: about 40 B a tick | #273 |
+| REQ-PHYS-23 | Every `Mover` field shall have a headless assertion, with travel time, `CloseAfter`, a save mid-travel, a world with no physics, a replayed run and a busy level covered. | Should | Done (#272) | test: ATripTakesItsSecondsAndEndsAtItsOpenOffset; test: CloseAfterShutsADoorByItselfAndZeroLeavesItOpen; test: AMoverSavedMidTravelAndMidHoldCarriesOnFromThere; test: AMoverInAWorldWithNoPhysicsStillTravelsAndArrives; test: BlockedIsSetWhileSomethingItCannotPushIsInTheWay; test: ReplayingASteppingRunGivesBitIdenticalPositions; test: ManyMoversBodiesAndCharactersStepWithinABudget |
 
 ## 10. Open work
 
@@ -135,7 +136,7 @@ Milestone 4l, Physics, movement and navigation (epic #258):
 - ~~#268 4l-10 Moving a physics shape in place and parented colliders (P2)~~ done: `SetShape`, colliders on child entities, compounds
 - #269 4l-11 Game events from physics (Collided, TriggerEntered/Exited) and richer queries (P2)
 - #270 4l-12 Physics materials and surface types (P2)
-- #272 4l-14 Mover and physics test coverage (P2)
+- ~~#272 4l-14 Mover and physics test coverage (P2)~~ done: `MoverTests` and `MoverBudgetTests`
 - #273 4l-15 Perf and determinism: 40 B/tick allocation, hitbox cost, sleeping and rebase wake (P3)
 
 Navigation issues of the same milestone (#264, #265, #271) are in sheet [09](09-navigation-and-ai.md).

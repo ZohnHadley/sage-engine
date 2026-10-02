@@ -51,6 +51,7 @@ public static class CellContent
             world.Add(root, new Persistent { Id = PersistentId.New() });
         }
         var saved = world.Engine is { } engine ? engine.Saves.Capture(world, new[] { root }) : new List<JsonObject>();
+        SleepingHandles.Asleep(world, root);   // what refers to it finds it again once it is restored (4m-4)
         world.Destroy(root);
         return saved;
     }
