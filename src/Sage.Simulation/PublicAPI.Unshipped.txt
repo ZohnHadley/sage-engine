@@ -1611,3 +1611,6 @@ Sage.Simulation.ITerrainSampler
 Sage.Simulation.ITerrainSampler.SampleHeight(double absoluteX, double absoluteZ, int seed) -> float
 Sage.Simulation.PrefabRecord.Far -> Sage.Simulation.FarLook?
 Sage.Simulation.TerrainSector.Budgeted -> bool
+Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
+Sage.Simulation.Unsaved
+Sage.Simulation.Unsaved.Unsaved() -> void

@@ -110,7 +110,6 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 Milestone 2 (epic #274).
 
 - #279 4m-5 Prefabs: nested prefabs, per-placement part overrides, overrides kept across sectors (P1)
-- #278 4m-4 Saves: remove live unsaved entities on load, and the remaining "Limits" (P1, shared with [15-saves](15-saves.md))
 - #283 4m-9 Time scale, pause and hit-stop as world services (P2)
 - #284 4m-10 Off-screen simulation: pathing, unvisited cells, live NPCs with far anchors (P2)
 - #289 4m-15 Calendar and clock: seasons, moon phases, leap years, scheduled calendar events (P3)

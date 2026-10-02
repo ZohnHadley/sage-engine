@@ -22,7 +22,9 @@ public struct PlayerControlled : ITag { }
 // compares it after every phase. Without a typed `Equals`, `EqualityComparer<T>.Default` falls back to
 // `ValueType.Equals(object)` and **boxes both values on every comparison** — which measured at about
 // 3 KB per character per tick, and is what R18's scale test found first.
+// [FromPlacement]: the yaw starts as the placement's, so a save compares it with this pawn's own (4m-4).
 [Component("sage:pawn_intent")]
+[FromPlacement]
 public struct PawnIntent : IComponent, IEquatable<PawnIntent>
 {
     [Transient] public Vector2 Move;       // rewritten by a controller every tick

@@ -270,6 +270,8 @@ internal sealed class EffectSystem : ISystem
         {
             var running = list[i];
             if (!_records.TryGet(running.Record, out EffectRecord record)) { list.RemoveAt(i); continue; }
+            // A source that went to sleep with its cell and woke has a new handle (4m-4): follow it.
+            if (running.Source.IsNull && world.Resolve(running.Source) is { IsNull: false } woke) running.Source = woke;
 
             if (record.Period > 0)
             {
@@ -278,7 +280,7 @@ internal sealed class EffectSystem : ISystem
                 {
                     running.PeriodTimer -= record.Period;
                     Effects.ApplyInstant(world, entity, record, _registries, running.Stacks, Magnitude(running));
-                    EffectExecutions.Run(world, entity, running.Source, running.Record, record, running.Stacks, Magnitude(running));
+                    EffectExecutions.Run(world, entity, world.Resolve(running.Source), running.Record, record, running.Stacks, Magnitude(running));
                 }
             }
 

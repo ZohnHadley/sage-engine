@@ -22,6 +22,15 @@ namespace Sage.Core;
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Struct)]
 public sealed class TransientAttribute : Attribute { }
 
+// On a component type: its values are derived from where the entity was placed (a mover's closed
+// position is its placement; a pawn's yaw starts as the placement's). A save diffs a prefab-spawned entity
+// against its prefab as spawned (09 "As built (save what changed)"), and that baseline is shared by every
+// entity spawned from the same prefab, so without this every placement but the first wrote such a value
+// and kept it when the content moved the placement. A component marked so is compared with *this*
+// entity's own values as spawned instead (issue 4m-4).
+[AttributeUsage(AttributeTargets.Struct)]
+public sealed class FromPlacementAttribute : Attribute { }
+
 // A world resource that belongs in the save (docs/design/09 §3.1). Not everything about a world is
 // on an entity: the spells the player composed, the quests they are on, how the world feels about
 // them. Those are per-world singletons (03 §3.4), and a save that only wrote entities would lose them.
