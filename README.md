@@ -12,7 +12,6 @@ the code follows a short list of readiness rules so adding it isn't a rewrite.
 Nothing here is a product. It is an engine that grows one feature at a time, each one dogfooded by
 the `games/Sandbox` test game in the same commit.
 
-- [`docs/spec/`](docs/spec/README.md) — the specification: requirements (SRS), the technical design (TDD), the API contract, and a spec sheet per subsystem saying what is done and which issue finishes the rest.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — the overview: layers, rules, decisions and why.
 - [`docs/design/`](docs/design) — one document per subsystem, each with an "As built" section saying
   what actually exists today. [`00-index.md`](docs/design/00-index.md) is the reading order and the
@@ -65,7 +64,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1533 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1537 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: code mods, the editor's brushes and asset
 browser (its first half, phase 10a, is a mode of the dev host: [`docs/EDITOR.md`](docs/EDITOR.md)), and

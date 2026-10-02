@@ -5,7 +5,6 @@ Status: design, revised 2026-09-22 (third pass: research-backed; see §9), and m
 | Document | Role |
 |---|---|
 | **This file** | The overview: what Sage is, layers, rules, decisions, strategy |
-| [`docs/spec/`](docs/spec/README.md) | The specification (2026-10-02): SRS, TDD (supersedes this file where they differ), API contract, subsystem spec sheets |
 | [`docs/design/`](docs/design/00-index.md) | How each subsystem works (18 design docs + glossary) |
 | [`docs/research/engine-survey.md`](docs/research/engine-survey.md) | How other engines are built and why, with sources |
 | [`docs/ENGINE_DESIGN_PLAN.md`](docs/ENGINE_DESIGN_PLAN.md) | The approved plan that produced this revision |
@@ -319,7 +318,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **157 console commands, 47 record types, 1533 headless tests.** <!-- counts -->
+and audible: **157 console commands, 47 record types, 1537 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight

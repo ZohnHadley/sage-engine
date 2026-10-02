@@ -18,6 +18,7 @@ const Sage.Simulation.FirstPersonRigSystem.Id = "sage.camera.first_person" -> st
 const Sage.Simulation.FogMath.Invisible = 0.001953125 -> float
 const Sage.Simulation.JointDesc.DefaultDamping = 1 -> float
 const Sage.Simulation.JointDesc.DefaultStiffness = 30 -> float
+const Sage.Simulation.Ladder.DefaultSpeed = 2.5 -> float
 const Sage.Simulation.LogicEntities.OnChanged = "OnChanged" -> string!
 const Sage.Simulation.LogicEntities.OnEqual = "OnEqual" -> string!
 const Sage.Simulation.LogicEntities.OnFalse = "OnFalse" -> string!
@@ -364,6 +365,8 @@ Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> b
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
 Sage.Simulation.CellContent
+Sage.Simulation.CharacterController.Climbing -> bool
+Sage.Simulation.CharacterController.LetGo -> bool
 Sage.Simulation.ClipEvent
 Sage.Simulation.ClipEvent.ClipEvent() -> void
 Sage.Simulation.ClipEvent.ClipEvent(float time, string! name) -> void
@@ -569,6 +572,17 @@ Sage.Simulation.JointPart.Target -> string!
 Sage.Simulation.JointPart.TargetAnchor -> System.Numerics.Vector3
 Sage.Simulation.JointPart.TwistMax -> float
 Sage.Simulation.JointPart.TwistMin -> float
+Sage.Simulation.Ladder
+Sage.Simulation.Ladder.Facing -> float
+Sage.Simulation.Ladder.Ladder() -> void
+Sage.Simulation.Ladder.NormalFor(System.Numerics.Quaternion rotation) -> System.Numerics.Vector3
+Sage.Simulation.Ladder.Speed -> float
+Sage.Simulation.Ladder.SpeedOrDefault.get -> float
+Sage.Simulation.LadderPart
+Sage.Simulation.LadderPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LadderPart.Facing -> float
+Sage.Simulation.LadderPart.LadderPart() -> void
+Sage.Simulation.LadderPart.Speed -> float
 Sage.Simulation.LoadDoor
 Sage.Simulation.LoadDoor.Entry -> string!
 Sage.Simulation.LoadDoor.Hours -> float
