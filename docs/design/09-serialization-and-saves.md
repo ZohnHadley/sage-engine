@@ -235,7 +235,8 @@ summoned imp or an `ent_spawn` crate vanished on load.
 - **Side effect**: a pawn spawned at runtime is saved now, so its player camera (whose id derives from the
   pawn's) is too; a pawn that should not be saved says `"persist": false`.
 - Cue and particle effects are not prefab spawns in the base engine; a game's effect prefab opts out with
-  `"persist": false`. A load does not yet remove an unsaved entity that is in the world already (4i-3).
+  `"persist": false`. Since 4m-4 a load removes such a spawn that is in the world already (`Unsaved`; "As
+  built (the saves' remaining limits)").
 
 ### As built (a load that cannot half-happen, issue 4i-2, 2026-09-30)
 
@@ -337,7 +338,8 @@ saved field opt-in.
   left alone is not written; of one it changed, only the top-level fields that differ are (a list, a
   dictionary or a nested struct is one field, written whole); a component the prefab did not give it is
   written in full; and **`"removed"`** lists the baseline's components the entity no longer has. Tags
-  are written in full. The transform is always written whole (test: ASaveWritesOnlyTheFieldsTheGameChanged).
+  are written in full. The transform is written whole, and since 4m-4 not at all for content's entity still
+  where it was placed (test: ASaveWritesOnlyTheFieldsTheGameChanged).
 - **A load applies the current prefab, then the diff**: the entity is spawned (or placed again by
   content, 4i-3) from the prefab as it is now; each saved entry is laid over it field by field
   (`SaveDiff.Merge`, through the dialect's own field contract); `removed` is taken off again; its tags
@@ -355,11 +357,10 @@ saved field opt-in.
   as before, so formats 1, 2 and 3 without diffs read as they did. A format 3 golden save written as
   diffs is committed and loads (test: AGoldenSaveInFormat3Loads), beside formats 1 and 2 (tests:
   AGoldenSaveFromBeforeStableIdsStillLoads, AGoldenSaveInFormat2Loads).
-- **Limits**: the baseline is shared, so a value a part derives from the placement (a mover's closed
-  position) differs from the first spawn's on every other placement and is written, and does not follow a
-  rebalance. An `[Upgrade]` method sees only the fields a diff wrote. A placed entity's transform is
-  always written, so moving a placement in the content does not move one from an existing save. A
-  component whose JSON is not an object of fields (a custom converter) is written whole when it differs.
+- **Limits**: an `[Upgrade]` method sees only the fields a diff wrote. A component whose JSON is not an
+  object of fields (a custom converter) is written whole when it differs. (A value a part derives from the
+  placement, and a placed entity's transform, were written for every placement until 4m-4, so neither
+  followed the content: "As built (the saves' remaining limits)".)
 
 ### As built (quick-save and autosave, issue 4i-6, 2026-10-01)
 
@@ -510,11 +511,45 @@ dormancy (`Cells.cs`, experimental SAGE0129).
   been part of the baseline, never written, and lost by a load; the id is given after the baseline now.
 - **Limits.** Only a root's transform is moved between frames: a position held in another component (an
   AI's last sight of its target) stays in the frame it was taken in, as it would across a rebase without
-  AI's own hook. A live entity's reference to one that went to sleep (an effect's source) does not
-  resolve while it sleeps. The current cell is the world's scene, or in a streamed scene the sector the spawn
+  AI's own hook. A live entity's reference to one that went to sleep (an effect's source) resolves to the
+  null entity while it sleeps, and to the entity once it wakes through `World.Resolve(Entity)` (4m-4). The current cell is the world's scene, or in a streamed scene the sector the spawn
   stands in, and an entity that crosses a sector edge moves to the next (14 "As built (entities stream by
   sector)", issue 4g-3). A follower spawned at runtime sleeps with the scene
   it was made in until 4g-5 carries it through doors.
+
+### As built (the saves' remaining limits, issue 4m-4, 2026-10-02)
+
+Three things a load or a save got quietly wrong after 4i and 4g-1.
+
+- **A load removes what the save does not name.** A prefab spawn whose prefab says `"persist": false` (an
+  effect's spark, a cue's prop) is tagged **`Unsaved`** (`sage:unsaved`, transient), and a load destroys
+  every entity with it, with the children its prefab placed, alongside the persistent ones the game made.
+  So one spawned before the save and one spawned after it are both gone, and what the save names is back
+  once (test: ALoadRemovesTheUnsavedSpawnsItDoesNotName). What is not saved by design and is not the
+  game's to lose has no tag and stays: a bare `Create` (a camera, a viewmodel, a level's brushes, terrain
+  collision), a spawn made without an id (the player camera's way), and a `"persist": false` spawn the game
+  then made persistent (`MakePersistent` takes the tag off, and the save brings it back). A game's own
+  throwaway entity adds `Unsaved` to go with a load (test: ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves).
+- **Derived values and placements follow the content.** A component marked **`[FromPlacement]`** (Sage.Core:
+  the mover, whose closed position is its placement, and the pawn's intent, whose yaw starts as the
+  placement's) is noted again for each entity at spawn and diffed against that entity's own, while the
+  rest of the baseline stays shared (`SpawnBaseline.Entry`). And content's entity still standing where it
+  was placed (compared in absolute space, so a rebase is not a move) is written **without a transform**:
+  a load leaves it where the content places it now. An untouched door writes neither its mover nor its
+  transform, so after the content moves its placement and slows every door it stands at the new place,
+  shuts there and moves at the new speed; a door the game moved keeps its saved place (test:
+  AnUntouchedDoorFollowsItsPlacementAndARebalance). A runtime spawn and a prefab's child still write the
+  transform whole: one is rebuilt where it stood, the other is laid onto its parent's.
+- **References to what sleeps.** As a cell goes dormant (or a handoff releases an entity, 4g-6) each
+  handle is noted against its persistent id (`SleepingHandles`): a **tombstoned handle**.
+  **`World.Resolve(Entity)`** gives the entity a held reference means now — itself while it lives, the one
+  with its id once it is back, the null entity while it sleeps. The save dialect writes a tombstoned handle
+  as its id (it wrote null), and a load or a waking cell that reads an id asleep in a dormant cell mints
+  one, so the reference finds the entity when the cell wakes. Effects read their source through it and
+  follow the woken handle (test: AReferenceToASleepingEntityIsKeptAndResolvesWhenItWakes, in one run and
+  after a load made while the source slept). A load clears the noted handles; they are otherwise kept for the
+  session, one small entry for each entity that went to sleep.
+- The golden saves (formats 1 to 4) load unchanged; an older save's transforms are laid on as before.
 
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the

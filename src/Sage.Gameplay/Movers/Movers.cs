@@ -14,7 +14,10 @@ namespace Sage.Gameplay;
 // It is in the engine rather than in a game because it is about *geometry*, not rules: what opens the
 // door — a button, a key, a quest stage — is a game's business and is wired to it from a map (04 §3.4).
 
+// [FromPlacement]: Closed and ClosedRotation are where it was placed, so a save compares them with this
+// door's own (issue 4m-4) and an unmoved door follows its placement when the content moves it.
 [Component("sage:mover")]
+[FromPlacement]
 public struct Mover : IComponent
 {
     // Where "open" is, relative to where the entity was placed, in metres. A door that slides into the
