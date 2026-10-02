@@ -292,6 +292,10 @@ public sealed class World : IDisposable
     // be written back and cleared.
     internal QueryEntities PersistentIncludingDisabled() => new(_store.Query<Persistent>().WithDisabled().Entities);
 
+    // Every runtime spawn no save names (Unsaved, 4m-4), disabled ones included: what a load takes away.
+    internal QueryEntities UnsavedIncludingDisabled() =>
+        new(_store.Query().AllTags(F.Tags.Get<Unsaved>()).WithDisabled().Entities);
+
     // Takes an entity out of every query (Friflo's Disabled tag), or puts it back.
     internal static void SetEnabled(Entity entity, bool enabled) { var raw = entity.Raw; raw.Enabled = enabled; }
 
@@ -483,6 +487,16 @@ public sealed class World : IDisposable
 
     public Entity Resolve(PersistentId id) => _persistent.TryGetValue(id, out var e) && IsAlive(e) ? e : default;
 
+    // The entity a held reference means now (issue 4m-4): itself while it lives; for a handle to one that
+    // went to sleep with its cell (or was taken by a handoff), the entity with its persistent id once it is
+    // back, and the null entity while it sleeps; the null entity for one that is simply gone. A component
+    // that keeps an entity across ticks (an effect's source, a target) reads it through this.
+    public Entity Resolve(Entity reference)
+    {
+        if (IsAlive(reference)) return reference;
+        return SleepingHandles.TryGetId(this, reference, out var id) ? Resolve(id) : default;
+    }
+
     // Adds a Persistent component with a new id (runtime-spawned entities that should be saved), and the
     // cell it was made in (phase 4g-1, InCell): it goes dormant with that cell and comes back with it.
     public PersistentId MakePersistent(Entity entity)
@@ -490,6 +504,7 @@ public sealed class World : IDisposable
         if (TryGet(entity, out Persistent existing))
             return existing.Id;
         var id = PersistentId.New();
+        if (entity.Tags.Has<Unsaved>()) entity.RemoveTag<Unsaved>();   // saved from now on (4m-4)
         Add(entity, new Persistent { Id = id });
         Cells.Join(this, entity);
         return id;

@@ -97,20 +97,18 @@ Content problems are load errors with file and line, never play-time crashes: a 
 | REQ-ECS-09 | Place prefabs inside prefabs and override one field of one component or part per placement. | Must | Done | test: APlacementsOverridesMergeIntoACopyOfThePrefab |
 | REQ-ECS-10 | Boot a world from a scene record naming maps, placements and a player start, from `game.json`, with no C#. | Must | Done | test: AGameWithNoCodeBootsIntoItsScene |
 | REQ-ECS-11 | Give persistent entities ids that survive sessions, and derive stable ids for authored placements. | Must | Done | test: PersistentIds_ResolveAndFollowDestruction |
-| REQ-ECS-12 | Keep a placed entity's overrides and wires after it leaves its sector and returns. | Must | Partial | #279 |
+| REQ-ECS-12 | Keep a placed entity's overrides and wires after it leaves its sector and returns. | Must | Done | test: AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing |
 | REQ-ECS-13 | Offer revert-to-prefab and nested-prefab editing for designers. | Should | Partial (override and revert in the editor, no nesting) | #368, #372 |
-| REQ-ECS-14 | Let a placement override a part's state machine and ship an engine prefab for it. | Should | Not started | #280 |
+| REQ-ECS-14 | Let a placement override a part's state machine and ship an engine prefab for it. | Should | Partial (a placement overrides `machine`, #279; no engine prefab) | test: AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing; #280 |
 | REQ-ECS-15 | Publish queued `Added<T>` and `Removed<T>` events instead of immediate C# callbacks. | Should | Not started | #282 |
 | REQ-ECS-16 | Apply a changed prefab to live unmodified instances, by a declared reload policy. | Could | Not started | #287 |
 | REQ-ECS-17 | Run non-conflicting systems in parallel from declared access. | Could | Not started | #288 |
 | REQ-ECS-18 | Cover hierarchy destruction during a query, two worlds with a save, and sleeping-entity references with tests. | Should | Partial | #286 |
-| REQ-ECS-19 | Remove unsaved live entities on load so a load cannot leave strays. | Must | Not started | #278 |
+| REQ-ECS-19 | Remove unsaved live entities on load so a load cannot leave strays. | Must | Done | test: ALoadRemovesTheUnsavedSpawnsItDoesNotName, ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves |
 
 ## 10. Open work
 
 Milestone 2, 4m (World, logic and saves):
-- #278 4m-4 Saves: remove live unsaved entities on load, and the remaining "Limits" (P1)
-- #279 4m-5 Prefabs: nested prefabs, per-placement part overrides, overrides kept across sectors (P1)
 - #280 4m-6 State machines: per-tick actions, nested/parallel states, per-state outputs (P2)
 - #282 4m-8 Events: structural `Added<T>`/`Removed<T>` and `EngineSignals` (P2)
 - #286 4m-12 Tests: hierarchy, multi-world, timers and tweens across a save (P2)
@@ -120,8 +118,6 @@ Milestone 2, 4m (World, logic and saves):
 Milestone 8, 10b (Editor, part 2):
 - #368 10b-3 Inspector: nested objects, lists, and overrides of components the prefab does not name (P1)
 - #372 10b-7 Terrain tools and prefab revert/nesting (P2)
-
-Note on #279: nested prefabs (`children`) and part-level overrides are already built; what remains is keeping overrides and wires across a sector handoff.
 
 ## 11. References
 
