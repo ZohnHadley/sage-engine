@@ -169,3 +169,5 @@ static Sage.Core.ModLoadOrder.Resolve(System.Collections.Generic.IEnumerable<Sag
 static Sage.Core.ModManifest.Load(string! folder) -> Sage.Core.ModManifest!
 static Sage.Core.Vocabulary.ValueFieldName(System.Type! type) -> string?
 static readonly Sage.Core.ModLoadResult.Empty -> Sage.Core.ModLoadResult!
+Sage.Core.FromPlacementAttribute
+Sage.Core.FromPlacementAttribute.FromPlacementAttribute() -> void

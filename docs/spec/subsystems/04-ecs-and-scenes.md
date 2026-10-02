@@ -104,12 +104,11 @@ Content problems are load errors with file and line, never play-time crashes: a 
 | REQ-ECS-16 | Apply a changed prefab to live unmodified instances, by a declared reload policy. | Could | Not started | #287 |
 | REQ-ECS-17 | Run non-conflicting systems in parallel from declared access. | Could | Not started | #288 |
 | REQ-ECS-18 | Cover hierarchy destruction during a query, two worlds with a save, and sleeping-entity references with tests. | Should | Partial | #286 |
-| REQ-ECS-19 | Remove unsaved live entities on load so a load cannot leave strays. | Must | Not started | #278 |
+| REQ-ECS-19 | Remove unsaved live entities on load so a load cannot leave strays. | Must | Done | test: ALoadRemovesTheUnsavedSpawnsItDoesNotName, ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves |
 
 ## 10. Open work
 
 Milestone 2, 4m (World, logic and saves):
-- #278 4m-4 Saves: remove live unsaved entities on load, and the remaining "Limits" (P1)
 - #280 4m-6 State machines: per-tick actions, nested/parallel states, per-state outputs (P2)
 - #282 4m-8 Events: structural `Added<T>`/`Removed<T>` and `EngineSignals` (P2)
 - #286 4m-12 Tests: hierarchy, multi-world, timers and tweens across a save (P2)

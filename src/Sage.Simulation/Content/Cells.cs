@@ -116,7 +116,7 @@ internal static class Cells
         from.Origin(Terrain.SectorSize) - to.Origin(Terrain.SectorSize);
 
     // A saved entry's position moved by `offset`: only a root's, because a child's transform is relative
-    // to its parent (the same rule World.Rebase follows). The transform is always written in full (4i-5),
+    // to its parent (the same rule World.Rebase follows). A root that has a transform has it in full (4i-5),
     // its `LocalPosition` as `[x, y, z]`.
     public static void Shift(JsonObject saved, Vector3 offset)
     {

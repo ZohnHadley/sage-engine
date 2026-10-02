@@ -479,7 +479,11 @@ public static class PrefabExtensions
         // its own would duplicate it (FromParentPrefab, #161); SpawnPlaced derives the children's from this.
         // After the baseline, because the id comes with the cell it was made in (4g-1, InCell), which is not
         // the prefab's: in the baseline it would never be written, and a load would lose it.
-        if (persist && parent.IsNull && record.Persist) world.MakePersistent(entity);
+        if (persist && parent.IsNull)
+        {
+            if (record.Persist) world.MakePersistent(entity);
+            else entity.AddTag<Unsaved>();   // no save names it, so a load takes it away (4m-4)
+        }
 
         if (record.Children.Count == 0) return entity;
         if (depth >= PrefabOverriding.MaxDepth)
