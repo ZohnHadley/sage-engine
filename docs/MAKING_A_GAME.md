@@ -561,7 +561,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `foot_ik` | plants the feet on the ground under them and lowers the hips — `pelvis`, `left`/`right` (`hip`, `knee`, `foot`), `footHeight`, `rayAbove`, `rayBelow`, `maxPelvisDrop`, `weight` (issue #120) |
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
-| `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17) |
+| `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
 | `attributes` | health and the rest, from `attribute` records |
@@ -959,7 +959,7 @@ a named *input* on another entity:
 "OnUse" "!self,Open"                       target,input[,parameter,delay,times]
 ```
 
-Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`,
+Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`, `OnBlocked` (a mover, with what blocked it as the activator),
 `OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
@@ -1804,8 +1804,8 @@ Worth knowing before you plan around it:
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`
   (docs/MODDING.md); there are no code mods, no `.sagemod` zips and no namespaced asset paths yet — two
   mods shipping one texture is reported as a conflict and the later one wins. Those are phase 9.
-- **Saves cover the simulation, not your UI state**, and a mover is a moving static, so a door will not
-  push a player leaning on it.
+- **Saves cover the simulation, not your UI state**, and a mover is a moving static: it pushes a
+  player out of its way and shoves a crate (#260), but it does not carry a rider yet (#261).
 
 ---
 

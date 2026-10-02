@@ -33,15 +33,34 @@ public struct Mover : IComponent
     // door a mapper wants held open by a switch does.
     public float CloseAfter;
     public float HoldRemaining;
+
+    // What it does when something it can't push is in the way (issue #260): a character squeezed against
+    // a wall, or under a lift with the floor beneath it. Firing `OnBlocked` with the blocker as activator
+    // either way.
+    public MoverBlocked OnBlocked;
+    [Transient] public bool Blocked;   // blocked last tick: OnBlocked fires once per blockage, except to crush
 }
 
-// Moves what has to move, and says when it arrives.
+// What a mover does about something it can't push out of the way (issue #260).
+public enum MoverBlocked : byte
+{
+    Reverse,   // go back the way it came: a door that reopens on whoever stands in it (the default)
+    Stop,      // wait where it is, and carry on once the way is clear
+    Crush,     // keep going, firing OnBlocked every tick so a map can wire damage to it
+}
+
+// Moves what has to move, pushes what is in its way, and says when it arrives.
 [System("sage.movers.move", Phase.Gameplay)]
 internal sealed class MoverSystem : ISystem
 {
+    private const float Skin = 0.02f;       // as the character controller's: pushed clear, not just touching
+    private const float RoomSlop = 0.005f;  // overlaps shallower than this are resting contact (the floor)
+
     private readonly World _world;
     private readonly Query<Mover, Transform> _movers;
     private readonly IPhysicsWorld? _space;
+    private readonly OverlapHit[] _hits = new OverlapHit[8];
+    private readonly OverlapHit[] _room = new OverlapHit[1];
 
     public MoverSystem(World world)
     {
@@ -73,6 +92,7 @@ internal sealed class MoverSystem : ISystem
                 }
 
                 float seconds = mover.Seconds <= 0f ? 1f : mover.Seconds;
+                float was = mover.Position;
                 mover.Position = Math.Clamp(mover.Position + mover.Direction * dt / seconds, 0f, 1f);
 
                 var at = mover.Closed + mover.OpenOffset * mover.Position;
@@ -82,7 +102,30 @@ internal sealed class MoverSystem : ISystem
                 // transform: it has to be told, and its broadphase bounds rebuilt with it. Without this
                 // the door opens on screen and stays shut to walk into.
                 if (_space != null && entity.TryGetComponent<PhysicsBody>(out var body))
+                {
                     _space.MoveStatic(body, at);
+
+                    // Then whatever it moved into is pushed out of its way, or it is blocked (issue #260).
+                    Vector3 velocity = mover.OpenOffset * (mover.Direction / seconds);
+                    var blocker = Push(entity, body, velocity);
+                    if (!blocker.IsNull)
+                    {
+                        bool first = !mover.Blocked;
+                        mover.Blocked = true;
+                        if (mover.OnBlocked != MoverBlocked.Crush)
+                        {
+                            // Back where it was this tick: it never went into them.
+                            mover.Position = was;
+                            at = mover.Closed + mover.OpenOffset * was;
+                            transforms[n].LocalPosition = at;
+                            _space.MoveStatic(body, at);
+                            if (mover.OnBlocked == MoverBlocked.Reverse) mover.Direction = (sbyte)-mover.Direction;
+                        }
+                        if (first || mover.OnBlocked == MoverBlocked.Crush) _world.FireOutput(entity, "OnBlocked", blocker);
+                        continue;
+                    }
+                }
+                mover.Blocked = false;
 
                 if (mover.Direction > 0 && mover.Position >= 1f)
                 {
@@ -98,6 +141,63 @@ internal sealed class MoverSystem : ISystem
             }
         }
     }
+
+    // Pushes everything the mover now overlaps out of its way: characters along the way out of the
+    // mover, as far as they have room to go, and dynamic bodies by giving them at least the mover's speed
+    // (the physics step does the rest). Returns the first character that has no room (squeezed against
+    // a wall, or between a lift and the floor), or null when everything was pushed clear.
+    private Entity Push(Entity self, in PhysicsBody mover, Vector3 velocity)
+    {
+        var space = _space!;
+        int count = space.Overlap(mover, _hits);
+        for (int i = 0; i < count; i++)
+        {
+            var hit = _hits[i];
+            var other = hit.Entity;
+            if (other.IsNull) continue;
+            Vector3 away = -hit.Normal;   // the way out for what the mover hit
+
+            if (other.TryGetComponent<CharacterController>(out _))
+            {
+                if (!PushCharacter(other, self, away, hit.Depth)) return other;
+                continue;
+            }
+
+            if (other.TryGetComponent<PhysicsBody>(out var body) && space.IsDynamic(body))
+            {
+                Vector3 current = space.VelocityOf(body);
+                float along = Vector3.Dot(current, away);
+                float wanted = MathF.Max(Vector3.Dot(velocity, away), 0f);
+                if (along < wanted) space.SetVelocity(body, current + away * (wanted - along));
+            }
+        }
+        return default;
+    }
+
+    // Moves a character `depth` (and a skin) along `away`, if it has the room: where it would end up, it
+    // overlaps nothing but the mover. A push is a few centimetres a tick, far less than a capsule, so it
+    // can't skip through a wall; and a sweep wouldn't do, because a character already touching the wall
+    // it is squeezed against starts its sweep inside it and sees nothing. Its body follows at once, so
+    // the next mover this tick sees it where it is now.
+    private bool PushCharacter(Entity character, Entity mover, Vector3 away, float depth)
+    {
+        var space = _space!;
+        ref var transform = ref character.GetComponent<Transform>();
+        var collider = character.GetComponent<Collider>();
+        float distance = depth + Skin;
+        var pose = new Pose { Position = transform.LocalPosition + away * distance, Rotation = Quaternion.Identity, Scale = Vector3.One };
+        int count = space.Overlap(collider, pose, _room, LayerMask.All.Except(collider.Layer), ignore: mover);
+        if (count > 0 && _room[0].Depth > RoomSlop) return false;   // deepest first
+
+        transform.LocalPosition += away * distance;
+        if (character.TryGetComponent<PhysicsBody>(out var body))
+            space.SetPose(body, collider, pose);
+
+        ref var controller = ref character.GetComponent<CharacterController>();
+        float into = Vector3.Dot(controller.Velocity, away);
+        if (into < 0) controller.Velocity -= away * into;
+        return true;
+    }
 }
 
 [Plugin("sage.gameplay.movers", "0.1.0")]
@@ -108,6 +208,7 @@ public sealed class MoverModule : IModule
         var inputs = ctx.Engine.Inputs;
         ctx.Engine.Outputs.Declare("OnFullyOpen", "This mover finished opening.");
         ctx.Engine.Outputs.Declare("OnFullyClosed", "This mover finished closing.");
+        ctx.Engine.Outputs.Declare("OnBlocked", "Something this mover could not push was in its way (the activator).");
 
         // Routed to the mover (issue #91): `Toggle` is a mover's here and a branch's on a logic_branch,
         // and a game may still register a global `Open` for things that are not movers.
@@ -173,12 +274,14 @@ public sealed class MoverPart : IPrefabPart
     public Vector3 Open;               // where "open" is, relative to where it was placed
     public float Seconds = 1f;
     public float CloseAfter;           // > 0: shuts itself this long after opening
+    public MoverBlocked OnBlocked;     // "Reverse" (default), "Stop" or "Crush", when something can't be pushed
 
     public void Apply(in PrefabPartContext ctx) => ctx.World.Add(ctx.Entity, new Mover
     {
         OpenOffset = Open,
         Seconds = Seconds <= 0f ? 1f : Seconds,
         CloseAfter = CloseAfter,
+        OnBlocked = OnBlocked,
         Closed = ctx.Entity.GetComponent<Transform>().LocalPosition,
     });
 }

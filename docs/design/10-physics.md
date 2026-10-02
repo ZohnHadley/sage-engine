@@ -149,6 +149,10 @@ public struct Collider : IComponent
     // when the static is removed (F16 — until then the list of engine-built shapes was write-only, and
     // every terrain sector leaked one). A mover pushes its static's pose with MoveStatic, because a
     // static does not follow a transform (tests: EveryBrushBecomesOneStaticHull, OpeningADoorMovesWhatYouWalkInto).
+    // Then it asks Overlap(body) what it moved into (issue #260): a character is pushed along the way out
+    // if, there, it would overlap nothing but the mover, and a dynamic body gets at least the mover's
+    // speed; a character with no room blocks it, and the mover goes back, stops or crushes
+    // (Mover.OnBlocked), firing OnBlocked (test: ADoorThatCannotPushACharacterReopensAndSaysWhoBlockedIt).
     public static Collider Box(Vector3 size, byte layer = 0);
     public static Collider Standing(float radius, float totalHeight, byte layer = 0);   // stands on the origin
 }

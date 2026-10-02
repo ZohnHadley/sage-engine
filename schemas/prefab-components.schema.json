@@ -3877,6 +3877,21 @@
           "description": "(float, default 0)",
           "default": 0,
           "type": "number"
+        },
+        "onBlocked": {
+          "description": "(MoverBlocked, default \"Reverse\")",
+          "default": "Reverse",
+          "type": "string",
+          "enum": [
+            "Reverse",
+            "Stop",
+            "Crush"
+          ]
+        },
+        "blocked": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

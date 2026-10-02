@@ -153,6 +153,11 @@ public interface IPhysicsWorld
     int Overlap(in Collider shape, in Pose at, Span<OverlapHit> results, LayerMask mask = default,
                 bool includeTriggers = false, Entity ignore = default);
 
+    // The same for a body or static already in the space, where it is now: what a mover has just moved
+    // into (issue #260). Normal is the way out for `body`, so the way out for what it hit is -Normal. The
+    // body's own entity is left out.
+    int Overlap(in PhysicsBody body, Span<OverlapHit> results, LayerMask mask = default, bool includeTriggers = false);
+
     // ---- Events (read in PostPhysics; valid until the next step) --------------------------------
 
     // Trigger volumes entered and left during the last step.
