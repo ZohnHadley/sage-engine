@@ -71,5 +71,23 @@
     "parts": {
       "math_remap": { "inMin": 0, "inMax": 1, "outMin": 0, "outMax": 1, "clamp": true }
     }
+  },
+
+  // A state machine on its own (issue #280): a sequence's steps, a level's alarm. The part names no
+  // machine, so a placement says which, with the machine's full id (a bare one would be read in sage:):
+  //
+  //   scene:  { "prefab": "sage:logic_state_machine", "name": "alarm",
+  //             "overrides": { "parts": { "state_machine": { "machine": "game:alarm" } } },
+  //             "outputs": [ { "output": "OnEnterRinging", "target": "siren", "input": "Open" } ] }
+  //   .map:   "classname" "sage:logic_state_machine"   "targetname" "alarm"   "state_machine.machine" "game:alarm"
+  //
+  // SetState <state> and the `on` names its transitions listen for → OnStateChanged, OnEnter<state>, OnExit<state>.
+  {
+    "type": "prefab",
+    "id": "logic_state_machine",
+    "name": "logic state machine",
+    "parts": {
+      "state_machine": { }
+    }
   }
 ]
