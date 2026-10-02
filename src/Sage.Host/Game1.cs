@@ -57,6 +57,7 @@ public class Game1 : Game
     // -edit [placements-or-scene] (issue #219): null in a game run; "" opens the game's start scene. Its
     // world is an edit world, nothing in it is simulated, and the free camera has the screen.
     private readonly string? edit;
+    private bool followingWindow;       // OnClientSizeChanged is writing vid_width / vid_height
     private bool Editing => edit != null;
 #if SAGE_DEV
     private World PlayerWorld => dev.PlayWorld ?? world;
@@ -112,6 +113,11 @@ public class Game1 : Game
         hostCVars.VSync.Changed += _ => ApplyVSync();
         hostCVars.Width.Changed += _ => ApplyWindowSize();
         hostCVars.Height.Changed += _ => ApplyWindowSize();
+        // The window can be resized by dragging its edges (or maximised), in a game and in the editor:
+        // the back buffer follows, and everything that draws reads its size every frame (the views,
+        // the UI, ImGui), so nothing else has to be told.
+        Window.AllowUserResizing = true;
+        Window.ClientSizeChanged += (_, _) => OnClientSizeChanged();
         recHotReload = cvars.Register("rec_hotreload", engine.Core.Developer.Value >= 1, CVarFlags.DevOnly,
             "Reload record files (data/**/*.json) when they change on disk.");
 
@@ -228,12 +234,34 @@ public class Game1 : Game
     // takes its aspect from its own viewport, 06 §3.4a).
     private void ApplyWindowSize()
     {
+        if (followingWindow) return;   // the cvars are being written from the window's own size
         int width = hostCVars.Width.Value, height = hostCVars.Height.Value;
         if (graphics.PreferredBackBufferWidth == width && graphics.PreferredBackBufferHeight == height) return;
         graphics.PreferredBackBufferWidth = width;
         graphics.PreferredBackBufferHeight = height;
         graphics.ApplyChanges();
         Log.Info(LogCat.Render, $"Window {width}x{height}");
+    }
+
+    // The player dragged the window to a new size: the back buffer takes it, and `vid_width` / `vid_height`
+    // record it (Archive, so the next run opens at the size this one closed at). A minimised window
+    // reports 0x0 and keeps its buffer; a size below the cvars' range is drawn at, but saved clamped.
+    private void OnClientSizeChanged()
+    {
+        var bounds = Window.ClientBounds;
+        if (followingWindow || bounds.Width <= 0 || bounds.Height <= 0) return;
+        if (graphics.PreferredBackBufferWidth == bounds.Width && graphics.PreferredBackBufferHeight == bounds.Height) return;
+        followingWindow = true;
+        try
+        {
+            graphics.PreferredBackBufferWidth = bounds.Width;
+            graphics.PreferredBackBufferHeight = bounds.Height;
+            graphics.ApplyChanges();
+            hostCVars.Width.Value = Math.Clamp(bounds.Width, HostCVars.MinWidth, HostCVars.MaxWidth);
+            hostCVars.Height.Value = Math.Clamp(bounds.Height, HostCVars.MinHeight, HostCVars.MaxHeight);
+        }
+        finally { followingWindow = false; }
+        Log.Info(LogCat.Render, $"Window resized to {bounds.Width}x{bounds.Height}");
     }
 
     protected override void LoadContent()
