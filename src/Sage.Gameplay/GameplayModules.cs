@@ -414,6 +414,7 @@ public sealed class AIModule : IModule
     private CVar<float>? _navCell;
     private CVar<int>? _navNodes;
     private CVar<int>? _navPlans;
+    private CVar<bool>? _navMesh;
     private CVar<int>? _offscreenBudget;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(CombatModule) };
@@ -448,6 +449,26 @@ public sealed class AIModule : IModule
             "Cells one search may look at before giving up, so a sealed room costs a known amount.", 64, 9216);
         _navPlans = ctx.Engine.CVars.Register("nav_plans", 4, CVarFlags.Cheat,
             "Plans allowed per tick across every creature; the rest wait a tick.", 1, 64);
+        // The navmesh (#264): baked from brush floors, terrain and static colliders as creatures need it.
+        // Off, every plan is the local grid's, which does not see brushes.
+        _navMesh = ctx.Engine.CVars.Register("nav_mesh", true, CVarFlags.Cheat,
+            "Plan on the navmesh baked from brushes, terrain and static colliders; off, only the local grid (#264).");
+        var navEngine = ctx.Engine;
+        ctx.Engine.CVars.RegisterCommand("nav_rebuild", CVarFlags.None,
+            "Drop every baked navmesh tile; they are baked again from what is there now, as creatures need them.", _ =>
+        {
+            foreach (var world in navEngine.Worlds)
+                if (world.Resources.TryGet<Navigation>(out var nav) && nav != null)
+                {
+                    int tiles = nav.Mesh.TileCount;
+                    nav.Rebuild();
+                    Log.Info(LogCat.Console, $"'{world.Name}': {tiles} navmesh tile(s) dropped");
+                }
+        });
+        // A level's markers a body cannot get to (#264), found by baking its brushes at load: `sage
+        // validate` says so at the marker's line.
+        var navRecords = _records;
+        _records.AddCheck<MapRecord>((map, check) => NavMeshChecks.Map(navRecords, ctx.Engine, map, check));
 
         // Off-screen simulation (issue 4g-6): how much of it a tick may do while catching up with the clock.
         _offscreenBudget = ctx.Engine.CVars.Register("offscreen_budget", OffscreenSystem.DefaultBudget, CVarFlags.Archive,
@@ -478,9 +499,10 @@ public sealed class AIModule : IModule
             {
                 if (!world.Resources.TryGet<Navigation>(out var nav) || nav == null) continue;
                 Log.Info(LogCat.Console,
-                    $"'{world.Name}': {nav.Plans} plans, {nav.Refused} over budget, {nav.NoRoute} with no way " +
-                    $"through; last grid {nav.Grid.Width}x{nav.Grid.Height} cells of {nav.Grid.CellSize:F2} m, " +
-                    $"{nav.Grid.BlockedCells()} blocked, {nav.Grid.LastNodes} nodes searched");
+                    $"'{world.Name}': {nav.Plans} plans ({nav.MeshPlans} on the navmesh, {nav.GridPlans} on the grid), " +
+                    $"{nav.Refused} over budget, {nav.NoRoute} with no way through; navmesh {nav.Mesh.TileCount} tile(s), " +
+                    $"{nav.Mesh.Baked} baked, {nav.Mesh.LastNodes} nodes last search; last grid {nav.Grid.Width}x{nav.Grid.Height} " +
+                    $"cells of {nav.Grid.CellSize:F2} m, {nav.Grid.BlockedCells()} blocked, {nav.Grid.LastNodes} nodes searched");
                 nav.ResetStats();
                 nav.Grid.ResetStats();
             }
@@ -528,19 +550,20 @@ public sealed class AIModule : IModule
             CellSize = _navCell!.Value,
             MaxNodes = _navNodes!.Value,
             PlansPerTick = _navPlans!.Value,
+            UseMesh = _navMesh!.Value,
         });
         world.AddSystem(new AIDebugSystem(world, _records!, _aiDebug!));   // 16 §11
         // Off-screen simulation (issue 4g-6): the saved table of agents, and what steps it.
         world.Resources.Add(new OffscreenAgents());
         world.AddSystem(new OffscreenSystem(world, _records!, _offscreenBudget));
-        world.AddSystem(new NavDebugSystem(world, _navEnabled!, _navDebug!, _navCell!, _navNodes!, _navPlans!));
+        world.AddSystem(new NavDebugSystem(world, _navEnabled!, _navDebug!, _navCell!, _navNodes!, _navPlans!, _navMesh!));
     }
 }
 
 // Keeps navigation's settings in step with the cvars, and draws what the last search saw (16 §3.4, F23).
 //
 // A system rather than `Changed` handlers because there is one `Navigation` per world and several cvars:
-// copying four numbers once a tick is cheaper than four subscriptions per world that have to be undone
+// copying five values once a tick is cheaper than five subscriptions per world that have to be undone
 // when the world goes.
 [System("sage.ai.nav_debug", Phase.Late)]
 internal sealed class NavDebugSystem : ISystem
@@ -548,16 +571,18 @@ internal sealed class NavDebugSystem : ISystem
     private readonly Navigation _nav;
     private readonly DebugDraw _draw;
     private readonly Query<Transform, AIState> _agents;
-    private readonly CVar<bool> _enabled, _debug;
+    private readonly CVar<bool> _enabled, _debug, _mesh;
     private readonly CVar<float> _cell;
     private readonly CVar<int> _nodes, _plans;
-    private bool _wasEnabled;
+    private bool _wasEnabled, _wasMesh;
     private float _wasCell;
     private int _wasNodes, _wasPlans;
 
     public NavDebugSystem(World world, CVar<bool> enabled, CVar<bool> debug,
-                          CVar<float> cell, CVar<int> nodes, CVar<int> plans)
+                          CVar<float> cell, CVar<int> nodes, CVar<int> plans, CVar<bool> mesh)
     {
+        _mesh = mesh;
+        _wasMesh = mesh.Value;
         _nav = world.Resources.Get<Navigation>();
         _draw = world.Resources.Get<DebugDraw>();
         _agents = world.Query<Transform, AIState>();
@@ -574,7 +599,7 @@ internal sealed class NavDebugSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        // **Only what changed.** Copying all four every tick would silently undo anything that set them
+        // **Only what changed.** Copying all five every tick would silently undo anything that set them
         // in code — a game tuning its own creatures, or a test asking for a budget of two — and the loser
         // of that argument is always the one who cannot see the assignment. A cvar wins when somebody
         // moves it, which is when it is expressing an intent.
@@ -582,6 +607,7 @@ internal sealed class NavDebugSystem : ISystem
         if (_cell.Value != _wasCell) _nav.CellSize = _wasCell = _cell.Value;
         if (_nodes.Value != _wasNodes) _nav.MaxNodes = _wasNodes = _nodes.Value;
         if (_plans.Value != _wasPlans) _nav.PlansPerTick = _wasPlans = _plans.Value;
+        if (_mesh.Value != _wasMesh) _nav.UseMesh = _wasMesh = _mesh.Value;
         if (!_debug.Value) return;
 
         _nav.DrawLastGrid(_draw);

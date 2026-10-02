@@ -31,6 +31,15 @@ public sealed class MovementProfileRecord
     public float GroundSnap = 0.35f;        // how far it sticks to the ground when walking downhill
     public float EyeOffset = -0.18f;        // eye height relative to the top of the capsule
 
+    // Swimming (issue #262), in a water volume. Depths are fractions of StandHeight under the surface,
+    // so a tall creature and a short one swim at the same point of their bodies.
+    public float SwimSpeed = 3f;            // m/s, in any direction (where it looks, plus Jump up / Crouch down)
+    public float SwimAcceleration = 10f;    // m/s² toward the wished velocity in water
+    public float SwimDepth = 0.6f;          // swims once this much of it is under; below it, it wades
+    public float SwimFloatDepth = 0.75f;    // how much of it is under when it floats at rest
+    public float SwimRise = 1f;             // m/s it drifts up toward the surface with no input; 0 = neutral
+    public float SwimClimbHeight = 1.7f;    // how far above its feet a ledge may be to climb out onto it
+
     // The values above, for when the record is missing: one shared instance, so the controller and the
     // camera can never disagree about a default (review #43).
     public static readonly MovementProfileRecord Fallback = new();
@@ -55,6 +64,23 @@ public struct CharacterController : IComponent
     [Transient] public Vector3 GroundVelocity;   // how fast what it stands on moves (a lift, issue #261): it is carried along
     [Property(Tooltip = "Crouched: the capsule is the profile's crouch height")]
     public bool Crouching;
+    // On a ladder (issue #263). Not saved: a character loaded inside a ladder volume in mid-air catches it
+    // again on its first tick, so a save mid-climb still loads on the ladder.
+    [Transient] public bool Climbing;
+    [Transient] public bool LetGo;   // jumped off a ladder: no ladder catches it until it leaves the volume or lands
+
+    // Water (issue #262). InWater and UnderwaterSeconds are saved, so a load does not fire OnEnterWater
+    // again or give a diver a fresh breath; the rest is derived every tick.
+    [Property(Tooltip = "Its feet are in a water volume (set by the controller)")]
+    public bool InWater;
+    [Transient] public bool Swimming;       // deep enough to swim: SwimDepth of it under
+    [Transient] public bool Underwater;     // its eyes are under the surface
+    [Transient] public float Immersion;     // how much of it is under, 0 (dry) to 1 (submerged)
+    [Transient] public Entity Water;        // the water volume it is in
+    // The breath hook: how long its eyes have been under, 0 once they are out. Gameplay decides what
+    // that costs (a breath meter, drowning damage, a spell that lets it breathe); the engine only counts.
+    [Property(Unit = "s", Tooltip = "Seconds its eyes have been under water; 0 in air")]
+    public float UnderwaterSeconds;
 
     // The layer is required: it is both what the character collides as and what its sweeps ignore, so
     // a default here would silently disagree with the entity's Collider (review #43). World.AddCharacter

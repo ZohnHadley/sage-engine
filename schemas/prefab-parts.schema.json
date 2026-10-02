@@ -203,6 +203,14 @@
         }
       ]
     },
+    "ladder": {
+      "description": "Prefab part 'ladder' (LadderPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ladder"
+        }
+      ]
+    },
     "light": {
       "description": "Prefab part 'light' (LightPart).",
       "allOf": [
@@ -408,6 +416,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/viewmodel"
+        }
+      ]
+    },
+    "water": {
+      "description": "Prefab part 'water' (WaterPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/water"
         }
       ]
     }
@@ -1257,6 +1273,27 @@
       "additionalProperties": false,
       "description": "Prefab part 'joint' (JointPart)."
     },
+    "ladder": {
+      "type": "object",
+      "properties": {
+        "facing": {
+          "description": "Which way the climbable side faces, as a yaw on top of the entity's own. Unit: deg. Range: -360 to 360. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "speed": {
+          "description": "Climbing speed; 0 = the default (2.5 m/s) Unit: m/s. Range: 0 to 20. (float, default 2.5)",
+          "default": 2.5,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 20
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'ladder' (LadderPart)."
+    },
     "light": {
       "type": "object",
       "properties": {
@@ -2104,6 +2141,54 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'viewmodel' (ViewmodelPart)."
+    },
+    "water": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "Full extents of the box, centred on the entity; its top face is the surface. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "drag": {
+          "description": "How fast the water slows what moves through it. Unit: 1/s. At least 0. (float, default 2)",
+          "default": 2,
+          "type": "number",
+          "minimum": 0
+        },
+        "buoyancy": {
+          "description": "Lift on a fully submerged body as a multiple of its weight: 2 floats a crate half under. At least 0. (float, default 2)",
+          "default": 2,
+          "type": "number",
+          "minimum": 0
+        },
+        "current": {
+          "description": "The water's flow. Unit: m/s. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'water' (WaterPart)."
     }
   }
 }

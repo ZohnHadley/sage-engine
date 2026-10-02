@@ -419,6 +419,8 @@ static Sage.Gameplay.ShotRandom.Value(long tick, int entity, uint shot, uint sal
 static Sage.Gameplay.Spread.ConeOf(Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Gameplay.SpreadRecord! spread) -> float
 static Sage.Gameplay.Spread.Deflect(System.Numerics.Vector3 aim, float coneRadians, long tick, int entity, uint shot, int pellet) -> System.Numerics.Vector3
 Sage.Gameplay.LightPart.Off -> bool
+Sage.Gameplay.Navigation.UseMesh.get -> bool
+Sage.Gameplay.Navigation.UseMesh.set -> void
 Sage.Gameplay.Mover.Blocked -> bool
 Sage.Gameplay.Mover.OnBlocked -> Sage.Gameplay.MoverBlocked
 Sage.Gameplay.MoverBlocked

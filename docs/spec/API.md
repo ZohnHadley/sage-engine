@@ -536,7 +536,6 @@ can. Neither should surface as a crash in play.
 | Keyed list merge, `"$remove"` and `"replace": true` in patches (#399 9-4) | Lists of objects with a key merge by key; per-key conflicts | Phase 9 |
 | UI actions from data: a button names a UI action or console command (#347 4q-10) | Screens work without C# `Activated` handlers | 4q |
 | Queued structural events and engine signals (#282 4m-8) | `Added<T>`/`Removed<T>` readable by cursor | 4m |
-| Physics events on the bus (#269 4l-11) | `TriggerEntered`, `TriggerExited`, `Collided` as game events | 4l |
 | Render pass replacement and disabling by id (#322 4n-18) | `sage:` passes become replaceable | 4n |
 | First tagged release and Shipped freeze (#295 R1-3) | Version numbers stop being pre-releases | R1 |
 

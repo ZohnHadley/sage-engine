@@ -405,7 +405,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows |
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
-| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step; `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues, a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
+| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming; `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues, a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
@@ -552,7 +552,8 @@ block calls these, which is the usual way, because a part does the assembling fo
 |---|---|
 | `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end), `surface` (a `physics_material`: what it is made of, issue #270) |
 | `joint` | a joint from this (dynamic) body to another entity's, its parent's or the world's, in data (issue #245) — `kind` (Ball/Hinge/Fixed/Distance), `target` (an entity name; empty = the parent if it has a body, else the world), `anchor` (in this entity's space), `targetAnchor` (optional; default: the same point, where they stand), `axis`, `swing`, `twistMin`/`twistMax`, `min`/`max` (a hinge's range), `minDistance`/`maxDistance` (degrees and metres), `breakForce`, `drag`; the `Break` input and the `OnBreak` output (SAGE0134) |
-| `character` | the kinematic character controller, and with it the ability to walk |
+| `character` | the kinematic character controller, and with it the ability to walk (and to swim, in water) |
+| `water` | a box of water things float and characters swim in — `size` (full extents, centred on the entity; the top face is the surface), `drag` (2, per second), `buoyancy` (2: lift on a submerged body as a multiple of its weight, so a crate floats half under), `current` (m/s); the `OnEnterWater` / `OnExitWater` outputs (issue #262; design/10 "As built (water and swimming)") |
 | `sprite` | a billboard sprite from a `sprite_sheet` — `sheet`, `material`, `size`, `animation` (a clip to loop), or `graph` (an `anim_graph` whose clips are the sheet's: combat's trigger and `hit` event work through it, issue #119) |
 | `skinned_mesh` | a skinned model, bent by its joints on the GPU — `mesh` (a `.glb` with a skin), `material` (empty: `sage:lit_default`; its effect needs a `Skinned` technique), `layer` (issue #117) |
 | `animator` | plays an `anim_graph` on a skinned model's skeleton — `graph`, `model` (a skinned `.glb`; left out, the `skinned_mesh` part's `mesh`) (issue #118; §5 "Animation graphs") |
@@ -564,6 +565,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260) |
+| `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
 | `attributes` | health and the rest, from `attribute` records |
@@ -968,6 +970,9 @@ In the editor:
 - **Brushes with a classname become a solid entity** — a door, a lift, a trigger volume — which is an
   ordinary entity that owns its geometry. Give it a prefab with a `mover` part and it moves.
 - **`"trigger" "1"`** makes its volume something you walk into rather than against, and it is not drawn.
+- **A ladder** is a `"trigger" "1"` brush entity whose prefab has a `ladder` part, drawn as the space in
+  front of the rungs from the floor to the ledge's top: `"classname" "ladder"`, `"trigger" "1"`,
+  `"ladder.facing" "180"` (issue #263).
 
 **Wiring** is what makes a level do anything. An entity fires a named *output*; you wire it in the map to
 a named *input* on another entity:
@@ -979,7 +984,7 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`, `OnBlocked` (a mover, with what blocked it as the activator),
-`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
+`OnCameraOn` / `OnCameraOff`, `OnEnterWater` / `OnExitWater` (a character and the water it went into), `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
 `TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState`, a light's `TurnOn` / `TurnOff` / `Toggle`, the logic entities' and gameplay's
@@ -1280,6 +1285,18 @@ var mask = LayerMask.All.Except(physics.Layers.Enemy);             // layers by 
 var hit = physics.Raycast(eye, aim, 30f, mask, ignore: self);      // `ignore`: leave the asker out
 var swing = physics.Sweep(Collider.Sphere(0.3f), pose, aim, 2f, ignore: self);   // starts inside? Distance 0
 foreach (var touch in physics.TriggerEnter) { /* PostPhysics: who entered which trigger */ }
+int n = physics.RaycastAll(eye, aim, 30f, hits, mask);             // every hit, nearest first
+int near = physics.OverlapSphere(blast, 4f, overlaps);              // what a sphere really touches
+```
+
+The same trigger and contact facts arrive on the event bus (issue #269), so a system reads them in code
+with a cursor instead of wiring entity I/O: `TriggerEntered`, `TriggerExited`, `Collided` (with
+`Impulse` in N·s and `Speed` in m/s: an impact sound's volume, fall damage) and `CollisionEnded`.
+
+```csharp
+_hits = world.Events.Reader<Collided>(this);                        // in the constructor
+foreach (ref readonly var hit in _hits.Read())                      // in Run
+    if (hit.Impulse > 5f) PlayThud(hit.Point, hit.Impulse);
 ```
 
 A sweep that starts inside something hits it at distance 0 (`StartsInside`), which is what a swing

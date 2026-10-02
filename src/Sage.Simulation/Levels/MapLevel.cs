@@ -91,6 +91,23 @@ public sealed class MapLevel
     // How its coordinates were read, kept so the entities it spawns convert the same way its brushes did.
     internal MapSpace Space;
 
+    // Brushes that enclosed nothing and were left out, for the load's log line.
+    internal int Skipped;
+
+    // Reads a level's file and builds its brushes without putting it in a world: for a content check that
+    // needs the geometry, such as the navmesh's unreachable markers (#264). Says nothing and returns null
+    // when the file cannot be read or parsed; the level's own load says why.
+    public static MapLevel? Read(Engine engine, RecordId id, MapRecord record) =>
+        MapLoader.Read(engine, id, record, quiet: true);
+
+    // Where a point entity stands relative to the level's own origin, in metres: its `origin` key through
+    // the level's `MapSpace`. Add `Position` for where it is in the world once the level is placed.
+    public Vector3 LocalPositionOf(MapEntity entity)
+    {
+        entity.TryGetVector("origin", out var origin);
+        return Space.ToEngine(origin);
+    }
+
     // Built once by each half, the way a terrain sector is.
     public bool CollisionBuilt;
     public bool MeshBuilt;
@@ -240,10 +257,42 @@ internal static class MapLoader
             return null;
         }
 
-        var path = record.File.Path;
-        if (engine.Vfs.Which(path) is not { } mount)
+        if (Read(engine, id, record, quiet: false) is not { } level) return null;
+
+        if (world.Resources.TryGet<MapLevels>(out var already) && already != null)
+            foreach (var loaded in already.Loaded)
+                if (loaded.Record == id)
+                {
+                    // A level's position comes from its record, so loading one twice puts two copies in
+                    // exactly the same place: every surface z-fighting with itself and two hulls to walk
+                    // into. `map_load` after a `map_unload` is the intended use; `map_load` twice is a
+                    // mistake, and it is cheaper to say so than to debug what it looks like.
+                    Log.Warn(LogCat.Level, $"Map '{id}' is already loaded (map_unload first)");
+                    return null;
+                }
+
+        if (!world.Resources.TryGet<MapLevels>(out var levels) || levels == null)
         {
-            Log.Error(LogCat.Level, $"Map '{id}': '{path}' is not in any mount");
+            // The module is a default one, so a game can switch it off in `game.json`. Saying so beats
+            // throwing out of a scene load.
+            Log.Error(LogCat.Level, $"Map '{id}': this world has no MapLevels resource (is MapModule disabled?)");
+            return null;
+        }
+        levels.Add(level);
+        Log.Info(LogCat.Level, $"Loaded {level.Source}: {level.Brushes.Count} brushes, {level.FaceCount} faces, "
+                             + $"{level.PointEntities.Count} entities{(level.Skipped > 0 ? $", {level.Skipped} brush(es) skipped" : "")}");
+        return level;
+    }
+
+    // Reads and builds a `.map` record without putting it in any world: what `Load` does first, and what a
+    // content check that needs the geometry (the navmesh's unreachable markers, #264) reads. `quiet`
+    // leaves the reasons to the level's own load, so a check does not say them a second time.
+    public static MapLevel? Read(Engine engine, RecordId id, MapRecord record, bool quiet)
+    {
+        var path = record.File.Path;
+        if (record.File.IsEmpty || engine.Vfs.Which(path) is not { } mount)
+        {
+            if (!quiet) Log.Error(LogCat.Level, $"Map '{id}': '{path}' is not in any mount");
             return null;
         }
 
@@ -257,13 +306,13 @@ internal static class MapLoader
         }
         catch (IOException ex)
         {
-            Log.Error(LogCat.Level, $"Map '{id}': {source} could not be read: {ex.Message}");
+            if (!quiet) Log.Error(LogCat.Level, $"Map '{id}': {source} could not be read: {ex.Message}");
             return null;
         }
 
         if (!MapFile.TryParse(text, out var file, out string error))
         {
-            Log.Error(LogCat.Level, $"Map '{id}': {source}:{error}");
+            if (!quiet) Log.Error(LogCat.Level, $"Map '{id}': {source}:{error}");
             return null;
         }
 
@@ -278,7 +327,7 @@ internal static class MapLoader
         var worldspawnBrushes = file.Worldspawn?.Brushes;
         if (worldspawnBrushes != null)
         {
-            brushes = BrushGeometry.Build(worldspawnBrushes, space, out skipped);
+            brushes = BrushGeometry.Build(worldspawnBrushes, space, out skipped, quiet);
         }
 
         var points = new List<MapEntity>();
@@ -293,11 +342,11 @@ internal static class MapLoader
             // mapper set one (TrenchBroom writes one for a rotating door's hinge), otherwise the middle
             // of the brushes themselves, which is what a mapper means by "the door" when they have not
             // said otherwise.
-            var built = BrushGeometry.Build(entity.Brushes, space, out int entitySkipped);
+            var built = BrushGeometry.Build(entity.Brushes, space, out int entitySkipped, quiet);
             skipped += entitySkipped;
             if (built.Count == 0)
             {
-                Log.Warn(LogCat.Level, $"{source}: '{entity.ClassName}' (line {entity.Line}) has no geometry left");
+                if (!quiet) Log.Warn(LogCat.Level, $"{source}: '{entity.ClassName}' (line {entity.Line}) has no geometry left");
                 continue;
             }
 
@@ -337,7 +386,7 @@ internal static class MapLoader
             });
         }
 
-        var level = new MapLevel
+        return new MapLevel
         {
             Record = id,
             Source = source,
@@ -349,33 +398,9 @@ internal static class MapLoader
             At = record.At,
             OnTerrain = record.OnTerrain,
             Surface = record.Surface,
+            Space = space,
+            Skipped = skipped,
         };
-
-        if (world.Resources.TryGet<MapLevels>(out var already) && already != null)
-            foreach (var loaded in already.Loaded)
-                if (loaded.Record == id)
-                {
-                    // A level's position comes from its record, so loading one twice puts two copies in
-                    // exactly the same place: every surface z-fighting with itself and two hulls to walk
-                    // into. `map_load` after a `map_unload` is the intended use; `map_load` twice is a
-                    // mistake, and it is cheaper to say so than to debug what it looks like.
-                    Log.Warn(LogCat.Level, $"Map '{id}' is already loaded (map_unload first)");
-                    return null;
-                }
-
-        if (!world.Resources.TryGet<MapLevels>(out var levels) || levels == null)
-        {
-            // The module is a default one, so a game can switch it off in `game.json`. Saying so beats
-            // throwing out of a scene load.
-            Log.Error(LogCat.Level, $"Map '{id}': this world has no MapLevels resource (is MapModule disabled?)");
-            return null;
-        }
-        levels.Add(level);
-        Log.Info(LogCat.Level, $"Loaded {source}: {brushes.Count} brushes, {level.FaceCount} faces, "
-                             + $"{points.Count} entities{(skipped > 0 ? $", {skipped} brush(es) skipped" : "")}");
-
-        level.Space = space;
-        return level;
     }
 
     // Absolute metres to origin space (R6), optionally standing on the ground — the same conversion a
@@ -610,6 +635,10 @@ internal static class MapLoader
             world.Add(entity, body);
             MapSurfaces.Give(world, level, body, solid.Brushes);   // issue #270
         }
+
+        // A ladder is climbed from inside its volume (issue #263); a solid one is a wall with rungs drawn on.
+        if (!solid.IsTrigger && entity.HasComponent<Ladder>())
+            Log.Warn(LogCat.Level, $"{where}: '{className}' is a ladder but not a trigger; add \"trigger\" \"1\" to climb it");
 
         solid.Spawned = entity;
         spawned++;

@@ -18,6 +18,7 @@ const Sage.Simulation.FirstPersonRigSystem.Id = "sage.camera.first_person" -> st
 const Sage.Simulation.FogMath.Invisible = 0.001953125 -> float
 const Sage.Simulation.JointDesc.DefaultDamping = 1 -> float
 const Sage.Simulation.JointDesc.DefaultStiffness = 30 -> float
+const Sage.Simulation.Ladder.DefaultSpeed = 2.5 -> float
 const Sage.Simulation.LogicEntities.OnChanged = "OnChanged" -> string!
 const Sage.Simulation.LogicEntities.OnEqual = "OnEqual" -> string!
 const Sage.Simulation.LogicEntities.OnFalse = "OnFalse" -> string!
@@ -365,12 +366,44 @@ Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> b
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
 Sage.Simulation.CellContent
+Sage.Simulation.CharacterController.Immersion -> float
+Sage.Simulation.CharacterController.InWater -> bool
+Sage.Simulation.CharacterController.Swimming -> bool
+Sage.Simulation.CharacterController.Underwater -> bool
+Sage.Simulation.CharacterController.UnderwaterSeconds -> float
+Sage.Simulation.CharacterController.Water -> Sage.Simulation.Entity
+Sage.Simulation.CharacterController.Climbing -> bool
+Sage.Simulation.CharacterController.LetGo -> bool
 Sage.Simulation.ClipEvent
 Sage.Simulation.ClipEvent.ClipEvent() -> void
 Sage.Simulation.ClipEvent.ClipEvent(float time, string! name) -> void
 Sage.Simulation.ClipEvent.Name.get -> string!
 Sage.Simulation.ClipEvent.Time.get -> float
 Sage.Simulation.Collider.Surface -> Sage.Core.RecordId
+Sage.Simulation.Collided
+Sage.Simulation.Collided.A.get -> Sage.Simulation.Entity
+Sage.Simulation.Collided.A.init -> void
+Sage.Simulation.Collided.B.get -> Sage.Simulation.Entity
+Sage.Simulation.Collided.B.init -> void
+Sage.Simulation.Collided.Collided() -> void
+Sage.Simulation.Collided.Collided(Sage.Simulation.Entity A, Sage.Simulation.Entity B, System.Numerics.Vector3 Point, System.Numerics.Vector3 Normal, float Impulse, float Speed) -> void
+Sage.Simulation.Collided.Impulse.get -> float
+Sage.Simulation.Collided.Impulse.init -> void
+Sage.Simulation.Collided.Normal.get -> System.Numerics.Vector3
+Sage.Simulation.Collided.Normal.init -> void
+Sage.Simulation.Collided.OtherThan(Sage.Simulation.Entity self) -> Sage.Simulation.Entity
+Sage.Simulation.Collided.Point.get -> System.Numerics.Vector3
+Sage.Simulation.Collided.Point.init -> void
+Sage.Simulation.Collided.Speed.get -> float
+Sage.Simulation.Collided.Speed.init -> void
+Sage.Simulation.CollisionEnded
+Sage.Simulation.CollisionEnded.A.get -> Sage.Simulation.Entity
+Sage.Simulation.CollisionEnded.A.init -> void
+Sage.Simulation.CollisionEnded.B.get -> Sage.Simulation.Entity
+Sage.Simulation.CollisionEnded.B.init -> void
+Sage.Simulation.CollisionEnded.CollisionEnded() -> void
+Sage.Simulation.CollisionEnded.CollisionEnded(Sage.Simulation.Entity A, Sage.Simulation.Entity B) -> void
+Sage.Simulation.CollisionEnded.OtherThan(Sage.Simulation.Entity self) -> Sage.Simulation.Entity
 Sage.Simulation.ConditionAttribute
 Sage.Simulation.ConditionAttribute.ConditionAttribute(string! id) -> void
 Sage.Simulation.ConditionContext
@@ -385,6 +418,10 @@ Sage.Simulation.ConditionContext.World.get -> Sage.Simulation.World!
 Sage.Simulation.ConditionContext.World.init -> void
 Sage.Simulation.Conditions
 Sage.Simulation.Connection.Requires -> Sage.Simulation.ICondition?
+Sage.Simulation.ContactEvent.Impulse.get -> float
+Sage.Simulation.ContactEvent.Impulse.init -> void
+Sage.Simulation.ContactEvent.Speed.get -> float
+Sage.Simulation.ContactEvent.Speed.init -> void
 Sage.Simulation.DebugCamera
 Sage.Simulation.Ease
 Sage.Simulation.Ease.BackIn = 19 -> Sage.Simulation.Ease
@@ -490,6 +527,8 @@ Sage.Simulation.IPhysicsWorld.GroupOf(in Sage.Simulation.PhysicsBody body) -> in
 Sage.Simulation.IPhysicsWorld.JointBroken.get -> System.ReadOnlySpan<Sage.Simulation.JointBroken>
 Sage.Simulation.IPhysicsWorld.JointCount.get -> int
 Sage.Simulation.IPhysicsWorld.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
+Sage.Simulation.IPhysicsWorld.OverlapSphere(System.Numerics.Vector3 center, float radius, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
+Sage.Simulation.IPhysicsWorld.RaycastAll(System.Numerics.Vector3 from, System.Numerics.Vector3 direction, float maxDistance, System.Span<Sage.Simulation.RayHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Simulation.IPhysicsWorld.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Simulation.IPhysicsWorld.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
@@ -579,6 +618,17 @@ Sage.Simulation.JointPart.Target -> string!
 Sage.Simulation.JointPart.TargetAnchor -> System.Numerics.Vector3
 Sage.Simulation.JointPart.TwistMax -> float
 Sage.Simulation.JointPart.TwistMin -> float
+Sage.Simulation.Ladder
+Sage.Simulation.Ladder.Facing -> float
+Sage.Simulation.Ladder.Ladder() -> void
+Sage.Simulation.Ladder.NormalFor(System.Numerics.Quaternion rotation) -> System.Numerics.Vector3
+Sage.Simulation.Ladder.Speed -> float
+Sage.Simulation.Ladder.SpeedOrDefault.get -> float
+Sage.Simulation.LadderPart
+Sage.Simulation.LadderPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LadderPart.Facing -> float
+Sage.Simulation.LadderPart.LadderPart() -> void
+Sage.Simulation.LadderPart.Speed -> float
 Sage.Simulation.LoadDoor
 Sage.Simulation.LoadDoor.Entry -> string!
 Sage.Simulation.LoadDoor.Hours -> float
@@ -697,6 +747,12 @@ Sage.Simulation.ModManager.RestartNeeded.get -> bool
 Sage.Simulation.ModManager.Searched.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.ModManager.Summary() -> string!
 Sage.Simulation.ModManager.WatchManifests() -> System.IDisposable!
+Sage.Simulation.MovementProfileRecord.SwimAcceleration -> float
+Sage.Simulation.MovementProfileRecord.SwimClimbHeight -> float
+Sage.Simulation.MovementProfileRecord.SwimDepth -> float
+Sage.Simulation.MovementProfileRecord.SwimFloatDepth -> float
+Sage.Simulation.MovementProfileRecord.SwimRise -> float
+Sage.Simulation.MovementProfileRecord.SwimSpeed -> float
 Sage.Simulation.PhysicsJoint
 Sage.Simulation.PhysicsJoint.Id.get -> int
 Sage.Simulation.PhysicsJoint.Id.init -> void
@@ -1151,6 +1207,20 @@ Sage.Simulation.TravelPointPart.Discovered -> bool
 Sage.Simulation.TravelPointPart.Label -> string!
 Sage.Simulation.TravelPointPart.Radius -> float
 Sage.Simulation.TravelPointPart.TravelPointPart() -> void
+Sage.Simulation.TriggerEntered
+Sage.Simulation.TriggerEntered.Other.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerEntered.Other.init -> void
+Sage.Simulation.TriggerEntered.Trigger.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerEntered.Trigger.init -> void
+Sage.Simulation.TriggerEntered.TriggerEntered() -> void
+Sage.Simulation.TriggerEntered.TriggerEntered(Sage.Simulation.Entity Trigger, Sage.Simulation.Entity Other) -> void
+Sage.Simulation.TriggerExited
+Sage.Simulation.TriggerExited.Other.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerExited.Other.init -> void
+Sage.Simulation.TriggerExited.Trigger.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerExited.Trigger.init -> void
+Sage.Simulation.TriggerExited.TriggerExited() -> void
+Sage.Simulation.TriggerExited.TriggerExited(Sage.Simulation.Entity Trigger, Sage.Simulation.Entity Other) -> void
 Sage.Simulation.TwoBoneIk
 Sage.Simulation.UnknownSavedData
 Sage.Simulation.UnknownSavedData.Components -> string!
@@ -1223,6 +1293,21 @@ Sage.Simulation.ViewmodelRecord.ViewmodelRecord() -> void
 Sage.Simulation.ViewmodelRecord.Weapon -> Sage.Core.AssetPath
 Sage.Simulation.ViewmodelRecord.WeaponMaterial -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
 Sage.Simulation.Viewmodels
+Sage.Simulation.WaterPart
+Sage.Simulation.WaterPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.WaterPart.Buoyancy -> float
+Sage.Simulation.WaterPart.Current -> System.Numerics.Vector3
+Sage.Simulation.WaterPart.Drag -> float
+Sage.Simulation.WaterPart.Size -> System.Numerics.Vector3
+Sage.Simulation.WaterPart.WaterPart() -> void
+Sage.Simulation.WaterVolume
+Sage.Simulation.WaterVolume.Buoyancy -> float
+Sage.Simulation.WaterVolume.Covers(System.Numerics.Vector3 origin, System.Numerics.Vector3 point) -> bool
+Sage.Simulation.WaterVolume.Current -> System.Numerics.Vector3
+Sage.Simulation.WaterVolume.Drag -> float
+Sage.Simulation.WaterVolume.Size -> System.Numerics.Vector3
+Sage.Simulation.WaterVolume.SurfaceAt(System.Numerics.Vector3 origin) -> float
+Sage.Simulation.WaterVolume.WaterVolume() -> void
 Sage.Simulation.WeatherRecord.FogEndScale -> float
 Sage.Simulation.WeatherRecord.FogStartScale -> float
 Sage.Simulation.WeatherRecord.FogTint -> System.Numerics.Vector3
@@ -1488,6 +1573,8 @@ Sage.Simulation.RunCondition.EvenWhenEditing = 4 -> Sage.Simulation.RunCondition
 static Sage.Simulation.PlacementExtensions.DespawnPlacement(this Sage.Simulation.World! world, Sage.Core.RecordId document, Sage.Simulation.Entity entity) -> void
 static Sage.Simulation.PlacementExtensions.FinishPlacements(this Sage.Simulation.World! world, Sage.Core.RecordId document) -> void
 static Sage.Simulation.PlacementExtensions.SpawnPlacement(this Sage.Simulation.World! world, Sage.Core.RecordId document, Sage.Simulation.PlacementsRecord! record, int index) -> Sage.Simulation.Entity
+Sage.Simulation.MapLevel.LocalPositionOf(Sage.Simulation.MapEntity! entity) -> System.Numerics.Vector3
+static Sage.Simulation.MapLevel.Read(Sage.Simulation.Engine! engine, Sage.Core.RecordId id, Sage.Simulation.MapRecord! record) -> Sage.Simulation.MapLevel?
 Sage.Simulation.IPhysicsWorld.Overlap(in Sage.Simulation.Collider shape, in Sage.Simulation.Pose at, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Simulation.OverlapHit
 Sage.Simulation.OverlapHit.Depth -> float

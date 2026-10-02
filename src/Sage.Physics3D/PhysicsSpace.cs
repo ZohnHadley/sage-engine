@@ -605,20 +605,49 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         private void ReportContact<TManifold>(int workerIndex, CollidablePair pair, ref TManifold manifold)
             where TManifold : unmanaged, IContactManifold<TManifold>
         {
-            int deepest = -1;
-            float depth = -ContactSlop;
+            int deepest = 0;
+            float depth = float.NegativeInfinity;
             for (int i = 0; i < manifold.Count; i++)
             {
                 manifold.GetContact(i, out _, out _, out float d, out _);
                 if (d >= depth) { depth = d; deepest = i; }
             }
-            if (deepest < 0) return;
+            // Not touching yet is still reported, as an approach: the solver stops a fast body within
+            // the speculative margin, a step before the contact touches, and Collided wants the speed it
+            // arrived with, not what was left of it (issue #269).
+            bool touching = depth >= -ContactSlop;
             manifold.GetContact(deepest, out var offset, out var normal, out _, out _);
             var a = pair.A;
             Vector3 origin = a.Mobility == CollidableMobility.Static
                 ? _simulation.Statics[a.StaticHandle].Pose.Position
                 : _simulation.Bodies[a.BodyHandle].Pose.Position;
-            Data.ReportContact(workerIndex, pair, origin + offset, normal);
+            var point = origin + offset;
+
+            // How hard (Collided, issue #269): the closing speed along the normal at the contact point,
+            // from the velocities the bodies arrive with (collision detection runs before the solve), and
+            // the impulse that stops it, through the pair's effective mass. A static or kinematic side
+            // has no inverse mass.
+            Motion(a, point, out var velocityA, out float inverseA);
+            Motion(pair.B, point, out var velocityB, out float inverseB);
+            float speed = MathF.Max(0f, -Vector3.Dot(velocityA - velocityB, normal));   // the normal points from B to A
+            float inverse = inverseA + inverseB;
+            float impulse = inverse > 0f ? speed / inverse : 0f;
+            Data.ReportContact(workerIndex, pair, point, normal, impulse, speed, touching);
+        }
+
+        // A collidable's velocity at a world point, and its inverse mass (0 for a static or kinematic).
+        private readonly void Motion(CollidableReference collidable, Vector3 point, out Vector3 velocity, out float inverseMass)
+        {
+            if (collidable.Mobility == CollidableMobility.Static)
+            {
+                velocity = Vector3.Zero;
+                inverseMass = 0f;
+                return;
+            }
+            var body = _simulation.Bodies[collidable.BodyHandle];
+            var motion = body.Velocity;
+            velocity = motion.Linear + Vector3.Cross(motion.Angular, point - body.Pose.Position);
+            inverseMass = collidable.Mobility == CollidableMobility.Kinematic ? 0f : body.LocalInertia.InverseMass;
         }
 
         public bool ConfigureContactManifold(int workerIndex, CollidablePair pair, int childIndexA, int childIndexB, ref ConvexContactManifold manifold) => true;

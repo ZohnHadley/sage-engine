@@ -274,10 +274,15 @@ public struct OverlapHit
     public float Depth;
 }
 
-// Trigger overlaps collected during the step, drained in PostPhysics (10 §3). Game events come with
-// the event bus (04); until then systems read these lists.
+// Trigger overlaps collected during the step, drained in PostPhysics (10 §3). The physics plugin also
+// sends them on the event bus as TriggerEntered/TriggerExited (PhysicsEvents.cs, issue #269).
 public readonly record struct TriggerOverlap(Entity Trigger, Entity Other);
 
 // A solid contact between two colliders, at least one of which asked for them (Collider.ReportContacts).
 // Normal points from B toward A; Point is where they touch. An end event carries the entities only.
-public readonly record struct ContactEvent(Entity A, Entity B, Vector3 Point, Vector3 Normal);
+// Speed and Impulse say how hard a beginning was (issue #269; Collided says how they are worked out).
+public readonly record struct ContactEvent(Entity A, Entity B, Vector3 Point, Vector3 Normal)
+{
+    public float Impulse { get; init; }   // N·s
+    public float Speed { get; init; }     // closing speed along the normal, m/s
+}
