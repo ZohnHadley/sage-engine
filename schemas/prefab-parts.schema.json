@@ -187,6 +187,14 @@
         }
       ]
     },
+    "joint": {
+      "description": "Prefab part 'joint' (JointPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/joint"
+        }
+      ]
+    },
     "light": {
       "description": "Prefab part 'light' (LightPart).",
       "allOf": [
@@ -1076,6 +1084,130 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'inventory' (InventoryPart)."
+    },
+    "joint": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "description": "Ball, Hinge, Fixed or Distance. Category: Joint. (JointKind, default \"Ball\")",
+          "default": "Ball",
+          "type": "string",
+          "enum": [
+            "Ball",
+            "Hinge",
+            "Fixed",
+            "Distance"
+          ]
+        },
+        "target": {
+          "description": "The entity it is joined to, by name; empty = the parent if it has a body, else the world. Category: Joint. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "anchor": {
+          "description": "Where the joint is, in this entity's space. Unit: m. Category: Joint. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "targetAnchor": {
+          "description": "Where it is on the target (a world point for the world); left out = the same point as the anchor, where they stand when the joint is made. Unit: m. Category: Joint. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "axis": {
+          "description": "Ball twist axis and hinge axis, in this entity's space; left out = up (+Y) Category: Joint. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "swing": {
+          "description": "Ball: half-angle of the swing cone around the axis; 0 = no cone. Unit: °. Range: 0 to 179. Category: Ball. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
+        },
+        "twistMin": {
+          "description": "Ball: twist about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Ball. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "twistMax": {
+          "description": "Ball: twist about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Ball. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "min": {
+          "description": "Hinge: the angle from rest about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Hinge. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "max": {
+          "description": "Hinge: the angle from rest about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Hinge. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "minDistance": {
+          "description": "Distance: the least the anchors may be apart. Unit: m. At least 0. Category: Distance. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "maxDistance": {
+          "description": "Distance: the most the anchors may be apart; 0 = how far apart they are when it is made. Unit: m. At least 0. Category: Distance. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "breakForce": {
+          "description": "The force above which the joint breaks; 0 = never. Unit: N. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "drag": {
+          "description": "Air drag: the share of the body's speed (and spin) it loses each second, so a swing settles; 0 = none. Unit: 1/s. At least 0. (float, default 0.5)",
+          "default": 0.5,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'joint' (JointPart)."
     },
     "light": {
       "type": "object",

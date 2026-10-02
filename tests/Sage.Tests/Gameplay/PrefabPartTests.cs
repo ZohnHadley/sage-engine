@@ -163,7 +163,7 @@ public class PrefabPartTests
             ["body"] = "sage.physics3d", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
             ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
             ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hitboxes"] = "sage.gameplay.combat", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
-            ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
+            ["joint"] = "sage.physics3d", ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
             ["logic_branch"] = "sage.core", ["logic_compare"] = "sage.core", ["logic_counter"] = "sage.core",
             ["load_door"] = "sage.core", ["logic_relay"] = "sage.core", ["math_remap"] = "sage.core", ["quest_watch"] = "sage.gameplay.quests", ["routine"] = "sage.gameplay.ai", ["offscreen"] = "sage.gameplay.ai",
             ["pickup"] = "sage.gameplay.items", ["scripted_camera"] = "sage.core", ["skinned_mesh"] = "sage.core", ["sprite"] = "sage.gameplay.animation", ["third_person_rig"] = "sage.core",

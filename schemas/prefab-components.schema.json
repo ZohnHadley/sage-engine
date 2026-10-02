@@ -60,6 +60,14 @@
         }
       ]
     },
+    "body_motion": {
+      "description": "The component sage:body_motion (BodyMotion), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:body_motion"
+        }
+      ]
+    },
     "bone_attachment": {
       "description": "The component sage:bone_attachment (BoneAttachment), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -233,6 +241,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/rpg:item_grid"
+        }
+      ]
+    },
+    "joint": {
+      "description": "The component sage:joint (Joint), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:joint"
         }
       ]
     },
@@ -532,6 +548,14 @@
         }
       ]
     },
+    "sage:body_motion": {
+      "description": "Component sage:body_motion (BodyMotion).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:body_motion"
+        }
+      ]
+    },
     "sage:bone_attachment": {
       "description": "Component sage:bone_attachment (BoneAttachment).",
       "allOf": [
@@ -689,6 +713,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:io_connections"
+        }
+      ]
+    },
+    "sage:joint": {
+      "description": "Component sage:joint (Joint).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:joint"
         }
       ]
     },
@@ -2102,6 +2134,41 @@
       "additionalProperties": false,
       "description": "Component sage:audio_source (AudioSource)."
     },
+    "sage:body_motion": {
+      "type": "object",
+      "properties": {
+        "linear": {
+          "description": "Linear velocity at the last step. Unit: m/s. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "angular": {
+          "description": "Angular velocity at the last step, about the world axes. Unit: rad/s. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:body_motion (BodyMotion)."
+    },
     "sage:bone_attachment": {
       "type": "object",
       "properties": {
@@ -3093,6 +3160,182 @@
       },
       "additionalProperties": false,
       "description": "Component sage:io_connections (IOConnections)."
+    },
+    "sage:joint": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "description": "Ball, Hinge, Fixed or Distance. Category: Joint. (JointKind, default \"Ball\")",
+          "default": "Ball",
+          "type": "string",
+          "enum": [
+            "Ball",
+            "Hinge",
+            "Fixed",
+            "Distance"
+          ]
+        },
+        "target": {
+          "description": "The entity it is joined to, by name; empty = the parent if it has a body, else the world. Category: Joint. (string)",
+          "type": "string"
+        },
+        "anchor": {
+          "description": "Where the joint is, in this entity's space. Unit: m. Category: Joint. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "targetAnchor": {
+          "description": "Where it is on the target (the world, for a joint to the world); unused unless Has Target Anchor. Unit: m. Category: Joint. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "hasTargetAnchor": {
+          "description": "TargetAnchor is given; otherwise it is the same point as Anchor, where they stand when the joint is made. Category: Joint. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "axis": {
+          "description": "Ball twist axis and hinge axis, in this entity's space; zero = up (+Y) Category: Joint. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "swing": {
+          "description": "Ball: half-angle of the swing cone around the axis; 0 = no cone. Unit: °. Range: 0 to 179. Category: Ball. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
+        },
+        "twistMin": {
+          "description": "Ball: twist about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Ball. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "twistMax": {
+          "description": "Ball: twist about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Ball. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "min": {
+          "description": "Hinge: the angle from rest about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Hinge. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "max": {
+          "description": "Hinge: the angle from rest about the axis; both 0 = free. Unit: °. Range: -180 to 180. Category: Hinge. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "minDistance": {
+          "description": "Distance: the least the anchors may be apart. Unit: m. At least 0. Category: Distance. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "maxDistance": {
+          "description": "Distance: the most the anchors may be apart; 0 = how far apart they are when it is made. Unit: m. At least 0. Category: Distance. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "breakForce": {
+          "description": "The force above which the joint breaks; 0 = never. Unit: N. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "drag": {
+          "description": "Air drag: the share of this body's speed (and spin) it loses each second, so a swing settles; 0 = none. Unit: 1/s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "broken": {
+          "description": "The joint has broken (or been broken by the Break input) and is gone for good. Category: State. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "built": {
+          "description": "The joint was made; the next two are how. Category: State. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "builtAnchor": {
+          "description": "The anchor in the target's body space, as made. Category: State. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "rest": {
+          "description": "This entity's rotation in the target's space at rest, as made. Category: State. (Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "handle": {
+          "description": "Not saved. (PhysicsJoint)",
+          "type": "object"
+        },
+        "warned": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:joint (Joint)."
     },
     "sage:known_topics": {
       "type": "object",
