@@ -231,12 +231,12 @@ public class HitAllocationTests
         Assert.All(targets, t => Assert.True(world.Attribute(t, HitPipelineTests.Health) < 1000000f));
         var before = targets.Select(t => world.Attribute(t, HitPipelineTests.Health)).ToArray();
 
-        // Nothing may allocate but the physics backend's own step (40 bytes a tick with a static collider,
-        // handoff 2026-09-30 §5), which is not this code; the report shows it by scope.
+        // Nothing may allocate, the physics step included (it used to allocate 40 bytes a tick, #273); the
+        // report shows any allocation by scope.
         long physicsBefore = ScopeBytes("Fixed.Physics");
         var allocated = AllocationProbe.Measure(600, Step);
         long physics = ScopeBytes("Fixed.Physics") - physicsBefore;
-        Assert.True(allocated.Bytes - physics == 0, allocated.ToString());
+        Assert.True(allocated.Bytes == 0 && physics == 0, allocated.ToString());
         for (int i = 0; i < targets.Length; i++)   // and the blows kept landing while it was measured
             Assert.True(world.Attribute(targets[i], HitPipelineTests.Health) < before[i], $"target{i} was not hit while measured");
     }
