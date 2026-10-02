@@ -119,6 +119,42 @@
       "default": -0.18,
       "type": "number"
     },
+    "mode": {
+      "description": "Walk, AirStrafe (GoldSrc bunny-hopping), Fly or Noclip; Default = Walk. (MovementMode, default \"Walk\")",
+      "default": "Walk",
+      "type": "string",
+      "enum": [
+        "Default",
+        "Walk",
+        "AirStrafe",
+        "Fly",
+        "Noclip"
+      ]
+    },
+    "crouchTime": {
+      "description": "Seconds to go from standing to crouched and back; 0 = instant. Unit: s. At least 0. (float, default 0.2)",
+      "default": 0.2,
+      "type": "number",
+      "minimum": 0
+    },
+    "airStrafeSpeed": {
+      "description": "AirStrafe: the most speed the air acceleration adds along the wish (GoldSrc's 30 units) Unit: m/s. At least 0. (float, default 0.76)",
+      "default": 0.76,
+      "type": "number",
+      "minimum": 0
+    },
+    "airStrafeAccelerate": {
+      "description": "AirStrafe: GoldSrc's sv_airaccelerate, times the wished speed per second. At least 0. (float, default 10)",
+      "default": 10,
+      "type": "number",
+      "minimum": 0
+    },
+    "flySpeed": {
+      "description": "Fly and Noclip: speed where it looks; Run doubles it. Unit: m/s. At least 0. (float, default 8)",
+      "default": 8,
+      "type": "number",
+      "minimum": 0
+    },
     "swimSpeed": {
       "description": "(float, default 3)",
       "default": 3,

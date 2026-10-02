@@ -10,6 +10,19 @@ namespace Sage.Simulation;
 // through Bepu (CharacterMovementSystem) and the first-person rig are Sage.Physics3D's; combat, items,
 // abilities and AI read only this, so they need no physics backend to compile against.
 
+// How a character moves (issue #267, docs/design/10 "As built (movement modes)"). A profile names one
+// (Walk unless it says otherwise); a character can override it (CharacterController.Mode), which is what
+// the `noclip` and `fly` console commands do. Swimming and ladders are part of Walk and AirStrafe.
+public enum MovementMode : byte
+{
+    Default,     // on a controller: take the profile's. On a profile: Walk
+    Walk,        // on its feet, with the profile's air control: accelerates toward the wished velocity
+    AirStrafe,   // GoldSrc (Half-Life 1): air acceleration that only adds speed along the wish, so strafing
+                 // while turning gains speed, and a jump on the landing tick skips friction (bunny-hopping)
+    Fly,         // no gravity, moves where it looks, Jump up and Crouch down, still collides (editors, debugging)
+    Noclip,      // Fly through everything: no collision, no depenetration
+}
+
 // Movement tuning as data (10 §3). A game can give different profiles to the player, a guard or a
 // horse without touching code.
 [Record("movement_profile", Plugin = "sage.gameplay.character")]
@@ -30,6 +43,18 @@ public sealed class MovementProfileRecord
     public float CrouchSpeedScale = 0.45f;
     public float GroundSnap = 0.35f;        // how far it sticks to the ground when walking downhill
     public float EyeOffset = -0.18f;        // eye height relative to the top of the capsule
+
+    // Movement modes (issue #267).
+    [Property(Tooltip = "Walk, AirStrafe (GoldSrc bunny-hopping), Fly or Noclip; Default = Walk")]
+    public MovementMode Mode = MovementMode.Walk;
+    [Property(Min = 0, Unit = "s", Tooltip = "Seconds to go from standing to crouched and back; 0 = instant")]
+    public float CrouchTime = 0.2f;
+    [Property(Min = 0, Unit = "m/s", Tooltip = "AirStrafe: the most speed the air acceleration adds along the wish (GoldSrc's 30 units)")]
+    public float AirStrafeSpeed = 0.76f;
+    [Property(Min = 0, Tooltip = "AirStrafe: GoldSrc's sv_airaccelerate, times the wished speed per second")]
+    public float AirStrafeAccelerate = 10f;
+    [Property(Min = 0, Unit = "m/s", Tooltip = "Fly and Noclip: speed where it looks; Run doubles it")]
+    public float FlySpeed = 8f;
 
     // Swimming (issue #262), in a water volume. Depths are fractions of StandHeight under the surface,
     // so a tall creature and a short one swim at the same point of their bodies.
@@ -57,13 +82,16 @@ public struct CharacterController : IComponent
     public byte Layer;              // its own layer, excluded from its sweeps ("player" or "enemy")
     [Property(Unit = "m/s", Tooltip = "Current velocity")]
     public Vector3 Velocity;
-    [Transient] public float Height;          // derived from Crouching and the profile            // current capsule height; 0 = take the profile's StandHeight
+    [Transient] public float Height;          // current capsule height, between the profile's crouch and stand heights; 0 = from Crouching
     [Transient] public Vector3 GroundNormal;  // GroundCheck overwrites all three every tick
     [Transient] public bool Grounded;
     [Transient] public bool OnSteep;        // touching a surface steeper than the slope limit: it slides down it
     [Transient] public Vector3 GroundVelocity;   // how fast what it stands on moves (a lift, issue #261): it is carried along
-    [Property(Tooltip = "Crouched: the capsule is the profile's crouch height")]
+    [Property(Tooltip = "Crouched or crouching: the capsule and its Collider shrink toward the profile's crouch height")]
     public bool Crouching;
+    // A mode of its own over the profile's (issue #267): `noclip` and `fly` set it, Default gives it back.
+    [Property(Tooltip = "Default = the profile's mode; the noclip and fly console commands set Noclip or Fly")]
+    public MovementMode Mode;
     // On a ladder (issue #263). Not saved: a character loaded inside a ladder volume in mid-air catches it
     // again on its first tick, so a save mid-climb still loads on the ladder.
     [Transient] public bool Climbing;
@@ -92,7 +120,7 @@ public struct CharacterController : IComponent
     // start here, and they must agree (16 §3.2).
     public static Vector3 EyeOf(Vector3 feet, in CharacterController character, MovementProfileRecord profile)
     {
-        float height = character.Height > 0f ? character.Height : profile.StandHeight;
+        float height = character.Height > 0f ? character.Height : character.Crouching ? profile.CrouchHeight : profile.StandHeight;
         return feet + Vector3.UnitY * MathF.Max(height + profile.EyeOffset, 0.2f);
     }
 }
