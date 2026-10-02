@@ -25,10 +25,18 @@ internal sealed class CharacterMovementSystem : ISystem
     private readonly ActionId _jump, _crouch, _run;
     private readonly CharacterConventions _conventions;
     private readonly OverlapHit[] _overlaps = new OverlapHit[8];
+    private readonly World _world;
+    private readonly WaterVolumes _water;
+
+    // The outputs a character fires going into and out of water (issue #262); declared by CharacterModule.
+    internal const string OnEnterWater = "OnEnterWater";
+    internal const string OnExitWater = "OnExitWater";
     private readonly OverlapHit[] _ladderHits = new OverlapHit[8];
 
     public CharacterMovementSystem(World world, RecordStore records, ActionRegistry actions)
     {
+        _world = world;
+        _water = new WaterVolumes(world);
         // A ragdoll (issue #246) is physics' now: the controller leaves it lying where it fell.
 #pragma warning disable SAGE0134 // the ragdoll's tag: experimental with the rest of phase 4k
         _characters = world.Query<Transform, CharacterController, PawnIntent>().WithoutAnyTags(Tags.Get<Ragdolled>());
@@ -44,17 +52,17 @@ internal sealed class CharacterMovementSystem : ISystem
     public void Run(in SystemContext ctx)
     {
         float dt = ctx.Tick.Dt;
-        foreach (var (transforms, characters, intents, _) in _characters.Chunks)
+        foreach (var (transforms, characters, intents, entities) in _characters.Chunks)
         {
             var t = transforms.Span;
             var c = characters.Span;
             var i = intents.Span;
             for (int n = 0; n < t.Length; n++)
-                Move(ref t[n], ref c[n], in i[n], dt);
+                Move(entities.EntityAt(n), ref t[n], ref c[n], in i[n], dt);
         }
     }
 
-    private void Move(ref Transform transform, ref CharacterController character, in PawnIntent intent, float dt)
+    private void Move(Entity entity, ref Transform transform, ref CharacterController character, in PawnIntent intent, float dt)
     {
         var profile = _conventions.ProfileOf(_records, character.Profile);
         var mask = LayerMask.All.Except(character.Layer);
@@ -68,6 +76,7 @@ internal sealed class CharacterMovementSystem : ISystem
         // Inside something (a door closed on it, a teleport, a spawn): out first, or every sweep below
         // starts overlapping and sees nothing (issue #259).
         position = Depenetrate(position, ref character, profile, mask);
+        bool inWater = Wet(entity, position, ref character, profile, dt, out var water);
         Crouch(ref character, in intent, profile, position, mask);
 
         // On a ladder the climb is the whole move (issue #263).
@@ -82,6 +91,32 @@ internal sealed class CharacterMovementSystem : ISystem
         float yaw = intent.Yaw;
         var forward = SageMath.ForwardFromYaw(yaw);
         var right = new Vector3(-forward.Z, 0, forward.X);
+
+        if (character.Swimming) Swim(ref character, in intent, profile, forward, right, in water, dt);
+        else Walk(ref character, in intent, profile, forward, right, dt);
+
+        // Water slows whatever moves through it, toward its current: a swimmer, someone wading, a fall
+        // into a lake (issue #262).
+        if (inWater) character.Velocity = BuoyancySystem.Drag(character.Velocity, water.Current, water.Drag * character.Immersion, dt);
+
+        // The body faces where its controller is looking. One yaw convention engine-wide (SageMath),
+        // so this is all of it: no correction between movement, sprites and the camera.
+        transform.LocalRotation = SageMath.RotationFromYaw(yaw);
+
+        // A swimmer neither snaps to the ground nor counts as standing on it.
+        bool wasGrounded = character.Grounded && !character.Swimming;
+        Vector3 motion = character.Velocity * dt;
+        // The steepest ground that still counts as ground, once per move instead of once per sweep.
+        float cosSlope = MathF.Cos(profile.MaxSlopeDegrees * MathF.PI / 180f);
+        position = SlideHorizontal(position, motion with { Y = 0 }, ref character, profile, cosSlope, mask);
+        position = MoveVertical(position, motion.Y, ref character, profile, mask);
+        GroundCheck(ref position, ref character, profile, cosSlope, mask, wasGrounded);
+        transform.LocalPosition = position;
+    }
+
+    // On land, or wading: walking, jumping, falling and sliding down what is too steep.
+    private void Walk(ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, Vector3 forward, Vector3 right, float dt)
+    {
         Vector3 wish = right * intent.Move.X + forward * intent.Move.Y;
         if (wish.LengthSquared() > 1f) wish = Vector3.Normalize(wish);
 
@@ -135,19 +170,69 @@ internal sealed class CharacterMovementSystem : ISystem
                     character.Velocity = Vector3.Normalize(along) * horizontal.Length() + Vector3.UnitY * character.Velocity.Y;
             }
         }
+    }
 
-        // The body faces where its controller is looking. One yaw convention engine-wide (SageMath),
-        // so this is all of it: no correction between movement, sprites and the camera.
-        transform.LocalRotation = SageMath.RotationFromYaw(yaw);
+    // Is it in water, and how deep (issue #262)? Sets the controller's water state, counts the breath
+    // hook, and fires OnEnterWater / OnExitWater on the character and on the volume when that changes.
+    private bool Wet(Entity entity, Vector3 feet, ref CharacterController character, MovementProfileRecord profile, float dt, out WaterSample water)
+    {
+        float stand = MathF.Max(profile.StandHeight, 0.1f);
+        water = default;
+        bool found = _water.Any && _water.Find(feet, feet.Y, feet.Y + character.Height, out water);
 
-        bool wasGrounded = character.Grounded;
-        Vector3 motion = character.Velocity * dt;
-        // The steepest ground that still counts as ground, once per move instead of once per sweep.
-        float cosSlope = MathF.Cos(profile.MaxSlopeDegrees * MathF.PI / 180f);
-        position = SlideHorizontal(position, motion with { Y = 0 }, ref character, profile, cosSlope, mask);
-        position = MoveVertical(position, motion.Y, ref character, profile, mask);
-        GroundCheck(ref position, ref character, profile, cosSlope, mask, wasGrounded);
-        transform.LocalPosition = position;
+        character.Immersion = found ? Math.Clamp((water.Surface - feet.Y) / stand, 0f, 1f) : 0f;
+        bool inWater = character.Immersion > 0f;
+        character.Swimming = inWater && character.Immersion >= profile.SwimDepth;
+        character.Underwater = inWater && CharacterController.EyeOf(feet, character, profile).Y < water.Surface;
+        character.UnderwaterSeconds = character.Underwater ? character.UnderwaterSeconds + dt : 0f;
+
+        if (inWater && !character.InWater)
+        {
+            character.InWater = true;
+            character.Water = water.Volume;
+            _world.FireOutput(entity, OnEnterWater, water.Volume);
+            _world.FireOutput(water.Volume, OnEnterWater, entity);
+        }
+        else if (!inWater && character.InWater)
+        {
+            var left = character.Water;
+            character.InWater = false;
+            character.Water = default;
+            _world.FireOutput(entity, OnExitWater, left);
+            if (!left.IsNull && _world.IsAlive(left)) _world.FireOutput(left, OnExitWater, entity);
+        }
+        else if (inWater)
+        {
+            // Still in water: loaded in it (Water is not saved), or swum from one volume into the next.
+            character.Water = water.Volume;
+        }
+        return inWater;
+    }
+
+    // Swimming (issue #262): moves where it looks, Jump swims up and Crouch down, it drifts up to float
+    // with its head out, and the water's current carries it. It cannot swim higher than it floats: out
+    // of the water is by climbing (SlideHorizontal's step, with SwimClimbHeight) or wading ashore.
+    private void Swim(ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, Vector3 forward, Vector3 right, in WaterSample water, float dt)
+    {
+        Vector3 look = forward * MathF.Cos(intent.Pitch) + Vector3.UnitY * MathF.Sin(intent.Pitch);
+        Vector3 wish = right * intent.Move.X + look * intent.Move.Y;
+        if (wish.LengthSquared() > 1f) wish = Vector3.Normalize(wish);
+        Vector3 target = wish * profile.SwimSpeed;
+
+        // At rest it rises to its float line and sits there: a spring toward it, never faster than SwimRise up.
+        float stand = MathF.Max(profile.StandHeight, 0.1f);
+        float rise = Math.Clamp((character.Immersion - profile.SwimFloatDepth) * stand * 4f, -profile.SwimSpeed, profile.SwimRise);
+        float vertical = (intent.Held.Has(_jump) ? 1f : 0f) - (intent.Held.Has(_crouch) ? 1f : 0f);
+        target.Y = vertical != 0f ? vertical * profile.SwimSpeed : target.Y + rise;
+        if (character.Immersion <= profile.SwimFloatDepth && target.Y > rise) target.Y = rise;
+
+        target += water.Current;
+        Vector3 delta = target - character.Velocity;
+        float distance = delta.Length();
+        if (distance > 1e-5f)
+            character.Velocity += delta / distance * MathF.Min(profile.SwimAcceleration * dt, distance);
+        character.Grounded = false;
+        character.OnSteep = false;
     }
 
     // Accelerates the horizontal velocity toward `target`, with friction when there's no input.
@@ -188,9 +273,12 @@ internal sealed class CharacterMovementSystem : ISystem
                 break;
             }
 
-            // A low obstacle: try to step onto it instead of sliding along it.
-            if (character.Grounded && hit.Normal.Y < cosSlope &&
-                TryStep(position, motion, character.Height, profile, mask, cosSlope, out Vector3 stepped))
+            // A low obstacle: try to step onto it instead of sliding along it. A swimmer with its head
+            // out climbs out onto a ledge the same way, from further below (issue #262).
+            float step = character.Grounded ? profile.StepHeight
+                       : character.Swimming && !character.Underwater ? profile.SwimClimbHeight : 0f;
+            if (step > 0f && hit.Normal.Y < cosSlope &&
+                TryStep(position, motion, character.Height, step, profile, mask, cosSlope, out Vector3 stepped))
             {
                 position = stepped;
                 break;
@@ -228,10 +316,9 @@ internal sealed class CharacterMovementSystem : ISystem
 
     // Sweep up, forward, then down: the classic step-up (10 §3). Accepts the result only if it lands
     // on something walkable and actually made progress.
-    private bool TryStep(Vector3 position, Vector3 motion, float height, MovementProfileRecord profile, LayerMask mask, float cosSlope, out Vector3 stepped)
+    private bool TryStep(Vector3 position, Vector3 motion, float height, float step, MovementProfileRecord profile, LayerMask mask, float cosSlope, out Vector3 stepped)
     {
         stepped = position;
-        float step = profile.StepHeight;
         var up = Sweep(position, height, profile.Radius, Vector3.UnitY, step, mask);
         float rise = up.Hit ? MathF.Max(0f, up.Distance - Skin) : step;
         if (rise < 0.02f) return false;
@@ -258,6 +345,15 @@ internal sealed class CharacterMovementSystem : ISystem
     // Is there ground under the feet? Snaps onto it while walking, so going downhill doesn't launch.
     private void GroundCheck(ref Vector3 position, ref CharacterController character, MovementProfileRecord profile, float cosSlope, LayerMask mask, bool wasGrounded)
     {
+        // A swimmer rising off the bottom is leaving it: snapping it back down would pin it there.
+        if (character.Swimming && character.Velocity.Y > 0.01f)
+        {
+            character.Grounded = false;
+            character.OnSteep = false;
+            character.GroundNormal = Vector3.UnitY;
+            return;
+        }
+
         float reach = wasGrounded && character.Velocity.Y <= 0.01f ? profile.GroundSnap : Skin * 2f;
         var hit = Sweep(position + Vector3.UnitY * Skin, character.Height, profile.Radius, -Vector3.UnitY, reach + Skin, mask);
 
@@ -381,7 +477,7 @@ internal sealed class CharacterMovementSystem : ISystem
         // At the top: a ledge behind the rungs within step height is stepped onto, and that is the dismount
         // — a capsule's width onto it, so it stands on the top rather than balancing on the lip.
         if (toward > 0f &&
-            TryStep(position, -normal * (2f * profile.Radius + Skin), character.Height, profile, mask, cosSlope, out Vector3 stepped) &&
+            TryStep(position, -normal * (2f * profile.Radius + Skin), character.Height, profile.StepHeight, profile, mask, cosSlope, out Vector3 stepped) &&
             Vector3.Dot(stepped - position, -normal) >= profile.Radius)   // over the lip, not stopped against it
         {
             position = stepped;
@@ -450,7 +546,7 @@ internal sealed class CharacterMovementSystem : ISystem
     // Crouching shrinks the capsule; standing up needs headroom (10 §3).
     private void Crouch(ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, Vector3 position, LayerMask mask)
     {
-        bool wants = intent.Held.Has(_crouch);
+        bool wants = intent.Held.Has(_crouch) && !character.Swimming;   // a swimmer's Crouch is "swim down"
         if (wants == character.Crouching)
         {
             character.Height = character.Crouching ? profile.CrouchHeight : profile.StandHeight;

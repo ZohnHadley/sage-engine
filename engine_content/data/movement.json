@@ -16,6 +16,13 @@
     "radius": 0.35,
     "standHeight": 1.8,
     "crouchHeight": 1.05,
-    "groundSnap": 0.35
+    "groundSnap": 0.35,
+    // Swimming in a water volume (issue #262): depths are fractions of standHeight under the surface.
+    "swimSpeed": 3,
+    "swimAcceleration": 10,
+    "swimDepth": 0.6,
+    "swimFloatDepth": 0.75,
+    "swimRise": 1,
+    "swimClimbHeight": 1.7
   }
 ]

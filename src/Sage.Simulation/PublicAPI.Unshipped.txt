@@ -365,6 +365,12 @@ Sage.Simulation.CameraViews.TryGetMain(out Sage.Simulation.CameraView view) -> b
 Sage.Simulation.CameraViews.Version.get -> long
 Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.CameraView>
 Sage.Simulation.CellContent
+Sage.Simulation.CharacterController.Immersion -> float
+Sage.Simulation.CharacterController.InWater -> bool
+Sage.Simulation.CharacterController.Swimming -> bool
+Sage.Simulation.CharacterController.Underwater -> bool
+Sage.Simulation.CharacterController.UnderwaterSeconds -> float
+Sage.Simulation.CharacterController.Water -> Sage.Simulation.Entity
 Sage.Simulation.CharacterController.Climbing -> bool
 Sage.Simulation.CharacterController.LetGo -> bool
 Sage.Simulation.ClipEvent
@@ -701,6 +707,12 @@ Sage.Simulation.ModManager.RestartNeeded.get -> bool
 Sage.Simulation.ModManager.Searched.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.ModManager.Summary() -> string!
 Sage.Simulation.ModManager.WatchManifests() -> System.IDisposable!
+Sage.Simulation.MovementProfileRecord.SwimAcceleration -> float
+Sage.Simulation.MovementProfileRecord.SwimClimbHeight -> float
+Sage.Simulation.MovementProfileRecord.SwimDepth -> float
+Sage.Simulation.MovementProfileRecord.SwimFloatDepth -> float
+Sage.Simulation.MovementProfileRecord.SwimRise -> float
+Sage.Simulation.MovementProfileRecord.SwimSpeed -> float
 Sage.Simulation.PhysicsJoint
 Sage.Simulation.PhysicsJoint.Id.get -> int
 Sage.Simulation.PhysicsJoint.Id.init -> void
@@ -1207,6 +1219,21 @@ Sage.Simulation.ViewmodelRecord.ViewmodelRecord() -> void
 Sage.Simulation.ViewmodelRecord.Weapon -> Sage.Core.AssetPath
 Sage.Simulation.ViewmodelRecord.WeaponMaterial -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
 Sage.Simulation.Viewmodels
+Sage.Simulation.WaterPart
+Sage.Simulation.WaterPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.WaterPart.Buoyancy -> float
+Sage.Simulation.WaterPart.Current -> System.Numerics.Vector3
+Sage.Simulation.WaterPart.Drag -> float
+Sage.Simulation.WaterPart.Size -> System.Numerics.Vector3
+Sage.Simulation.WaterPart.WaterPart() -> void
+Sage.Simulation.WaterVolume
+Sage.Simulation.WaterVolume.Buoyancy -> float
+Sage.Simulation.WaterVolume.Covers(System.Numerics.Vector3 origin, System.Numerics.Vector3 point) -> bool
+Sage.Simulation.WaterVolume.Current -> System.Numerics.Vector3
+Sage.Simulation.WaterVolume.Drag -> float
+Sage.Simulation.WaterVolume.Size -> System.Numerics.Vector3
+Sage.Simulation.WaterVolume.SurfaceAt(System.Numerics.Vector3 origin) -> float
+Sage.Simulation.WaterVolume.WaterVolume() -> void
 Sage.Simulation.WeatherRecord.FogEndScale -> float
 Sage.Simulation.WeatherRecord.FogStartScale -> float
 Sage.Simulation.WeatherRecord.FogTint -> System.Numerics.Vector3
