@@ -484,6 +484,7 @@ Sage.Simulation.IPhysicsWorld.GroupOf(in Sage.Simulation.PhysicsBody body) -> in
 Sage.Simulation.IPhysicsWorld.JointBroken.get -> System.ReadOnlySpan<Sage.Simulation.JointBroken>
 Sage.Simulation.IPhysicsWorld.JointCount.get -> int
 Sage.Simulation.IPhysicsWorld.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
+Sage.Simulation.IPhysicsWorld.MoveKinematic(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Pose pose, System.Numerics.Vector3 velocity, System.Numerics.Vector3 angularVelocity) -> void
 Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Simulation.IPhysicsWorld.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Simulation.IPhysicsWorld.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void

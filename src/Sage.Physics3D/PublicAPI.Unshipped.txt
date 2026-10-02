@@ -8,6 +8,7 @@ Sage.Physics3D.PhysicsSpace.GroupOf(in Sage.Simulation.PhysicsBody body) -> int
 Sage.Physics3D.PhysicsSpace.JointBroken.get -> System.ReadOnlySpan<Sage.Simulation.JointBroken>
 Sage.Physics3D.PhysicsSpace.JointCount.get -> int
 Sage.Physics3D.PhysicsSpace.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
+Sage.Physics3D.PhysicsSpace.MoveKinematic(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Pose pose, System.Numerics.Vector3 velocity, System.Numerics.Vector3 angularVelocity) -> void
 Sage.Physics3D.PhysicsSpace.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Physics3D.PhysicsSpace.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Physics3D.PhysicsSpace.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void

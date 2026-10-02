@@ -3856,7 +3856,7 @@
       "type": "object",
       "properties": {
         "openOffset": {
-          "description": "(Vector3, default [0,0,0])",
+          "description": "Where open is, relative to where it was placed. Unit: m. (Vector3, default [0,0,0])",
           "default": [
             0,
             0,
@@ -3870,14 +3870,17 @@
           "maxItems": 3
         },
         "seconds": {
-          "description": "(float, default 0)",
+          "description": "How long the whole trip takes, shut to open. Unit: s. At least 0. (float, default 0)",
           "default": 0,
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "position": {
-          "description": "(float, default 0)",
+          "description": "Where it is: 0 shut, 1 open. Range: 0 to 1. (float, default 0)",
           "default": 0,
-          "type": "number"
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
         "direction": {
           "description": "(sbyte, default 0)",
@@ -3899,9 +3902,10 @@
           "maxItems": 3
         },
         "closeAfter": {
-          "description": "(float, default 0)",
+          "description": "Shuts itself this long after it opens; 0 = stays open. Unit: s. At least 0. (float, default 0)",
           "default": 0,
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "holdRemaining": {
           "description": "(float, default 0)",
@@ -3920,6 +3924,100 @@
         },
         "blocked": {
           "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "openAngle": {
+          "description": "How far it turns as it opens (a hinged door); 0 = it does not turn. Unit: deg. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "openAxis": {
+          "description": "What it turns about, in its own frame: (0, 1, 0) is a door's hinge. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "pivot": {
+          "description": "Where the hinge is, from its origin, in its own frame. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "closedRotation": {
+          "description": "(Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "path": {
+          "description": "(Vector3[])",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "path+": {
+          "description": "Adds to \"path\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "path-": {
+          "description": "Removes these from \"path\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "halt": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "locked": {
+          "description": "Refuses to open (fires OnLocked) until it is sent Unlock. (bool, default false)",
           "default": false,
           "type": "boolean"
         }

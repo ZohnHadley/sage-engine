@@ -61,6 +61,13 @@ public interface IPhysicsWorld
     // MoveStatic does.
     void MoveKinematic(in PhysicsBody body, Vector3 position, Vector3 velocity);
 
+    // The same with a turn (issue #266): the entity at `pose`, its origin moving at `velocity` and the
+    // whole body turning at `angularVelocity` (radians per second about each world axis), as a door on
+    // its hinges does. `pose.Rotation` is relative to how the body was built (a brush's hull is built
+    // unturned), and every point of the body moves at velocity + angularVelocity × (point - origin), so
+    // what rests on it is carried round with it.
+    void MoveKinematic(in PhysicsBody body, in Pose pose, Vector3 velocity, Vector3 angularVelocity);
+
     // Where the body's shape is (its centre, not the entity's origin: see Collider.Center).
     Pose PoseOf(in PhysicsBody body);
 

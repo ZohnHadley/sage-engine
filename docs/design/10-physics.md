@@ -157,6 +157,12 @@ public struct Collider : IComponent
     // MoveKinematic at its own velocity (issue #261): a crate on it rides, and a grounded character
     // stands on its CharacterController.GroundVelocity, carried along before it moves itself
     // (tests: ACrateAndAPlayerRideALiftUpAndStayOnIt, APlayerStandingOnAMovingPlatformIsCarriedWithIt).
+    // A mover that turns (a hinged door, a turntable, issue #266) is moved with MoveKinematic(body, pose,
+    // velocity, angularVelocity): the hull's centre turns round the entity's origin, and every point of
+    // the body moves at v + ω × r (test: AKinematicBodyMovedWithATurnMovesEachPointAtItsOwnSpeed), so the
+    // ground velocity a character reads is the velocity under its feet, not the platform's centre's
+    // (test: ATurningMoverCarriesWhatStandsOnItRoundWithIt); a crate it shoves gets the speed of the
+    // part of the door that hits it.
     public static Collider Box(Vector3 size, byte layer = 0);
     public static Collider Standing(float radius, float totalHeight, byte layer = 0);   // stands on the origin
 }
