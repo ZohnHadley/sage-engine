@@ -550,7 +550,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 
 | Part | Gives the entity |
 |---|---|
-| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end) |
+| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end). On a prefab's child, a massless body moves with its parent, and under a parent with a mass it is part of the parent's body (one compound; a ray names the child it hit; issue #268) |
 | `joint` | a joint from this (dynamic) body to another entity's, its parent's or the world's, in data (issue #245) — `kind` (Ball/Hinge/Fixed/Distance), `target` (an entity name; empty = the parent if it has a body, else the world), `anchor` (in this entity's space), `targetAnchor` (optional; default: the same point, where they stand), `axis`, `swing`, `twistMin`/`twistMax`, `min`/`max` (a hinge's range), `minDistance`/`maxDistance` (degrees and metres), `breakForce`, `drag`; the `Break` input and the `OnBreak` output (SAGE0134) |
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` — `sheet`, `material`, `size`, `animation` (a clip to loop), or `graph` (an `anim_graph` whose clips are the sheet's: combat's trigger and `hit` event work through it, issue #119) |

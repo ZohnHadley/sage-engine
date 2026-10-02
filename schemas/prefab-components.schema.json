@@ -124,6 +124,14 @@
         }
       ]
     },
+    "collider_part": {
+      "description": "The component sage:collider_part (ColliderPart), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:collider_part"
+        }
+      ]
+    },
     "dialogue": {
       "description": "The component sage:dialogue (Dialogue), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -633,6 +641,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:collider"
+        }
+      ]
+    },
+    "sage:collider_part": {
+      "description": "Component sage:collider_part (ColliderPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:collider_part"
         }
       ]
     },
@@ -2651,6 +2667,16 @@
       },
       "additionalProperties": false,
       "description": "Component sage:collider (Collider)."
+    },
+    "sage:collider_part": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "description": "(Entity)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:collider_part (ColliderPart)."
     },
     "sage:dialogue": {
       "type": "object",

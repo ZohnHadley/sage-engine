@@ -91,6 +91,16 @@ public struct PhysicsBody : IComponent
     public bool IsStatic;
 }
 
+// A collider on a child of a dynamic body, built into that body's compound (issue #268) instead of being
+// given a body of its own: `Body` is the entity whose body it is part of, and a ray that hits it names this
+// entity. Added and removed by the physics systems; never authored and never saved.
+[Transient]
+[Component("sage:collider_part")]
+public struct ColliderPart : IComponent
+{
+    public Entity Body;
+}
+
 // Which layers collide with which (10 §3). Layer 0 is "default"; a missing entry means "collides".
 // `"ignore": { "hitbox": ["*"] }` makes a layer collide with nothing at all: a query-only layer
 // (LayerMatrix.QueryOnly, issue #137).

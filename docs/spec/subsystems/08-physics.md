@@ -113,7 +113,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-16 | Swimming shall work: water volumes with surface, drag and buoyancy, a swim mode, surface exit, and floating bodies. | Must | Not started | #262 |
 | REQ-PHYS-17 | Ladders and climbing shall work from a ladder volume prefab part. | Must | Done (#263) | test: ClimbsALadderToTheLedgeAndStepsOff; test: ALadderBrushEntityInAMapIsClimbedToItsLedge |
 | REQ-PHYS-18 | The controller shall offer movement modes: walk, noclip and fly, GoldSrc air-strafe, smooth crouch with a shrinking collider. | Should | Not started | #267 |
-| REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Not started | #268 |
+| REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Done (#268) | test: SetShapeShrinksACharactersCapsuleInPlace; test: AChildColliderFollowsItsParentAndIsHitByARayWhereItIs; test: ADynamicBodyAndItsChildrensCollidersAreOneCompound |
 | REQ-PHYS-20 | Physics materials and surface types shall be records on colliders, terrain layers and brush textures, returned in hit results. | Should | Not started | #270 |
 | REQ-PHYS-21 | Bodies shall follow a floating-origin rebase, including sleeping ones and statics. | Must | Done | test: PhysicsBodiesRebaseWithTheWorld |
 | REQ-PHYS-22 | A steady-state step shall allocate nothing, hitbox cost shall be budgeted, and runs shall be cross-run deterministic. | Should | Partial: about 40 B a tick | #273 |
@@ -131,7 +131,7 @@ Milestone 4l, Physics, movement and navigation (epic #258):
 - ~~#263 4l-5 Ladders and climbing (P1)~~ done: the `ladder` part and the controller's climb
 - #266 4l-8 Rotating and multi-stage movers (hinged doors, path movers) (P2)
 - #267 4l-9 Movement modes in the controller: noclip/fly, GoldSrc air-strafe, smooth crouch, crouching collider (P2)
-- #268 4l-10 Moving a physics shape in place and parented colliders (P2)
+- ~~#268 4l-10 Moving a physics shape in place and parented colliders (P2)~~ done: `SetShape`, colliders on child entities, compounds
 - #269 4l-11 Game events from physics (Collided, TriggerEntered/Exited) and richer queries (P2)
 - #270 4l-12 Physics materials and surface types (P2)
 - #272 4l-14 Mover and physics test coverage (P2)

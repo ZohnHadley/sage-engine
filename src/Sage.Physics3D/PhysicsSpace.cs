@@ -511,6 +511,9 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
                 debug.Box((min + max) * 0.5f, (max - min) * 0.5f, colour);
                 return;
             }
+            case Compound.Id:
+                DrawCompound(debug, shape, pose, trigger, around, range);   // a body and its children's colliders (issue #268)
+                return;
             default:
                 return;   // meshes (terrain) and anything else
         }
@@ -666,7 +669,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
             maximumT = t;   // nearest hit only
             Hit = new RayHit
             {
-                Entity = Data.EntityOf(collidable),
+                Entity = Data.EntityOf(collidable, childIndex),
                 Position = Origin + Direction * t,
                 Normal = Vector3.Normalize(normal),
                 Distance = t,

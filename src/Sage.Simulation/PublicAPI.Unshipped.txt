@@ -1483,3 +1483,7 @@ Sage.Simulation.IPhysicsWorld.Overlap(in Sage.Simulation.PhysicsBody body, Syste
 Sage.Simulation.IPhysicsWorld.MakeKinematic(in Sage.Simulation.PhysicsBody body) -> Sage.Simulation.PhysicsBody
 Sage.Simulation.IPhysicsWorld.MoveKinematic(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 position, System.Numerics.Vector3 velocity) -> void
 Sage.Simulation.CharacterController.GroundVelocity -> System.Numerics.Vector3
+Sage.Simulation.IPhysicsWorld.SetShape(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Collider collider, in Sage.Simulation.Pose pose) -> void
+Sage.Simulation.ColliderPart
+Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
+Sage.Simulation.ColliderPart.ColliderPart() -> void
