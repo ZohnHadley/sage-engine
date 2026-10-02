@@ -75,7 +75,9 @@ tools/smoke_run.sh --dotnet-run /tmp/g 3 Shaders Audio  # `dotnet run` a templat
   model, #216; one namespace each) has no MonoGame and never references a kit (SAGE0025); tests cannot reference `Sage.Client` —
   the smoke run checks the client.
 - **Docs are checked.** An "As built" claim cites the test that proves it (the `test:` marker, see the README); quoted counts are verified.
-  A new test changes the count: run `check_docs.py --fix`.
+  **Docs go in once per pack** (owner, 2026-10-02): an issue's PR is code, tests, `PublicAPI` and `schemas/` only; spec sheets,
+  design docs, guides, README/ARCHITECTURE counts, TODO and the handoff are updated in one docs PR (a branch named `*docs*`)
+  after a pack of issues has merged. CI fixes counts in place on other branches and holds a docs branch to them; run `check_docs.py --fix` there.
 - Traps worth knowing are in the handoffs' §5 (2026-09-27: `git clean -fdx` deletes new untracked files;
   this clone may be shallow; the 8.0.1xx SDK miscompiles; `RollForward` hides .NET 8 runtime bugs.
   2026-09-28: merge `main` into a branch and re-run everything before merging it; allocation is
