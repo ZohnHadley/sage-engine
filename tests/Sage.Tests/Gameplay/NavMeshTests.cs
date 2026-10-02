@@ -427,6 +427,315 @@ public class NavMeshTests
         }
     }
 
+    // ---- doors, off-mesh links and things that move (#265) ---------------------------------------------
+
+    private static NavMeshAnswer Plan(NavMesh mesh, NavGeometry geometry, NavCrossings crossings, Vector3 from, Vector3 to,
+                                      Span<Vector3> corners, out int count, out NavMeshCrossing crossing, long tick = 1)
+    {
+        mesh.BeginTick(tick);
+        return mesh.Plan(from, to, geometry, crossings, 4096, corners, out count, out _, out crossing);
+    }
+
+    // A platform three metres up: the way down is a drop link, and it goes one way unless it says
+    // otherwise. The path stops at the link's far end, so the creature crosses it and plans again.
+    [Fact]
+    public void ALinkIsAnEdgeOneWayUnlessItSaysTwoWay()
+    {
+        var geometry = Boxes(Floor(-8, -8, 16, 16), Box(0, 0, 0, 6, 3, 6));
+        Span<Vector3> corners = stackalloc Vector3[NavPath.MaxCorners];
+        var top = new Vector3(3, 3, 3);
+        var ground = new Vector3(-4, 0, 3);
+        var link = new NavLinkSpan(default, new Vector3(0.3f, 3, 3), new Vector3(-1.5f, 0, 3), NavLinkKind.Drop, false, 0f);
+
+        var none = new NavCrossings();
+        Assert.Equal(NavMeshAnswer.NoRoute, Plan(new NavMesh(NavMeshAgent.Default), geometry, none, top, ground, corners, out _, out _));
+
+        var crossings = new NavCrossings();
+        crossings.Links.Add(link);
+        var mesh = new NavMesh(NavMeshAgent.Default);
+        Assert.Equal(NavMeshAnswer.Found, Plan(mesh, geometry, crossings, top, ground, corners, out int count, out var crossing));
+        Assert.Equal(NavCrossing.Drop, crossing.Kind);
+        Assert.Equal(0, crossing.Index);
+        Assert.Equal(count - 2, crossing.Corner);
+        Assert.Equal(link.Start, corners[crossing.Corner]);
+        Assert.Equal(link.End, corners[crossing.Corner + 1]);
+        AssertWalkable(mesh, top, corners[..(count - 1)]);
+
+        // Not back up it.
+        Assert.Equal(NavMeshAnswer.NoRoute, Plan(mesh, geometry, crossings, ground, top, corners, out _, out _, tick: 2));
+        crossings.Links[0] = link with { TwoWay = true };
+        Assert.Equal(NavMeshAnswer.Found, Plan(mesh, geometry, crossings, ground, top, corners, out count, out crossing, tick: 3));
+        Assert.Equal(link.End, corners[crossing.Corner]);
+        Assert.Equal(link.Start, corners[crossing.Corner + 1]);
+    }
+
+    // A door in a doorway is baked as if it were not there, and the plan through it stops at the far
+    // side with the door as its crossing: the near corner is short of it, the far one past it.
+    [Fact]
+    public void ADoorIsACrossingAndThePathStopsOnItsFarSide()
+    {
+        var geometry = Boxes(Floor(-2, -2, 14, 10), Box(6, 0, -2, 6.5f, 2, 3.4f), Box(6, 0, 4.6f, 6.5f, 2, 10));
+        var crossings = new NavCrossings();
+        crossings.Doors.Add(new NavDoorSpan(default, new Vector3(6.2f, 0, 3.4f), new Vector3(6.3f, 2, 4.6f), Open: false, Locked: false));
+        var mesh = new NavMesh(NavMeshAgent.Default);
+        Span<Vector3> corners = stackalloc Vector3[NavPath.MaxCorners];
+
+        var from = new Vector3(2, 0, 8);
+        Assert.Equal(NavMeshAnswer.Found, Plan(mesh, geometry, crossings, from, new Vector3(11, 0, 0), corners, out int count, out var crossing));
+        Assert.Equal(NavCrossing.Door, crossing.Kind);
+        Assert.Equal(count - 2, crossing.Corner);
+        var near = corners[crossing.Corner];
+        var far = corners[crossing.Corner + 1];
+        Assert.True(near.X < 6.2f - 0.3f && near.Z > 3.4f && near.Z < 4.6f, $"the near side {near} is not in front of the door");
+        Assert.True(far.X > 6.3f + 0.3f && far.Z > 3.4f && far.Z < 4.6f, $"the far side {far} is not past the door");
+        AssertWalkable(mesh, from, corners[..count]);
+    }
+
+    private static (Engine, World) BoxWorld(params (Vector3 Min, Vector3 Max)[] solids)
+    {
+        var engine = HeadlessApp.Gameplay().File("data/nav.json", Records).Build().Engine;
+        var world = engine.CreateWorld("links");
+        foreach (var (min, max) in solids)
+        {
+            var solid = world.Create(Transform.At((min + max) * 0.5f), "solid");
+            world.Add(solid, Collider.Box(max - min));
+        }
+        return (engine, world);
+    }
+
+    private static (Vector3, Vector3) Solid(float x0, float y0, float z0, float x1, float y1, float z1) =>
+        (new Vector3(x0, y0, z0), new Vector3(x1, y1, z1));
+
+    // Runs until the creature is within `reach` of the player, or `seconds` pass. Returns how close it got.
+    private static float Chase(World world, Entity creature, Entity player, float seconds, float reach = 2.5f, Action<int>? each = null)
+    {
+        float closest = float.MaxValue;
+        for (int i = 0; i < seconds * 60 && closest >= reach; i++)
+        {
+            world.RunFixed(1f / 60f);
+            each?.Invoke(i);
+            closest = MathF.Min(closest, Vector3.Distance(world.Get<Transform>(creature).LocalPosition, world.Get<Transform>(player).LocalPosition));
+        }
+        return closest;
+    }
+
+    // Two rooms with a waist-high wall between them (a creature sees over it, it cannot walk over it) and
+    // one doorway, shut by a door of the same height that slides into the wall beside it.
+    private static (Engine, World, Entity Door) DoorWorld(bool locked)
+    {
+        var (engine, world) = BoxWorld(
+            Solid(-2, -1, -4, 18, 0, 12),                // floor, exactly as deep as the wall: no way round
+            Solid(7.9f, 0, -4, 8.1f, 0.9f, 3.4f),
+            Solid(7.9f, 0, 4.6f, 8.1f, 0.9f, 12));
+        var closed = new Vector3(8, 0.45f, 4);
+        var door = world.Create(Transform.At(closed), "door");
+        door.Name = "door";
+        world.Add(door, Collider.Box(new Vector3(0.1f, 0.9f, 1.2f)));
+        world.Add(door, new Mover { OpenOffset = new Vector3(0, 0, 1.4f), Seconds = 1f, Closed = closed });
+        if (locked) world.Add(door, new NavDoor { Locked = true });
+        return (engine, world, door);
+    }
+
+    // The issue's first "done when": a creature whose way is through a closed door walks up to it, opens
+    // it (fires `Open`) and waits, then walks through — the door is not a wall to the planner.
+    [Fact]
+    public void ACreatureOpensAClosedDoorAndWalksThroughIt()
+    {
+        var (engine, world, door) = DoorWorld(locked: false);
+        using (engine)
+        {
+            float opened = 0f;   // nothing else in this world opens it
+            var creature = Creature(world, new Vector3(3, 0, 0));
+            var player = Player(world, new Vector3(13, 0, 8));
+            var nav = world.Resources.Get<Navigation>();
+            bool waited = false;
+
+            float closest = Chase(world, creature, player, 30f, each: _ =>
+            {
+                ref readonly var path = ref world.Get<AIState>(creature).Path;
+                if (path.InCrossing && path.Crossing == NavCrossing.Door && world.Get<Mover>(door).Position < 1f)
+                    waited = true;
+                opened = MathF.Max(opened, world.Get<Mover>(door).Position);
+            });
+
+            Assert.True(closest < 2.5f, $"the creature got no closer than {closest:F1} m (at {world.Get<Transform>(creature).LocalPosition}, " +
+                                        $"door at {world.Get<Mover>(door).Position:F2}; {nav.MeshPlans} plans on the navmesh, {nav.NoRoute} with no way through)");
+            Assert.True(world.Get<Transform>(creature).LocalPosition.X > 8.1f, "it did not go through the doorway");
+            Assert.True(waited, "it never stood at the door waiting for it to open");
+            Assert.Equal(1f, opened);
+        }
+    }
+
+    // The A/B: a door creatures may not open is a wall to the planner while it is shut, so the same
+    // creature never asks it to open and never leaves its room.
+    [Fact]
+    public void ALockedDoorIsAWallToThePlanner()
+    {
+        var (engine, world, door) = DoorWorld(locked: true);
+        using (engine)
+        {
+            var creature = Creature(world, new Vector3(3, 0, 0));
+            var player = Player(world, new Vector3(13, 0, 8));
+
+            Chase(world, creature, player, 12f);
+
+            Assert.True(world.Get<Transform>(creature).LocalPosition.X < 7.9f, $"it got past a locked door (at {world.Get<Transform>(creature).LocalPosition})");
+            Assert.Equal(0f, world.Get<Mover>(door).Position);
+            Assert.True(world.Resources.Get<Navigation>().NoRoute > 0, "the planner found a way through a locked door");
+        }
+    }
+
+    // A platform three metres up with a parapet round it, open on the far side from the player: the way
+    // down is a drop link from the opening to the ground.
+    private static (Engine, World) LedgeWorld(bool link)
+    {
+        var (engine, world) = BoxWorld(
+            Solid(-12, -1, -10, 30, 0, 16),               // the ground
+            Solid(0, 0, 0, 6, 3, 6),                      // the platform
+            Solid(5.75f, 3, 0, 6, 3.7f, 6),               // parapet: east, toward the player
+            Solid(0, 3, 0, 6, 3.7f, 0.25f),               // south
+            Solid(0, 3, 5.75f, 6, 3.7f, 6),               // north
+            Solid(0, 3, 0, 0.25f, 3.7f, 2.25f),           // west, either side of the opening
+            Solid(0, 3, 3.75f, 0.25f, 3.7f, 6));
+        if (link)
+        {
+            var at = world.Create(Transform.At(new Vector3(0.3f, 3, 3)), "drop");
+            world.Add(at, new NavLink { End = new Vector3(-1.8f, -3, 0), Kind = NavLinkKind.Drop });
+        }
+        return (engine, world);
+    }
+
+    // The issue's second "done when": a creature on a ledge walks away from its target to the opening,
+    // drops off it by the link, and comes round to the player on the ground.
+    [Fact]
+    public void ACreatureDropsFromALedgeByALink()
+    {
+        var (engine, world) = LedgeWorld(link: true);
+        using (engine)
+        {
+            var creature = Creature(world, new Vector3(3, 3, 3));
+            var player = Player(world, new Vector3(20, 0, 3));
+            bool dropped = false;
+
+            float closest = Chase(world, creature, player, 40f, each: _ =>
+            {
+                var at = world.Get<Transform>(creature).LocalPosition;
+                if (at.X < 0f && at.Y < 0.5f) dropped = true;
+            });
+
+            Assert.True(dropped, $"it never came down on the west side of the platform (at {world.Get<Transform>(creature).LocalPosition})");
+            Assert.True(closest < 2.5f, $"the creature got no closer than {closest:F1} m (at {world.Get<Transform>(creature).LocalPosition})");
+        }
+    }
+
+    // The A/B: without the link there is no way down, and the creature stays up there.
+    [Fact]
+    public void WithoutTheLinkTheCreatureStaysOnTheLedge()
+    {
+        var (engine, world) = LedgeWorld(link: false);
+        using (engine)
+        {
+            var creature = Creature(world, new Vector3(3, 3, 3));
+            var player = Player(world, new Vector3(20, 0, 3));
+
+            Chase(world, creature, player, 15f);
+
+            Assert.True(world.Get<Transform>(creature).LocalPosition.Y > 2.5f, $"it got down without a link (at {world.Get<Transform>(creature).LocalPosition})");
+            Assert.True(world.Resources.Get<Navigation>().NoRoute > 0);
+        }
+    }
+
+    // The issue's third "done when": a crate comes to rest in the doorway a creature is walking to, and it
+    // plans again — through the other doorway — without being told. A dynamic body is baked once it lies
+    // still, and the change moves `Navigation.Version`, which a path planned before it is checked against.
+    [Fact]
+    public void ACreatureReplansWhenABlockerComesToRestInItsWay()
+    {
+        var (engine, world) = BoxWorld(
+            Solid(-2, -1, -4, 18, 0, 14),
+            Solid(7.9f, 0, -4, 8.1f, 0.9f, 1),            // a wall with a doorway at z 1..2.5, near the line
+            Solid(7.9f, 0, 2.5f, 8.1f, 0.9f, 9),          // and another at z 9..10.5, far from it
+            Solid(7.9f, 0, 10.5f, 8.1f, 0.9f, 14));
+        using (engine)
+        {
+            var creature = Creature(world, new Vector3(3, 0, -1));
+            var player = Player(world, new Vector3(13, 0, -2));
+            var nav = world.Resources.Get<Navigation>();
+
+            // Until it has a plan through the near doorway.
+            bool Through(float z0, float z1)
+            {
+                ref readonly var path = ref world.Get<AIState>(creature).Path;
+                for (int i = 0; i < path.Count; i++)
+                    if (MathF.Abs(path[i].X - 8f) < 1.5f && path[i].Z > z0 && path[i].Z < z1) return true;
+                return false;
+            }
+            int ticks = 0;
+            while (!Through(0.5f, 3f) && ticks++ < 5 * 60) world.RunFixed(1f / 60f);
+            Assert.True(ticks < 5 * 60, "it never planned through the near doorway");
+            int version = nav.Version;
+
+            var crate = world.Create(Transform.At(new Vector3(8, 0.45f, 1.75f)), "crate");
+            world.Add(crate, Collider.Box(new Vector3(0.6f, 0.9f, 1.6f)));
+            world.Add(crate, RigidBody.Dynamic(200f));
+
+            int replanned = -1;
+            float closest = Chase(world, creature, player, 40f, each: i =>
+            {
+                if (replanned < 0 && Through(8.5f, 11f)) replanned = i;
+            });
+
+            Assert.True(nav.Version > version, "the crate coming to rest changed nothing the planner knows about");
+            Assert.True(replanned >= 0, "it never planned through the far doorway");
+            Assert.True(replanned < 45, $"it took {replanned} ticks to plan again after the crate landed");
+            Assert.True(closest < 2.5f, $"the creature got no closer than {closest:F1} m (at {world.Get<Transform>(creature).LocalPosition})");
+            Assert.True(MathF.Abs(world.Get<Transform>(crate).LocalPosition.Z - 1.75f) < 0.3f, "the creature pushed the crate out of the way instead");
+        }
+    }
+
+    // Every other kind of link, crossed the way its kind says: a jump over a gap and a teleport across it
+    // (from one platform to another two metres up, with no way down), and a ladder up the side of one.
+    [Theory]
+    [InlineData(NavLinkKind.Jump)]
+    [InlineData(NavLinkKind.Teleport)]
+    [InlineData(NavLinkKind.Ladder)]
+    public void EachKindOfLinkIsCrossed(NavLinkKind kind)
+    {
+        var (engine, world) = BoxWorld(
+            Solid(-12, -1, -6, 24, 0, 12),                // the ground
+            Solid(0, 0, 0, 6, 2, 6),                      // platform A
+            Solid(5.75f, 2, 0, 6, 2.7f, 2.25f),           // A's east parapet, open at z 2.25..3.75
+            Solid(5.75f, 2, 3.75f, 6, 2.7f, 6),
+            Solid(8.5f, 0, 0, 14.5f, 2, 6));              // platform B, 2.5 m across the gap
+        using (engine)
+        {
+            Entity creature, player;
+            var link = world.Create(Transform.At(kind == NavLinkKind.Ladder ? new Vector3(-0.4f, 0, 3) : new Vector3(5.6f, 2, 3)), "link");
+            if (kind == NavLinkKind.Ladder)
+            {
+                world.Add(link, new NavLink { End = new Vector3(1.2f, 2, 0), Kind = kind });
+                creature = Creature(world, new Vector3(-6, 0, 1));
+                player = Player(world, new Vector3(4, 2, 1));
+            }
+            else
+            {
+                world.Add(link, new NavLink { End = new Vector3(3.4f, 0, 0), Kind = kind });
+                creature = Creature(world, new Vector3(2, 2, 1));
+                player = Player(world, new Vector3(12, 2, 1));
+            }
+            bool crossing = false;
+
+            var expected = NavCrossings.Of(kind);
+            float closest = Chase(world, creature, player, 30f, each: _ =>
+                crossing |= world.Get<AIState>(creature).Path.Crossing == expected);
+
+            var at = world.Get<Transform>(creature).LocalPosition;
+            Assert.True(crossing, $"it never planned over the {kind} link (at {at})");
+            Assert.True(closest < 2.5f, $"the creature got no closer than {closest:F1} m (at {at})");
+            Assert.True(at.Y > 1.5f, $"it is not up on the platform (at {at})");
+        }
+    }
+
     // ---- sage validate --------------------------------------------------------------------------------
 
     private static string Repo => TestEnv.FolderAbove("Sage.sln");

@@ -140,6 +140,7 @@ public sealed class AnimationModule : IModule
         world.AddSystem(new SpriteGraphSystem(world, _records!));   // sprites played by a graph (issue #119)
         world.AddSystem(new FootIkSystem(world));   // feet on the ground (issue #120), through IPhysicsWorld
         world.AddSystem(new RagdollTriggerSystem(world));   // deaths and hits send ragdolls down (issue #246)
+        world.AddSystem(new FootstepSystem(world, _records!));   // a step makes its surface's noise (issue #270)
         // The animator's clip events become AnimationEvents (issue #119).
         world.Resources.Replace<IAnimationEventSink>(new AnimationEventBus());
     }
@@ -464,6 +465,10 @@ public sealed class AIModule : IModule
                     Log.Info(LogCat.Console, $"'{world.Name}': {tiles} navmesh tile(s) dropped");
                 }
         });
+        // An off-mesh link switched from a map or a script (#265): a bridge raised, a ladder kicked away.
+        // Routed to the link, like a relay's Enable.
+        ctx.Engine.Inputs.Register<NavLink>("Enable", static (World world, in IOContext io) => world.Get<NavLink>(io.Self).Disabled = false);
+        ctx.Engine.Inputs.Register<NavLink>("Disable", static (World world, in IOContext io) => world.Get<NavLink>(io.Self).Disabled = true);
         // A level's markers a body cannot get to (#264), found by baking its brushes at load: `sage
         // validate` says so at the marker's line.
         var navRecords = _records;

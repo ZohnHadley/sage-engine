@@ -66,6 +66,8 @@ public sealed class BodyPart : IPrefabPart
     public bool Contacts;
     [Property(Category = "Physics", Tooltip = "Physics layer by name; empty = default")]
     public string Layer = "";
+    [RecordRef("physics_material"), Property(Category = "Physics", Tooltip = "What it is made of: footsteps, impacts and its friction; empty = none")]
+    public RecordId Surface;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -93,6 +95,7 @@ public sealed class BodyPart : IPrefabPart
 
         collider.IsTrigger = Trigger;
         collider.ReportContacts = Contacts;
+        collider.Surface = Surface;
         ctx.World.Add(ctx.Entity, collider);
         ctx.World.Add(ctx.Entity, Mass > 0f ? RigidBody.Dynamic(Mass) : new RigidBody { Kind = BodyKind.Static });
     }

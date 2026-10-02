@@ -172,6 +172,14 @@
         }
       ]
     },
+    "footsteps": {
+      "description": "The component sage:footsteps (Footsteps), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:footsteps"
+        }
+      ]
+    },
     "from_map": {
       "description": "The component sage:from_map (FromMap), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -385,6 +393,22 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:mover"
+        }
+      ]
+    },
+    "nav_door": {
+      "description": "The component sage:nav_door (NavDoor), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_door"
+        }
+      ]
+    },
+    "nav_link": {
+      "description": "The component sage:nav_link (NavLink), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_link"
         }
       ]
     },
@@ -692,6 +716,14 @@
         }
       ]
     },
+    "sage:footsteps": {
+      "description": "Component sage:footsteps (Footsteps).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:footsteps"
+        }
+      ]
+    },
     "sage:from_map": {
       "description": "Component sage:from_map (FromMap).",
       "allOf": [
@@ -889,6 +921,22 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:mover"
+        }
+      ]
+    },
+    "sage:nav_door": {
+      "description": "Component sage:nav_door (NavDoor).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_door"
+        }
+      ]
+    },
+    "sage:nav_link": {
+      "description": "Component sage:nav_link (NavLink).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_link"
         }
       ]
     },
@@ -2707,6 +2755,14 @@
           "description": "Reports contact begin and end events. Category: Collision. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "surface": {
+          "description": "What it is made of: footsteps, impacts and its friction; empty = none. Names a physics_material record. Category: Collision. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:physics_material"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -2939,6 +2995,33 @@
       },
       "additionalProperties": false,
       "description": "Component sage:foot_ik (FootIk)."
+    },
+    "sage:footsteps": {
+      "type": "object",
+      "properties": {
+        "stride": {
+          "description": "Metres walked between steps; 0 = only the animation's footstep events. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "reach": {
+          "description": "How far below the feet the ground is looked for. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "lastSurface": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:footsteps (Footsteps)."
     },
     "sage:from_map": {
       "type": "object",
@@ -3973,7 +4056,7 @@
       "type": "object",
       "properties": {
         "openOffset": {
-          "description": "(Vector3, default [0,0,0])",
+          "description": "Where open is, relative to where it was placed. Unit: m. (Vector3, default [0,0,0])",
           "default": [
             0,
             0,
@@ -3987,14 +4070,17 @@
           "maxItems": 3
         },
         "seconds": {
-          "description": "(float, default 0)",
+          "description": "How long the whole trip takes, shut to open. Unit: s. At least 0. (float, default 0)",
           "default": 0,
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "position": {
-          "description": "(float, default 0)",
+          "description": "Where it is: 0 shut, 1 open. Range: 0 to 1. (float, default 0)",
           "default": 0,
-          "type": "number"
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
         "direction": {
           "description": "(sbyte, default 0)",
@@ -4016,9 +4102,10 @@
           "maxItems": 3
         },
         "closeAfter": {
-          "description": "(float, default 0)",
+          "description": "Shuts itself this long after it opens; 0 = stays open. Unit: s. At least 0. (float, default 0)",
           "default": 0,
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "holdRemaining": {
           "description": "(float, default 0)",
@@ -4039,10 +4126,165 @@
           "description": "Not saved. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "openAngle": {
+          "description": "How far it turns as it opens (a hinged door); 0 = it does not turn. Unit: deg. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "openAxis": {
+          "description": "What it turns about, in its own frame: (0, 1, 0) is a door's hinge. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "pivot": {
+          "description": "Where the hinge is, from its origin, in its own frame. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "closedRotation": {
+          "description": "(Quaternion, default [0,0,0,0])",
+          "default": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "path": {
+          "description": "(Vector3[])",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "path+": {
+          "description": "Adds to \"path\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "path-": {
+          "description": "Removes these from \"path\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "halt": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "locked": {
+          "description": "Refuses to open (fires OnLocked) until it is sent Unlock. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
       "description": "Component sage:mover (Mover)."
+    },
+    "sage:nav_door": {
+      "type": "object",
+      "properties": {
+        "locked": {
+          "description": "Creatures do not open it: while not fully open it is a wall to the planner. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:nav_door (NavDoor)."
+    },
+    "sage:nav_link": {
+      "type": "object",
+      "properties": {
+        "end": {
+          "description": "Where the link lands, from where the entity stands, in world axes (not turned with the entity) Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "kind": {
+          "description": "How a creature crosses it: Walk, Jump, Drop, Ladder or Teleport. (NavLinkKind, default \"Walk\")",
+          "default": "Walk",
+          "type": "string",
+          "enum": [
+            "Walk",
+            "Jump",
+            "Drop",
+            "Ladder",
+            "Teleport"
+          ]
+        },
+        "twoWay": {
+          "description": "Crossed from either end; off, only from the entity to End (a drop) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "cost": {
+          "description": "What using it costs over its length, in metres of walking. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "disabled": {
+          "description": "Not used by the planner until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:nav_link (NavLink)."
     },
     "sage:offscreen": {
       "type": "object",

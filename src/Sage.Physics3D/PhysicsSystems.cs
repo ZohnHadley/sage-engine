@@ -305,6 +305,7 @@ internal sealed class TerrainCollisionSystem : ISystem
     private readonly World _world;
     private Vector3[] _vertices = Array.Empty<Vector3>();
     private int[] _indices = Array.Empty<int>();
+    private byte[] _triangleLayers = Array.Empty<byte>();
 
     public TerrainCollisionSystem(World world, PhysicsSpace space)
     {
@@ -357,7 +358,24 @@ internal sealed class TerrainCollisionSystem : ISystem
         var body = _space.AddMesh(entity, _vertices.AsSpan(0, side * side), _indices.AsSpan(0, index), origin);
         _world.Add(entity, body);
         _world.Add(entity, new SectorOwned { Sector = sector.Coord });   // unloading the sector takes it
+        Surfaces(body, heights, index / 3);
         Log.Info(LogCat.Physics, $"Terrain sector {sector.Coord}: collision mesh with {index / 3} triangles in {watch.Elapsed.TotalMilliseconds:F1} ms");
+    }
+
+    // What the ground is made of (issue #270): one surface when the sector is all layer 0, else each
+    // triangle takes its cell's layer (two triangles a cell, in the order they were built above).
+    private void Surfaces(in PhysicsBody body, Heightfield heights, int triangles)
+    {
+        var layers = _terrain!.SurfaceLayers;
+        if (layers.Count == 0) return;
+        if (heights.CellLayers == null) { _space.SetSurface(body, layers[0]); return; }
+        if (_triangleLayers.Length < triangles) _triangleLayers = new byte[triangles];
+        for (int t = 0; t < triangles; t++)
+        {
+            byte layer = heights.CellLayers[t / 2];
+            _triangleLayers[t] = layer < layers.Count ? layer : (byte)0;
+        }
+        _space.SetSurfaces(body, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(layers), _triangleLayers.AsSpan(0, triangles));
     }
 }
 
@@ -406,7 +424,7 @@ public sealed class PhysicsModule : IModule
 
     public void OnWorldCreated(World world)
     {
-        var space = new PhysicsSpace();
+        var space = new PhysicsSpace { Records = _records };   // surfaces' friction (issue #270)
         world.Resources.Add(space);          // disposed with the world
         world.Resources.Add<IPhysicsWorld>(space);   // what everything else reads (gameplay, levels, I/O)
         _spaces.Add(space);

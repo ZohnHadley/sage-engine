@@ -371,20 +371,28 @@ internal sealed class MoveToTargetTask : IAITask
     // so the thing walked to does not block its own cell.
     internal static void WalkToward(ref AITaskContext c, Vector3 self, Vector3 goal, Entity goalEntity)
     {
-        Vector3 steerTo = Navigate(ref c, ref c.State.Path, self, goal, goalEntity);
+        Vector3 steerTo = Navigate(ref c, ref c.State.Path, self, goal, goalEntity, out bool hold);
 
         float wanted = AIMath.YawTo(self, steerTo);
-        wanted += Avoid(ref c, self, wanted);
+        // Not while crossing a link or a door: steering off the door it is waiting for, or the wall a
+        // ladder is on, is exactly wrong.
+        if (!c.State.Path.InCrossing) wanted += Avoid(ref c, self, wanted);
         c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, wanted, c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
-        c.Intent.Move = new Vector2(0, 1);   // forward, in the direction it is facing
+        c.Intent.Move = hold ? Vector2.Zero : new Vector2(0, 1);   // forward, in the direction it is facing
     }
 
     // Where to walk next: the target itself when nothing is in the way, otherwise the next corner of a
-    // path. Returns the point to steer at, and keeps the path in step as the creature walks it.
-    private static Vector3 Navigate(ref AITaskContext c, ref NavPath path, Vector3 self, Vector3 target, Entity goalEntity)
+    // path. Returns the point to steer at, and keeps the path in step as the creature walks it. `hold`
+    // is a crossing saying "stand here, facing that" (a door still opening).
+    private static Vector3 Navigate(ref AITaskContext c, ref NavPath path, Vector3 self, Vector3 target, Entity goalEntity, out bool hold)
     {
+        hold = false;
         path.ReplanIn -= c.Dt;
         path.CheckIn -= c.Dt;
+
+        // Part way over a crossing (#265) it finishes it, whatever the line to the target says: a creature
+        // half up a ladder that sees its target does not let go.
+        if (path.InCrossing) return Cross(ref c, ref path, self, target, out hold);
 
         // The cheap question first, and the one that is usually enough: can it just walk at the thing?
         // A clear line means the path is dropped, so a creature stops following corners the moment it
@@ -397,6 +405,12 @@ internal sealed class MoveToTargetTask : IAITask
         {
             path.CheckIn = CheckSeconds;
             path.LineBlocked = !LineIsWalkable(ref c, self, target);
+
+            // The world changed under the path (#265): a blocker came to rest in it, a locked door shut,
+            // a link was switched. Plan again now rather than at the next re-plan.
+            if (path.Walking && c.World.Resources.TryGet<Navigation>(out var changed) && changed != null &&
+                changed.Changed(c.World, path.Version))
+                path.ReplanIn = 0f;
         }
         if (!path.LineBlocked)
         {
@@ -419,9 +433,161 @@ internal sealed class MoveToTargetTask : IAITask
 
         // Corners are reached, not aimed at for ever: once inside `CornerReached` (or once the *next* one
         // is visible) it moves on, which is what stops a creature stopping dead on every corner.
-        while (path.Walking && AIMath.DistanceXZ(self, path.Next) <= CornerReached) path.Step++;
+        while (path.Walking && !path.InCrossing && AIMath.DistanceXZ(self, path.Next) <= CornerReached) path.Step++;
+        if (path.InCrossing) return Cross(ref c, ref path, self, target, out hold);
         if (!path.Walking) { path.Clear(); return target; }
         return path.Next;
+    }
+
+    // ---- crossings (#265) -------------------------------------------------------------------------
+
+    private const float DoorWaitSeconds = 6f;     // a door that has not opened by then is not going to
+    private const float CrossingSeconds = 8f;     // nor will a link that has not been crossed by then
+    private const float ClimbSpeed = 2f;          // m/s up or down a ladder
+    private const float JumpClearance = 0.6f;     // how far above the higher end a jump's arc peaks
+    private const float LandedHeight = 1f;        // the far side is reached within this height of it
+    private const float LiftOff = 0.2f;           // seconds after a launch before touching ground is landing
+    private const float LiftOffHeight = 0.1f;     // how far a climb starts off the ground
+    private const float MaxJumpSpeed = 12f;       // m/s across, steering an arc that has gone wrong
+
+    // One tick of crossing a door or a link: it is at the near side and `path.Next` is the far side.
+    // Returns where to steer, and `hold` when it should stand still facing it.
+    private static Vector3 Cross(ref AITaskContext c, ref NavPath path, Vector3 self, Vector3 target, out bool hold)
+    {
+        hold = false;
+        Vector3 end = path.Next;
+        path.CrossingTime += c.Dt;
+        var entity = path.CrossingEntity;
+
+        switch (path.Crossing)
+        {
+            case NavCrossing.Door:
+            {
+                // Gone (or not a mover any more): there is nothing to open, so walk.
+                if (!c.World.IsAlive(entity) || !c.World.TryGet<Mover>(entity, out var mover)) break;
+                bool open = mover.Position >= 1f && mover.Direction >= 0;
+                if (open) break;
+                if (c.World.TryGet<NavDoor>(entity, out var rules) && rules.Locked) return GiveUp(ref path, target);
+                if (path.CrossingTime > DoorWaitSeconds) return GiveUp(ref path, target);
+
+                // Neither open nor opening: ask it, as a button would, with itself as the activator. Asked
+                // again if it starts to close before it was through (a door on a timer).
+                if (mover.Direction <= 0 && c.World.Resources.TryGet<EntityIO>(out var io) && io != null)
+                {
+                    io.FireInput(entity, "Open", activator: c.Entity, caller: c.Entity);
+                    path.CrossingStarted = true;
+                }
+                hold = true;
+                return end;
+            }
+
+            case NavCrossing.Teleport:
+                c.Transform.LocalPosition = end;
+                if (c.World.Has<CharacterController>(c.Entity)) c.World.Get<CharacterController>(c.Entity).Velocity = Vector3.Zero;
+                path.Step++;
+                return end;
+
+            case NavCrossing.Jump:
+            {
+                if (!c.World.Has<CharacterController>(c.Entity)) break;
+                ref var body = ref c.World.Get<CharacterController>(c.Entity);
+                if (!path.CrossingStarted)
+                {
+                    // From the ground or not at all: face it and wait to land first.
+                    if (body.Grounded)
+                    {
+                        Launch(ref body, self, end, c.Movement.Gravity);
+                        path.CrossingStarted = true;
+                        path.CrossingTime = 0f;   // from here, the time in the air
+                    }
+                    else hold = true;
+                    return end;
+                }
+                // In the air it holds the arc's speed across the gap (air control would bend it toward
+                // walking pace); on the ground again it has landed, wherever that was.
+                if (!body.Grounded || path.CrossingTime < LiftOff) { body.Velocity = Steer(self, end, body.Velocity, c.Movement.Gravity); return end; }
+                path.Step++;
+                return end;
+            }
+
+            case NavCrossing.Ladder:
+            {
+                if (!c.World.Has<CharacterController>(c.Entity)) break;
+                ref var body = ref c.World.Get<CharacterController>(c.Entity);
+                bool below = end.Y - self.Y > 0.02f, above = end.Y - self.Y < -0.05f;
+                float across = AIMath.DistanceXZ(self, end);
+                // At the far side's height and standing, or over it: the rest is a walk.
+                if (!below && !above && (body.Grounded || across <= 0.5f)) break;
+                if (path.CrossingTime > CrossingSeconds) return GiveUp(ref path, target);
+
+                // Until ladders (#263) give it a volume to hold on to, the climb is the creature's own:
+                // straight up (or down) at climbing speed, pressed toward the far side, which it steps
+                // onto once it is above the edge.
+                float dt = MathF.Max(c.Dt, 1e-4f);
+                float vertical = below ? MathF.Min(ClimbSpeed, (end.Y + 0.1f - self.Y) / dt)
+                               : above ? -MathF.Min(ClimbSpeed, (self.Y - end.Y) / dt) : 0f;
+                var sideways = end - self;
+                sideways.Y = 0;
+                sideways = across > 1e-3f ? sideways / across * MathF.Min(ClimbSpeed, across / dt) : Vector3.Zero;
+                // Gravity is the controller's, and it is added after this: paid in advance.
+                body.Velocity = sideways + Vector3.UnitY * (vertical - c.Movement.Gravity * c.Dt);
+                // Off the ground first: a climb is slower than the controller's ground check reaches, and
+                // it would put the creature back on the floor every tick.
+                if (body.Grounded && below) c.Transform.LocalPosition += Vector3.UnitY * LiftOffHeight;
+                body.Grounded = false;
+                return end;
+            }
+        }
+
+        // Walking (a door that is open, a walk, a drop, the end of a jump or a climb): to the far side.
+        if (AIMath.DistanceXZ(self, end) <= CornerReached && MathF.Abs(self.Y - end.Y) <= LandedHeight)
+        {
+            path.Step++;
+            return end;
+        }
+        if (path.CrossingTime > CrossingSeconds) return GiveUp(ref path, target);
+        return end;
+    }
+
+    // The crossing did not happen: forget the path and leave it a while before asking again.
+    private static Vector3 GiveUp(ref NavPath path, Vector3 target)
+    {
+        path.Clear();
+        path.NoWayThrough = true;
+        path.ReplanIn = NoRouteSeconds;
+        return target;
+    }
+
+    // A jump's launch: up enough to clear the higher end, and across at whatever speed lands it at the far
+    // end on the way down.
+    private static void Launch(ref CharacterController body, Vector3 from, Vector3 to, float gravity)
+    {
+        float g = MathF.Max(MathF.Abs(gravity), 0.1f);
+        float rise = to.Y - from.Y;
+        float peak = MathF.Max(rise, 0f) + JumpClearance;
+        float up = MathF.Sqrt(2f * g * peak);
+        // The later of the two times it is at the far end's height: falling onto it, not rising past it.
+        float time = (up + MathF.Sqrt(MathF.Max(up * up - 2f * g * rise, 0f))) / g;
+        var across = to - from;
+        across.Y = 0;
+        body.Velocity = across / MathF.Max(time, 0.1f) + Vector3.UnitY * up;
+        body.Grounded = false;
+    }
+
+    // The jump's horizontal velocity again, from where it is now: whatever lands it on the far end in the
+    // time its fall has left. Air control bleeds a jump toward walking pace every tick, so the arc is
+    // flown rather than thrown.
+    private static Vector3 Steer(Vector3 self, Vector3 end, Vector3 velocity, float gravity)
+    {
+        float g = MathF.Max(MathF.Abs(gravity), 0.1f);
+        var across = end - self;
+        across.Y = 0;
+        float distance = across.Length();
+        if (distance < 0.05f) return velocity with { X = 0, Z = 0 };
+        float above = self.Y - end.Y;
+        float time = (velocity.Y + MathF.Sqrt(MathF.Max(velocity.Y * velocity.Y + 2f * g * above, 0f))) / g;
+        // Below the far end already, it has missed: no faster than a hard run into the side of it.
+        return across / distance * MathF.Min(distance / MathF.Max(time, 0.05f), MaxJumpSpeed) + Vector3.UnitY * velocity.Y;
     }
 
     // Is there room to walk straight there? A ray down the middle and one along each shoulder, so a
