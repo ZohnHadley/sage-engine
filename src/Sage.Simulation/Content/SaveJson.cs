@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 
 namespace Sage.Simulation;
@@ -80,20 +81,49 @@ internal sealed class EntitySaveConverter : JsonConverter<Entity>
     public override Entity Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null) return default;
+        if (!PersistentId.TryParse(reader.GetString(), out var id)) return default;
+        var entity = _world.Resolve(id);
+        if (!entity.IsNull) return entity;
+        // Asleep in a dormant cell (4m-4): a tombstoned handle, which World.Resolve(Entity) turns into the
+        // entity once its cell wakes, and the next save writes as this id again.
+        if (IsAsleep(id)) return SleepingHandles.Mint(_world, id);
         // Something the save pointed at that is not in it: the null entity. A creature whose target
         // died between save and load picks another, which is what it would do in play (16 §3.4).
-        return PersistentId.TryParse(reader.GetString(), out var id) ? _world.Resolve(id) : default;
+        return default;
+    }
+
+    private HashSet<PersistentId>? _asleep;
+
+    // The ids in the world's dormant cells, gathered once for this load or wake.
+    private bool IsAsleep(PersistentId id)
+    {
+        if (_asleep == null)
+        {
+            _asleep = new HashSet<PersistentId>();
+            if (_world.Resources.TryGet<ContentBaseline>(out var baseline) && baseline != null)
+                foreach (var (_, cell) in baseline.DormantCells)
+                    foreach (var saved in cell.Entities)
+                        if (saved["id"] is JsonValue value && value.TryGetValue(out string? text) && PersistentId.TryParse(text, out var asleep))
+                            _asleep.Add(asleep);
+        }
+        return _asleep.Contains(id);
     }
 
     public override void Write(Utf8JsonWriter writer, Entity value, JsonSerializerOptions options)
     {
         // An entity with no `Persistent` cannot be pointed at across a save, so the reference is
         // dropped rather than written wrong: whatever it pointed at will not be there either.
-        if (value.IsNull || !_world.TryGet<Persistent>(value, out var persistent) || persistent.Id.IsEmpty)
+        if (_world.TryGet<Persistent>(value, out var persistent) && !persistent.Id.IsEmpty)
+        {
+            writer.WriteStringValue(persistent.Id.ToString());
+            return;
+        }
+        // A handle to one that went to sleep (4m-4) is still a reference to it.
+        if (!value.IsNull || !SleepingHandles.TryGetId(_world, value, out var asleep))
         {
             writer.WriteNullValue();
             return;
         }
-        writer.WriteStringValue(persistent.Id.ToString());
+        writer.WriteStringValue(asleep.ToString());
     }
 }
