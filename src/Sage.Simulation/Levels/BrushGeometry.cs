@@ -176,14 +176,19 @@ public static class BrushGeometry
 
     // Builds every brush of a map, skipping (with a warning) the ones that enclose nothing, so one bad
     // solid costs its own geometry and not the level.
-    public static List<LevelBrush> Build(IEnumerable<MapBrush> brushes, MapSpace space, out int skipped)
+    public static List<LevelBrush> Build(IEnumerable<MapBrush> brushes, MapSpace space, out int skipped) =>
+        Build(brushes, space, out skipped, quiet: false);
+
+    // `quiet` counts the skipped brushes without saying so: a content check reading a level whose own
+    // load will say it (MapLoader.Read).
+    internal static List<LevelBrush> Build(IEnumerable<MapBrush> brushes, MapSpace space, out int skipped, bool quiet)
     {
         var built = new List<LevelBrush>();
         skipped = 0;
         foreach (var brush in brushes)
         {
             if (TryBuild(brush, space, out var one, out string error)) built.Add(one);
-            else { skipped++; Log.Warn(LogCat.Level, $"Brush skipped: {error}"); }
+            else { skipped++; if (!quiet) Log.Warn(LogCat.Level, $"Brush skipped: {error}"); }
         }
         return built;
     }

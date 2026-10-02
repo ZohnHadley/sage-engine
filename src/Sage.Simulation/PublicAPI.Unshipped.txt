@@ -1501,6 +1501,8 @@ Sage.Simulation.RunCondition.EvenWhenEditing = 4 -> Sage.Simulation.RunCondition
 static Sage.Simulation.PlacementExtensions.DespawnPlacement(this Sage.Simulation.World! world, Sage.Core.RecordId document, Sage.Simulation.Entity entity) -> void
 static Sage.Simulation.PlacementExtensions.FinishPlacements(this Sage.Simulation.World! world, Sage.Core.RecordId document) -> void
 static Sage.Simulation.PlacementExtensions.SpawnPlacement(this Sage.Simulation.World! world, Sage.Core.RecordId document, Sage.Simulation.PlacementsRecord! record, int index) -> Sage.Simulation.Entity
+Sage.Simulation.MapLevel.LocalPositionOf(Sage.Simulation.MapEntity! entity) -> System.Numerics.Vector3
+static Sage.Simulation.MapLevel.Read(Sage.Simulation.Engine! engine, Sage.Core.RecordId id, Sage.Simulation.MapRecord! record) -> Sage.Simulation.MapLevel?
 Sage.Simulation.IPhysicsWorld.Overlap(in Sage.Simulation.Collider shape, in Sage.Simulation.Pose at, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Simulation.OverlapHit
 Sage.Simulation.OverlapHit.Depth -> float
