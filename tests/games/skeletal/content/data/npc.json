@@ -1,6 +1,7 @@
 [
   // The NPC (issue #122): a box mannequin (models/mannequin.glb: 18 joints, clips idle, walk, run, aim,
-  // aim_up, aim_down, attack and reload) that its graph walks, runs, aims and strikes with, blended.
+  // aim_up, aim_down, attack, reload, getup_back and getup_front) that its graph walks, runs, aims and
+  // strikes with, blended, and gets up with after lying as a ragdoll.
   // Gameplay — here, state machines (scene.json) — only moves it and sets params: `speed` is read from
   // how far it moved, `aiming` and `aim_pitch` arrive by SetAnimParam, `attack` and `reload` by AnimTrigger.
   {
@@ -41,7 +42,14 @@
                 "transitions": [ { "to": "move", "when": { "anim_param": "speed", "min": 0.3 } } ] },
       "move": { "blend": { "x": "speed", "points": [ { "clip": "walk", "x": 1.5 }, { "clip": "run", "x": 4.5 } ] },
                 "tags": ["grounded", "moving"],
-                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] }
+                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] },
+      // Getting up from a ragdoll (engine issue #247): nothing goes here by a transition — Ragdolls.GetUp
+      // (or the `GetUp` input) enters one with Animators.PlayFrom, fading from the pose the body lay in —
+      // and each goes back to idle when its clip is done.
+      "getup_back": { "clip": "getup_back", "loop": false, "tags": ["getting_up"],
+                      "transitions": [ { "to": "idle", "when": { "anim_finished": "base" } } ] },
+      "getup_front": { "clip": "getup_front", "loop": false, "tags": ["getting_up"],
+                       "transitions": [ { "to": "idle", "when": { "anim_finished": "base" } } ] }
     },
     "layers": [
       {
@@ -122,5 +130,17 @@
     "parts": { "tween": { "duration": 6, "ease": "Linear" }, "state_machine": { "machine": "patrol_armed" } } },
   // A sentry that stands, aims level, high and low, strikes and reloads (the `sentry` machine).
   { "type": "prefab", "id": "sentry", "base": "npc", "name": "sentry",
-    "parts": { "skinned_mesh": { "material": "mannequin_red" }, "state_machine": { "machine": "sentry" } } }
+    "parts": { "skinned_mesh": { "material": "mannequin_red" }, "state_machine": { "machine": "sentry" } } },
+
+  // Phase 4k's exit (engine issue #249): a sentry that the `tumble` machine knocks over with the `Ragdoll`
+  // input and that gets back up by itself (`getUpAfter`: 1.5 s after it has settled, with getup_back or
+  // getup_front, into idle) — and round again, every time it has stood a while.
+  { "type": "prefab", "id": "tumbler", "base": "npc", "name": "tumbler",
+    "parts": { "skinned_mesh": { "material": "mannequin_green" }, "ragdoll": { "getUpAfter": 1.5, "getUpFade": 0.3 },
+               "state_machine": { "machine": "tumble" } } },
+  // And one that the `doomed` machine kills (the `lethal` effect, by ApplyEffect): it dies, falls as a
+  // ragdoll (onDeath) and stays down — the dead never get up by themselves, whatever getUpAfter says.
+  { "type": "prefab", "id": "casualty", "base": "npc", "name": "casualty",
+    "parts": { "skinned_mesh": { "material": "mannequin_blue" }, "ragdoll": { "getUpAfter": 1.5 },
+               "state_machine": { "machine": "doomed" } } }
 ]
