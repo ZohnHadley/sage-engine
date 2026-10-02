@@ -12,6 +12,7 @@ the code follows a short list of readiness rules so adding it isn't a rewrite.
 Nothing here is a product. It is an engine that grows one feature at a time, each one dogfooded by
 the `games/Sandbox` test game in the same commit.
 
+- [`docs/spec/`](docs/spec/README.md) — the specification: requirements (SRS), the technical design (TDD), the API contract, and a spec sheet per subsystem saying what is done and which issue finishes the rest.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — the overview: layers, rules, decisions and why.
 - [`docs/design/`](docs/design) — one document per subsystem, each with an "As built" section saying
   what actually exists today. [`00-index.md`](docs/design/00-index.md) is the reading order and the
