@@ -319,8 +319,7 @@ public class JointTests
 }
 
 // A chain of twenty links steps without allocating anything of its own: what a 20-link chain adds
-// over a world with one loose body is nothing (the step itself allocates about 40 bytes a tick inside
-// Bepu, TODO #41, in both).
+// over a world with one loose body is nothing (and the step itself allocates nothing either, #273).
 [Xunit.Collection(MeasurementsCollection.Name)]
 public class JointAllocationTests
 {

@@ -96,7 +96,7 @@ Not built: `stat render` and `stat assets`, a Chrome-trace export of profiler sc
 | REQ-CORE-06 | Offer a console script language with `wait`, `exec` and launch `+statements`, usable for automated runs. | Must | Done | test: AWaitStopsTheRestUntilItsTimeIsUp |
 | REQ-CORE-07 | Reject a registration made after its registry sealed, naming where it belongs. | Must | Done | test: ACvarRegisteredAfterConfigCfgIsAnError |
 | REQ-CORE-08 | Measure time per phase and per system and allocation per scope. | Must | Done | test: Profiler_RecordsPhasesAndSystems |
-| REQ-CORE-09 | Keep a steady-state tick and frame allocation-free for the core systems. | Must | Done | test: SteadyStateTicksAndFrames_DoNotAllocate; physics backend still about 40 B a tick (#272) |
+| REQ-CORE-09 | Keep a steady-state tick and frame allocation-free for the core systems. | Must | Done | test: SteadyStateTicksAndFrames_DoNotAllocate; the physics step too since #273 (test: ASteadyStateStepAllocatesNothingOnAnyThread) |
 | REQ-CORE-10 | Give systems time only through their context (`TickTime`, `FrameTime`), never the wall clock. | Must | Done | `src/Sage.Core/Time.cs`; test: Clock_RunsWholeTicks_AndCarriesTheRemainder |
 | REQ-CORE-11 | Provide console history and Tab completion for commands, cvars and record ids. | Should | Partial (`CVarRegistry.Complete` exists, not wired) | #299 |
 | REQ-CORE-12 | Provide a visual logger, `stat render`, `stat assets` and a trace export. | Could | Not started | #300 |

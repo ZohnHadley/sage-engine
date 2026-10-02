@@ -257,6 +257,14 @@
         "weapons:torso"
       ]
     },
+    "record:hitbox_budget": {
+      "description": "The id of a hitbox_budget record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "default_hitbox_budget",
+        "sage:default_hitbox_budget"
+      ]
+    },
     "record:hitboxes": {
       "description": "The id of a hitboxes record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1285,6 +1293,14 @@
         "weapons:torso"
       ]
     },
+    "base:hitbox_budget": {
+      "description": "Another hitbox_budget record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "default_hitbox_budget",
+        "sage:default_hitbox_budget"
+      ]
+    },
     "base:hitboxes": {
       "description": "Another hitboxes record to inherit every field from, abstract or not.",
       "type": "string",
@@ -2070,6 +2086,7 @@
       "description": "A tag by id, or by the bare name that resolves to it (this file's namespace, then sage).",
       "type": "string",
       "enum": [
+        "collider_off",
         "faces_camera",
         "from_parent_prefab",
         "from_scene",
@@ -2077,6 +2094,7 @@
         "player_camera",
         "player_controlled",
         "ragdolled",
+        "sage:collider_off",
         "sage:from_parent_prefab",
         "sage:from_scene",
         "sage:interactable",

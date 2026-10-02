@@ -484,3 +484,8 @@ Sage.Gameplay.MoverBlocked.Crush = 2 -> Sage.Gameplay.MoverBlocked
 Sage.Gameplay.MoverBlocked.Reverse = 0 -> Sage.Gameplay.MoverBlocked
 Sage.Gameplay.MoverBlocked.Stop = 1 -> Sage.Gameplay.MoverBlocked
 Sage.Gameplay.MoverPart.OnBlocked -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.HitboxBudgetRecord
+Sage.Gameplay.HitboxBudgetRecord.Distance -> float
+Sage.Gameplay.HitboxBudgetRecord.HitboxBudgetRecord() -> void
+Sage.Gameplay.HitboxBudgetRecord.MaxCreatures -> int
+Sage.Gameplay.GameplayConventionsRecord.HitboxBudget -> Sage.Core.RecordRef<Sage.Gameplay.HitboxBudgetRecord!>

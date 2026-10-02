@@ -300,8 +300,6 @@ public class SandboxHudAllocationTests
         Assert.False(stack.IsOpen);                                          // a HUD is not a screen that has the input
         Assert.Null(stack.Top);
 
-        // The Bepu step allocates 40 bytes a tick of its own even when idle: physics' to answer for.
-        Assert.True(world.Systems.Disable("sage.physics.step"));
         world.Say("A message for the log.");
         world.Say("A good one.", MessageKind.Good);
         // A HUD frame: the stack's update (the view-model's Refresh, the bindings, layout) and the plan.
