@@ -95,7 +95,7 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 | REQ-WORLD-11 | The reference open-world game shall run headless: dungeon trip, a day passes, NPC keeps its schedule, nothing doubled. | Must | Done | test: `OpenWorldExit_AwayADayInTheCrypt_TheSmithKeptHisScheduleAndNothingIsDoubled` |
 | REQ-WORLD-12 | NPCs shall keep routines and fight off-screen, deterministically, with no per-step allocation. | Should | Partial: straight-line movement, only after a cell first sleeps | test: `TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime`; #284 |
 | REQ-WORLD-13 | Streaming shall not stall a frame: generation on jobs, LOD and HLOD past the ring, per-sector asset scopes. | Must | Not started | #277 |
-| REQ-WORLD-14 | Prefabs shall nest and keep per-placement overrides across sectors. | Should | Not started | #279 |
+| REQ-WORLD-14 | Prefabs shall nest and keep per-placement overrides across sectors. | Should | Done | test: `AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing` |
 | REQ-WORLD-15 | The world shall offer a time scale, pause and hit-stop as services. | Should | Not started | #283 |
 | REQ-WORLD-16 | The calendar shall add seasons, moon phases, leap years and scheduled events. | Could | Not started | #289 |
 | REQ-WORLD-17 | There shall be several streaming sources, each with its own ring. | Could | Not started | #290 |
@@ -106,7 +106,6 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 Milestone 2 (epic #274).
 
 - #277 4m-3 Streaming: LOD/HLOD past the ring, per-sector asset scopes, generation on jobs (P1)
-- #279 4m-5 Prefabs: nested prefabs, per-placement part overrides, overrides kept across sectors (P1)
 - #283 4m-9 Time scale, pause and hit-stop as world services (P2)
 - #284 4m-10 Off-screen simulation: pathing, unvisited cells, live NPCs with far anchors (P2)
 - #289 4m-15 Calendar and clock: seasons, moon phases, leap years, scheduled calendar events (P3)

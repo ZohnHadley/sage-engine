@@ -383,12 +383,13 @@ public static class PrefabExtensions
                                           PrefabOverrides? overrides, string? where) =>
         SpawnPlaced(world, prefab, position, yawDegrees, overrides, where, persist: false);
 
-    // A saved entity on load, where the save says it stood (4i-5): its position and its whole rotation.
-    internal static Entity SpawnWithoutId(this World world, RecordId prefab, in Transform placed)
+    // A saved entity on load, where the save says it stood (4i-5): its position and its whole rotation,
+    // and the overrides it was placed with when no content places it any more (#279, KeptPlacement).
+    internal static Entity SpawnWithoutId(this World world, RecordId prefab, in Transform placed, PrefabOverrides? overrides = null)
     {
         var at = Transform.At(placed.LocalPosition);
         at.LocalRotation = placed.LocalRotation;
-        var entity = SpawnTree(world, prefab, at, overrides: null, where: null, default, 0);
+        var entity = SpawnTree(world, prefab, at, overrides, where: null, default, 0);
         if (!entity.IsNull) SnapGlobals(world, entity);
         return entity;
     }
