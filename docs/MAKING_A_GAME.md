@@ -409,7 +409,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
-| **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs, as `[{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]`; `routine` — what it does when and where, `{ "from": 8, "to": 20, "schedule": "work", "at": "forge" }`, named by the profile's `routine` or a `routine` part, walked with `MoveToAnchor`, `FaceAnchor` and `StayAt` (issue 4g-4) |
+| **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs, as `[{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]`; `routine` — what it does when and where, `{ "from": 8, "to": 20, "schedule": "work", "at": "forge" }`, named by the profile's `routine` or a `routine` part, walked with `MoveToAnchor`, `FaceAnchor` and `StayAt` (issue 4g-4); `nav_area` — ground that costs more or less to cross (`cost` per metre, 1 is ordinary ground), the `forbidden` factions that never path through it, and what makes ground this area: its `surfaces` (physics_materials: a road's gravel, a bog's mud) and `water` (every water volume), or a `nav_area` part's box (issue #271) |
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `dialogue_topic` — a keyword and its answers; `quest` — stages and objectives |
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
@@ -568,6 +568,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
 | `nav_door` | beside a `mover`: `locked` — creatures do not open it, and while it is not fully open it is a wall to the planner (without it a creature opens a door in its way and waits, #265) |
 | `nav_link` | an off-mesh link from here to `end` (metres, world axes) — `kind` (`Walk`, `Jump`, `Drop`, `Ladder`, `Teleport`), `twoWay`, `cost`, `startDisabled`; `Enable`/`Disable` switch it; on a prefab of your own a map places it with `"nav_link.end" "2 -3 0"` (#265) |
+| `nav_area` | a box of ground that is a `nav_area` — `area`, `size` (full extents, centred on the entity); it wins over water and over what the ground is made of, and where two overlap the dearer wins (#271) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
 | `attributes` | health and the rest, from `attribute` records |
@@ -588,7 +589,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Thirty-two here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Thirty-three here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and

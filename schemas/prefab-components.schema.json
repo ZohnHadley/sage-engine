@@ -396,6 +396,14 @@
         }
       ]
     },
+    "nav_area": {
+      "description": "The component sage:nav_area (NavArea), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_area"
+        }
+      ]
+    },
     "nav_door": {
       "description": "The component sage:nav_door (NavDoor), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -921,6 +929,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:mover"
+        }
+      ]
+    },
+    "sage:nav_area": {
+      "description": "Component sage:nav_area (NavArea).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_area"
         }
       ]
     },
@@ -4236,6 +4252,36 @@
       },
       "additionalProperties": false,
       "description": "Component sage:mover (Mover)."
+    },
+    "sage:nav_area": {
+      "type": "object",
+      "properties": {
+        "area": {
+          "description": "Which area the ground inside is. Names a nav_area record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:nav_area"
+            }
+          ]
+        },
+        "size": {
+          "description": "Full extents of the box, centred on the entity; ground whose floor is inside it is the area. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:nav_area (NavArea)."
     },
     "sage:nav_door": {
       "type": "object",

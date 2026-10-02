@@ -81,6 +81,11 @@ public sealed class MapLevel
     internal RecordId Surface;
     internal SurfaceTextures? SurfaceTextures;
 
+    // What a face with this texture is made of, as a hit on it would say: for code that reads a level's
+    // brushes itself, like the navmesh's areas (issue #271).
+    public RecordId SurfaceOf(string texture, RecordStore records) =>
+        (SurfaceTextures ??= SurfaceTextures.From(records, Surface)).Of(texture);
+
     // Origin space (14 §3), so it moves with a rebase like everything else. Only meaningful once
     // `Placed` is true: a level that stands on terrain cannot know its height until the ground under it
     // exists, which is later than the moment it loads.

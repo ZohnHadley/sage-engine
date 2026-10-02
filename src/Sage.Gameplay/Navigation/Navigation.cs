@@ -378,6 +378,12 @@ public struct NavPath
     internal bool CrossingStarted;    // the door asked to open, the jump launched
     internal int Version;             // Navigation.Version it was planned at: stale when that moves on
 
+    // Crowds and areas (#271): seconds spent barely moving among other creatures (Crowd.Steer), and
+    // whether the straight line to the goal crosses ground closed to it.
+    internal float Stuck;
+    internal bool LineForbidden;
+    internal Vector3 Edge;            // where the closed ground starts, along the line (origin space)
+
     public void Clear()
     {
         Count = 0;
@@ -403,6 +409,7 @@ public struct NavPath
     {
         for (int i = 0; i < Count; i++) Set(i, this[i] + offset);
         PlannedFor += offset;
+        Edge += offset;
     }
 }
 
@@ -415,9 +422,75 @@ public sealed class Navigation
 
     public NavGrid Grid { get; } = new();
 
-    internal NavMesh Mesh { get; } = new(NavMeshAgent.Default);
+    // The body sizes a navmesh is baked for (#271), smallest first; each has its own mesh, baked as its
+    // creatures need it. A body takes the smallest class it fits in (radius and height), so a rat goes
+    // through a vent a person does not, and an ogre does not try a door a person fits through. The middle
+    // one is the engine's default movement profile, and the only one baked unless a body asks for another.
+    internal static readonly NavMeshAgent[] SizeClasses =
+    {
+        new(0.25f, 1.0f, NavMeshAgent.Default.StepHeight, NavMeshAgent.Default.MaxSlopeDegrees),   // small: a dog, a rat
+        NavMeshAgent.Default,                                                                       // a person
+        new(0.8f, 3.0f, NavMeshAgent.Default.StepHeight, NavMeshAgent.Default.MaxSlopeDegrees),    // large: an ogre, a horse
+    };
+
+    internal const int PersonClass = 1;
+
+    private readonly NavMesh?[] _meshes = new NavMesh?[SizeClasses.Length];
+
+    public Navigation()
+    {
+        _meshes[PersonClass] = new NavMesh(NavMeshAgent.Default);
+        Source.Meshes.Add(_meshes[PersonClass]!);
+    }
+
+    // The person-sized mesh: what `nav_stats` reports and most creatures plan on.
+    internal NavMesh Mesh => _meshes[PersonClass]!;
 
     internal NavWorldGeometry Source { get; } = new();
+
+    // The smallest size class a body of this radius and height fits in; the largest when none does.
+    internal static int SizeClassOf(float radius, float height)
+    {
+        for (int i = 0; i < SizeClasses.Length; i++)
+            if (radius <= SizeClasses[i].Radius + 1e-3f && height <= SizeClasses[i].Height + 1e-3f) return i;
+        return SizeClasses.Length - 1;
+    }
+
+    internal NavMesh MeshOf(int sizeClass)
+    {
+        if (_meshes[sizeClass] is { } mesh) return mesh;
+        mesh = new NavMesh(SizeClasses[sizeClass]);
+        _meshes[sizeClass] = mesh;
+        Source.Meshes.Add(mesh);
+        return mesh;
+    }
+
+    // ---- areas and crowds (#271) ----
+
+    private NavAreas? _areas;
+
+    // The nav_area records as the planner reads them, built the first time a world plans.
+    internal NavAreas Areas => _areas ?? NavAreas.None;
+
+    // Creatures steering round each other (`nav_avoid`); off, they walk through each other as before.
+    internal bool Avoidance { get; set; } = true;
+
+    internal Crowd Crowd { get; } = new();
+
+    private void Prepare(World world)
+    {
+        if (_areas != null) return;
+        _areas = NavAreas.From(world.Resources.TryGet<RecordStore>(out var records) ? records : null);
+        Source.Areas = _areas;
+    }
+
+    // The records changed (a reload): the areas are read again, and every tile baked from the old ones goes.
+    internal void ReloadAreas()
+    {
+        _areas = null;
+        Source.Reset();
+        foreach (var mesh in _meshes) mesh?.Clear();
+    }
 
     // Plan on the navmesh where there is one (`nav_mesh`). Off, every plan is the local grid's, as before
     // #264.
@@ -448,7 +521,12 @@ public sealed class Navigation
     private long _budgetTick = -1;
     private int _plansThisTick;
 
-    public void ResetStats() { Plans = 0; Refused = 0; NoRoute = 0; MeshPlans = 0; GridPlans = 0; Mesh.ResetStats(); }
+    public void ResetStats()
+    {
+        Plans = 0; Refused = 0; NoRoute = 0; MeshPlans = 0; GridPlans = 0;
+        foreach (var mesh in _meshes) mesh?.ResetStats();
+        Crowd.ResetStats();
+    }
 
     private bool CanPlan(long tick)
     {
@@ -458,8 +536,25 @@ public sealed class Navigation
 
     // Plans a way from `from` to `to` for a body of `radius`, writing the corners into `path`. False
     // means "walk straight at it": either the budget is spent this tick, or there is no way through.
+    //
+    // The body's height (for its size class) and its faction (for the areas closed to it, #271) are read
+    // from `self`: its character's movement profile and its `faction`.
     public bool Plan(World world, IPhysicsWorld space, Vector3 from, Vector3 to, float radius,
-                     float stepHeight, float maxSlopeDegrees, Entity self, Entity target, ref NavPath path)
+                     float stepHeight, float maxSlopeDegrees, Entity self, Entity target, ref NavPath path) =>
+        Plan(world, space, from, to, radius, HeightOf(world, self), FactionOf(world, self), stepHeight, maxSlopeDegrees, self, target, ref path);
+
+    internal static float HeightOf(World world, Entity self)
+    {
+        if (self.IsNull || !world.IsAlive(self) || !world.TryGet<CharacterController>(self, out var character)) return NavMeshAgent.Default.Height;
+        if (!world.Resources.TryGet<RecordStore>(out var records) || records == null) return NavMeshAgent.Default.Height;
+        return CharacterConventions.Of(world).ProfileOf(records, character.Profile).StandHeight;
+    }
+
+    internal static RecordId FactionOf(World world, Entity self) =>
+        !self.IsNull && world.IsAlive(self) && world.TryGet<Faction>(self, out var faction) ? faction.Id : default;
+
+    internal bool Plan(World world, IPhysicsWorld space, Vector3 from, Vector3 to, float radius, float height, RecordId faction,
+                       float stepHeight, float maxSlopeDegrees, Entity self, Entity target, ref NavPath path)
     {
         if (!Enabled) return false;
         if (!CanPlan(world.Tick)) { Refused++; return false; }
@@ -469,7 +564,7 @@ public sealed class Navigation
         Span<Vector3> corners = stackalloc Vector3[NavPath.MaxCorners];
         int count;
         NavMeshCrossing crossing = default;
-        if (UseMesh && PlanOnMesh(world, from, to, corners, out count, out crossing))
+        if (UseMesh && PlanOnMesh(world, MeshOf(SizeClassOf(radius, height)), faction, from, to, corners, out count, out crossing))
         {
             MeshPlans++;
         }
@@ -505,7 +600,8 @@ public sealed class Navigation
     internal bool Changed(World world, int version)
     {
         if (!Enabled || !UseMesh) return false;
-        Source.Sync(world, Mesh);
+        Prepare(world);
+        Source.Sync(world);
         return Source.Version != version;
     }
 
@@ -514,28 +610,54 @@ public sealed class Navigation
     //
     // The mesh is keyed absolutely, so the two ends go out of origin space and the corners come back
     // into it: a rebase moves nothing in the mesh (R6).
-    private bool PlanOnMesh(World world, Vector3 from, Vector3 to, Span<Vector3> corners, out int count, out NavMeshCrossing crossing)
+    private bool PlanOnMesh(World world, NavMesh mesh, RecordId faction, Vector3 from, Vector3 to, Span<Vector3> corners, out int count, out NavMeshCrossing crossing)
     {
         count = 0;
-        Source.Sync(world, Mesh);
-        Mesh.BeginTick(world.Tick);
+        Prepare(world);
+        Source.Sync(world);
+        mesh.BeginTick(world.Tick);
         var offset = world.Resources.TryGet<Origin>(out var origin) && origin != null ? origin.ToAbsolute(Vector3.Zero) : Vector3.Zero;
-        var answer = Mesh.Plan(from + offset, to + offset, Source.Geometry, Source.Crossings, MaxNodes, corners, out count, out _, out crossing);
+        var answer = mesh.Plan(from + offset, to + offset, Source.Geometry, Source.Crossings, MaxNodes, corners, out count, out _, out crossing,
+                               Areas.FilterFor(faction));
         if (answer == NavMeshAnswer.CannotAnswer) return false;
         for (int i = 0; i < count; i++) corners[i] -= offset;
         return true;
     }
 
+    // Is walking straight from one point to another the best way, as far as the areas go (#271)? With no
+    // areas it always is (and nothing is looked at); with them, only when every span on the line is the
+    // cheapest ground there is — otherwise a plan may find a cheaper way, and a creature asks for one —
+    // and never when the line crosses ground closed to its faction.
+    //
+    // `edge`, when it is `Forbidden`, is the last point on the line before that ground (origin space).
+    internal NavLine StraightLine(World world, Vector3 from, Vector3 to, float radius, float height, RecordId faction, out Vector3 edge)
+    {
+        edge = from;
+        if (!Enabled || !UseMesh) return NavLine.Best;
+        Prepare(world);
+        if (Areas.Count == 0) return NavLine.Best;
+        var mesh = MeshOf(SizeClassOf(radius, height));
+        Source.Sync(world);
+        mesh.BeginTick(world.Tick);
+        var offset = world.Resources.TryGet<Origin>(out var origin) && origin != null ? origin.ToAbsolute(Vector3.Zero) : Vector3.Zero;
+        var line = mesh.Line(from + offset, to + offset, Source.Geometry, Areas.FilterFor(faction), out edge);
+        edge -= offset;
+        return line;
+    }
+
     // Drops every baked tile (`nav_rebuild`): they are baked again, from what is there now, as creatures
     // need them.
-    internal void Rebuild() => Mesh.Clear();
+    internal void Rebuild()
+    {
+        foreach (var mesh in _meshes) mesh?.Clear();
+    }
 
     // Everything in the window that a body cannot walk through: the obstacles that are there *now*, and
     // ground too steep to climb.
     //
     // Creatures and the player are left out on purpose. They move, they are what the path is usually
-    // *for*, and a crowd that blocks its own way round a corner is worse than one that bumps: the
-    // raycast steering in `MoveToTargetTask` is what keeps bodies apart.
+    // *for*, and a crowd that blocks its own way round a corner is worse than one that bumps: the crowd's
+    // steering (Crowd.cs, #271) is what keeps bodies apart.
     private void Stamp(World world, IPhysicsWorld space, float radius, float stepHeight,
                        float maxSlopeDegrees, Entity self, Entity target)
     {

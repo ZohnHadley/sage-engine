@@ -415,6 +415,11 @@
         "sage:default_movement"
       ]
     },
+    "record:nav_area": {
+      "description": "The id of a nav_area record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:particle": {
       "description": "The id of a particle record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1437,6 +1442,11 @@
         "default_movement",
         "sage:default_movement"
       ]
+    },
+    "base:nav_area": {
+      "description": "The id of a nav_area record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:particle": {
       "description": "Another particle record to inherit every field from, abstract or not.",

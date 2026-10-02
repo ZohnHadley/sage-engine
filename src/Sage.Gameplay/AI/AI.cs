@@ -344,6 +344,7 @@ internal sealed class MoveToTargetTask : IAITask
     private const float CheckSeconds = 0.2f;       // how long an answer about the way ahead is kept
     private const float TargetMoved = 3f;          // metres before the old plan is stale
     private const float StraightProbe = 0.6f;      // the body's width to check a clear line with
+    private const float EdgeReached = 0.5f;        // how close to the edge of closed ground it stops (#271)
 
     public AITaskStatus Run(ref AITaskContext c)
     {
@@ -374,10 +375,31 @@ internal sealed class MoveToTargetTask : IAITask
         Vector3 steerTo = Navigate(ref c, ref c.State.Path, self, goal, goalEntity, out bool hold);
 
         float wanted = AIMath.YawTo(self, steerTo);
+        float turn = c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt;
         // Not while crossing a link or a door: steering off the door it is waiting for, or the wall a
         // ladder is on, is exactly wrong.
         if (!c.State.Path.InCrossing) wanted += Avoid(ref c, self, wanted);
-        c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, wanted, c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
+
+        // Round other creatures (#271, Crowd.cs): with somebody near, the crowd picks the velocity, and the
+        // creature walks it at once — sideways if need be, since a body does not have to face the way it
+        // steps aside — while it turns to face it. With nobody near it walks as below, as it always did.
+        if (!hold && !c.State.Path.InCrossing && c.World.Resources.TryGet<Navigation>(out var nav) && nav != null && nav.Avoidance &&
+            c.World.TryGet<CharacterController>(c.Entity, out var body))
+        {
+            float speed = MathF.Max(c.Movement.WalkSpeed, 0.1f);
+            var preferred = SageMath.ForwardFromYaw(wanted) * speed;
+            if (nav.Crowd.Steer(c.World, c.Space, c.Entity, goalEntity, self, preferred, body.Velocity, c.Movement.Radius, speed,
+                                c.Movement.StepHeight + 0.1f, c.Dt, ref c.State.Path.Stuck, out var velocity))
+            {
+                if (velocity.LengthSquared() > 0.05f * 0.05f) c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, SageMath.YawOf(velocity), turn);
+                var forward = SageMath.ForwardFromYaw(c.Intent.Yaw);
+                var right = new Vector3(-forward.Z, 0, forward.X);
+                c.Intent.Move = new Vector2(Vector3.Dot(velocity, right), Vector3.Dot(velocity, forward)) / speed;
+                return;
+            }
+        }
+
+        c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, wanted, turn);
         c.Intent.Move = hold ? Vector2.Zero : new Vector2(0, 1);   // forward, in the direction it is facing
     }
 
@@ -406,6 +428,18 @@ internal sealed class MoveToTargetTask : IAITask
             path.CheckIn = CheckSeconds;
             path.LineBlocked = !LineIsWalkable(ref c, self, target);
 
+            // Ground that costs (#271): a clear line is still not the way when a road nearby is cheaper, or
+            // when it crosses ground closed to the creature's faction. The navmesh says; with no areas in
+            // the game it says "straight" without looking.
+            path.LineForbidden = false;
+            if (c.World.Resources.TryGet<Navigation>(out var areas) && areas != null)
+            {
+                var line = areas.StraightLine(c.World, self, target, c.Movement.Radius, c.Movement.StandHeight,
+                                              Navigation.FactionOf(c.World, c.Entity), out path.Edge);
+                path.LineForbidden = line == NavLine.Forbidden;
+                if (line != NavLine.Best) path.LineBlocked = true;
+            }
+
             // The world changed under the path (#265): a blocker came to rest in it, a locked door shut,
             // a link was switched. Plan again now rather than at the next re-plan.
             if (path.Walking && c.World.Resources.TryGet<Navigation>(out var changed) && changed != null &&
@@ -424,12 +458,19 @@ internal sealed class MoveToTargetTask : IAITask
 
         if (stale && c.World.Resources.TryGet<Navigation>(out var nav) && nav != null)
         {
-            nav.Plan(c.World, c.Space, self, target, c.Movement.Radius, c.Movement.StepHeight,
-                     c.Movement.MaxSlopeDegrees, c.Entity, goalEntity, ref path);
+            nav.Plan(c.World, c.Space, self, target, c.Movement.Radius, c.Movement.StandHeight, Navigation.FactionOf(c.World, c.Entity),
+                     c.Movement.StepHeight, c.Movement.MaxSlopeDegrees, c.Entity, goalEntity, ref path);
             path.ReplanIn = path.NoWayThrough ? NoRouteSeconds : ReplanSeconds;
         }
 
-        if (!path.Walking) return target;   // no way through: lean on it as before, and keep trying
+        // No way through: lean on it as before, and keep trying — unless the way is closed to it (#271), when
+        // it walks to the edge of that ground and stands there rather than walking in after what it wants.
+        if (!path.Walking)
+        {
+            if (!path.NoWayThrough || !path.LineForbidden) return target;
+            hold = AIMath.DistanceXZ(self, path.Edge) <= EdgeReached;
+            return path.Edge;
+        }
 
         // Corners are reached, not aimed at for ever: once inside `CornerReached` (or once the *next* one
         // is visible) it moves on, which is what stops a creature stopping dead on every corner.
