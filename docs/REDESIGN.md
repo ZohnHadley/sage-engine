@@ -1047,18 +1047,20 @@ what the base therefore needs first:
 
 | Need | Daggerfall | HL1 | Morrowind | S.T.A.L.K.E.R. | Sage today |
 |---|---|---|---|---|---|
-| First-person play (third-person optional) with viewmodels | ● | ● | ● (both) | ● | ◐ first-person rig and sprite viewmodels only |
-| Skeletal characters and first-person arms | billboards | ● | ● | ● | ❌ |
-| Melee **and** ranged: projectile, hitscan, ammo, reload, hit locations | ● | ●● | ● | ●● | ◐ melee plus projectiles; no hitscan, ammo or reload |
-| Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ◐ attributes and effects; no skills or levelling |
-| Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ◐ bag, slots by name (the RPG kit's two hands); no containers, shops or use |
-| Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ closed enums (§4.3) |
-| Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ◐ entity I/O with 6 inputs |
-| AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ HL1-style schedules; no off-screen simulation |
-| Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ◐ terrain streams; entities don't; no cell transitions |
-| Time of day, weather, lighting, day/night | ● | | ● | ●● | ◐ weather and point lights; no time of day or shadows |
-| Save anywhere, robust across updates | ● | ● | ● | ● | ◐ runtime spawns lost; no upgraders |
-| Mod culture (data mods first) | ○ | ● | ●● | ●● | ❌ |
+| First-person play (third-person optional) with viewmodels | ● | ● | ● (both) | ● | ✅ first- and third-person rigs with the V toggle, skinned arms (4a, 4d) |
+| Skeletal characters and first-person arms | billboards | ● | ● | ● | ✅ (4d); ragdolls in progress (4k) |
+| Melee **and** ranged: projectile, hitscan, ammo, reload, hit locations | ● | ●● | ● | ●● | ✅ one hit pipeline for melee, projectiles and hitscan, ammo, reload, hit locations (4e); blocking in 4r |
+| Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ◐ attributes and effects; skills and levelling in 4f |
+| Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ◐ grid with weight, equipment, loot and shop screens (4c); containers, money and loot tables in 4f |
+| Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ topics, quests, journal and factions in data (4b, 4c); barks and richer objectives in 4r |
+| Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary in 4m |
+| AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g); hearing, behaviour trees and squads in 4r |
+| Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); LOD in 4m and 4n |
+| Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h) |
+| Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i) |
+| Mod culture (data mods first) | ○ | ● | ●● | ●● | ◐ data mods (4j); packed and code mods in 9 |
+
+*"Sage today" refreshed 2026-10-02.* The owner also named **Lugaru** (third-person skeletal fighting) as a game to emulate: rendering must carry lit, normal-mapped meshes and skinned characters as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410 (Stage B, part 2).
 
 ### Stage A: make the base able to hold any game (unchanged, and ready as GitHub issues)
 
@@ -1068,7 +1070,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 
 | Phase | State |
 |---|---|
-| 0 — Clean ground | **Done** except a publish smoke test (#6) and deleting `dev_branch_test` (owner) |
+| 0 — Clean ground | **Done** except a publish smoke test (#6, now in R1) and deleting `dev_branch_test` (owner) |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
 | 3 — Carve the base | **Done** (#23). the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), and public API files, SemVer from git tags and `sage` ranges (#31, [RELEASING](RELEASING.md)), each with an "As built" note |
@@ -1099,8 +1101,8 @@ test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *acti
 | **4b** | **Done** (#87). **Timers, tweens, state machines**; the **conditions/actions vocabulary** (§4.3 stage 2); logic entities and bridge I/O (stage 3). This is HL1's scripted sequences and Morrowind's dialogue conditions in one mechanism | an HL1-style sequence (door, lift, NPC line, counter) and a conditional dialogue topic, built in data only |
 | **4c** | **Done** (#88). **UI toolkit** (retained widgets, layout, focus and gamepad, style/layout records, localisation keys). First consumers are RPG screens: HUD, inventory **grid with weight** (S.T.A.L.K.E.R.), equipment, container/loot, shop, dialogue topics, journal, map, and a main menu with save/load | inventory, loot and dialogue screens built from records over headless view-models, with tests |
 | **4d** | **Done** (#115). **Skeletal animation** [F9–F12]: glTF skins, clips, blending, anim state machine as data, animation events replacing the `attack`/`hit`/`idle` names, **first-person arms and viewmodels**, simple IK for aiming and feet | an NPC walks, runs, aims and attacks, blended; first-person arms reload a weapon |
-| **4e** | **Done** (#132: #133–#139). The hit pipeline, projectiles, ammo, spread and recoil, hit locations, the kit and Sandbox weapons, and the exit game `tests/games/weapons` (#139). **Next: 4f**. **Weapons and combat generalised**: one damage pipeline for melee, projectile and **hitscan**; ammo, magazines, reload; spread and recoil as records; hit locations (head/limbs) from colliders; armour by location; the existing melee and spells re-expressed on it | the same pipeline drives a sword, a crossbow, a pistol and a fireball, each defined by records only |
-| **4f** | **RPG progression and economy (generic)**: skills that rise with use or with XP (both as rules), levelling, perks as effects; containers, loot tables, shops and barter, item "use" (§4.3 `ItemUse`), durability and weight | a Morrowind-style "use a skill, it rises" and a S.T.A.L.K.E.R.-style trader, both in data |
+| **4e** | **Done** (#132: #133–#139). The hit pipeline, projectiles, ammo, spread and recoil, hit locations, the kit and Sandbox weapons, and the exit game `tests/games/weapons` (#139). **Weapons and combat generalised**: one damage pipeline for melee, projectile and **hitscan**; ammo, magazines, reload; spread and recoil as records; hit locations (head/limbs) from colliders; armour by location; the existing melee and spells re-expressed on it | the same pipeline drives a sword, a crossbow, a pistol and a fireball, each defined by records only |
+| **4f** | **Replanned 2026-10-02 as #376 (#377–#384); see Stage B, part 2.** **RPG progression and economy (generic)**: skills that rise with use or with XP (both as rules), levelling, perks as effects; containers, loot tables, shops and barter, item "use" (§4.3 `ItemUse`), durability and weight | a Morrowind-style "use a skill, it rises" and a S.T.A.L.K.E.R.-style trader, both in data |
 | **4g** | **Done** (#182: #183–#190, 4g-1 to 4g-8). Cells that go dormant with their state (save format 4), the calendar and passing time, entities streamed by sector on built-in terrain, NPC routines, load doors, interiors and fast travel, off-screen simulation, the kit's rest and travel screens with the Sandbox's crypt (4g-7), and the exit game `tests/games/open-world` (4g-8). **Open world, part 2**: entities stream by sector (not only terrain), **interior cells** with load doors, fast travel, **time of day** (sun, sky, lighting, NPC schedules), and **off-screen simulation** (A-Life-lite: coarse movement and fights for unloaded NPCs, reconciled when they stream in) | walk from an exterior into a dungeon and back; an NPC keeps its schedule across a day while you are away |
 | **4h** | **Done** (#152: #154–#160, 4h-1 to 4h-7). The pass registry, the world clock, sky records and weather on top of them, hot reload of meshes, sounds and `.fx`, sun shadows, the sky pass and exp² fog, post-processing and render scale, and the exit in the Sandbox (4h-7). **Rendering for these worlds**: render pass registry and public `RenderContext` (§4.7), sun shadows, fog, day/night lighting, post-processing; mesh, sound and `.fx` hot reload | a dusk-to-night transition with shadows in a streamed exterior |
 | **4i** | **Done** (#153). Prefab overrides and nesting, a load that cannot half-happen, reconciling loads, runtime spawns that persist, saves of what changed, quick-save and autosave, and the exit game `tests/games/saves` (#167). **Saves you can trust**: prefab overrides and nesting [F31]; runtime spawns persist; upgraders and placeholders (§4.5); quick-save and autosave | save anywhere, change a prefab and a record, load: nothing lost and nothing duplicated |
@@ -1108,6 +1110,54 @@ test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *acti
 
 Order: 4a → 4b and 4c → 4d → the rest in parallel. 4a–4c unblock everything, and 4d is the longest
 single item.
+
+### Stage B, part 2: every system complete (replanned 2026-10-02)
+
+**The owner's direction (2026-10-02):** every current system should be fully fleshed out before the
+engine widens to other genres, and rendering must carry more than billboard sprites: Morrowind-style
+meshes and water, and Lugaru-style skinned fighters. A system
+audit against the code, the design docs and the reference games found about 140 gaps. Each one is now a
+GitHub issue with a priority, a type, an area and a size label, grouped into one milestone and one parent
+issue per phase below. What "complete" means for each system is written down in the new
+[specification set](spec/README.md): the [SRS](spec/SRS.md), the [TDD](spec/TDD.md), the
+[API contract](spec/API.md) and a [spec sheet per subsystem](spec/subsystems/README.md), whose
+requirement tables say which rows are done and which issue closes the rest.
+
+**Labels.** `priority: P0` (broken or blocking) to `P3` (nice to have); `type: feature`, `bug`,
+`tech-debt`, `tests`, `perf`, `tooling`, `docs`, `epic`; `area: …` (one per subsystem); `size: S`, `M`,
+`L`; `status: in progress` and `status: needs decision`. Sub-issues are numbered `<phase>-<n>` in priority
+order, so `4l-1` is the first thing to build in 4l.
+
+| Order | Phase (milestone) | Parent | Issues | Theme | Exit criterion |
+|---|---|---|---|---|---|
+| now | **4k** Joints and ragdolls | #130 | #242–#249 | In progress in its own thread | a sentry ragdolls on a wire and stands back up (#130) |
+| 1 | **4l** Physics, movement and navigation | #258 | #259–#273 | Depenetration and doors that push (the two P0s), riders on lifts, water, ladders, a navmesh, doors as path links, surface types | a door closing on the player pushes them clear; an NPC opens a door on its path, climbs a ladder and swims a river |
+| 2 | **4m** World, logic and saves | #274 | #275–#291, #402 | A wider condition/action vocabulary, I/O groups, logic entities, prefab overrides across sectors, structural events, time scale, save limits and async saves, streaming LOD | an HL-style puzzle chain and a nested-state NPC in data, saved mid-sequence with nothing lost |
+| 3 | **R1** Tooling and the first release | #292 | #293–#303, #6 | `sage package`, the Release config fix, the v0.1.0 tag and a feed, the full CLI, console basics | a clean machine installs the templates from a feed, creates, runs and packages a game |
+| 4 | **4n** Rendering and assets | #304 | #305–#323 (less #312, already built), #410, #411 | Mesh LOD, decals, splat terrain, asset memory scopes, normal and specular maps, water, instancing, cascades, HDR and bloom, lightmaps, drawing tests | 50 streamed sectors with LOD, splatted terrain, decals and cascaded shadows; memory back to baseline after unloading |
+| 5 | **4o** Audio and input | #324 | #325–#336 | Music, OGG streaming, surface footsteps, occlusion and reverb, rebinding, rumble and pads, replay | music crossfades, footsteps follow the surface, a rebind survives a restart |
+| 6 | **4q** Game UI and menus | #337 | #338–#355 | TTF text, form widgets, options and controls screens, title, pause and slot screens, reachable kit screens, accessibility | boot to a title, change options and controls, load a slot, loot a corpse and trade, all from records |
+| 7 | **4p** Animation | #356 | #357–#364 | Root motion, additive layers and sync markers, directional attacks, retargeting, IK extras, morph targets | an NPC walks with root motion and no foot sliding; a clip plays on a second rig |
+| 8 | **10b** Editor, part 2 | #365 | #366–#375, #61, #49 | Brushes, the asset browser, multi-select and scale, nested inspector, BT view, conditions editor, terrain tools | a designer blocks out a room, textures it, edits an AI tree and saves, without JSON |
+| 9 | **4f** RPG progression and economy | #376 | #377–#384 | Skills and levelling, containers, loot tables, shops with money, perks, durability, item instances | a skill rises with use and a trader buys, sells and restocks, in data |
+| 10 | **4r** AI, combat and narrative depth | #385 | #386–#394 | Hearing, behaviour trees, squads, crime, blocking and knockback, richer quest objectives | a creature hears a gunshot and investigates; a guard pursues a thief; a timed quest fails |
+| 11 | **9** Code mods and packaging | #395 | #396–#401 | Code mods, `.sagemod` packages, namespaced assets, keyed list merge, mod shaders | a packed data mod and a code mod conflict and are reported; saves survive toggling |
+
+**Why this order.** It follows the owner's rule that generic engine work comes before RPG-specific work.
+4l carries the only P0s (a closing door traps the player: TODO bug 61). 4m and R1 are cheap and unblock the
+rest (data-only games, and a release someone else can use). Rendering follows, on the asset-memory and
+streaming work 4m starts. Audio, input and UI
+make the engine a game a player can configure. Animation, the editor's second half, the RPG kit's
+progression and the deeper AI build on all of that, and code mods come last because they read every
+declaration the earlier phases settle. Phases may run in parallel where they don't share files; P0 and P1
+issues go first inside each phase.
+
+**Lugaru** needs no phase of its own: its skinned, physical fighting is ragdolls and getting up (4k),
+root motion and directional attacks (4p), knockback and blocking (4r) and richer character materials
+(#410), and its third-person camera exists since 4a.
+
+**Proposed for closing (owner's call):** #16 (generated registration, done in phase 2) and #2 (phase 0,
+which now waits only on #6, moved to R1).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,
@@ -1334,8 +1384,8 @@ body position, documented rather than synced. SAGE0127. Details: docs/design/16 
 | Phase | Work | Exit criterion |
 |---|---|---|
 | **8** | Designer logic polish: AI behaviour trees (§4.3 stage 4), per-entity map keys, problems panel, `sage validate` in templates | a quest with a door, a counter and a custom-BT creature, built with no C# |
-| **9** | Full modding (code mods, `.sagemod` packages, namespaced assets, keyed list merge) and save headers (§4.4, §4.5) [F37, F27] | two conflicting example mods (data and code) show the report; saves survive mod changes |
-| **10** | **10a done** (#215: #216–#228, 10-1 to 10-13; pulled forward on the owner's request, 2026-10-01). The `Sage.Editing` model, commands and the command log, file-preserving write-back, the `-edit` mode of the dev host, picking and gizmos, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, the problems panel, and the exit game `tests/games/editor` (10-13); the guide is docs/EDITOR.md. 10b is next: brushes, the asset browser, the behaviour-tree view and the conditions editor. Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
+| **9** | **Replanned 2026-10-02 as #395 (#396–#401); see Stage B, part 2.** Full modding (code mods, `.sagemod` packages, namespaced assets, keyed list merge) and save headers (§4.4, §4.5) [F37, F27] | two conflicting example mods (data and code) show the report; saves survive mod changes |
+| **10** | **10a done** (#215: #216–#228, 10-1 to 10-13; pulled forward on the owner's request, 2026-10-01). The `Sage.Editing` model, commands and the command log, file-preserving write-back, the `-edit` mode of the dev host, picking and gizmos, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, the problems panel, and the exit game `tests/games/editor` (10-13); the guide is docs/EDITOR.md. 10b is #365 (#366–#375, with #61 and #49; see Stage B, part 2): brushes, the asset browser, the behaviour-tree view and the conditions editor. Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
 | **gate** | Scripting decision (§4.3 stage 5), informed by what the phase-5 samples needed | a written decision with evidence, replacing or confirming D3 |
 
 **Why this order.**
