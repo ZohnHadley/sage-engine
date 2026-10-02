@@ -476,6 +476,14 @@
         }
       ]
     },
+    "ragdoll_get_up": {
+      "description": "The component sage:ragdoll_get_up (RagdollGetUp), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ragdoll_get_up"
+        }
+      ]
+    },
     "rigid_body": {
       "description": "The component sage:rigid_body (RigidBody), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -953,6 +961,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:ragdoll"
+        }
+      ]
+    },
+    "sage:ragdoll_get_up": {
+      "description": "Component sage:ragdoll_get_up (RagdollGetUp).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ragdoll_get_up"
         }
       ]
     },
@@ -4217,6 +4233,43 @@
       },
       "additionalProperties": false,
       "description": "Component sage:ragdoll (Ragdoll)."
+    },
+    "sage:ragdoll_get_up": {
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "Gets up by itself this long after going down; 0 = only when told (GetUp) Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "back": {
+          "description": "The animator state it gets up with from lying face up; empty = getup_back. (string)",
+          "type": "string"
+        },
+        "front": {
+          "description": "The animator state it gets up with from lying face down; empty = getup_front. (string)",
+          "type": "string"
+        },
+        "fade": {
+          "description": "How long the pose it lay in fades into the get-up state. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "down": {
+          "description": "How long it has been down (counts while the ragdoll is active) Unit: s. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "stayDown": {
+          "description": "It has died: getUpAfter no longer gets it up (GetUp still does, and clears this) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:ragdoll_get_up (RagdollGetUp)."
     },
     "sage:rigid_body": {
       "type": "object",

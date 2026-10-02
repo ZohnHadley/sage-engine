@@ -1,6 +1,7 @@
 [
   // The NPC (issue #122): a box mannequin (models/mannequin.glb: 18 joints, clips idle, walk, run, aim,
-  // aim_up, aim_down, attack and reload) that its graph walks, runs, aims and strikes with, blended.
+  // aim_up, aim_down, attack, reload, getup_back and getup_front) that its graph walks, runs, aims and
+  // strikes with, blended, and gets up with after lying as a ragdoll.
   // Gameplay — here, state machines (scene.json) — only moves it and sets params: `speed` is read from
   // how far it moved, `aiming` and `aim_pitch` arrive by SetAnimParam, `attack` and `reload` by AnimTrigger.
   {
@@ -41,7 +42,14 @@
                 "transitions": [ { "to": "move", "when": { "anim_param": "speed", "min": 0.3 } } ] },
       "move": { "blend": { "x": "speed", "points": [ { "clip": "walk", "x": 1.5 }, { "clip": "run", "x": 4.5 } ] },
                 "tags": ["grounded", "moving"],
-                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] }
+                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] },
+      // Getting up from a ragdoll (engine issue #247): nothing goes here by a transition — Ragdolls.GetUp
+      // (or the `GetUp` input) enters one with Animators.PlayFrom, fading from the pose the body lay in —
+      // and each goes back to idle when its clip is done.
+      "getup_back": { "clip": "getup_back", "loop": false, "tags": ["getting_up"],
+                      "transitions": [ { "to": "idle", "when": { "anim_finished": "base" } } ] },
+      "getup_front": { "clip": "getup_front", "loop": false, "tags": ["getting_up"],
+                       "transitions": [ { "to": "idle", "when": { "anim_finished": "base" } } ] }
     },
     "layers": [
       {
