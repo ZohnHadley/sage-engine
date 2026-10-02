@@ -194,6 +194,8 @@ internal sealed class ContentBaseline
 
         var frame = world.Origin().Sector;
         foreach (var saved in engine.Saves.Capture(world, entities)) Dormant(source, frame).Add(saved, frame);
+        // A live entity's reference to one of these still means it, and finds it when the cell wakes (4m-4).
+        foreach (var entity in entities) SleepingHandles.Asleep(world, entity);
 
         foreach (var member in members)
             if (world.IsAlive(member)) world.Destroy(member);

@@ -1630,3 +1630,6 @@ Sage.Simulation.ColliderPart
 Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
 Sage.Simulation.ColliderPart.ColliderPart() -> void
 static Sage.Simulation.WorldTime.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldTime!
+Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
+Sage.Simulation.Unsaved
+Sage.Simulation.Unsaved.Unsaved() -> void
