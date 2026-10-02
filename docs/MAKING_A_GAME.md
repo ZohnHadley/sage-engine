@@ -405,7 +405,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows |
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
-| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step; `physics_layers` — what collides with what |
+| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming; `physics_layers` — what collides with what |
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
@@ -552,7 +552,8 @@ block calls these, which is the usual way, because a part does the assembling fo
 |---|---|
 | `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end) |
 | `joint` | a joint from this (dynamic) body to another entity's, its parent's or the world's, in data (issue #245) — `kind` (Ball/Hinge/Fixed/Distance), `target` (an entity name; empty = the parent if it has a body, else the world), `anchor` (in this entity's space), `targetAnchor` (optional; default: the same point, where they stand), `axis`, `swing`, `twistMin`/`twistMax`, `min`/`max` (a hinge's range), `minDistance`/`maxDistance` (degrees and metres), `breakForce`, `drag`; the `Break` input and the `OnBreak` output (SAGE0134) |
-| `character` | the kinematic character controller, and with it the ability to walk |
+| `character` | the kinematic character controller, and with it the ability to walk (and to swim, in water) |
+| `water` | a box of water things float and characters swim in — `size` (full extents, centred on the entity; the top face is the surface), `drag` (2, per second), `buoyancy` (2: lift on a submerged body as a multiple of its weight, so a crate floats half under), `current` (m/s); the `OnEnterWater` / `OnExitWater` outputs (issue #262; design/10 "As built (water and swimming)") |
 | `sprite` | a billboard sprite from a `sprite_sheet` — `sheet`, `material`, `size`, `animation` (a clip to loop), or `graph` (an `anim_graph` whose clips are the sheet's: combat's trigger and `hit` event work through it, issue #119) |
 | `skinned_mesh` | a skinned model, bent by its joints on the GPU — `mesh` (a `.glb` with a skin), `material` (empty: `sage:lit_default`; its effect needs a `Skinned` technique), `layer` (issue #117) |
 | `animator` | plays an `anim_graph` on a skinned model's skeleton — `graph`, `model` (a skinned `.glb`; left out, the `skinned_mesh` part's `mesh`) (issue #118; §5 "Animation graphs") |
@@ -586,7 +587,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Thirty-five here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Thirty-six here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -967,7 +968,7 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`, `OnBlocked` (a mover, with what blocked it as the activator),
-`OnCameraOn` / `OnCameraOff`, `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
+`OnCameraOn` / `OnCameraOff`, `OnEnterWater` / `OnExitWater` (a character and the water it went into), `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
 `TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState`, a light's `TurnOn` / `TurnOff` / `Toggle`, the logic entities' and gameplay's

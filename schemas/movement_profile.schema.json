@@ -118,6 +118,36 @@
       "description": "(float, default -0.18)",
       "default": -0.18,
       "type": "number"
+    },
+    "swimSpeed": {
+      "description": "(float, default 3)",
+      "default": 3,
+      "type": "number"
+    },
+    "swimAcceleration": {
+      "description": "(float, default 10)",
+      "default": 10,
+      "type": "number"
+    },
+    "swimDepth": {
+      "description": "(float, default 0.6)",
+      "default": 0.6,
+      "type": "number"
+    },
+    "swimFloatDepth": {
+      "description": "(float, default 0.75)",
+      "default": 0.75,
+      "type": "number"
+    },
+    "swimRise": {
+      "description": "(float, default 1)",
+      "default": 1,
+      "type": "number"
+    },
+    "swimClimbHeight": {
+      "description": "(float, default 1.7)",
+      "default": 1.7,
+      "type": "number"
     }
   },
   "additionalProperties": false

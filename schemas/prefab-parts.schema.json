@@ -426,6 +426,14 @@
           "$ref": "#/definitions/viewmodel"
         }
       ]
+    },
+    "water": {
+      "description": "Prefab part 'water' (WaterPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/water"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -2174,6 +2182,54 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'viewmodel' (ViewmodelPart)."
+    },
+    "water": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "Full extents of the box, centred on the entity; its top face is the surface. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "drag": {
+          "description": "How fast the water slows what moves through it. Unit: 1/s. At least 0. (float, default 2)",
+          "default": 2,
+          "type": "number",
+          "minimum": 0
+        },
+        "buoyancy": {
+          "description": "Lift on a fully submerged body as a multiple of its weight: 2 floats a crate half under. At least 0. (float, default 2)",
+          "default": 2,
+          "type": "number",
+          "minimum": 0
+        },
+        "current": {
+          "description": "The water's flow. Unit: m/s. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'water' (WaterPart)."
     }
   }
 }

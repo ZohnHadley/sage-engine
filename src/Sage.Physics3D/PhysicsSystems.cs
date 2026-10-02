@@ -292,6 +292,7 @@ public sealed class PhysicsModule : IModule
         world.AddSystem(new PhysicsWriteBackSystem(world, space));
         world.AddSystem(new JointSystem(world, space));
         world.AddSystem(new JointBreakSystem(space));
+        world.AddSystem(new BuoyancySystem(world, space));   // water volumes float what falls in (issue #262)
         world.AddSystem(new PhysicsDebugSystem(world, _records!, _debugDraw!));   // 10 §9, draws through IPhysicsWorld
 
         // A destroyed entity takes its body with it.
