@@ -1,0 +1,51 @@
+{
+  "formatVersion": 4,
+  "game": "tests",
+  "engineVersion": "0.1.0-alpha.0.54\u002Baa1b7b3",
+  "savedUtc": "2026-10-01T18:14:17.3411039Z",
+  "kind": "manual",
+  "worlds": [
+    "main"
+  ],
+  "plugins": [
+    {
+      "id": "sage.gameplay.animation",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.attributes",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.character",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.combat",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.io",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.items",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.physics3d",
+      "version": "0.1.0"
+    }
+  ],
+  "content": [
+    {
+      "mount": "engine",
+      "namespace": "sage"
+    },
+    {
+      "mount": "skeletal/content",
+      "namespace": "skeletal"
+    }
+  ],
+  "mods": []
+}

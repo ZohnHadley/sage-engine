@@ -280,7 +280,7 @@ public class RagdollTests
     }
 
     // The `Ragdoll` input sends an NPC down with the impulse it carries; a second is refused quietly.
-    // Active is saved: a load rebuilds the bodies from the pose where it lay (the bodies themselves are #248's).
+    // Active is saved: a load rebuilds the bodies (since #248 from their saved states: RagdollSaveTests).
     [Xunit.Fact]
     public void TheRagdollInputSendsItDown_AndALoadRebuildsTheBodies()
     {
