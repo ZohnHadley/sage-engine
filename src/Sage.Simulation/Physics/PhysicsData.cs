@@ -258,6 +258,15 @@ public struct SweepHit
     public bool StartsInside;
 }
 
+// What a shape intersects (IPhysicsWorld.Overlap, issue #259): Normal is the way out, pointing from the
+// other collider toward the shape, and moving the shape Depth metres along it separates the two.
+public struct OverlapHit
+{
+    public Entity Entity;
+    public Vector3 Normal;
+    public float Depth;
+}
+
 // Trigger overlaps collected during the step, drained in PostPhysics (10 §3). Game events come with
 // the event bus (04); until then systems read these lists.
 public readonly record struct TriggerOverlap(Entity Trigger, Entity Other);
