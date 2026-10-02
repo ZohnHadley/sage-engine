@@ -98,12 +98,20 @@ internal sealed class MoverSystem : ISystem
                 var at = mover.Closed + mover.OpenOffset * mover.Position;
                 transforms[n].LocalPosition = at;
 
-                // The geometry is a static in the physics space, and a static does not follow a
-                // transform: it has to be told, and its broadphase bounds rebuilt with it. Without this
-                // the door opens on screen and stays shut to walk into.
-                if (_space != null && entity.TryGetComponent<PhysicsBody>(out var body))
+                // The geometry is a body in the physics space, and a body does not follow a transform:
+                // it has to be told. Without this the door opens on screen and stays shut to walk into.
+                // The brush was built as a static; it becomes kinematic the first time it moves, so the
+                // solver sees it move (issue #261).
+                PhysicsBody body = default;
+                bool solid = _space != null && entity.TryGetComponent(out body);
+                if (solid)
                 {
-                    _space.MoveStatic(body, at);
+                    if (body.IsStatic)
+                    {
+                        body = _space!.MakeKinematic(body);
+                        entity.GetComponent<PhysicsBody>() = body;
+                    }
+                    _space!.MoveKinematic(body, at, Vector3.Zero);
 
                     // Then whatever it moved into is pushed out of its way, or it is blocked (issue #260).
                     Vector3 velocity = mover.OpenOffset * (mover.Direction / seconds);
@@ -118,7 +126,7 @@ internal sealed class MoverSystem : ISystem
                             mover.Position = was;
                             at = mover.Closed + mover.OpenOffset * was;
                             transforms[n].LocalPosition = at;
-                            _space.MoveStatic(body, at);
+                            _space.MoveKinematic(body, at, Vector3.Zero);
                             if (mover.OnBlocked == MoverBlocked.Reverse) mover.Direction = (sbyte)-mover.Direction;
                         }
                         if (first || mover.OnBlocked == MoverBlocked.Crush) _world.FireOutput(entity, "OnBlocked", blocker);
@@ -137,6 +145,15 @@ internal sealed class MoverSystem : ISystem
                 {
                     mover.Direction = 0;
                     _world.FireOutput(entity, "OnFullyClosed");
+                }
+
+                // Moving at the speed that takes it to where it will be next tick, so the step carries it
+                // there and what rests on it with it; still once it has arrived.
+                if (solid)
+                {
+                    float next = Math.Clamp(mover.Position + mover.Direction * dt / seconds, 0f, 1f);
+                    Vector3 speed = mover.Direction == 0 || dt <= 0f ? Vector3.Zero : mover.OpenOffset * ((next - mover.Position) / dt);
+                    _space!.MoveKinematic(body, at, speed);
                 }
             }
         }

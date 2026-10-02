@@ -2539,6 +2539,20 @@
           "default": false,
           "type": "boolean"
         },
+        "groundVelocity": {
+          "description": "Not saved. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
         "crouching": {
           "description": "Crouched: the capsule is the profile's crouch height. (bool, default false)",
           "default": false,
