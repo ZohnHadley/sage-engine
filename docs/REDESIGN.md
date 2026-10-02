@@ -77,7 +77,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | **Render pass registry**, render targets, post-processing | ● | ● | ○ | ○ | ○ | ○ | ● | ❌ `Passes` is a private static array |
 | **UI toolkit**: widgets, layout, focus and gamepad navigation, styling, localisation | ● | ● | ● | ● | ● | ●● | ● | ◐ list-style `Screen`/`Panel` only; HUD hand-drawn |
 | Input: actions, gamepad, mouse picking, rebinding | ● | ● | ● | ● | ●● | ● | ● | ◐ actions and scripted input done; picking and rebinding UI missing |
-| Navigation: grid now, navmesh later, groups | ● | ● | ● | | ●● | | ● | ◐ grid A* inside Gameplay |
+| Navigation: grid now, navmesh later, groups | ● | ● | ● | | ●● | | ● | ◐ navmesh (#264) and grid A* inside Gameplay; groups missing |
 | Timers, tweens, state machines, conditions/actions | ● | ● | ● | ● | ● | ●● | ● | ❌ (only I/O `delay`) |
 | Large worlds and streaming | | | ○ | | ○ | | ● | ✅ (keep as an optional plugin) |
 | Audio (mixer, 3D, music) | ● | ● | ● | ● | ● | ● | ● | ✅ one-shots and loops; music streaming missing |
@@ -155,7 +155,7 @@ mix them: a 3D game with a 2D minigame world, or a 2D game with 3D backgrounds.
 | Camera | camera component and rigs (4a) | ortho, **pixel-perfect** mode (integer scaling, snapping), 2D follow with dead zone, bounds and look-ahead | perspective rigs |
 | Rendering | pass registry, materials as records, the same `RenderSnapshot` | sprite batching, **sorting layers and order-in-layer**, Y-sort for top-down, 9-slice, parallax layers, 2D lights later | meshes, lights, billboards |
 | Levels | scenes, placements, entity I/O and logic entities | **Tiled** (`.tmx`/`.tmj`) import: tile layers become meshes plus collision; object layers become prefabs, using the TrenchBroom pattern (classname = prefab id, properties = map keys, I/O keys) | TrenchBroom `.map` |
-| Navigation | one `INavigation` service | grid/tile A* (today's grid planner, promoted) | grid now, navmesh later |
+| Navigation | one `INavigation` service | grid/tile A* (today's grid planner, promoted) | navmesh (#264), grid where there is none |
 | Animation | clips, events and state machines as data | sprite-sheet clips (today's `SpriteAnimation`, extended) | skeletal (4d) |
 | Audio | mixer and buses | 2D panning by screen position | 3D positional |
 

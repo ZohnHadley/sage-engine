@@ -260,6 +260,14 @@
         }
       ]
     },
+    "ladder": {
+      "description": "The component sage:ladder (Ladder), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ladder"
+        }
+      ]
+    },
     "load_door": {
       "description": "The component sage:load_door (LoadDoor), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -745,6 +753,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:known_topics"
+        }
+      ]
+    },
+    "sage:ladder": {
+      "description": "Component sage:ladder (Ladder).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:ladder"
         }
       ]
     },
@@ -2557,6 +2573,16 @@
           "description": "Crouched: the capsule is the profile's crouch height. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "climbing": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "letGo": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3415,6 +3441,27 @@
       },
       "additionalProperties": false,
       "description": "Component sage:known_topics (KnownTopics)."
+    },
+    "sage:ladder": {
+      "type": "object",
+      "properties": {
+        "facing": {
+          "description": "Which way the climbable side faces, as a yaw on top of the entity's own. Unit: deg. Range: -360 to 360. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "speed": {
+          "description": "Climbing speed; 0 = the default (2.5 m/s) Unit: m/s. Range: 0 to 20. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 20
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:ladder (Ladder)."
     },
     "sage:load_door": {
       "type": "object",

@@ -563,6 +563,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260); `angle`, `axis` (default up) and `pivot` swing it on a hinge, in its own frame (`"angle": 90, "pivot": [-0.5, 0, 0]` is a door hinged on its west edge); `path`, stops after the shut one (a lift's floors, the last is open), `speed` instead of `seconds` (m/s, or deg/s for a door), `locked` (#266) |
+| `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
 | `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
 | `particles` | an effect it gives off — `effect` |
 | `attributes` | health and the rest, from `attribute` records |
@@ -950,6 +951,9 @@ In the editor:
 - **Brushes with a classname become a solid entity** — a door, a lift, a trigger volume — which is an
   ordinary entity that owns its geometry. Give it a prefab with a `mover` part and it moves.
 - **`"trigger" "1"`** makes its volume something you walk into rather than against, and it is not drawn.
+- **A ladder** is a `"trigger" "1"` brush entity whose prefab has a `ladder` part, drawn as the space in
+  front of the rungs from the floor to the ledge's top: `"classname" "ladder"`, `"trigger" "1"`,
+  `"ladder.facing" "180"` (issue #263).
 
 **Wiring** is what makes a level do anything. An entity fires a named *output*; you wire it in the map to
 a named *input* on another entity:

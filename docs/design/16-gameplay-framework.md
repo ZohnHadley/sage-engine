@@ -40,7 +40,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 | **Inventory** | yes (pick up, equip one weapon) | `item` records; an `Inventory` component (item `RecordId`s + counts); equipment slots |
 | **Interaction** | yes | The `Use` action → raycast → `Interactable` → fires the I/O output `OnUse` (04) and a `Used` event |
 | **AI** | yes (one melee creature) | See 3.4 |
-| **Navigation** | yes (local grid) | A grid built round the agent when the straight line is blocked, A* and string-pulling, plus target memory (F23, "As built (navigation)"). A navmesh for brush-built interiors and a coarse graph for crossing sectors are still later |
+| **Navigation** | yes (navmesh, local grid) | A navmesh baked from brush floors, terrain and static colliders, with a coarse graph of regions for crossing levels and sectors (#264, "As built (the navmesh)"); a grid built round the agent where there is no mesh; A* and string-pulling, plus target memory (F23, "As built (navigation)") |
 | **Narrative** (dialogue, quests, journal) | yes | `dialogue` records with conditions and outcomes, `quest` records with stages and objectives, a saved journal and two screens (F24) |
 | **Factions** | yes | `faction` records with relations and a per-player standing; one rule answering "is this my enemy" for the AI, for blasts and for the death seam (F24, "As built (factions and reputation)") |
 | **Economy / life paths** | later | Production chains, markets, professions as data; coarse offline simulation (F25) |
@@ -443,10 +443,51 @@ Creatures walk round things instead of into them.
   same creature slides 18 m along the fence the wrong way and never arrives. Headlessly, the same A/B is
   a three-walled pen — concave on purpose, because a fence can be escaped by sliding along it and so
   cannot tell steering and planning apart.
-- **Not built:** a navmesh for brush-built interiors (F16 has built the geometry; nothing walks on it yet), a
-  coarse graph for travelling across sectors, doors and other links a path has to *act* on, crowds
-  avoiding each other (creatures are left out of the stamp on purpose), and paths that cost ground
-  differently (mud, water, roads).
+- **Not built here:** a navmesh for brush-built interiors and a coarse graph for travelling across sectors
+  (both arrived with #264, below), doors and other links a path has to *act* on, crowds avoiding each
+  other (creatures are left out of the stamp on purpose), and paths that cost ground differently (mud,
+  water, roads).
+
+### As built (the navmesh, issue #264, 2026-10-02)
+- **A navmesh first, the grid as its fallback** (`src/Sage.Gameplay/Navigation/NavMesh.cs`). `Navigation.Plan`
+  asks the mesh; where the mesh has nothing to say (no geometry under either end, or `nav_mesh 0`) the
+  local grid above answers as before. The grid never saw a brush wall — a brush is a hull in physics, not a
+  `Collider` — so in a level of rooms it is the mesh or nothing (test:
+  WithoutTheNavmeshTheSameCreatureIsStuckInTheFirstRoom).
+- **A heightfield, Recast's first half.** Every 25 cm column's solids are merged — brush hulls by their
+  planes, exactly and conservatively (a wall in a cell blocks it; one that only touches its edge does not),
+  terrain by its heights, static colliders by their boxes — and the tops with 1.8 m above them and a slope
+  under 50° are spans. Spans a step (0.45 m) apart link, and the strip a 0.35 m body cannot stand in is
+  eroded, so a metre-wide doorway stays open and a wall's foot does not (test:
+  AFloorIsWalkableAndAWallAndItsEdgeAreNot, test: ADoorwayAMetreWideIsWalkedThrough, test:
+  AStepIsClimbedAndALedgeIsNot). The spans are searched as they are, not traced into polygons: the long
+  distances are the coarse graph's, so the fine search only ever covers a few tiles. A bake is a function
+  of its input (test: BakingIsDeterministic).
+- **Tiles of 8 m, keyed absolutely, baked when first needed.** 128 tiles make a sector, so none straddles
+  a sector border, and a rebase rebuilds nothing. At most 16 are baked a tick (and the one a planning
+  creature stands in, whatever the budget); they are kept (least
+  recently used out past 2048) and dropped when a level is placed or unloaded, a terrain sector loads or
+  unloads, or a static collider appears, moves or goes (`NavWorldGeometry`, test:
+  AStaticColliderAddedAfterTheBakeIsInTheNextPlan). What moves — a dynamic crate, a door, a creature — is
+  not baked; the creature's steering and #265 answer for those.
+- **Two searches.** A coarse A* over each tile's regions (its connected pieces, linked where their spans
+  link across an edge) plans the whole way; a tile it has not baked yet is one optimistic node, so a long
+  way costs a few nodes per tile and not a bake per tile. A span A* then runs inside the first eight
+  regions of that route and is straightened into the corners `NavPath` holds; the creature walks them and
+  plans again. Both count against `nav_maxnodes`, and planning is still `nav_plans` a tick (test:
+  ALongWayAcrossASectorBorderIsPlannedAStretchAtATime, test:
+  TerrainIsBakedAndARidgeAcrossASectorBorderIsWalkedRound). Headlessly, a creature in a pen in the first
+  of three brush rooms whose doors zig-zag, the middle one straddling the border between two sectors,
+  reaches the player in the third (test: ACreatureCrossesALevelOfRoomsAndASectorBorderOnTheNavmesh).
+- **`sage validate` finds a marker nothing can walk to.** A `map` record check bakes the level's brushes
+  and warns, at the map's line, about an `info_` point entity that stands on nothing walkable or that no
+  walkable way joins to the level's `info_player_start` (test: ValidateNamesAMarkerNothingCanWalkTo); the
+  Sandbox's levels pass it. It runs at every development-build load and under `sage validate`.
+- **Console:** `nav_mesh` (cheat; off, the grid alone), `nav_rebuild` (drop every tile), and `nav_stats`
+  now says how many plans each answered and how many tiles are baked.
+- **Not done:** one body size (the default movement profile's) is baked, so a much bigger creature is
+  planned for as if it were a person; `nav_debug` still draws the grid and the corners, not the mesh;
+  doors, movers and dynamic obstacles are #265; off-screen agents still walk straight (#284).
 
 ### As built (conventions, the `Died` event and the narrative plugins, issue #26, 2026-09-29)
 - **`gameplay_conventions`** (`src/Sage.Gameplay/Conventions/GameplayConventions.cs`, owned by `sage.gameplay.attributes`): one record says which attribute is health, which tags are dead and invulnerable, the default damage type, attack, movement and AI profiles, the player's faction, the attribute spellmaker spells cost, the five schedules the AI's built-in choice picks (`idle`, `chase`, `meleeAttack`, `castSpell`, `holdGround`) and the action names combat, items, abilities, AI and the character controller read. The engine ships `sage:default_conventions` in `engine_content/data/conventions.json` (with a `sage:player` faction in `factions.json`) and code reads it with `world.Conventions()` (test: TheEngineShipsItsConventionsAsOneRecord); a game patches it, which is how it renames health to hp (test: AGameRenamesHealthToHpByChangingOneRecord). Fourteen `new RecordId("sage", …)` constants are gone from `Sage.Gameplay` and `Sage.Physics3D` and the Sandbox's two literals with them; a test greps those folders and `games/` for any that come back (test: NoGameplayCodeNamesAnEngineRecordId).
