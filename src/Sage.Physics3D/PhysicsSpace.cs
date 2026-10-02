@@ -25,15 +25,16 @@ namespace Sage.Physics3D;
 // poses, and write trigger overlaps and reported contacts into per-worker buffers, which are merged on
 // the main thread at the end of the step.
 //
-// Stepping allocates about 40 bytes per tick inside Bepu itself (its stage profiler), with or without
-// the thread dispatcher. That is the only per-frame allocation left in the host (TODO #41).
+// Stepping allocates nothing (issue #273). The 40 bytes a tick long blamed on Bepu's profiler were the
+// Stopwatch that timed the step (Stopwatch.StartNew is a 40-byte object); Bepu 2.4's Timestep allocates
+// nothing, on the calling thread or its workers (test: ASteadyStateStepAllocatesNothingOnAnyThread).
 //
 // Joints (issue #242, SAGE0134) are Bepu constraints behind PhysicsJoint handles: PhysicsSpace.Joints.cs.
 #pragma warning disable SAGE0134 // joints and groups: this is the backend that implements them
 public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
 {
     private readonly BufferPool _pool = new();
-    private readonly ThreadDispatcher _dispatcher;
+    private ThreadDispatcher? _dispatcher;
     private readonly PhysicsCallbackData _data;
     private readonly Dictionary<ShapeKey, TypedIndex> _shapes = new();
     private readonly List<Entity> _overlapResults = new();   // reused by OverlapBox
@@ -55,16 +56,17 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     {
         Gravity = gravity ?? new Vector3(0, -9.81f, 0);
         _data = new PhysicsCallbackData(Math.Max(1, Environment.ProcessorCount));
-        _dispatcher = new ThreadDispatcher(Math.Max(1, Environment.ProcessorCount - 1));
+        UseWorkers(Environment.ProcessorCount - 1);
         Simulation = BepuSimulation.Create(_pool,
             new NarrowPhaseCallbacks { Data = _data },
             new PoseIntegratorCallbacks(Gravity),
             new SolveDescription(velocityIterationCount: 8, substepCount: 1));
-        // Same result every run on this machine: the simulation is fixed-tick and will want
-        // repeatable behaviour for replays and tests. Bepu has no rollback either way (10 §2).
+        // Same result every run: the simulation is fixed-tick and wants repeatable behaviour for replays,
+        // tests and the netcode to come (test: TheSameSceneGivesBitIdenticalBodiesEveryRun). Bepu has no
+        // rollback either way (10 §2).
         Simulation.Deterministic = true;
         _data.Simulation = Simulation;
-        Log.Info(LogCat.Physics, $"Physics space created (Bepu v2, gravity {Gravity.Y:F2} m/s², {_dispatcher.ThreadCount} worker threads)");
+        Log.Info(LogCat.Physics, $"Physics space created (Bepu v2, gravity {Gravity.Y:F2} m/s², {WorkerThreads} worker threads)");
     }
 
     public Vector3 Gravity { get; }
@@ -325,43 +327,62 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
 
     // ---- Stepping -----------------------------------------------------------------------------
 
+    // How many of Bepu's worker threads step this space; 0 = the calling thread alone.
+    internal int WorkerThreads => _dispatcher?.ThreadCount ?? 0;
+
+    // Never one worker (issue #273): with Simulation.Deterministic, Bepu gives the same bits with any two
+    // or more workers, but its one-worker and no-dispatcher paths each give different ones. A two-core
+    // machine used to get one worker and so a different simulation from everyone else's, which a replay or
+    // a lockstep peer would have parted from within a second. 0 (tests only) steps on the calling thread,
+    // which puts every callback on the thread an allocation test measures.
+    internal void UseWorkers(int count)
+    {
+        _dispatcher?.Dispose();
+        _dispatcher = count <= 0 ? null : new ThreadDispatcher(Math.Max(2, count));
+    }
+
     internal void Step(float dt)
     {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();   // not StartNew: that is a 40-byte object a tick (#273)
         _data.BeginStep();
         _broken.Clear();
         Simulation.Timestep(dt, _dispatcher);
         _data.EndStep();
         CheckBreaks(dt);
-        LastStepMilliseconds = watch.Elapsed.TotalMilliseconds;
+        LastStepMilliseconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
     }
 
     // The origin sector moved (14 §3, R6): shift everything by the same offset, once, between ticks.
     // Bepu keeps the authoritative pose of everything it simulates, so a rebase that moved only the
     // components would have physics drag the world back a kilometre on the next step.
     //
-    // Two things beyond moving the poses, both of which are silent corruption if forgotten:
-    // a **static's bounds** live in the broad phase and do not follow its pose, so an unrefreshed
-    // static still blocks rays where it used to be; and a **sleeping body** is not re-bounded until it
-    // wakes, so it would wake a sector away from its own collision box.
+    // Beyond moving the poses, every **bounding box** in the broad phase is refreshed, since none of
+    // them follows its pose: an unrefreshed static still blocks rays where it used to be, and a
+    // sleeping body (whose bounds Bepu keeps in the static tree and only re-reads when it wakes) would
+    // be hit where it was and wake a sector away from its own collision box. Awake bodies are
+    // re-bounded too, so a query between the rebase and the next step sees them where they are.
+    //
+    // **A sleeping body stays asleep** (issue #273). Everything moves by the same offset, so nothing a
+    // sleeping island rests on or is joined to has moved relative to it: its contacts and joints are
+    // stored relative to its bodies, and nothing has to wake. It used to wake every island, which cost a
+    // world full of settled crates a burst of solving and a second of settling after every kilometre.
     public void Rebase(Vector3 offset)
     {
         if (offset == Vector3.Zero) return;
 
-        for (int i = 0; i < Simulation.Bodies.Sets.Length; i++)
+        var bodies = Simulation.Bodies;
+        int asleep = 0;
+        for (int i = 0; i < bodies.Sets.Length; i++)
         {
-            ref var set = ref Simulation.Bodies.Sets[i];
+            ref var set = ref bodies.Sets[i];
             if (!set.Allocated) continue;
-            for (int j = 0; j < set.Count; j++) set.SolverStates[j].Motion.Pose.Position += offset;
+            for (int j = 0; j < set.Count; j++)
+            {
+                set.SolverStates[j].Motion.Pose.Position += offset;
+                bodies.UpdateBounds(set.IndexToHandle[j]);
+            }
+            if (i > 0) asleep += set.Count;
         }
-
-        // Every sleeping island, woken so Bepu re-bounds it where it now is. Waking a world's worth of
-        // bodies is affordable because a rebase happens once every kilometre of travel.
-        //
-        // Backwards, because waking a set deallocates it and shuffles the list: walking forwards over
-        // a collection that the loop body is removing from is the oldest bug there is.
-        for (int i = Simulation.Bodies.Sets.Length - 1; i >= 1; i--)
-            if (Simulation.Bodies.Sets[i].Allocated) Simulation.Awakener.AwakenSet(i);
 
         for (int i = 0; i < Simulation.Statics.Count; i++)
         {
@@ -372,7 +393,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         }
 
         Log.Info(LogCat.Physics, $"Physics rebased by {offset.X:F0}, {offset.Z:F0} m " +
-                                 $"({Simulation.Bodies.ActiveSet.Count} active bodies, {Simulation.Statics.Count} statics)");
+                                 $"({bodies.ActiveSet.Count} active bodies, {asleep} asleep, {Simulation.Statics.Count} statics)");
     }
 
     // ---- Queries ------------------------------------------------------------------------------
@@ -526,7 +547,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     public void Dispose()
     {
         Simulation.Dispose();
-        _dispatcher.Dispose();
+        _dispatcher?.Dispose();
         _pool.Clear();
     }
 

@@ -1602,6 +1602,8 @@ Sage.Simulation.IPhysicsWorld.SetShape(in Sage.Simulation.PhysicsBody body, in S
 Sage.Simulation.ColliderPart
 Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
 Sage.Simulation.ColliderPart.ColliderPart() -> void
+Sage.Simulation.ColliderOff
+Sage.Simulation.ColliderOff.ColliderOff() -> void
 Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
 Sage.Simulation.Unsaved
 Sage.Simulation.Unsaved.Unsaved() -> void

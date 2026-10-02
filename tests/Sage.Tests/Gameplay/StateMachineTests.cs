@@ -394,7 +394,6 @@ public class StateMachineAllocationTests
             });
         }
         Vars.Of(world).Set("on", 1);
-        Assert.True(world.Systems.Disable("sage.physics.step"));   // Bepu's own 40 bytes a tick
 
         for (int i = 0; i < 120; i++) { world.RunFixed(1f / 60f); Profiler.EndFrame(); }   // warm
         _count = 0;
