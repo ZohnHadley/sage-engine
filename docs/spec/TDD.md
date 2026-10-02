@@ -373,8 +373,10 @@ and 03). The techniques:
 - `Log` calls whose category is off format nothing; Trace and Debug are compiled out of Shipping.
 
 The rules are proved by Measurements tests, for example the 2,000-entity scale world
-(test: AFullWorldStillAllocatesNothingPerTick), which allows a small slack because Bepu's own profiler
-allocates about 40 bytes inside `Timestep` on whichever thread runs that part (#273). The test process sets
+(test: AFullWorldStillAllocatesNothingPerTick), which allows a small slack for a one-off 40-byte object
+seen in one window and not the other on a loaded machine. The physics step allocates nothing on any thread
+(test: ASteadyStateStepAllocatesNothingOnAnyThread); the 40 bytes a tick once blamed on Bepu's profiler were
+our own Stopwatch (#273). The test process sets
 `<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` (`tests/Sage.Tests/Sage.Tests.csproj`)
 because a background GC miscounts the per-thread allocation figure.
 
@@ -507,7 +509,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Asset memory is never freed | Long sessions and streaming grow GPU memory without bound. | 4n, #308; streaming scopes #277. |
 | Single-threaded scheduler | Only physics uses more than one core; the tick has headroom (0.76 ms at 2,000 entities) but large worlds will not. | 4m, #288. |
 | Synchronous generation and saves | Crossing a sector edge or saving a big world can stall a frame. | 4m, #277, #285. |
-| Bepu allocates about 40 B a tick | Zero-allocation tests need slack; GC pressure over hours. | 4l, #273. |
+| ~~Bepu allocates about 40 B a tick~~ | Retired by #273: it was our Stopwatch, and the step allocates nothing. | Done (4l, #273). |
 | Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets) | Two ways to build a screen; features land in one or the other. | 4q, #350. |
 | Records and saves use reflection, not generated readers | Slower loads; not trim or AOT safe. | Generator follow-up; AOT out of scope (SRS §9). |
 | Determinism is by construction only | No cross-run check; replays not possible yet. | 4l (#273), 4o replay (#333). |

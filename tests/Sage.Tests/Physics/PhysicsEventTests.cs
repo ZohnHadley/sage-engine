@@ -224,8 +224,7 @@ public class PhysicsEventTests
 
 // The event path allocates nothing per tick: a crate dropped through a trigger onto the floor over and
 // over (entered, exited, landed, lifted off), read by a system, with RaycastAll and OverlapSphere asked
-// every tick, adds nothing over a world with one loose body (the step itself allocates about 40 bytes a
-// tick inside Bepu, TODO #41, in both).
+// every tick, adds nothing over a world with one loose body (whose step allocates nothing either, #273).
 [Xunit.Collection(MeasurementsCollection.Name)]
 public class PhysicsEventAllocationTests
 {

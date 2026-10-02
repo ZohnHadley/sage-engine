@@ -131,14 +131,13 @@ public class ScaleTests
     }
 
     // The rule the engine set itself (02 §4.6), at the size where breaking it would matter. Measured
-    // as a difference against an empty world, because the tick is not otherwise silent: Bepu's
-    // profiler allocates about 40 bytes inside `Timestep` (TODO #41).
+    // as a difference against an empty world, so that only what the crowd adds is counted. (This used
+    // to be blamed on Bepu's profiler allocating about 40 bytes inside `Timestep`; that was a Stopwatch
+    // of ours, gone since #273, and the step allocates nothing on any thread.)
     //
-    // **With a little slack, and why that loses nothing.** The allocation is counted per thread, and
-    // Bepu hands its work to whichever threads are free — so on a loaded machine that 40-byte
-    // allocation lands on the measured thread in one run and on a worker in the other, and the
-    // difference comes out as exactly 40. It did, three times, while CI-sized builds ran beside the
-    // tests (2026-09-28). What this test exists to catch is an allocation *per tick*: even the smallest
+    // **With a little slack, and why that loses nothing.** On a loaded machine the difference once
+    // came out as exactly 40 bytes, three times, while CI-sized builds ran beside the tests
+    // (2026-09-28): a single one-off object in one window and not the other, not a per-tick cost. What this test exists to catch is an allocation *per tick*: even the smallest
     // object, every tick for 60 ticks, is 60 × 24 = 1440 bytes. A slack of a quarter of that absorbs
     // the scheduling noise and still fails on the smallest real regression.
     private const long SchedulingSlackBytes = 360;

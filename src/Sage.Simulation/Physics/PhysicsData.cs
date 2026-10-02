@@ -93,6 +93,14 @@ public struct PhysicsBody : IComponent
     public bool IsStatic;
 }
 
+// Tag: this collider is out of the physics world for now (issue #273). It has no body while it has the
+// tag, so it costs the step nothing and no query, trigger or contact sees it; taking the tag away gives
+// it a body again at the next PrePhysics, where its transform is then (a dynamic body with the velocity
+// its BodyMotion kept). Its joints go with its body. A collider that is part of a dynamic body's compound
+// ignores it. What the hitbox budget puts on a far creature's hitboxes (HitboxBudgetRecord).
+[Tag("sage:collider_off")]
+public struct ColliderOff : ITag { }
+
 // A collider on a child of a dynamic body, built into that body's compound (issue #268) instead of being
 // given a body of its own: `Body` is the entity whose body it is part of, and a ray that hits it names this
 // entity. Added and removed by the physics systems; never authored and never saved.

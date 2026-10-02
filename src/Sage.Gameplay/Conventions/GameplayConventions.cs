@@ -36,6 +36,10 @@ public sealed class GameplayConventionsRecord
     public RecordRef<DamageTypeRecord> DamageType;
     [Property(Category = "Combat", Tooltip = "The attack of a fighter that was given none")]
     public RecordRef<AttackRecord> Attack;
+#pragma warning disable SAGE0127 // hit locations are phase 4e's experimental API
+    [Property(Category = "Combat", Tooltip = "Which creatures keep their hitboxes on (issue #273); empty, every creature's are always on")]
+    public RecordRef<HitboxBudgetRecord> HitboxBudget;
+#pragma warning restore SAGE0127
 
     [Property(Category = "Profiles", Tooltip = "How a character with no movement profile of its own moves")]
     public RecordRef<MovementProfileRecord> Movement;

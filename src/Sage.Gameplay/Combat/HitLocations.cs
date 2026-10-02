@@ -152,6 +152,7 @@ public static class Hitboxes
                 count++;
             }
         }
+        if (count > 0) owner.AddComponent(new HitboxSet { On = true, Want = true });   // the budget's (HitboxBudget.cs)
         return count;
     }
 

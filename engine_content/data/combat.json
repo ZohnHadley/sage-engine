@@ -44,5 +44,16 @@
     "windupTime": 0.18,
     "recoverTime": 0.15,
     "cooldown": 0.35
+  },
+
+  {
+    // The hitbox budget (issue #273, 16 "As built (hit locations)"), the one the conventions name: a
+    // creature farther than `distance` from every player, or past the nearest `maxCreatures`, has its
+    // hitboxes off, so they cost physics nothing and a strike there lands on its body. A sniper's game
+    // patches `distance` up; 0 turns a limit off.
+    "type": "hitbox_budget",
+    "id": "default_hitbox_budget",
+    "distance": 50,
+    "maxCreatures": 32
   }
 ]
