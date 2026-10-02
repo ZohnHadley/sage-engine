@@ -622,6 +622,10 @@ internal static class MapLoader
         if (!body.IsStatic && body.Handle == 0) Log.Warn(LogCat.Level, $"{where}: '{className}' has no collision");
         else world.Add(entity, body);
 
+        // A ladder is climbed from inside its volume (issue #263); a solid one is a wall with rungs drawn on.
+        if (!solid.IsTrigger && entity.HasComponent<Ladder>())
+            Log.Warn(LogCat.Level, $"{where}: '{className}' is a ladder but not a trigger; add \"trigger\" \"1\" to climb it");
+
         solid.Spawned = entity;
         spawned++;
     }
