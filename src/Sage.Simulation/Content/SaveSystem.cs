@@ -303,6 +303,8 @@ public sealed partial class SaveSystem
             saved["prefab"] = from.Prefab.ToString();
         if (entity.Name is { Length: > 0 } named)
             saved["name"] = named;
+        // A root no content places (one that left its sector, #279): what its placement said, kept.
+        if (saved["source"] is null && saved["parent"] is null) KeptPlacement.Write(world, entity, saved, _engine.Records.Json);
         // Spawned from a prefab: only what differs from it as spawned, and what it lost (4i-5, SaveDiff).
         var asSpawned = world.TryGet<FromPrefab>(entity, out var spawned) ? spawned.Baseline : null;
         var removed = new JsonArray();
@@ -732,7 +734,10 @@ public sealed partial class SaveSystem
             Entity entity = default;
             if (prefab.IsEmpty) entity = world.Create(Transform.Identity);
             else if (_engine.Records.TryGet(prefab, out PrefabRecord _))
-                entity = world.SpawnWithoutId(prefab, SavedTransform(saved, dialect, where));
+            {
+                entity = world.SpawnWithoutId(prefab, SavedTransform(saved, dialect, where), KeptPlacement.Overrides(saved));
+                if (!entity.IsNull) KeptPlacement.Attach(world, entity, saved, _engine.Records.Json, where);
+            }
 
             if (entity.IsNull)
             {
