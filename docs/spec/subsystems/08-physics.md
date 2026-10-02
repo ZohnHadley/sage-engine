@@ -1,6 +1,6 @@
 # 08 · Physics and movement
 
-> Status: built for walking-simulator scale. The facade, the Bepu backend, layers, queries, triggers, contacts, the character controller, simple movers and (from phase 4k) joints and collision groups work and are tested. Movers do not sweep or push, ladders are not started (water and swimming are built, #262), and joints beyond the facade and the `joint` part are in progress in another thread. Owning assemblies: `Sage.Simulation` (`Physics`, the facade and data), `Sage.Physics3D` (Bepu backend and character controller), `Sage.Gameplay` (`Movers`). Design doc: [10 Physics](../../design/10-physics.md).
+> Status: built for walking-simulator scale. The facade, the Bepu backend, layers, queries, triggers, contacts, the character controller, simple movers and (from phase 4k) joints and collision groups work and are tested. Movers push what they move into or are blocked by it (#260) and carry riders (#261), water and swimming (#262) and ladders (#263) are built, and joints beyond the facade and the `joint` part are in progress in another thread. Owning assemblies: `Sage.Simulation` (`Physics`, the facade and data), `Sage.Physics3D` (Bepu backend and character controller), `Sage.Gameplay` (`Movers`). Design doc: [10 Physics](../../design/10-physics.md).
 
 ## 1. Purpose and scope
 
@@ -44,9 +44,9 @@ A world with no physics plugin has no `IPhysicsWorld` resource, and code that ca
 | `JointDesc`, `JointKind` (Ball, Hinge, Fixed, Distance), `PhysicsJoint` (`PhysicsJoints.cs`) | Joints. Experimental (SAGE0134). |
 | `CharacterController`, `MovementProfileRecord`, `World.AddCharacter` (`Physics/Character.cs`) | The kinematic character and its tuning record. |
 | `PawnIntent` | The controller's input: move, look, jump, crouch, run. Set by the player controller or AI. |
-| `Mover` (`Gameplay/Movers/Movers.cs`) | A linear door or lift: `OpenOffset`, `Seconds`, `CloseAfter`. |
+| `Mover` (`Gameplay/Movers/Movers.cs`) | A linear door or lift: `OpenOffset`, `Seconds`, `CloseAfter`, and `OnBlocked` (`Reverse`, `Stop` or `Crush`, #260). |
 
-Entity I/O: movers take `Open`, `Close`, `Toggle`; triggers fire `OnStartTouch` and `OnEndTouch`; joints take `Break` and fire `OnBreak`.
+Entity I/O: movers take `Open`, `Close`, `Toggle` and fire `OnFullyOpen`, `OnFullyClosed` and `OnBlocked` (the blocker as activator); triggers fire `OnStartTouch` and `OnEndTouch`; joints take `Break` and fire `OnBreak`.
 
 Console and cvars: `phys_debug` (draw bodies, triggers in magenta, joints as yellow lines), `phys_stats` (active bodies, statics, last step time, gravity), `sim_tickrate`.
 
@@ -76,7 +76,7 @@ The simulation runs at a fixed tick (60 Hz by default). Physics phases, in order
 | `Physics` | `sage.physics.step` | Steps Bepu. |
 | `PostPhysics` | `sage.physics.write_back` | Writes dynamic poses and `BodyMotion` back to entities. |
 | `PostPhysics` | `sage.physics.joint_breaks`, `sage.io.triggers` | Fire `OnBreak`, `OnStartTouch`, `OnEndTouch`. |
-| `Gameplay` | `sage.movers.move` | Advances movers and teleports their static colliders. |
+| `Gameplay` | `sage.movers.move` | Advances movers, moves their static colliders, then pushes what they now overlap (characters as far as they have room, dynamic bodies to at least the mover's speed) or is blocked. |
 | `Late` | `sage.physics.debug` | Draws the debug view. |
 
 `sage.physics.terrain` and `sage.physics.sync` also run in an edit world so the editor can pick bodies. A floating-origin rebase calls `Rebase(offset)`, which moves every body and static, refreshes static bounds and wakes sleeping bodies. Saving keeps velocities, so a swing saved mid-way resumes in a fresh app.
@@ -90,7 +90,6 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 - A character on the default layer is told it will ignore the ground; a layer list over 32 logs an error; a joint part whose limits are the wrong way round is a load error; a joint on an entity with no dynamic body logs an error and makes nothing.
 - A hull that fails to build returns a default `PhysicsBody`, and callers must check it.
 - Log category `Physics`. `phys_debug 1` draws what the backend actually simulates, `phys_stats` prints counts and step time.
-- A mover closing on a character does not push or stop it (TODO bug 61, reproducible in the Sandbox hut), because `MoverSystem` teleports the static collider with `MoveStatic` and nothing sweeps ahead of the mover. The controller now gets out of whatever it ends up inside (#259); #260 makes the mover push or stop.
 
 ## 9. Requirements
 
@@ -105,14 +104,14 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Not started | #269 |
 | REQ-PHYS-08 | The character controller shall walk, slide along walls, step up low ledges, climb gentle slopes and not cliffs, jump only when grounded, and crouch without standing under a ceiling. | Must | Done | test: StepsOntoALowLedgeButNotAHighOne; test: CrouchesAndCannotStandUnderACeiling |
 | REQ-PHYS-09 | A character that ends up inside geometry (a closing door, a teleport) shall be pushed out over a few ticks. | Must | Done | test: ACharacterPlacedInsideABoxIsPushedOutAndWalksOn; test: ACharacterDeepInsideComesOutAFewTicksLaterNeverMoreThanARadiusATick |
-| REQ-PHYS-10 | Movers shall sweep their collider and push or block what is in the way (stop, reverse or crush), firing `OnBlocked`. | Must | Not started | #260 |
-| REQ-PHYS-11 | Movers shall be kinematic bodies with velocity that carry riders and props, and the controller shall inherit the ground's velocity. | Should | Not started | #261 |
+| REQ-PHYS-10 | Movers shall sweep their collider and push or block what is in the way (stop, reverse or crush), firing `OnBlocked`. | Must | Done | test: ADoorThatCannotPushACharacterReopensAndSaysWhoBlockedIt; test: TheSandboxHutDoorNoLongerTrapsAPlayerStandingInTheDoorway |
+| REQ-PHYS-11 | Movers shall be kinematic bodies with velocity that carry riders and props, and the controller shall inherit the ground's velocity. | Should | Done | test: ACrateAndAPlayerRideALiftUpAndStayOnIt; test: APlayerStandingOnAMovingPlatformIsCarriedWithIt |
 | REQ-PHYS-12 | Movers shall include hinged and multi-stage path movers with lock state, for Daggerfall, Morrowind and Half-Life doors and trains. | Should | Not started | #266 |
 | REQ-PHYS-13 | Joints (ball, hinge, fixed, distance) and collision groups shall be in the facade, with removal with the body and break reporting. | Must | Done (#242) | test: AHingeStopsAtItsLimits; test: SameGroupBodiesPassThroughEachOtherAndOtherGroupsDont |
 | REQ-PHYS-14 | A `joint` prefab part shall make joints from data, fire `OnBreak`, and survive a save mid-swing. | Must | Done (#245) | test: ASaveMidSwingResumesTheSwingInAFreshApp |
 | REQ-PHYS-15 | The rest of phase 4k (ragdolls, joint tuning and tools) shall follow the joint facade. | Should | Done | test: TheTumblerFallsOnItsWire_SettlesWithinItsLimits_AndGetsUpIntoIdle, test: ASettledRagdollSleeps_AndLoadsDownSettledAndAsleep |
 | REQ-PHYS-16 | Swimming shall work: water volumes with surface, drag and buoyancy, a swim mode, surface exit, and floating bodies. | Must | Done (#262) | test: ACharacterFallingIntoWaterSwimsWithItsHeadOut; test: ASwimmerClimbsOutOntoTheBank; test: ACrateFloatsHalfUnder |
-| REQ-PHYS-17 | Ladders and climbing shall work from a ladder volume prefab part. | Must | Not started | #263 |
+| REQ-PHYS-17 | Ladders and climbing shall work from a ladder volume prefab part. | Must | Done (#263) | test: ClimbsALadderToTheLedgeAndStepsOff; test: ALadderBrushEntityInAMapIsClimbedToItsLedge |
 | REQ-PHYS-18 | The controller shall offer movement modes: walk, noclip and fly, GoldSrc air-strafe, smooth crouch with a shrinking collider. | Should | Not started | #267 |
 | REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Not started | #268 |
 | REQ-PHYS-20 | Physics materials and surface types shall be records on colliders, terrain layers and brush textures, returned in hit results. | Should | Not started | #270 |
@@ -129,7 +128,7 @@ Milestone 4l, Physics, movement and navigation (epic #258):
 - #260 4l-2 Movers sweep and push or block what is in their way (closing doors, TODO bug 61) (P0)
 - #261 4l-3 Movers become kinematic bodies with velocity (and carry riders) (P1)
 - #262 4l-4 Swimming and water volumes (P1)
-- #263 4l-5 Ladders and climbing (P1)
+- ~~#263 4l-5 Ladders and climbing (P1)~~ done: the `ladder` part and the controller's climb
 - #266 4l-8 Rotating and multi-stage movers (hinged doors, path movers) (P2)
 - #267 4l-9 Movement modes in the controller: noclip/fly, GoldSrc air-strafe, smooth crouch, crouching collider (P2)
 - #268 4l-10 Moving a physics shape in place and parented colliders (P2)

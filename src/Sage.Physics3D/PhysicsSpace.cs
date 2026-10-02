@@ -138,6 +138,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
             var handle = new BodyHandle(body.Handle);
             if (Simulation.Bodies.BodyExists(handle)) Simulation.Bodies.Remove(handle);
             _data.UnregisterBody(body.Handle);
+            ReleaseBodyShape(body.Handle);
         }
     }
 
@@ -196,9 +197,8 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     // bounds refreshed by hand — the same call the origin rebase makes, and for the same reason: a stale
     // broadphase bound is collision that happens where the thing used to be, with nothing to show for it.
     //
-    // A *static* rather than a kinematic body is a deliberate v1 limit (15 §10a): a moving static does
-    // not push what is leaning on it, so a door shuts through a player rather than shoving them out.
-    // Kinematic hulls are the fix when something needs to carry you.
+    // A mover makes its static kinematic (MakeKinematic, issue #261) so the solver sees it move; this
+    // is for anything else the engine moves by hand.
     public void MoveStatic(in PhysicsBody body, Vector3 position)
     {
         if (!body.IsStatic) return;

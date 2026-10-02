@@ -1,6 +1,6 @@
 # 09 · Navigation and AI
 
-> Status: partly built. Sight-only HL1-style AI with schedules, local-grid A*, casting, NPC routines and off-screen simulation work and are tested. Hearing, a navmesh, behaviour trees and squads are planned. Owning assemblies: `Sage.Gameplay` (with a seam in `Sage.Simulation`). Design docs: [16 Gameplay framework](../../design/16-gameplay-framework.md) (§3.4 and the AI status sections), [14 World streaming](../../design/14-world-streaming.md).
+> Status: partly built. Sight-only HL1-style AI with schedules, a navmesh baked from brushes, terrain and static colliders (with the local grid as its fallback), casting, NPC routines and off-screen simulation work and are tested. Hearing, behaviour trees and squads are planned. Owning assemblies: `Sage.Gameplay` (with a seam in `Sage.Simulation`). Design docs: [16 Gameplay framework](../../design/16-gameplay-framework.md) (§3.4 and the AI status sections), [14 World streaming](../../design/14-world-streaming.md).
 
 ## 1. Purpose and scope
 
@@ -15,13 +15,14 @@ It deliberately does not do: combat rules, damage, abilities (the gameplay sheet
 - Perceive the world at a staggered think rate and set a condition bitmask on each agent.
 - Choose a schedule from the conditions through a selector (`default`, `rules`, or a game's own).
 - Run schedule tasks and write the result into `PawnIntent`, never into physics directly.
-- Find a walkable route round obstacles (local grid A*), within a per-tick budget.
+- Find a walkable route on a navmesh baked from brush floors, terrain and static colliders, across levels and sector borders, falling back to a local grid A* where there is no mesh; within a per-tick budget.
+- Warn, under `sage validate`, about a level's `info_` markers that no body can walk to.
 - Remember a target that went out of sight and walk to where it was last seen.
 - Ask the faction rules who is an enemy, and take whoever hurt it as a target.
 - Keep NPC routines by the hour: pick a schedule and an anchor place from the clock.
 - Simulate agents whose cell is dormant: walk toward routine anchors, settle fights, and spawn them back when their cell is live.
 
-Not responsible for: building the navigation mesh from level geometry (planned, not started), hearing, squad tactics, crime and witnesses (planned in the gameplay sheet), or editing AI (the editor sheet, [18](18-editor.md)).
+Not responsible for: doors, movers and dynamic obstacles in the navmesh (#265), hearing, squad tactics, crime and witnesses (planned in the gameplay sheet), or editing AI (the editor sheet, [18](18-editor.md)).
 
 ## 3. Placement and dependencies
 
@@ -34,7 +35,10 @@ Plugin ids: `sage.gameplay.ai` (declared by `AIModule`, which requires `sage.gam
 | Type | Role | File |
 |---|---|---|
 | `Navigation` | World resource: plans routes, holds budgets and statistics | `src/Sage.Gameplay/Navigation/Navigation.cs` |
-| `NavGrid` | Window of up to 96 by 96 cells, stamped from colliders and steep ground; A* over eight neighbours | same |
+| `NavGrid` | Window of up to 96 by 96 cells, stamped from colliders and steep ground; A* over eight neighbours; the fallback where there is no navmesh | same |
+| `NavMesh` (internal) | Tiles of 8 m (32 cells of 25 cm) baked on demand from brush planes, terrain heights and static collider boxes, eroded by a 0.35 m body; a coarse A* over each tile's regions (a tile not baked yet is one optimistic node), then a span A* inside a corridor of up to eight regions, straightened into corners | `src/Sage.Gameplay/Navigation/NavMesh.cs` |
+| `NavWorldGeometry` (internal) | What the mesh is baked from, kept in step with the world: drops the tiles under a level placed or unloaded, a terrain sector loaded or unloaded, or a static collider added, moved or removed | `src/Sage.Gameplay/Navigation/NavMeshSource.cs` |
+| `NavMeshChecks` (internal) | The unreachable-marker check on `map` records | `src/Sage.Gameplay/Navigation/NavMeshChecks.cs` |
 | `NavPath` | Up to six corners an agent is walking, with replan timers | same |
 | `IAITask`, `AITaskContext` | A task is `Start`/`Run` returning `AITaskStatus`; the context exposes the agent's components | `src/Sage.Gameplay/AI/AI.cs` |
 | `AITaskRegistry` | Tasks by name: `Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`, `CastSpell`, `MoveToAnchor`, `FaceAnchor`, `StayAt` | same |
@@ -44,7 +48,7 @@ Plugin ids: `sage.gameplay.ai` (declared by `AIModule`, which requires `sage.gam
 | `IOffscreenFight` | How an off-screen fight round is settled; engine entry `strength` | `src/Sage.Gameplay/World/Offscreen.cs` |
 | `Factions` | `Between`, `AreHostile` and the player's stance, read by AI, combat and abilities | `src/Sage.Gameplay/Factions/Factions.cs` |
 
-Console and cvars: `ai_debug` (draws sight and chase targets, needs `r_debugdraw 1`), `nav_enabled`, `nav_debug`, `nav_cellsize`, `nav_maxnodes`, `nav_plans`, command `nav_stats`, cvar `offscreen_budget`, command `offscreen_status`, and the faction commands `rep` and `rep_set`.
+Console and cvars: `ai_debug` (draws sight and chase targets, needs `r_debugdraw 1`), `nav_enabled`, `nav_mesh`, `nav_debug`, `nav_cellsize`, `nav_maxnodes`, `nav_plans`, commands `nav_stats` and `nav_rebuild`, cvar `offscreen_budget`, command `offscreen_status`, and the faction commands `rep` and `rep_set`.
 
 Events: the AI reads `Damaged` (to turn on an attacker), `TimePassed` (to catch routines up after a time skip) and `Origin.Rebased` (to shift stored paths). It raises `OffscreenDied` when an off-screen agent dies. Entity inputs and outputs: none of its own; AI conditions are also usable from the shared condition language through the vocabulary.
 
@@ -77,15 +81,15 @@ Registration: tasks are open until the first world is created and are checked th
 
 ## 7. Threading, memory and performance
 
-Everything runs on the simulation thread. The grid, open set and corner buffer are reused; a search allocates nothing. Budgets are explicit: a search stops after `nav_maxnodes` cells (4096), at most `nav_plans` plans run a tick (4), a failed search backs off to one try every 2.5 s, and "is the line clear" is cached for 0.2 s. Ground steepness is sampled at terrain resolution, not grid resolution.
+Everything runs on the simulation thread. The grid, open set and corner buffer are reused; a search allocates nothing. Budgets are explicit: a search stops after `nav_maxnodes` nodes (4096; on the navmesh the coarse regions and the fine spans together), at most `nav_plans` plans run a tick (4), at most 16 navmesh tiles are baked a tick besides the one a planning creature stands in (beyond that a tile is planned through as one optimistic node and baked later), a failed search backs off to one try every 2.5 s, and "is the line clear" is cached for 0.2 s. Ground steepness is sampled at terrain resolution by the grid, and per 25 cm column by the navmesh. Baked tiles are kept (about 40 KB each, at most 2048, least recently used first out) and keyed by absolute position, so a rebase rebuilds nothing; a bake allocates its tile, a search reuses its working set.
 
 Off-screen catch-up is limited to `offscreen_budget` agent-steps a tick. An off-screen step allocates nothing (test: FiveHundredAgentsStepWithoutAllocating). The AI think and navigation are written to the same rule; no dedicated measurement test exists for them yet (see #273 range for the physics-side numbers).
 
 ## 8. Errors and diagnostics
 
-Content mistakes are load errors with file, line and column: an unknown interrupt, condition, selector or routine weekday, a task given an argument it does not take, and the old `"Wait:1.5"` string form, which says what to write. Unknown task names are reported when the first world is created. A missing selector or off-screen fight rule logs once on the AI category and falls back to the default. `sage validate` runs the same checks headlessly.
+Content mistakes are load errors with file, line and column: an unknown interrupt, condition, selector or routine weekday, a task given an argument it does not take, and the old `"Wait:1.5"` string form, which says what to write. Unknown task names are reported when the first world is created. A level's `info_` marker (`info_player_start`, `info_target`, ...) that stands on nothing walkable, or that no walkable way joins to the level's `info_player_start`, is a warning at the marker's line in the map, from baking the level's brushes at load (in a development build and under `sage validate`; test: ValidateNamesAMarkerNothingCanWalkTo). A missing selector or off-screen fight rule logs once on the AI category and falls back to the default. `sage validate` runs the same checks headlessly.
 
-Debug tools: `ai_debug`, `nav_debug`, `nav_stats`, `offscreen_status`. `nav_enabled 0` is the A/B switch that returns creatures to walking straight at their target.
+Debug tools: `ai_debug`, `nav_debug`, `nav_stats` (plans on the mesh and on the grid, tiles baked), `nav_rebuild` (drop every baked tile), `offscreen_status`. `nav_enabled 0` is the A/B switch that returns creatures to walking straight at their target; `nav_mesh 0` returns them to the local grid alone.
 
 ## 9. Requirements
 
@@ -101,7 +105,7 @@ Debug tools: `ai_debug`, `nav_debug`, `nav_stats`, `offscreen_status`. `nav_enab
 | REQ-AI-08 | Agents in dormant cells shall keep their routines and settle fights deterministically, then reappear. | Should | Done | test: TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime |
 | REQ-AI-09 | Games shall add tasks, conditions, selectors and off-screen fight rules without engine edits. | Must | Done | `AITaskRegistry`, `[AICondition]` in `src/Sage.Gameplay/AI/AIVocabulary.cs` |
 | REQ-AI-10 | Agents shall hear noise and be alerted by it. | Must | Not started | #386 |
-| REQ-AI-11 | Routes shall be planned on a navmesh built from brush floors and terrain, for interiors and long distances. | Must | Not started | #264 |
+| REQ-AI-11 | Routes shall be planned on a navmesh built from brush floors and terrain, for interiors and long distances. | Must | Done | test: ACreatureCrossesALevelOfRoomsAndASectorBorderOnTheNavmesh, test: WithoutTheNavmeshTheSameCreatureIsStuckInTheFirstRoom, test: ALongWayAcrossASectorBorderIsPlannedAStretchAtATime, test: TerrainIsBakedAndARidgeAcrossASectorBorderIsWalkedRound, test: ValidateNamesAMarkerNothingCanWalkTo |
 | REQ-AI-12 | Paths shall handle doors, dynamic obstacles and off-mesh links. | Should | Not started | #265 |
 | REQ-AI-13 | A game shall be able to select behaviour with behaviour trees or utility scoring beside schedules. | Should | Not started | #387 |
 | REQ-AI-14 | Hostile groups shall move in combat (strafe, retreat, cover) and as squads. | Should | Not started | #388 |
@@ -113,7 +117,6 @@ Debug tools: `ai_debug`, `nav_debug`, `nav_stats`, `offscreen_status`. `nav_enab
 
 Milestone 1, physics, movement and navigation (epic #258):
 
-- #264 4l-6 Navmesh built from brush floors and terrain, replacing the per-request local grid at scale (P1)
 - #265 4l-7 Dynamic obstacles, doors as path links, and off-mesh links (P1)
 - #271 4l-13 Crowd avoidance, terrain costs and area flags (P2)
 
