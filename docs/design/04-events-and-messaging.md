@@ -258,7 +258,10 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   (test: FirstTransitionTakesTheFirstThatMatches).
 - **Not built:** `during`/`update` actions each tick, per-state outputs (`enter` can `fire` instead),
   nested or parallel states, a saved activator (it is a handle, as a timer's is), and an engine prefab
-  (placements cannot override a part's `machine` yet, so a game writes its own prefab with the part).
+  (a game writes its own prefab with the part). A placement overrides the part's `machine` as it does any
+  part option, `"overrides": { "parts": { "state_machine": { "machine": "door_b" } } }`, and keeps it
+  across a sector crossing and a save (issue #279; test:
+  AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing).
 
 ### 3.4d As built (logic entities and bridge I/O, 2026-09-30, issue #91)
 - **Inputs routed by component.** The design above says "the input must exist on some component of the

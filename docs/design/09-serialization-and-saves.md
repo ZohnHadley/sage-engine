@@ -351,6 +351,12 @@ saved field opt-in.
   ASaveOfALoadedGameStaysADiff).
 - **A runtime spawn is rebuilt where it was saved** (its saved position and rotation), not at the origin,
   so a part that reads its placement reads what it read when the diff was taken.
+- **A root no content places keeps what its placement said** (issue #279, `KeptPlacement`): one that
+  walked out of its sector, or a runtime spawn made with overrides, writes `"overrides"` and `"outputs"`
+  (each wire with its `fired` count) beside its diff, and a load or a waking cell spawns it with them, so
+  the diff is laid over the baseline it was taken against and its wires come back (test:
+  AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing). Content's entities and a
+  prefab's children write neither: what placed them says it again.
 - **The format stays 3**: only an entity marked `diff` is merged; any other entry replaces its component
   as before, so formats 1, 2 and 3 without diffs read as they did. A format 3 golden save written as
   diffs is committed and loads (test: AGoldenSaveInFormat3Loads), beside formats 1 and 2 (tests:
