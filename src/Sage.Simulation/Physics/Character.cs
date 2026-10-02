@@ -54,6 +54,10 @@ public struct CharacterController : IComponent
     [Transient] public bool OnSteep;        // touching a surface steeper than the slope limit: it slides down it
     [Property(Tooltip = "Crouched: the capsule is the profile's crouch height")]
     public bool Crouching;
+    // On a ladder (issue #263). Not saved: a character loaded inside a ladder volume in mid-air catches it
+    // again on its first tick, so a save mid-climb still loads on the ladder.
+    [Transient] public bool Climbing;
+    [Transient] public bool LetGo;   // jumped off a ladder: no ladder catches it until it leaves the volume or lands
 
     // The layer is required: it is both what the character collides as and what its sweeps ignore, so
     // a default here would silently disagree with the entity's Collider (review #43). World.AddCharacter

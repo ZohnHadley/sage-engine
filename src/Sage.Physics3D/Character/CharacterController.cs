@@ -25,6 +25,7 @@ internal sealed class CharacterMovementSystem : ISystem
     private readonly ActionId _jump, _crouch, _run;
     private readonly CharacterConventions _conventions;
     private readonly OverlapHit[] _overlaps = new OverlapHit[8];
+    private readonly OverlapHit[] _ladderHits = new OverlapHit[8];
 
     public CharacterMovementSystem(World world, RecordStore records, ActionRegistry actions)
     {
@@ -64,6 +65,14 @@ internal sealed class CharacterMovementSystem : ISystem
         // starts overlapping and sees nothing (issue #259).
         position = Depenetrate(position, ref character, profile, mask);
         Crouch(ref character, in intent, profile, position, mask);
+
+        // On a ladder the climb is the whole move (issue #263).
+        if (Climb(ref position, ref character, in intent, profile, mask, dt))
+        {
+            transform.LocalRotation = SageMath.RotationFromYaw(intent.Yaw);
+            transform.LocalPosition = position;
+            return;
+        }
 
         // Which way the player wants to go, in the view's frame.
         float yaw = intent.Yaw;
@@ -305,6 +314,121 @@ internal sealed class CharacterMovementSystem : ISystem
             if (into < 0) character.Velocity -= deepest.Normal * into;
         }
         return position;
+    }
+
+    // Ladders (issue #263, 10 §3): a character overlapping a `Ladder` trigger volume catches it when it is
+    // in the air (stepping off the top of one, jumping at one) or pushes toward its rungs from the ground.
+    // On it there is no gravity: pushing toward the rungs climbs, pulling away climbs down, sideways moves
+    // along it at half speed. It lets go when it jumps (pushed off the face), when it reaches the ground
+    // climbing down, when it leaves the volume, and at the top, where a walkable ledge within step height
+    // is stepped onto — the same step-up a stair uses. Returns true when the climb was this tick's move.
+    private bool Climb(ref Vector3 position, ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, LayerMask mask, float dt)
+    {
+        if (!FindLadder(position, character.Height, profile.Radius, mask, out var ladder, out var normal))
+        {
+            character.Climbing = false;   // off the side, or out of the top with nothing to step onto
+            character.LetGo = false;
+            return false;
+        }
+
+        // Jumped off: not caught again until it has left the volume or landed.
+        if (character.LetGo)
+        {
+            if (!character.Grounded) return false;
+            character.LetGo = false;
+        }
+
+        // The wish in the world, split into toward the rungs (climb) and along them (sideways).
+        var forward = SageMath.ForwardFromYaw(intent.Yaw);
+        var right = new Vector3(-forward.Z, 0, forward.X);
+        Vector3 wish = right * intent.Move.X + forward * intent.Move.Y;
+        if (wish.LengthSquared() > 1f) wish = Vector3.Normalize(wish);
+        float toward = -Vector3.Dot(wish, normal);
+        var side = new Vector3(-normal.Z, 0, normal.X);
+        float along = Vector3.Dot(wish, side);
+
+        if (!character.Climbing)
+        {
+            // Walking past the bottom of a ladder, or away from it, is not climbing it.
+            if (character.Grounded && toward <= 0.3f) return false;
+            character.Climbing = true;
+            character.Velocity = Vector3.Zero;
+        }
+
+        if (intent.Pressed.Has(_jump))
+        {
+            // Let go, pushed off the face; the normal move takes it from here.
+            character.Climbing = false;
+            character.LetGo = true;
+            character.Velocity = normal * profile.WalkSpeed + Vector3.UnitY * profile.JumpSpeed * 0.5f;
+            character.Grounded = false;
+            return false;
+        }
+
+        float speed = ladder.SpeedOrDefault;
+        character.Velocity = Vector3.UnitY * (toward * speed) + side * (along * speed * 0.5f);
+        character.Grounded = false;   // no step-ups while sliding sideways on the rungs
+        character.OnSteep = false;
+        float cosSlope = MathF.Cos(profile.MaxSlopeDegrees * MathF.PI / 180f);
+
+        // At the top: a ledge behind the rungs within step height is stepped onto, and that is the dismount
+        // — a capsule's width onto it, so it stands on the top rather than balancing on the lip.
+        if (toward > 0f &&
+            TryStep(position, -normal * (2f * profile.Radius + Skin), character.Height, profile, mask, cosSlope, out Vector3 stepped) &&
+            Vector3.Dot(stepped - position, -normal) >= profile.Radius)   // over the lip, not stopped against it
+        {
+            position = stepped;
+            character.Climbing = false;
+            character.Velocity = Vector3.Zero;
+            GroundCheck(ref position, ref character, profile, cosSlope, mask, wasGrounded: true);
+            return true;
+        }
+
+        position = SlideClimbing(position, character.Velocity * dt, character.Height, profile, mask);
+        GroundCheck(ref position, ref character, profile, cosSlope, mask, wasGrounded: false);
+
+        // At the bottom, climbing down: standing again.
+        if (character.Grounded && toward < 0f) character.Climbing = false;
+        return true;
+    }
+
+    // Collide-and-slide in three dimensions, with no steps and no slope rules: a climber caught on the lip
+    // at the top slides down off it instead of hanging there, and one sliding sideways follows the wall.
+    private Vector3 SlideClimbing(Vector3 position, Vector3 motion, float height, MovementProfileRecord profile, LayerMask mask)
+    {
+        for (int iteration = 0; iteration < SlideIterations; iteration++)
+        {
+            float distance = motion.Length();
+            if (distance < 1e-5f) break;
+            Vector3 direction = motion / distance;
+            var hit = Sweep(position, height, profile.Radius, direction, distance, mask);
+            if (!hit.Hit) return position + motion;
+
+            float travel = MathF.Max(0f, hit.Distance - Skin);
+            position += direction * travel;
+            Vector3 remaining = motion - direction * travel;
+            motion = remaining - hit.Normal * Vector3.Dot(remaining, hit.Normal);
+        }
+        return position;
+    }
+
+    // The ladder the capsule overlaps, and its climbable face's outward normal.
+    private bool FindLadder(Vector3 position, float height, float radius, LayerMask mask, out Ladder ladder, out Vector3 normal)
+    {
+        var shape = Collider.Standing(radius, height);
+        var pose = new Pose { Position = position, Rotation = Quaternion.Identity, Scale = Vector3.One };
+        int count = _space.Overlap(shape, pose, _ladderHits, mask, includeTriggers: true);
+        for (int i = 0; i < count; i++)
+        {
+            var entity = _ladderHits[i].Entity;
+            if (entity.IsNull || !entity.TryGetComponent<Ladder>(out ladder)) continue;
+            var rotation = entity.TryGetComponent<Transform>(out var transform) ? transform.LocalRotation : Quaternion.Identity;
+            normal = ladder.NormalFor(rotation);
+            return true;
+        }
+        ladder = default;
+        normal = Vector3.UnitZ;
+        return false;
     }
 
     // Crouching shrinks the capsule; standing up needs headroom (10 §3).
