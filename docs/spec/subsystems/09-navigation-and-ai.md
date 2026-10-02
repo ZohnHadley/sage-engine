@@ -17,12 +17,13 @@ It deliberately does not do: combat rules, damage, abilities (the gameplay sheet
 - Run schedule tasks and write the result into `PawnIntent`, never into physics directly.
 - Find a walkable route on a navmesh baked from brush floors, terrain and static colliders, across levels and sector borders, falling back to a local grid A* where there is no mesh; within a per-tick budget.
 - Warn, under `sage validate`, about a level's `info_` markers that no body can walk to.
+- Plan through doors (a creature opens one and waits) and over off-mesh links (walk, jump, drop, ladder, teleport), and plan again when a blocker comes to rest in a path.
 - Remember a target that went out of sight and walk to where it was last seen.
 - Ask the faction rules who is an enemy, and take whoever hurt it as a target.
 - Keep NPC routines by the hour: pick a schedule and an anchor place from the clock.
 - Simulate agents whose cell is dormant: walk toward routine anchors, settle fights, and spawn them back when their cell is live.
 
-Not responsible for: doors, movers and dynamic obstacles in the navmesh (#265), hearing, squad tactics, crime and witnesses (planned in the gameplay sheet), or editing AI (the editor sheet, [18](18-editor.md)).
+Not responsible for: riding a lift or a moving platform, hearing, squad tactics, crime and witnesses (planned in the gameplay sheet), or editing AI (the editor sheet, [18](18-editor.md)).
 
 ## 3. Placement and dependencies
 
@@ -106,7 +107,7 @@ Debug tools: `ai_debug`, `nav_debug`, `nav_stats` (plans on the mesh and on the 
 | REQ-AI-09 | Games shall add tasks, conditions, selectors and off-screen fight rules without engine edits. | Must | Done | `AITaskRegistry`, `[AICondition]` in `src/Sage.Gameplay/AI/AIVocabulary.cs` |
 | REQ-AI-10 | Agents shall hear noise and be alerted by it. | Must | Not started | #386 |
 | REQ-AI-11 | Routes shall be planned on a navmesh built from brush floors and terrain, for interiors and long distances. | Must | Done | test: ACreatureCrossesALevelOfRoomsAndASectorBorderOnTheNavmesh, test: WithoutTheNavmeshTheSameCreatureIsStuckInTheFirstRoom, test: ALongWayAcrossASectorBorderIsPlannedAStretchAtATime, test: TerrainIsBakedAndARidgeAcrossASectorBorderIsWalkedRound, test: ValidateNamesAMarkerNothingCanWalkTo |
-| REQ-AI-12 | Paths shall handle doors, dynamic obstacles and off-mesh links. | Should | Not started | #265 |
+| REQ-AI-12 | Paths shall handle doors, dynamic obstacles and off-mesh links. | Should | Done | test: ACreatureOpensAClosedDoorAndWalksThroughIt, test: ALockedDoorIsAWallToThePlanner, test: ACreatureDropsFromALedgeByALink, test: WithoutTheLinkTheCreatureStaysOnTheLedge, test: ACreatureReplansWhenABlockerComesToRestInItsWay, test: EachKindOfLinkIsCrossed |
 | REQ-AI-13 | A game shall be able to select behaviour with behaviour trees or utility scoring beside schedules. | Should | Not started | #387 |
 | REQ-AI-14 | Hostile groups shall move in combat (strafe, retreat, cover) and as squads. | Should | Not started | #388 |
 | REQ-AI-15 | Agents shall avoid each other and weigh terrain costs and area flags. | Could | Not started | #271 |
@@ -117,7 +118,6 @@ Debug tools: `ai_debug`, `nav_debug`, `nav_stats` (plans on the mesh and on the 
 
 Milestone 1, physics, movement and navigation (epic #258):
 
-- #265 4l-7 Dynamic obstacles, doors as path links, and off-mesh links (P1)
 - #271 4l-13 Crowd avoidance, terrain costs and area flags (P2)
 
 Milestone 2, world, logic and saves (epic #274):

@@ -368,13 +368,30 @@ public struct NavPath
         }
     }
 
+    // What the path asks of the creature on the way (#265): at corner `CrossingCorner` there is a door to
+    // open or a link to cross, and the corner after it is the far side. The path ends there; the creature
+    // plans again once it is across.
+    internal NavCrossing Crossing;
+    internal byte CrossingCorner;
+    internal Entity CrossingEntity;   // the door, or the link's entity
+    internal float CrossingTime;      // seconds since it reached the near side
+    internal bool CrossingStarted;    // the door asked to open, the jump launched
+    internal int Version;             // Navigation.Version it was planned at: stale when that moves on
+
     public void Clear()
     {
         Count = 0;
         Step = 0;
+        Crossing = NavCrossing.None;
+        CrossingEntity = default;
+        CrossingTime = 0f;
+        CrossingStarted = false;
     }
 
     public bool Walking => Step < Count;
+
+    // At the near side of a crossing and on the way over it.
+    internal bool InCrossing => Crossing != NavCrossing.None && Step == CrossingCorner + 1 && Step < Count;
 
     public Vector3 Next => this[Step];
 
@@ -405,6 +422,11 @@ public sealed class Navigation
     // Plan on the navmesh where there is one (`nav_mesh`). Off, every plan is the local grid's, as before
     // #264.
     public bool UseMesh { get; set; } = true;
+
+    // Moves on whenever what the navmesh is baked from, a locked door or an off-mesh link changes (#265):
+    // a path planned at an older version may go through something that is not there any more, or miss
+    // a way that is.
+    internal int Version => Source.Version;
 
     internal int MeshPlans { get; private set; }     // answered by the navmesh
     internal int GridPlans { get; private set; }     // answered by the local grid
@@ -446,7 +468,8 @@ public sealed class Navigation
 
         Span<Vector3> corners = stackalloc Vector3[NavPath.MaxCorners];
         int count;
-        if (UseMesh && PlanOnMesh(world, from, to, corners, out count))
+        NavMeshCrossing crossing = default;
+        if (UseMesh && PlanOnMesh(world, from, to, corners, out count, out crossing))
         {
             MeshPlans++;
         }
@@ -465,7 +488,25 @@ public sealed class Navigation
         for (int i = 0; i < count; i++) path.Set(i, corners[i]);
         path.Count = (byte)count;
         path.PlannedFor = to;
+        path.Version = Source.Version;
+        if (crossing.Kind != NavCrossing.None)
+        {
+            path.Crossing = crossing.Kind;
+            path.CrossingCorner = (byte)crossing.Corner;
+            path.CrossingEntity = crossing.Kind == NavCrossing.Door
+                ? Source.Crossings.Doors[crossing.Index].Entity
+                : Source.Crossings.Links[crossing.Index].Entity;
+        }
         return true;
+    }
+
+    // Has the world changed under a path planned at `version`? Looks (once a tick at most, and only with
+    // the navmesh on) at what the mesh is baked from.
+    internal bool Changed(World world, int version)
+    {
+        if (!Enabled || !UseMesh) return false;
+        Source.Sync(world, Mesh);
+        return Source.Version != version;
     }
 
     // The navmesh's answer, in origin space. False when it has none (no mesh at either end), and the
@@ -473,13 +514,13 @@ public sealed class Navigation
     //
     // The mesh is keyed absolutely, so the two ends go out of origin space and the corners come back
     // into it: a rebase moves nothing in the mesh (R6).
-    private bool PlanOnMesh(World world, Vector3 from, Vector3 to, Span<Vector3> corners, out int count)
+    private bool PlanOnMesh(World world, Vector3 from, Vector3 to, Span<Vector3> corners, out int count, out NavMeshCrossing crossing)
     {
         count = 0;
         Source.Sync(world, Mesh);
         Mesh.BeginTick(world.Tick);
         var offset = world.Resources.TryGet<Origin>(out var origin) && origin != null ? origin.ToAbsolute(Vector3.Zero) : Vector3.Zero;
-        var answer = Mesh.Plan(from + offset, to + offset, Source.Geometry, MaxNodes, corners, out count, out _);
+        var answer = Mesh.Plan(from + offset, to + offset, Source.Geometry, Source.Crossings, MaxNodes, corners, out count, out _, out crossing);
         if (answer == NavMeshAnswer.CannotAnswer) return false;
         for (int i = 0; i < count; i++) corners[i] -= offset;
         return true;

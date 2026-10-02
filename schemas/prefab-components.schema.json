@@ -380,6 +380,22 @@
         }
       ]
     },
+    "nav_door": {
+      "description": "The component sage:nav_door (NavDoor), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_door"
+        }
+      ]
+    },
+    "nav_link": {
+      "description": "The component sage:nav_link (NavLink), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_link"
+        }
+      ]
+    },
     "offscreen": {
       "description": "The component sage:offscreen (Offscreen), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -873,6 +889,22 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:mover"
+        }
+      ]
+    },
+    "sage:nav_door": {
+      "description": "Component sage:nav_door (NavDoor).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_door"
+        }
+      ]
+    },
+    "sage:nav_link": {
+      "description": "Component sage:nav_link (NavLink).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:nav_link"
         }
       ]
     },
@@ -3973,6 +4005,67 @@
       },
       "additionalProperties": false,
       "description": "Component sage:mover (Mover)."
+    },
+    "sage:nav_door": {
+      "type": "object",
+      "properties": {
+        "locked": {
+          "description": "Creatures do not open it: while not fully open it is a wall to the planner. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:nav_door (NavDoor)."
+    },
+    "sage:nav_link": {
+      "type": "object",
+      "properties": {
+        "end": {
+          "description": "Where the link lands, from where the entity stands, in world axes (not turned with the entity) Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "kind": {
+          "description": "How a creature crosses it: Walk, Jump, Drop, Ladder or Teleport. (NavLinkKind, default \"Walk\")",
+          "default": "Walk",
+          "type": "string",
+          "enum": [
+            "Walk",
+            "Jump",
+            "Drop",
+            "Ladder",
+            "Teleport"
+          ]
+        },
+        "twoWay": {
+          "description": "Crossed from either end; off, only from the entity to End (a drop) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "cost": {
+          "description": "What using it costs over its length, in metres of walking. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "disabled": {
+          "description": "Not used by the planner until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:nav_link (NavLink)."
     },
     "sage:offscreen": {
       "type": "object",
