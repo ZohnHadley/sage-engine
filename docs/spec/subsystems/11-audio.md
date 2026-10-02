@@ -82,7 +82,7 @@ A sound with no variations is refused quietly and counted (test: NothingToPlayIs
 | REQ-AUD-12 | Interiors shall have occlusion, obstruction and reverb zones. | Should | Not started | #329 |
 | REQ-AUD-13 | The mixer shall support doppler, rolloff curves and directional emitters. | Could | Not started | #335 |
 | REQ-AUD-14 | Sounds shall hot reload with editor-visible bus levels and a preview. | Could | Partial: the mixer swaps on reload; no tooling | #336 |
-| REQ-AUD-15 | A headless test shall cover the client's audio system and backend seam. | Should | Not started | #330 |
+| REQ-AUD-15 | A headless test shall cover the client's audio system and backend seam. | Should | Not started | Not filed yet |
 
 ## 10. Open work
 
@@ -94,7 +94,7 @@ Milestone 5, audio and input (epic #324):
 - #329 4o-5 Add occlusion, obstruction and reverb zones (P2)
 - #330 4o-6 Finish the cue and sound wiring that is declared but not raised (P2)
 - #335 4o-11 Add doppler, spatial 3D improvements and emitter parity (P3)
-- #336 4o-12 Hot-reload sounds and add audio tooling (P3)
+- #336 4o-12 Audio tooling: bus meters, sound preview and a snd_debug overlay (P3)
 
 ## 11. References
 

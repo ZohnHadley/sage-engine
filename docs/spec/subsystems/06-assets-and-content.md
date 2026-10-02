@@ -122,7 +122,7 @@ Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` an
 | REQ-ASSET-13 | `sage validate` shall load a game headless, print every error and warning, and exit non-zero on errors. | Must | Done | test: Validate_TheSandboxAndHelloHaveNoErrors |
 | REQ-ASSET-14 | Records shall hot reload in a running game without a restart. | Must | Done | test: Reload_UpdatesInstancesInPlace |
 | REQ-ASSET-15 | Textures, models, sounds and compiled effects shall hot reload individually, and a failed reload shall keep the old asset. | Should | Done (client; smoke run) | `Sage.Client/Assets/AssetHotReload.cs`; test: ReplacingAFileStopsItsOneShotsRestartsItsLoopsAndLeavesOthersAlone |
-| REQ-ASSET-16 | A changed `.fx` source shall be recompiled and swapped in, with compile errors in the log and a visible fallback on failure. | Should | Partial: recompile exists (Windows or Wine) | `Sage.Client/Assets/ShaderRecompiler.cs`; #312, #400 |
+| REQ-ASSET-16 | A changed `.fx` source shall be recompiled and swapped in, with compile errors in the log and a visible fallback on failure. | Should | Done for the game and engine (Windows or Wine); mods open | `Sage.Client/Assets/ShaderRecompiler.cs`; mods: #400 |
 | REQ-ASSET-17 | Assets shall have scopes (sector, game, UI), ref-counted release, eviction on unload and an upload budget. | Must | Not started | #308, #277 |
 | REQ-ASSET-18 | Textures shall load with mipmaps and optional compression, and the loader shall read the formats art tools write. | Should | Partial: PNG, JPG, BMP, TGA, GIF load; no mips | #317 |
 | REQ-ASSET-19 | A cook step shall produce binary meshes and compressed textures for Shipping, loaded when present. | Could | Not started | #302 |
@@ -134,9 +134,8 @@ Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` an
 Milestone 4n, Rendering and assets (epic #304):
 
 - #308 4n-4 AssetServer: scopes, ref-counting, eviction and mesh/texture memory budget (P1)
-- #312 4n-8 Shader hot reload: run mgfxc on .fx change (P2)
 - #317 4n-13 Texture pipeline: mipmaps, compression, TGA/DDS, cooked formats (P2)
-- #321 4n-17 Model format coverage and mesh hot reload follow-ups (P3)
+- #321 4n-17 Model format coverage: a documented glTF subset, vertex colours and a second UV set (P3)
 
 Milestone 9, Code mods and packaging (epic #395):
 

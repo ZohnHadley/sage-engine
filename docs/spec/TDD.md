@@ -255,7 +255,7 @@ Presentation never writes gameplay components: input reaches the simulation only
 no `..`; it is an asset's identity. Mounts are ordered, later wins: engine content (`sage`), plugin content
 embedded in assemblies (`AssemblyContentMount`), the game's folders (`FolderMount`, game id namespace),
 then active mods (`mods/<id>`, namespace `<id>`). Each mount gives bare record ids in its files a
-namespace. `vfs_which` says which mount serves a path and what it shadows. Zip mounts are planned (#297).
+namespace. `vfs_which` says which mount serves a path and what it shadows. Zip mounts are planned (#397).
 
 **Records** (`RecordStore.cs`). Every definition (items, prefabs, scenes, materials, input maps, AI
 schedules, UI layouts) is a JSON or JSONC record with `type` and namespaced `id`, declared in C# with
@@ -285,7 +285,7 @@ loads. `ShaderRecompiler` runs mgfxc on a background task when `.fx` sources cha
 
 **Mods.** `ModManager` discovers `mod.json` folders, orders them (`ModLoadOrder`, `user://mods.json`),
 mounts them after the game, and writes `user://logs/mod_report.txt`. Data mods are built; code mods are
-phase 9 (#302). Detail: [subsystems/06-assets-and-content.md](subsystems/06-assets-and-content.md),
+phase 9 (#396). Detail: [subsystems/06-assets-and-content.md](subsystems/06-assets-and-content.md),
 [subsystems/19-modding.md](subsystems/19-modding.md).
 
 ## 9. Simulation to presentation
@@ -352,10 +352,10 @@ intern table) or per thread (`Profiler` tables, `[ThreadStatic]` scratch buffers
 
 | Plan | Milestone | Issue |
 |---|---|---|
-| Parallel scheduler with read/write access declarations per system | 4m | #282 |
-| Async save writes (serialise on the main thread, write on a worker) | 4m | #278 |
-| Sector generation and per-sector asset scopes on jobs | 4m | #289 |
-| A `JobSystem` over the thread pool and async asset decode with budgeted GPU upload ([`../design/02-core-services-and-logging.md`](../design/02-core-services-and-logging.md) §4.5, 05 §6) | 4n | #307 |
+| Parallel scheduler with read/write access declarations per system | 4m | #288 |
+| Async save writes (serialise on the main thread, write on a worker) | 4m | #285 |
+| Sector generation and per-sector asset scopes on jobs | 4m | #277 |
+| A `JobSystem` over the thread pool and async asset decode with budgeted GPU upload ([`../design/02-core-services-and-logging.md`](../design/02-core-services-and-logging.md) §4.5, 05 §6) | 4n | #308 |
 | A render thread handed a copy of the snapshot (the snapshot is value data for this reason) | later | none filed |
 
 ## 11. Memory model
@@ -374,7 +374,7 @@ and 03). The techniques:
 
 The rules are proved by Measurements tests, for example the 2,000-entity scale world
 (test: AFullWorldStillAllocatesNothingPerTick), which allows a small slack because Bepu's own profiler
-allocates about 40 bytes inside `Timestep` on whichever thread runs that part (#272). The test process sets
+allocates about 40 bytes inside `Timestep` on whichever thread runs that part (#273). The test process sets
 `<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` (`tests/Sage.Tests/Sage.Tests.csproj`)
 because a background GC miscounts the per-thread allocation figure.
 
@@ -390,9 +390,9 @@ because a background GC miscounts the per-thread allocation figure.
 | Skeletons and clips | `GltfAnimationReader` on the `Engine` | Process, cached by path. |
 | Render targets | `RenderTargetPool` in the client | Reused across frames. |
 
-**Planned: asset scopes (4n, #307).** `AssetServer` with scopes (engine, game, scene, sector), reference
+**Planned: asset scopes (4n, #308).** `AssetServer` with scopes (engine, game, scene, sector), reference
 counting, LRU eviction and a memory budget, so GPU memory returns to baseline when content unloads (SRS
-REQ-PERF-06). The streaming half (per-sector scopes) is #289.
+REQ-PERF-06). The streaming half (per-sector scopes) is #277.
 
 ## 12. Persistence
 
@@ -418,14 +418,14 @@ boundary only.
 - **World resources** marked `[SavedResource]` are saved beside entities and rebuilt through
   `ISavedResource.AfterLoad`. Behaviour or script state is never saved.
 
-Planned: thumbnails, compression and async write (#278); removing live unsaved entities on load (#284).
+Planned: thumbnails, compression and async write (#285); removing live unsaved entities on load (#278).
 Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-serialization-and-saves.md`](../design/09-serialization-and-saves.md).
 
 ## 13. Error handling and diagnostics
 
 | Concern | Mechanism |
 |---|---|
-| Content errors | Logged under `Records` with `mount:path:line:col`, counted in `RecordStore.ErrorCount`, listed in `LoadErrors`; the bad record is skipped. `sage validate` exits 1 on any. The editor's `ProblemList` shows them. An in-game problems surface is #300. |
+| Content errors | Logged under `Records` with `mount:path:line:col`, counted in `RecordStore.ErrorCount`, listed in `LoadErrors`; the bad record is skipped. `sage validate` exits 1 on any. The editor's `ProblemList` shows them. An in-game problems surface is #301. |
 | Mod conflicts | `ContentReport` (provenance of every field write), `mod_conflicts`, `mod_report.txt`. |
 | Logging | `Log.Trace..Fatal` with `LogCat` categories (Core, Host, Modules, VFS, Assets, Records, Render, World, Events, Physics, Audio, Save, AI, Gameplay and more); per-category levels with `log_level`; rate limiting with `Log.Every`; sinks for file, stdout and a ring buffer that the in-game console and the editor's log view read. |
 | Asserts | `Assert.Dev`, `Ensure`, `Check` (`src/Sage.Core/Diagnostics/Assert.cs`). |
@@ -434,7 +434,7 @@ Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-seriali
 | Profiling | `Profiler.Begin` scopes; the world wraps every phase and system automatically; `stat`, `sys_list` and `sys_toggle` read them; tables are per thread. |
 | Runtime introspection | `ent_dump`, `rec_get`, `vfs_which`, `ev_stats`, `r_passes`, `scale_report`. |
 
-Planned: Chrome-trace export, `stat render`, a visual logger (#299); console history and completion (#287).
+Planned: Chrome-trace export, `stat render`, a visual logger (#300); console history and completion (#299).
 Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 
 ## 14. Testing architecture
@@ -454,7 +454,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 - **Golden saves** for every format version must keep loading.
 - **Smoke runs** (`tools/smoke_run.sh`) start the real host under Xvfb with `host_exitafter` and check the
   log; this is the only automated check of `Sage.Client`, which tests may not reference. Automated tests of
-  the drawing path are #321.
+  the drawing path are #318.
 - **Docs are checked**: `tools/check_docs.py` verifies links, cited tests and counts against the registry
   dump; schema output is diffed in CI.
 
@@ -472,7 +472,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Event | a struct sent with `world.Events.Send`, read with `Reader<T>(this)` |
 | Entity input or output | `EntityInputs.Register` / `Register<T>`, `EntityOutputs.Declare` (in `Init`) |
 | Vocabulary word | `[Condition("id")]`, `[Action("id")]`, or a new `[Vocabulary]` with its entry attribute |
-| Render pass | `[RenderPass("ns:id", RenderStage.X)]` on an `IRenderPass`, added to `RenderPasses` in `Init` (replacing an engine pass is #318) |
+| Render pass | `[RenderPass("ns:id", RenderStage.X)]` on an `IRenderPass`, added to `RenderPasses` in `Init` (replacing an engine pass is #322) |
 | UI | a `Widget` subclass in code; screens by id in the client's `ScreenRegistry`; `ui_layout`, `ui_style`, `screen` records (new widget types from data are 4q) |
 | Console command, cvar | `CVarRegistry.RegisterCommand` / `Register` in `Init` |
 | Input action | `Engine.Actions.Register` in `Init`; bindings in `input_map` records |
@@ -487,15 +487,15 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | D3 | C# game modules, data mods and trusted C# mods; no sandboxed scripting | Under review (REDESIGN §4.3, §6 item 1) |
 | D4 | Friflo.Engine.ECS behind Sage's own types | Built (#25, SAGE0050) |
 | D5 | BepuPhysics v2 plus own kinematic character controller | Built |
-| D6, D7 | In-engine editor as a separate host mode around a document model; `.map` import until editor brushes | 10a built; brushes #355 |
-| D8 | Own game UI on `Sage.UI`; ImGui for dev tools only | Built; legacy stack retires in #349 |
+| D6, D7 | In-engine editor as a separate host mode around a document model; `.map` import until editor brushes | 10a built; brushes #61 |
+| D8 | Own game UI on `Sage.UI`; ImGui for dev tools only | Built; legacy stack retires in #350 |
 | D9 | MIT licence | Decided (ARCHITECTURE §8; REDESIGN §6 item 5 predates it) |
 | D10, D11 | Runtime PNG/glTF/WAV loaders, no MGCB; glTF over FBX | Built |
 | D13 | MonoGame 3.8.5.1 DesktopGL; revisit DesktopVK later | Built |
 | R§3.2 | One boot path, sealed stages | Built (#10) |
 | R§3.3 | Plugins with string ids and SemVer ranges; system ids with replace/disable | Built (#12, #17) |
 | R§3.4 | Source generator as the single declaration registry | Built (#16, #18, #19, #21) |
-| R§3.6 | Declared public API, MinVer versions, `[Experimental]` ids | Built (#31); first tag pending (#294) |
+| R§3.6 | Declared public API, MinVer versions, `[Experimental]` ids | Built (#31); first tag pending (#295) |
 | R§0.5 | Base engine first, genre rules in kits | Built (#26, #27) |
 | R§6 | Open owner decisions: scripting language, editor for modders, platforms, distribution | Open (SRS §10) |
 
@@ -504,14 +504,14 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Risk or debt | Effect | Plan |
 |---|---|---|
 | Per-process statics: `UserPaths`, `Log`, `CrashReporter` | Two apps in one process (an editor hosting a server, two test apps) share one log, user folder and crash report. | #49 (Stage E); rises if a server or multiplayer starts. |
-| Asset memory is never freed | Long sessions and streaming grow GPU memory without bound. | 4n, #307; streaming scopes #289. |
-| Single-threaded scheduler | Only physics uses more than one core; the tick has headroom (0.76 ms at 2,000 entities) but large worlds will not. | 4m, #282. |
-| Synchronous generation and saves | Crossing a sector edge or saving a big world can stall a frame. | 4m, #289, #278. |
-| Bepu allocates about 40 B a tick | Zero-allocation tests need slack; GC pressure over hours. | 4l, #272. |
-| Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets) | Two ways to build a screen; features land in one or the other. | 4q, #349. |
+| Asset memory is never freed | Long sessions and streaming grow GPU memory without bound. | 4n, #308; streaming scopes #277. |
+| Single-threaded scheduler | Only physics uses more than one core; the tick has headroom (0.76 ms at 2,000 entities) but large worlds will not. | 4m, #288. |
+| Synchronous generation and saves | Crossing a sector edge or saving a big world can stall a frame. | 4m, #277, #285. |
+| Bepu allocates about 40 B a tick | Zero-allocation tests need slack; GC pressure over hours. | 4l, #273. |
+| Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets) | Two ways to build a screen; features land in one or the other. | 4q, #350. |
 | Records and saves use reflection, not generated readers | Slower loads; not trim or AOT safe. | Generator follow-up; AOT out of scope (SRS §9). |
-| Determinism is by construction only | No cross-run check; replays not possible yet. | 4l (#272), 4o replay (#332). |
-| Default `AssemblyLoadContext` for game and kit assemblies | Code mods cannot be unloaded or isolated. | 9, #302. |
-| No packaging or archive mounts | A game cannot yet ship as a folder without the SDK. | R1, #6, #297. |
-| Render pass registry cannot replace or disable an engine pass | Games cannot swap core rendering stages. | 4n, #318. |
+| Determinism is by construction only | No cross-run check; replays not possible yet. | 4l (#273), 4o replay (#333). |
+| Default `AssemblyLoadContext` for game and kit assemblies | Code mods cannot be unloaded or isolated. | 9, #396. |
+| No packaging or archive mounts | A game cannot yet ship as a folder without the SDK. | R1, #293 and #6; archive mounts #397. |
+| Render pass registry cannot replace or disable an engine pass | Games cannot swap core rendering stages. | 4n, #322. |
 | Dev tools allocate per frame | Frame zero-allocation holds only with the overlay closed. | 10b. |

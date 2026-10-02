@@ -12,6 +12,6 @@ TDD; use the API contract when writing game or kit code, and a subsystem sheet w
 
 How this relates to the other documents:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) is the older overview; the TDD supersedes it where they differ.
-- [`../design/`](../design/00-index.md) holds the long design docs with their "as built" history; the sheets link into them.
+- [`../design/`](../design/00-index.md) holds the long design docs and their history of what was built; the sheets link into them.
 - [`../REDESIGN.md`](../REDESIGN.md) §5 is the roadmap; the work is tracked as GitHub milestones and issues.
 - [`../MAKING_A_GAME.md`](../MAKING_A_GAME.md), [`../EDITOR.md`](../EDITOR.md) and [`../MODDING.md`](../MODDING.md) are the guides for game makers, designers and modders.
