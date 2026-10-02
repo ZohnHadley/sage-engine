@@ -1612,3 +1612,6 @@ Sage.Simulation.MachineState.Parallel -> bool
 Sage.Simulation.MachineState.States -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.MachineState!>?
 Sage.Simulation.StateMachine.Active -> Sage.Simulation.ActiveState[]?
 static Sage.Simulation.StateMachines.IsIn(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state) -> bool
+Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
+Sage.Simulation.Unsaved
+Sage.Simulation.Unsaved.Unsaved() -> void

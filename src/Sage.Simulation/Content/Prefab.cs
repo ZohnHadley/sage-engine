@@ -383,12 +383,13 @@ public static class PrefabExtensions
                                           PrefabOverrides? overrides, string? where) =>
         SpawnPlaced(world, prefab, position, yawDegrees, overrides, where, persist: false);
 
-    // A saved entity on load, where the save says it stood (4i-5): its position and its whole rotation.
-    internal static Entity SpawnWithoutId(this World world, RecordId prefab, in Transform placed)
+    // A saved entity on load, where the save says it stood (4i-5): its position and its whole rotation,
+    // and the overrides it was placed with when no content places it any more (#279, KeptPlacement).
+    internal static Entity SpawnWithoutId(this World world, RecordId prefab, in Transform placed, PrefabOverrides? overrides = null)
     {
         var at = Transform.At(placed.LocalPosition);
         at.LocalRotation = placed.LocalRotation;
-        var entity = SpawnTree(world, prefab, at, overrides: null, where: null, default, 0);
+        var entity = SpawnTree(world, prefab, at, overrides, where: null, default, 0);
         if (!entity.IsNull) SnapGlobals(world, entity);
         return entity;
     }
@@ -478,7 +479,11 @@ public static class PrefabExtensions
         // its own would duplicate it (FromParentPrefab, #161); SpawnPlaced derives the children's from this.
         // After the baseline, because the id comes with the cell it was made in (4g-1, InCell), which is not
         // the prefab's: in the baseline it would never be written, and a load would lose it.
-        if (persist && parent.IsNull && record.Persist) world.MakePersistent(entity);
+        if (persist && parent.IsNull)
+        {
+            if (record.Persist) world.MakePersistent(entity);
+            else entity.AddTag<Unsaved>();   // no save names it, so a load takes it away (4m-4)
+        }
 
         if (record.Children.Count == 0) return entity;
         if (depth >= PrefabOverriding.MaxDepth)
