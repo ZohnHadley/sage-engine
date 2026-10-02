@@ -22,7 +22,23 @@ public class NpcLocomotionTests
 
     internal static string Game(string name) => Path.Combine(TestEnv.FolderAbove("tests"), "tests", "games", name);
 
-    internal static HeadlessApp Skeletal() => HeadlessApp.ForGame(Game("skeletal")).WithEngineContent().Boot();
+    // The yard. Without `exitPair`, less phase 4k's tumbler and casualty (issue #249), which go down as
+    // ragdolls on their own a few seconds in and would put their bodies, joints and the allocations of
+    // going down and getting up into every other test's counts; RagdollExitTests plays them.
+    internal static HeadlessApp Skeletal(bool exitPair = false) =>
+        exitPair ? HeadlessApp.ForGame(Game("skeletal")).WithEngineContent().Boot()
+                 : WithoutExitPair(HeadlessApp.ForGame(Game("skeletal")).WithEngineContent().Boot());
+
+    internal static HeadlessApp WithoutExitPair(HeadlessApp app)
+    {
+        foreach (var name in new[] { "tumbler", "casualty" })
+        {
+            var e = app.World.FindByName(name);
+            Assert.False(e.IsNull, $"no {name} in the yard");
+            app.World.Destroy(e);
+        }
+        return app;
+    }
 
     internal static readonly RecordId Npc = new("skeletal", "npc");
 
@@ -183,11 +199,11 @@ public class NpcLocomotionTests
 
     // The yard, as CI runs it: with nobody at the keys, the walker, jogger and runner patrol their lanes at
     // their own paces (their state machines send tweens), the trooper aims and strikes while it walks, and
-    // the sentry aims, strikes and reloads.
+    // the sentry aims, strikes and reloads (phase 4k's tumbler and casualty go down beside them: RagdollExitTests).
     [Fact]
     public void TheYardsNpcsPatrolAtTheirOwnPaces_AimStrikeAndReload()
     {
-        using var app = Skeletal();
+        using var app = Skeletal(exitPair: true);
         var world = app.World;
         Assert.Null(app.Engine.Modules.Game);
         Entity Named(string name)

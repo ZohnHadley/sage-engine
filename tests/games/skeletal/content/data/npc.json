@@ -130,5 +130,17 @@
     "parts": { "tween": { "duration": 6, "ease": "Linear" }, "state_machine": { "machine": "patrol_armed" } } },
   // A sentry that stands, aims level, high and low, strikes and reloads (the `sentry` machine).
   { "type": "prefab", "id": "sentry", "base": "npc", "name": "sentry",
-    "parts": { "skinned_mesh": { "material": "mannequin_red" }, "state_machine": { "machine": "sentry" } } }
+    "parts": { "skinned_mesh": { "material": "mannequin_red" }, "state_machine": { "machine": "sentry" } } },
+
+  // Phase 4k's exit (engine issue #249): a sentry that the `tumble` machine knocks over with the `Ragdoll`
+  // input and that gets back up by itself (`getUpAfter`: 1.5 s after it has settled, with getup_back or
+  // getup_front, into idle) — and round again, every time it has stood a while.
+  { "type": "prefab", "id": "tumbler", "base": "npc", "name": "tumbler",
+    "parts": { "skinned_mesh": { "material": "mannequin_green" }, "ragdoll": { "getUpAfter": 1.5, "getUpFade": 0.3 },
+               "state_machine": { "machine": "tumble" } } },
+  // And one that the `doomed` machine kills (the `lethal` effect, by ApplyEffect): it dies, falls as a
+  // ragdoll (onDeath) and stays down — the dead never get up by themselves, whatever getUpAfter says.
+  { "type": "prefab", "id": "casualty", "base": "npc", "name": "casualty",
+    "parts": { "skinned_mesh": { "material": "mannequin_blue" }, "ragdoll": { "getUpAfter": 1.5 },
+               "state_machine": { "machine": "doomed" } } }
 ]

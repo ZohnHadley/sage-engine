@@ -51,7 +51,7 @@ public class HitLocationTests
             .OnRegistered(a => a.Engine.Modules.Modules.OfType<ItemsModule>().Single().Slots.Register("Head"))
             .File("data/hits.json", Records, "hits").Boot();
         Assert.Equal(0, app.Records.ErrorCount);
-        return app;
+        return NpcLocomotionTests.WithoutExitPair(app);   // the yard less its tumbler and casualty (#249)
     }
 
     private static Entity Npc(World world, Vector3 at, string prefab = "skeletal:npc")

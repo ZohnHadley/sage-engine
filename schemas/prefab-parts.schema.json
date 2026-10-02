@@ -1627,7 +1627,7 @@
           "minimum": 0
         },
         "getUpAfter": {
-          "description": "Gets up by itself this long after going down (never once it has died); 0 = only when told (the GetUp input) Unit: s. At least 0. (float, default 0)",
+          "description": "Gets up by itself this long after it has come to rest (never once it has died); 0 = only when told (the GetUp input) Unit: s. At least 0. (float, default 0)",
           "default": 0,
           "type": "number",
           "minimum": 0

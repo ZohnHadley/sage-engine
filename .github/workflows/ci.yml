@@ -250,8 +250,11 @@ jobs:
           # and reload, blended, in data only (a graph, prefabs, state machines sending tweens and params);
           # anim_debug lists their layers. Without shaders nothing is drawn: this proves the load, the
           # graph, the wires and the IK in the real host (NpcLocomotionTests the rest). Same allowances.
-          SAGE_SMOKE_COMMANDS=$'+wait 3\n+anim_debug' \
-            tools/smoke_run.sh "$host" tests/games/skeletal 4 Shaders Audio Records Input
+          # Phase 4k's exit (issue #249): nine seconds, so the tumbler is knocked over on its wire at 3 s,
+          # settles and is getting up by the second anim_debug, and the casualty is killed at 2 s and stays down
+          # (RagdollExitTests the rest).
+          SAGE_SMOKE_COMMANDS=$'+wait 3\n+anim_debug\n+wait 5\n+anim_debug' \
+            tools/smoke_run.sh "$host" tests/games/skeletal 9 Shaders Audio Records Input
           # Phase 4e's exit (issue #139): a range where a sword, a crossbow, a pistol and a fireball, all records,
           # hit armoured dummies on the one hit pipeline. Same allowances as above.
           tools/smoke_run.sh "$host" tests/games/weapons 3 Shaders Audio Records Input
