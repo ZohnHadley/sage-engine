@@ -293,6 +293,33 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         reference.ApplyImpulse(impulse, worldPoint - reference.Pose.Position);
     }
 
+    // Issue #248: bounds first (a body posed by hand since the step still has its old ones, and a
+    // sleeping body's bounds stay as they were put to sleep), then Bepu's forced sleep, which takes the
+    // whole constraint-connected island with it.
+    [Experimental(JointsApi.Id, UrlFormat = JointsApi.Url)]
+    public void Sleep(ReadOnlySpan<PhysicsBody> bodies)
+    {
+        var all = Simulation.Bodies;
+        for (int i = 0; i < bodies.Length; i++)
+        {
+            if (bodies[i].IsStatic) continue;
+            var handle = new BodyHandle(bodies[i].Handle);
+            if (!all.BodyExists(handle)) continue;
+            var reference = all[handle];
+            reference.Velocity.Linear = Vector3.Zero;
+            reference.Velocity.Angular = Vector3.Zero;
+            if (reference.Awake) all.UpdateBounds(handle);
+        }
+        for (int i = 0; i < bodies.Length; i++)
+        {
+            if (bodies[i].IsStatic) continue;
+            var handle = new BodyHandle(bodies[i].Handle);
+            if (!all.BodyExists(handle)) continue;
+            var reference = all[handle];
+            if (reference.Awake) reference.Awake = false;
+        }
+    }
+
     // ---- Stepping -----------------------------------------------------------------------------
 
     internal void Step(float dt)

@@ -36,6 +36,7 @@ const Sage.Simulation.PhysicsJointIO.OnBreak = "OnBreak" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
 const Sage.Simulation.Ragdolls.FirstGroup = 1073741824 -> int
 const Sage.Simulation.Ragdolls.Input = "Ragdoll" -> string!
+const Sage.Simulation.Ragdolls.OnSettled = "OnSettled" -> string!
 const Sage.Simulation.Ragdolls.SystemId = "sage.animation.ragdoll" -> string!
 const Sage.Simulation.RenderStages.Count = 8 -> int
 const Sage.Simulation.SaveSystem.AutosavePrefix = "autosave" -> string!
@@ -481,6 +482,7 @@ Sage.Simulation.IPhysicsWorld.JointExists(in Sage.Simulation.PhysicsJoint joint)
 Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Simulation.IPhysicsWorld.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Simulation.IPhysicsWorld.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
+Sage.Simulation.IPhysicsWorld.Sleep(System.ReadOnlySpan<Sage.Simulation.PhysicsBody> bodies) -> void
 Sage.Simulation.Joint
 Sage.Simulation.Joint.Anchor -> System.Numerics.Vector3
 Sage.Simulation.Joint.Axis -> System.Numerics.Vector3
@@ -698,10 +700,13 @@ Sage.Simulation.PlayerCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> 
 Sage.Simulation.PoseSampler
 Sage.Simulation.Ragdoll
 Sage.Simulation.Ragdoll.Active -> bool
+Sage.Simulation.Ragdoll.Bodies -> Sage.Simulation.RagdollBodyState[]?
 Sage.Simulation.Ragdoll.HitImpulse -> float
 Sage.Simulation.Ragdoll.OnDeath -> bool
 Sage.Simulation.Ragdoll.Ragdoll() -> void
 Sage.Simulation.Ragdoll.Record -> Sage.Core.RecordId
+Sage.Simulation.Ragdoll.RestTime -> float
+Sage.Simulation.Ragdoll.Settled -> bool
 Sage.Simulation.Ragdoll.SolidCapsule -> bool
 Sage.Simulation.RagdollBodyData
 Sage.Simulation.RagdollBodyData.Angles -> System.Numerics.Vector3
@@ -711,6 +716,12 @@ Sage.Simulation.RagdollBodyData.Offset -> System.Numerics.Vector3
 Sage.Simulation.RagdollBodyData.RagdollBodyData() -> void
 Sage.Simulation.RagdollBodyData.Shape -> Sage.Simulation.RagdollShape
 Sage.Simulation.RagdollBodyData.Size -> System.Numerics.Vector3
+Sage.Simulation.RagdollBodyState
+Sage.Simulation.RagdollBodyState.Angular -> System.Numerics.Vector3
+Sage.Simulation.RagdollBodyState.Linear -> System.Numerics.Vector3
+Sage.Simulation.RagdollBodyState.Position -> System.Numerics.Vector3
+Sage.Simulation.RagdollBodyState.RagdollBodyState() -> void
+Sage.Simulation.RagdollBodyState.Rotation -> System.Numerics.Quaternion
 Sage.Simulation.Ragdolled
 Sage.Simulation.Ragdolled.Ragdolled() -> void
 Sage.Simulation.RagdollJointData
@@ -1277,6 +1288,7 @@ Sage.Simulation.MaterialParam.RenderTarget -> string?
 static Sage.Simulation.PrefabExtensions.Spawn(this Sage.Simulation.World! world, Sage.Core.RecordId prefab, System.Numerics.Vector3 position, float yawDegrees, Sage.Simulation.PrefabOverrides? overrides, string? where = null) -> Sage.Simulation.Entity
 static Sage.Simulation.Ragdolls.ApplyImpulse(Sage.Simulation.World! world, Sage.Simulation.Entity entity, System.Numerics.Vector3 impulse, System.Numerics.Vector3? point = null) -> bool
 static Sage.Simulation.Ragdolls.IsActive(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
+static Sage.Simulation.Ragdolls.IsSettled(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
 static Sage.Simulation.Ragdolls.Resolve(Sage.Core.RecordStore! records, Sage.Simulation.Skeleton! skeleton, Sage.Core.AssetPath model) -> Sage.Simulation.RagdollTable?
 static Sage.Simulation.Ragdolls.Resolve(Sage.Simulation.Skeleton! skeleton, System.Collections.Generic.IReadOnlyList<Sage.Simulation.RagdollRecord!>! records) -> Sage.Simulation.RagdollTable!
 static Sage.Simulation.Ragdolls.Start(Sage.Simulation.World! world, Sage.Simulation.Entity entity, System.Numerics.Vector3? impulse = null, System.Numerics.Vector3? point = null) -> bool

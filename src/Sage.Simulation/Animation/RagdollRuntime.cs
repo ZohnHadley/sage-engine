@@ -29,9 +29,9 @@ namespace Sage.Simulation;
 // spine, a hand) keeps the local it had at the hand-off — then ToModelSpace; the entity's root follows
 // the root body (the pelvis) on X and Z, with Y on the ground under it.
 //
-// **Saved:** the component's settings and `Active` (and `SolidCapsule`). Not the bodies yet (#248): a
-// load with Active set rebuilds them, at rest, from the pose the suspended animator samples once — the
-// state it was in, at the root where the ragdoll left it — so a corpse loaded mid-fall falls again from there.
+// **Saved:** the component's settings, `Active` (and `SolidCapsule`), and since #248 whether it has
+// settled and each body's state (RagdollSettling.cs): a load rebuilds the bodies where they were, moving
+// as they were.
 [Experimental(RagdollApi.Experimental, UrlFormat = RagdollApi.Url)]
 [Component("sage:ragdoll")]
 public struct Ragdoll : IComponent
@@ -46,6 +46,13 @@ public struct Ragdoll : IComponent
     public bool Active;
     [Property(Tooltip = "Set while the ragdoll has turned the entity's solid collider into a trigger; Stop makes it solid again")]
     public bool SolidCapsule;
+    // Settling and saves (issue #248, RagdollSettling.cs).
+    [Property(Category = "State", Tooltip = "Every body has lain still for the record's settleTime (OnSettled fired); its bodies sleep")]
+    public bool Settled;
+    [Property(Category = "State", Min = 0, Unit = "s", Tooltip = "How long every body has been slower than the record's settleSpeed")]
+    public float RestTime;
+    [Property(Category = "State", Tooltip = "While active: each body's position, rotation and velocities, in the ragdoll table's order, so a load puts them back")]
+    public RagdollBodyState[]? Bodies;
 }
 
 // Tag: the entity is a ragdoll now. The character controller, foot IK and aim IK leave it alone.
@@ -82,6 +89,7 @@ public static partial class Ragdolls
 
     internal static void Register(Engine engine)
     {
+        RegisterSettling(engine);
         engine.Inputs.Register<Ragdoll>(Input, static (World world, in IOContext io) =>
         {
             Vector3? impulse = TryParseVector(io.Parameter, out var v) ? v : null;
@@ -114,6 +122,7 @@ public static partial class Ragdolls
 
         ref var ragdoll = ref world.Get<Ragdoll>(entity);
         ragdoll.Active = true;
+        ResetSettling(ref ragdoll);
         ragdoll.SolidCapsule = TakeCapsule(world, physics, entity, instance.Group);
         entity.AddTag<Ragdolled>();
         Animators.Suspend(world, entity);
@@ -146,6 +155,7 @@ public static partial class Ragdolls
             instance.Remove(physics);
         ref var ragdoll = ref world.Get<Ragdoll>(entity);
         ragdoll.Active = false;
+        ResetSettling(ref ragdoll);
         if (physics != null && world.Has<PhysicsBody>(entity))
         {
             if (ragdoll.SolidCapsule && world.Has<Collider>(entity))
@@ -247,6 +257,7 @@ internal sealed class RagdollInstance
     public PhysicsJoint[] Joints = Array.Empty<PhysicsJoint>();
     public bool Built;
     public int Group;
+    public bool Quiet;             // every body asleep, and the pose and states written since (#248)
 
     // Per joint: the local each had at the hand-off (what an unbodied joint keeps), and model-space scratch.
     public Pose[] Handoff = Array.Empty<Pose>();
@@ -552,16 +563,26 @@ internal sealed class RagdollSystem : ISystem
                 }
                 if (physics == null) continue;
                 var instance = _instances.For(entity);
+                bool restored = false;
                 if (!instance.Built)
                 {
-                    // A load (the bodies are not saved yet, #248): rebuild them from the pose as it stands.
+                    // A load: rebuild them from the pose as it stands (the joints' anchors and rest turns as
+                    // Start made them), then put each body back as it was saved (#248).
                     if (!instance.Prepare(_world, entity, ragdoll.Record, pose, model)) continue;
                     pose.Local.CopyTo(instance.Handoff);
                     instance.Build(_world, physics, entity, pose, seed: false);
                     if (_world.TryGet<PhysicsBody>(entity, out var capsule)) physics.SetGroup(capsule, instance.Group);
+                    restored = Ragdolls.RestoreBodies(physics, instance, ref ragdoll, entity);
                 }
-                Damp(physics, instance, dt);
+                // Settled and asleep, the pose written since: nothing moves (RagdollSettling.cs says why the pose may stay).
+                else if (ragdoll.Settled && Ragdolls.IsQuiet(physics, instance)) continue;
+                if (!restored)
+                {
+                    Damp(physics, instance, dt);
+                    Ragdolls.Settle(_world, physics, instance, ref ragdoll, entity, dt);
+                }
                 Write(physics, instance, entity, ref t[n], pose);
+                Ragdolls.Keep(physics, instance, ref ragdoll);
             }
         }
     }

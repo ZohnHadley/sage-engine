@@ -1,0 +1,1434 @@
+{
+  "origin": {
+    "x": 0,
+    "z": 0
+  },
+  "scene": "skeletal:yard",
+  "entities": [
+    {
+      "id": "98b2a3a79963816a7ea706b581555a81",
+      "source": "scene:skeletal:yard",
+      "prefab": "skeletal:sentry",
+      "name": "sentry",
+      "diff": true,
+      "components": {
+        "sage:animator": {
+          "version": 1,
+          "data": {
+            "Layers": [
+              {
+                "Fading": false,
+                "Name": "base",
+                "State": "idle",
+                "Time": 4.433336,
+                "Phase": 0.21666674,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              },
+              {
+                "Fading": false,
+                "Name": "upper",
+                "State": "aim",
+                "Time": 2.899998,
+                "Phase": 0.91666645,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "SmoothStep"
+              }
+            ],
+            "Params": [
+              {
+                "Name": "speed",
+                "Value": 0
+              },
+              {
+                "Name": "aim_pitch",
+                "Value": 45
+              },
+              {
+                "Name": "aiming",
+                "Value": 1
+              },
+              {
+                "Name": "attack",
+                "Value": 0
+              },
+              {
+                "Name": "reload",
+                "Value": 0
+              }
+            ]
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              -4.5,
+              0,
+              4
+            ],
+            "LocalRotation": [
+              0,
+              -0.70710677,
+              0,
+              0.70710677
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:state_machine": {
+          "version": 1,
+          "data": {
+            "State": "high",
+            "TimeInState": 1.416666
+          }
+        }
+      }
+    },
+    {
+      "id": "3f94c749003c471fc66a5f04ca88e251",
+      "source": "scene:skeletal:yard",
+      "prefab": "skeletal:trooper",
+      "name": "trooper",
+      "diff": true,
+      "components": {
+        "sage:animator": {
+          "version": 1,
+          "data": {
+            "Layers": [
+              {
+                "Fading": false,
+                "Name": "base",
+                "State": "move",
+                "Time": 4.383335,
+                "Phase": 0.6315801,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "SmoothStep"
+              },
+              {
+                "Fading": false,
+                "Name": "upper",
+                "State": "aim",
+                "Time": 1.5999992,
+                "Phase": 0.61666673,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "SmoothStep"
+              }
+            ],
+            "Params": [
+              {
+                "Name": "speed",
+                "Value": 2.0000267
+              },
+              {
+                "Name": "aim_pitch",
+                "Value": 15
+              },
+              {
+                "Name": "aiming",
+                "Value": 1
+              },
+              {
+                "Name": "attack",
+                "Value": 0
+              },
+              {
+                "Name": "reload",
+                "Value": 0
+              }
+            ]
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              2.8333378,
+              0,
+              1
+            ],
+            "LocalRotation": [
+              0,
+              -0.70710677,
+              0,
+              0.70710677
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:state_machine": {
+          "version": 1,
+          "data": {
+            "State": "out",
+            "TimeInState": 4.416669
+          }
+        },
+        "sage:tween": {
+          "version": 1,
+          "data": {
+            "Progress": 0.73611146,
+            "Playing": true,
+            "Elapsed": 4.416669,
+            "PlayingDuration": 6,
+            "From": [
+              -6,
+              0,
+              1
+            ],
+            "To": [
+              6,
+              0,
+              1
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "69ff2553e109345b22fb3049e6fbb75c",
+      "source": "scene:skeletal:yard",
+      "prefab": "skeletal:walker",
+      "name": "walker",
+      "diff": true,
+      "components": {
+        "sage:animator": {
+          "version": 1,
+          "data": {
+            "Layers": [
+              {
+                "Fading": false,
+                "Name": "base",
+                "State": "move",
+                "Time": 4.383335,
+                "Phase": 0.4000027,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "SmoothStep"
+              },
+              {
+                "Fading": false,
+                "Name": "upper",
+                "State": "none",
+                "Time": 4.433336,
+                "Phase": 0,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              }
+            ],
+            "Params": [
+              {
+                "Name": "speed",
+                "Value": 1.5000342
+              },
+              {
+                "Name": "aim_pitch",
+                "Value": 0
+              },
+              {
+                "Name": "aiming",
+                "Value": 0
+              },
+              {
+                "Name": "attack",
+                "Value": 0
+              },
+              {
+                "Name": "reload",
+                "Value": 0
+              }
+            ]
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0.62500334,
+              0,
+              -2
+            ],
+            "LocalRotation": [
+              0,
+              -0.70710677,
+              0,
+              0.70710677
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:state_machine": {
+          "version": 1,
+          "data": {
+            "State": "out",
+            "TimeInState": 4.416669
+          }
+        },
+        "sage:tween": {
+          "version": 1,
+          "data": {
+            "Progress": 0.5520836,
+            "Playing": true,
+            "Elapsed": 4.416669,
+            "PlayingDuration": 8,
+            "From": [
+              -6,
+              0,
+              -2
+            ],
+            "To": [
+              6,
+              0,
+              -2
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "430f04388260ab79358caf5c96fc625c",
+      "source": "scene:skeletal:yard",
+      "prefab": "skeletal:jogger",
+      "name": "jogger",
+      "diff": true,
+      "components": {
+        "sage:animator": {
+          "version": 1,
+          "data": {
+            "Layers": [
+              {
+                "Fading": false,
+                "Name": "base",
+                "State": "idle",
+                "Time": 0.38333344,
+                "Phase": 0.20000006,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "SmoothStep"
+              },
+              {
+                "Fading": false,
+                "Name": "upper",
+                "State": "none",
+                "Time": 4.433336,
+                "Phase": 0,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              }
+            ],
+            "Params": [
+              {
+                "Name": "speed",
+                "Value": 0
+              },
+              {
+                "Name": "aim_pitch",
+                "Value": 0
+              },
+              {
+                "Name": "aiming",
+                "Value": 0
+              },
+              {
+                "Name": "attack",
+                "Value": 0
+              },
+              {
+                "Name": "reload",
+                "Value": 0
+              }
+            ]
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              6,
+              0,
+              -5
+            ],
+            "LocalRotation": [
+              0,
+              -1,
+              0,
+              -2.3841858E-07
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:state_machine": {
+          "version": 1,
+          "data": {
+            "State": "turn_back",
+            "TimeInState": 0.4166668
+          }
+        },
+        "sage:tween": {
+          "version": 1,
+          "data": {
+            "Progress": 0.5000001,
+            "Playing": true,
+            "PlayingChannel": "Rotation",
+            "Elapsed": 0.40000013,
+            "PlayingDuration": 0.8,
+            "PlayingEase": "SineInOut",
+            "From": [
+              -6,
+              0,
+              -5
+            ],
+            "To": [
+              6,
+              0,
+              -5
+            ],
+            "FromRotation": [
+              0,
+              -0.70710677,
+              0,
+              0.70710677
+            ],
+            "ToRotation": [
+              0,
+              0.7071068,
+              0,
+              0.7071067
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "39f00c9315a05112287b08a73ef6072d",
+      "source": "scene:skeletal:yard",
+      "prefab": "skeletal:runner",
+      "name": "runner",
+      "diff": true,
+      "components": {
+        "sage:animator": {
+          "version": 1,
+          "data": {
+            "Layers": [
+              {
+                "Fading": false,
+                "Name": "base",
+                "State": "move",
+                "Time": 1.0499997,
+                "Phase": 0.52381015,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "SmoothStep"
+              },
+              {
+                "Fading": false,
+                "Name": "upper",
+                "State": "none",
+                "Time": 4.433336,
+                "Phase": 0,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              }
+            ],
+            "Params": [
+              {
+                "Name": "speed",
+                "Value": 4.799995
+              },
+              {
+                "Name": "aim_pitch",
+                "Value": 0
+              },
+              {
+                "Name": "aiming",
+                "Value": 0
+              },
+              {
+                "Name": "attack",
+                "Value": 0
+              },
+              {
+                "Name": "reload",
+                "Value": 0
+              }
+            ]
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0.80000114,
+              0,
+              -8
+            ],
+            "LocalRotation": [
+              0,
+              -0.7071068,
+              0,
+              -0.7071067
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:state_machine": {
+          "version": 1,
+          "data": {
+            "State": "back",
+            "TimeInState": 1.0999997
+          }
+        },
+        "sage:tween": {
+          "version": 1,
+          "data": {
+            "Progress": 0.43333322,
+            "Playing": true,
+            "Elapsed": 1.083333,
+            "PlayingDuration": 2.5,
+            "From": [
+              6,
+              0,
+              -8
+            ],
+            "To": [
+              -6,
+              0,
+              -8
+            ],
+            "FromRotation": [
+              0,
+              -0.70710677,
+              0,
+              0.70710677
+            ],
+            "ToRotation": [
+              0,
+              0.7071068,
+              0,
+              0.7071067
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "92383a76781e7db809f03817924b41ae",
+      "source": "scene:skeletal:yard",
+      "prefab": "skeletal:floor",
+      "name": "floor",
+      "diff": true,
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0,
+              -0.5,
+              0
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "3fbc40895bc112ceddf384f909f0aedf",
+      "prefab": "skeletal:player",
+      "name": "player",
+      "diff": true,
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0,
+              0.019999307,
+              9
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      },
+      "tags": [
+        "sage:player_controlled"
+      ]
+    },
+    {
+      "id": "53ee2a2625bf344c5d81b270efa6f83b",
+      "prefab": "sage:player_camera",
+      "name": "player camera",
+      "diff": true,
+      "components": {
+        "sage:first_person_rig": {
+          "version": 1,
+          "data": {
+            "Follow": "3fbc40895bc112ceddf384f909f0aedf"
+          }
+        },
+        "sage:third_person_rig": {
+          "version": 1,
+          "data": {
+            "Follow": "3fbc40895bc112ceddf384f909f0aedf"
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0,
+              0.095,
+              9
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      },
+      "tags": [
+        "sage:player_camera"
+      ]
+    },
+    {
+      "id": "85be2e2617384550b0d736ba47e22f43",
+      "prefab": "skeletal:npc",
+      "name": "corpse",
+      "diff": true,
+      "components": {
+        "sage:animator": {
+          "version": 1,
+          "data": {
+            "Layers": [
+              {
+                "Fading": false,
+                "Name": "base",
+                "State": "idle",
+                "Time": 0.050000004,
+                "Phase": 0.025000002,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              },
+              {
+                "Fading": false,
+                "Name": "upper",
+                "State": "none",
+                "Time": 0.050000004,
+                "Phase": 0,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              }
+            ],
+            "Params": [
+              {
+                "Name": "speed",
+                "Value": 0
+              },
+              {
+                "Name": "aim_pitch",
+                "Value": 0
+              },
+              {
+                "Name": "aiming",
+                "Value": 0
+              },
+              {
+                "Name": "attack",
+                "Value": 0
+              },
+              {
+                "Name": "reload",
+                "Value": 0
+              }
+            ],
+            "Suspended": true
+          }
+        },
+        "sage:ragdoll": {
+          "version": 1,
+          "data": {
+            "Active": true,
+            "Settled": true,
+            "RestTime": 1,
+            "Bodies": [
+              {
+                "Position": [
+                  8.12631,
+                  0.17700592,
+                  14.205826
+                ],
+                "Rotation": [
+                  0.771669,
+                  -0.33602422,
+                  0.05951071,
+                  0.5367245
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  7.9286475,
+                  0.10960332,
+                  14.4630785
+                ],
+                "Rotation": [
+                  0.69854265,
+                  -0.11044037,
+                  0.10926388,
+                  0.6985003
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  7.8762965,
+                  0.119452246,
+                  14.87794
+                ],
+                "Rotation": [
+                  0.68053895,
+                  0.31433028,
+                  0.039385673,
+                  0.6606906
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  7.81483,
+                  0.07554836,
+                  14.532958
+                ],
+                "Rotation": [
+                  0.5237765,
+                  -0.5708337,
+                  0.329544,
+                  0.53963673
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  8.079204,
+                  0.045020793,
+                  14.468778
+                ],
+                "Rotation": [
+                  0.5836896,
+                  -0.52728975,
+                  0.3959095,
+                  0.47384357
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  8.086896,
+                  0.07510612,
+                  14.549177
+                ],
+                "Rotation": [
+                  0.5653808,
+                  0.26369292,
+                  0.25107008,
+                  0.74011785
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  8.048887,
+                  0.13541141,
+                  14.485316
+                ],
+                "Rotation": [
+                  0.8875305,
+                  0.32745552,
+                  -0.16418964,
+                  -0.2794714
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  8.209927,
+                  0.14233102,
+                  14.009427
+                ],
+                "Rotation": [
+                  0.5416979,
+                  -0.6646261,
+                  -0.03990886,
+                  0.513072
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  8.14649,
+                  0.058878712,
+                  13.919482
+                ],
+                "Rotation": [
+                  -0.30200958,
+                  -0.1862649,
+                  -0.63940877,
+                  0.68209386
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  8.369214,
+                  0.15499412,
+                  14.080248
+                ],
+                "Rotation": [
+                  0.72624254,
+                  -0.5474524,
+                  -0.10660606,
+                  0.40187427
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              {
+                "Position": [
+                  8.321647,
+                  0.10383665,
+                  13.9593525
+                ],
+                "Rotation": [
+                  -0.12219322,
+                  -0.07220951,
+                  -0.5728499,
+                  0.8072779
+                ],
+                "Linear": [
+                  0,
+                  0,
+                  0
+                ],
+                "Angular": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            ]
+          }
+        },
+        "sage:cell": {
+          "version": 1,
+          "data": {
+            "Source": "scene:skeletal:yard"
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              8.12631,
+              2.9802322E-08,
+              14.205826
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      },
+      "tags": [
+        "sage:ragdolled"
+      ]
+    },
+    {
+      "id": "1de39cd934bd4e898c6f1ef1fd6ebf26",
+      "prefab": "skeletal:npc",
+      "name": "faller",
+      "diff": true,
+      "components": {
+        "sage:animator": {
+          "version": 1,
+          "data": {
+            "Layers": [
+              {
+                "Fading": false,
+                "Name": "base",
+                "State": "idle",
+                "Time": 4.099998,
+                "Phase": 0.05,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              },
+              {
+                "Fading": false,
+                "Name": "upper",
+                "State": "none",
+                "Time": 4.099998,
+                "Phase": 0,
+                "From": null,
+                "FromPhase": 0,
+                "Fade": 0,
+                "FadeDuration": 0,
+                "FadeEase": "Linear"
+              }
+            ],
+            "Params": [
+              {
+                "Name": "speed",
+                "Value": 0
+              },
+              {
+                "Name": "aim_pitch",
+                "Value": 0
+              },
+              {
+                "Name": "aiming",
+                "Value": 0
+              },
+              {
+                "Name": "attack",
+                "Value": 0
+              },
+              {
+                "Name": "reload",
+                "Value": 0
+              }
+            ],
+            "Suspended": true
+          }
+        },
+        "sage:ragdoll": {
+          "version": 1,
+          "data": {
+            "Active": true,
+            "Bodies": [
+              {
+                "Position": [
+                  13.999821,
+                  0.7672287,
+                  14.517483
+                ],
+                "Rotation": [
+                  -0.19926098,
+                  -0.0011214059,
+                  -9.0704045E-05,
+                  0.9799459
+                ],
+                "Linear": [
+                  -0.0007212233,
+                  -1.1733172,
+                  1.6570516
+                ],
+                "Angular": [
+                  -1.6418891,
+                  -0.009577436,
+                  0.0022024377
+                ]
+              },
+              {
+                "Position": [
+                  14.000037,
+                  1.0697232,
+                  14.381082
+                ],
+                "Rotation": [
+                  -0.010804538,
+                  -6.58181E-06,
+                  -3.274212E-05,
+                  0.99994165
+                ],
+                "Linear": [
+                  -0.00018944341,
+                  -1.3930775,
+                  1.1272613
+                ],
+                "Angular": [
+                  -0.090830356,
+                  -5.9337766E-05,
+                  -0.0003899915
+                ]
+              },
+              {
+                "Position": [
+                  13.999957,
+                  1.5093294,
+                  14.383222
+                ],
+                "Rotation": [
+                  0.037796784,
+                  4.2897514E-06,
+                  0.00042061918,
+                  0.99928534
+                ],
+                "Linear": [
+                  -0.0003210714,
+                  -1.3960295,
+                  1.1260154
+                ],
+                "Angular": [
+                  0.23167561,
+                  4.8737147E-05,
+                  0.0019338499
+                ]
+              },
+              {
+                "Position": [
+                  13.793422,
+                  1.0948371,
+                  14.382473
+                ],
+                "Rotation": [
+                  -0.017582862,
+                  0.005589671,
+                  0.011530644,
+                  0.9997633
+                ],
+                "Linear": [
+                  0.09071123,
+                  -1.391058,
+                  1.142328
+                ],
+                "Angular": [
+                  -0.21324717,
+                  0.16913366,
+                  0.6214122
+                ]
+              },
+              {
+                "Position": [
+                  13.779822,
+                  0.81961346,
+                  14.392414
+                ],
+                "Rotation": [
+                  -0.017820857,
+                  0.005680215,
+                  0.011539995,
+                  0.99975854
+                ],
+                "Linear": [
+                  0.2632116,
+                  -1.3986579,
+                  1.2039803
+                ],
+                "Angular": [
+                  -0.2162479,
+                  0.16909125,
+                  0.62130576
+                ]
+              },
+              {
+                "Position": [
+                  14.206637,
+                  1.09481,
+                  14.382463
+                ],
+                "Rotation": [
+                  -0.01753649,
+                  -0.0059663,
+                  -0.011645739,
+                  0.9997606
+                ],
+                "Linear": [
+                  -0.090368144,
+                  -1.3912134,
+                  1.1422931
+                ],
+                "Angular": [
+                  -0.21312615,
+                  -0.17298262,
+                  -0.61716294
+                ]
+              },
+              {
+                "Position": [
+                  14.22018,
+                  0.81958354,
+                  14.392418
+                ],
+                "Rotation": [
+                  -0.017871719,
+                  -0.0059465636,
+                  -0.011625852,
+                  0.9997551
+                ],
+                "Linear": [
+                  -0.26329166,
+                  -1.398703,
+                  1.2039815
+                ],
+                "Angular": [
+                  -0.21618466,
+                  -0.1733113,
+                  -0.6285974
+                ]
+              },
+              {
+                "Position": [
+                  13.900311,
+                  0.56999546,
+                  14.40437
+                ],
+                "Rotation": [
+                  0.31174865,
+                  -0.0020854159,
+                  0.0005861271,
+                  0.9501621
+                ],
+                "Linear": [
+                  0.0034208905,
+                  -0.84186506,
+                  1.2600688
+                ],
+                "Angular": [
+                  2.570209,
+                  -0.03538192,
+                  -1.0771216E-05
+                ]
+              },
+              {
+                "Position": [
+                  13.901092,
+                  0.20356268,
+                  14.206033
+                ],
+                "Rotation": [
+                  0.17812526,
+                  -0.00215333,
+                  0.0002883751,
+                  0.9840054
+                ],
+                "Linear": [
+                  0.0099202795,
+                  -0.3757744,
+                  0.38161838
+                ],
+                "Angular": [
+                  2.2041113,
+                  -0.03544707,
+                  -0.0012548578
+                ]
+              },
+              {
+                "Position": [
+                  14.0996275,
+                  0.57033134,
+                  14.404428
+                ],
+                "Rotation": [
+                  0.31283593,
+                  0.0011718886,
+                  -4.5440192E-05,
+                  0.9498066
+                ],
+                "Linear": [
+                  -0.0029320386,
+                  -0.8385136,
+                  1.2608651
+                ],
+                "Angular": [
+                  2.580234,
+                  0.02426837,
+                  0.0038823006
+                ]
+              },
+              {
+                "Position": [
+                  14.09941,
+                  0.20415537,
+                  14.205767
+                ],
+                "Rotation": [
+                  0.177957,
+                  0.0012492858,
+                  0.00010232387,
+                  0.9840375
+                ],
+                "Linear": [
+                  -0.0060543194,
+                  -0.37008333,
+                  0.38040838
+                ],
+                "Angular": [
+                  2.2085948,
+                  0.02415358,
+                  0.004533373
+                ]
+              }
+            ]
+          }
+        },
+        "sage:cell": {
+          "version": 1,
+          "data": {
+            "Source": "scene:skeletal:yard"
+          }
+        },
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              13.999821,
+              0,
+              14.517483
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      },
+      "tags": [
+        "sage:ragdolled"
+      ]
+    }
+  ],
+  "resources": {
+    "clock": {
+      "version": 1,
+      "data": {
+        "Day": 0,
+        "Hour": 12.073888892742463,
+        "Scale": 60,
+        "Sky": "",
+        "Calendar": ""
+      }
+    },
+    "entity_io": {
+      "version": 1,
+      "data": {
+        "Pending": [],
+        "Wires": [
+          {
+            "Entity": "430f04388260ab79358caf5c96fc625c",
+            "Name": "jogger",
+            "Wire": 0,
+            "Output": "OnTweenDone",
+            "Input": "Arrived",
+            "Fired": 1
+          },
+          {
+            "Entity": "39f00c9315a05112287b08a73ef6072d",
+            "Name": "runner",
+            "Wire": 0,
+            "Output": "OnTweenDone",
+            "Input": "Arrived",
+            "Fired": 2
+          }
+        ]
+      }
+    },
+    "travel": {
+      "version": 1,
+      "data": {
+        "Points": []
+      }
+    },
+    "vars": {
+      "version": 1,
+      "data": {
+        "Values": {}
+      }
+    },
+    "weather": {
+      "version": 1,
+      "data": {
+        "Current": "sage:clear",
+        "Target": "sage:clear",
+        "Blend": 1,
+        "BlendRate": 1,
+        "Settled": true,
+        "Showing": "sage:clear"
+      }
+    }
+  }
+}
