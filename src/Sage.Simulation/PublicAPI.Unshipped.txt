@@ -34,7 +34,12 @@ const Sage.Simulation.ModManager.MountPrefix = "mods/" -> string!
 const Sage.Simulation.PhysicsJointIO.Break = "Break" -> string!
 const Sage.Simulation.PhysicsJointIO.OnBreak = "OnBreak" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
+const Sage.Simulation.RagdollGetUp.DefaultBack = "getup_back" -> string!
+const Sage.Simulation.RagdollGetUp.DefaultFade = 0.2 -> float
+const Sage.Simulation.RagdollGetUp.DefaultFront = "getup_front" -> string!
 const Sage.Simulation.Ragdolls.FirstGroup = 1073741824 -> int
+const Sage.Simulation.Ragdolls.GetUpInput = "GetUp" -> string!
+const Sage.Simulation.Ragdolls.GetUpSystemId = "sage.animation.ragdoll_get_up" -> string!
 const Sage.Simulation.Ragdolls.Input = "Ragdoll" -> string!
 const Sage.Simulation.Ragdolls.OnSettled = "OnSettled" -> string!
 const Sage.Simulation.Ragdolls.SystemId = "sage.animation.ragdoll" -> string!
@@ -724,6 +729,16 @@ Sage.Simulation.RagdollBodyState.RagdollBodyState() -> void
 Sage.Simulation.RagdollBodyState.Rotation -> System.Numerics.Quaternion
 Sage.Simulation.Ragdolled
 Sage.Simulation.Ragdolled.Ragdolled() -> void
+Sage.Simulation.RagdollGetUp
+Sage.Simulation.RagdollGetUp.After -> float
+Sage.Simulation.RagdollGetUp.Back -> string!
+Sage.Simulation.RagdollGetUp.BackState.get -> string!
+Sage.Simulation.RagdollGetUp.Down -> float
+Sage.Simulation.RagdollGetUp.Fade -> float
+Sage.Simulation.RagdollGetUp.Front -> string!
+Sage.Simulation.RagdollGetUp.FrontState.get -> string!
+Sage.Simulation.RagdollGetUp.RagdollGetUp() -> void
+Sage.Simulation.RagdollGetUp.StayDown -> bool
 Sage.Simulation.RagdollJointData
 Sage.Simulation.RagdollJointData.Axis -> System.Numerics.Vector3
 Sage.Simulation.RagdollJointData.Kind -> Sage.Simulation.RagdollJointKind
@@ -738,6 +753,10 @@ Sage.Simulation.RagdollJointKind.Ball = 0 -> Sage.Simulation.RagdollJointKind
 Sage.Simulation.RagdollJointKind.Hinge = 1 -> Sage.Simulation.RagdollJointKind
 Sage.Simulation.RagdollPart
 Sage.Simulation.RagdollPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.RagdollPart.GetUpAfter -> float
+Sage.Simulation.RagdollPart.GetUpBack -> string!
+Sage.Simulation.RagdollPart.GetUpFade -> float
+Sage.Simulation.RagdollPart.GetUpFront -> string!
 Sage.Simulation.RagdollPart.HitImpulse -> float
 Sage.Simulation.RagdollPart.OnDeath -> bool
 Sage.Simulation.RagdollPart.RagdollPart() -> void
@@ -1286,8 +1305,11 @@ static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sa
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem.Run(in Sage.Simulation.SystemContext ctx) -> void
 Sage.Simulation.MaterialParam.RenderTarget -> string?
 static Sage.Simulation.PrefabExtensions.Spawn(this Sage.Simulation.World! world, Sage.Core.RecordId prefab, System.Numerics.Vector3 position, float yawDegrees, Sage.Simulation.PrefabOverrides? overrides, string? where = null) -> Sage.Simulation.Entity
+static Sage.Simulation.RagdollGetUp.Defaults.get -> Sage.Simulation.RagdollGetUp
 static Sage.Simulation.Ragdolls.ApplyImpulse(Sage.Simulation.World! world, Sage.Simulation.Entity entity, System.Numerics.Vector3 impulse, System.Numerics.Vector3? point = null) -> bool
+static Sage.Simulation.Ragdolls.GetUp(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
 static Sage.Simulation.Ragdolls.IsActive(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
+static Sage.Simulation.Ragdolls.IsFaceUp(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool?
 static Sage.Simulation.Ragdolls.IsSettled(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
 static Sage.Simulation.Ragdolls.Resolve(Sage.Core.RecordStore! records, Sage.Simulation.Skeleton! skeleton, Sage.Core.AssetPath model) -> Sage.Simulation.RagdollTable?
 static Sage.Simulation.Ragdolls.Resolve(Sage.Simulation.Skeleton! skeleton, System.Collections.Generic.IReadOnlyList<Sage.Simulation.RagdollRecord!>! records) -> Sage.Simulation.RagdollTable!

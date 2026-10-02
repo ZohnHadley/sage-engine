@@ -1635,6 +1635,28 @@
           "default": 30,
           "type": "number",
           "minimum": 0
+        },
+        "getUpAfter": {
+          "description": "Gets up by itself this long after it has come to rest (never once it has died); 0 = only when told (the GetUp input) Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "getUpBack": {
+          "description": "The animator state it gets up with from lying face up. (string, default \"getup_back\")",
+          "default": "getup_back",
+          "type": "string"
+        },
+        "getUpFront": {
+          "description": "The animator state it gets up with from lying face down. (string, default \"getup_front\")",
+          "default": "getup_front",
+          "type": "string"
+        },
+        "getUpFade": {
+          "description": "How long the pose it lay in fades into the get-up state. Unit: s. At least 0. (float, default 0.2)",
+          "default": 0.2,
+          "type": "number",
+          "minimum": 0
         }
       },
       "additionalProperties": false,

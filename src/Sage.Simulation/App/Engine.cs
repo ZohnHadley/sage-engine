@@ -83,6 +83,7 @@ public sealed class Engine : IDisposable
             Animators.Register(this);
             // Ragdolls (issue #246): the `Ragdoll` input.
             Ragdolls.Register(this);
+            Ragdolls.RegisterGetUp(this);                         // and the `GetUp` input (issue #247)
             // Load doors (issue 4g-5): the `Travel` input, the engine's like scenes.
             Travel.Register(this);
             // Quick-save and quick-load (issue 4i-6): the engine's, bound to F5 and F9 in engine content.
@@ -220,6 +221,7 @@ public sealed class Engine : IDisposable
             world.AddSystem(new AnimatorSystem(world));          // sage:animator (issue #118)
             world.Resources.Add(new RagdollInstances());          // ragdolls' bodies (issue #246), transient
             world.AddSystem(new RagdollSystem(world));           // sage:ragdoll: the pose from the bodies
+            world.AddSystem(new RagdollGetUpSystem(world));      // sage:ragdoll_get_up: getUpAfter (issue #247)
             world.AddSystem(new ViewmodelSystem(world));         // a camera's first-person arms (issue #121)
         }
         finally { Registrations.Owner = "host"; }

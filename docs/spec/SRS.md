@@ -217,7 +217,7 @@ These are the owner's (REDESIGN §6). The plan works with any answer; each has a
 
 | Milestone | Theme | Main sheets |
 |---|---|---|
-| 4k | Joints and ragdolls (in progress) | 08, 10 |
+| 4k | Joints and ragdolls (done) | 08, 10 |
 | 4l | Physics, movement and navigation | 08, 09 |
 | 4m | World, logic and saves | 04, 05, 14, 15 |
 | R1 | Tooling and the first release | 02, 06, 20 |

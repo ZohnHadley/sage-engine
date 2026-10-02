@@ -401,3 +401,6 @@ imgui.ini
 # redistributed. Delete these to go back to the placeholder art.
 games/Sandbox/content/textures/daggerfall/
 games/Sandbox/content/data/daggerfall.json
+
+# Graphify knowledge graph (rebuilt per clone: graphify update .)
+graphify-out/

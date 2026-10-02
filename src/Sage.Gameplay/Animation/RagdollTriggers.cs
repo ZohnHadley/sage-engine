@@ -8,6 +8,7 @@ namespace Sage.Gameplay;
 // a death, for a Ragdoll with OnDeath, thrown by the hit that killed it; and a damaging hit on one already
 // down. A hit's impulse is the Ragdoll's HitImpulse along the hit's direction, at the point it landed,
 // to the body nearest that point. The `Ragdoll` input and Ragdolls.Start are the engine's (Sage.Simulation).
+// A death also marks a ragdoll's RagdollGetUp StayDown, so `getUpAfter` never gets a corpse up (issue #247).
 //
 // Gameplay phase, after the effects tick (where Died is raised) and before the death rules, so a game's
 // OnEntityDied sees the body already falling (and may still destroy it).
@@ -67,7 +68,10 @@ internal sealed class RagdollTriggerSystem : ISystem
             foreach (ref readonly var died in _died.Read())
             {
                 var victim = died.Victim;
-                if (victim.IsNull || !world.IsAlive(victim) || !world.TryGet<Ragdoll>(victim, out var ragdoll) || !ragdoll.OnDeath || ragdoll.Active) continue;
+                if (victim.IsNull || !world.IsAlive(victim)) continue;
+                // The dead stay down: getUpAfter no longer gets it up (issue #247).
+                if (world.Has<RagdollGetUp>(victim)) world.Get<RagdollGetUp>(victim).StayDown = true;
+                if (!world.TryGet<Ragdoll>(victim, out var ragdoll) || !ragdoll.OnDeath || ragdoll.Active) continue;
                 if (_hits.TryGetValue(victim.Id, out var hit) && hit.Target == victim && tick - hit.Tick <= HitMemory && ragdoll.HitImpulse > 0f)
                     Ragdolls.Start(world, victim, hit.Direction * ragdoll.HitImpulse, hit.Point);
                 else

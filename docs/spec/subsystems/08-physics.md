@@ -109,7 +109,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-12 | Movers shall include hinged and multi-stage path movers with lock state, for Daggerfall, Morrowind and Half-Life doors and trains. | Should | Not started | #266 |
 | REQ-PHYS-13 | Joints (ball, hinge, fixed, distance) and collision groups shall be in the facade, with removal with the body and break reporting. | Must | Done (#242) | test: AHingeStopsAtItsLimits; test: SameGroupBodiesPassThroughEachOtherAndOtherGroupsDont |
 | REQ-PHYS-14 | A `joint` prefab part shall make joints from data, fire `OnBreak`, and survive a save mid-swing. | Must | Done (#245) | test: ASaveMidSwingResumesTheSwingInAFreshApp |
-| REQ-PHYS-15 | The rest of phase 4k (ragdolls, joint tuning and tools) shall follow the joint facade. | Should | In progress | #130 with #246, #247, #248, #249 (another thread) |
+| REQ-PHYS-15 | The rest of phase 4k (ragdolls, joint tuning and tools) shall follow the joint facade. | Should | Done | test: TheTumblerFallsOnItsWire_SettlesWithinItsLimits_AndGetsUpIntoIdle, test: ASettledRagdollSleeps_AndLoadsDownSettledAndAsleep |
 | REQ-PHYS-16 | Swimming shall work: water volumes with surface, drag and buoyancy, a swim mode, surface exit, and floating bodies. | Must | Not started | #262 |
 | REQ-PHYS-17 | Ladders and climbing shall work from a ladder volume prefab part. | Must | Not started | #263 |
 | REQ-PHYS-18 | The controller shall offer movement modes: walk, noclip and fly, GoldSrc air-strafe, smooth crouch with a shrinking collider. | Should | Not started | #267 |
@@ -120,7 +120,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 
 ## 10. Open work
 
-Milestone 4k, Joints and ragdolls (epic #130, in progress in another thread): #242 and #245 are merged; #246, #247, #248 and #249 are open.
+Milestone 4k, Joints and ragdolls (epic #130), is done: #242 to #249 are merged. A ragdoll head that rocks at about its `settleSpeed` can take ten seconds or more to settle; that is left for later (design 12, "As built (phase 4k's exit)").
 
 Milestone 4l, Physics, movement and navigation (epic #258):
 
