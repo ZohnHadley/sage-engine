@@ -50,7 +50,7 @@ Entity I/O: movers take `Open`, `Close`, `Toggle` and fire `OnFullyOpen`, `OnFul
 
 Console and cvars: `phys_debug` (draw bodies, triggers in magenta, joints as yellow lines), `phys_stats` (active bodies, statics, last step time, gravity), `sim_tickrate`.
 
-Events: trigger and contact spans are valid until the next step and are read in `PostPhysics`. Publishing them as typed game events is not built (#269).
+Events: trigger and contact spans are valid until the next step and are read in `PostPhysics`; the same facts are sent on the event bus as `TriggerEntered`, `TriggerExited`, `Collided` (with impulse and speed) and `CollisionEnded` by `sage.physics.events` (#269).
 
 ## 5. Data model
 
@@ -98,10 +98,10 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-01 | Physics shall sit behind a backend-neutral facade in origin space, so combat, AI and levels never name the engine. | Must | Done | test: ThePhysicsPluginInstallsItsSpaceAsTheWorldsIPhysicsWorld |
 | REQ-PHYS-02 | The facade shall support static, kinematic and dynamic bodies that fall and rest, with 32 named layers and an ignore matrix. | Must | Done | test: ADynamicBoxFallsAndRestsOnAStaticOne; test: LayerMasks |
 | REQ-PHYS-03 | Raycast, shape sweep and box overlap shall respect layer masks, skip triggers unless asked, and ignore the asking entity. | Must | Done | test: RaycastHitsTheNearestCollider_AndRespectsLayers |
-| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Partial: `Overlap` tests shapes, with depth and the way out; `RaycastAll` not started | test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut; #269 |
+| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Done | test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut; test: RaycastAllReportsEveryHitNearestFirst; test: OverlapSphereReportsWhatTheSphereTouchesNotItsBounds |
 | REQ-PHYS-05 | Trigger volumes shall fire `OnStartTouch` and `OnEndTouch` on entity I/O, including for bodies asleep inside them. | Must | Done | test: WalkingIntoATriggerVolumeFiresOnStartTouch; test: SomethingAsleepInATriggerIsStillInsideIt |
-| REQ-PHYS-06 | Colliders that ask shall report contact begin and end, with an impulse for impact sounds and damage. | Must | Partial: begin and end only, as spans | test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd; #269 |
-| REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Not started | #269 |
+| REQ-PHYS-06 | Colliders that ask shall report contact begin and end, with an impulse for impact sounds and damage. | Must | Done | test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd; test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse; test: TheImpulseOfACollisionBetweenTwoBodiesUsesTheirEffectiveMass |
+| REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Done | test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse; test: PhysicsEventsAndTheNewQueriesAllocateNothingPerTick |
 | REQ-PHYS-08 | The character controller shall walk, slide along walls, step up low ledges, climb gentle slopes and not cliffs, jump only when grounded, and crouch without standing under a ceiling. | Must | Done | test: StepsOntoALowLedgeButNotAHighOne; test: CrouchesAndCannotStandUnderACeiling |
 | REQ-PHYS-09 | A character that ends up inside geometry (a closing door, a teleport) shall be pushed out over a few ticks. | Must | Done | test: ACharacterPlacedInsideABoxIsPushedOutAndWalksOn; test: ACharacterDeepInsideComesOutAFewTicksLaterNeverMoreThanARadiusATick |
 | REQ-PHYS-10 | Movers shall sweep their collider and push or block what is in the way (stop, reverse or crush), firing `OnBlocked`. | Must | Done | test: ADoorThatCannotPushACharacterReopensAndSaysWhoBlockedIt; test: TheSandboxHutDoorNoLongerTrapsAPlayerStandingInTheDoorway |

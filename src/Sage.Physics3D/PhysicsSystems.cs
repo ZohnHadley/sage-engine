@@ -290,6 +290,7 @@ public sealed class PhysicsModule : IModule
         world.AddSystem(new PhysicsSyncSystem(world, space));
         world.AddSystem(new PhysicsStepSystem(space));
         world.AddSystem(new PhysicsWriteBackSystem(world, space));
+        world.AddSystem(new PhysicsEventSystem(space));   // the buffers as game events (issue #269)
         world.AddSystem(new JointSystem(world, space));
         world.AddSystem(new JointBreakSystem(space));
         world.AddSystem(new BuoyancySystem(world, space));   // water volumes float what falls in (issue #262)

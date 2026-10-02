@@ -175,7 +175,21 @@ public interface IPhysicsWorld
     // body's own entity is left out.
     int Overlap(in PhysicsBody body, Span<OverlapHit> results, LayerMask mask = default, bool includeTriggers = false);
 
+    // Every hit along a ray, nearest first, one per collider, up to results.Length of them (truncated to
+    // the nearest, never thrown): a bullet that goes through thin cover, a beam, what is between two
+    // points (issue #269).
+    int RaycastAll(Vector3 from, Vector3 direction, float maxDistance, Span<RayHit> results, LayerMask mask = default,
+                   bool includeTriggers = false, Entity ignore = default);
+
+    // What a sphere of `radius` at `center` intersects, as Overlap does for any shape: an explosion's
+    // reach, a grenade's "who is near" (issue #269).
+    int OverlapSphere(Vector3 center, float radius, Span<OverlapHit> results, LayerMask mask = default,
+                      bool includeTriggers = false, Entity ignore = default);
+
     // ---- Events (read in PostPhysics; valid until the next step) --------------------------------
+    //
+    // The physics plugin also sends these on the world's event bus after the step (TriggerEntered,
+    // TriggerExited, Collided, CollisionEnded; issue #269), for a system that reads them with a cursor.
 
     // Trigger volumes entered and left during the last step.
     ReadOnlySpan<TriggerOverlap> TriggerEnter { get; }

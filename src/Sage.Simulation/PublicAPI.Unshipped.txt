@@ -378,6 +378,30 @@ Sage.Simulation.ClipEvent.ClipEvent() -> void
 Sage.Simulation.ClipEvent.ClipEvent(float time, string! name) -> void
 Sage.Simulation.ClipEvent.Name.get -> string!
 Sage.Simulation.ClipEvent.Time.get -> float
+Sage.Simulation.Collided
+Sage.Simulation.Collided.A.get -> Sage.Simulation.Entity
+Sage.Simulation.Collided.A.init -> void
+Sage.Simulation.Collided.B.get -> Sage.Simulation.Entity
+Sage.Simulation.Collided.B.init -> void
+Sage.Simulation.Collided.Collided() -> void
+Sage.Simulation.Collided.Collided(Sage.Simulation.Entity A, Sage.Simulation.Entity B, System.Numerics.Vector3 Point, System.Numerics.Vector3 Normal, float Impulse, float Speed) -> void
+Sage.Simulation.Collided.Impulse.get -> float
+Sage.Simulation.Collided.Impulse.init -> void
+Sage.Simulation.Collided.Normal.get -> System.Numerics.Vector3
+Sage.Simulation.Collided.Normal.init -> void
+Sage.Simulation.Collided.OtherThan(Sage.Simulation.Entity self) -> Sage.Simulation.Entity
+Sage.Simulation.Collided.Point.get -> System.Numerics.Vector3
+Sage.Simulation.Collided.Point.init -> void
+Sage.Simulation.Collided.Speed.get -> float
+Sage.Simulation.Collided.Speed.init -> void
+Sage.Simulation.CollisionEnded
+Sage.Simulation.CollisionEnded.A.get -> Sage.Simulation.Entity
+Sage.Simulation.CollisionEnded.A.init -> void
+Sage.Simulation.CollisionEnded.B.get -> Sage.Simulation.Entity
+Sage.Simulation.CollisionEnded.B.init -> void
+Sage.Simulation.CollisionEnded.CollisionEnded() -> void
+Sage.Simulation.CollisionEnded.CollisionEnded(Sage.Simulation.Entity A, Sage.Simulation.Entity B) -> void
+Sage.Simulation.CollisionEnded.OtherThan(Sage.Simulation.Entity self) -> Sage.Simulation.Entity
 Sage.Simulation.ConditionAttribute
 Sage.Simulation.ConditionAttribute.ConditionAttribute(string! id) -> void
 Sage.Simulation.ConditionContext
@@ -392,6 +416,10 @@ Sage.Simulation.ConditionContext.World.get -> Sage.Simulation.World!
 Sage.Simulation.ConditionContext.World.init -> void
 Sage.Simulation.Conditions
 Sage.Simulation.Connection.Requires -> Sage.Simulation.ICondition?
+Sage.Simulation.ContactEvent.Impulse.get -> float
+Sage.Simulation.ContactEvent.Impulse.init -> void
+Sage.Simulation.ContactEvent.Speed.get -> float
+Sage.Simulation.ContactEvent.Speed.init -> void
 Sage.Simulation.DebugCamera
 Sage.Simulation.Ease
 Sage.Simulation.Ease.BackIn = 19 -> Sage.Simulation.Ease
@@ -494,6 +522,8 @@ Sage.Simulation.IPhysicsWorld.JointBroken.get -> System.ReadOnlySpan<Sage.Simula
 Sage.Simulation.IPhysicsWorld.JointCount.get -> int
 Sage.Simulation.IPhysicsWorld.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
 Sage.Simulation.IPhysicsWorld.MoveKinematic(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Pose pose, System.Numerics.Vector3 velocity, System.Numerics.Vector3 angularVelocity) -> void
+Sage.Simulation.IPhysicsWorld.OverlapSphere(System.Numerics.Vector3 center, float radius, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
+Sage.Simulation.IPhysicsWorld.RaycastAll(System.Numerics.Vector3 from, System.Numerics.Vector3 direction, float maxDistance, System.Span<Sage.Simulation.RayHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Simulation.IPhysicsWorld.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Simulation.IPhysicsWorld.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
@@ -1147,6 +1177,20 @@ Sage.Simulation.TravelPointPart.Discovered -> bool
 Sage.Simulation.TravelPointPart.Label -> string!
 Sage.Simulation.TravelPointPart.Radius -> float
 Sage.Simulation.TravelPointPart.TravelPointPart() -> void
+Sage.Simulation.TriggerEntered
+Sage.Simulation.TriggerEntered.Other.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerEntered.Other.init -> void
+Sage.Simulation.TriggerEntered.Trigger.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerEntered.Trigger.init -> void
+Sage.Simulation.TriggerEntered.TriggerEntered() -> void
+Sage.Simulation.TriggerEntered.TriggerEntered(Sage.Simulation.Entity Trigger, Sage.Simulation.Entity Other) -> void
+Sage.Simulation.TriggerExited
+Sage.Simulation.TriggerExited.Other.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerExited.Other.init -> void
+Sage.Simulation.TriggerExited.Trigger.get -> Sage.Simulation.Entity
+Sage.Simulation.TriggerExited.Trigger.init -> void
+Sage.Simulation.TriggerExited.TriggerExited() -> void
+Sage.Simulation.TriggerExited.TriggerExited(Sage.Simulation.Entity Trigger, Sage.Simulation.Entity Other) -> void
 Sage.Simulation.TwoBoneIk
 Sage.Simulation.UnknownSavedData
 Sage.Simulation.UnknownSavedData.Components -> string!
