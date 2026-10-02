@@ -48,6 +48,8 @@ public struct LogicTimer : IComponent
     public bool Running;
     [Property(Min = 0, Unit = "s", Tooltip = "Seconds left before the next OnTimer")]
     public float Remaining;
+    [Property(Tooltip = "Count real seconds: through a pause, a hit-stop and any world speed (WorldTime)")]
+    public bool RealTime;
     // The random stream's state (xorshift32); 0 = not started, and the first draw seeds it from the
     // entity. Saved, so a load draws the waits the game would have drawn.
     public uint Random;
@@ -71,6 +73,8 @@ public sealed class LogicTimerPart : IPrefabPart
     public bool StartOn;
     [Property(Tooltip = "Where the random stream for `spread` starts; 0 = from the entity")]
     public uint Seed;
+    [Property(Tooltip = "Count real seconds: through a pause, a hit-stop and any world speed (WorldTime)")]
+    public bool RealTime;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -79,6 +83,7 @@ public sealed class LogicTimerPart : IPrefabPart
             Interval = Timers.Seconds(Interval, 1f, "interval", ctx),
             Spread = Timers.Seconds(Spread, 0f, "spread", ctx),
             Repeat = Repeat,
+            RealTime = RealTime,
             Random = Seed,
         };
         if (StartOn) Timers.Start(ref timer, ctx.Entity);
@@ -180,8 +185,11 @@ public static class Timers
 
 // EntityIO phase, before the dispatch (see Timers for why): counts every running timer down and fires
 // OnTimer when it runs out. Allocation-free: firing only adds to entity I/O's queue, safe inside a query.
+// Runs in every pass (RunCondition.Always) for the `realTime` timers (issue #283), which count
+// WorldTime.RealDt; the rest count the step (TickTime.Dt, 0 in a held pass) and so stand still while the
+// world is paused, hit-stopped or between the steps of a slowed world.
 [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // easing, timers and tweens (#90)
-[System(Id, Phase.EntityIO, Before = new[] { "?sage.io.dispatch" })]
+[System(Id, Phase.EntityIO, Before = new[] { "?sage.io.dispatch" }, Condition = RunCondition.Always)]
 internal sealed class LogicTimerSystem : ISystem
 {
     public const string Id = "sage.logic.timers";
@@ -197,7 +205,9 @@ internal sealed class LogicTimerSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        float dt = ctx.Tick.Dt;
+        float stepDt = ctx.Tick.Dt;
+        float realDt = WorldTime.Of(_world).RealDt;
+        if (stepDt <= 0f && realDt <= 0f) return;
         foreach (var (timers, entities) in _timers.Chunks)
         {
             var t = timers.Span;
@@ -205,6 +215,8 @@ internal sealed class LogicTimerSystem : ISystem
             {
                 ref var timer = ref t[i];
                 if (!timer.Running) continue;
+                float dt = timer.RealTime ? realDt : stepDt;
+                if (dt <= 0f) continue;
                 timer.Remaining -= dt;
                 if (timer.Remaining > Timers.Epsilon) continue;
 

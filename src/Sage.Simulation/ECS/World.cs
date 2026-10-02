@@ -97,8 +97,13 @@ public sealed class World : IDisposable
     public int EntityCount => _store.Count;
 
     // Fixed schedule systems with RunCondition WhenNotPaused (the default) are skipped while paused;
-    // Frame systems (camera, UI, rendering) keep running (01 §5.2).
-    public bool Paused { get; set; }
+    // Frame systems (camera, UI, rendering) keep running (01 §5.2). The world's time's flag (`WorldTime`,
+    // issue #283), so it is saved, and slowed or hit-stopped time skips them the same way.
+    public bool Paused
+    {
+        get => WorldTime.Of(this).Paused;
+        set => WorldTime.Of(this).Paused = value;
+    }
 
     // An **edit world** (phase 10a, issue #219, 15 §3): built from a document for the editor to show, not
     // to play. No Fixed-schedule system runs in it, whatever its run condition — nothing walks, falls,
@@ -366,11 +371,42 @@ public sealed class World : IDisposable
     // A `Travel.To` asked for during the tick, run at its boundary (issue 4g-5); null when none.
     internal TravelRequest? PendingTravel;
 
-    public void RunFixed(float dt)
+    // One real tick of `dt` seconds (issue #283): as many simulation steps of `dt` as the world's time
+    // (`WorldTime`: its scale, pause and hit-stop) says are due, each a full pass of the Fixed phases with
+    // its tick boundary; or, when none is, one held pass in which only the systems that run on real time
+    // (`RunCondition.Always`) run. At scale 1, unpaused, that is exactly one step, as it always was.
+    public void RunFixed(float dt) => RunFixed(dt, null);
+
+    // The same, calling `beforeStep` before every step (the host hands the player's command over there),
+    // and before a held pass when the world is paused: a paused world drops what it is handed, as it
+    // always did, while a slowed or hit-stopped one keeps a press for its next step.
+    public void RunFixed(float dt, Action<World>? beforeStep)
     {
+        var time = WorldTime.Of(this);
+        int steps = time.BeginTick(dt);
+        if (steps == 0)
+        {
+            if (time.Paused) beforeStep?.Invoke(this);
+            RunPass(time, step: false, first: true, dt);
+            return;
+        }
+        for (int i = 0; i < steps; i++)
+        {
+            // A load at a step's boundary replaced the world's time (the saved `time` resource): the
+            // loaded world starts on the next real tick, not with the steps the old one still owed.
+            if (i > 0 && !ReferenceEquals(Resources.TryGet<WorldTime>(out var now) ? now : null, time)) break;
+            beforeStep?.Invoke(this);
+            RunPass(time, step: true, first: i == 0, dt);
+        }
+    }
+
+    private void RunPass(WorldTime time, bool step, bool first, float dt)
+    {
+        time.BeginPass(step, first, dt);
+        _held = !step;
         InFixedTick = true;
-        try { RunFixedPhases(dt); }
-        finally { InFixedTick = false; }
+        try { RunFixedPhases(step ? dt : 0f, step); }
+        finally { InFixedTick = false; _held = false; }
 
         // A door used or a journey asked for (issue 4g-5) first: the scene changes, and the hours it took
         // join any other time asked to pass this tick.
@@ -383,18 +419,22 @@ public sealed class World : IDisposable
 
             // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with
             // every phase of it done, and the autosave clock advances. Nothing to do costs a comparison.
-            Engine?.Saves.TickEnded(this, dt);
+            Engine?.Saves.TickEnded(this, _lastTick.Dt);   // autosaves count simulated seconds
         }
         // And a streamed scene places, and puts to sleep, the sectors the ring reached or left (4g-3): work
         // that allocates, so never inside the phases.
         Engine?.Scenes.TickEnded(this);
     }
 
-    private void RunFixedPhases(float dt)
+    // True during a held pass (no step due): only real-time systems run.
+    private bool _held;
+
+    private void RunFixedPhases(float dt, bool step)
     {
         _lastTick = new TickTime(_lastTick.Tick + 1, dt, _lastTick.SimTime + dt);
         Log.SetTick(_lastTick.Tick);
-        _propagation.BeginTick();
+        // Interpolation is between the last two *steps*: a held pass keeps the pose the frame came from.
+        if (step) _propagation.BeginTick();
         _events.NowTick = _lastTick.Tick;
         _debugDraw.BeginTick();                   // momentary debug shapes are this tick's (06 §3.2)
 
@@ -420,8 +460,11 @@ public sealed class World : IDisposable
 
     // One rendered frame: FrameUpdate, Extract, Render, Overlay. `alpha` interpolates between the
     // previous and the current tick (GlobalTransform.Interpolated).
+    // At a world speed other than 1 the alpha is the world's own (WorldTime.Alpha): how far it is between
+    // its last step and its next.
     public void RunFrame(float dt, float alpha, double realTime = 0)
     {
+        if (Resources.TryGet<WorldTime>(out var time) && time != null) alpha = time.Alpha(alpha);
         var frame = new FrameTime(++_frame, dt, alpha, realTime);
         _messages.Advance(dt);               // messages age in display time, not ticks (13 §3)
         for (var phase = PhaseInfo.FirstFrame; phase <= Phase.Overlay; phase++)
@@ -455,9 +498,9 @@ public sealed class World : IDisposable
         : s.Condition switch
     {
         RunCondition.Always => true,
-        RunCondition.WhenNotPaused => !Paused,
+        RunCondition.WhenNotPaused => PhaseInfo.ScheduleOf(s.Phase) == Schedule.Frame ? !Paused : !_held,
         RunCondition.DevOnly => BuildInfo.IsDevBuild,
-        _ => PhaseInfo.ScheduleOf(s.Phase) == Schedule.Frame || !Paused,
+        _ => PhaseInfo.ScheduleOf(s.Phase) == Schedule.Frame || !_held,
     };
 
     // ---- Deferred structural changes -------------------------------------------------------------
