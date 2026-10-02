@@ -1603,3 +1603,6 @@ Sage.Simulation.ColliderPart
 Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
 Sage.Simulation.ColliderPart.ColliderPart() -> void
 Sage.Simulation.MapLevel.SurfaceOf(string! texture, Sage.Core.RecordStore! records) -> Sage.Core.RecordId
+Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
+Sage.Simulation.Unsaved
+Sage.Simulation.Unsaved.Unsaved() -> void
