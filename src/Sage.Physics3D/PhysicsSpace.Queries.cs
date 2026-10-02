@@ -74,6 +74,7 @@ public sealed partial class PhysicsSpace
                 Normal = Vector3.Normalize(normal),
                 Distance = t,
                 Hit = true,
+                Surface = Data.SurfaceAt(collidable, childIndex, normal),   // issue #270
             };
             for (int i = 0; i < Hits.Count; i++)
             {

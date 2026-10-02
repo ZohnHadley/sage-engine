@@ -93,6 +93,9 @@ public class SurfaceTests
         var sweep = physics.Sweep(Collider.Sphere(0.2f), At(new Vector3(-3, 0.5f, 0)), Vector3.UnitX, 10f);
         Assert.Equal((crate, Id("wood")), (sweep.Entity, sweep.Surface));
         Assert.Equal(Id("wood"), physics.SurfaceOf(world.Get<PhysicsBody>(crate)));
+        var all = new RayHit[4];   // RaycastAll (#269) says what each hit is made of too
+        Assert.Equal(1, physics.RaycastAll(new Vector3(0, 5, 0), -Vector3.UnitY, 10f, all));
+        Assert.Equal((crate, Id("wood")), (all[0].Entity, all[0].Surface));
 
         // A collider nobody gave a surface reports none.
         var nothing = physics.Raycast(new Vector3(5, 5, 0), -Vector3.UnitY, 10f);
