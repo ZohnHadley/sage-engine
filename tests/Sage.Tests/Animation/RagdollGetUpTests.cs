@@ -170,7 +170,7 @@ public class RagdollGetUpTests
         AssertStanding(world, npc);
     }
 
-    // The part's getUpAfter gets a knockdown up by itself that long after it went down, with its fade;
+    // The part's getUpAfter gets a knockdown up by itself that long after it settled, with its fade;
     // the settings default to getup_back, getup_front and 0.2 s, and never by themselves.
     [Xunit.Fact]
     public void GetUpAfterGetsItUpByItself()
@@ -190,6 +190,8 @@ public class RagdollGetUpTests
         Step(world, 3);
         Assert.True(Ragdolls.Start(world, npc, new Vector3(0, 0, 40), JointWorld(world, npc, "chest")));
         Assert.True(Ragdolls.Start(world, plain));
+        for (int i = 0; i < 600 && !Ragdolls.IsSettled(world, npc); i++) Step(world, 1);
+        Assert.True(Ragdolls.IsSettled(world, npc));                 // it counts from here
         Step(world, (int)(1.9f / Dt));
         Assert.True(Ragdolls.IsActive(world, npc));                 // not yet
         Step(world, (int)(0.2f / Dt));
@@ -213,9 +215,12 @@ public class RagdollGetUpTests
         Step(world, 2);
         Assert.True(Ragdolls.IsActive(world, npc));                 // it died: onDeath
         Assert.True(world.Get<RagdollGetUp>(npc).StayDown);
-        Step(world, (int)(4f / Dt));
+        int ticks = 0;
+        for (; ticks < 1200 && !Ragdolls.IsSettled(world, npc); ticks++) Step(world, 1);
+        Assert.True(Ragdolls.IsSettled(world, npc), $"not settled after {ticks} ticks");
+        Step(world, (int)(3f / Dt));
         Assert.True(Ragdolls.IsActive(world, npc));
-        Assert.True(world.Get<RagdollGetUp>(npc).Down > 3.9f);
+        Assert.True(world.Get<RagdollGetUp>(npc).Down > world.Get<RagdollGetUp>(npc).After);   // long past its getUpAfter
 
         Assert.True(Ragdolls.GetUp(world, npc));
         Assert.False(world.Get<RagdollGetUp>(npc).StayDown);

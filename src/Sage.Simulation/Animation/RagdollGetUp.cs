@@ -21,8 +21,8 @@ namespace Sage.Simulation;
 // untagged, animator resumed), and Animators.PlayFrom enters `getUpBack` or `getUpFront` fading from that
 // pose over `getUpFade` seconds. The graph takes it from there: `anim_finished` back to idle.
 //
-// **getUpAfter** counts the seconds since the ragdoll started (saved, in RagdollGetUp.Down); a later
-// change (#248's settling) makes it count from when the body comes to rest. A character that has died
+// **getUpAfter** counts the seconds the ragdoll has lain settled (#248; saved, in RagdollGetUp.Down), and
+// starts again if something unsettles it. A character that has died
 // (Gameplay sets StayDown on `Died`) never gets up by itself; GetUp from code or a wire still works, and
 // clears StayDown.
 [Experimental(RagdollApi.Experimental, UrlFormat = RagdollApi.Url)]
@@ -33,7 +33,7 @@ public struct RagdollGetUp : IComponent
     public const string DefaultFront = "getup_front";
     public const float DefaultFade = 0.2f;
 
-    [Property(Min = 0, Unit = "s", Tooltip = "Gets up by itself this long after going down; 0 = only when told (GetUp)")]
+    [Property(Min = 0, Unit = "s", Tooltip = "Gets up by itself this long after coming to rest; 0 = only when told (GetUp)")]
     public float After;
     [Property(Tooltip = "The animator state it gets up with from lying face up; empty = getup_back")]
     public string Back;
@@ -41,7 +41,7 @@ public struct RagdollGetUp : IComponent
     public string Front;
     [Property(Min = 0, Unit = "s", Tooltip = "How long the pose it lay in fades into the get-up state")]
     public float Fade;
-    [Property(Unit = "s", Tooltip = "How long it has been down (counts while the ragdoll is active)")]
+    [Property(Unit = "s", Tooltip = "How long it has lain settled (counts while the ragdoll is settled)")]
     public float Down;
     [Property(Tooltip = "It has died: getUpAfter no longer gets it up (GetUp still does, and clears this)")]
     public bool StayDown;
@@ -182,7 +182,8 @@ internal sealed class RagdollGetUpSystem : ISystem
             for (int n = 0; n < r.Length; n++)
             {
                 ref var getUp = ref g[n];
-                if (!r[n].Active)
+                // Counts while the body lies settled (#248): a shove that unsettles it starts the count again.
+                if (!r[n].Active || !r[n].Settled)
                 {
                     getUp.Down = 0f;
                     continue;

@@ -11,3 +11,4 @@ Sage.Physics3D.PhysicsSpace.JointExists(in Sage.Simulation.PhysicsJoint joint) -
 Sage.Physics3D.PhysicsSpace.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Physics3D.PhysicsSpace.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Physics3D.PhysicsSpace.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
+Sage.Physics3D.PhysicsSpace.Sleep(System.ReadOnlySpan<Sage.Simulation.PhysicsBody> bodies) -> void
