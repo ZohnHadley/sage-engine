@@ -772,6 +772,9 @@ that is a render target, and the Sandbox shows both exit criteria.
   The View menu's items are cvars, like every menu item (`cam_free`, `ed_viewport`).
 - **The window's size** is `vid_width`/`vid_height` (Archive; 800×410 as before), applied when they change,
   so `+vid_width 1600 +vid_height 900` on the command line or in `config.cfg` sizes it.
+  The window is also **resizable** by hand (edges, maximise), in a game and in the editor (`-edit`): the
+  back buffer follows, the views, game UI and ImGui panels read its size every frame, and the new size is
+  written back to `vid_width`/`vid_height`, so the next run opens at it.
 - **Phase 4a's exit, in the Sandbox.** *1P↔3P mid-fight:* V is on the HUD (top right, "V third person" /
   "V first person", while the player's rig has the screen) and in the README's controls; switching mid-swing
   changes nothing about the fight. (test: ToggleView_MidMeleeInTheSandbox_SwitchesWithinAFrame_AndCombatIsUnaffected)

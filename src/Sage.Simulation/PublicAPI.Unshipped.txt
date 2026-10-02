@@ -31,6 +31,8 @@ const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
 const Sage.Simulation.ModManager.MountPrefix = "mods/" -> string!
+const Sage.Simulation.PhysicsJointIO.Break = "Break" -> string!
+const Sage.Simulation.PhysicsJointIO.OnBreak = "OnBreak" -> string!
 const Sage.Simulation.PlayerCameraSystem.Id = "sage.camera.player" -> string!
 const Sage.Simulation.Ragdolls.FirstGroup = 1073741824 -> int
 const Sage.Simulation.Ragdolls.Input = "Ragdoll" -> string!
@@ -220,6 +222,10 @@ Sage.Simulation.AnimState.Loop -> bool
 Sage.Simulation.AnimState.Speed -> float
 Sage.Simulation.AnimState.Tags -> System.Collections.Generic.List<string!>!
 Sage.Simulation.AnimState.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
+Sage.Simulation.BodyMotion
+Sage.Simulation.BodyMotion.Angular -> System.Numerics.Vector3
+Sage.Simulation.BodyMotion.BodyMotion() -> void
+Sage.Simulation.BodyMotion.Linear -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachment
 Sage.Simulation.BoneAttachment.Angles -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachment.Bone -> string!
@@ -475,6 +481,29 @@ Sage.Simulation.IPhysicsWorld.JointExists(in Sage.Simulation.PhysicsJoint joint)
 Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Simulation.IPhysicsWorld.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Simulation.IPhysicsWorld.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
+Sage.Simulation.Joint
+Sage.Simulation.Joint.Anchor -> System.Numerics.Vector3
+Sage.Simulation.Joint.Axis -> System.Numerics.Vector3
+Sage.Simulation.Joint.BreakForce -> float
+Sage.Simulation.Joint.Broken -> bool
+Sage.Simulation.Joint.Built -> bool
+Sage.Simulation.Joint.BuiltAnchor -> System.Numerics.Vector3
+Sage.Simulation.Joint.Drag -> float
+Sage.Simulation.Joint.Handle -> Sage.Simulation.PhysicsJoint
+Sage.Simulation.Joint.HasTargetAnchor -> bool
+Sage.Simulation.Joint.Joint() -> void
+Sage.Simulation.Joint.Kind -> Sage.Simulation.JointKind
+Sage.Simulation.Joint.Max -> float
+Sage.Simulation.Joint.MaxDistance -> float
+Sage.Simulation.Joint.Min -> float
+Sage.Simulation.Joint.MinDistance -> float
+Sage.Simulation.Joint.Rest -> System.Numerics.Quaternion
+Sage.Simulation.Joint.Swing -> float
+Sage.Simulation.Joint.Target -> string!
+Sage.Simulation.Joint.TargetAnchor -> System.Numerics.Vector3
+Sage.Simulation.Joint.TwistMax -> float
+Sage.Simulation.Joint.TwistMin -> float
+Sage.Simulation.Joint.Warned -> bool
 Sage.Simulation.JointBroken
 Sage.Simulation.JointBroken.A.get -> Sage.Simulation.Entity
 Sage.Simulation.JointBroken.A.init -> void
@@ -516,6 +545,23 @@ Sage.Simulation.JointMask.Skeleton.get -> Sage.Simulation.Skeleton!
 Sage.Simulation.JointMask.this[int joint].get -> float
 Sage.Simulation.JointMask.this[int joint].set -> void
 Sage.Simulation.JointMask.Weights.get -> System.ReadOnlySpan<float>
+Sage.Simulation.JointPart
+Sage.Simulation.JointPart.Anchor -> System.Numerics.Vector3
+Sage.Simulation.JointPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.JointPart.Axis -> System.Numerics.Vector3
+Sage.Simulation.JointPart.BreakForce -> float
+Sage.Simulation.JointPart.Drag -> float
+Sage.Simulation.JointPart.JointPart() -> void
+Sage.Simulation.JointPart.Kind -> Sage.Simulation.JointKind
+Sage.Simulation.JointPart.Max -> float
+Sage.Simulation.JointPart.MaxDistance -> float
+Sage.Simulation.JointPart.Min -> float
+Sage.Simulation.JointPart.MinDistance -> float
+Sage.Simulation.JointPart.Swing -> float
+Sage.Simulation.JointPart.Target -> string!
+Sage.Simulation.JointPart.TargetAnchor -> System.Numerics.Vector3
+Sage.Simulation.JointPart.TwistMax -> float
+Sage.Simulation.JointPart.TwistMin -> float
 Sage.Simulation.LoadDoor
 Sage.Simulation.LoadDoor.Entry -> string!
 Sage.Simulation.LoadDoor.Hours -> float
@@ -641,6 +687,7 @@ Sage.Simulation.PhysicsJoint.PhysicsJoint() -> void
 Sage.Simulation.PhysicsJoint.PhysicsJoint(int Id, int Version) -> void
 Sage.Simulation.PhysicsJoint.Version.get -> int
 Sage.Simulation.PhysicsJoint.Version.init -> void
+Sage.Simulation.PhysicsJointIO
 Sage.Simulation.Placement.Overrides -> Sage.Simulation.PrefabOverrides?
 Sage.Simulation.Placement.Id -> string!
 Sage.Simulation.PlayerCamera

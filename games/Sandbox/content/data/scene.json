@@ -808,6 +808,56 @@
       "body": { "size": [0.6, 0.6, 0.6], "mass": 8 }
     }
   },
+  // ---- joints (docs/design/10, issue #245): things that hang --------------------------------------
+  //
+  // A gantry by the start: two posts and a beam, all static, and what is hung from the beam in data. The
+  // `joint` part joins a dynamic body to the entity its `target` names (here, the beam's placement name)
+  // and measures its anchor in its own space: a hinge about the sign's top edge swings it back and forth
+  // (shove it), a ball joint lets the lamp's link turn every way, and a distance joint is a short rope.
+  // Where the joint sits is where the thing is placed; its angles count from there.
+  {
+    "type": "prefab", "id": "gantry_post", "name": "gantry post",
+    "parts": {
+      "box_mesh": { "size": [0.2, 2.6, 0.2], "material": "crate" },
+      "body": { "size": [0.2, 2.6, 0.2] }
+    }
+  },
+  {
+    "type": "prefab", "id": "gantry_beam", "name": "gantry beam",
+    "parts": {
+      "box_mesh": { "size": [2.4, 0.2, 0.2], "material": "crate" },
+      "body": { "size": [2.4, 0.2, 0.2] }
+    }
+  },
+  {
+    // Hinged about its top edge along X, so it swings towards and away from the player, within 70 degrees
+    // either way. `drag` is what stops a swing: the share of its speed it loses a second.
+    "type": "prefab", "id": "hanging_sign", "name": "hanging sign",
+    "parts": {
+      "box_mesh": { "size": [1, 0.5, 0.06], "material": "crate" },
+      "body": { "size": [1, 0.5, 0.06], "mass": 3 },
+      "joint": { "kind": "Hinge", "target": "gantry beam", "anchor": [0, 0.25, 0], "axis": [1, 0, 0], "min": -70, "max": 70, "drag": 0.6 }
+    }
+  },
+  {
+    // A lamp on a chain: the link is a ball joint on the beam (a 50 degree cone), and the lamp hangs from
+    // the link's foot on a rope, a distance joint that lets it drop no further than 0.4 m.
+    "type": "prefab", "id": "lamp_link", "name": "lamp link",
+    "parts": {
+      "box_mesh": { "size": [0.06, 0.4, 0.06], "material": "crate" },
+      "body": { "size": [0.06, 0.4, 0.06], "mass": 0.5 },
+      "joint": { "kind": "Ball", "target": "gantry beam", "anchor": [0, 0.25, 0], "axis": [0, -1, 0], "swing": 50 }
+    }
+  },
+  {
+    "type": "prefab", "id": "hanging_lamp", "name": "hanging lamp",
+    "parts": {
+      "box_mesh": { "size": [0.3, 0.3, 0.3], "material": "crate" },
+      "body": { "size": [0.3, 0.3, 0.3], "mass": 2 },
+      "joint": { "kind": "Distance", "target": "lamp link", "anchor": [0, 0.15, 0], "targetAnchor": [0, -0.2, 0], "maxDistance": 0.4 }
+    }
+  },
+
   {
     // A trigger the crates fall through: it reports overlaps but never pushes anything.
     "type": "prefab", "id": "gate", "name": "gate",
@@ -899,6 +949,13 @@
       { "prefab": "crate",        "at": [0, 8, 1.8] },
       { "prefab": "crate",        "at": [0.7, 10, 1.4] },
       { "prefab": "gate",         "at": [0, 3, 1.6] },
+      // The gantry (issue #245): posts, a beam, a sign hung on a hinge and a lamp on a chain; go and shove it.
+      { "prefab": "gantry_post", "at": [2.0, 1.3, 8] },
+      { "prefab": "gantry_post", "at": [4.4, 1.3, 8] },
+      { "prefab": "gantry_beam", "at": [3.2, 2.7, 8], "name": "gantry beam" },
+      { "prefab": "hanging_sign", "at": [2.6, 2.3, 8.25] },
+      { "prefab": "lamp_link", "at": [3.8, 2.35, 8], "name": "lamp link" },
+      { "prefab": "hanging_lamp", "at": [3.8, 1.6, 8] },
       // The fence, and a watcher behind the middle of it: it sees the player over the top, and the only
       // way to reach them is round one end (F23). Walk up and watch it commit to a side.
       { "prefab": "hermit",       "at": [5, 0, 5],     "yaw": 200 },
