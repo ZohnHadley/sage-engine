@@ -1459,3 +1459,10 @@ static Sage.Simulation.PlacementExtensions.FinishPlacements(this Sage.Simulation
 static Sage.Simulation.PlacementExtensions.SpawnPlacement(this Sage.Simulation.World! world, Sage.Core.RecordId document, Sage.Simulation.PlacementsRecord! record, int index) -> Sage.Simulation.Entity
 Sage.Simulation.MapLevel.LocalPositionOf(Sage.Simulation.MapEntity! entity) -> System.Numerics.Vector3
 static Sage.Simulation.MapLevel.Read(Sage.Simulation.Engine! engine, Sage.Core.RecordId id, Sage.Simulation.MapRecord! record) -> Sage.Simulation.MapLevel?
+Sage.Simulation.IPhysicsWorld.Overlap(in Sage.Simulation.Collider shape, in Sage.Simulation.Pose at, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
+Sage.Simulation.OverlapHit
+Sage.Simulation.OverlapHit.Depth -> float
+Sage.Simulation.OverlapHit.Entity -> Sage.Simulation.Entity
+Sage.Simulation.OverlapHit.Normal -> System.Numerics.Vector3
+Sage.Simulation.OverlapHit.OverlapHit() -> void
+Sage.Simulation.IPhysicsWorld.Overlap(in Sage.Simulation.PhysicsBody body, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false) -> int

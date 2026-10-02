@@ -100,9 +100,10 @@ waking one deallocates it.
   - A step-up moves forward at least a capsule radius before sweeping down, or the capsule lands on the *edge* of the step, whose blended normal looks like a cliff and gets rejected.
   - On a face steeper than the slope limit the character slides down it and cannot push itself up: projecting motion onto a steep plane otherwise turns "walk into the cliff" into "climb it".
   - Crouching is instant and checks headroom before standing up.
+  - **Inside something, it gets out first (issue #259).** Before moving, the controller asks `IPhysicsWorld.Overlap` what its capsule actually intersects and pushes out along the deepest overlap's way out, up to four times (getting out of one surface can put it into another), at most a capsule radius per tick so a capsule deep in a wall comes out over a few ticks instead of jumping through it; velocity into the surface is dropped. Resting a skin width above the floor is touching, not overlapping, so a standing character is left alone (test: ACharacterPlacedInsideABoxIsPushedOutAndWalksOn; test: ACharacterStandingOnTheFloorOverlapsNothing).
   - **Starting inside the ground is survivable.** A sweep that begins overlapping carries no normal, and the controller's sweeps leave such overlaps out (`ignoreInitialOverlaps`); if the ground check believed that, a character placed a few centimetres into a hill would fall through the world (review #55). When the sweep finds nothing it casts a ray down from the capsule's centre and, if that finds walkable ground, puts the feet back on top of it.
 - **One call to place one:** `world.AddCharacter(entity, layer, profile)` adds the controller, a `Pawn`, a `PawnIntent` **seeded from the entity's rotation**, a `Collider.Standing` on the same layer and a kinematic `RigidBody`. Doing it by hand is what let the sweep layer, the collider layer and the capsule height drift apart, and what silently discarded the direction a scene placed a character facing (review #43).
-- **Limitations:** no depenetration — the controller ignores what its capsule already overlaps and the skin width does the work (a narrow-phase overlap query, §4, would fix it); no moving platforms; no smooth crouch interpolation; **crouching shrinks the sweep capsule but not the `Collider`**, so a crouching character still blocks the world at full height until `PhysicsSpace` can update a shape; the GoldSrc air-strafe profile is still "later".
+- **Limitations:** no moving platforms; no smooth crouch interpolation; **crouching shrinks the sweep capsule but not the `Collider`**, so a crouching character still blocks the world at full height until `PhysicsSpace` can update a shape; the GoldSrc air-strafe profile is still "later".
 
 - **Not yet:** the origin rebasing hook (`Rebase` exists but nothing calls it until R6).
 
@@ -148,6 +149,10 @@ public struct Collider : IComponent
     // when the static is removed (F16 — until then the list of engine-built shapes was write-only, and
     // every terrain sector leaked one). A mover pushes its static's pose with MoveStatic, because a
     // static does not follow a transform (tests: EveryBrushBecomesOneStaticHull, OpeningADoorMovesWhatYouWalkInto).
+    // Then it asks Overlap(body) what it moved into (issue #260): a character is pushed along the way out
+    // if, there, it would overlap nothing but the mover, and a dynamic body gets at least the mover's
+    // speed; a character with no room blocks it, and the mover goes back, stops or crushes
+    // (Mover.OnBlocked), firing OnBlocked (test: ADoorThatCannotPushACharacterReopensAndSaysWhoBlockedIt).
     public static Collider Box(Vector3 size, byte layer = 0);
     public static Collider Standing(float radius, float totalHeight, byte layer = 0);   // stands on the origin
 }
@@ -161,7 +166,7 @@ public struct CharacterController : IComponent
 
 public static void AddCharacter(this World world, Entity entity, byte layer, RecordId profile = default);
 ```
-*Still design, not built:* `RaycastAll`, a narrow-phase `Overlap` (which depenetration needs), and `[Transient]` field metadata (09).
+*Still design, not built:* `RaycastAll` and `[Transient]` field metadata (09). The narrow-phase `Overlap` is built (issue #259): the broad phase finds candidates by bounds, then Bepu's collision batcher runs the step's own contact tests, one pair per candidate, and the deepest contact of each is reported with its depth and the way out, deepest first (test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut).
 
 ## 10. Mapping from today's code
 The terrain's `HeightAt` (14) stopped being the only "collision" once F6 landed: it stays as a cheap ground query, while real collision goes through the sector's static mesh.

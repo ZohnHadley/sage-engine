@@ -12,3 +12,5 @@ Sage.Physics3D.PhysicsSpace.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -
 Sage.Physics3D.PhysicsSpace.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Physics3D.PhysicsSpace.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
 Sage.Physics3D.PhysicsSpace.Sleep(System.ReadOnlySpan<Sage.Simulation.PhysicsBody> bodies) -> void
+Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.Collider shape, in Sage.Simulation.Pose at, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
+Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.PhysicsBody body, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false) -> int

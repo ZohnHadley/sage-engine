@@ -142,9 +142,21 @@ public interface IPhysicsWorld
 
     // Entities whose bounds overlap a box, up to results.Length of them (truncated, never thrown). May
     // report ones whose shapes don't quite touch (bounds, not shapes: 10 §4), which suits "what is
-    // around here".
+    // around here"; Overlap below tests the shapes themselves.
     int OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default,
                    bool includeTriggers = false, Entity ignore = default);
+
+    // What `shape`, placed as for an entity at `at`, actually intersects (the narrow phase, issue #259),
+    // deepest first, up to results.Length of them (truncated to the deepest, never thrown). Each hit says
+    // which way out and how far: the character controller's depenetration. Touching is not overlapping:
+    // only a positive depth is reported.
+    int Overlap(in Collider shape, in Pose at, Span<OverlapHit> results, LayerMask mask = default,
+                bool includeTriggers = false, Entity ignore = default);
+
+    // The same for a body or static already in the space, where it is now: what a mover has just moved
+    // into (issue #260). Normal is the way out for `body`, so the way out for what it hit is -Normal. The
+    // body's own entity is left out.
+    int Overlap(in PhysicsBody body, Span<OverlapHit> results, LayerMask mask = default, bool includeTriggers = false);
 
     // ---- Events (read in PostPhysics; valid until the next step) --------------------------------
 
