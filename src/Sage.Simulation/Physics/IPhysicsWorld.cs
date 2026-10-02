@@ -88,6 +88,14 @@ public interface IPhysicsWorld
     [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
     void ApplyImpulse(in PhysicsBody body, Vector3 impulse, Vector3 worldPoint);
 
+    // Stops these bodies (velocities zeroed) and puts them, and whatever is jointed to them, to sleep
+    // where they are now, as the backend would once they had rested a while (issue #248: a ragdoll that
+    // has settled, or is loaded settled). Their bounds are refreshed first, so a body moved since the last
+    // step is found where it is. Anything that wakes a body (a touch, an impulse, a new velocity or pose)
+    // wakes them again. Statics and stale handles are ignored.
+    [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
+    void Sleep(ReadOnlySpan<PhysicsBody> bodies);
+
     // ---- Joints (issue #242, SAGE0134) ------------------------------------------------------------
     //
     // A joint holds two bodies together (JointDesc says how and where, in each body's shape space);

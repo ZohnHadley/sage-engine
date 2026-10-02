@@ -4229,6 +4229,155 @@
           "description": "Set while the ragdoll has turned the entity's solid collider into a trigger; Stop makes it solid again. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "settled": {
+          "description": "Every body has lain still for the record's settleTime (OnSettled fired); its bodies sleep. Category: State. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "restTime": {
+          "description": "How long every body has been slower than the record's settleSpeed. Unit: s. At least 0. Category: State. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "bodies": {
+          "description": "While active: each body's position, rotation and velocities, in the ragdoll table's order, so a load puts them back. Category: State. (RagdollBodyState[])",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": {
+                "description": "The body's centre. Unit: m. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "description": "The body's rotation. (Quaternion)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 4,
+                "maxItems": 4
+              },
+              "linear": {
+                "description": "Its linear velocity. Unit: m/s. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "angular": {
+                "description": "Its angular velocity, about the world axes. Unit: rad/s. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "bodies+": {
+          "description": "Adds to \"bodies\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": {
+                "description": "The body's centre. Unit: m. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "description": "The body's rotation. (Quaternion)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 4,
+                "maxItems": 4
+              },
+              "linear": {
+                "description": "Its linear velocity. Unit: m/s. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "angular": {
+                "description": "Its angular velocity, about the world axes. Unit: rad/s. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "bodies-": {
+          "description": "Removes these from \"bodies\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": {
+                "description": "The body's centre. Unit: m. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "rotation": {
+                "description": "The body's rotation. (Quaternion)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 4,
+                "maxItems": 4
+              },
+              "linear": {
+                "description": "Its linear velocity. Unit: m/s. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "angular": {
+                "description": "Its angular velocity, about the world axes. Unit: rad/s. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false,
