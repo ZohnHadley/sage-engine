@@ -102,6 +102,25 @@ Sage.Gameplay.FootIkPart.RayAbove -> float
 Sage.Gameplay.FootIkPart.RayBelow -> float
 Sage.Gameplay.FootIkPart.Right -> Sage.Gameplay.FootIkLeg?
 Sage.Gameplay.FootIkPart.Weight -> float
+Sage.Gameplay.Footstep
+Sage.Gameplay.Footstep.Entity.get -> Sage.Simulation.Entity
+Sage.Gameplay.Footstep.Entity.init -> void
+Sage.Gameplay.Footstep.Footstep() -> void
+Sage.Gameplay.Footstep.Footstep(Sage.Simulation.Entity Entity, System.Numerics.Vector3 Point, Sage.Core.RecordId Surface) -> void
+Sage.Gameplay.Footstep.Point.get -> System.Numerics.Vector3
+Sage.Gameplay.Footstep.Point.init -> void
+Sage.Gameplay.Footstep.Surface.get -> Sage.Core.RecordId
+Sage.Gameplay.Footstep.Surface.init -> void
+Sage.Gameplay.Footsteps
+Sage.Gameplay.Footsteps.Footsteps() -> void
+Sage.Gameplay.Footsteps.LastSurface -> Sage.Core.RecordId
+Sage.Gameplay.Footsteps.Reach -> float
+Sage.Gameplay.Footsteps.Stride -> float
+Sage.Gameplay.FootstepsPart
+Sage.Gameplay.FootstepsPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.FootstepsPart.FootstepsPart() -> void
+Sage.Gameplay.FootstepsPart.Reach -> float
+Sage.Gameplay.FootstepsPart.Stride -> float
 Sage.Gameplay.HitContext
 Sage.Gameplay.HitContext.Attack.get -> Sage.Gameplay.AttackRecord!
 Sage.Gameplay.HitContext.Attack.init -> void

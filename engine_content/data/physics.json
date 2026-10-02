@@ -14,5 +14,19 @@
       "debris": ["debris"],
       "hitbox": ["*"]
     }
-  }
+  },
+
+  // Surfaces (issue #270, docs/design/10 "As built (surfaces)"): what things are made of. A collider
+  // names one ("body": { "surface": "sage:wood" }), a brush texture is one by a record's "textures", a
+  // terrain layer by the terrain record's "surfaces"; every ray and sweep hit says which. These give
+  // friction, bounce and a penetration hint only: the footstep and impact cues, the decals and the
+  // textures they cover are the game's, added by patching these or by writing its own.
+  { "type": "physics_material", "id": "default", "friction": 0.7, "restitution": 0,   "penetration": 1 },
+  { "type": "physics_material", "id": "stone",   "friction": 0.8, "restitution": 0.05, "penetration": 1.5 },
+  { "type": "physics_material", "id": "wood",    "friction": 0.6, "restitution": 0.1,  "penetration": 0.4 },
+  { "type": "physics_material", "id": "metal",   "friction": 0.4, "restitution": 0.15, "penetration": 3 },
+  { "type": "physics_material", "id": "dirt",    "friction": 0.9, "restitution": 0,    "penetration": 0.8 },
+  { "type": "physics_material", "id": "grass",   "friction": 0.8, "restitution": 0,    "penetration": 0.8 },
+  { "type": "physics_material", "id": "flesh",   "friction": 0.9, "restitution": 0,    "penetration": 0.2 },
+  { "type": "physics_material", "id": "glass",   "friction": 0.3, "restitution": 0.1,  "penetration": 0.1 }
 ]
