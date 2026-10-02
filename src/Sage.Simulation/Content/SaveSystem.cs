@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -315,6 +316,11 @@ public sealed partial class SaveSystem
         // What the save said that this game has no component or tag for, back as it was (issue 4i-2).
         if (world.TryGet<UnknownSavedData>(entity, out var unknown))
             MergeUnknown(components, tags, unknown);
+        // Content's entity still where content placed it (4m-4): no transform, so a load leaves it where the
+        // content places it then, and moving the placement moves it. A runtime spawn always has one: it is
+        // rebuilt where it stood.
+        if (saved.ContainsKey("source") && spawned.HasPlaced && AtItsPlacement(world, entity, spawned))
+            components.Remove(SaveSerializer.TransformId);
         saved["components"] = components;
         if (tags.Count > 0) saved["tags"] = tags;
         return saved;
@@ -539,7 +545,17 @@ public sealed partial class SaveSystem
         foreach (var entity in world.PersistentIncludingDisabled().ToEntityList())
             if (world.IsAlive(entity) && !baseline.IsBaseline(entity.GetComponent<Persistent>().Id))
                 world.Destroy(entity);
+        // And what it made that no save names (4m-4): a `"persist": false` spawn (an effect's spark, a cue's
+        // prop) is not in this file either, so it goes too. What the engine and the game make for themselves
+        // (cameras, a viewmodel, a level's brushes) is not tagged Unsaved and stays.
+        int unsaved = 0;
+        foreach (var entity in world.UnsavedIncludingDisabled().ToEntityList())
+            if (world.IsAlive(entity)) { world.Destroy(entity); unsaved++; }
+        if (unsaved > 0) Log.Debug(LogCat.Save, $"{where}: {unsaved} unsaved runtime spawn(s) removed");
         world.FlushCommands();
+        // The handles that stood for sleeping entities were the game's being left (4m-4); the file's
+        // references to what sleeps in it are minted again as they are read.
+        if (world.Resources.TryGet<SleepingHandles>(out var sleeping) && sleeping != null) sleeping.Clear();
 
         // **Content, placed again from what the game has now**: the save's scene (or the world's own, when
         // the save names none or one this game does not have), its documents and levels, and levels a
@@ -859,10 +875,43 @@ public sealed partial class SaveSystem
         if (!baselines.TryGet(prefab, record, key, out var baseline))
         {
             baselines.Dialect ??= SaveJson.For(world, _engine.Records, _converters);
-            baseline = new SpawnBaseline(_serializer.WriteComponents(world, entity, baselines.Dialect, baseline: null, removed: null, quiet: true));
+            baseline = new SpawnBaseline(_serializer.WriteComponents(world, entity, baselines.Dialect, baseline: null, removed: null, quiet: true),
+                                         _serializer.FromPlacementIds(entity));
             baselines.Add(prefab, record, key, baseline);
         }
-        world.Get<FromPrefab>(entity).Baseline = baseline;
+        // What derives from where this one was placed is this one's own (4m-4): only those components.
+        else if (baseline.FromPlacement.Count > 0)
+            baseline = new SpawnBaseline(baseline, _serializer.WriteComponents(world, entity, baselines.Dialect!, baseline: null, removed: null,
+                                                                                quiet: true, only: baseline.FromPlacement));
+        ref var from = ref world.Get<FromPrefab>(entity);
+        from.Baseline = baseline;
+        // And where it was placed, so content's entity still standing there is not written with a transform.
+        from.Placed = world.Get<Transform>(entity);
+        from.PlacedFrame = FrameOf(world);
+        from.HasPlaced = true;
+    }
+
+    private static SectorCoord FrameOf(World world) =>
+        world.Resources.TryGet<Origin>(out var origin) && origin != null ? origin.Sector : default;
+
+    // Whether content's entity stands where it was placed (4m-4): then a save writes no transform for it,
+    // and a load leaves it where the content puts it now. Compared in absolute space, so a rebase between
+    // the spawn and the save does not count as a move.
+    private static bool AtItsPlacement(World world, Entity entity, in FromPrefab from)
+    {
+        if (!from.HasPlaced || !world.TryGet<Transform>(entity, out var now)) return false;
+        var was = from.Placed;
+        var position = now.LocalPosition;
+        var placed = was.LocalPosition;
+        if (entity.Parent.IsNull)   // a root's position is in the world's frame; a child's is its parent's
+        {
+            position += FrameOf(world).Origin(Terrain.SectorSize);
+            placed += from.PlacedFrame.Origin(Terrain.SectorSize);
+        }
+        const float Epsilon = 1e-4f;
+        return Vector3.DistanceSquared(position, placed) <= Epsilon * Epsilon
+               && MathF.Abs(MathF.Abs(Quaternion.Dot(now.LocalRotation, was.LocalRotation)) - 1f) <= Epsilon
+               && Vector3.DistanceSquared(now.LocalScale, was.LocalScale) <= Epsilon * Epsilon;
     }
 
     // ---- the header's plugins and content (issue 4i-2) ---------------------------------------------

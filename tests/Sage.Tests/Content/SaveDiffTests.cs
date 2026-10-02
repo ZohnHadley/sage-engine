@@ -142,7 +142,7 @@ public class SaveDiffTests
     }
 
     // What the file holds: nothing of a component the game left alone, and of one it changed only the
-    // field that changed. The transform is always there, whole.
+    // field that changed. A placed goblin still where content put it has no transform either (4m-4).
     [Xunit.Fact]
     public void ASaveWritesOnlyTheFieldsTheGameChanged()
     {
@@ -158,7 +158,7 @@ public class SaveDiffTests
         Assert.False(components.ContainsKey("test:hit_points"));
         Assert.False(components.ContainsKey("test:mark"));
         Assert.False(components.ContainsKey("sage:attributes"));
-        Assert.NotNull(components["sage:transform"]!["data"]!["LocalPosition"]);
+        Assert.False(components.ContainsKey("sage:transform"));
         Assert.Null(calm["removed"]);
 
         var hurt = SavedEntity(saves, "slot", world, One(world, "hurt"));
