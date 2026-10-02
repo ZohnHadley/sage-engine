@@ -66,8 +66,27 @@ internal sealed class CharacterMovementSystem : ISystem
     {
         var profile = _conventions.ProfileOf(_records, character.Profile);
         var mask = LayerMask.All.Except(character.Layer);
-        if (character.Height <= 0) character.Height = profile.StandHeight;
+        // Height is not saved: a character loaded crouched comes back crouched, under whatever it was under.
+        if (character.Height <= 0) character.Height = character.Crouching ? profile.CrouchHeight : profile.StandHeight;
 
+        var mode = ModeOf(in character, profile);
+        if (mode is MovementMode.Fly or MovementMode.Noclip)
+            Fly(entity, ref transform, ref character, in intent, profile, mask, noclip: mode == MovementMode.Noclip, dt);
+        else
+            Walk(entity, ref transform, ref character, in intent, profile, mask, airStrafe: mode == MovementMode.AirStrafe, dt);
+
+        // The world sees the capsule the controller sweeps: a crouching character's Collider shrinks with it.
+        FitCollider(entity, character.Height, profile.Radius);
+    }
+
+    // The mode it moves in (issue #267): its own, else its profile's, else Walk.
+    internal static MovementMode ModeOf(in CharacterController character, MovementProfileRecord profile) =>
+        character.Mode != MovementMode.Default ? character.Mode
+        : profile.Mode != MovementMode.Default ? profile.Mode : MovementMode.Walk;
+
+    // On its feet: walking, swimming, climbing — the controller's whole move short of flying.
+    private void Walk(Entity entity, ref Transform transform, ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, LayerMask mask, bool airStrafe, float dt)
+    {
         Vector3 position = transform.LocalPosition;
         // Standing on something that moves (a lift, a mover, issue #261): carried with it, before anything
         // else, so what follows walks relative to the ground as it is now.
@@ -77,7 +96,8 @@ internal sealed class CharacterMovementSystem : ISystem
         // starts overlapping and sees nothing (issue #259).
         position = Depenetrate(position, ref character, profile, mask);
         bool inWater = Wet(entity, position, ref character, profile, dt, out var water);
-        Crouch(ref character, in intent, profile, position, mask);
+        // A swimmer's Crouch is "swim down", not a crouch.
+        Crouch(ref character, intent.Held.Has(_crouch) && !character.Swimming, profile, position, mask, dt);
 
         // On a ladder the climb is the whole move (issue #263).
         if (Climb(ref position, ref character, in intent, profile, mask, dt))
@@ -93,7 +113,7 @@ internal sealed class CharacterMovementSystem : ISystem
         var right = new Vector3(-forward.Z, 0, forward.X);
 
         if (character.Swimming) Swim(ref character, in intent, profile, forward, right, in water, dt);
-        else Walk(ref character, in intent, profile, forward, right, dt);
+        else OnFoot(ref character, in intent, profile, forward, right, airStrafe, dt);
 
         // Water slows whatever moves through it, toward its current: a swimmer, someone wading, a fall
         // into a lake (issue #262).
@@ -115,16 +135,20 @@ internal sealed class CharacterMovementSystem : ISystem
     }
 
     // On land, or wading: walking, jumping, falling and sliding down what is too steep.
-    private void Walk(ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, Vector3 forward, Vector3 right, float dt)
+    private void OnFoot(ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, Vector3 forward, Vector3 right, bool airStrafe, float dt)
     {
         Vector3 wish = right * intent.Move.X + forward * intent.Move.Y;
         if (wish.LengthSquared() > 1f) wish = Vector3.Normalize(wish);
 
         float speed = (intent.Held.Has(_run) ? profile.RunSpeed : profile.WalkSpeed) * (character.Crouching ? profile.CrouchSpeedScale : 1f);
-        Accelerate(ref character, wish * speed, character.Grounded ? profile.Acceleration : profile.AirAcceleration,
-                   character.Grounded && wish.LengthSquared() < 0.01f ? profile.Friction : 0f, dt);
+        bool jump = character.Grounded && intent.Pressed.Has(_jump);
+        if (airStrafe)
+            AirStrafe(ref character, wish, speed, profile, jump, dt);
+        else
+            Accelerate(ref character, wish * speed, character.Grounded ? profile.Acceleration : profile.AirAcceleration,
+                       character.Grounded && wish.LengthSquared() < 0.01f ? profile.Friction : 0f, dt);
 
-        if (character.Grounded && intent.Pressed.Has(_jump))
+        if (jump)
         {
             character.Velocity.Y = profile.JumpSpeed;
             character.Grounded = false;
@@ -233,6 +257,75 @@ internal sealed class CharacterMovementSystem : ISystem
             character.Velocity += delta / distance * MathF.Min(profile.SwimAcceleration * dt, distance);
         character.Grounded = false;
         character.OnSteep = false;
+    }
+
+    // GoldSrc's movement (issue #267; Half-Life 1's PM_Friction, PM_Accelerate and PM_AirAccelerate). On
+    // the ground, friction always and acceleration that only adds speed along the wish, up to the wished
+    // speed. In the air, the speed added along the wish is capped at AirStrafeSpeed (0.76 m/s, its 30
+    // units) but the acceleration is not, so a wish nearly at right angles to the velocity — strafing
+    // while turning toward the strafe — adds speed every tick without the cap ever being reached. A jump
+    // on the landing tick skips the ground's friction, which is what keeps that speed across a bunny-hop.
+    private static void AirStrafe(ref CharacterController character, Vector3 wish, float speed, MovementProfileRecord profile, bool jumped, float dt)
+    {
+        Vector3 velocity = character.Velocity with { Y = 0 };
+        float amount = wish.Length();
+        Vector3 direction = amount > 1e-4f ? wish / amount : Vector3.Zero;
+        float wishSpeed = speed * amount;
+        float added, acceleration;
+
+        if (character.Grounded && !jumped)
+        {
+            float current = velocity.Length();
+            float drop = profile.Friction * dt * MathF.Max(current, 1f);
+            velocity = current > drop ? velocity * ((current - drop) / current) : Vector3.Zero;
+            added = wishSpeed - Vector3.Dot(velocity, direction);
+            acceleration = profile.Acceleration * dt;
+        }
+        else
+        {
+            added = MathF.Min(wishSpeed, profile.AirStrafeSpeed) - Vector3.Dot(velocity, direction);
+            acceleration = profile.AirStrafeAccelerate * wishSpeed * dt;
+        }
+        if (added > 0f && amount > 1e-4f) velocity += direction * MathF.Min(acceleration, added);
+        character.Velocity = velocity with { Y = character.Velocity.Y };
+    }
+
+    // Flying (issue #267): Fly and Noclip, for editors and debugging. No gravity, no ground, no water or
+    // ladders: it moves where it looks (pitch included), Jump rises and Crouch sinks, and it stops when
+    // nothing is pressed. Fly slides along what it meets; Noclip goes through everything.
+    private void Fly(Entity entity, ref Transform transform, ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, LayerMask mask, bool noclip, float dt)
+    {
+        Vector3 position = transform.LocalPosition;
+        if (!noclip) position = Depenetrate(position, ref character, profile, mask);
+        Wet(entity, position, ref character, profile, dt, out _);   // the breath hook still counts
+        // It stands up (Crouch is "down" now), given the room; a noclipper needs none.
+        if (noclip) { character.Crouching = false; character.Height = MoveToward(character.Height, profile.StandHeight, CrouchRate(profile) * dt); }
+        else Crouch(ref character, false, profile, position, mask, dt);
+
+        character.Grounded = false;
+        character.OnSteep = false;
+        character.Climbing = false;
+        character.LetGo = false;
+        character.GroundNormal = Vector3.UnitY;
+        character.GroundVelocity = Vector3.Zero;
+
+        var forward = SageMath.ForwardFromYaw(intent.Yaw);
+        var right = new Vector3(-forward.Z, 0, forward.X);
+        Vector3 look = forward * MathF.Cos(intent.Pitch) + Vector3.UnitY * MathF.Sin(intent.Pitch);
+        Vector3 wish = right * intent.Move.X + look * intent.Move.Y;
+        wish.Y += (intent.Held.Has(_jump) ? 1f : 0f) - (intent.Held.Has(_crouch) ? 1f : 0f);
+        if (wish.LengthSquared() > 1f) wish = Vector3.Normalize(wish);
+        Vector3 target = wish * (profile.FlySpeed * (intent.Held.Has(_run) ? 2f : 1f));
+
+        Vector3 delta = target - character.Velocity;
+        float distance = delta.Length();
+        if (distance > 1e-5f)
+            character.Velocity += delta / distance * MathF.Min(profile.Acceleration * dt, distance);
+
+        Vector3 motion = character.Velocity * dt;
+        position = noclip ? position + motion : SlideClimbing(position, motion, character.Height, profile, mask);
+        transform.LocalRotation = SageMath.RotationFromYaw(intent.Yaw);
+        transform.LocalPosition = position;
     }
 
     // Accelerates the horizontal velocity toward `target`, with friction when there's no input.
@@ -543,29 +636,50 @@ internal sealed class CharacterMovementSystem : ISystem
         return _space.PointVelocityOf(body, feet);
     }
 
-    // Crouching shrinks the capsule; standing up needs headroom (10 §3).
-    private void Crouch(ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, Vector3 position, LayerMask mask)
+    // Crouching shrinks the capsule, over the profile's CrouchTime, and standing up needs headroom for the
+    // whole of the rest of its height (10 §3); a character that has run out of it stays as low as it is.
+    // Crouching is true from the moment it starts going down until it starts standing up, so the
+    // crouched speed applies all the way down.
+    private void Crouch(ref CharacterController character, bool wants, MovementProfileRecord profile, Vector3 position, LayerMask mask, float dt)
     {
-        bool wants = intent.Held.Has(_crouch) && !character.Swimming;   // a swimmer's Crouch is "swim down"
-        if (wants == character.Crouching)
+        float stand = profile.StandHeight;
+        float target = wants ? MathF.Min(profile.CrouchHeight, stand) : stand;
+        if (target > character.Height + 1e-5f)
         {
-            character.Height = character.Crouching ? profile.CrouchHeight : profile.StandHeight;
-            return;
+            // Standing up: is there room?
+            var hit = Sweep(position, character.Height, profile.Radius, Vector3.UnitY, stand - character.Height + Skin, mask);
+            if (hit.Hit)
+            {
+                character.Crouching = true;   // stay crouched under the ceiling
+                return;
+            }
         }
+        character.Crouching = wants;
+        character.Height = MoveToward(character.Height, target, CrouchRate(profile) * dt);
+    }
 
-        if (wants)
-        {
-            character.Crouching = true;
-            character.Height = profile.CrouchHeight;
+    // How fast the capsule's height changes, in m/s; instant with no CrouchTime.
+    private static float CrouchRate(MovementProfileRecord profile) =>
+        profile.CrouchTime > 0f ? MathF.Max(profile.StandHeight - profile.CrouchHeight, 0.01f) / profile.CrouchTime : float.PositiveInfinity;
+
+    private static float MoveToward(float from, float to, float step) =>
+        from < to ? MathF.Min(from + step, to) : MathF.Max(from - step, to);
+
+    // Keeps the entity's Collider the height the controller sweeps (issue #267): a crouched character is
+    // hit, stood on and seen at its crouched height. Only a Collider.Standing capsule is fitted, and only
+    // when the height changed; the body keeps its handle (IPhysicsWorld.SetShape). A body not built yet
+    // is built from the fitted Collider by the sync.
+    private void FitCollider(Entity entity, float height, float radius)
+    {
+        if (!entity.TryGetComponent<Collider>(out var collider) || collider.Shape != ColliderShape.Capsule
+            || collider.Center.X != 0f || collider.Center.Z != 0f || collider.Center.Y <= 0f || MathF.Abs(collider.Center.Y * 2f - height) < 1e-4f)
             return;
-        }
-
-        // Standing up: is there room?
-        float needed = profile.StandHeight - profile.CrouchHeight;
-        var hit = Sweep(position, profile.CrouchHeight, profile.Radius, Vector3.UnitY, needed + Skin, mask);
-        if (hit.Hit) return;   // stay crouched under the ceiling
-        character.Crouching = false;
-        character.Height = profile.StandHeight;
+        var fitted = Collider.Standing(collider.Size.X > 0f ? collider.Size.X : radius, height);
+        collider.Size = fitted.Size;
+        collider.Center = fitted.Center;
+        _world.Get<Collider>(entity) = collider;
+        if (entity.TryGetComponent<PhysicsBody>(out var body))
+            _space.SetShape(body, collider, PhysicsPoses.WorldPose(entity));
     }
 
     // The capsule stands on `feet`; Bepu's capsule is centred on its pose with the cylinder along Y.

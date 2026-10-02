@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 
 namespace Sage.Physics3D;
 
@@ -32,10 +33,32 @@ public sealed class CharacterModule : IModule
             "A character went into water: on the character (the activator is the water) and on the water volume (the activator is the character).");
         ctx.Engine.Outputs.Declare(CharacterMovementSystem.OnExitWater,
             "A character came out of water: on the character (the activator is the water) and on the water volume (the activator is the character).");
+        // Movement modes for debugging and editing (issue #267): the player's own mode over its profile's.
+        var engine = ctx.Engine;
+        engine.CVars.RegisterCommand("noclip", CVarFlags.Cheat,
+            "Fly through walls, and back: the player moves in Noclip mode over its profile's (sv_cheats).",
+            _ => ToggleMode(engine, MovementMode.Noclip));
+        engine.CVars.RegisterCommand("fly", CVarFlags.Cheat,
+            "Fly without gravity, still colliding, and back: the player moves in Fly mode over its profile's (sv_cheats).",
+            _ => ToggleMode(engine, MovementMode.Fly));
+
         // The player's camera, first person to third and back (issue #79).
 #pragma warning disable SAGE0123
         _actions.Register(ToggleViewSystem.Action, ActionKind.Button);
 #pragma warning restore SAGE0123
+    }
+
+    // Every player character goes into `mode`, or back to its profile's if it was in it already.
+    internal static void ToggleMode(Engine engine, MovementMode mode)
+    {
+        foreach (var world in engine.Worlds)
+            foreach (var entity in world.Query<CharacterController>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList())
+            {
+                ref var character = ref world.Get<CharacterController>(entity);
+                character.Mode = character.Mode == mode ? MovementMode.Default : mode;
+                character.Velocity = Vector3.Zero;
+                Log.Info(LogCat.Console, $"{World.Describe(entity)}: {(character.Mode == MovementMode.Default ? "back to its profile's movement" : mode.ToString().ToLowerInvariant())}");
+            }
     }
 
     public void OnWorldCreated(World world)

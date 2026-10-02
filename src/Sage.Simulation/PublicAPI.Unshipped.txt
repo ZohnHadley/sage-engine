@@ -368,6 +368,7 @@ Sage.Simulation.CameraViews.Views.get -> System.ReadOnlySpan<Sage.Simulation.Cam
 Sage.Simulation.CellContent
 Sage.Simulation.CharacterController.Immersion -> float
 Sage.Simulation.CharacterController.InWater -> bool
+Sage.Simulation.CharacterController.Mode -> Sage.Simulation.MovementMode
 Sage.Simulation.CharacterController.Swimming -> bool
 Sage.Simulation.CharacterController.Underwater -> bool
 Sage.Simulation.CharacterController.UnderwaterSeconds -> float
@@ -748,6 +749,17 @@ Sage.Simulation.ModManager.RestartNeeded.get -> bool
 Sage.Simulation.ModManager.Searched.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.ModManager.Summary() -> string!
 Sage.Simulation.ModManager.WatchManifests() -> System.IDisposable!
+Sage.Simulation.MovementMode
+Sage.Simulation.MovementMode.AirStrafe = 2 -> Sage.Simulation.MovementMode
+Sage.Simulation.MovementMode.Default = 0 -> Sage.Simulation.MovementMode
+Sage.Simulation.MovementMode.Fly = 3 -> Sage.Simulation.MovementMode
+Sage.Simulation.MovementMode.Noclip = 4 -> Sage.Simulation.MovementMode
+Sage.Simulation.MovementMode.Walk = 1 -> Sage.Simulation.MovementMode
+Sage.Simulation.MovementProfileRecord.AirStrafeAccelerate -> float
+Sage.Simulation.MovementProfileRecord.AirStrafeSpeed -> float
+Sage.Simulation.MovementProfileRecord.CrouchTime -> float
+Sage.Simulation.MovementProfileRecord.FlySpeed -> float
+Sage.Simulation.MovementProfileRecord.Mode -> Sage.Simulation.MovementMode
 Sage.Simulation.MovementProfileRecord.SwimAcceleration -> float
 Sage.Simulation.MovementProfileRecord.SwimClimbHeight -> float
 Sage.Simulation.MovementProfileRecord.SwimDepth -> float

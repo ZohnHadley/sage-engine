@@ -17,6 +17,13 @@
     "standHeight": 1.8,
     "crouchHeight": 1.05,
     "groundSnap": 0.35,
+    // Movement modes (issue #267): Walk, AirStrafe (GoldSrc bunny-hopping), Fly or Noclip. A crouch takes
+    // crouchTime seconds, and the character's collider shrinks with it.
+    "mode": "Walk",
+    "crouchTime": 0.2,
+    "airStrafeSpeed": 0.76,
+    "airStrafeAccelerate": 10,
+    "flySpeed": 8,
     // Swimming in a water volume (issue #262): depths are fractions of standHeight under the surface.
     "swimSpeed": 3,
     "swimAcceleration": 10,

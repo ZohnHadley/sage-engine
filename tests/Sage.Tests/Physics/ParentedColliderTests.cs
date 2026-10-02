@@ -154,9 +154,9 @@ public class ParentedColliderTests
         var knee = physics.Raycast(new Vector3(0, 0.5f, -3), Vector3.UnitZ, 6f);
         Assert.True(knee.Hit);
         Assert.Equal(character, knee.Entity);
-        world.RunFixed(Dt);
         Assert.Equal(body, world.Get<PhysicsBody>(character));   // the same handle
-        Assert.False(physics.Raycast(new Vector3(0, 1.6f, -3), Vector3.UnitZ, 6f).Hit);
+        // (Not ticked here: the controller keeps a character's Collider the height it sweeps since #267, so
+        // a standing character would stand straight back up; MovementModeTests crouches one for real.)
 
         // Standing back up, every tick for a while, a little taller each time: nothing piles up.
         var space = (PhysicsSpace)physics;

@@ -2650,9 +2650,21 @@
           "maxItems": 3
         },
         "crouching": {
-          "description": "Crouched: the capsule is the profile's crouch height. (bool, default false)",
+          "description": "Crouched or crouching: the capsule and its Collider shrink toward the profile's crouch height. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "mode": {
+          "description": "Default = the profile's mode; the noclip and fly console commands set Noclip or Fly. (MovementMode, default \"Default\")",
+          "default": "Default",
+          "type": "string",
+          "enum": [
+            "Default",
+            "Walk",
+            "AirStrafe",
+            "Fly",
+            "Noclip"
+          ]
         },
         "climbing": {
           "description": "Not saved. (bool, default false)",

@@ -274,7 +274,7 @@ public class CharacterTests
         var crouch = default(ActionMask).With(engine.Actions.Get("Crouch"));
         Walk(world, character, Vector2.Zero, 30);
 
-        Walk(world, character, Vector2.Zero, 5, held: crouch);
+        Walk(world, character, Vector2.Zero, 15, held: crouch);   // a crouch takes CrouchTime (0.2 s) since #267
         Assert.True(world.Get<CharacterController>(character).Crouching);
         Assert.Equal(1.05f, world.Get<CharacterController>(character).Height, 2);
 
