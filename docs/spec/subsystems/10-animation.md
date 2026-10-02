@@ -1,12 +1,12 @@
 # 10 · Animation
 
-> Status: mostly built. Sprite animation, 8-direction billboards, glTF skeletons and clips, graphs, layers, clip events, sockets, IK, first-person arms and animator LOD work and are tested headlessly. Ragdolls are in progress on another thread (#130). Root motion, additive layers, retargeting and morph targets are planned. Owning assemblies: `Sage.Simulation` (skeletal), `Sage.Gameplay` (sprites, foot IK). Design doc: [12 Animation](../../design/12-animation.md).
+> Status: mostly built. Sprite animation, 8-direction billboards, glTF skeletons and clips, graphs, layers, clip events, sockets, IK, first-person arms and animator LOD work and are tested headlessly. Ragdolls (going down, settling, saves and getting up, #130) are done. Root motion, additive layers, retargeting and morph targets are planned. Owning assemblies: `Sage.Simulation` (skeletal), `Sage.Gameplay` (sprites, foot IK). Design doc: [12 Animation](../../design/12-animation.md).
 
 ## 1. Purpose and scope
 
 Animation turns clips and parameters into poses and sprite frames, on the fixed tick, so that the moment a blow lands or a foot touches the ground is deterministic and the same on every run. Two families exist: sprite animation for Daggerfall-style billboards, and skeletal animation (glTF skins) for Half-Life, S.T.A.L.K.E.R. and Warband-style characters and first-person arms.
 
-It deliberately does not do: drawing and skinning on the GPU (rendering, [07](07-rendering.md)), the physics of ragdolls (physics, [08](08-physics.md), with the animation side tracked in #130), deciding which attack to play (gameplay, [16](16-gameplay.md)), or 2D skeletal animation (out of scope, [SRS](../SRS.md) §9).
+It deliberately does not do: drawing and skinning on the GPU (rendering, [07](07-rendering.md)), the physics of ragdolls (physics, [08](08-physics.md), with the animation side built in #130), deciding which attack to play (gameplay, [16](16-gameplay.md)), or 2D skeletal animation (out of scope, [SRS](../SRS.md) §9).
 
 ## 2. Responsibilities
 
@@ -90,7 +90,7 @@ Content errors carry file and line, for graphs, events, sockets, ragdolls and vi
 | REQ-ANIM-08 | First-person arms shall play data clips and a held weapon, hidden in third person. | Must | Done | test: TheViewmodelIsHiddenInThirdPersonAndFromTheEditorsFreeCamera |
 | REQ-ANIM-09 | Distant animators shall update less often without changing nearby results. | Should | Done | test: DistantAnimatorsSampleLessOftenButStepEveryTick |
 | REQ-ANIM-10 | Animators shall save and load with state and time intact. | Must | Done | test: StateAndTimeSurviveSaveAndLoad |
-| REQ-ANIM-11 | A ragdoll shall take over a character on death and blend back to the graph. | Must | In progress | #130 (#246, #247, #248, #249) |
+| REQ-ANIM-11 | A ragdoll shall take over a character on death and blend back to the graph. | Must | Done | test: KnockedDownFaceUp_ItGetsUpWithGetupBackIntoIdle, test: TheCasualtyIsKilled_FallsAndStaysDown |
 | REQ-ANIM-12 | Root motion shall move a character by its clip so feet do not slide. | Must | Not started | #357 |
 | REQ-ANIM-13 | Layers shall blend additively, with sync markers and per-transition fades. | Should | Not started | #358 |
 | REQ-ANIM-14 | A graph shall support directional attack and block sets and animation-driven combat states. | Should | Not started | #359 |
@@ -113,7 +113,7 @@ Milestone 7, animation (epic #356):
 - #363 4p-7 Morph targets and facial animation (P3)
 - #364 4p-8 Sprite animation: lighting, `anim_debug` for sprites, and state-driven clips (P3)
 
-Milestone 4k, joints and ragdolls, owned by another thread: epic #130, with #246 #247 #248 #249 open.
+Milestone 4k, joints and ragdolls (epic #130), is done.
 
 Related: #327 4o-3 Raise footstep and surface sounds from animation events (P1), in the audio sheet ([11](11-audio.md)).
 
