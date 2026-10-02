@@ -91,7 +91,7 @@ internal sealed class AimIkSystem : ISystem
     public AimIkSystem(World world)
     {
         _world = world;
-        _aiming = world.Query<AimIk>();
+        _aiming = world.Query<AimIk>().WithoutAnyTags(Tags.Get<Ragdolled>());   // a corpse does not aim (issue #246)
     }
 
     public void Run(in SystemContext ctx)

@@ -130,7 +130,7 @@ internal sealed class FootIkSystem : ISystem
     public FootIkSystem(World world)
     {
         _world = world;
-        _feet = world.Query<FootIk>();
+        _feet = world.Query<FootIk>().WithoutAnyTags(Tags.Get<Ragdolled>());   // a ragdoll's feet are physics' (issue #246)
         world.Resources.TryGet(out _physics);   // a world may have no physics at all
     }
 

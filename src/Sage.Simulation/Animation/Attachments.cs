@@ -70,6 +70,11 @@ public struct BoneAttachment : IComponent
     public Vector3 Offset;
     [Property(Unit = "deg", Tooltip = "How this is turned in the socket's space: pitch, yaw, roll")]
     public Vector3 Angles;
+    // Let go when its owner goes ragdoll (issue #246): a weapon in a hand falls with a body of its own. A
+    // new field with a default: saves from before it load holding on.
+    [Property(Tooltip = "Let go, with a dynamic body of its own, when the owner goes ragdoll (a weapon in a hand)")]
+    [Experimental(RagdollApi.Experimental, UrlFormat = RagdollApi.Url)]
+    public bool Drop;
 
     // Resolved on the first tick the target has a pose (and again if its skeleton changes): the joint,
     // or -1 when the socket or bone could not be found (said once), and the socket's offset times ours.
@@ -93,6 +98,9 @@ public sealed class BoneAttachmentPart : IPrefabPart
     public Vector3 Offset;
     [Property(Unit = "deg", Tooltip = "How this is turned in the socket's space: pitch, yaw, roll")]
     public Vector3 Angles;
+    [Property(Tooltip = "Let go, with a dynamic body of its own, when the owner goes ragdoll (a weapon in a hand)")]
+    [Experimental(RagdollApi.Experimental, UrlFormat = RagdollApi.Url)]
+    public bool Drop;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -101,7 +109,7 @@ public sealed class BoneAttachmentPart : IPrefabPart
             ctx.Error("names neither a socket nor a bone to follow");
             return;
         }
-        ctx.World.Add(ctx.Entity, new BoneAttachment { Socket = Socket, Bone = Bone, Offset = Offset, Angles = Angles });
+        ctx.World.Add(ctx.Entity, new BoneAttachment { Socket = Socket, Bone = Bone, Offset = Offset, Angles = Angles, Drop = Drop });
     }
 }
 
