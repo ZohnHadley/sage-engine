@@ -32,6 +32,7 @@ Out of scope here: the design of any particular game, art and audio content, and
 | Record | A typed JSON document loaded through the VFS, such as an `item`, `prefab` or `anim_graph`. |
 | Plugin | A unit of registration with a stable string id (`[Plugin]`, `IGameModule`). |
 | Reference family | Daggerfall, Half-Life, Morrowind and S.T.A.L.K.E.R.: the first target games. |
+| Rendering targets | The reference family plus Lugaru (third-person skeletal combat) and Ace of Spades in its Voxlap version (destructible voxel worlds), named by the owner on 2026-10-02. Rendering is not only billboard sprites. |
 | Headless | Running without a window or GPU: tests, `sage validate`, a dedicated server. |
 | REQ-XXX-NN | A numbered requirement in a subsystem sheet. |
 
@@ -78,7 +79,7 @@ developer tools.
 | Operating systems | Windows x64 and Linux x64 for development and CI. The first release's shipping platforms are an open decision (§10). |
 | Graphics | OpenGL 3.x class GPUs through DesktopGL. Shaders are HLSL `.fx` compiled by `mgfxc` (Wine on Linux). |
 | Input | Keyboard, mouse and XInput-style gamepads through MonoGame. |
-| Audio | MonoGame `SoundEffect` (WAV today; OGG streaming is planned, #279 range, see the audio sheet). |
+| Audio | MonoGame `SoundEffect` (WAV today; OGG streaming is planned in #326). |
 
 ### 2.4 Constraints
 
@@ -104,7 +105,8 @@ developer tools.
 | G2. Games need no engine edits. | The phase-5 samples (HL1-lite, Morrowind-lite, STALKER-lite) run from the stock host with small game code. |
 | G3. Designers work without C# or JSON. | The editor exit games (10a, 10b) build and play a level through the editor only. |
 | G4. Modders can extend and override safely. | The 4j exit game and the phase-9 exit (data and code mods, packed) report conflicts and keep saves loading. |
-| G5. Developers ship outside the repo. | R1's exit: install templates from a feed, create, run and package a game on a clean machine. |
+| G5. Rendering covers the targets' looks. | Morrowind-style lit, normal-mapped meshes with water and long draw distances (4n), Lugaru-style skinned fighters (4n, 4p, 4k) and an Ace of Spades-style voxel island (4s) each render at 60 fps on the reference hardware. |
+| G6. Developers ship outside the repo. | R1's exit: install templates from a feed, create, run and package a game on a clean machine. |
 
 ## 4. Platform and technology requirements
 
@@ -125,7 +127,7 @@ developer's machine, and the zero-allocation rules are the hard requirements.
 | ID | Requirement | Priority | Status |
 |---|---|---|---|
 | REQ-PERF-01 | The simulation shall run at a fixed tick, 60 Hz by default (`sim_tickrate`), with interpolated rendering and a catch-up cap (`sim_maxframetime`). | Must | Done |
-| REQ-PERF-02 | A steady-state tick of the core systems (ECS, logic, animation, combat, AI think) shall allocate nothing on the managed heap. | Must | Done for the systems with Measurements tests; physics backend allocates about 40 B a tick (#272 range, 4l) |
+| REQ-PERF-02 | A steady-state tick of the core systems (ECS, logic, animation, combat, AI think) shall allocate nothing on the managed heap. | Must | Done for the systems with Measurements tests; the physics backend allocates about 40 B a tick (#273) |
 | REQ-PERF-03 | A frame shall allocate nothing in steady state with the developer overlay closed. | Must | Partial (dev tools allocate; 10b) |
 | REQ-PERF-04 | The Sandbox shall hold 60 frames per second with 2,000 entities, and a tick shall use under a quarter of its budget at that size. | Must | Done for the tick (scale review 2026-09-24: 0.76 ms of 16.67 ms) |
 | REQ-PERF-05 | Crossing a streaming sector edge shall not stall a frame beyond the frame budget. | Must | Partial (synchronous generation; 4m) |
@@ -160,6 +162,7 @@ summary and the traceability index.
 | 18 | Editor | EDIT | The editing model, commands and undo, placement, inspector, wiring, play-in-editor, brushes, browsers. | [18](subsystems/18-editor.md) |
 | 19 | Modding | MOD | Mod manifests, load order, record patching, conflict reports, packed mods, code mods. | [19](subsystems/19-modding.md) |
 | 20 | Tooling and release | TOOL | The `sage` CLI, SDK and templates, analyzers, CI, packaging, versioning and release. | [20](subsystems/20-tooling-and-release.md) |
+| 21 | Voxel worlds | VOX | Chunked voxel volumes that are meshed, drawn, edited at runtime, collided, streamed and saved. | [21](subsystems/21-voxels.md) |
 
 ## 7. Quality attributes
 
@@ -220,6 +223,7 @@ These are the owner's (REDESIGN §6). The plan works with any answer; each has a
 | 4m | World, logic and saves | 04, 05, 14, 15 |
 | R1 | Tooling and the first release | 02, 06, 20 |
 | 4n | Rendering and assets | 06, 07 |
+| 4s | Voxel worlds | 21, 07, 08 |
 | 4o | Audio and input | 11, 12 |
 | 4q | Game UI and menus | 13 |
 | 4p | Animation | 10 |

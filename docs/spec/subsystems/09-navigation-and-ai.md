@@ -1,0 +1,138 @@
+# 09 · Navigation and AI
+
+> Status: partly built. Sight-only HL1-style AI with schedules, local-grid A*, casting, NPC routines and off-screen simulation work and are tested. Hearing, a navmesh, behaviour trees and squads are planned. Owning assemblies: `Sage.Gameplay` (with a seam in `Sage.Simulation`). Design docs: [16 Gameplay framework](../../design/16-gameplay-framework.md) (§3.4 and the AI status sections), [14 World streaming](../../design/14-world-streaming.md).
+
+## 1. Purpose and scope
+
+This subsystem makes non-player characters act. A creature perceives (sight today), picks a schedule of tasks from the conditions it perceives, walks to where it needs to be, fights, and keeps a daily routine. When the player is elsewhere, a small off-screen simulation keeps NPC positions and fights moving so the world does not freeze.
+
+Everything is data first: `ai_profile`, `ai_schedule` and `routine` records say what a creature senses and does. C# is only for new tasks, conditions and selectors, which are registered by name.
+
+It deliberately does not do: combat rules, damage, abilities (the gameplay sheet, [16](16-gameplay.md)), the character controller that actually moves a pawn ([08](08-physics.md)), or choosing a faction's opinion of the player beyond reading it (also [16](16-gameplay.md)). Animation of the walk is the animation sheet's ([10](10-animation.md)).
+
+## 2. Responsibilities
+
+- Perceive the world at a staggered think rate and set a condition bitmask on each agent.
+- Choose a schedule from the conditions through a selector (`default`, `rules`, or a game's own).
+- Run schedule tasks and write the result into `PawnIntent`, never into physics directly.
+- Find a walkable route round obstacles (local grid A*), within a per-tick budget.
+- Remember a target that went out of sight and walk to where it was last seen.
+- Ask the faction rules who is an enemy, and take whoever hurt it as a target.
+- Keep NPC routines by the hour: pick a schedule and an anchor place from the clock.
+- Simulate agents whose cell is dormant: walk toward routine anchors, settle fights, and spawn them back when their cell is live.
+
+Not responsible for: building the navigation mesh from level geometry (planned, not started), hearing, squad tactics, crime and witnesses (planned in the gameplay sheet), or editing AI (the editor sheet, [18](18-editor.md)).
+
+## 3. Placement and dependencies
+
+All code lives in `Sage.Gameplay` under `Navigation/`, `AI/` and `World/Offscreen.cs`. It references `Sage.Simulation` (records, ECS, content, vocabularies) and `Sage.Physics3D` (raycasts, the `hitbox`-free solid layers, the character's `PawnIntent`). It never references MonoGame or a kit. The off-screen system stands on `ICellHandoff` in `src/Sage.Simulation/Content/CellHandoff.cs`, which the cell dormancy code calls.
+
+Plugin ids: `sage.gameplay.ai` (declared by `AIModule`, which requires `sage.gameplay.character`) owns the AI and off-screen declarations; `sage.gameplay.factions` owns factions. Tasks are added by a game through the `AITaskRegistry` that `AIModule` provides in `Start`. Conditions, schedule selectors and off-screen fight rules are open vocabularies declared with attributes.
+
+## 4. Interfaces
+
+| Type | Role | File |
+|---|---|---|
+| `Navigation` | World resource: plans routes, holds budgets and statistics | `src/Sage.Gameplay/Navigation/Navigation.cs` |
+| `NavGrid` | Window of up to 96 by 96 cells, stamped from colliders and steep ground; A* over eight neighbours | same |
+| `NavPath` | Up to six corners an agent is walking, with replan timers | same |
+| `IAITask`, `AITaskContext` | A task is `Start`/`Run` returning `AITaskStatus`; the context exposes the agent's components | `src/Sage.Gameplay/AI/AI.cs` |
+| `AITaskRegistry` | Tasks by name: `Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`, `CastSpell`, `MoveToAnchor`, `FaceAnchor`, `StayAt` | same |
+| `IAICondition`, `AIConditions` | Sensors that set a condition bit; `[AICondition("name")]` declares one | `src/Sage.Gameplay/AI/AIVocabulary.cs` |
+| `IAIScheduleSelector` | Picks a schedule from `AIScheduleChoice`; engine entries `default` and `rules` | same |
+| `Routines` | Static helpers: which routine entry holds now, anchor lookup, `RoutineTarget` | `src/Sage.Gameplay/AI/Routines.cs` |
+| `IOffscreenFight` | How an off-screen fight round is settled; engine entry `strength` | `src/Sage.Gameplay/World/Offscreen.cs` |
+| `Factions` | `Between`, `AreHostile` and the player's stance, read by AI, combat and abilities | `src/Sage.Gameplay/Factions/Factions.cs` |
+
+Console and cvars: `ai_debug` (draws sight and chase targets, needs `r_debugdraw 1`), `nav_enabled`, `nav_debug`, `nav_cellsize`, `nav_maxnodes`, `nav_plans`, command `nav_stats`, cvar `offscreen_budget`, command `offscreen_status`, and the faction commands `rep` and `rep_set`.
+
+Events: the AI reads `Damaged` (to turn on an attacker), `TimePassed` (to catch routines up after a time skip) and `Origin.Rebased` (to shift stored paths). It raises `OffscreenDied` when an off-screen agent dies. Entity inputs and outputs: none of its own; AI conditions are also usable from the shared condition language through the vocabulary.
+
+## 5. Data model
+
+| Declaration | Kind | Holds |
+|---|---|---|
+| `ai_profile` | Record | `SightRange`, `SightAngleDegrees`, `MemorySeconds`, `MeleeRange`, `ThinkRate`, `TurnSpeedDegrees`, `Selector`, `Rules`, `Routine` |
+| `ai_schedule` | Record | `Tasks` (each an object such as `{ "task": "Wait", "seconds": 1.5 }`) and `Interrupts` (condition names) |
+| `routine` | Record | `entries`: hour window, optional `days`, `schedule`, `at` anchor, optional `scene` |
+| `faction` | Record | Relations to other factions, a default stance, the player's `Standing` and thresholds, `KillCost` |
+| `sage:ai_state` | Component | Profile, schedule, task index, target (saved); conditions, path, last seen (transient) |
+| `sage:routine` | Component and `routine` prefab part | The entity's own routine, which wins over its profile's |
+| `sage:offscreen` | Component and `offscreen` prefab part | `speed`, `strength`, `corpse`, `fight`; opts an NPC into simulation |
+| `sage:faction` | Component | Which faction an entity belongs to |
+| `offscreen` | Saved resource | The table of off-screen agents and the game minute reached |
+| `reputation` | Saved resource | The player's standing with each faction |
+
+Engine conditions (the `AICondition` bits): `SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`, `CanCastAtEnemy`, `CanMelee`, `SpellComingBack`, `Casting`, `RememberEnemy` and `in_routine`.
+
+## 6. Lifecycle and data flow
+
+`sage.ai.offscreen` runs in `Phase.Commands` before `sage.ai.think`; `sage.ai.think` runs in `Phase.Commands` after `sage.character.player_control`, so `PawnIntent` is final after Commands. `sage.ai.debug` runs in `Phase.Late`. All are on the fixed tick.
+
+A think is staggered per entity at the profile's `ThinkRate` (default 6 Hz). It perceives, rebuilds conditions, picks a schedule when the current one ends or an interrupt condition appears, then runs the current task every tick. Target and path state are rebuilt after a load; the schedule and task index are saved.
+
+When a cell goes dormant, `ICellHandoff` offers its roots to the off-screen system, which takes living NPCs that carry the `offscreen` part into the saved table. A step is one game minute. When the agent's cell is live again it is spawned back from its save entries. A time skip runs every minute it covers at once.
+
+Registration: tasks are open until the first world is created and are checked then; conditions, selectors and fight rules are sealed when content loads. Routines and off-screen simulation are `[Experimental("SAGE0129")]`.
+
+## 7. Threading, memory and performance
+
+Everything runs on the simulation thread. The grid, open set and corner buffer are reused; a search allocates nothing. Budgets are explicit: a search stops after `nav_maxnodes` cells (4096), at most `nav_plans` plans run a tick (4), a failed search backs off to one try every 2.5 s, and "is the line clear" is cached for 0.2 s. Ground steepness is sampled at terrain resolution, not grid resolution.
+
+Off-screen catch-up is limited to `offscreen_budget` agent-steps a tick. An off-screen step allocates nothing (test: FiveHundredAgentsStepWithoutAllocating). The AI think and navigation are written to the same rule; no dedicated measurement test exists for them yet (see #273 range for the physics-side numbers).
+
+## 8. Errors and diagnostics
+
+Content mistakes are load errors with file, line and column: an unknown interrupt, condition, selector or routine weekday, a task given an argument it does not take, and the old `"Wait:1.5"` string form, which says what to write. Unknown task names are reported when the first world is created. A missing selector or off-screen fight rule logs once on the AI category and falls back to the default. `sage validate` runs the same checks headlessly.
+
+Debug tools: `ai_debug`, `nav_debug`, `nav_stats`, `offscreen_status`. `nav_enabled 0` is the A/B switch that returns creatures to walking straight at their target.
+
+## 9. Requirements
+
+| ID | Requirement (shall ...) | Priority | Status | Evidence or issue |
+|---|---|---|---|---|
+| REQ-AI-01 | An agent shall perceive an enemy by a sight cone with line of sight blocked by scenery. | Must | Done | test: ItSeesThePlayerAndChasesUntilItIsInRange, test: AWallBreaksTheLineOfSight |
+| REQ-AI-02 | An agent shall act through data schedules of named tasks with interrupt conditions, and write only `PawnIntent`. | Must | Done | test: NothingWritesPawnIntentAfterTheCommandsPhase |
+| REQ-AI-03 | An agent shall remember an unseen target and walk to where it was last seen. | Must | Done | test: ACreatureRemembersWhatItCanNoLongerSeeAndThenForgets |
+| REQ-AI-04 | An agent shall find a route round obstacles within a bounded per-tick cost. | Must | Done | test: PlanningIsBudgetedPerTick, test: ACreatureWalksRoundAWallToReachThePlayer |
+| REQ-AI-05 | Paths shall stay correct when the world origin is rebased. | Must | Done | test: APathMovesWithTheWorld |
+| REQ-AI-06 | An agent shall choose enemies through faction rules and turn on whoever hurt it. | Must | Done | `src/Sage.Gameplay/Factions/Factions.cs` |
+| REQ-AI-07 | NPCs shall follow a data routine by the hour, resuming it after a fight and after a save. | Must | Done | test: AFightInterruptsTheRoutineAndHeGoesBackToIt, test: SavedMidWalkHeArrivesAfterALoad |
+| REQ-AI-08 | Agents in dormant cells shall keep their routines and settle fights deterministically, then reappear. | Should | Done | test: TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime |
+| REQ-AI-09 | Games shall add tasks, conditions, selectors and off-screen fight rules without engine edits. | Must | Done | `AITaskRegistry`, `[AICondition]` in `src/Sage.Gameplay/AI/AIVocabulary.cs` |
+| REQ-AI-10 | Agents shall hear noise and be alerted by it. | Must | Not started | #386 |
+| REQ-AI-11 | Routes shall be planned on a navmesh built from brush floors and terrain, for interiors and long distances. | Must | Not started | #264 |
+| REQ-AI-12 | Paths shall handle doors, dynamic obstacles and off-mesh links. | Should | Not started | #265 |
+| REQ-AI-13 | A game shall be able to select behaviour with behaviour trees or utility scoring beside schedules. | Should | Not started | #387 |
+| REQ-AI-14 | Hostile groups shall move in combat (strafe, retreat, cover) and as squads. | Should | Not started | #388 |
+| REQ-AI-15 | Agents shall avoid each other and weigh terrain costs and area flags. | Could | Not started | #271 |
+| REQ-AI-16 | Off-screen simulation shall path round walls, cover cells never visited and handle live NPCs with far anchors. | Should | Partial: straight-line walking only | #284 |
+| REQ-AI-17 | Crime, witnesses, bounty and faction ranks shall be expressible as data. | Should | Not started | #389 |
+
+## 10. Open work
+
+Milestone 1, physics, movement and navigation (epic #258):
+
+- #264 4l-6 Navmesh built from brush floors and terrain, replacing the per-request local grid at scale (P1)
+- #265 4l-7 Dynamic obstacles, doors as path links, and off-mesh links (P1)
+- #271 4l-13 Crowd avoidance, terrain costs and area flags (P2)
+
+Milestone 2, world, logic and saves (epic #274):
+
+- #284 4m-10 Off-screen simulation: pathing, unvisited cells, live NPCs with far anchors (P2)
+
+Milestone 10, AI, combat and narrative depth (epic #385):
+
+- #386 4r-1 Hearing, noise and alerting in AI perception (P1)
+- #387 4r-2 Behaviour trees / utility selection beside schedules (P2)
+- #388 4r-3 Combat movement and squad behaviour (P2)
+- #389 4r-4 Crime, witnesses, bounty and faction ranks (P2)
+
+Related, in the editor sheet: #369 10b-4 Behaviour-tree / AI graph view (P2).
+
+## 11. References
+
+- [Design 16](../../design/16-gameplay-framework.md): §3.4, status sections for AI casting, factions, navigation, NPC routines and off-screen simulation.
+- [Design 14](../../design/14-world-streaming.md): cells, dormancy and the handoff seam.
+- [REDESIGN](../../REDESIGN.md) §5, the roadmap; [MAKING_A_GAME](../../MAKING_A_GAME.md) §10b for the experimental ids.
+- Siblings: [Physics](08-physics.md), [Animation](10-animation.md), [Gameplay](16-gameplay.md), [World and streaming](14-world-and-streaming.md), [Editor](18-editor.md); parent [SRS](../SRS.md).
