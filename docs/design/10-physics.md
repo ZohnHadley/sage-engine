@@ -18,7 +18,7 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
 - **Tick order** (03 phases):
   1. `PrePhysics`: kinematic bodies, teleports and the character controller push `Transform` → Bepu.
   2. `Physics`: `Simulation.Timestep(tickDt)` with Bepu's thread dispatcher.
-  3. `PostPhysics`: dynamic bodies → `Transform`; contact/trigger buffers → the entity-I/O outputs `OnStartTouch`/`OnEndTouch` (04 §3.4). *Design-only:* `TriggerEntered`/`TriggerExited`/`Collided` as **game events** — no such type exists in the code (checked 2026-09-25); a system reads the spans instead.
+  3. `PostPhysics`: dynamic bodies → `Transform`; contact/trigger buffers → the entity-I/O outputs `OnStartTouch`/`OnEndTouch` (04 §3.4) and the **game events** `TriggerEntered`/`TriggerExited`/`Collided`/`CollisionEnded` (04 §3.2, issue #269; see "As built (physics events)" below).
 - **Coordinates:** Bepu runs in origin space (the same as `GlobalTransform`). When the origin sector changes (14), all bodies are shifted once.
 - **Layers:** a 32-bit layer mask per collider plus a collision matrix record (`physics_layers`). Filtered in Bepu's narrow-phase callbacks.
 - **Contact callbacks run on Bepu worker threads.** They write only to per-thread pooled buffers, which are merged on the main thread in `PostPhysics` (no world access from callbacks).
@@ -63,6 +63,13 @@ Phase 4k's `joint` part (#130, SAGE0134): joints in data, so a level designer ha
 - **A dynamic body saves its velocity:** the physics sync gives every dynamic body a **`BodyMotion`** component (`sage:body_motion`: `Linear`, `Angular`), `sage.physics.write_back` keeps it current each step, and a body made from a load starts with it (not in an edit world). A save in the middle of a swing, loaded into a fresh app, swings on as the uninterrupted one did (test: ASaveMidSwingResumesTheSwingInAFreshApp). A save from before this has no `BodyMotion`: its bodies start at rest, and the golden saves still load.
 - A joint's entity should be a root (a dynamic body's pose is written to its local transform); the Sandbox's gantry by the start hangs a sign on a hinge and a lamp on a ball-joint link and a rope, in data.
 
+### As built (physics events, issue #269, 2026-10-02)
+Phase 4l's 4l-11: physics facts a system can read in code — an impact sound, fall damage, a footstep — without going through entity I/O.
+- **Four game events** (`Physics/PhysicsEvents.cs`, 04 §3.2): **`TriggerEntered(Trigger, Other)`**, **`TriggerExited(Trigger, Other)`**, **`Collided(A, B, Point, Normal, Impulse, Speed)`** and **`CollisionEnded(A, B)`**, both of the latter with `OtherThan(self)`. `sage.physics.events` (PostPhysics, after `sage.physics.write_back`) sends them on the world's bus (Fixed schedule) from the step's buffers, so a reader (`world.Events.Reader<Collided>(this)`) sees each once, whenever it runs. The spans (`TriggerEnter`/`TriggerExit`/`ContactBegin`/`ContactEnd`) and the `OnStartTouch`/`OnEndTouch` outputs are unchanged. A crate dropped through a trigger onto the floor enters and leaves it and lands once on the bus, and its lifting off ends the contact (test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse). Contacts stay opt-in (`Collider.ReportContacts`).
+- **The impulse** is an estimate made when the contact begins: the closing speed along the normal at the contact point (linear and angular velocity of each side) times the pair's effective mass, `1 / (1/mA + 1/mB)`, a static or kinematic side counting as immovable (0 inverse mass; kinematic against static is 0). It is not the solver's accumulated impulse. The solver stops a fast body inside the speculative margin, a step before the contact touches, so a pair that asked for contacts is followed while it approaches and the hardest closing speed it had is the one reported (`PhysicsCallbackData._approach`): a 2 kg crate dropped 3.5 m lands at about 8 m/s with twice that impulse (the test above), and two 1 kg balls meeting at 6 m/s report half a kilogram's worth (test: TheImpulseOfACollisionBetweenTwoBodiesUsesTheirEffectiveMass). `ContactEvent` carries the same `Impulse` and `Speed`.
+- **`RaycastAll`** returns every collider along a ray, nearest first, one hit per collider (a mesh's nearest triangle), truncated to the nearest when the buffer is short, with the same mask, trigger and `ignore` rules as `Raycast` (test: RaycastAllReportsEveryHitNearestFirst). **`OverlapSphere(center, radius, …)`** is the narrow-phase `Overlap` (#259) with a sphere: what the sphere touches, deepest first, not what its bounds do (test: OverlapSphereReportsWhatTheSphereTouchesNotItsBounds). Both are in `PhysicsSpace.Queries.cs`.
+- **Nothing per tick:** the events are structs in queues that grow to their high-water mark, the approach table and the ray hit list are reused; a crate dropped through a trigger every second, read by a system, with `RaycastAll` and `OverlapSphere` asked each tick, adds no allocation over a world with one loose body (test: PhysicsEventsAndTheNewQueriesAllocateNothingPerTick). A sphere of a new radius caches a new Bepu shape, as any `Overlap` shape does.
+
 ### As built (water and swimming, issue #262, 2026-10-02)
 Phase 4l's fourth step (#258): water for Morrowind's lakes, Daggerfall's dungeons and S.T.A.L.K.E.R.'s swamps.
 - **`"water": { "size": [10, 4, 10], "drag": 2, "buoyancy": 2, "current": [0, 0, 0] }`** is a prefab part (`WaterPart`, owned by `sage.physics3d`, declared in `Sage.Simulation/Physics/Water.cs` beside `body`) that adds a **`WaterVolume`** (`sage:water_volume`: `Size`, `Drag`, `Buoyancy`, `Current`): an axis-aligned box centred on the entity, its top face the surface; rotation is ignored. It has no collider, so it never blocks, never answers a query and costs the space nothing; the systems that use it scan the volumes (`WaterVolumes`, internal to `Sage.Physics3D`), which a level has a handful of. A part without three positive extents is a load error.
@@ -90,17 +97,15 @@ waking one deallocates it.
 - **Queries:** `Raycast` (nearest hit), `Sweep` (box/sphere/capsule, what the character controller will use) and `OverlapBox`. All take a `LayerMask`.
 - **Determinism:** `Simulation.Deterministic = true`, so a run repeats on the same machine. Bepu still has no state rollback (§2).
 - **Deviations:**
-  - **Triggers are lists, not events**, and still are now that the event bus exists (R13).
-    `PhysicsSpace.TriggerEnter/TriggerExit` are spans a system reads in `PostPhysics`, and
-    `TriggerOutputSystem` turns them into the `OnStartTouch`/`OnEndTouch` outputs a mapper wires (F17).
-    `TriggerEntered`/`TriggerExited` as event structs were the plan and were never built — nothing in
-    the codebase declares them (checked 2026-09-25). Wiring in data turned out to be what the levels
-    wanted; a system that needs the signal in code reads the span.
+  - **Triggers were lists, not events**, until issue #269. `PhysicsSpace.TriggerEnter/TriggerExit`
+    are spans a system reads in `PostPhysics`, and `TriggerOutputSystem` turns them into the
+    `OnStartTouch`/`OnEndTouch` outputs a mapper wires (F17). Both stay; the same facts are now also
+    game events on the bus (see "As built (physics events)").
   - `OverlapBox` is **broad phase only**: it can report entities whose shapes don't quite touch.
   - **`phys_debug` draws it all** (06 §3.2, needs `r_debugdraw 1`): every collider in its real place — cyan for solid, magenta for triggers — plus each character's swept capsule, green when it is grounded and orange when it is not, and an arrow along the ground normal that turns red on a slope too steep to stand on. A capsule sunk into the ground (review #44) is obvious at a glance in it.
   - **Queries see solid things.** A trigger has no surface, so it stops neither a ray, a sweep nor a sword; `includeTriggers: true` asks for them anyway. Before F20 a trigger volume blocked line of sight and swallowed a swing (review #53).
   - Physics entities are assumed to be **roots**: the sync uses the local transform, so a parented collider would be placed wrong.
-  - Dynamic-vs-kinematic teleport smoothing is not built. Contacts arrived with the facade (#30) as opt-in lists (`ContactBegin`/`ContactEnd`), not as `Collided` game events.
+  - Dynamic-vs-kinematic teleport smoothing is not built. Contacts arrived with the facade (#30) as opt-in lists (`ContactBegin`/`ContactEnd`); since #269 they are also `Collided`/`CollisionEnded` game events, with an impulse.
   - Stepping allocates ~40 bytes per tick inside Bepu's own profiler; everything else in the frame allocates nothing (TODO #41).
 ### The character controller (F7, 2026-09-22)
 - **Code:** `src/Sage.Simulation/Physics/Character.cs` — the `movement_profile` record, the `CharacterController` component and `AddCharacter`, which gameplay reads without a physics backend (#30); `src/Sage.Physics3D/Character/CharacterController.cs` — `CharacterMovementSystem` (PrePhysics, before the bodies sync), plus the first-person camera rig. It is simulation code, so it runs headless and a server would run the same paths.
@@ -182,7 +187,7 @@ public struct CharacterController : IComponent
 
 public static void AddCharacter(this World world, Entity entity, byte layer, RecordId profile = default);
 ```
-*Still design, not built:* `RaycastAll` and `[Transient]` field metadata (09). The narrow-phase `Overlap` is built (issue #259): the broad phase finds candidates by bounds, then Bepu's collision batcher runs the step's own contact tests, one pair per candidate, and the deepest contact of each is reported with its depth and the way out, deepest first (test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut).
+*Still design, not built:* `[Transient]` field metadata (09). `RaycastAll` and `OverlapSphere` are built (issue #269, see "As built (physics events)"). The narrow-phase `Overlap` is built (issue #259): the broad phase finds candidates by bounds, then Bepu's collision batcher runs the step's own contact tests, one pair per candidate, and the deepest contact of each is reported with its depth and the way out, deepest first (test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut).
 
 ## 10. Mapping from today's code
 The terrain's `HeightAt` (14) stopped being the only "collision" once F6 landed: it stays as a cheap ground query, while real collision goes through the sector's static mesh.
