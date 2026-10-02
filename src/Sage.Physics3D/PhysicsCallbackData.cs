@@ -72,6 +72,7 @@ internal sealed class PhysicsCallbackData
         public float Friction;
         public float Restitution;
         public int Group;       // bodies sharing a nonzero group never collide (issue #242)
+        public Entity[]? Parts; // a compound's entity per child, the owner first (issue #268); null for one shape
         public RecordId Surface;   // what it is made of (issue #270)
         public SurfaceMap? Map;    // per face or per triangle, when they differ
     }
@@ -123,6 +124,23 @@ internal sealed class PhysicsCallbackData
         _bodies[bodyHandle] = entry;
     }
 
+    // A body's or a static's flags after SetShape (issue #268): its entity, material and group stay.
+    public void Reconfigure(int handle, bool isStatic, byte layer, bool trigger, bool contacts)
+    {
+        var entries = isStatic ? _statics : _bodies;
+        if ((uint)handle >= (uint)entries.Length || !entries[handle].Used) return;
+        entries[handle].Layer = layer;
+        entries[handle].Trigger = trigger;
+        entries[handle].Contacts = contacts;
+    }
+
+    // Which entity each child of a body's compound is (PhysicsSpace.SetCompound), or null when it has one shape.
+    public void SetParts(int handle, Entity[]? parts)
+    {
+        if ((uint)handle < (uint)_bodies.Length && _bodies[handle].Used) _bodies[handle].Parts = parts;
+    }
+
+    public Entity[]? PartsOf(int handle) => (uint)handle < (uint)_bodies.Length ? _bodies[handle].Parts : null;
     // ---- Surfaces (issue #270; main thread) ----
 
     public void SetSurface(int handle, bool isStatic, RecordId surface, SurfaceMap? map, float? friction, float? restitution)
@@ -235,6 +253,13 @@ internal sealed class PhysicsCallbackData
 
     public Entity EntityOf(CollidableReference collidable) => EntryOf(collidable).Entity;
 
+    // The entity a ray hit: a compound's child is its part's entity (issue #268), anything else its own.
+    public Entity EntityOf(CollidableReference collidable, int childIndex)
+    {
+        ref var entry = ref EntryOf(collidable);
+        return entry.Parts is { } parts && (uint)childIndex < (uint)parts.Length ? parts[childIndex] : entry.Entity;
+    }
+
     // Query filter: is this collidable on a layer the query asked for?
     // Queries ask about *solid* things by default: a trigger has no surface to stop a ray, a sweep or
     // a sword, and something that wants overlaps reads the trigger lists (10 §3). Before this, a
@@ -247,9 +272,10 @@ internal sealed class PhysicsCallbackData
         if (!ignore.IsNull && entry.Entity == ignore) return false;
 #pragma warning disable SAGE0127   // query-only layers (issue #137): the backend is what honours them
         if (!Layers.Sees(mask, entry.Layer)) return false;
-        // A query-only collider (a hitbox) that is a child of the one asking is its own: a shot from the
-        // eye starts inside the shooter's head.
-        if (!ignore.IsNull && Layers.QueryOnly.Has(entry.Layer) && entry.Entity.Parent == ignore) return false;
+        // A collider on a child of the one asking is its own: a shot from the eye starts inside the
+        // shooter's head (a query-only hitbox, issue #137), and a swing passes through the shield on the
+        // swinger's arm (any parented collider, issue #268).
+        if (!ignore.IsNull && !entry.Entity.IsNull && entry.Entity.Parent == ignore) return false;
 #pragma warning restore SAGE0127
         return includeTriggers || !entry.Trigger;
     }

@@ -227,6 +227,18 @@ public interface IPhysicsWorld
     [System.Diagnostics.CodeAnalysis.Experimental(PhysicsJointsApi.Experimental, UrlFormat = PhysicsJointsApi.Url)]
     ReadOnlySpan<JointBroken> JointBroken { get; }
 
+    // ---- Shapes in place (issue #268) -----------------------------------------------------------
+    //
+    // A collider on a child entity is handled by the physics plugin's own systems: it follows its
+    // parent, as part of the parent's compound when the parent is a dynamic body (docs/design/10).
+
+    // Gives a body or a static a new shape where it is: the same handle, entity, group and material,
+    // and the collider's layer, trigger and contacts flags. `pose` is the entity's, so a new Center lands
+    // where it should; a dynamic body keeps its mass. A shape built for that body alone (a brush's hull,
+    // a compound, an earlier SetShape) is released, so changing it every tick leaks nothing. A crouching
+    // character's capsule shrinks this way. Mesh colliders are the engine's (AddMesh) and are refused.
+    void SetShape(in PhysicsBody body, in Collider collider, in Pose pose);
+
     // ---- Debug draw (10 §9) ---------------------------------------------------------------------
 
     // Draws what the backend actually simulates — shapes where it has them, bounds for brush hulls,

@@ -22,4 +22,5 @@ Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.Collider shape, in Sage.S
 Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.PhysicsBody body, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false) -> int
 Sage.Physics3D.PhysicsSpace.MakeKinematic(in Sage.Simulation.PhysicsBody body) -> Sage.Simulation.PhysicsBody
 Sage.Physics3D.PhysicsSpace.MoveKinematic(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 position, System.Numerics.Vector3 velocity) -> void
+Sage.Physics3D.PhysicsSpace.SetShape(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Collider collider, in Sage.Simulation.Pose pose) -> void
 Sage.Physics3D.PhysicsSpace.SurfaceOf(in Sage.Simulation.PhysicsBody body) -> Sage.Core.RecordId

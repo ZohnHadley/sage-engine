@@ -23,35 +23,64 @@ internal sealed class PhysicsSyncSystem : ISystem
     private readonly Query<Transform, Collider> _pending;
     private readonly Query<Transform, Collider, PhysicsBody> _bodies;
     private readonly List<Entity> _toAdd = new();
+    private readonly List<Entity> _rebuild = new();                          // compounds to (re)build this run
+    private readonly List<PhysicsSpace.CompoundPart> _parts = new();
+    private readonly List<Entity> _newParts = new();
 
     public PhysicsSyncSystem(World world, PhysicsSpace space)
     {
         _space = space;
-        _pending = world.Query<Transform, Collider>().WithoutComponent<PhysicsBody>();
+        _pending = world.Query<Transform, Collider>().WithoutComponent<PhysicsBody>();   // and no ColliderPart: checked below
         _bodies = world.Query<Transform, Collider, PhysicsBody>();
     }
 
     public void Run(in SystemContext ctx)
     {
         var world = ctx.World;
+        _rebuild.Clear();
+        Drain(world);
 
         // New colliders: collect first, then add the components (adding changes the archetypes we're
         // iterating).
         _toAdd.Clear();
         foreach (var (_, _, entities) in _pending.Chunks)
             for (int n = 0; n < entities.Length; n++)
-                _toAdd.Add(entities.EntityAt(n));
+            {
+                var entity = entities.EntityAt(n);
+                if (!entity.HasComponent<ColliderPart>()) _toAdd.Add(entity);   // a part is its compound's
+            }
 
         foreach (var entity in _toAdd)
         {
             if (!world.IsAlive(entity)) continue;
             var collider = world.Get<Collider>(entity);
             var body = world.TryGet<RigidBody>(entity, out var rigid) ? rigid : new RigidBody { Kind = BodyKind.Static };
-            var pose = world.Has<GlobalTransform>(entity)
-                ? world.Get<GlobalTransform>(entity).Current
+
+            // A collider on a child entity (issue #268) moves with its parent, so "static" there means
+            // "moved by nothing but its parent": under a dynamic body it is part of that body's compound,
+            // anywhere else a kinematic body that follows the parent below. One that asks to be kinematic
+            // or dynamic is that.
+            var parent = entity.Parent;
+            if (!parent.IsNull && body.Kind == BodyKind.Static)
+            {
+                var owner = CompoundOwner(parent);
+                if (!owner.IsNull)
+                {
+                    world.Add(entity, new ColliderPart { Body = owner });
+                    NoteRebuild(owner);
+                    continue;
+                }
+                body.Kind = BodyKind.Kinematic;
+            }
+
+            // A child is placed by its parents' transforms as they are now: its GlobalTransform is last
+            // tick's, or not yet computed at all for one spawned this tick.
+            var pose = !parent.IsNull ? PhysicsPoses.WorldPose(entity)
+                : world.Has<GlobalTransform>(entity) ? world.Get<GlobalTransform>(entity).Current
                 : Pose.FromLocal(world.Get<Transform>(entity));
             var added = _space.AddBody(entity, collider, body, pose);
             world.Add(entity, added);
+            if (body.Kind == BodyKind.Dynamic && entity.ChildCount > 0) NoteRebuild(entity);   // its children's colliders join it
 
             // A dynamic body keeps its velocity in a saved component (BodyMotion, written back each
             // step): one made from a load starts at it, so a swinging sign carries on swinging. Not in an
@@ -70,11 +99,13 @@ internal sealed class PhysicsSyncSystem : ISystem
             }
         }
 
+        foreach (var owner in _rebuild) Rebuild(world, owner);
+
         // Kinematic bodies (and anything gameplay moved directly) follow their transform. A root's local
-        // transform is its world one; a parented kinematic collider — a hitbox on a creature's bone
-        // (issue #137) — is composed up its parents' transforms as they are now, not GlobalTransform,
-        // which is last tick's: the owner has already moved this tick (sage.character.move runs first).
-        // Dynamic bodies are still assumed to be roots (write-back sets the local transform).
+        // transform is its world one; a parented collider — a hitbox on a creature's bone (issue #137), an
+        // attachment, a prefab's child (issue #268) — is composed up its parents' transforms as they are
+        // now, not GlobalTransform, which is last tick's: the owner has already moved this tick
+        // (sage.character.move runs first). One whose place has not changed is left alone, so it sleeps.
         foreach (var (transforms, colliders, handles, entities) in _bodies.Chunks)
         {
             var t = transforms.Span;
@@ -85,18 +116,102 @@ internal sealed class PhysicsSyncSystem : ISystem
                 if (h[n].IsStatic) continue;
                 if (_space.IsDynamic(h[n])) continue;
                 var parent = entities.EntityAt(n).Parent;
-                _space.SetPose(h[n], c[n], parent.IsNull ? Pose.FromLocal(t[n]) : Pose.Combine(WorldPose(parent), Pose.FromLocal(t[n])));
+                if (parent.IsNull)
+                {
+                    _space.SetPose(h[n], c[n], Pose.FromLocal(t[n]));
+                    continue;
+                }
+                var pose = Pose.Combine(PhysicsPoses.WorldPose(parent), Pose.FromLocal(t[n]));
+                if (!_space.IsAt(h[n], c[n], pose)) _space.SetPose(h[n], c[n], pose);
             }
         }
     }
 
-    // An entity's world pose from its transform and its parents', as of now.
-    private static Pose WorldPose(Entity entity)
+    // What the module's EntityDestroyed hook left: compounds that lost a part, and parts that lost their
+    // compound (they get bodies of their own as ordinary new colliders).
+    private void Drain(World world)
+    {
+        foreach (var owner in _space.CompoundsToRebuild) NoteRebuild(owner);
+        _space.CompoundsToRebuild.Clear();
+        foreach (var part in _space.PartsLeftBehind)
+            if (world.IsAlive(part) && world.Has<ColliderPart>(part)) world.Remove<ColliderPart>(part);
+        _space.PartsLeftBehind.Clear();
+    }
+
+    private void NoteRebuild(Entity owner)
+    {
+        if (!_rebuild.Contains(owner)) _rebuild.Add(owner);
+    }
+
+    // The dynamic body a static child collider below `parent` belongs to: the nearest ancestor with a body
+    // of its own, when that is dynamic. A plain transform in between (a socket, a group) is looked through.
+    private static Entity CompoundOwner(Entity parent)
+    {
+        for (var p = parent; !p.IsNull; p = p.Parent)
+        {
+            if (p.TryGetComponent<ColliderPart>(out var part)) return part.Body;
+            if (p.TryGetComponent<RigidBody>(out var rigid))
+                return rigid.Kind == BodyKind.Dynamic && p.HasComponent<Collider>() ? p : default;
+            if (p.HasComponent<Collider>()) return default;
+        }
+        return default;
+    }
+
+    // A dynamic body becomes the compound of its own collider and every static collider below it (not
+    // through a child with a body of its own).
+    private void Rebuild(World world, Entity owner)
+    {
+        if (!world.IsAlive(owner) || !world.TryGet<PhysicsBody>(owner, out var body) || !world.TryGet<Collider>(owner, out var own)) return;
+        if (!_space.IsDynamic(body)) return;
+        _parts.Clear();
+        _newParts.Clear();
+        Gather(owner, Pose.Identity);
+        foreach (var part in _newParts)
+            if (world.Has<ColliderPart>(part)) world.Get<ColliderPart>(part).Body = owner;
+            else world.Add(part, new ColliderPart { Body = owner });
+        _space.SetCompound(body, owner, own, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_parts));
+        _newParts.Clear();
+    }
+
+    private void Gather(Entity entity, Pose relative)
+    {
+        foreach (var child in entity.ChildEntities)
+        {
+            if (child.TryGetComponent<RigidBody>(out var rigid) && rigid.Kind != BodyKind.Static) continue;
+            if (child.HasComponent<PhysicsBody>()) continue;   // already a body of its own
+            var local = Pose.Combine(relative, child.TryGetComponent<Transform>(out var t) ? Pose.FromLocal(t) : Pose.Identity);
+            if (child.TryGetComponent<Collider>(out var collider) && collider.Shape != ColliderShape.Mesh)
+            {
+                _parts.Add(new PhysicsSpace.CompoundPart(child, collider, local));
+                _newParts.Add(child);
+            }
+            Gather(child, local);
+        }
+    }
+}
+
+// World poses from the transforms as they are now (GlobalTransform is last tick's).
+internal static class PhysicsPoses
+{
+    public static Pose WorldPose(Entity entity)
     {
         var pose = entity.TryGetComponent<Transform>(out var local) ? Pose.FromLocal(local) : Pose.Identity;
         for (var parent = entity.Parent; !parent.IsNull; parent = parent.Parent)
             if (parent.TryGetComponent<Transform>(out var above)) pose = Pose.Combine(Pose.FromLocal(above), pose);
         return pose;
+    }
+
+    // `world` in the space of a parent at `parent`: what its local transform has to be.
+    public static Pose Relative(in Pose parent, in Pose world)
+    {
+        var inverse = Quaternion.Conjugate(parent.Rotation);
+        var scale = new Vector3(parent.Scale.X == 0f ? 1f : parent.Scale.X, parent.Scale.Y == 0f ? 1f : parent.Scale.Y, parent.Scale.Z == 0f ? 1f : parent.Scale.Z);
+        return new Pose
+        {
+            Position = Vector3.Transform(world.Position - parent.Position, inverse) / scale,
+            Rotation = Quaternion.Normalize(inverse * world.Rotation),
+            Scale = world.Scale / scale,
+        };
     }
 }
 
@@ -128,7 +243,7 @@ internal sealed class PhysicsWriteBackSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        foreach (var (transforms, colliders, handles, _) in _bodies.Chunks)
+        foreach (var (transforms, colliders, handles, entities) in _bodies.Chunks)
         {
             var t = transforms.Span;
             var c = colliders.Span;
@@ -137,11 +252,22 @@ internal sealed class PhysicsWriteBackSystem : ISystem
             {
                 if (!_space.IsDynamic(h[n])) continue;
                 var pose = _space.PoseOf(h[n]);
-                t[n].LocalRotation = pose.Rotation;
                 // Bepu poses the shape's centre; the transform is the entity's origin (review #44).
-                t[n].LocalPosition = c[n].Center == Vector3.Zero
+                var position = c[n].Center == Vector3.Zero
                     ? pose.Position
                     : pose.Position - Vector3.Transform(c[n].Center, pose.Rotation);
+                var parent = entities.EntityAt(n).Parent;
+                if (!parent.IsNull)
+                {
+                    // A dynamic body on a child entity (issue #268): its local transform is in its parent's space.
+                    var local = PhysicsPoses.Relative(PhysicsPoses.WorldPose(parent),
+                                                      new Pose { Position = position, Rotation = pose.Rotation, Scale = t[n].LocalScale });
+                    t[n].LocalPosition = local.Position;
+                    t[n].LocalRotation = local.Rotation;
+                    continue;
+                }
+                t[n].LocalRotation = pose.Rotation;
+                t[n].LocalPosition = position;
             }
         }
 
@@ -318,7 +444,12 @@ public sealed class PhysicsModule : IModule
         world.EntityDestroyed += entity =>
         {
             if (world.TryGet<Joint>(entity, out var joint) && !joint.Handle.IsNull) space.RemoveJoint(joint.Handle);
-            if (world.TryGet<PhysicsBody>(entity, out var body)) space.RemoveBody(body);
+            if (world.TryGet<PhysicsBody>(entity, out var body))
+            {
+                space.NoteDestroyed(world, entity, body);   // before the body goes: it knows its compound's parts
+                space.RemoveBody(body);
+            }
+            else space.NoteDestroyed(world, entity, null);
         };
     }
 
