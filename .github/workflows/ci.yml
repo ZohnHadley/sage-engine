@@ -113,7 +113,17 @@ jobs:
           )
           echo "dotnet test reported $count tests"
           python3 tools/check_docs.py --self-test
-          python3 tools/check_docs.py --tests "$count" --registry user/registry.json
+          # Docs are updated once per merged pack of issues, not in each issue's PR (owner, 2026-10-02):
+          # an issue PR's quoted counts may be stale, so they are fixed in this checkout only and listed;
+          # links, test citations and vocabulary still fail. A docs PR (a branch with "docs" in its name)
+          # is held to the counts too.
+          branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          if [[ "$branch" == *docs* ]]; then
+            python3 tools/check_docs.py --tests "$count" --registry user/registry.json
+          else
+            python3 tools/check_docs.py --tests "$count" --registry user/registry.json --fix
+            git diff --stat -- '*.md' | sed 's/^/stale count (the next docs PR fixes it): /' || true
+          fi
 
       # `sage validate` (issue #22): each game's content, headless, with every check the load makes —
       # references by type, prefab bodies, asset paths, AI schedules — and missing assets as errors.

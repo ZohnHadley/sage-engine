@@ -201,8 +201,16 @@ Code: `src/Sage.Simulation/Content/StreamedScene.cs`, `World/Streaming.cs` (`Sec
   the half-placed sector's entities with their source, so a load does not take them for the game's own. A
   streamed scene at rest ticks without allocating, the owner check and the boundary included (test:
   AStreamedSceneAtRestAllocatesNothingPerTick). `stream_status` says how many sectors are placed.
-- **Limits.** A placed entity that left its sector is a runtime spawn from then on: a load spawns it from
-  its prefab, so its placement's `overrides` and wires are not reapplied (its saved diff is). A streamed
+- **A placed entity that left its sector keeps its placement** (issue #279, `KeptPlacement`). It is a
+  runtime spawn from then on, so content does not place it again; its saved entry (in a save, or in the
+  dormant cell it sleeps in) carries its placement's `overrides` and `outputs` beside its diff, a wire's
+  `fired` count with it, and a load or a waking sector spawns it from its prefab *with* those overrides and
+  wires it again. A house with child furniture whose `state_machine` part's `machine` an editor overrode
+  crosses an edge, is saved, loaded, sleeps and wakes, and is the same house each time (test:
+  AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing); a root content still places
+  writes only its source, as before (test: OnlyARootNoContentPlacesWritesItsPlacement).
+- **Limits.** What such an entity keeps is what its placement said when it left: a later edit of that
+  placement's overrides or wires does not reach it (its sector has tombstoned it). A streamed
   placements document's entities are the sectors', not the document's (`FromPlacements` is not given), so
   the editor does not read them back. A runtime spawn made directly into a sector outside the ring sleeps
   there at the next boundary. Levels that
