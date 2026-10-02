@@ -420,7 +420,7 @@ boundary only.
 - **World resources** marked `[SavedResource]` are saved beside entities and rebuilt through
   `ISavedResource.AfterLoad`. Behaviour or script state is never saved.
 
-Planned: thumbnails, compression and async write (#285); removing live unsaved entities on load (#278).
+Planned: thumbnails, compression and async write (#285). A load removes the live runtime spawns no save names (`Unsaved`, #278).
 Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-serialization-and-saves.md`](../design/09-serialization-and-saves.md).
 
 ## 13. Error handling and diagnostics
