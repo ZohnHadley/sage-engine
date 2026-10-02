@@ -354,6 +354,8 @@ public sealed class Scenes
     {
         if (scene.Terrain.Id.IsEmpty || !world.Resources.TryGet<Terrain>(out var terrain) || terrain == null) return;
         if (!_engine.Records.TryGet(scene.Terrain.Id, out TerrainRecord record)) return;   // the load check says so
+        terrain.SurfaceLayers.Clear();
+        terrain.SurfaceLayers.AddRange(record.Surfaces);   // issue #270: before the ground is (re)built
         if (BuiltInTerrain.Matches(terrain.Generator, terrain.Seed, record)) return;
         for (int i = terrain.Sectors.Count - 1; i >= 0; i--) terrain.Unload(terrain.Sectors[i].Coord);
         terrain.Generator = BuiltInTerrain.Create(record);

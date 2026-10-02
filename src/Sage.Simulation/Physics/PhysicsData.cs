@@ -37,6 +37,8 @@ public struct Collider : IComponent
     public bool IsTrigger;    // generates overlap events, never a collision response
     [Property(Category = "Collision", Tooltip = "Reports contact begin and end events")]
     public bool ReportContacts;   // opt-in: tracking every pair of a crowded world would cost every tick
+    [RecordRef("physics_material"), Property(Category = "Collision", Tooltip = "What it is made of: footsteps, impacts and its friction; empty = none")]
+    public RecordId Surface;      // issue #270: returned in every hit on it
 
     // The shortest cylinder a capsule may keep: two hemispheres and nothing between them is still a
     // capsule, but a negative length is not a shape.
@@ -244,6 +246,9 @@ public struct RayHit
     public Vector3 Normal;
     public float Distance;
     public bool Hit;
+    // What it hit is made of (a physics_material, issue #270): the collider's, the brush face's or the
+    // terrain layer's. Empty when nobody said.
+    public RecordId Surface;
 }
 
 public struct SweepHit
@@ -256,6 +261,8 @@ public struct SweepHit
     // The shape already overlapped this where the sweep started (IPhysicsWorld.Sweep): Distance is 0,
     // Position is where the shape started and Normal is -direction, because an overlap has no surface.
     public bool StartsInside;
+    // What it hit is made of (a physics_material, issue #270), as RayHit.Surface.
+    public RecordId Surface;
 }
 
 // What a shape intersects (IPhysicsWorld.Overlap, issue #259): Normal is the way out, pointing from the

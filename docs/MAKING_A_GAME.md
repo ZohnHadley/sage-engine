@@ -396,7 +396,7 @@ result with the file each field came from.
 
 ### Every record type there is
 
-Thirty-one, and a game may use as few as it likes. Their fields are documented in the design doc named
+Thirty-two, and a game may use as few as it likes. Their fields are documented in the design doc named
 beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
@@ -405,7 +405,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows |
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
-| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step; `physics_layers` — what collides with what |
+| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step; `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues, a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
@@ -550,7 +550,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 
 | Part | Gives the entity |
 |---|---|
-| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end) |
+| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end), `surface` (a `physics_material`: what it is made of, issue #270) |
 | `joint` | a joint from this (dynamic) body to another entity's, its parent's or the world's, in data (issue #245) — `kind` (Ball/Hinge/Fixed/Distance), `target` (an entity name; empty = the parent if it has a body, else the world), `anchor` (in this entity's space), `targetAnchor` (optional; default: the same point, where they stand), `axis`, `swing`, `twistMin`/`twistMax`, `min`/`max` (a hinge's range), `minDistance`/`maxDistance` (degrees and metres), `breakForce`, `drag`; the `Break` input and the `OnBreak` output (SAGE0134) |
 | `character` | the kinematic character controller, and with it the ability to walk |
 | `sprite` | a billboard sprite from a `sprite_sheet` — `sheet`, `material`, `size`, `animation` (a clip to loop), or `graph` (an `anim_graph` whose clips are the sheet's: combat's trigger and `hit` event work through it, issue #119) |
@@ -559,6 +559,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `bone_attachment` | follows a socket of its parent's skeleton — `socket` (a bare value: `"bone_attachment": "hand_r"`), or `bone` (a joint by name), `offset`, `angles`; sockets are `skeleton_sockets` records (issue #120) |
 | `aim_ik` | turns the spine, neck and head toward `AimIk.Pitch`/`Yaw` after the animation — `joints` (hips up: `joint`, `weight`, `pitchLimit`, `yawLimit` in degrees), `weight` (issue #120) |
 | `foot_ik` | plants the feet on the ground under them and lowers the hips — `pelvis`, `left`/`right` (`hip`, `knee`, `foot`), `footHeight`, `rayAbove`, `rayBelow`, `maxPelvisDrop`, `weight` (issue #120) |
+| `footsteps` | a step every `stride` metres it walks on the ground (0: only on its animation's `footstep` events), each raising the `footstep` cue of the `physics_material` underfoot (a ray `reach` metres below the feet) and sending `Footstep` (issue #270) |
 | `ragdoll` | falls as a ragdoll — on death, a hit, the `Ragdoll` input (an impulse "x y z" as its parameter) or from code — with the bodies and joints of its model's `ragdoll` records, settles (the `OnSettled` output) and gets back up (the `GetUp` input) — `record` (one `ragdoll` record; empty: every one for the model), `onDeath` (true), `hitImpulse` (N·s), `getUpAfter` (seconds after it has come to rest; 0 = only when told; never once it has died), `getUpBack`/`getUpFront` (the animator states it gets up with, `getup_back`/`getup_front`), `getUpFade` (issues #246–#249, SAGE0134; design/12) |
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
@@ -583,7 +584,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Twenty-nine here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Thirty here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -947,6 +948,23 @@ In the editor:
   described, with the prefab's own value as the default; a value that is not a number where one is
   wanted, or out of its range, is an error naming the map line.
 - **A face's texture name is a material id**: a face textured `wall` looks for `yourgame:wall`.
+- **A face's texture is also a surface** (issue #270): a `physics_material` record lists the textures
+  it covers, and a ray or a sweep that hits the face reports it (`RayHit.Surface`), so footsteps, impacts
+  and bullet holes come out right. A face no record names takes the `map` record's `"surface"`:
+
+  ```json
+  { "type": "physics_material", "id": "wood", "friction": 0.6, "footstep": "step_wood",
+    "impact": "impact_wood", "decal": "textures/hole_wood.png", "penetration": 0.4,
+    "textures": ["wood*", "door"] },
+  { "type": "map", "id": "hut", "file": "maps/hut.map", "surface": "sage:stone" }
+  ```
+
+  An exact name wins over a pattern, and a longer pattern over a shorter one; case does not matter. A
+  prefab's collider takes one with the `body` part's `"surface"`, terrain by layer with the `terrain`
+  record's `"surfaces"` (the first is the ground everywhere a generator paints nothing else), and a
+  creature's `footsteps` part raises the `footstep` cue of whatever it walks on. The engine's own
+  (`sage:default`, `stone`, `wood`, `metal`, `dirt`, `grass`, `flesh`, `glass`) give friction and a
+  penetration hint only; the cues and the textures are yours.
 - **Brushes with a classname become a solid entity** — a door, a lift, a trigger volume — which is an
   ordinary entity that owns its geometry. Give it a prefab with a `mover` part and it moves.
 - **`"trigger" "1"`** makes its volume something you walk into rather than against, and it is not drawn.

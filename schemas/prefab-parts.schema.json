@@ -159,6 +159,14 @@
         }
       ]
     },
+    "footsteps": {
+      "description": "Prefab part 'footsteps' (FootstepsPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/footsteps"
+        }
+      ]
+    },
     "hitboxes": {
       "description": "Prefab part 'hitboxes' (HitboxesPart). A bare value is its \"model\".",
       "anyOf": [
@@ -653,6 +661,14 @@
           "description": "Physics layer by name; empty = default. Category: Physics. (string, default \"\")",
           "default": "",
           "type": "string"
+        },
+        "surface": {
+          "description": "What it is made of: footsteps, impacts and its friction; empty = none. Names a physics_material record. Category: Physics. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:physics_material"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -1000,6 +1016,25 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'foot_ik' (FootIkPart)."
+    },
+    "footsteps": {
+      "type": "object",
+      "properties": {
+        "stride": {
+          "description": "Metres walked between steps; 0 = only the animation's footstep events. Unit: m. At least 0. (float, default 1.6)",
+          "default": 1.6,
+          "type": "number",
+          "minimum": 0
+        },
+        "reach": {
+          "description": "How far below the feet the ground is looked for. Unit: m. At least 0. (float, default 0.4)",
+          "default": 0.4,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'footsteps' (FootstepsPart)."
     },
     "hitboxes": {
       "type": "object",

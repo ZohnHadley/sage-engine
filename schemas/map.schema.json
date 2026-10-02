@@ -88,6 +88,14 @@
       "description": "(bool, default false)",
       "default": false,
       "type": "boolean"
+    },
+    "surface": {
+      "description": "The surface of a brush face no physics_material's textures name; empty = none. Names a physics_material record. (RecordId)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:physics_material"
+        }
+      ]
     }
   },
   "additionalProperties": false

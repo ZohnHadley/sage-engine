@@ -73,6 +73,29 @@ public interface IPhysicsWorld
     bool IsDynamic(in PhysicsBody body);   // moved by physics: its pose is written back to the transform
     bool IsAwake(in PhysicsBody body);
 
+    // ---- Surfaces (issue #270) ------------------------------------------------------------------
+    //
+    // What a collider is made of: a physics_material record id, returned in every RayHit and SweepHit
+    // on it, and giving it the record's friction and restitution. A body made from a Collider takes
+    // Collider.Surface by itself (a RigidBody's own friction and restitution win over the record's);
+    // these are for what the engine builds (brushes, terrain). A stale handle is ignored.
+
+    // One surface for the whole collider.
+    void SetSurface(in PhysicsBody body, RecordId surface);
+
+    // A convex collider (a brush hull) whose faces differ: a hit takes the surface of the face whose
+    // normal is closest to the hit's. Friction and restitution come from the most upward-facing face,
+    // the one things stand on.
+    void SetSurfaces(in PhysicsBody body, ReadOnlySpan<SurfaceFace> faces);
+
+    // A triangle mesh (terrain) whose triangles differ: `perTriangle[i]` is the index in `layers` of
+    // triangle i's surface, in the order AddMesh was given them. Friction and restitution come from the
+    // most common one.
+    void SetSurfaces(in PhysicsBody body, ReadOnlySpan<RecordId> layers, ReadOnlySpan<byte> perTriangle);
+
+    // The collider's own surface (SetSurface, or Collider.Surface); empty when none was given.
+    RecordId SurfaceOf(in PhysicsBody body);
+
     // ---- Groups, spin and impulses (issue #242, SAGE0134) -----------------------------------------
     //
     // A collision group: bodies sharing a nonzero group never collide with each other (a ragdoll's

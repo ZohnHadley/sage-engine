@@ -37,6 +37,26 @@ public sealed class Heightfield
     public float Spacing => Size / (Resolution - 1);
     public float[] Heights { get; }
 
+    // Which surface layer each cell is (issue #270): an index into Terrain.SurfaceLayers, so a footstep
+    // on the road sounds unlike one in the grass. Layer 0 everywhere until a generator paints another,
+    // and nothing is allocated until then.
+    public byte[]? CellLayers { get; private set; }
+    public int Cells => Resolution - 1;
+
+    public void SetLayer(int cellX, int cellZ, byte layer)
+    {
+        if ((uint)cellX >= (uint)Cells || (uint)cellZ >= (uint)Cells) return;
+        if (CellLayers == null)
+        {
+            if (layer == 0) return;
+            CellLayers = new byte[Cells * Cells];
+        }
+        CellLayers[cellZ * Cells + cellX] = layer;
+    }
+
+    public byte LayerAt(int cellX, int cellZ) =>
+        CellLayers == null || (uint)cellX >= (uint)Cells || (uint)cellZ >= (uint)Cells ? (byte)0 : CellLayers[cellZ * Cells + cellX];
+
     public float this[int x, int z]
     {
         get => Heights[z * Resolution + x];
@@ -93,6 +113,11 @@ public sealed class Terrain
     public const float SectorSize = 1024f;
 
     public ITerrainGenerator? Generator { get; set; }
+
+    // What each terrain layer is made of (issue #270): physics_material ids, by the layer a cell has
+    // (Heightfield.SetLayer). Physics gives a sector's collision mesh these as it builds it; a terrain
+    // record's "surfaces" sets them.
+    public List<RecordId> SurfaceLayers { get; } = new();
     public int Seed { get; set; }
     public IReadOnlyList<TerrainSector> Sectors => _loaded;
 

@@ -76,6 +76,27 @@
       "type": "number",
       "minimum": 8,
       "maximum": 100000
+    },
+    "surfaces": {
+      "description": "What the ground is made of, by terrain layer: the first is everywhere a generator paints nothing else. Names a physics_material record. (List<RecordId>)",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:physics_material"
+      }
+    },
+    "surfaces+": {
+      "description": "Adds to \"surfaces\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:physics_material"
+      }
+    },
+    "surfaces-": {
+      "description": "Removes these from \"surfaces\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:physics_material"
+      }
     }
   },
   "additionalProperties": false

@@ -50,6 +50,10 @@ public sealed class MapRecord
     // above the ground. A building in an outdoor world wants this and an interior does not, and guessing
     // from whether a terrain exists would make a hut's height depend on load order.
     public bool OnTerrain;
+
+    // What a face is made of when no physics_material's "textures" names its texture (issue #270).
+    [RecordRef("physics_material"), Property(Tooltip = "The surface of a brush face no physics_material's textures name; empty = none")]
+    public RecordId Surface;
 }
 
 // One loaded level: geometry in metres relative to the map's own origin, and the entities that were
@@ -71,6 +75,11 @@ public sealed class MapLevel
     // Where the level goes, in absolute metres, and whether it stands on the ground there.
     public required Vector3 At { get; init; }
     public required bool OnTerrain { get; init; }
+
+    // What its faces are made of (issue #270): the record's fallback, and the texture table built from
+    // the physics_material records the first time a hull asks.
+    internal RecordId Surface;
+    internal SurfaceTextures? SurfaceTextures;
 
     // Origin space (14 §3), so it moves with a rebase like everything else. Only meaningful once
     // `Placed` is true: a level that stands on terrain cannot know its height until the ground under it
@@ -339,6 +348,7 @@ internal static class MapLoader
             Layer = record.Layer,
             At = record.At,
             OnTerrain = record.OnTerrain,
+            Surface = record.Surface,
         };
 
         if (world.Resources.TryGet<MapLevels>(out var already) && already != null)
@@ -595,7 +605,11 @@ internal static class MapLoader
         var body = world.Resources.Get<IPhysicsWorld>()
                         .AddHull(entity, solid.Hull, at, level.Layer, solid.IsTrigger);
         if (!body.IsStatic && body.Handle == 0) Log.Warn(LogCat.Level, $"{where}: '{className}' has no collision");
-        else world.Add(entity, body);
+        else
+        {
+            world.Add(entity, body);
+            MapSurfaces.Give(world, level, body, solid.Brushes);   // issue #270
+        }
 
         solid.Spawned = entity;
         spawned++;
@@ -850,9 +864,41 @@ internal sealed class MapCollisionSystem : ISystem
             var body = space.AddHull(entity, brush.Hull, level.Position, level.Layer);
             if (body.Handle == 0 && !body.IsStatic) { _world.Destroy(entity); continue; }
             _world.Add(entity, body);
+            MapSurfaces.Give(_world, level, body, brush);   // issue #270
             built++;
         }
         Log.Info(LogCat.Level, $"{level.Source}: {built} brush hull(s) into physics");
+    }
+}
+
+// What a level's hulls are made of (issue #270): each face's texture names a physics_material
+// (PhysicsMaterialRecord.Textures, else MapRecord.Surface), and a hit takes the face it is nearest.
+internal static class MapSurfaces
+{
+    public static void Give(World world, MapLevel level, in PhysicsBody body, LevelBrush brush) =>
+        Give(world, level, body, brush.Faces.Length, brush, null);
+
+    public static void Give(World world, MapLevel level, in PhysicsBody body, List<LevelBrush> brushes)
+    {
+        int faces = 0;
+        foreach (var brush in brushes) faces += brush.Faces.Length;
+        Give(world, level, body, faces, null, brushes);
+    }
+
+    private static void Give(World world, MapLevel level, in PhysicsBody body, int count, LevelBrush? one, List<LevelBrush>? many)
+    {
+        var textures = level.SurfaceTextures ??= world.Engine is { } engine
+            ? SurfaceTextures.From(engine.Records, level.Surface)
+            : new SurfaceTextures { Fallback = level.Surface };
+        if (textures.IsEmpty || count == 0) return;
+
+        var faces = new SurfaceFace[count];
+        int n = 0;
+        if (one != null) foreach (var face in one.Faces) faces[n++] = new SurfaceFace(face.Normal, textures.Of(face.Texture));
+        if (many != null)
+            foreach (var brush in many)
+                foreach (var face in brush.Faces) faces[n++] = new SurfaceFace(face.Normal, textures.Of(face.Texture));
+        world.Resources.Get<IPhysicsWorld>().SetSurfaces(body, faces);
     }
 }
 

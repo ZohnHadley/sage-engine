@@ -44,6 +44,7 @@ public class DeclarationTests
             ["item"] = "sage.gameplay.items",
             ["map"] = "sage.maps",
             ["physics_layers"] = "sage.physics3d",
+            ["physics_material"] = "sage.physics3d",   // issue #270
             ["prefab"] = RegistrationOwners.Core, ["placements"] = RegistrationOwners.Core, ["anim_graph"] = RegistrationOwners.Core, ["anim_events"] = RegistrationOwners.Core,
             ["scene"] = RegistrationOwners.Core,   // the Sandbox's own until the engine took scenes over (#29)
             ["state_machine"] = RegistrationOwners.Core,   // the engine's, like timers (#92)
