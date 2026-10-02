@@ -25,6 +25,13 @@ public sealed class CharacterModule : IModule
         _actions.Register("Jump", ActionKind.Button);
         _actions.Register("Run", ActionKind.Button);
         _actions.Register("Crouch", ActionKind.Button);
+
+        // Water (issue #262): a character fires these, and so does the water volume it went into or out
+        // of, each with the other as the activator.
+        ctx.Engine.Outputs.Declare(CharacterMovementSystem.OnEnterWater,
+            "A character went into water: on the character (the activator is the water) and on the water volume (the activator is the character).");
+        ctx.Engine.Outputs.Declare(CharacterMovementSystem.OnExitWater,
+            "A character came out of water: on the character (the activator is the water) and on the water volume (the activator is the character).");
         // The player's camera, first person to third and back (issue #79).
 #pragma warning disable SAGE0123
         _actions.Register(ToggleViewSystem.Action, ActionKind.Button);

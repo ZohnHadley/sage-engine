@@ -1,6 +1,6 @@
 # 08 · Physics and movement
 
-> Status: built for walking-simulator scale. The facade, the Bepu backend, layers, queries, triggers, contacts, the character controller, simple movers and (from phase 4k) joints and collision groups work and are tested. Movers push what they move into or are blocked by it (#260) and carry riders (#261), water is not started, ladders are built (#263), and joints beyond the facade and the `joint` part are in progress in another thread. Owning assemblies: `Sage.Simulation` (`Physics`, the facade and data), `Sage.Physics3D` (Bepu backend and character controller), `Sage.Gameplay` (`Movers`). Design doc: [10 Physics](../../design/10-physics.md).
+> Status: built for walking-simulator scale. The facade, the Bepu backend, layers, queries, triggers, contacts, the character controller, simple movers and (from phase 4k) joints and collision groups work and are tested. Movers push what they move into or are blocked by it (#260) and carry riders (#261), water and swimming (#262) and ladders (#263) are built, and joints beyond the facade and the `joint` part are in progress in another thread. Owning assemblies: `Sage.Simulation` (`Physics`, the facade and data), `Sage.Physics3D` (Bepu backend and character controller), `Sage.Gameplay` (`Movers`). Design doc: [10 Physics](../../design/10-physics.md).
 
 ## 1. Purpose and scope
 
@@ -50,7 +50,7 @@ Entity I/O: movers take `Open`, `Close`, `Toggle` and fire `OnFullyOpen`, `OnFul
 
 Console and cvars: `phys_debug` (draw bodies, triggers in magenta, joints as yellow lines), `phys_stats` (active bodies, statics, last step time, gravity), `sim_tickrate`.
 
-Events: trigger and contact spans are valid until the next step and are read in `PostPhysics`. Publishing them as typed game events is not built (#269).
+Events: trigger and contact spans are valid until the next step and are read in `PostPhysics`; the same facts are sent on the event bus as `TriggerEntered`, `TriggerExited`, `Collided` (with impulse and speed) and `CollisionEnded` by `sage.physics.events` (#269).
 
 ## 5. Data model
 
@@ -98,10 +98,10 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-01 | Physics shall sit behind a backend-neutral facade in origin space, so combat, AI and levels never name the engine. | Must | Done | test: ThePhysicsPluginInstallsItsSpaceAsTheWorldsIPhysicsWorld |
 | REQ-PHYS-02 | The facade shall support static, kinematic and dynamic bodies that fall and rest, with 32 named layers and an ignore matrix. | Must | Done | test: ADynamicBoxFallsAndRestsOnAStaticOne; test: LayerMasks |
 | REQ-PHYS-03 | Raycast, shape sweep and box overlap shall respect layer masks, skip triggers unless asked, and ignore the asking entity. | Must | Done | test: RaycastHitsTheNearestCollider_AndRespectsLayers |
-| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Partial: `Overlap` tests shapes, with depth and the way out; `RaycastAll` not started | test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut; #269 |
+| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Done | test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut; test: RaycastAllReportsEveryHitNearestFirst; test: OverlapSphereReportsWhatTheSphereTouchesNotItsBounds |
 | REQ-PHYS-05 | Trigger volumes shall fire `OnStartTouch` and `OnEndTouch` on entity I/O, including for bodies asleep inside them. | Must | Done | test: WalkingIntoATriggerVolumeFiresOnStartTouch; test: SomethingAsleepInATriggerIsStillInsideIt |
-| REQ-PHYS-06 | Colliders that ask shall report contact begin and end, with an impulse for impact sounds and damage. | Must | Partial: begin and end only, as spans | test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd; #269 |
-| REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Not started | #269 |
+| REQ-PHYS-06 | Colliders that ask shall report contact begin and end, with an impulse for impact sounds and damage. | Must | Done | test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd; test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse; test: TheImpulseOfACollisionBetweenTwoBodiesUsesTheirEffectiveMass |
+| REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Done | test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse; test: PhysicsEventsAndTheNewQueriesAllocateNothingPerTick |
 | REQ-PHYS-08 | The character controller shall walk, slide along walls, step up low ledges, climb gentle slopes and not cliffs, jump only when grounded, and crouch without standing under a ceiling. | Must | Done | test: StepsOntoALowLedgeButNotAHighOne; test: CrouchesAndCannotStandUnderACeiling |
 | REQ-PHYS-09 | A character that ends up inside geometry (a closing door, a teleport) shall be pushed out over a few ticks. | Must | Done | test: ACharacterPlacedInsideABoxIsPushedOutAndWalksOn; test: ACharacterDeepInsideComesOutAFewTicksLaterNeverMoreThanARadiusATick |
 | REQ-PHYS-10 | Movers shall sweep their collider and push or block what is in the way (stop, reverse or crush), firing `OnBlocked`. | Must | Done | test: ADoorThatCannotPushACharacterReopensAndSaysWhoBlockedIt; test: TheSandboxHutDoorNoLongerTrapsAPlayerStandingInTheDoorway |
@@ -110,7 +110,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-13 | Joints (ball, hinge, fixed, distance) and collision groups shall be in the facade, with removal with the body and break reporting. | Must | Done (#242) | test: AHingeStopsAtItsLimits; test: SameGroupBodiesPassThroughEachOtherAndOtherGroupsDont |
 | REQ-PHYS-14 | A `joint` prefab part shall make joints from data, fire `OnBreak`, and survive a save mid-swing. | Must | Done (#245) | test: ASaveMidSwingResumesTheSwingInAFreshApp |
 | REQ-PHYS-15 | The rest of phase 4k (ragdolls, joint tuning and tools) shall follow the joint facade. | Should | Done | test: TheTumblerFallsOnItsWire_SettlesWithinItsLimits_AndGetsUpIntoIdle, test: ASettledRagdollSleeps_AndLoadsDownSettledAndAsleep |
-| REQ-PHYS-16 | Swimming shall work: water volumes with surface, drag and buoyancy, a swim mode, surface exit, and floating bodies. | Must | Not started | #262 |
+| REQ-PHYS-16 | Swimming shall work: water volumes with surface, drag and buoyancy, a swim mode, surface exit, and floating bodies. | Must | Done (#262) | test: ACharacterFallingIntoWaterSwimsWithItsHeadOut; test: ASwimmerClimbsOutOntoTheBank; test: ACrateFloatsHalfUnder |
 | REQ-PHYS-17 | Ladders and climbing shall work from a ladder volume prefab part. | Must | Done (#263) | test: ClimbsALadderToTheLedgeAndStepsOff; test: ALadderBrushEntityInAMapIsClimbedToItsLedge |
 | REQ-PHYS-18 | The controller shall offer movement modes: walk, noclip and fly, GoldSrc air-strafe, smooth crouch with a shrinking collider. | Should | Not started | #267 |
 | REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Done (#268) | test: SetShapeShrinksACharactersCapsuleInPlace; test: AChildColliderFollowsItsParentAndIsHitByARayWhereItIs; test: ADynamicBodyAndItsChildrensCollidersAreOneCompound |

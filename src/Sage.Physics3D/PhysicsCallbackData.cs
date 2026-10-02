@@ -31,7 +31,12 @@ internal sealed class PhysicsCallbackData
     private readonly List<ContactEvent> _contactBegin = new();
     private readonly List<ContactEvent> _contactEnd = new();
 
-    private readonly record struct ContactReport(uint A, uint B, Vector3 Point, Vector3 Normal);
+    private readonly record struct ContactReport(uint A, uint B, Vector3 Point, Vector3 Normal, float Impulse, float Speed, bool Touching);
+
+    // Pairs that asked for contacts and are about to touch (a speculative contact): the hardest each was
+    // closing, carried from step to step until it touches, which is when Collided reports it (issue #269).
+    private Dictionary<(uint A, uint B), (float Speed, float Impulse)> _approach = new();
+    private Dictionary<(uint A, uint B), (float Speed, float Impulse)> _approachNow = new();
 
     public PhysicsCallbackData(int workerCount)
     {
@@ -182,11 +187,12 @@ internal sealed class PhysicsCallbackData
         _workerTriggers[workerIndex].Add((pair.A.Packed, pair.B.Packed));
     }
 
-    // A solid contact on a pair that asked for them: `point` in origin space, `normal` from B to A.
-    public void ReportContact(int workerIndex, CollidablePair pair, Vector3 point, Vector3 normal)
+    // A solid contact on a pair that asked for them: `point` in origin space, `normal` from B to A, and
+    // how hard they were closing (Collided, issue #269); not `touching` yet is an approach.
+    public void ReportContact(int workerIndex, CollidablePair pair, Vector3 point, Vector3 normal, float impulse, float speed, bool touching)
     {
         if ((uint)workerIndex >= (uint)_workerContacts.Length) workerIndex = 0;
-        _workerContacts[workerIndex].Add(new ContactReport(pair.A.Packed, pair.B.Packed, point, normal));
+        _workerContacts[workerIndex].Add(new ContactReport(pair.A.Packed, pair.B.Packed, point, normal, impulse, speed, touching));
     }
 
     public Entity EntityOf(CollidableReference collidable) => EntryOf(collidable).Entity;
@@ -259,16 +265,30 @@ internal sealed class PhysicsCallbackData
     private void EndContacts()
     {
         _touchingNow.Clear();
+        _approachNow.Clear();
         foreach (var list in _workerContacts)
             foreach (var report in list)
             {
                 bool swap = report.A > report.B;
                 var key = swap ? (report.B, report.A) : (report.A, report.B);
+                float speed = report.Speed, impulse = report.Impulse;
+                if (_approach.TryGetValue(key, out var before))
+                {
+                    speed = MathF.Max(speed, before.Speed);
+                    impulse = MathF.Max(impulse, before.Impulse);
+                }
+                if (!report.Touching)
+                {
+                    if (!_touching.Contains(key)) _approachNow[key] = (speed, impulse);   // still on its way
+                    continue;
+                }
                 if (!_touchingNow.Add(key) || _touching.Contains(key)) continue;
                 var a = EntityOf(new CollidableReference { Packed = report.A });
                 var b = EntityOf(new CollidableReference { Packed = report.B });
-                if (!a.IsNull && !b.IsNull) _contactBegin.Add(new ContactEvent(a, b, report.Point, report.Normal));
+                if (!a.IsNull && !b.IsNull)
+                    _contactBegin.Add(new ContactEvent(a, b, report.Point, report.Normal) { Impulse = impulse, Speed = speed });
             }
+        (_approach, _approachNow) = (_approachNow, _approach);
 
         foreach (var key in _touching)
         {
