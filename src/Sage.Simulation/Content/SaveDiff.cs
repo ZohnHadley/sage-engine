@@ -25,15 +25,16 @@ namespace Sage.Simulation;
 //   dictionary or a nested struct is one value — because a dictionary's missing key cannot be told from
 //   an unchanged one. A component whose JSON is not an object of fields (a custom converter) is written
 //   whole when it differs.
-// - **The transform is always written in full**: a runtime spawn has no content to say where it is, and
+// - **The transform is written in full** (and, since 4m-4, not at all for content's entity still where it
+//   was placed, so it follows the placement): a runtime spawn has no content to say where it is, and
 //   a load spawns it there so a part that reads its placement (a mover's closed position, a character's
 //   yaw) reads the saved one.
 // - **Removal is explicit**: `"removed"` lists the baseline's components the entity no longer has, and a
 //   load takes them off again. A component the prefab did not give it is written in full, as before.
 // - **Tags are written in full** and, for a diffed entity, are the save's exactly, as for content (4i-3).
-// - **Shared, so a value a part derives from the placement** (a mover's closed position) is compared
-//   with the first spawn's: another placement's differs and is written. Nothing is lost; that field
-//   simply does not follow a rebalance.
+// - **Shared, except a value a part derives from the placement** (a mover's closed position): a
+//   component marked `[FromPlacement]` is taken again for each entity and compared with its own (issue
+//   4m-4), so an unmoved door writes nothing and follows its placement and a rebalance.
 // - **An `[Upgrade]` method sees only the fields a diff wrote**: renaming or removing a field works as it
 //   did; one that computes a field from another may find the other absent (it was the prefab's).
 //
@@ -42,10 +43,32 @@ namespace Sage.Simulation;
 // always did. So formats 1–3 read as they did, and the format stays 3.
 internal sealed class SpawnBaseline
 {
-    public SpawnBaseline(JsonObject components) => Components = components;
+    public SpawnBaseline(JsonObject components, IReadOnlyList<string>? fromPlacement = null)
+    {
+        Components = components;
+        FromPlacement = fromPlacement ?? Array.Empty<string>();
+    }
 
-    // Component id -> `{ "version", "data" }`, as a save writes it.
+    // One entity's own: the shared baseline with its `[FromPlacement]` components as *it* was spawned
+    // (issue 4m-4), so a value derived from its placement is compared with its own and not the first spawn's.
+    public SpawnBaseline(SpawnBaseline shared, JsonObject own)
+    {
+        Components = shared.Components;
+        FromPlacement = shared.FromPlacement;
+        _own = own;
+    }
+
+    private readonly JsonObject? _own;
+
+    // Component id -> `{ "version", "data" }`, as a save writes it (the shared part).
     public JsonObject Components { get; }
+
+    // The ids of its components marked `[FromPlacement]`: taken per entity.
+    public IReadOnlyList<string> FromPlacement { get; }
+
+    // A component's entry as spawned: this entity's own for one derived from its placement.
+    public JsonNode? Entry(string id) =>
+        _own != null && _own.TryGetPropertyValue(id, out var own) ? own : Components[id];
 }
 
 // The baselines taken in one world, by prefab and overrides (a world resource: the dialect a baseline is

@@ -45,6 +45,28 @@ internal sealed class SaveSerializer
     public static bool IsTransient(Type type) =>
         Transient.GetOrAdd(type, static t => t.GetCustomAttribute<TransientAttribute>() != null);
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, bool> Placement = new();
+
+    // A component type whose values derive from where the entity was placed (`[FromPlacement]`, 4m-4).
+    public static bool IsFromPlacement(Type type) =>
+        Placement.GetOrAdd(type, static t => t.GetCustomAttribute<FromPlacementAttribute>() != null);
+
+    private static bool Contains(IReadOnlyList<string> ids, string id)
+    {
+        for (int i = 0; i < ids.Count; i++)
+            if (string.Equals(ids[i], id, StringComparison.Ordinal)) return true;
+        return false;
+    }
+
+    // The ids of the entity's `[FromPlacement]` components.
+    public IReadOnlyList<string> FromPlacementIds(Entity entity)
+    {
+        List<string>? ids = null;
+        foreach (var (id, value) in _schema.ComponentsOf(entity))
+            if (IsFromPlacement(value.GetType())) (ids ??= new List<string>()).Add(id);
+        return ids ?? (IReadOnlyList<string>)Array.Empty<string>();
+    }
+
     public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json) =>
         WriteComponents(world, entity, json, baseline: null, removed: null);
 
@@ -52,8 +74,9 @@ internal sealed class SaveSerializer
     // components the prefab did not give it in full — and the baseline's components the entity no longer
     // has go in `removed`. `quiet`: taking a baseline at spawn, where an unwritable field is the save's
     // business to report, not the spawn's.
+    // `only`: just these component ids (a spawn's `[FromPlacement]` ones, 4m-4).
     public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json, SpawnBaseline? baseline,
-                                      JsonArray? removed, bool quiet = false)
+                                      JsonArray? removed, bool quiet = false, IReadOnlyList<string>? only = null)
     {
         var result = new JsonObject();
         HashSet<string>? had = baseline != null ? new HashSet<string>(StringComparer.Ordinal) : null;
@@ -61,13 +84,14 @@ internal sealed class SaveSerializer
         {
             var type = value.GetType();
             if (OnTheEntity(type) || IsTransient(type)) continue;
+            if (only != null && !Contains(only, id)) continue;
             var declaration = _schema.DeclarationOf(type)!;
             had?.Add(id);
             try
             {
                 var data = JsonSerializer.SerializeToNode(value, type, json);
                 if (baseline != null && id != TransformId
-                    && baseline.Components[id] is JsonObject before
+                    && baseline.Entry(id) is JsonObject before
                     && before["version"] is JsonValue v && v.TryGetValue(out int version) && version == declaration.Version)
                 {
                     var was = before["data"];
