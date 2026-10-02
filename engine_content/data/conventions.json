@@ -15,6 +15,7 @@
     "invulnerable": "state.invulnerable",
     "damageType": "physical",
     "attack": "default_attack",
+    "hitboxBudget": "default_hitbox_budget",
     "movement": "default_movement",
     "aiProfile": "default_ai",
     "playerFaction": "player",
