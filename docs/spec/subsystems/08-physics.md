@@ -40,7 +40,8 @@ A world with no physics plugin has no `IPhysicsWorld` resource, and code that ca
 | `PhysicsSpace` (`Sage.Physics3D/PhysicsSpace.cs`, `PhysicsSpace.Joints.cs`) | The Bepu implementation. |
 | `Collider`, `RigidBody`, `BodyKind`, `ColliderShape` (`PhysicsData.cs`) | Components `sage:collider` and `sage:rigid_body`. `Collider.Standing(...)` anchors a capsule at the feet. |
 | `LayerMatrix`, `LayerMask`, `PhysicsLayersRecord` | Which layers collide, by name. Query-only layers (hitboxes) are seen only by a mask that names nothing else. |
-| `RayHit`, `SweepHit`, `OverlapHit`, `TriggerOverlap`, `ContactEvent`, `JointBroken` | Query results and event records. |
+| `RayHit`, `SweepHit`, `OverlapHit`, `TriggerOverlap`, `ContactEvent`, `JointBroken` | Query results and event records. A ray or sweep hit carries the `Surface` it hit (#270). |
+| `PhysicsMaterialRecord`, `SurfaceFace`, `IPhysicsWorld.SetSurface`/`SetSurfaces`/`SurfaceOf` (`PhysicsMaterial.cs`) | Surfaces: what colliders, brush faces and terrain layers are made of (#270). |
 | `JointDesc`, `JointKind` (Ball, Hinge, Fixed, Distance), `PhysicsJoint` (`PhysicsJoints.cs`) | Joints. Experimental (SAGE0134). |
 | `CharacterController`, `MovementProfileRecord`, `World.AddCharacter` (`Physics/Character.cs`) | The kinematic character and its tuning record. |
 | `PawnIntent` | The controller's input: move, look, jump, crouch, run. Set by the player controller or AI. |
@@ -50,15 +51,15 @@ Entity I/O: movers take `Open`, `Close`, `Toggle` and fire `OnFullyOpen`, `OnFul
 
 Console and cvars: `phys_debug` (draw bodies, triggers in magenta, joints as yellow lines), `phys_stats` (active bodies, statics, last step time, gravity), `sim_tickrate`.
 
-Events: trigger and contact spans are valid until the next step and are read in `PostPhysics`. Publishing them as typed game events is not built (#269).
+Events: trigger and contact spans are valid until the next step and are read in `PostPhysics`; the same facts are sent on the event bus as `TriggerEntered`, `TriggerExited`, `Collided` (with impulse and speed) and `CollisionEnded` by `sage.physics.events` (#269).
 
 ## 5. Data model
 
 | Kind | Ids as declared |
 |---|---|
-| Records | `physics_layers` (list of layer names, index = layer), `movement_profile` (walk and run speed, acceleration, friction, jump speed, gravity, slope limit, step height, radius, stand and crouch height, ground snap, eye offset) |
-| Components | `sage:collider`, `sage:rigid_body`, `sage:physics_body` (runtime handle, never saved), `sage:body_motion` (linear and angular velocity, saved), `sage:character_controller`, `sage:joint`, `sage:mover` |
-| Prefab parts | `body` (size and mass, or shape, radius and height; options `trigger`, `contacts` and `layer`), `character` (layer, profile), `joint`, `mover` |
+| Records | `physics_layers` (list of layer names, index = layer), `physics_material` (friction, restitution, footstep and impact cues, decal, penetration hint, brush textures; #270), `movement_profile` (walk and run speed, acceleration, friction, jump speed, gravity, slope limit, step height, radius, stand and crouch height, ground snap, eye offset) |
+| Components | `sage:collider` (with its `Surface`), `sage:rigid_body`, `sage:physics_body` (runtime handle, never saved), `sage:body_motion` (linear and angular velocity, saved), `sage:character_controller`, `sage:joint`, `sage:mover` |
+| Prefab parts | `body` (size and mass, or shape, radius and height; options `trigger`, `contacts`, `layer` and `surface`), `footsteps` (stride, reach; #270), `character` (layer, profile), `joint`, `mover` |
 | Saved state | Body poses through transforms, `BodyMotion` for dynamic bodies, `Joint` (data, broken flag, how it was made), `Mover` (position, direction, hold) |
 
 A `joint` part looks like `"joint": { "kind": "Hinge", "target": "beam", "anchor": [0, 0.25, 0], "axis": [1, 0, 0], "min": -70, "max": 70 }`; angles are degrees in data and radians in the facade.
@@ -98,15 +99,15 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-01 | Physics shall sit behind a backend-neutral facade in origin space, so combat, AI and levels never name the engine. | Must | Done | test: ThePhysicsPluginInstallsItsSpaceAsTheWorldsIPhysicsWorld |
 | REQ-PHYS-02 | The facade shall support static, kinematic and dynamic bodies that fall and rest, with 32 named layers and an ignore matrix. | Must | Done | test: ADynamicBoxFallsAndRestsOnAStaticOne; test: LayerMasks |
 | REQ-PHYS-03 | Raycast, shape sweep and box overlap shall respect layer masks, skip triggers unless asked, and ignore the asking entity. | Must | Done | test: RaycastHitsTheNearestCollider_AndRespectsLayers |
-| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Partial: `Overlap` tests shapes, with depth and the way out; `RaycastAll` not started | test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut; #269 |
+| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Done | test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut; test: RaycastAllReportsEveryHitNearestFirst; test: OverlapSphereReportsWhatTheSphereTouchesNotItsBounds |
 | REQ-PHYS-05 | Trigger volumes shall fire `OnStartTouch` and `OnEndTouch` on entity I/O, including for bodies asleep inside them. | Must | Done | test: WalkingIntoATriggerVolumeFiresOnStartTouch; test: SomethingAsleepInATriggerIsStillInsideIt |
-| REQ-PHYS-06 | Colliders that ask shall report contact begin and end, with an impulse for impact sounds and damage. | Must | Partial: begin and end only, as spans | test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd; #269 |
-| REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Not started | #269 |
+| REQ-PHYS-06 | Colliders that ask shall report contact begin and end, with an impulse for impact sounds and damage. | Must | Done | test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd; test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse; test: TheImpulseOfACollisionBetweenTwoBodiesUsesTheirEffectiveMass |
+| REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Done | test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse; test: PhysicsEventsAndTheNewQueriesAllocateNothingPerTick |
 | REQ-PHYS-08 | The character controller shall walk, slide along walls, step up low ledges, climb gentle slopes and not cliffs, jump only when grounded, and crouch without standing under a ceiling. | Must | Done | test: StepsOntoALowLedgeButNotAHighOne; test: CrouchesAndCannotStandUnderACeiling |
 | REQ-PHYS-09 | A character that ends up inside geometry (a closing door, a teleport) shall be pushed out over a few ticks. | Must | Done | test: ACharacterPlacedInsideABoxIsPushedOutAndWalksOn; test: ACharacterDeepInsideComesOutAFewTicksLaterNeverMoreThanARadiusATick |
 | REQ-PHYS-10 | Movers shall sweep their collider and push or block what is in the way (stop, reverse or crush), firing `OnBlocked`. | Must | Done | test: ADoorThatCannotPushACharacterReopensAndSaysWhoBlockedIt; test: TheSandboxHutDoorNoLongerTrapsAPlayerStandingInTheDoorway |
 | REQ-PHYS-11 | Movers shall be kinematic bodies with velocity that carry riders and props, and the controller shall inherit the ground's velocity. | Should | Done | test: ACrateAndAPlayerRideALiftUpAndStayOnIt; test: APlayerStandingOnAMovingPlatformIsCarriedWithIt |
-| REQ-PHYS-12 | Movers shall include hinged and multi-stage path movers with lock state, for Daggerfall, Morrowind and Half-Life doors and trains. | Should | Not started | #266 |
+| REQ-PHYS-12 | Movers shall include hinged and multi-stage path movers with lock state, for Daggerfall, Morrowind and Half-Life doors and trains. | Should | Done | test: AHingedDoorIsADataOnlyPrefabThatSwingsOnItsHinge; test: ATwoStopLiftIsADataOnlyPrefabThatStopsAtEachFloor; test: ALockedDoorRefusesToOpenUntilUnlocked |
 | REQ-PHYS-13 | Joints (ball, hinge, fixed, distance) and collision groups shall be in the facade, with removal with the body and break reporting. | Must | Done (#242) | test: AHingeStopsAtItsLimits; test: SameGroupBodiesPassThroughEachOtherAndOtherGroupsDont |
 | REQ-PHYS-14 | A `joint` prefab part shall make joints from data, fire `OnBreak`, and survive a save mid-swing. | Must | Done (#245) | test: ASaveMidSwingResumesTheSwingInAFreshApp |
 | REQ-PHYS-15 | The rest of phase 4k (ragdolls, joint tuning and tools) shall follow the joint facade. | Should | Done | test: TheTumblerFallsOnItsWire_SettlesWithinItsLimits_AndGetsUpIntoIdle, test: ASettledRagdollSleeps_AndLoadsDownSettledAndAsleep |
@@ -114,7 +115,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-17 | Ladders and climbing shall work from a ladder volume prefab part. | Must | Done (#263) | test: ClimbsALadderToTheLedgeAndStepsOff; test: ALadderBrushEntityInAMapIsClimbedToItsLedge |
 | REQ-PHYS-18 | The controller shall offer movement modes: walk, noclip and fly, GoldSrc air-strafe, smooth crouch with a shrinking collider. | Should | Not started | #267 |
 | REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Not started | #268 |
-| REQ-PHYS-20 | Physics materials and surface types shall be records on colliders, terrain layers and brush textures, returned in hit results. | Should | Not started | #270 |
+| REQ-PHYS-20 | Physics materials and surface types shall be records on colliders, terrain layers and brush textures, returned in hit results. | Should | Done (#270) | test: ABrushFaceIsTheSurfaceItsTextureNames; test: ATerrainLayerIsTheSurfaceOfTheGroundItCovers; test: AFootstepPicksItsCueFromTheSurfaceUnderfoot |
 | REQ-PHYS-21 | Bodies shall follow a floating-origin rebase, including sleeping ones and statics. | Must | Done | test: PhysicsBodiesRebaseWithTheWorld |
 | REQ-PHYS-22 | A steady-state step shall allocate nothing, hitbox cost shall be budgeted, and runs shall be cross-run deterministic. | Should | Partial: about 40 B a tick | #273 |
 

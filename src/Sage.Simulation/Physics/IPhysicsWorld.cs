@@ -61,6 +61,13 @@ public interface IPhysicsWorld
     // MoveStatic does.
     void MoveKinematic(in PhysicsBody body, Vector3 position, Vector3 velocity);
 
+    // The same with a turn (issue #266): the entity at `pose`, its origin moving at `velocity` and the
+    // whole body turning at `angularVelocity` (radians per second about each world axis), as a door on
+    // its hinges does. `pose.Rotation` is relative to how the body was built (a brush's hull is built
+    // unturned), and every point of the body moves at velocity + angularVelocity × (point - origin), so
+    // what rests on it is carried round with it.
+    void MoveKinematic(in PhysicsBody body, in Pose pose, Vector3 velocity, Vector3 angularVelocity);
+
     // Where the body's shape is (its centre, not the entity's origin: see Collider.Center).
     Pose PoseOf(in PhysicsBody body);
 
@@ -72,6 +79,29 @@ public interface IPhysicsWorld
 
     bool IsDynamic(in PhysicsBody body);   // moved by physics: its pose is written back to the transform
     bool IsAwake(in PhysicsBody body);
+
+    // ---- Surfaces (issue #270) ------------------------------------------------------------------
+    //
+    // What a collider is made of: a physics_material record id, returned in every RayHit and SweepHit
+    // on it, and giving it the record's friction and restitution. A body made from a Collider takes
+    // Collider.Surface by itself (a RigidBody's own friction and restitution win over the record's);
+    // these are for what the engine builds (brushes, terrain). A stale handle is ignored.
+
+    // One surface for the whole collider.
+    void SetSurface(in PhysicsBody body, RecordId surface);
+
+    // A convex collider (a brush hull) whose faces differ: a hit takes the surface of the face whose
+    // normal is closest to the hit's. Friction and restitution come from the most upward-facing face,
+    // the one things stand on.
+    void SetSurfaces(in PhysicsBody body, ReadOnlySpan<SurfaceFace> faces);
+
+    // A triangle mesh (terrain) whose triangles differ: `perTriangle[i]` is the index in `layers` of
+    // triangle i's surface, in the order AddMesh was given them. Friction and restitution come from the
+    // most common one.
+    void SetSurfaces(in PhysicsBody body, ReadOnlySpan<RecordId> layers, ReadOnlySpan<byte> perTriangle);
+
+    // The collider's own surface (SetSurface, or Collider.Surface); empty when none was given.
+    RecordId SurfaceOf(in PhysicsBody body);
 
     // ---- Groups, spin and impulses (issue #242, SAGE0134) -----------------------------------------
     //
@@ -168,7 +198,21 @@ public interface IPhysicsWorld
     // body's own entity is left out.
     int Overlap(in PhysicsBody body, Span<OverlapHit> results, LayerMask mask = default, bool includeTriggers = false);
 
+    // Every hit along a ray, nearest first, one per collider, up to results.Length of them (truncated to
+    // the nearest, never thrown): a bullet that goes through thin cover, a beam, what is between two
+    // points (issue #269).
+    int RaycastAll(Vector3 from, Vector3 direction, float maxDistance, Span<RayHit> results, LayerMask mask = default,
+                   bool includeTriggers = false, Entity ignore = default);
+
+    // What a sphere of `radius` at `center` intersects, as Overlap does for any shape: an explosion's
+    // reach, a grenade's "who is near" (issue #269).
+    int OverlapSphere(Vector3 center, float radius, Span<OverlapHit> results, LayerMask mask = default,
+                      bool includeTriggers = false, Entity ignore = default);
+
     // ---- Events (read in PostPhysics; valid until the next step) --------------------------------
+    //
+    // The physics plugin also sends these on the world's event bus after the step (TriggerEntered,
+    // TriggerExited, Collided, CollisionEnded; issue #269), for a system that reads them with a cursor.
 
     // Trigger volumes entered and left during the last step.
     ReadOnlySpan<TriggerOverlap> TriggerEnter { get; }

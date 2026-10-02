@@ -48,6 +48,7 @@
             "movement_profile",
             "particle",
             "physics_layers",
+            "physics_material",
             "placements",
             "post_effect",
             "prefab",
@@ -433,6 +434,21 @@
           },
           "then": {
             "$ref": "physics_layers.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "physics_material"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "physics_material.schema.json"
           }
         },
         {

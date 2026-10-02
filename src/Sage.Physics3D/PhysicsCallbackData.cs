@@ -31,7 +31,12 @@ internal sealed class PhysicsCallbackData
     private readonly List<ContactEvent> _contactBegin = new();
     private readonly List<ContactEvent> _contactEnd = new();
 
-    private readonly record struct ContactReport(uint A, uint B, Vector3 Point, Vector3 Normal);
+    private readonly record struct ContactReport(uint A, uint B, Vector3 Point, Vector3 Normal, float Impulse, float Speed, bool Touching);
+
+    // Pairs that asked for contacts and are about to touch (a speculative contact): the hardest each was
+    // closing, carried from step to step until it touches, which is when Collided reports it (issue #269).
+    private Dictionary<(uint A, uint B), (float Speed, float Impulse)> _approach = new();
+    private Dictionary<(uint A, uint B), (float Speed, float Impulse)> _approachNow = new();
 
     public PhysicsCallbackData(int workerCount)
     {
@@ -67,6 +72,17 @@ internal sealed class PhysicsCallbackData
         public float Friction;
         public float Restitution;
         public int Group;       // bodies sharing a nonzero group never collide (issue #242)
+        public RecordId Surface;   // what it is made of (issue #270)
+        public SurfaceMap? Map;    // per face or per triangle, when they differ
+    }
+
+    // A collider whose surface differs across it (issue #270): by face normal for a hull, by triangle
+    // for a mesh. Read by queries on the main thread; written only between steps.
+    internal sealed class SurfaceMap
+    {
+        public Vector3[]? Normals;      // a hull's faces, one per entry of Surfaces
+        public byte[]? Triangles;       // a mesh's triangles, each an index into Surfaces
+        public RecordId[] Surfaces = Array.Empty<RecordId>();
     }
 
     // ---- Registration (main thread, between steps) ----
@@ -106,6 +122,52 @@ internal sealed class PhysicsCallbackData
         if (bodyHandle >= _bodies.Length) Array.Resize(ref _bodies, Math.Max(bodyHandle + 1, _bodies.Length * 2));
         _bodies[bodyHandle] = entry;
     }
+
+    // ---- Surfaces (issue #270; main thread) ----
+
+    public void SetSurface(int handle, bool isStatic, RecordId surface, SurfaceMap? map, float? friction, float? restitution)
+    {
+        var entries = isStatic ? _statics : _bodies;
+        if ((uint)handle >= (uint)entries.Length || !entries[handle].Used) return;
+        ref var entry = ref entries[handle];
+        entry.Surface = surface;
+        entry.Map = map;
+        if (friction is { } f) entry.Friction = f;
+        if (restitution is { } r) entry.Restitution = r;
+    }
+
+    public RecordId SurfaceOf(int handle, bool isStatic)
+    {
+        var entries = isStatic ? _statics : _bodies;
+        return (uint)handle < (uint)entries.Length ? entries[handle].Surface : default;
+    }
+
+    // What a query hit is made of, where it hit: the triangle (`child`) of a mesh, the face nearest
+    // `normal` of a hull, or the collider's own. Allocation-free.
+    public RecordId SurfaceAt(CollidableReference collidable, int child, Vector3 normal)
+    {
+        ref var entry = ref EntryOf(collidable);
+        var map = entry.Map;
+        if (map == null) return entry.Surface;
+        if (map.Triangles != null)
+            return (uint)child < (uint)map.Triangles.Length && map.Triangles[child] < map.Surfaces.Length
+                ? map.Surfaces[map.Triangles[child]] : entry.Surface;
+        if (map.Normals != null)
+        {
+            int best = -1;
+            float closest = float.NegativeInfinity;
+            for (int i = 0; i < map.Normals.Length; i++)
+            {
+                float d = Vector3.Dot(map.Normals[i], normal);
+                if (d > closest) { closest = d; best = i; }
+            }
+            if (best >= 0) return map.Surfaces[best];
+        }
+        return entry.Surface;
+    }
+
+    // Whether a hit on this collidable needs its triangle to say what it hit (a mesh with a map).
+    public bool HasTriangleSurfaces(CollidableReference collidable) => EntryOf(collidable).Map?.Triangles != null;
 
     public void UnregisterBody(int handle) { if (handle < _bodies.Length) _bodies[handle] = default; }
     public void UnregisterStatic(int handle) { if (handle < _statics.Length) _statics[handle] = default; }
@@ -163,11 +225,12 @@ internal sealed class PhysicsCallbackData
         _workerTriggers[workerIndex].Add((pair.A.Packed, pair.B.Packed));
     }
 
-    // A solid contact on a pair that asked for them: `point` in origin space, `normal` from B to A.
-    public void ReportContact(int workerIndex, CollidablePair pair, Vector3 point, Vector3 normal)
+    // A solid contact on a pair that asked for them: `point` in origin space, `normal` from B to A, and
+    // how hard they were closing (Collided, issue #269); not `touching` yet is an approach.
+    public void ReportContact(int workerIndex, CollidablePair pair, Vector3 point, Vector3 normal, float impulse, float speed, bool touching)
     {
         if ((uint)workerIndex >= (uint)_workerContacts.Length) workerIndex = 0;
-        _workerContacts[workerIndex].Add(new ContactReport(pair.A.Packed, pair.B.Packed, point, normal));
+        _workerContacts[workerIndex].Add(new ContactReport(pair.A.Packed, pair.B.Packed, point, normal, impulse, speed, touching));
     }
 
     public Entity EntityOf(CollidableReference collidable) => EntryOf(collidable).Entity;
@@ -232,16 +295,30 @@ internal sealed class PhysicsCallbackData
     private void EndContacts()
     {
         _touchingNow.Clear();
+        _approachNow.Clear();
         foreach (var list in _workerContacts)
             foreach (var report in list)
             {
                 bool swap = report.A > report.B;
                 var key = swap ? (report.B, report.A) : (report.A, report.B);
+                float speed = report.Speed, impulse = report.Impulse;
+                if (_approach.TryGetValue(key, out var before))
+                {
+                    speed = MathF.Max(speed, before.Speed);
+                    impulse = MathF.Max(impulse, before.Impulse);
+                }
+                if (!report.Touching)
+                {
+                    if (!_touching.Contains(key)) _approachNow[key] = (speed, impulse);   // still on its way
+                    continue;
+                }
                 if (!_touchingNow.Add(key) || _touching.Contains(key)) continue;
                 var a = EntityOf(new CollidableReference { Packed = report.A });
                 var b = EntityOf(new CollidableReference { Packed = report.B });
-                if (!a.IsNull && !b.IsNull) _contactBegin.Add(new ContactEvent(a, b, report.Point, report.Normal));
+                if (!a.IsNull && !b.IsNull)
+                    _contactBegin.Add(new ContactEvent(a, b, report.Point, report.Normal) { Impulse = impulse, Speed = speed });
             }
+        (_approach, _approachNow) = (_approachNow, _approach);
 
         foreach (var key in _touching)
         {

@@ -102,6 +102,25 @@ Sage.Gameplay.FootIkPart.RayAbove -> float
 Sage.Gameplay.FootIkPart.RayBelow -> float
 Sage.Gameplay.FootIkPart.Right -> Sage.Gameplay.FootIkLeg?
 Sage.Gameplay.FootIkPart.Weight -> float
+Sage.Gameplay.Footstep
+Sage.Gameplay.Footstep.Entity.get -> Sage.Simulation.Entity
+Sage.Gameplay.Footstep.Entity.init -> void
+Sage.Gameplay.Footstep.Footstep() -> void
+Sage.Gameplay.Footstep.Footstep(Sage.Simulation.Entity Entity, System.Numerics.Vector3 Point, Sage.Core.RecordId Surface) -> void
+Sage.Gameplay.Footstep.Point.get -> System.Numerics.Vector3
+Sage.Gameplay.Footstep.Point.init -> void
+Sage.Gameplay.Footstep.Surface.get -> Sage.Core.RecordId
+Sage.Gameplay.Footstep.Surface.init -> void
+Sage.Gameplay.Footsteps
+Sage.Gameplay.Footsteps.Footsteps() -> void
+Sage.Gameplay.Footsteps.LastSurface -> Sage.Core.RecordId
+Sage.Gameplay.Footsteps.Reach -> float
+Sage.Gameplay.Footsteps.Stride -> float
+Sage.Gameplay.FootstepsPart
+Sage.Gameplay.FootstepsPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.FootstepsPart.FootstepsPart() -> void
+Sage.Gameplay.FootstepsPart.Reach -> float
+Sage.Gameplay.FootstepsPart.Stride -> float
 Sage.Gameplay.HitContext
 Sage.Gameplay.HitContext.Attack.get -> Sage.Gameplay.AttackRecord!
 Sage.Gameplay.HitContext.Attack.init -> void
@@ -183,6 +202,19 @@ Sage.Gameplay.NavLinkPart.Kind -> Sage.Gameplay.NavLinkKind
 Sage.Gameplay.NavLinkPart.NavLinkPart() -> void
 Sage.Gameplay.NavLinkPart.StartDisabled -> bool
 Sage.Gameplay.NavLinkPart.TwoWay -> bool
+Sage.Gameplay.Mover.ClosedRotation -> System.Numerics.Quaternion
+Sage.Gameplay.Mover.Halt -> float
+Sage.Gameplay.Mover.Locked -> bool
+Sage.Gameplay.Mover.OpenAngle -> float
+Sage.Gameplay.Mover.OpenAxis -> System.Numerics.Vector3
+Sage.Gameplay.Mover.Path -> System.Numerics.Vector3[]?
+Sage.Gameplay.Mover.Pivot -> System.Numerics.Vector3
+Sage.Gameplay.MoverPart.Angle -> float
+Sage.Gameplay.MoverPart.Axis -> System.Numerics.Vector3
+Sage.Gameplay.MoverPart.Locked -> bool
+Sage.Gameplay.MoverPart.Path -> System.Numerics.Vector3[]?
+Sage.Gameplay.MoverPart.Pivot -> System.Numerics.Vector3
+Sage.Gameplay.MoverPart.Speed -> float
 Sage.Gameplay.Offscreen
 Sage.Gameplay.Offscreen.Corpse -> bool
 Sage.Gameplay.Offscreen.Fight -> string!

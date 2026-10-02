@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Simulation;
@@ -28,6 +29,8 @@ public sealed class TerrainRecord
     public float Amplitude = 20f;
     [Property(Min = 8, Max = 100000, Unit = "m", Tooltip = "How far apart the hills are")]
     public float Wavelength = 256f;
+    [RecordRef("physics_material"), Property(Tooltip = "What the ground is made of, by terrain layer: the first is everywhere a generator paints nothing else")]
+    public List<RecordId> Surfaces = new();
 }
 
 [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world

@@ -56,6 +56,45 @@ public sealed partial class PhysicsSpace
         Simulation.Bodies.UpdateBounds(handle);
     }
 
+    public void MoveKinematic(in PhysicsBody body, in Pose pose, Vector3 velocity, Vector3 angularVelocity)
+    {
+        var rotation = pose.Rotation.LengthSquared() < 0.5f ? Quaternion.Identity : Quaternion.Normalize(pose.Rotation);
+        if (body.IsStatic)
+        {
+            var staticHandle = new StaticHandle(body.Handle);
+            if (!Simulation.Statics.StaticExists(staticHandle)) return;
+            var hull = _hullOffsets.TryGetValue(body.Handle, out var c) ? c : Vector3.Zero;
+            Simulation.Statics[staticHandle].Pose = new RigidPose(pose.Position + Vector3.Transform(hull, rotation), rotation);
+            Simulation.Statics.UpdateBounds(staticHandle);
+            return;
+        }
+        var handle = new BodyHandle(body.Handle);
+        if (!Simulation.Bodies.BodyExists(handle)) return;
+        var reference = Simulation.Bodies[handle];
+        if (!reference.Kinematic) return;
+
+        // Bepu poses the shape's centre, which turns round the entity's origin with the body: the centre
+        // moves at the origin's velocity plus the turn's, ω × r.
+        var offset = _bodyHullOffsets.TryGetValue(body.Handle, out var centre) ? centre : Vector3.Zero;
+        var arm = Vector3.Transform(offset, rotation);
+        reference.Pose = new RigidPose(pose.Position + arm, rotation);
+        reference.Velocity.Linear = velocity + Vector3.Cross(angularVelocity, arm);
+        reference.Velocity.Angular = angularVelocity;
+        reference.Awake = true;
+        Simulation.Bodies.UpdateBounds(handle);
+    }
+
+    // How fast a point fixed to the body is moving, in the world: its centre's velocity and its turn,
+    // v + ω × r. What a character standing on a turning platform or a swinging door is carried at.
+    internal Vector3 PointVelocityOf(in PhysicsBody body, Vector3 point)
+    {
+        if (body.IsStatic) return Vector3.Zero;
+        var handle = new BodyHandle(body.Handle);
+        if (!Simulation.Bodies.BodyExists(handle)) return Vector3.Zero;
+        var reference = Simulation.Bodies[handle];
+        return reference.Velocity.Linear + Vector3.Cross(reference.Velocity.Angular, point - reference.Pose.Position);
+    }
+
     private bool AnchorsAJoint(int staticHandle)
     {
         for (int i = 0; i < _jointHigh && JointCount > 0; i++)

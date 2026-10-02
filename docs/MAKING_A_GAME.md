@@ -396,7 +396,7 @@ result with the file each field came from.
 
 ### Every record type there is
 
-Thirty-one, and a game may use as few as it likes. Their fields are documented in the design doc named
+Thirty-two, and a game may use as few as it likes. Their fields are documented in the design doc named
 beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
@@ -405,7 +405,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows |
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
-| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming; `physics_layers` — what collides with what |
+| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming; `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues, a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
@@ -550,7 +550,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 
 | Part | Gives the entity |
 |---|---|
-| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end) |
+| `body` | a collider and a rigid body — `shape` (Box/Sphere/Capsule), `size` or `radius`/`height`, `mass`, `layer`, `trigger`, `contacts` (report contact begin/end), `surface` (a `physics_material`: what it is made of, issue #270) |
 | `joint` | a joint from this (dynamic) body to another entity's, its parent's or the world's, in data (issue #245) — `kind` (Ball/Hinge/Fixed/Distance), `target` (an entity name; empty = the parent if it has a body, else the world), `anchor` (in this entity's space), `targetAnchor` (optional; default: the same point, where they stand), `axis`, `swing`, `twistMin`/`twistMax`, `min`/`max` (a hinge's range), `minDistance`/`maxDistance` (degrees and metres), `breakForce`, `drag`; the `Break` input and the `OnBreak` output (SAGE0134) |
 | `character` | the kinematic character controller, and with it the ability to walk (and to swim, in water) |
 | `water` | a box of water things float and characters swim in — `size` (full extents, centred on the entity; the top face is the surface), `drag` (2, per second), `buoyancy` (2: lift on a submerged body as a multiple of its weight, so a crate floats half under), `current` (m/s); the `OnEnterWater` / `OnExitWater` outputs (issue #262; design/10 "As built (water and swimming)") |
@@ -560,10 +560,11 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `bone_attachment` | follows a socket of its parent's skeleton — `socket` (a bare value: `"bone_attachment": "hand_r"`), or `bone` (a joint by name), `offset`, `angles`; sockets are `skeleton_sockets` records (issue #120) |
 | `aim_ik` | turns the spine, neck and head toward `AimIk.Pitch`/`Yaw` after the animation — `joints` (hips up: `joint`, `weight`, `pitchLimit`, `yawLimit` in degrees), `weight` (issue #120) |
 | `foot_ik` | plants the feet on the ground under them and lowers the hips — `pelvis`, `left`/`right` (`hip`, `knee`, `foot`), `footHeight`, `rayAbove`, `rayBelow`, `maxPelvisDrop`, `weight` (issue #120) |
+| `footsteps` | a step every `stride` metres it walks on the ground (0: only on its animation's `footstep` events), each raising the `footstep` cue of the `physics_material` underfoot (a ray `reach` metres below the feet) and sending `Footstep` (issue #270) |
 | `ragdoll` | falls as a ragdoll — on death, a hit, the `Ragdoll` input (an impulse "x y z" as its parameter) or from code — with the bodies and joints of its model's `ragdoll` records, settles (the `OnSettled` output) and gets back up (the `GetUp` input) — `record` (one `ragdoll` record; empty: every one for the model), `onDeath` (true), `hitImpulse` (N·s), `getUpAfter` (seconds after it has come to rest; 0 = only when told; never once it has died), `getUpBack`/`getUpFront` (the animator states it gets up with, `getup_back`/`getup_front`), `getUpFade` (issues #246–#249, SAGE0134; design/12) |
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
-| `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260) |
+| `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260); `angle`, `axis` (default up) and `pivot` swing it on a hinge, in its own frame (`"angle": 90, "pivot": [-0.5, 0, 0]` is a door hinged on its west edge); `path`, stops after the shut one (a lift's floors, the last is open), `speed` instead of `seconds` (m/s, or deg/s for a door), `locked` (#266) |
 | `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
 | `nav_door` | beside a `mover`: `locked` — creatures do not open it, and while it is not fully open it is a wall to the planner (without it a creature opens a door in its way and waits, #265) |
 | `nav_link` | an off-mesh link from here to `end` (metres, world axes) — `kind` (`Walk`, `Jump`, `Drop`, `Ladder`, `Teleport`), `twoWay`, `cost`, `startDisabled`; `Enable`/`Disable` switch it; on a prefab of your own a map places it with `"nav_link.end" "2 -3 0"` (#265) |
@@ -587,7 +588,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
 
-Thirty-six here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Thirty-two here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -951,6 +952,23 @@ In the editor:
   described, with the prefab's own value as the default; a value that is not a number where one is
   wanted, or out of its range, is an error naming the map line.
 - **A face's texture name is a material id**: a face textured `wall` looks for `yourgame:wall`.
+- **A face's texture is also a surface** (issue #270): a `physics_material` record lists the textures
+  it covers, and a ray or a sweep that hits the face reports it (`RayHit.Surface`), so footsteps, impacts
+  and bullet holes come out right. A face no record names takes the `map` record's `"surface"`:
+
+  ```json
+  { "type": "physics_material", "id": "wood", "friction": 0.6, "footstep": "step_wood",
+    "impact": "impact_wood", "decal": "textures/hole_wood.png", "penetration": 0.4,
+    "textures": ["wood*", "door"] },
+  { "type": "map", "id": "hut", "file": "maps/hut.map", "surface": "sage:stone" }
+  ```
+
+  An exact name wins over a pattern, and a longer pattern over a shorter one; case does not matter. A
+  prefab's collider takes one with the `body` part's `"surface"`, terrain by layer with the `terrain`
+  record's `"surfaces"` (the first is the ground everywhere a generator paints nothing else), and a
+  creature's `footsteps` part raises the `footstep` cue of whatever it walks on. The engine's own
+  (`sage:default`, `stone`, `wood`, `metal`, `dirt`, `grass`, `flesh`, `glass`) give friction and a
+  penetration hint only; the cues and the textures are yours.
 - **Brushes with a classname become a solid entity** — a door, a lift, a trigger volume — which is an
   ordinary entity that owns its geometry. Give it a prefab with a `mover` part and it moves.
 - **`"trigger" "1"`** makes its volume something you walk into rather than against, and it is not drawn.
@@ -967,10 +985,10 @@ a named *input* on another entity:
 "OnUse" "!self,Open"                       target,input[,parameter,delay,times]
 ```
 
-Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`, `OnBlocked` (a mover, with what blocked it as the activator),
+Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`, `OnBlocked` (a mover, with what blocked it as the activator), `OnArrived` (a mover at any stop of its path, the stop as its value), `OnLocked` (a locked mover someone tried to open, the activator),
 `OnCameraOn` / `OnCameraOff`, `OnEnterWater` / `OnExitWater` (a character and the water it went into), `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
-Inputs it offers: `Open`, `Close`, `Toggle`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
+Inputs it offers: `Open`, `Close`, `Toggle`, a mover's `Next` / `Previous` / `GoTo` (a stop by number, 0 = shut), `Lock` / `Unlock` and `SetSpeed`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
 `TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState`, a light's `TurnOn` / `TurnOff` / `Toggle`, the logic entities' and gameplay's
 `SetStage`, `StartDialogue`, `GiveItem`, `ApplyEffect`, `SetFaction` — `io_list` prints the live lists
 (with the components each short name belongs to), and
@@ -1269,6 +1287,18 @@ var mask = LayerMask.All.Except(physics.Layers.Enemy);             // layers by 
 var hit = physics.Raycast(eye, aim, 30f, mask, ignore: self);      // `ignore`: leave the asker out
 var swing = physics.Sweep(Collider.Sphere(0.3f), pose, aim, 2f, ignore: self);   // starts inside? Distance 0
 foreach (var touch in physics.TriggerEnter) { /* PostPhysics: who entered which trigger */ }
+int n = physics.RaycastAll(eye, aim, 30f, hits, mask);             // every hit, nearest first
+int near = physics.OverlapSphere(blast, 4f, overlaps);              // what a sphere really touches
+```
+
+The same trigger and contact facts arrive on the event bus (issue #269), so a system reads them in code
+with a cursor instead of wiring entity I/O: `TriggerEntered`, `TriggerExited`, `Collided` (with
+`Impulse` in N·s and `Speed` in m/s: an impact sound's volume, fall damage) and `CollisionEnded`.
+
+```csharp
+_hits = world.Events.Reader<Collided>(this);                        // in the constructor
+foreach (ref readonly var hit in _hits.Read())                      // in Run
+    if (hit.Impulse > 5f) PlayThud(hit.Point, hit.Impulse);
 ```
 
 A sweep that starts inside something hits it at distance 0 (`StartsInside`), which is what a swing
@@ -1813,7 +1843,8 @@ Worth knowing before you plan around it:
   (docs/MODDING.md); there are no code mods, no `.sagemod` zips and no namespaced asset paths yet — two
   mods shipping one texture is reported as a conflict and the later one wins. Those are phase 9.
 - **Saves cover the simulation, not your UI state.** A mover slides; it pushes a player out of its way,
-  shoves a crate (#260) and carries whoever stands on it (#261), but it does not swing on a hinge yet (#266).
+  shoves a crate (#260), carries whoever stands on it (#261), swings on a hinge and follows a path of
+  stops (#266), but a path is straight lines between stops, and a rider is carried round a turn, not turned with it.
 
 ---
 

@@ -37,6 +37,8 @@ public struct Collider : IComponent
     public bool IsTrigger;    // generates overlap events, never a collision response
     [Property(Category = "Collision", Tooltip = "Reports contact begin and end events")]
     public bool ReportContacts;   // opt-in: tracking every pair of a crowded world would cost every tick
+    [RecordRef("physics_material"), Property(Category = "Collision", Tooltip = "What it is made of: footsteps, impacts and its friction; empty = none")]
+    public RecordId Surface;      // issue #270: returned in every hit on it
 
     // The shortest cylinder a capsule may keep: two hemispheres and nothing between them is still a
     // capsule, but a negative length is not a shape.
@@ -244,6 +246,9 @@ public struct RayHit
     public Vector3 Normal;
     public float Distance;
     public bool Hit;
+    // What it hit is made of (a physics_material, issue #270): the collider's, the brush face's or the
+    // terrain layer's. Empty when nobody said.
+    public RecordId Surface;
 }
 
 public struct SweepHit
@@ -256,6 +261,8 @@ public struct SweepHit
     // The shape already overlapped this where the sweep started (IPhysicsWorld.Sweep): Distance is 0,
     // Position is where the shape started and Normal is -direction, because an overlap has no surface.
     public bool StartsInside;
+    // What it hit is made of (a physics_material, issue #270), as RayHit.Surface.
+    public RecordId Surface;
 }
 
 // What a shape intersects (IPhysicsWorld.Overlap, issue #259): Normal is the way out, pointing from the
@@ -267,10 +274,15 @@ public struct OverlapHit
     public float Depth;
 }
 
-// Trigger overlaps collected during the step, drained in PostPhysics (10 §3). Game events come with
-// the event bus (04); until then systems read these lists.
+// Trigger overlaps collected during the step, drained in PostPhysics (10 §3). The physics plugin also
+// sends them on the event bus as TriggerEntered/TriggerExited (PhysicsEvents.cs, issue #269).
 public readonly record struct TriggerOverlap(Entity Trigger, Entity Other);
 
 // A solid contact between two colliders, at least one of which asked for them (Collider.ReportContacts).
 // Normal points from B toward A; Point is where they touch. An end event carries the entities only.
-public readonly record struct ContactEvent(Entity A, Entity B, Vector3 Point, Vector3 Normal);
+// Speed and Impulse say how hard a beginning was (issue #269; Collided says how they are worked out).
+public readonly record struct ContactEvent(Entity A, Entity B, Vector3 Point, Vector3 Normal)
+{
+    public float Impulse { get; init; }   // N·s
+    public float Speed { get; init; }     // closing speed along the normal, m/s
+}

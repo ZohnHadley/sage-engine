@@ -441,6 +441,28 @@
         "sage:default"
       ]
     },
+    "record:physics_material": {
+      "description": "The id of a physics_material record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "default",
+        "dirt",
+        "flesh",
+        "glass",
+        "grass",
+        "metal",
+        "sage:default",
+        "sage:dirt",
+        "sage:flesh",
+        "sage:glass",
+        "sage:grass",
+        "sage:metal",
+        "sage:stone",
+        "sage:wood",
+        "stone",
+        "wood"
+      ]
+    },
     "record:placements": {
       "description": "The id of a placements record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1440,6 +1462,28 @@
       "enum": [
         "default",
         "sage:default"
+      ]
+    },
+    "base:physics_material": {
+      "description": "Another physics_material record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "default",
+        "dirt",
+        "flesh",
+        "glass",
+        "grass",
+        "metal",
+        "sage:default",
+        "sage:dirt",
+        "sage:flesh",
+        "sage:glass",
+        "sage:grass",
+        "sage:metal",
+        "sage:stone",
+        "sage:wood",
+        "stone",
+        "wood"
       ]
     },
     "base:placements": {
