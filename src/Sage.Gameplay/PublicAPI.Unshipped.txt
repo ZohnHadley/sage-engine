@@ -400,3 +400,10 @@ static Sage.Gameplay.ShotRandom.Value(long tick, int entity, uint shot, uint sal
 static Sage.Gameplay.Spread.ConeOf(Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Gameplay.SpreadRecord! spread) -> float
 static Sage.Gameplay.Spread.Deflect(System.Numerics.Vector3 aim, float coneRadians, long tick, int entity, uint shot, int pellet) -> System.Numerics.Vector3
 Sage.Gameplay.LightPart.Off -> bool
+Sage.Gameplay.Mover.Blocked -> bool
+Sage.Gameplay.Mover.OnBlocked -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverBlocked.Crush = 2 -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverBlocked.Reverse = 0 -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverBlocked.Stop = 1 -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverPart.OnBlocked -> Sage.Gameplay.MoverBlocked
