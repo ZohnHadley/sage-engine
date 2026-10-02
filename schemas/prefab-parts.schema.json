@@ -1557,7 +1557,7 @@
       "type": "object",
       "properties": {
         "open": {
-          "description": "(Vector3, default [0,0,0])",
+          "description": "Where open is, relative to where it was placed. Unit: m. (Vector3, default [0,0,0])",
           "default": [
             0,
             0,
@@ -1571,17 +1571,25 @@
           "maxItems": 3
         },
         "seconds": {
-          "description": "(float, default 1)",
+          "description": "How long the whole trip takes, shut to open. Unit: s. At least 0. (float, default 1)",
           "default": 1,
-          "type": "number"
+          "type": "number",
+          "minimum": 0
+        },
+        "speed": {
+          "description": "Above 0: metres a second along its path (degrees a second if it only turns), instead of seconds. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
         },
         "closeAfter": {
-          "description": "(float, default 0)",
+          "description": "Above 0: shuts itself this long after opening. Unit: s. At least 0. (float, default 0)",
           "default": 0,
-          "type": "number"
+          "type": "number",
+          "minimum": 0
         },
         "onBlocked": {
-          "description": "(MoverBlocked, default \"Reverse\")",
+          "description": "Reverse (default), Stop or Crush, when something can't be pushed. (MoverBlocked, default \"Reverse\")",
           "default": "Reverse",
           "type": "string",
           "enum": [
@@ -1589,6 +1597,80 @@
             "Stop",
             "Crush"
           ]
+        },
+        "angle": {
+          "description": "How far it turns as it opens (a hinged door: 90) Unit: deg. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "axis": {
+          "description": "What it turns about, in its own frame; default up, a door's hinge. (Vector3, default [0,1,0])",
+          "default": [
+            0,
+            1,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "pivot": {
+          "description": "Where the hinge is, from its origin, in its own frame. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "path": {
+          "description": "Stops after the shut one, from where it was placed (a lift's floors); open is the last. Unit: m. (Vector3[])",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "path+": {
+          "description": "Adds to \"path\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "path-": {
+          "description": "Removes these from \"path\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "locked": {
+          "description": "Starts locked: refuses to open until it is sent Unlock. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

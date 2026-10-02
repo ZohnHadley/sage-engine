@@ -362,7 +362,7 @@ internal sealed class CharacterMovementSystem : ISystem
             character.Grounded = true;
             character.OnSteep = false;
             character.GroundNormal = hit.Normal;
-            character.GroundVelocity = GroundVelocityOf(hit.Entity);
+            character.GroundVelocity = GroundVelocityOf(hit.Entity, position);
             position += Vector3.UnitY * (Skin - MathF.Max(0f, hit.Distance - Skin));
             if (character.Velocity.Y < 0) character.Velocity.Y = 0;
             return;
@@ -381,7 +381,7 @@ internal sealed class CharacterMovementSystem : ISystem
             {
                 position = recovery.Position + Vector3.UnitY * Skin;
                 character.Grounded = true;
-                character.GroundVelocity = GroundVelocityOf(recovery.Entity);
+                character.GroundVelocity = GroundVelocityOf(recovery.Entity, recovery.Position);
                 character.OnSteep = false;
                 character.GroundNormal = recovery.Normal;
                 if (character.Velocity.Y < 0) character.Velocity.Y = 0;
@@ -534,12 +534,13 @@ internal sealed class CharacterMovementSystem : ISystem
         return false;
     }
 
-    // A kinematic body's velocity (a mover, issue #261); nothing else under the feet moves the feet.
-    private Vector3 GroundVelocityOf(Entity ground)
+    // A kinematic body's velocity where the feet are (a mover, issue #261; turning, as a hinged door or
+    // a turntable does, issue #266: v + ω × r); nothing else under the feet moves the feet.
+    private Vector3 GroundVelocityOf(Entity ground, Vector3 feet)
     {
         if (ground.IsNull || !ground.TryGetComponent<PhysicsBody>(out var body) || body.IsStatic || _space.IsDynamic(body))
             return Vector3.Zero;
-        return _space.VelocityOf(body);
+        return _space.PointVelocityOf(body, feet);
     }
 
     // Crouching shrinks the capsule; standing up needs headroom (10 §3).

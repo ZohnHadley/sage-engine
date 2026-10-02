@@ -527,6 +527,7 @@ Sage.Simulation.IPhysicsWorld.GroupOf(in Sage.Simulation.PhysicsBody body) -> in
 Sage.Simulation.IPhysicsWorld.JointBroken.get -> System.ReadOnlySpan<Sage.Simulation.JointBroken>
 Sage.Simulation.IPhysicsWorld.JointCount.get -> int
 Sage.Simulation.IPhysicsWorld.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
+Sage.Simulation.IPhysicsWorld.MoveKinematic(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Pose pose, System.Numerics.Vector3 velocity, System.Numerics.Vector3 angularVelocity) -> void
 Sage.Simulation.IPhysicsWorld.OverlapSphere(System.Numerics.Vector3 center, float radius, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Simulation.IPhysicsWorld.RaycastAll(System.Numerics.Vector3 from, System.Numerics.Vector3 direction, float maxDistance, System.Span<Sage.Simulation.RayHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
