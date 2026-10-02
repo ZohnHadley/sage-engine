@@ -4387,7 +4387,7 @@
       "type": "object",
       "properties": {
         "after": {
-          "description": "Gets up by itself this long after going down; 0 = only when told (GetUp) Unit: s. At least 0. (float, default 0)",
+          "description": "Gets up by itself this long after coming to rest; 0 = only when told (GetUp) Unit: s. At least 0. (float, default 0)",
           "default": 0,
           "type": "number",
           "minimum": 0
@@ -4407,7 +4407,7 @@
           "minimum": 0
         },
         "down": {
-          "description": "How long it has been down (counts while the ragdoll is active) Unit: s. (float, default 0)",
+          "description": "How long it has lain settled (counts while the ragdoll is settled) Unit: s. (float, default 0)",
           "default": 0,
           "type": "number"
         },
