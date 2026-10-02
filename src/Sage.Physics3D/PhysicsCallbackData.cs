@@ -96,6 +96,17 @@ internal sealed class PhysicsCallbackData
         return (uint)handle < (uint)entries.Length ? entries[handle].Entity : default;
     }
 
+    // A static that has become a body (issue #261: a mover's brush made kinematic) keeps what it was
+    // registered with: its entity, layer, trigger flag, material and group.
+    public void StaticBecameBody(int staticHandle, int bodyHandle)
+    {
+        var entry = (uint)staticHandle < (uint)_statics.Length ? _statics[staticHandle] : default;
+        UnregisterStatic(staticHandle);
+        if (!entry.Used) return;
+        if (bodyHandle >= _bodies.Length) Array.Resize(ref _bodies, Math.Max(bodyHandle + 1, _bodies.Length * 2));
+        _bodies[bodyHandle] = entry;
+    }
+
     public void UnregisterBody(int handle) { if (handle < _bodies.Length) _bodies[handle] = default; }
     public void UnregisterStatic(int handle) { if (handle < _statics.Length) _statics[handle] = default; }
 

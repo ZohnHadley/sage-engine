@@ -60,6 +60,10 @@ internal sealed class CharacterMovementSystem : ISystem
         if (character.Height <= 0) character.Height = profile.StandHeight;
 
         Vector3 position = transform.LocalPosition;
+        // Standing on something that moves (a lift, a mover, issue #261): carried with it, before anything
+        // else, so what follows walks relative to the ground as it is now.
+        if (character.Grounded && character.GroundVelocity != Vector3.Zero)
+            position += character.GroundVelocity * dt;
         // Inside something (a door closed on it, a teleport, a spawn): out first, or every sweep below
         // starts overlapping and sees nothing (issue #259).
         position = Depenetrate(position, ref character, profile, mask);
@@ -253,6 +257,7 @@ internal sealed class CharacterMovementSystem : ISystem
             character.Grounded = true;
             character.OnSteep = false;
             character.GroundNormal = hit.Normal;
+            character.GroundVelocity = GroundVelocityOf(hit.Entity);
             position += Vector3.UnitY * (Skin - MathF.Max(0f, hit.Distance - Skin));
             if (character.Velocity.Y < 0) character.Velocity.Y = 0;
             return;
@@ -271,6 +276,7 @@ internal sealed class CharacterMovementSystem : ISystem
             {
                 position = recovery.Position + Vector3.UnitY * Skin;
                 character.Grounded = true;
+                character.GroundVelocity = GroundVelocityOf(recovery.Entity);
                 character.OnSteep = false;
                 character.GroundNormal = recovery.Normal;
                 if (character.Velocity.Y < 0) character.Velocity.Y = 0;
@@ -279,6 +285,7 @@ internal sealed class CharacterMovementSystem : ISystem
         }
 
         character.Grounded = false;
+        character.GroundVelocity = Vector3.Zero;
         character.OnSteep = hit.Hit;                                     // a steep face: slide off it
         character.GroundNormal = hit.Hit ? hit.Normal : Vector3.UnitY;
     }
@@ -305,6 +312,14 @@ internal sealed class CharacterMovementSystem : ISystem
             if (into < 0) character.Velocity -= deepest.Normal * into;
         }
         return position;
+    }
+
+    // A kinematic body's velocity (a mover, issue #261); nothing else under the feet moves the feet.
+    private Vector3 GroundVelocityOf(Entity ground)
+    {
+        if (ground.IsNull || !ground.TryGetComponent<PhysicsBody>(out var body) || body.IsStatic || _space.IsDynamic(body))
+            return Vector3.Zero;
+        return _space.VelocityOf(body);
     }
 
     // Crouching shrinks the capsule; standing up needs headroom (10 §3).

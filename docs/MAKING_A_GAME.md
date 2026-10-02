@@ -1805,8 +1805,8 @@ Worth knowing before you plan around it:
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`
   (docs/MODDING.md); there are no code mods, no `.sagemod` zips and no namespaced asset paths yet — two
   mods shipping one texture is reported as a conflict and the later one wins. Those are phase 9.
-- **Saves cover the simulation, not your UI state**, and a mover is a moving static: it pushes a
-  player out of its way and shoves a crate (#260), but it does not carry a rider yet (#261).
+- **Saves cover the simulation, not your UI state.** A mover slides; it pushes a player out of its way,
+  shoves a crate (#260) and carries whoever stands on it (#261), but it does not swing on a hinge yet (#266).
 
 ---
 

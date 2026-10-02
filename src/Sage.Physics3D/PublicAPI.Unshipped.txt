@@ -14,3 +14,5 @@ Sage.Physics3D.PhysicsSpace.SetGroup(in Sage.Simulation.PhysicsBody body, int gr
 Sage.Physics3D.PhysicsSpace.Sleep(System.ReadOnlySpan<Sage.Simulation.PhysicsBody> bodies) -> void
 Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.Collider shape, in Sage.Simulation.Pose at, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.PhysicsBody body, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false) -> int
+Sage.Physics3D.PhysicsSpace.MakeKinematic(in Sage.Simulation.PhysicsBody body) -> Sage.Simulation.PhysicsBody
+Sage.Physics3D.PhysicsSpace.MoveKinematic(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 position, System.Numerics.Vector3 velocity) -> void
