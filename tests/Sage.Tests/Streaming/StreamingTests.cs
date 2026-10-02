@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Numerics;
 
@@ -20,11 +21,13 @@ public class StreamingTests
 
     private sealed class FlatGround : ITerrainGenerator
     {
-        public int Generated;
+        // Every generation, by sector and resolution: since #277 Generate runs on worker threads too
+        // (the sectors just past the ring, and the far ring's coarse copies), so this is concurrent.
+        public readonly ConcurrentDictionary<(SectorCoord Coord, int Resolution), int> Generations = new();
 
         public void Generate(SectorCoord coord, Heightfield heights, int seed)
         {
-            Generated++;
+            Generations.AddOrUpdate((coord, heights.Resolution), 1, (_, n) => n + 1);
             for (int z = 0; z < heights.Resolution; z++)
                 for (int x = 0; x < heights.Resolution; x++)
                     heights[x, z] = 0f;
@@ -367,13 +370,21 @@ public class StreamingTests
 
     // Walking back and forth across a sector edge must not load and unload the world each time: that
     // is what the margin is for, and it is the failure that would show up as a stutter every few steps.
+    //
+    // Since #277 the first crossing legitimately generates more than the three sectors of the new
+    // column: the ring plus one is generated ahead on jobs (a column of five past it) and the far ring
+    // gains a column of coarse copies (nine). Those are one-offs. Thrash is the same sector unloaded and
+    // made again, so that is what is measured: nothing unloads, no sector is generated twice at the same
+    // resolution, and the full ring gains exactly the three sectors of the column ahead.
     [Xunit.Fact]
     public void PacingOverAnEdgeDoesNotThrash()
     {
         using var fx = new Fixture();
         var player = fx.Player(new Vector3(1000, 0, 10));   // just inside sector (0, 0)
         fx.Tick();
-        int generated = fx.Ground.Generated;
+        int loaded = Terrain(fx).Sectors.Count;
+        int unloaded = 0;
+        Terrain(fx).Unloaded += _ => unloaded++;
 
         for (int i = 0; i < 10; i++)
         {
@@ -383,9 +394,16 @@ public class StreamingTests
             fx.Tick();
         }
 
-        // The three new sectors of the column ahead are generated once, not once per crossing.
-        Assert.True(fx.Ground.Generated - generated <= 3,
-            $"{fx.Ground.Generated - generated} sectors generated while pacing: the margin is not holding");
+        Assert.Equal(0, unloaded);
+        // The three new sectors of the column ahead are loaded once, not once per crossing.
+        Assert.Equal(loaded + 3, Terrain(fx).Sectors.Count);
+        // Wait for the jobs started while pacing, then check nothing was made twice. Ahead jobs a load
+        // took over are generated once either way (Lazy), so a count above one is a sector dropped and
+        // asked for again.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!Terrain(fx).AheadDone && DateTime.UtcNow < deadline) System.Threading.Thread.Sleep(1);
+        var twice = fx.Ground.Generations.Where(g => g.Value > 1).Select(g => $"{g.Key.Coord}@{g.Key.Resolution} x{g.Value}").ToList();
+        Assert.True(twice.Count == 0, $"generated more than once while pacing: {string.Join(", ", twice)}");
     }
 
     private static int Owned(Fixture fx, SectorCoord sector)
