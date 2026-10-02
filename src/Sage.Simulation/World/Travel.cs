@@ -64,6 +64,14 @@ public static class Travel
         return Request(world, new TravelRequest { Scene = scene, Entry = entry.Trim(), Hours = hours, Reason = reason });
     }
 
+    // Asks for the world to go to `scene` at the next tick boundary with the player at the scene's own start,
+    // as `scene_load` does, and `hours` passing (the `load_scene` action with no entry, issue #275).
+    internal static bool ToStart(World world, RecordId scene, double hours = 0)
+    {
+        if (!Valid(world, scene, hours)) return false;
+        return Request(world, new TravelRequest { Scene = scene, Start = true, Hours = hours, Reason = "travel" });
+    }
+
     // Fast travel to a discovered travel point, by its label or its entity's name: the journey costs the
     // distance from the player over `travel_speed`, in game hours (HoursTo).
     public static bool ToPoint(World world, string point)
@@ -147,6 +155,23 @@ public static class Travel
         if (!engine.Records.TryGet(request.Scene, out SceneRecord scene))
         {
             Log.Error(LogCat.World, $"Travel: no scene '{request.Scene}'");
+            return;
+        }
+
+        if (request.Start)
+        {
+            // The scene's start, as `scene_load` puts the player there: the ground is prepared as the scene
+            // is placed, and the ring starts again around the start on the next tick.
+            scenes.Load(world, request.Scene);
+            MapLoader.EnsureEntities(world);
+            if (scene.Space != SceneSpace.Interior && world.Resources.TryGet<SectorRing>(out var startRing) && startRing != null)
+            {
+                startRing.Live.Clear();
+                startRing.Ready = false;
+            }
+            world.FlushCommands();
+            Log.Info(LogCat.World, $"'{world.Name}': went to '{request.Scene}' (its start)");
+            if (request.Hours > 0) Time.Pass(world, request.Hours, request.Reason);
             return;
         }
 
@@ -253,6 +278,7 @@ internal sealed class TravelRequest
 {
     public RecordId Scene;
     public string Entry = "";
+    public bool Start;    // to the scene's own start, not an entry (Travel.ToStart)
     public Vector3? At;   // a travel point's absolute place; null: find the entry
     public float Yaw;
     public double Hours;

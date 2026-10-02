@@ -263,7 +263,7 @@ public static class DialogueRules
         if (actions.Count == 0 && option.Then == null) return;
 
         var context = new ActionContext(world, listener, speaker);
-        foreach (var action in actions) action.Run(in context);
+        Conditions.Run(actions, in context);   // through the runner, so a `wait` puts the rest off (#275)
 
         // Taking or giving may have finished an errand: "bring me five pelts" is met the moment the
         // fifth is in the bag, and the conversation that took them should not leave it hanging.

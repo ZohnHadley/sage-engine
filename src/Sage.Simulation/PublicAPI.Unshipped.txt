@@ -31,6 +31,8 @@ const Sage.Simulation.LogicEntities.OnNotEqual = "OnNotEqual" -> string!
 const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
+const Sage.Simulation.LogicTargets.Other = "!other" -> string!
+const Sage.Simulation.LogicTargets.Subject = "!subject" -> string!
 const Sage.Simulation.ModManager.MountPrefix = "mods/" -> string!
 const Sage.Simulation.PhysicsJointIO.Break = "Break" -> string!
 const Sage.Simulation.PhysicsJointIO.OnBreak = "OnBreak" -> string!
@@ -689,6 +691,7 @@ Sage.Simulation.LogicRelayScript
 Sage.Simulation.LogicRelayScript.LogicRelayScript() -> void
 Sage.Simulation.LogicRelayScript.Requires -> Sage.Simulation.ICondition?
 Sage.Simulation.LogicRelayScript.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>?
+Sage.Simulation.LogicTargets
 Sage.Simulation.LogicTimer
 Sage.Simulation.LogicTimer.Activator -> Sage.Simulation.Entity
 Sage.Simulation.LogicTimer.Interval -> float
@@ -1113,6 +1116,19 @@ Sage.Simulation.SkyState.SunElevation.get -> float
 Sage.Simulation.SkyState.SunElevation.init -> void
 Sage.Simulation.SkyState.Zenith.get -> System.Numerics.Vector3
 Sage.Simulation.SkyState.Zenith.init -> void
+Sage.Simulation.SoundRequested
+Sage.Simulation.SoundRequested.Point.get -> System.Numerics.Vector3
+Sage.Simulation.SoundRequested.Point.init -> void
+Sage.Simulation.SoundRequested.Positional.get -> bool
+Sage.Simulation.SoundRequested.Positional.init -> void
+Sage.Simulation.SoundRequested.Sound.get -> Sage.Core.RecordId
+Sage.Simulation.SoundRequested.Sound.init -> void
+Sage.Simulation.SoundRequested.SoundRequested() -> void
+Sage.Simulation.SoundRequested.SoundRequested(Sage.Core.RecordId Sound, Sage.Simulation.Entity Source, System.Numerics.Vector3 Point, bool Positional, float Volume) -> void
+Sage.Simulation.SoundRequested.Source.get -> Sage.Simulation.Entity
+Sage.Simulation.SoundRequested.Source.init -> void
+Sage.Simulation.SoundRequested.Volume.get -> float
+Sage.Simulation.SoundRequested.Volume.init -> void
 Sage.Simulation.StateMachine
 Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
 Sage.Simulation.StateMachine.Machine -> Sage.Core.RecordId
@@ -1427,6 +1443,9 @@ static Sage.Simulation.FogMath.ShaderParam(Sage.Simulation.FogMode mode, float s
 static Sage.Simulation.GltfAnimationReader.Read(System.IO.Stream! stream, string! name) -> Sage.Simulation.AnimationSet?
 static Sage.Simulation.JointDesc.FromWorld(Sage.Simulation.JointKind kind, in Sage.Simulation.Pose a, in Sage.Simulation.Pose b, System.Numerics.Vector3 worldAnchor, System.Numerics.Vector3 worldAxis = default(System.Numerics.Vector3)) -> Sage.Simulation.JointDesc
 static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
+static Sage.Simulation.LogicTargets.Find(Sage.Simulation.World! world, string! target, Sage.Simulation.Entity subject, Sage.Simulation.Entity other) -> Sage.Simulation.Entity
+static Sage.Simulation.LogicTargets.Find(Sage.Simulation.World! world, string! target, Sage.Simulation.Entity subject, Sage.Simulation.Entity other, ref Sage.Simulation.Entity cache) -> Sage.Simulation.Entity
+static Sage.Simulation.LogicTargets.IsKnown(string! target) -> bool
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem
