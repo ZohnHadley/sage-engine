@@ -6,13 +6,16 @@ namespace Sage.Gameplay;
 
 // Finding a way round things (docs/design/16 §3.4, TODO F23).
 //
-// **A local grid, built when it is needed and thrown away.** Not a navmesh: a Daggerfall-like has
-// dungeons on a grid and an outdoors that is heightfield plus scattered obstacles, and the thing a
-// creature actually needs is "how do I get round this wall in the next twenty metres". So the grid is a
-// window around the agent and its goal, stamped from the colliders that are there *now* — which means a
-// crate that has just been pushed into a doorway is in the path, and nothing has to be rebuilt when the
-// world changes. A navmesh (and a coarse graph for travelling across sectors) is still the answer for
-// interiors built out of brushes, and stays F23's "later" half.
+// **A navmesh first, a local grid when it has nothing to say.** The navmesh (`NavMesh`, issue #264) is
+// baked from brush floors, terrain and static colliders, tile by tile as creatures need it, with a coarse
+// graph of regions for crossing a level or a sector border; it is what sees an interior built out of
+// brushes, which the grid below never did (a brush is a hull in physics, not a `Collider`).
+//
+// **The local grid, built when it is needed and thrown away,** is the fallback: where there is no mesh
+// (no terrain, no level, no static collider under the creature or its goal), or with `nav_mesh 0`. It is
+// a window around the agent and its goal, stamped from the colliders that are there *now* — which means
+// a crate that has just been pushed into a doorway is in the path, and nothing has to be rebuilt when the
+// world changes.
 //
 // Everything here is in **origin space** (R6), like every other position, so a rebase needs no special
 // case: a grid is built, searched and forgotten inside one tick.
@@ -386,13 +389,25 @@ public struct NavPath
     }
 }
 
-// The world's navigation: one scratch grid, the budget that stops a hundred creatures all planning in
-// the same tick, and the numbers `nav_stats` prints (16 §3.4, F23).
+// The world's navigation: the navmesh and what it is baked from, one scratch grid, the budget that stops
+// a hundred creatures all planning in the same tick, and the numbers `nav_stats` prints (16 §3.4, F23,
+// #264).
 public sealed class Navigation
 {
     private readonly Entity[] _nearby = new Entity[256];
 
     public NavGrid Grid { get; } = new();
+
+    internal NavMesh Mesh { get; } = new(NavMeshAgent.Default);
+
+    internal NavWorldGeometry Source { get; } = new();
+
+    // Plan on the navmesh where there is one (`nav_mesh`). Off, every plan is the local grid's, as before
+    // #264.
+    public bool UseMesh { get; set; } = true;
+
+    internal int MeshPlans { get; private set; }     // answered by the navmesh
+    internal int GridPlans { get; private set; }     // answered by the local grid
 
     public float CellSize { get; set; } = 1f;
 
@@ -411,7 +426,7 @@ public sealed class Navigation
     private long _budgetTick = -1;
     private int _plansThisTick;
 
-    public void ResetStats() { Plans = 0; Refused = 0; NoRoute = 0; }
+    public void ResetStats() { Plans = 0; Refused = 0; NoRoute = 0; MeshPlans = 0; GridPlans = 0; Mesh.ResetStats(); }
 
     private bool CanPlan(long tick)
     {
@@ -429,11 +444,20 @@ public sealed class Navigation
         _plansThisTick++;
         Plans++;
 
-        Grid.Open(from, to, CellSize);
-        Stamp(world, space, radius, stepHeight, maxSlopeDegrees, self, target);
-
         Span<Vector3> corners = stackalloc Vector3[NavPath.MaxCorners];
-        int count = Grid.Search(from, to, corners, MaxNodes);
+        int count;
+        if (UseMesh && PlanOnMesh(world, from, to, corners, out count))
+        {
+            MeshPlans++;
+        }
+        else
+        {
+            GridPlans++;
+            Grid.Open(from, to, CellSize);
+            Stamp(world, space, radius, stepHeight, maxSlopeDegrees, self, target);
+            count = Grid.Search(from, to, corners, MaxNodes);
+        }
+
         path.Clear();
         path.NoWayThrough = count == 0;
         if (count == 0) { NoRoute++; return false; }
@@ -443,6 +467,27 @@ public sealed class Navigation
         path.PlannedFor = to;
         return true;
     }
+
+    // The navmesh's answer, in origin space. False when it has none (no mesh at either end), and the
+    // grid answers instead; true with `count` 0 when it has looked and there is no way through.
+    //
+    // The mesh is keyed absolutely, so the two ends go out of origin space and the corners come back
+    // into it: a rebase moves nothing in the mesh (R6).
+    private bool PlanOnMesh(World world, Vector3 from, Vector3 to, Span<Vector3> corners, out int count)
+    {
+        count = 0;
+        Source.Sync(world, Mesh);
+        Mesh.BeginTick(world.Tick);
+        var offset = world.Resources.TryGet<Origin>(out var origin) && origin != null ? origin.ToAbsolute(Vector3.Zero) : Vector3.Zero;
+        var answer = Mesh.Plan(from + offset, to + offset, Source.Geometry, MaxNodes, corners, out count, out _);
+        if (answer == NavMeshAnswer.CannotAnswer) return false;
+        for (int i = 0; i < count; i++) corners[i] -= offset;
+        return true;
+    }
+
+    // Drops every baked tile (`nav_rebuild`): they are baked again, from what is there now, as creatures
+    // need them.
+    internal void Rebuild() => Mesh.Clear();
 
     // Everything in the window that a body cannot walk through: the obstacles that are there *now*, and
     // ground too steep to climb.
