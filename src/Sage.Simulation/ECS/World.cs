@@ -20,7 +20,8 @@ namespace Sage.Simulation;
 // - Systems run in schedules and phases (03 §3.5): the host calls RunFixed once per simulation tick
 //   and RunFrame once per rendered frame (01 §5.2).
 //
-// Structural notifications (04 §3.3), raised immediately on the world's thread:
+// Structural notifications (04 §3.3), raised immediately on the world's thread, for the world's own
+// bookkeeping; gameplay reads the queued `Added<T>`/`Removed<T>` instead (StructuralEvents.cs, #282):
 //   EntitySpawned  before any ComponentAdded for that entity
 //   ComponentRemoved for every component, then EntityDestroyed, when an entity is destroyed
 //   (also for deletes played back from a command buffer)
@@ -32,6 +33,7 @@ public sealed class World : IDisposable
     private readonly TransformPropagation _propagation;
     private EntityCommands? _commands;
     private readonly GameEvents _events;
+    private readonly StructuralEvents _structural;
     private readonly PhaseContracts _contracts;
     private readonly DebugDraw _debugDraw;
     private readonly MessageLog _messages;
@@ -79,6 +81,8 @@ public sealed class World : IDisposable
         Resources.Add(new Origin());
         _contracts = new PhaseContracts(this);   // what each phase promises, checked in dev (03 §3.5)
         _events = new GameEvents();          // the one place gameplay facts cross systems (04 §3.2)
+        _structural = new StructuralEvents(_events);   // and Added<T>/Removed<T> on it, for whoever reads them (#282)
+        _events.Structural = _structural;
         if (engine != null)
         {
             _events.UseCVars(engine.Core.EventMaxAge, engine.Core.EventTrace);
@@ -498,6 +502,7 @@ public sealed class World : IDisposable
         var entity = change.Entity.AsSage();
         if (change.Type == typeof(Persistent))
             IndexPersistent(entity);
+        if (_structural.Any) _structural.OnAdded(change);
         ComponentAdded?.Invoke(entity, change.Type);
     }
 
@@ -505,6 +510,7 @@ public sealed class World : IDisposable
     {
         if (change.Type == typeof(Persistent))
             _persistent.Remove(change.OldComponent<Persistent>().Id);
+        if (_structural.Any) _structural.OnRemoved(change);
         ComponentRemoved?.Invoke(change.Entity.AsSage(), change.Type);
     }
 
@@ -515,6 +521,7 @@ public sealed class World : IDisposable
         var entity = delete.Entity.AsSage();
         if (entity.TryGetComponent<Persistent>(out var p))
             _persistent.Remove(p.Id);
+        if (_structural.Any) _structural.OnDeleting(delete.Entity);
         if (ComponentRemoved != null)
         {
             foreach (var component in entity.Components)
