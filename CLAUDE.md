@@ -8,7 +8,7 @@ stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; 
 tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h, done), #153 (4i, done), #182 (4g, done), #200 (4j, done), #215 (10a, the editor, done; guide docs/EDITOR.md), each with sub-issues.
 Since the 2026-10-02 replan (REDESIGN §5 "Stage B, part 2") every phase is a GitHub milestone with a parent issue,
 and issues carry `priority:`, `type:`, `area:` and `size:` labels: 4k #130 (in progress), 4l #258, 4m #274, R1 #292,
-4n #304, 4s #403 (voxels), 4o #324, 4q #337, 4p #356, 10b #365, 4f #376, 4r #385, 9 #395. What "complete" means
+4n #304, 4o #324, 4q #337, 4p #356, 10b #365, 4f #376, 4r #385, 9 #395. What "complete" means
 for each system is in [`docs/spec/`](docs/spec/README.md) (SRS, TDD, API contract, a sheet per subsystem); when a PR
 finishes an issue, flip its requirement row in the sheet to Done.
 

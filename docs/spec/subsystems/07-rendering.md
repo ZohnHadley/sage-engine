@@ -147,14 +147,10 @@ Milestone 4n, Rendering and assets (epic #304):
 
 Other milestones: #362 4p-6 Skeletal animation coverage for the Sandbox and an editor preview (P2, sheet [10](10-animation.md)); #366 10b-1 Asset browser and material preview (P1, sheet [18](18-editor.md)).
 
-### Voxel worlds
-
-Phase 4s (epic #403) adds voxel volumes for Ace of Spades style and Lugaru-like destructible worlds. The rendering side is #404 4s-1 Voxel volumes: chunked data, meshing and rendering (P1). The other issues of the phase are #405 runtime edits, #407 voxel saves and streaming, #408 voxel tools and `.vox` import, and #409 the exit game. Voxel collision is in sheet [08](08-physics.md) (#406). The full requirements are in [21 Voxels](21-voxels.md).
-
 ## 11. References
 
 - [Design 06, Rendering](../../design/06-rendering.md): §3.2 `RenderSnapshot`, §3.4 passes and §3.4a views, §3.5 sort key, the build notes for camera components, rigs, scripted cameras, blends, the viewmodel pass, render passes, the world clock and sky, sun shadows, sky and fog, post-processing, particles, weather and point lights.
 - [Design 07, Materials and shaders](../../design/07-materials-and-shaders.md): §3.2 techniques, §3.3 material records, §3.5 the `common.fxh` contract.
 - [REDESIGN](../../REDESIGN.md) §4.7 Rendering and UI extensibility.
 - [MAKING_A_GAME](../../MAKING_A_GAME.md) §10b for the experimental render API (SAGE0130).
-- Related sheets: [06 Assets and content](06-assets-and-content.md), [10 Animation](10-animation.md), [13 UI](13-ui.md), [14 World and streaming](14-world-and-streaming.md) for terrain and sectors, [21 Voxels](21-voxels.md).
+- Related sheets: [06 Assets and content](06-assets-and-content.md), [10 Animation](10-animation.md), [13 UI](13-ui.md), [14 World and streaming](14-world-and-streaming.md) for terrain and sectors.

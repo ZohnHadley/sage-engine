@@ -32,7 +32,7 @@ Out of scope here: the design of any particular game, art and audio content, and
 | Record | A typed JSON document loaded through the VFS, such as an `item`, `prefab` or `anim_graph`. |
 | Plugin | A unit of registration with a stable string id (`[Plugin]`, `IGameModule`). |
 | Reference family | Daggerfall, Half-Life, Morrowind and S.T.A.L.K.E.R.: the first target games. |
-| Rendering targets | The reference family plus Lugaru (third-person skeletal combat) and Ace of Spades in its Voxlap version (destructible voxel worlds), named by the owner on 2026-10-02. Rendering is not only billboard sprites. |
+| Rendering targets | The reference family plus Lugaru (third-person skeletal combat), named by the owner on 2026-10-02. Rendering is not only billboard sprites. |
 | Headless | Running without a window or GPU: tests, `sage validate`, a dedicated server. |
 | REQ-XXX-NN | A numbered requirement in a subsystem sheet. |
 
@@ -105,7 +105,7 @@ developer tools.
 | G2. Games need no engine edits. | The phase-5 samples (HL1-lite, Morrowind-lite, STALKER-lite) run from the stock host with small game code. |
 | G3. Designers work without C# or JSON. | The editor exit games (10a, 10b) build and play a level through the editor only. |
 | G4. Modders can extend and override safely. | The 4j exit game and the phase-9 exit (data and code mods, packed) report conflicts and keep saves loading. |
-| G5. Rendering covers the targets' looks. | Morrowind-style lit, normal-mapped meshes with water and long draw distances (4n), Lugaru-style skinned fighters (4n, 4p, 4k) and an Ace of Spades-style voxel island (4s) each render at 60 fps on the reference hardware. |
+| G5. Rendering covers the targets' looks. | Morrowind-style lit, normal-mapped meshes with water and long draw distances (4n) and Lugaru-style skinned fighters (4n, 4p, 4k) each render at 60 fps on the reference hardware. |
 | G6. Developers ship outside the repo. | R1's exit: install templates from a feed, create, run and package a game on a clean machine. |
 
 ## 4. Platform and technology requirements
@@ -162,7 +162,6 @@ summary and the traceability index.
 | 18 | Editor | EDIT | The editing model, commands and undo, placement, inspector, wiring, play-in-editor, brushes, browsers. | [18](subsystems/18-editor.md) |
 | 19 | Modding | MOD | Mod manifests, load order, record patching, conflict reports, packed mods, code mods. | [19](subsystems/19-modding.md) |
 | 20 | Tooling and release | TOOL | The `sage` CLI, SDK and templates, analyzers, CI, packaging, versioning and release. | [20](subsystems/20-tooling-and-release.md) |
-| 21 | Voxel worlds | VOX | Chunked voxel volumes that are meshed, drawn, edited at runtime, collided, streamed and saved. | [21](subsystems/21-voxels.md) |
 
 ## 7. Quality attributes
 
@@ -223,7 +222,6 @@ These are the owner's (REDESIGN §6). The plan works with any answer; each has a
 | 4m | World, logic and saves | 04, 05, 14, 15 |
 | R1 | Tooling and the first release | 02, 06, 20 |
 | 4n | Rendering and assets | 06, 07 |
-| 4s | Voxel worlds | 21, 07, 08 |
 | 4o | Audio and input | 11, 12 |
 | 4q | Game UI and menus | 13 |
 | 4p | Animation | 10 |

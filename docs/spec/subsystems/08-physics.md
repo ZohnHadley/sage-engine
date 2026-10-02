@@ -18,7 +18,7 @@ It does not do pathfinding and navigation meshes (sheet [09](09-navigation-and-a
 - Move doors and lifts as data (`Mover`), keep joints, and save what a save needs (body velocities, joint state).
 - Keep bodies in step with a floating-origin rebase.
 
-Not responsible for: what hits do (the combat pipeline, sheet [16](16-gameplay.md)), footsteps and impact sounds (sheet [11](11-audio.md), which will read physics events), or voxel terrain (sheet [21](21-voxels.md)).
+Not responsible for: what hits do (the combat pipeline, sheet [16](16-gameplay.md)), footsteps and impact sounds (sheet [11](11-audio.md), which will read physics events).
 
 ## 3. Placement and dependencies
 
@@ -116,9 +116,8 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-18 | The controller shall offer movement modes: walk, noclip and fly, GoldSrc air-strafe, smooth crouch with a shrinking collider. | Should | Not started | #267 |
 | REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Not started | #268 |
 | REQ-PHYS-20 | Physics materials and surface types shall be records on colliders, terrain layers and brush textures, returned in hit results. | Should | Not started | #270 |
-| REQ-PHYS-21 | Voxel volumes shall have collision and queries so characters walk on blocks and rays hit them. | Must | Not started | #406 |
-| REQ-PHYS-22 | Bodies shall follow a floating-origin rebase, including sleeping ones and statics. | Must | Done | test: PhysicsBodiesRebaseWithTheWorld |
-| REQ-PHYS-23 | A steady-state step shall allocate nothing, hitbox cost shall be budgeted, and runs shall be cross-run deterministic. | Should | Partial: about 40 B a tick | #273 |
+| REQ-PHYS-21 | Bodies shall follow a floating-origin rebase, including sleeping ones and statics. | Must | Done | test: PhysicsBodiesRebaseWithTheWorld |
+| REQ-PHYS-22 | A steady-state step shall allocate nothing, hitbox cost shall be budgeted, and runs shall be cross-run deterministic. | Should | Partial: about 40 B a tick | #273 |
 
 ## 10. Open work
 
@@ -139,8 +138,6 @@ Milestone 4l, Physics, movement and navigation (epic #258):
 - #272 4l-14 Mover and physics test coverage (P2)
 - #273 4l-15 Perf and determinism: 40 B/tick allocation, hitbox cost, sleeping and rebase wake (P3)
 
-Phase 4s, Voxel worlds (epic #403): #406 4s-3 Voxel collision and queries: characters walk and rays hit blocks (P1).
-
 Navigation issues of the same milestone (#264, #265, #271) are in sheet [09](09-navigation-and-ai.md).
 
 ## 11. References
@@ -148,4 +145,4 @@ Navigation issues of the same milestone (#264, #265, #271) are in sheet [09](09-
 - [Design 10, Physics](../../design/10-physics.md): §3 key decisions and the build notes for the facade, query-only layers, joints (#242), the joint part (#245), rebasing and the character controller; §11 scope.
 - [REDESIGN](../../REDESIGN.md) §0.5 for the 2D backend plan, and §5 phase 4k and 4l.
 - [MAKING_A_GAME](../../MAKING_A_GAME.md) §5 Levels: rooms, doors and triggers.
-- Related sheets: [05 Events and logic](05-events-and-logic.md) for trigger and mover wiring, [09 Navigation and AI](09-navigation-and-ai.md), [10 Animation](10-animation.md), [14 World and streaming](14-world-and-streaming.md) for rebasing, [21 Voxels](21-voxels.md).
+- Related sheets: [05 Events and logic](05-events-and-logic.md) for trigger and mover wiring, [09 Navigation and AI](09-navigation-and-ai.md), [10 Animation](10-animation.md), [14 World and streaming](14-world-and-streaming.md) for rebasing.

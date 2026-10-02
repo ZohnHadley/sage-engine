@@ -1060,7 +1060,7 @@ what the base therefore needs first:
 | Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i) |
 | Mod culture (data mods first) | ○ | ● | ●● | ●● | ◐ data mods (4j); packed and code mods in 9 |
 
-*"Sage today" refreshed 2026-10-02.* The owner also named **Lugaru** (third-person skeletal fighting) and **Ace of Spades** in its Voxlap version (destructible voxel worlds) as games to emulate: rendering must carry lit, normal-mapped meshes and voxels as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410; voxels are phase 4s (Stage B, part 2).
+*"Sage today" refreshed 2026-10-02.* The owner also named **Lugaru** (third-person skeletal fighting) as a game to emulate: rendering must carry lit, normal-mapped meshes and skinned characters as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410 (Stage B, part 2).
 
 ### Stage A: make the base able to hold any game (unchanged, and ready as GitHub issues)
 
@@ -1115,7 +1115,7 @@ single item.
 
 **The owner's direction (2026-10-02):** every current system should be fully fleshed out before the
 engine widens to other genres, and rendering must carry more than billboard sprites: Morrowind-style
-meshes and water, Lugaru-style skinned fighters, and Ace of Spades-style (Voxlap) voxel worlds. A system
+meshes and water, and Lugaru-style skinned fighters. A system
 audit against the code, the design docs and the reference games found about 140 gaps. Each one is now a
 GitHub issue with a priority, a type, an area and a size label, grouped into one milestone and one parent
 issue per phase below. What "complete" means for each system is written down in the new
@@ -1135,19 +1135,18 @@ order, so `4l-1` is the first thing to build in 4l.
 | 2 | **4m** World, logic and saves | #274 | #275–#291, #402 | A wider condition/action vocabulary, I/O groups, logic entities, prefab overrides across sectors, structural events, time scale, save limits and async saves, streaming LOD | an HL-style puzzle chain and a nested-state NPC in data, saved mid-sequence with nothing lost |
 | 3 | **R1** Tooling and the first release | #292 | #293–#303, #6 | `sage package`, the Release config fix, the v0.1.0 tag and a feed, the full CLI, console basics | a clean machine installs the templates from a feed, creates, runs and packages a game |
 | 4 | **4n** Rendering and assets | #304 | #305–#323 (less #312, already built), #410, #411 | Mesh LOD, decals, splat terrain, asset memory scopes, normal and specular maps, water, instancing, cascades, HDR and bloom, lightmaps, drawing tests | 50 streamed sectors with LOD, splatted terrain, decals and cascaded shadows; memory back to baseline after unloading |
-| 5 | **4s** Voxel worlds | #403 | #404–#409 | Chunked volumes, meshing, runtime edits and falling pieces, voxel collision, saves as diffs, `.vox`/`.kv6` import | in a data-only game the player digs, builds and blasts; the edits survive a save |
-| 6 | **4o** Audio and input | #324 | #325–#336 | Music, OGG streaming, surface footsteps, occlusion and reverb, rebinding, rumble and pads, replay | music crossfades, footsteps follow the surface, a rebind survives a restart |
-| 7 | **4q** Game UI and menus | #337 | #338–#355 | TTF text, form widgets, options and controls screens, title, pause and slot screens, reachable kit screens, accessibility | boot to a title, change options and controls, load a slot, loot a corpse and trade, all from records |
-| 8 | **4p** Animation | #356 | #357–#364 | Root motion, additive layers and sync markers, directional attacks, retargeting, IK extras, morph targets | an NPC walks with root motion and no foot sliding; a clip plays on a second rig |
-| 9 | **10b** Editor, part 2 | #365 | #366–#375, #61, #49 | Brushes, the asset browser, multi-select and scale, nested inspector, BT view, conditions editor, terrain tools | a designer blocks out a room, textures it, edits an AI tree and saves, without JSON |
-| 10 | **4f** RPG progression and economy | #376 | #377–#384 | Skills and levelling, containers, loot tables, shops with money, perks, durability, item instances | a skill rises with use and a trader buys, sells and restocks, in data |
-| 11 | **4r** AI, combat and narrative depth | #385 | #386–#394 | Hearing, behaviour trees, squads, crime, blocking and knockback, richer quest objectives | a creature hears a gunshot and investigates; a guard pursues a thief; a timed quest fails |
-| 12 | **9** Code mods and packaging | #395 | #396–#401 | Code mods, `.sagemod` packages, namespaced assets, keyed list merge, mod shaders | a packed data mod and a code mod conflict and are reported; saves survive toggling |
+| 5 | **4o** Audio and input | #324 | #325–#336 | Music, OGG streaming, surface footsteps, occlusion and reverb, rebinding, rumble and pads, replay | music crossfades, footsteps follow the surface, a rebind survives a restart |
+| 6 | **4q** Game UI and menus | #337 | #338–#355 | TTF text, form widgets, options and controls screens, title, pause and slot screens, reachable kit screens, accessibility | boot to a title, change options and controls, load a slot, loot a corpse and trade, all from records |
+| 7 | **4p** Animation | #356 | #357–#364 | Root motion, additive layers and sync markers, directional attacks, retargeting, IK extras, morph targets | an NPC walks with root motion and no foot sliding; a clip plays on a second rig |
+| 8 | **10b** Editor, part 2 | #365 | #366–#375, #61, #49 | Brushes, the asset browser, multi-select and scale, nested inspector, BT view, conditions editor, terrain tools | a designer blocks out a room, textures it, edits an AI tree and saves, without JSON |
+| 9 | **4f** RPG progression and economy | #376 | #377–#384 | Skills and levelling, containers, loot tables, shops with money, perks, durability, item instances | a skill rises with use and a trader buys, sells and restocks, in data |
+| 10 | **4r** AI, combat and narrative depth | #385 | #386–#394 | Hearing, behaviour trees, squads, crime, blocking and knockback, richer quest objectives | a creature hears a gunshot and investigates; a guard pursues a thief; a timed quest fails |
+| 11 | **9** Code mods and packaging | #395 | #396–#401 | Code mods, `.sagemod` packages, namespaced assets, keyed list merge, mod shaders | a packed data mod and a code mod conflict and are reported; saves survive toggling |
 
 **Why this order.** It follows the owner's rule that generic engine work comes before RPG-specific work.
 4l carries the only P0s (a closing door traps the player: TODO bug 61). 4m and R1 are cheap and unblock the
-rest (data-only games, and a release someone else can use). Rendering follows with the voxel phase right
-behind it, because both lean on the same material, streaming and asset-memory work. Audio, input and UI
+rest (data-only games, and a release someone else can use). Rendering follows, on the asset-memory and
+streaming work 4m starts. Audio, input and UI
 make the engine a game a player can configure. Animation, the editor's second half, the RPG kit's
 progression and the deeper AI build on all of that, and code mods come last because they read every
 declaration the earlier phases settle. Phases may run in parallel where they don't share files; P0 and P1

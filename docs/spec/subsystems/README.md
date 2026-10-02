@@ -27,7 +27,6 @@ requirements and points here for the detail; the long design rationale stays in 
 | 18 | [Editor](18-editor.md) | EDIT | 10b |
 | 19 | [Modding](19-modding.md) | MOD | 9 |
 | 20 | [Tooling and release](20-tooling-and-release.md) | TOOL | R1 |
-| 21 | [Voxel worlds](21-voxels.md) | VOX | 4s |
 
 **Keeping them true.** When a PR finishes an issue, it flips the matching requirement's status to Done
 and cites the file or the test that proves it (test citations are checked by `tools/check_docs.py`). A new gap gets an
