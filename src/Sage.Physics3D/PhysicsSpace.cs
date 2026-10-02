@@ -97,24 +97,27 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     {
         var shape = ShapeFor(collider, out BodyInertia inertia, body.Mass <= 0 ? 1f : body.Mass);
         var rigidPose = new RigidPose(collider.CenterAt(pose), pose.Rotation);
-        float friction = body.Friction <= 0 ? 0.7f : body.Friction;
+        BodyMaterial(collider, body, out float friction, out float restitution);   // issue #270: the surface's, unless the body says
 
         if (body.Kind == BodyKind.Dynamic)
         {
             var description = BodyDescription.CreateDynamic(rigidPose, inertia, new CollidableDescription(shape, 0.1f), new BodyActivityDescription(0.01f));
             var handle = Simulation.Bodies.Add(description);
-            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts, group);
+            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, restitution, collider.ReportContacts, group);
+            _data.SetSurface(handle.Value, false, collider.Surface, null, null, null);
             return new PhysicsBody { Handle = handle.Value, IsStatic = false };
         }
         if (body.Kind == BodyKind.Kinematic)
         {
             var description = BodyDescription.CreateKinematic(rigidPose, new CollidableDescription(shape, 0.1f), new BodyActivityDescription(0.01f));
             var handle = Simulation.Bodies.Add(description);
-            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts, group);
+            _data.RegisterBody(handle.Value, entity, collider.Layer, collider.IsTrigger, friction, restitution, collider.ReportContacts, group);
+            _data.SetSurface(handle.Value, false, collider.Surface, null, null, null);
             return new PhysicsBody { Handle = handle.Value, IsStatic = false };
         }
         var staticHandle = Simulation.Statics.Add(new StaticDescription(rigidPose, shape));
-        _data.RegisterStatic(staticHandle.Value, entity, collider.Layer, collider.IsTrigger, friction, body.Restitution, collider.ReportContacts, group);
+        _data.RegisterStatic(staticHandle.Value, entity, collider.Layer, collider.IsTrigger, friction, restitution, collider.ReportContacts, group);
+        _data.SetSurface(staticHandle.Value, true, collider.Surface, null, null, null);
         return new PhysicsBody { Handle = staticHandle.Value, IsStatic = true };
     }
 
@@ -410,6 +413,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         }
         var hit = handler.Hit;
         hit.Distance *= maxDistance;   // the sweep runs over t in 0..1
+        if (hit.Hit) hit.Surface = SweepSurface(handler.Collidable, hit);   // issue #270
         return hit;
     }
 
@@ -700,6 +704,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
                 Normal = Vector3.Normalize(normal),
                 Distance = t,
                 Hit = true,
+                Surface = Data.SurfaceAt(collidable, childIndex, normal),   // issue #270
             };
         }
     }
@@ -711,6 +716,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         public LayerMask Mask;
         public Entity Ignore;
         public bool ReportInitialOverlaps;
+        public CollidableReference Collidable;   // what Hit is on, for its surface (issue #270)
         public Vector3 Start;       // the shape's centre where the sweep begins
         public Vector3 Direction;   // unit
         public SweepHit Hit;
@@ -722,6 +728,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         {
             if (Hit.Hit && t >= Hit.Distance) return;
             maximumT = t;
+            Collidable = collidable;
             Hit = new SweepHit
             {
                 Entity = Data.EntityOf(collidable),
@@ -743,6 +750,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         {
             if (!ReportInitialOverlaps || (Hit.Hit && Hit.StartsInside)) return;
             maximumT = 0f;
+            Collidable = collidable;
             Hit = new SweepHit
             {
                 Entity = Data.EntityOf(collidable),

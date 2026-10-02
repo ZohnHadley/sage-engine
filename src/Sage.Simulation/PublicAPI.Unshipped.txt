@@ -233,6 +233,7 @@ Sage.Simulation.BodyMotion
 Sage.Simulation.BodyMotion.Angular -> System.Numerics.Vector3
 Sage.Simulation.BodyMotion.BodyMotion() -> void
 Sage.Simulation.BodyMotion.Linear -> System.Numerics.Vector3
+Sage.Simulation.BodyPart.Surface -> Sage.Core.RecordId
 Sage.Simulation.BoneAttachment
 Sage.Simulation.BoneAttachment.Angles -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachment.Bone -> string!
@@ -378,6 +379,7 @@ Sage.Simulation.ClipEvent.ClipEvent() -> void
 Sage.Simulation.ClipEvent.ClipEvent(float time, string! name) -> void
 Sage.Simulation.ClipEvent.Name.get -> string!
 Sage.Simulation.ClipEvent.Time.get -> float
+Sage.Simulation.Collider.Surface -> Sage.Core.RecordId
 Sage.Simulation.Collided
 Sage.Simulation.Collided.A.get -> Sage.Simulation.Entity
 Sage.Simulation.Collided.A.init -> void
@@ -506,6 +508,10 @@ Sage.Simulation.GltfAnimationReader.Forget(Sage.Core.AssetPath path) -> bool
 Sage.Simulation.GltfAnimationReader.GltfAnimationReader(Sage.Core.VirtualFileSystem! vfs) -> void
 Sage.Simulation.GltfAnimationReader.Load(Sage.Core.AssetPath path) -> Sage.Simulation.AnimationSet?
 Sage.Simulation.GltfAnimationReader.TryGet(Sage.Core.AssetPath path, out Sage.Simulation.AnimationSet? set) -> bool
+Sage.Simulation.Heightfield.CellLayers.get -> byte[]?
+Sage.Simulation.Heightfield.Cells.get -> int
+Sage.Simulation.Heightfield.LayerAt(int cellX, int cellZ) -> byte
+Sage.Simulation.Heightfield.SetLayer(int cellX, int cellZ, byte layer) -> void
 Sage.Simulation.IAction
 Sage.Simulation.IAction.Run(in Sage.Simulation.ActionContext context) -> void
 Sage.Simulation.ICellHandoff
@@ -527,7 +533,11 @@ Sage.Simulation.IPhysicsWorld.RaycastAll(System.Numerics.Vector3 from, System.Nu
 Sage.Simulation.IPhysicsWorld.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
 Sage.Simulation.IPhysicsWorld.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
 Sage.Simulation.IPhysicsWorld.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
+Sage.Simulation.IPhysicsWorld.SetSurface(in Sage.Simulation.PhysicsBody body, Sage.Core.RecordId surface) -> void
+Sage.Simulation.IPhysicsWorld.SetSurfaces(in Sage.Simulation.PhysicsBody body, System.ReadOnlySpan<Sage.Core.RecordId> layers, System.ReadOnlySpan<byte> perTriangle) -> void
+Sage.Simulation.IPhysicsWorld.SetSurfaces(in Sage.Simulation.PhysicsBody body, System.ReadOnlySpan<Sage.Simulation.SurfaceFace> faces) -> void
 Sage.Simulation.IPhysicsWorld.Sleep(System.ReadOnlySpan<Sage.Simulation.PhysicsBody> bodies) -> void
+Sage.Simulation.IPhysicsWorld.SurfaceOf(in Sage.Simulation.PhysicsBody body) -> Sage.Core.RecordId
 Sage.Simulation.Joint
 Sage.Simulation.Joint.Anchor -> System.Numerics.Vector3
 Sage.Simulation.Joint.Axis -> System.Numerics.Vector3
@@ -702,6 +712,7 @@ Sage.Simulation.MachineState.MachineState() -> void
 Sage.Simulation.MachineState.Tags -> System.Collections.Generic.List<string!>!
 Sage.Simulation.MachineState.Transitions -> System.Collections.Generic.List<Sage.Simulation.StateTransition!>!
 Sage.Simulation.MainViewExtensions
+Sage.Simulation.MapRecord.Surface -> Sage.Core.RecordId
 Sage.Simulation.MaterialRecord.CastShadows -> bool
 Sage.Simulation.MathRemap
 Sage.Simulation.MathRemap.Clamp -> bool
@@ -752,6 +763,15 @@ Sage.Simulation.PhysicsJoint.PhysicsJoint(int Id, int Version) -> void
 Sage.Simulation.PhysicsJoint.Version.get -> int
 Sage.Simulation.PhysicsJoint.Version.init -> void
 Sage.Simulation.PhysicsJointIO
+Sage.Simulation.PhysicsMaterialRecord
+Sage.Simulation.PhysicsMaterialRecord.Decal -> Sage.Core.AssetPath
+Sage.Simulation.PhysicsMaterialRecord.Footstep -> Sage.Core.RecordId
+Sage.Simulation.PhysicsMaterialRecord.Friction -> float
+Sage.Simulation.PhysicsMaterialRecord.Impact -> Sage.Core.RecordId
+Sage.Simulation.PhysicsMaterialRecord.Penetration -> float
+Sage.Simulation.PhysicsMaterialRecord.PhysicsMaterialRecord() -> void
+Sage.Simulation.PhysicsMaterialRecord.Restitution -> float
+Sage.Simulation.PhysicsMaterialRecord.Textures -> System.Collections.Generic.List<string!>!
 Sage.Simulation.Placement.Overrides -> Sage.Simulation.PrefabOverrides?
 Sage.Simulation.Placement.Id -> string!
 Sage.Simulation.PlayerCamera
@@ -840,6 +860,7 @@ Sage.Simulation.RagdollTable.Damping.get -> float
 Sage.Simulation.RagdollTable.Friction.get -> float
 Sage.Simulation.RagdollTable.SettleSpeed.get -> float
 Sage.Simulation.RagdollTable.SettleTime.get -> float
+Sage.Simulation.RayHit.Surface -> Sage.Core.RecordId
 Sage.Simulation.RenderEnvironment.DrawSky -> bool
 Sage.Simulation.RenderEnvironment.FogDensity -> float
 Sage.Simulation.RenderEnvironment.FogMode -> Sage.Simulation.FogMode
@@ -1103,6 +1124,15 @@ Sage.Simulation.StateTransition.StateTransition() -> void
 Sage.Simulation.StateTransition.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Simulation.StateTransition.To -> string!
 Sage.Simulation.StateTransition.When -> Sage.Simulation.ICondition?
+Sage.Simulation.SurfaceFace
+Sage.Simulation.SurfaceFace.Normal.get -> System.Numerics.Vector3
+Sage.Simulation.SurfaceFace.Normal.init -> void
+Sage.Simulation.SurfaceFace.Surface.get -> Sage.Core.RecordId
+Sage.Simulation.SurfaceFace.Surface.init -> void
+Sage.Simulation.SurfaceFace.SurfaceFace() -> void
+Sage.Simulation.SurfaceFace.SurfaceFace(System.Numerics.Vector3 Normal, Sage.Core.RecordId Surface) -> void
+Sage.Simulation.SweepHit.Surface -> Sage.Core.RecordId
+Sage.Simulation.Terrain.SurfaceLayers.get -> System.Collections.Generic.List<Sage.Core.RecordId>!
 Sage.Simulation.TerrainGeneratorKind
 Sage.Simulation.TerrainGeneratorKind.Flat = 0 -> Sage.Simulation.TerrainGeneratorKind
 Sage.Simulation.TerrainGeneratorKind.Hills = 1 -> Sage.Simulation.TerrainGeneratorKind
@@ -1111,6 +1141,7 @@ Sage.Simulation.TerrainRecord.Amplitude -> float
 Sage.Simulation.TerrainRecord.Generator -> Sage.Simulation.TerrainGeneratorKind
 Sage.Simulation.TerrainRecord.Height -> float
 Sage.Simulation.TerrainRecord.Seed -> int
+Sage.Simulation.TerrainRecord.Surfaces -> System.Collections.Generic.List<Sage.Core.RecordId>!
 Sage.Simulation.TerrainRecord.TerrainRecord() -> void
 Sage.Simulation.TerrainRecord.Wavelength -> float
 Sage.Simulation.ThirdPersonRig

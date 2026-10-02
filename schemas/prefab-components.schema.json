@@ -164,6 +164,14 @@
         }
       ]
     },
+    "footsteps": {
+      "description": "The component sage:footsteps (Footsteps), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:footsteps"
+        }
+      ]
+    },
     "from_map": {
       "description": "The component sage:from_map (FromMap), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -673,6 +681,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:foot_ik"
+        }
+      ]
+    },
+    "sage:footsteps": {
+      "description": "Component sage:footsteps (Footsteps).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:footsteps"
         }
       ]
     },
@@ -2691,6 +2707,14 @@
           "description": "Reports contact begin and end events. Category: Collision. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "surface": {
+          "description": "What it is made of: footsteps, impacts and its friction; empty = none. Names a physics_material record. Category: Collision. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:physics_material"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -2913,6 +2937,33 @@
       },
       "additionalProperties": false,
       "description": "Component sage:foot_ik (FootIk)."
+    },
+    "sage:footsteps": {
+      "type": "object",
+      "properties": {
+        "stride": {
+          "description": "Metres walked between steps; 0 = only the animation's footstep events. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "reach": {
+          "description": "How far below the feet the ground is looked for. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "lastSurface": {
+          "description": "(RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:footsteps (Footsteps)."
     },
     "sage:from_map": {
       "type": "object",
