@@ -470,7 +470,10 @@ a schedule, never mid-phase. `ev_stats` and `ev_trace` show the queues.
 next `Phase.EntityIO` dispatch (the next tick when fired from that phase), unless fired with `sameTick`
 (SAGE0124). Due inputs run in due time order, ties broken by queue order. One tick delivers at most
 `EntityIO.Budget` inputs (256), with a warning past it. An input with no handler on the target is
-refused with a warning naming the components that take it. `io_list` and `io_trace` show the wiring.
+refused with a warning naming the components that take it. A handler that throws costs that one
+delivery: it is logged with the wire and the dispatch goes on (#402). A target `@group`, `@class:prefab`
+or `@tag:id` is resolved when the input arrives, one delivery per member (#276). `io_list`, `io_trace`
+and `io_history` show the wiring.
 
 **Do not, in a handler or system:**
 - call another system, or raise a C# event that runs gameplay code synchronously; send a fact instead;

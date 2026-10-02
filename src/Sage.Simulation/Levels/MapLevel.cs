@@ -503,7 +503,7 @@ internal static class MapLoader
     // `classname` is a prefab id. That is the whole entity mapping, and it is deliberate: a `.map` says
     // "a watcher stands here", and what a watcher *is* stays in the prefab record where a game can change
     // it without touching the level. Keys the engine understands are `origin`, `angle`, `targetname`,
-    // outputs (`On…`) and a prefab's own fields (`light.range`, PrefabKeys); anything else
+    // `group` (the groups a wire's `@group` target reaches, issue #276), outputs (`On…`) and a prefab's own fields (`light.range`, PrefabKeys); anything else
     // is kept on the parsed entity for whoever wants it (entity I/O, F17).
     private static void SpawnEntities(World world, MapLevel level, MapSpace space)
     {
@@ -553,6 +553,7 @@ internal static class MapLoader
 
             if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
                 spawnedEntity.Name = name;
+            MapEntityIO.Group(world, spawnedEntity, entity);
             ContentIds.Place(world, source, spawnedEntity, MapEntityId(level, entity, "point", index, names));
             spawned++;
         }
@@ -614,6 +615,7 @@ internal static class MapLoader
 
         if (solid.Source.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name))
             entity.Name = name;
+        MapEntityIO.Group(world, entity, solid.Source);
 
         world.Add(entity, new FromMap { Level = level.Record });
         world.Add(entity, new MapSolid { Level = level.Record, Index = index });
@@ -692,6 +694,11 @@ internal static class MapEntityIO
                 Log.Error(LogCat.Events, $"{where}: '{key}' sends '{wire.Input}', which is not an input (see io_list)");
                 continue;
             }
+            if (IOTargets.Problem(engine, wire.Target) is { } problem)
+            {
+                Log.Error(LogCat.Events, $"{where}: '{key}' targets {problem}");
+                continue;
+            }
 
             (wires ??= new List<Connection>()).Add(wire);
         }
@@ -707,6 +714,16 @@ internal static class MapEntityIO
         world.Add(entity, new IOConnections { Wires = wires });
     }
 
+    // A map entity's `group` key: the groups it is in, for wires to `@group` (issue #276). Any entity may
+    // have one, whatever its classname, so it is a key of its own rather than one of a prefab's fields.
+    public static void Group(World world, Entity entity, MapEntity source)
+    {
+        if (entity.IsNull || !source.Keys.TryGetValue("group", out var names) || string.IsNullOrWhiteSpace(names)) return;
+        if (entity.TryGetComponent<IOGroup>(out var prefab) && !string.IsNullOrWhiteSpace(prefab.Names))
+            names = prefab.Names + " " + names;       // the prefab's groups and the map's
+        world.Add(entity, new IOGroup { Names = names.Trim() });
+    }
+
     public static void Resolve(World world, Entity entity, string where)
     {
         if (entity.IsNull || !entity.HasComponent<IOConnections>()) return;
@@ -716,6 +733,17 @@ internal static class MapEntityIO
         foreach (var wire in wires)
         {
             if (wire.Target.StartsWith("!", StringComparison.Ordinal)) continue;   // resolved per firing
+            if (IOTargets.IsSelector(wire.Target))
+            {
+                // A group is found when the input arrives; an empty one now is worth a word, not an error
+                // (its members may be spawned later, or be in another level).
+                var members = new List<Entity>();
+                IOTargets.Members(world, wire.Target, members);
+                if (members.Count == 0)
+                    Log.Warn(LogCat.Events, $"{where}: '{wire.Output}' points at '{wire.Target}', which has no members in the level "
+                                          + "(it will be looked for again each time it fires)");
+                continue;
+            }
             wire.Resolved = world.FindByName(wire.Target);
             if (wire.Resolved.IsNull)
                 Log.Warn(LogCat.Events, $"{where}: '{wire.Output}' points at '{wire.Target}', which is not in the level "

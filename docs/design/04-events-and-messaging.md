@@ -149,7 +149,7 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   (who is doing it); the subject arrives as the activator. It is the base's (`sage.core`), and does
   nothing but warn once in a game without this plugin (test: FireSendsAnInputThroughEntityIO). 16 "As
   built (one condition and action language)" has the rest of the language.
-- **Not built:** `@group` targets, an editor link view, and the per-entity I/O history.
+- **Groups, the link view and the history** arrived with issue #276 (§3.4f below).
 
 ### 3.4b As built (time in level logic, 2026-09-30, issue #90)
 - **The queue is saved.** `EntityIO` is the `entity_io` saved resource (plugin `sage.gameplay.io`,
@@ -348,6 +348,46 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   (test: AConditionalTopicAnswersByAVar_InAGameWithNoCode). No engine change was needed for either;
   CI validates, schemas and smoke-runs both like `camera-cut`.
 
+### 3.4f As built (group targets, the link view and the I/O history, 2026-10-02, issues #276 and #402)
+- **A target starting with `@` is a group.** `@lamps` is every entity whose `sage:io_group` component
+  (`IOGroup.Names`, space- or comma-separated) has `lamps` — a prefab writes the component, a map entity
+  its `group` key (any classname, so it is a key of its own beside `targetname`, and the FGD's `Named` base
+  offers it); `@class:torch` is every entity spawned from that prefab (`FromPrefab`); `@tag:ns:id` every
+  entity with that tag. The FGD and the map importer agree on the key because both are this code.
+  (test: ATriggerFiresEveryEntityInAGroup) (test: AMapWiresToAGroupByItsGroupKey_AndToAClassByItsClassname)
+  (test: APlacementsWireReachesAPrefabsGroup_AClass_AndATag)
+- **Resolved when the input arrives**, like a late-bound name: the queue keeps `@lamps` as the target's
+  name, so a member spawned during the delay is reached, a save keeps the group (no format change), and an
+  empty group does nothing and says so in the history. Each member is one delivery and counts toward
+  `io_maxdispatch`. Members are collected into a reused list before any is delivered (an input may destroy
+  one), from queries made once per world, so a group fan-out allocates nothing.
+  (test: AGroupIsResolvedWhenTheInputArrives_SoAMemberSpawnedDuringTheDelayIsReached)
+  (test: AGroupFanOutAndItsHistoryAllocateNothingPerTick)
+- **Checked at load**: `@` alone or a tag nobody declares is an error with the file and line (a map key or
+  a placement's `outputs`), and the wire is dropped; a group with no members in the level is a warning,
+  because its members may be spawned later. `ent_fire @lamps TurnOn` fires at a group.
+  (test: AMapEntityKeyIsNotAWireToABadSelector)
+- **The history** is a preallocated ring of the last `EntityIO.HistoryCapacity` (256) deliveries:
+  tick, time, caller, output, target, input, parameter and the outcome (`Delivered`, `NoTarget`,
+  `NoSuchInput`, `NobodyTookIt`, `Failed`). Its strings are the wires' own, so keeping it costs nothing.
+  `io_history [name] [count]` prints it, every world that has one; `EntityIO.HistoryOf(entity, …)` is a
+  tool's per-entity view. Not saved: it is about this session.
+  (test: TheHistoryKeepsTheLastDeliveriesInARing_AndSaysWhatBecameOfEach)
+- **A handler that throws** (#402, §8) costs that one delivery: it is logged at Error with the caller,
+  output, target, input and parameter and the exception, recorded as `Failed`, the debugger breaks if one
+  is attached, and the rest of the tick's inputs arrive. `SageFatalException` is not caught.
+  (test: AnInputThatThrowsIsLoggedWithItsWire_AndTheRestOfTheTickStillArrives)
+- **The editor's link view** (`WiringModel.Links`, Sage.Editing): for the selected entity, the wires
+  that leave it and the wires that reach it — from placements and map entities alike, a group wire
+  counting as reaching each member — each with every target it resolves to now and where it stands, and
+  a problem when it cannot work. `WiringModel.Lines` fans a group wire out to a line per member and keeps
+  a line with no end for a target not in the world. The client draws them (yellow out, green in, red for
+  unresolved) and lists what reaches the selection and whom a group reaches in the I/O panel.
+  (test: TheLinkViewFansAGroupWireOutToEveryMember_AndShowsWhatReachesAnEntity)
+  (test: AGroupCanBeWiredFromTheConsole_AndAnEmptyOneIsRefusedWithAReason)
+  `WiringModel.Recent(world, entity)` reads the play world's history for it.
+  (test: ThePlayWorldsHistoryIsWhatTheViewShowsAsRecent)
+
 ### 3.5 Engine signals in detail
 `EngineSignals` (on `Engine`, 01) holds plain C# events, raised on the main thread at the start of a frame (never inside a tick):
 - `AssetReloaded(AssetPath)`, `RecordsReloaded(RecordType)`;
@@ -430,7 +470,7 @@ I/O connections are part of map/prefab entity data (09):
 - An unknown event type read or sent without a declaration: a dev assert naming the system. Declarations are the single source for event wiring.
 - A lagging reader past `ev_maxage`: the old events are dropped with a warning naming the reader.
 - Bad I/O connections are dropped at load with an error (see 3.4). The rest of the map still works.
-- An exception in an I/O input handler is caught per dispatch and logged with the connection; the remaining dispatches continue. In dev with a debugger attached, it breaks.
+- An exception in an I/O input handler is caught per dispatch and logged with the connection; the remaining dispatches continue. In dev with a debugger attached, it breaks. (Built with #402, §3.4f; test: AnInputThatThrowsIsLoggedWithItsWire_AndTheRestOfTheTickStillArrives)
 
 ## 9. Debug and tooling hooks
 - **Cvars:** `ev_maxage` and `ev_trace <EventType|*>` (DevOnly; logs sends at `Trace`) are **built**;
@@ -439,7 +479,7 @@ I/O connections are part of map/prefab entity data (09):
   - `ev_stats` (queue sizes, readers, oldest event age) is **built**, in `WorldConsoleCommands`;
   - `ent_fire <name> <input> [param]` (fire an input from the console, like Source's `ent_fire`)
     comes with entity I/O.
-- **Editor:** I/O links drawn between entities (red = unresolved). Per-entity "recent I/O" in the inspector.
+- **Editor:** I/O links drawn between entities (red = unresolved), built: the link view (§3.4f). Per-entity "recent I/O" is `io_history <name>` and `WiringModel.Recent`; the inspector does not show it yet.
 - **Log category:** `Events`.
 
 ## 10. Mapping from today's code
@@ -457,7 +497,7 @@ I/O connections are part of map/prefab entity data (09):
   - engine signals;
   - entity I/O with load-time resolution, delays, `!self`/`!activator`;
   - `ent_fire`, `io_trace`.
-- **Later:** `@group` targets, `times`, editor link visualisation, the per-entity I/O history, event recording for replays.
+- **Later:** event recording for replays. (`times` came with F17; `@group` targets, the editor link view and the I/O history with #276, §3.4f.)
 
 ## 12. Multiplayer-later notes
 Game events are simulation-internal and stay on the server. Clients get the *effects* (replicated state, cosmetic "cue" messages like UE's GameplayCues). I/O runs on the server only. The rule "presentation reads events with its own cursors" maps directly onto "client presentation reads replicated cues".

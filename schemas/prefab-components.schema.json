@@ -252,6 +252,14 @@
         }
       ]
     },
+    "io_group": {
+      "description": "The component sage:io_group (IOGroup), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:io_group"
+        }
+      ]
+    },
     "item_grid": {
       "description": "The component rpg:item_grid (ItemGridPlacements), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -785,6 +793,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:io_connections"
+        }
+      ]
+    },
+    "sage:io_group": {
+      "description": "Component sage:io_group (IOGroup).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:io_group"
         }
       ]
     },
@@ -3402,6 +3418,17 @@
       },
       "additionalProperties": false,
       "description": "Component sage:io_connections (IOConnections)."
+    },
+    "sage:io_group": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "description": "The groups this entity is in, separated by spaces or commas; a wire to @name reaches every member. (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:io_group (IOGroup)."
     },
     "sage:joint": {
       "type": "object",

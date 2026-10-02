@@ -145,6 +145,14 @@ Sage.Editing.InspectorRow.Provenance.get -> string!
 Sage.Editing.InspectorRow.SetBy.get -> Sage.Core.RecordWrite?
 Sage.Editing.InspectorRow.Value.get -> object?
 Sage.Editing.InspectorValue
+Sage.Editing.LinkView
+Sage.Editing.LinkView.Entity.get -> Sage.Simulation.Entity
+Sage.Editing.LinkView.Entity.init -> void
+Sage.Editing.LinkView.Incoming.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireLink!>!
+Sage.Editing.LinkView.Incoming.init -> void
+Sage.Editing.LinkView.LinkView(Sage.Simulation.Entity Entity, System.Collections.Generic.IReadOnlyList<Sage.Editing.WireLink!>! Outgoing, System.Collections.Generic.IReadOnlyList<Sage.Editing.WireLink!>! Incoming) -> void
+Sage.Editing.LinkView.Outgoing.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireLink!>!
+Sage.Editing.LinkView.Outgoing.init -> void
 Sage.Editing.LogView
 Sage.Editing.LogView.Categories.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
 Sage.Editing.LogView.IsShown(string! category) -> bool
@@ -375,6 +383,23 @@ Sage.Editing.WireLine.Wire.get -> Sage.Simulation.Connection!
 Sage.Editing.WireLine.Wire.init -> void
 Sage.Editing.WireLine.WireLine() -> void
 Sage.Editing.WireLine.WireLine(Sage.Simulation.Placement! Source, int Index, Sage.Simulation.Connection! Wire, System.Numerics.Vector3 From, System.Numerics.Vector3? To) -> void
+Sage.Editing.WireLink
+Sage.Editing.WireLink.From.get -> System.Numerics.Vector3
+Sage.Editing.WireLink.From.init -> void
+Sage.Editing.WireLink.Index.get -> int
+Sage.Editing.WireLink.Index.init -> void
+Sage.Editing.WireLink.Problem.get -> string?
+Sage.Editing.WireLink.Problem.init -> void
+Sage.Editing.WireLink.Resolved.get -> bool
+Sage.Editing.WireLink.Source.get -> Sage.Simulation.Entity
+Sage.Editing.WireLink.Source.init -> void
+Sage.Editing.WireLink.Targets.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
+Sage.Editing.WireLink.Targets.init -> void
+Sage.Editing.WireLink.To.get -> System.Collections.Generic.IReadOnlyList<System.Numerics.Vector3>!
+Sage.Editing.WireLink.To.init -> void
+Sage.Editing.WireLink.Wire.get -> Sage.Simulation.Connection!
+Sage.Editing.WireLink.Wire.init -> void
+Sage.Editing.WireLink.WireLink(Sage.Simulation.Entity Source, int Index, Sage.Simulation.Connection! Wire, System.Numerics.Vector3 From, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>! Targets, System.Collections.Generic.IReadOnlyList<System.Numerics.Vector3>! To, string? Problem) -> void
 Sage.Editing.WireOutput
 Sage.Editing.WireOutput.Declared.get -> bool
 Sage.Editing.WireOutput.Declared.init -> void
@@ -452,6 +477,10 @@ static Sage.Editing.Wiring.NameOf(Sage.Simulation.Placement! placement) -> strin
 static Sage.Editing.Wiring.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
 static Sage.Editing.Wiring.Remove(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, params int[]! indices) -> int
 static Sage.Editing.Wiring.TargetEntity(Sage.Editing.EditDocument! document, string! target) -> Sage.Simulation.Entity
+static Sage.Editing.Wiring.TargetsOf(Sage.Editing.EditDocument! document, Sage.Simulation.Entity source, string! target) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
 static Sage.Editing.Wiring.Update(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! source, int index, Sage.Simulation.Connection! wire, out string? error) -> bool
 static Sage.Editing.WiringModel.Lines(Sage.Editing.EditDocument! document) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.WireLine>!
 static readonly Sage.Editing.InspectorModel.PlacementFieldNames -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Editing.WiringModel.Links(Sage.Editing.EditDocument! document, Sage.Simulation.Entity entity) -> Sage.Editing.LinkView!
+static Sage.Editing.WiringModel.Links(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> Sage.Editing.LinkView!
+static Sage.Editing.WiringModel.Recent(Sage.Simulation.World! world, Sage.Simulation.Entity entity, int max = 16) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.IORecord>!

@@ -197,6 +197,17 @@ public sealed class ComponentSchema
         return type != null;
     }
 
+    // A tag by what content writes, as a set a query or `Entity.Tags.HasAll` can test (`@tag:` targets,
+    // issue #276).
+    internal bool TryTagSet(string name, out Tags tags)
+    {
+        tags = default;
+        if (!TryResolveTag(name, EngineNamespace, out var type, out _)) return false;
+        if (!F.EntityStore.GetEntitySchema().TagTypeByType.TryGetValue(type, out var tagType)) return false;
+        tags = new Tags(new F.Tags(tagType));
+        return true;
+    }
+
     private static Entry? Resolve(Dictionary<string, Entry> table, string name, string fileNamespace, string kind,
                                   out string? error)
     {

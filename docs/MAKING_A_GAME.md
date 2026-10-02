@@ -945,8 +945,9 @@ Then name the level in a record and load it from your scene (`"maps": ["tavern"]
 
 In the editor:
 
-- **`classname` is a prefab id.** An entity called `goblin` spawns `yourgame:goblin`. `origin`, `angle`
-  and `targetname` are read; a classname with no prefab is left for your game to read off the level.
+- **`classname` is a prefab id.** An entity called `goblin` spawns `yourgame:goblin`. `origin`, `angle`,
+  `targetname` and `group` (the groups a wire to `@group` reaches, below) are read; a classname with no
+  prefab is left for your game to read off the level.
 - **Per-entity values**: any field of the prefab's parts and components, as `<part>.<field>` —
   `"light.range" "12"`, `"body.mass" "20"`. The generated FGD lists them for each prefab, typed and
   described, with the prefab's own value as the default; a value that is not a number where one is
@@ -995,6 +996,15 @@ Inputs it offers: `Open`, `Close`, `Toggle`, a mover's `Next` / `Previous` / `Go
 your own modules can register more inputs (`engine.Inputs.Register`) and declare the outputs they fire
 (`engine.Outputs.Declare(name, what it means)`), which puts them in the FGD. Targets can be a `targetname` or `!self` / `!activator` / `!caller`.
 
+**A wire can reach a group** (issue #276): a target starting with `@` is every entity it picks, each
+one delivery. `@lamps` is every entity in the group `lamps` — a map entity's `"group" "lamps hall"` key
+(groups separated by spaces or commas), or a prefab's `"sage:io_group": { "names": "lamps" }` component;
+`@class:torch` is every entity spawned from the prefab `torch` (any namespace; `@class:ns:torch` for one);
+`@tag:ns:id` is every entity with that tag. A group is resolved when the input *arrives*, so a member
+spawned during the delay is reached too, and a group with no members then does nothing. An empty `@`
+or a tag nobody declares is an error at load; a group with no members in the level is a warning.
+`"OnTrigger" "@lamps,TurnOff"` puts out every lamp of the hall from one relay.
+
 **An input may belong to a component** (issue #91). `engine.Inputs.Register<Mover>("Toggle", …)` runs
 only at an entity with a `Mover`, beside `Register<LogicBranch>("Toggle", …)` for branches: an input
 arriving runs *every* handler whose component the entity has, and a global handler of that name (plain
@@ -1004,8 +1014,11 @@ would have. `Open`, `Close` and `Toggle` are the mover's this way.
 
 Connections are **checked when the level loads**: a typo names the map file and line rather than a door
 that quietly never opens. `map_load`, `map_list`, `map_unload`, `map_goto` (stand where the map's
-`info_player_start` says) and `ent_fire <name> <input>` drive it
-from the console, and `io_trace 1` logs every wire as it fires.
+`info_player_start` says) and `ent_fire <name|@group> <input>` drive it
+from the console, `io_trace 1` logs every wire as it fires, and `io_history [name] [count]` prints the
+last inputs delivered (the last 256 are kept, with what became of each: delivered, no target, no such
+input, nothing took it, or its handler threw — which is logged with the wire, and the rest of the tick's
+inputs still arrive).
 
 **Without a map**, a scene or placements document wires a placement the same way, as a list of
 `outputs` on the placement that fires them (issue #80): `{ "output": "OnStartTouch", "target":
@@ -1837,8 +1850,6 @@ Worth knowing before you plan around it:
   town wants light baked into the geometry, and lightmaps are still to come. Nothing casts a shadow.
 - **No multiplayer.** The engine follows rules that keep it possible (fixed tick, data-only components,
   no gameplay in rendering), but there is no networking. That is Phase 7.
-- **No per-entity keys in maps** beyond `origin`, `angle`, `targetname` and `trigger`: setting a
-  component's field from the editor waits on the source generator.
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`
   (docs/MODDING.md); there are no code mods, no `.sagemod` zips and no namespaced asset paths yet — two
   mods shipping one texture is reported as a conflict and the later one wins. Those are phase 9.
