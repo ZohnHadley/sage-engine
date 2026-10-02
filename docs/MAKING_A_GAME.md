@@ -1262,6 +1262,18 @@ var mask = LayerMask.All.Except(physics.Layers.Enemy);             // layers by 
 var hit = physics.Raycast(eye, aim, 30f, mask, ignore: self);      // `ignore`: leave the asker out
 var swing = physics.Sweep(Collider.Sphere(0.3f), pose, aim, 2f, ignore: self);   // starts inside? Distance 0
 foreach (var touch in physics.TriggerEnter) { /* PostPhysics: who entered which trigger */ }
+int n = physics.RaycastAll(eye, aim, 30f, hits, mask);             // every hit, nearest first
+int near = physics.OverlapSphere(blast, 4f, overlaps);              // what a sphere really touches
+```
+
+The same trigger and contact facts arrive on the event bus (issue #269), so a system reads them in code
+with a cursor instead of wiring entity I/O: `TriggerEntered`, `TriggerExited`, `Collided` (with
+`Impulse` in N·s and `Speed` in m/s: an impact sound's volume, fall damage) and `CollisionEnded`.
+
+```csharp
+_hits = world.Events.Reader<Collided>(this);                        // in the constructor
+foreach (ref readonly var hit in _hits.Read())                      // in Run
+    if (hit.Impulse > 5f) PlayThud(hit.Point, hit.Impulse);
 ```
 
 A sweep that starts inside something hits it at distance 0 (`StartsInside`), which is what a swing
