@@ -97,7 +97,7 @@ Log category `Save`. `saves` lists slots with kind, time and entity count. Two p
 | REQ-SAVE-11 | A write shall be atomic. | Must | Done | `src/Sage.Simulation/Content/SaveSystem.cs` (staging folder and move) |
 | REQ-SAVE-12 | Save, change a prefab and a record, load: nothing lost, nothing doubled, in a game with no C#. | Must | Done | test: `SavesExit_AQuickSaveSurvivesARebalanceWithNothingLostOrDoubled` |
 | REQ-SAVE-13 | A load shall remove live unsaved entities, make derived values follow placement changes, and resolve references to sleeping entities. | Must | Done | tests: `ALoadRemovesTheUnsavedSpawnsItDoesNotName`, `ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves`, `AnUntouchedDoorFollowsItsPlacementAndARebalance`, `AReferenceToASleepingEntityIsKeptAndResolvesWhenItWakes` |
-| REQ-SAVE-14 | Nested prefabs and per-placement part overrides shall survive a save across sectors. | Should | Not started | #279 |
+| REQ-SAVE-14 | Nested prefabs and per-placement part overrides shall survive a save across sectors. | Should | Done | test: `AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing` |
 | REQ-SAVE-15 | Saves shall offer thumbnails, optional compression, an asynchronous write and named slots, and quick-save keys shall work while paused. | Should | Not started | #285 |
 | REQ-SAVE-16 | A save-version report shall say what a save would lose or change under the current content and mods. | Could | Not started | #285 |
 | REQ-SAVE-17 | A pre-release save-format window shall be closed: format 1 shall stop being read once the first release ships. | Could | Not started | #295 (first release) |
@@ -107,7 +107,6 @@ Log category `Save`. `saves` lists slots with kind, time and entity count. Two p
 
 Milestone 2 (epic #274).
 
-- #279 4m-5 Prefabs: nested prefabs, per-placement part overrides, overrides kept across sectors (P1)
 - #285 4m-11 Saves: thumbnails, compression, async write, named slots and a save-version report (P2)
 - #286 4m-12 Tests: hierarchy, multi-world, timers and tweens across a save (P2)
 
