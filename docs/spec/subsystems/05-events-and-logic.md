@@ -84,14 +84,15 @@ Parameters are words separated by spaces, never commas, because a `.map` wire is
 
 | Owner | Conditions | Actions |
 |---|---|---|
-| Base (`sage.core`) | `all`, `any`, `not`, `var`, `weekday`, `date_between`, `time_between`, `anim_param`, `anim_finished` | `fire`, `set_var`, `add_var` |
+| Base (`sage.core`) | `all`, `any`, `not`, `var`, `weekday`, `date_between`, `time_between`, `anim_param`, `anim_finished`, `random`, `entity_exists`, `distance_to`, `in_scene` | `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait` |
 | `sage.gameplay.items` | `has_item` | `give_item`, `take_item` |
-| `sage.gameplay.attributes` | `has_tag`, `lacks_tag` | `apply_effect` |
+| `sage.gameplay.attributes` | `has_tag`, `lacks_tag` (on the subject, or `entity`), `is_alive` | `apply_effect`, `set_tag` |
+| `sage.gameplay.abilities` | | `cue` |
 | `sage.gameplay.quests` | `quest` | `start_quest`, `set_stage`, `finish_quest` |
 | `sage.gameplay.factions` | `standing` | `change_standing` |
 | `sage.gameplay.dialogue` | `speaker` | `add_topic` |
 
-`Vars` (saved resource `vars`) holds the named numbers that `var`, `set_var` and `add_var` use. Other vocabularies in the engine follow the same declaration pattern (`ai_condition`, `quest_objective`, `effect_execution`, `item_use`, `ability_delivery`, `hit_delivery`); the registry dump lists them all.
+`Vars` (saved resource `vars`) holds the named numbers that `var`, `set_var` and `add_var` use. A word that names an entity reads it as a wire's target does (`LogicTargets`: a name, `!subject`, `!other`). `random` draws from the world's own SplitMix64 stream, seeded from the world's name and saved as the `random` resource. `wait` stops an action list and the rest runs that many seconds later (`sage.logic.sequences`), with what is still waiting saved as the `sequences` resource (the rest of each list as content writes it). `play_sound` sends `SoundRequested`, which the client's audio plays. Other vocabularies in the engine follow the same declaration pattern (`ai_condition`, `quest_objective`, `effect_execution`, `item_use`, `ability_delivery`, `hit_delivery`); the registry dump lists them all.
 
 ### 4.5 Bridge I/O (gameplay)
 
@@ -103,7 +104,7 @@ Inputs `SetStage`, `StartDialogue`, `GiveItem`, `ApplyEffect`, `SetFaction`; out
 |---|---|
 | Records | `state_machine` (states with `enter`, `exit`, `tags`, `transitions` using `on`, `when`, `after`, `then`; top-level `initial` and `transitions`) |
 | Components | `sage:io_connections`, `sage:io_group`, `sage:logic_relay`, `sage:logic_relay_script` (transient), `sage:logic_counter`, `sage:logic_compare`, `sage:logic_branch`, `sage:math_remap`, `sage:timer`, `sage:tween`, `sage:state_machine` |
-| Saved resources | `entity_io` (pending inputs, delays in flight, wire fire counts), `vars` |
+| Saved resources | `entity_io` (pending inputs, delays in flight, wire fire counts), `vars`, `random` (the world's stream for `random`), `sequences` (action lists a `wait` put off) |
 | Prefab parts | `logic_relay`, `logic_counter`, `logic_compare`, `logic_branch`, `math_remap`, `timer`, `tween`, `state_machine` |
 | Vocabularies | `condition`, `action` |
 
@@ -114,12 +115,12 @@ A state machine is saved by state name and seconds in the state, so a save writt
 | Piece | When it runs |
 |---|---|
 | Game events | Sent in any phase; queues are pruned at the end of the schedule that owns them, never mid-phase. In a world that draws, `ev_maxage` is checked at the end of each frame so a frame reader is not blamed for a catch-up. |
-| `sage.logic.timers`, `sage.logic.tweens`, `sage.logic.state_machines` | Phase `EntityIO`, in that order, before `sage.io.dispatch`. |
+| `sage.logic.timers`, `sage.logic.tweens`, `sage.logic.state_machines`, `sage.logic.sequences` | Phase `EntityIO`, in that order, before `sage.io.dispatch`. |
 | `sage.io.dispatch` | Phase `EntityIO`: delivers every input that is due. |
 | `sage.io.triggers` | Phase `PostPhysics`: turns physics trigger enter and exit into `OnStartTouch` and `OnEndTouch`. |
 | Bridge systems | Phase `Gameplay`. |
 
-Timing is uniform on purpose: a timer, tween or `after` of N seconds started on tick D fires on the tick that an input sent on tick D with a delay of N would arrive, and undelayed wires from its output arrive that same tick. A relay can be marked same-tick, so a chain of relays runs in one tick up to the budget.
+Timing is uniform on purpose: a timer, tween, `wait` or `after` of N seconds started on tick D fires on the tick that an input sent on tick D with a delay of N would arrive, and undelayed wires from its output arrive that same tick. A relay can be marked same-tick, so a chain of relays runs in one tick up to the budget.
 
 Registration happens in module `Init` (inputs, outputs, vocabulary entries by generated code); the tables are sealed afterwards, and a registration written later is build error SAGE0020. After a load, `EntityIO.AfterLoad` rebinds queued inputs: targets are found by identity, and by name when the handle is dead, so a target spawned meanwhile is still found. Wires are resolved when content loads and checked against the input table then.
 
@@ -127,7 +128,7 @@ Registration happens in module `Init` (inputs, outputs, vocabulary entries by ge
 
 Single-threaded on the simulation thread. Event queues grow to their high-water mark and then stop; a queue nobody reads drops immediately. Readers and iterators are allocation-free, as are condition evaluation (lists are read once at load, reasons are constants), timers, tweens, state machines, logic entities and the I/O dispatch in steady state. Handlers must not keep an `IOContext` past the call.
 
-Measured: tests assert zero managed allocation per tick for evaluation (test: EvaluatingConditionsAllocatesNothing), for logic entities (test: LogicEntitiesAllocateNothingPerTick), for timers, tweens and I/O together (test: TimersTweensAndEntityIOAllocateNothingPerTick) and for state machines (test: StateMachinesAllocateNothingPerTick).
+Measured: tests assert zero managed allocation per tick for evaluation (test: EvaluatingConditionsAllocatesNothing), for logic entities (test: LogicEntitiesAllocateNothingPerTick), for timers, tweens and I/O together (test: TimersTweensAndEntityIOAllocateNothingPerTick), for state machines (test: StateMachinesAllocateNothingPerTick) and for the data-only game's conditions once a name is found (test: TheNewConditionsAllocateNothing).
 
 ## 8. Errors and diagnostics
 
@@ -160,7 +161,7 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 | REQ-LOGIC-15 | State machines shall be data records, saved by state name, and survive a record hot reload. | Must | Done | test: StateAndTimeInItSurviveSaveAndLoad |
 | REQ-LOGIC-16 | State machines shall support actions that run each tick in a state, nested and parallel states, per-state outputs, and placement overrides of the `machine`. | Should | Not started | #280 |
 | REQ-LOGIC-17 | Conditions and actions shall be open vocabularies registered by the owning plugin, and an unknown id shall suggest the nearest one. | Must | Done | test: AnUnknownIdSuggestsTheNearestOne |
-| REQ-LOGIC-18 | The base vocabulary shall cover what a data-only game needs: chance, entity existence and distance, spawn, destroy, teleport, sound, tags, time passing, scene load, save, log and wait. | Must | Partial: a handful of base words | #275 |
+| REQ-LOGIC-18 | The base vocabulary shall cover what a data-only game needs: chance, entity existence and distance, spawn, destroy, teleport, sound, tags, time passing, scene load, save, log and wait. | Must | Done | test: SpawnDestroyAndTeleportChangeTheWorld; test: RandomIsDeterministic_AcrossRunsAndASave; test: AWaitSavedHalfWayFinishesAfterALoad; test: TagsAliveAndCuesWorkOnAnyEntity |
 | REQ-LOGIC-19 | Delays, timers and tweens shall pause with a paused world, and honour a world time scale. | Should | Partial: pause done, scale not | test: APausedWorldsDelaysWait; #283 |
 | REQ-LOGIC-20 | A steady-state tick of events, I/O, timers, tweens, state machines and condition evaluation shall allocate nothing. | Must | Done | test: TimersTweensAndEntityIOAllocateNothingPerTick |
 
@@ -168,7 +169,6 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 
 Milestone 4m, World, logic and saves (epic #274):
 
-- #275 4m-1 Widen the base condition and action vocabulary for data-only games (P1)
 - #280 4m-6 State machines: per-tick actions, nested/parallel states, per-state outputs (P2)
 - #281 4m-7 Logic entities: round out the set (multi-source, math, random, case, template, spawner) (P2)
 - #282 4m-8 Events: structural `Added<T>`/`Removed<T>` and `EngineSignals` (P2)

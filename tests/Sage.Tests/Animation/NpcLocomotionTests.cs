@@ -342,12 +342,12 @@ public class NpcAllocationTests
         for (int i = 0; i < 300; i++) Step();   // warm: every state, fade, layer and IK met at least once
         Assert.Contains(npcs, n => Animators.StateOf(world, n, "upper") == "aim");
 
-        // Nothing may allocate but the physics backend's own step (PhysicsStepSystem, 40 bytes a tick with a
-        // character in the world), which is not this code; the report shows it by scope, as #120's and #121's do.
+        // Nothing may allocate, the physics step included (it used to allocate 40 bytes a tick, #273); the
+        // report shows any allocation by scope, as #120's and #121's do.
         long physicsBefore = ScopeBytes("Fixed.Physics");
         var allocated = AllocationProbe.Measure(300, Step);
         long physics = ScopeBytes("Fixed.Physics") - physicsBefore;
-        Assert.True(allocated.Bytes - physics == 0, allocated.ToString());
+        Assert.True(allocated.Bytes == 0 && physics == 0, allocated.ToString());
         Assert.All(npcs, n => Assert.True(Animators.TryGetPose(world, n, out _)));
         Assert.Contains(npcs, n => Animators.StateOf(world, n) == "move");
         Assert.Contains(npcs, n => world.Get<FootIk>(n).LeftGrounded);

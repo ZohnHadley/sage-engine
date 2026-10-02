@@ -252,12 +252,12 @@ public class AnimationEventTests
         }
         for (int i = 0; i < 180; i++) Step();
         Assert.True(bus.Raised > 500, $"only {bus.Raised} events raised");
-        // Entity I/O needs physics here; the physics backend's own step allocates 40 bytes a tick, which is
-        // the backend's (12 "As built (attachments and IK)"), so it is left out. Animation allocates nothing.
+        // Entity I/O needs physics here; neither animation nor the physics step allocates (the step's old 40
+        // bytes a tick were a Stopwatch, #273).
         long animationBefore = ScopeBytes("Fixed.Animation"), physicsBefore = ScopeBytes("Fixed.Physics");
         var report = AllocationProbe.Measure(300, Step);
         long animation = ScopeBytes("Fixed.Animation") - animationBefore, physics = ScopeBytes("Fixed.Physics") - physicsBefore;
-        Assert.True(animation == 0 && report.Bytes - physics == 0, report.ToString());
+        Assert.True(animation == 0 && physics == 0 && report.Bytes == 0, report.ToString());
     }
 
     private static long ScopeBytes(string name)

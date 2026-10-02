@@ -681,7 +681,6 @@ public class LogicEntityAllocationTests
         world.Add(remap, new IOConnections { Wires = new[] { new Connection { Output = "OnValue", Target = "!self", Input = "Count" } } });
 
         world.IO().FireInput(timer, "TimerStart");
-        Assert.True(world.Systems.Disable("sage.physics.step"));          // its 40 bytes a tick are physics'
 
         for (int i = 0; i < 180; i++) { world.RunFixed(1f / 60f); Profiler.EndFrame(); }   // warm
         _count = 0;

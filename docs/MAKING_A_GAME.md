@@ -406,7 +406,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
 | **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming, crouch (`crouchTime`, seconds to go down; the character's collider shrinks with it) and its `mode`: `Walk`, `AirStrafe` (GoldSrc bunny-hopping, tuned by `airStrafeSpeed` and `airStrafeAccelerate`), `Fly` or `Noclip` (`flySpeed`; a character's own `mode` overrides its profile's, and the `noclip` and `fly` cheats toggle the player's, issue #267); `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues, a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
-| **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest |
+| **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest; `hit_location` and `hitboxes` — where a strike lands on a body; `hitbox_budget` — which creatures' hitboxes are on: those within its `distance` (m, 50) of a player and among the nearest `maxCreatures` (32); the others' are off and a strike there lands on the body; the conventions' `hitboxBudget` names it (`sage:default_hitbox_budget`; patch it, 0 turns a limit off, and naming none keeps every creature's on; issue #273) |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
 | **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs, as `[{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]`; `routine` — what it does when and where, `{ "from": 8, "to": 20, "schedule": "work", "at": "forge" }`, named by the profile's `routine` or a `routine` part, walked with `MoveToAnchor`, `FaceAnchor` and `StayAt` (issue 4g-4) |
@@ -454,8 +454,8 @@ entry inside an object; an entry that takes no settings can be written as its ba
 | Vocabulary | Where content uses it | The engine's entries |
 |---|---|---|
 | `quest_objective` (key `kind`, default `kill`) | a quest stage's `objectives` | `kill`, `have`, `reach`, `talk` |
-| `condition` (key `condition`, or its id as a property) | a dialogue option's `conditions`; any `requires` | the base's `all`, `any`, `not`, `var`, `time_between`, `weekday`, `date_between` (the last two: the calendar, issue 4g-2); gameplay's `has_tag`, `lacks_tag`, `has_item`, `standing`, `quest`; dialogue's `speaker` |
-| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`; gameplay's `give_item`, `take_item`, `apply_effect`, `change_standing`, `start_quest`, `set_stage`, `finish_quest`; dialogue's `add_topic` |
+| `condition` (key `condition`, or its id as a property) | a dialogue option's `conditions`; any `requires` | the base's `all`, `any`, `not`, `var`, `time_between`, `weekday`, `date_between` (the last two: the calendar, issue 4g-2), `random`, `entity_exists`, `distance_to`, `in_scene`; gameplay's `has_tag`, `lacks_tag`, `is_alive`, `has_item`, `standing`, `quest`; dialogue's `speaker` |
+| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait`; gameplay's `give_item`, `take_item`, `apply_effect`, `set_tag`, `cue`, `change_standing`, `start_quest`, `set_stage`, `finish_quest`; dialogue's `add_topic` |
 | `ability_delivery` | an ability's `delivery` (its `targeting` still names one) | `self`, `touch`, `touch_area`, `area`, `projectile` |
 | `hit_delivery` | an attack's `delivery` (empty: `sweep`) | `sweep` (a swing: `reach`, `radius`, `arcDegrees`), `ray` (hitscan to `range`, `pellets` rays), `projectile` (a carrier, the `projectile` prefab, flying `range` at `projectileSpeed`, falling at `projectileGravity`, through `projectilePierce` targets) |
 | `effect_execution` (key `execution`) | an effect's `executions` | `knockback`, `teleport`, `summon`, `dispel` |
@@ -495,6 +495,39 @@ the entry's main setting, or is its settings when it is an object:
                 { "set_stage": { "quest": "thin_the_wood", "stage": "report" } },
                 { "action": "give_item", "item": "gold", "count": 20 } ]  // the long form still reads
 ```
+
+**Words for a game with no code** (issue #275). The base also has what a level needs without C#, and
+every word that names an entity names it as a wire does: a name, or `!subject` (the one it is about: the
+activator, the player in a conversation) or `!other` (whoever is doing it: the relay, the speaker):
+
+```jsonc
+"requires": { "all": [ { "random": 0.25 },                                  // one time in four, from the world's own saved stream
+                       { "entity_exists": "boss" },
+                       { "distance_to": "altar", "max": 3 },                // from the subject, or "from": "<name>"; "min" too
+                       { "in_scene": "crypt" },
+                       { "has_tag": "alerted", "entity": "guard" },          // gameplay: any entity, the subject by default
+                       { "is_alive": "boss" } ] },                           // gameplay: there and not tagged dead
+"then": [ { "message": "The floor shakes.", "kind": "Bad", "seconds": 4 },   // a line for the player
+          { "log": "crypt: floor shaking", "level": "Warn" },               // a line in the log
+          { "wait": 2 },                                                     // the rest of the list, two seconds later
+          { "spawn_prefab": "ghost", "at": "altar", "offset": [0, 1, 0], "name": "ghost" },   // or "position": [x, y, z]
+          { "destroy": "!other" },
+          { "teleport": "!subject", "to": "crypt_exit" },                    // or "position"; "yaw" to turn
+          { "play_sound": "bell", "at": "altar", "volume": 0.8 },            // no "at": heard everywhere
+          { "cue": "bell_toll", "at": "altar" },                             // gameplay: the cue's sound and particles
+          { "set_tag": "alerted", "target": "guard" },                       // gameplay; "on": false takes it away
+          { "pass_time": 8 },                                                // game hours, at the tick's end
+          { "load_scene": "crypt", "entry": "crypt_in" },                    // no entry: the scene's start
+          { "save_game": "checkpoint" } ]                                    // no slot: an autosave
+```
+
+`random` draws one number each time it is asked, so put it on wires, relays and transitions rather than on
+something asked every frame. `wait` stops the list and runs the rest later with the same subject and other,
+in whatever ran it (a relay, a state's `enter`, a dialogue option, a topic), which has moved on meanwhile;
+a list waiting when the game is saved finishes after a load (test: AWaitSavedHalfWayFinishesAfterALoad).
+A scene change, a save and time passing happen at the end of the tick, like a load door's
+(test: LoadSceneGoesThereAndInSceneSaysSo) (test: PassTimeAndSaveGameRunAtTheTickBoundary).
+tests/games/scripted-sequence uses them with no C# (test: ATriggerDoorLiftNpcCounterAndRelayRun_InAGameWithNoCode).
 
 `quest`'s `atLeast` holds at that stage, any later one in the quest's list, or once it is finished.
 Gameplay's entries come with the plugin that owns what they ask about (`has_item` with items, `standing`

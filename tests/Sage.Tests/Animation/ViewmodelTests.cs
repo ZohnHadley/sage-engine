@@ -330,9 +330,8 @@ public class ViewmodelAllocationTests
         for (int i = 0; i < 10; i++) { ViewmodelTests.Step(world); Profiler.EndFrame(); }
         Assert.False(Viewmodels.WeaponOf(world, camera).IsNull);
 
-        // Nothing in the tick or the frame may allocate — except the physics backend's own step
-        // (PhysicsStepSystem, 40 bytes a tick with a character in the world), which is not this issue's
-        // code; the report shows it by scope (as #120's allocation test does).
+        // Nothing in the tick or the frame may allocate, the physics step included (#273); the report shows
+        // any allocation by scope (as #120's allocation test does).
         var sink = new ViewmodelTests.Sink();
         int drawn = 0;
         long physicsBefore = ScopeBytes("Fixed.Physics");
@@ -346,7 +345,7 @@ public class ViewmodelAllocationTests
         Assert.Equal(2, drawn);                                 // the arms and the sword
         Assert.True(sink.Skinned > 0 && sink.Meshes > 0);
         long physics = ScopeBytes("Fixed.Physics") - physicsBefore;
-        Assert.True(allocated.Bytes - physics == 0, allocated.ToString());
+        Assert.True(allocated.Bytes == 0 && physics == 0, allocated.ToString());
     }
 
     private static long ScopeBytes(string name)
