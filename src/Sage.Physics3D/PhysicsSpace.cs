@@ -413,8 +413,9 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         return hit;
     }
 
-    // Entities whose bounding boxes overlap a box (10 §4). Broad phase only in v1: it may report
-    // entities whose shapes don't actually touch, which is fine for "what is around here" queries.
+    // Entities whose bounding boxes overlap a box (10 §4). Bounds only: it may report entities whose
+    // shapes don't actually touch, which is fine for "what is around here" queries; Overlap
+    // (PhysicsSpace.Overlap.cs, issue #259) tests the shapes.
     public int OverlapBox(Vector3 center, Vector3 halfExtents, Span<Entity> results, LayerMask mask = default, bool includeTriggers = false,
                           Entity ignore = default)
     {
@@ -708,7 +709,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         // swing that starts inside its target, or a bolt fired point-blank, reported nothing at all
         // (issue #30). So it is a hit at distance 0 unless the caller asks otherwise, and being the
         // nearest possible it wins; the caller that started inside itself says so with `ignore`.
-        // Getting *out* of a surface still needs a depenetration pass (10 §4, not built).
+        // Getting *out* of a surface is Overlap's job (issue #259).
         public void OnHitAtZeroT(ref float maximumT, CollidableReference collidable)
         {
             if (!ReportInitialOverlaps || (Hit.Hit && Hit.StartsInside)) return;

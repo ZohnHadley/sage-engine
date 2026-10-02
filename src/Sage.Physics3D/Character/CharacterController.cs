@@ -16,12 +16,15 @@ internal sealed class CharacterMovementSystem : ISystem
     private const float Skin = 0.02f;         // never move fully into a surface
     private const float GroundOffset = 0.06f; // horizontal sweeps start this far above the feet
     private const int SlideIterations = 4;   // 10 §3: collide-and-slide, up to four planes
+    private const int DepenetrationIterations = 4;
+    private const float DepenetrationSlop = 0.005f;   // overlaps shallower than this are resting contact
 
     private readonly Query<Transform, CharacterController, PawnIntent> _characters;
     private readonly RecordStore _records;
     private readonly PhysicsSpace _space;
     private readonly ActionId _jump, _crouch, _run;
     private readonly CharacterConventions _conventions;
+    private readonly OverlapHit[] _overlaps = new OverlapHit[8];
 
     public CharacterMovementSystem(World world, RecordStore records, ActionRegistry actions)
     {
@@ -57,6 +60,9 @@ internal sealed class CharacterMovementSystem : ISystem
         if (character.Height <= 0) character.Height = profile.StandHeight;
 
         Vector3 position = transform.LocalPosition;
+        // Inside something (a door closed on it, a teleport, a spawn): out first, or every sweep below
+        // starts overlapping and sees nothing (issue #259).
+        position = Depenetrate(position, ref character, profile, mask);
         Crouch(ref character, in intent, profile, position, mask);
 
         // Which way the player wants to go, in the view's frame.
@@ -277,6 +283,30 @@ internal sealed class CharacterMovementSystem : ISystem
         character.GroundNormal = hit.Hit ? hit.Normal : Vector3.UnitY;
     }
 
+    // Pushes the capsule out of whatever it overlaps (issue #259): the deepest overlap first, along its
+    // way out, a few times over, since getting out of one surface can put it into another. At most a
+    // radius per tick, so something deeply inside a wall comes out over a few ticks instead of jumping
+    // through the far side. Velocity into the surface is dropped, as a sweep that hit it would.
+    private Vector3 Depenetrate(Vector3 position, ref CharacterController character, MovementProfileRecord profile, LayerMask mask)
+    {
+        var shape = Collider.Standing(profile.Radius, character.Height);
+        float budget = profile.Radius;
+        for (int iteration = 0; iteration < DepenetrationIterations && budget > 0f; iteration++)
+        {
+            var pose = new Pose { Position = position, Rotation = Quaternion.Identity, Scale = Vector3.One };
+            int count = _space.Overlap(shape, pose, _overlaps, mask);
+            if (count == 0 || _overlaps[0].Depth < DepenetrationSlop) break;
+
+            var deepest = _overlaps[0];
+            float push = MathF.Min(deepest.Depth + Skin, budget);
+            position += deepest.Normal * push;
+            budget -= push;
+            float into = Vector3.Dot(character.Velocity, deepest.Normal);
+            if (into < 0) character.Velocity -= deepest.Normal * into;
+        }
+        return position;
+    }
+
     // Crouching shrinks the capsule; standing up needs headroom (10 §3).
     private void Crouch(ref CharacterController character, in PawnIntent intent, MovementProfileRecord profile, Vector3 position, LayerMask mask)
     {
@@ -307,7 +337,7 @@ internal sealed class CharacterMovementSystem : ISystem
     // Sweeps that start already touching something carry no normal, and the capsule rests a skin width
     // above the floor all the time, so the controller asks the space to leave those out
     // (ignoreInitialOverlaps) and sees only what it is moving into; the skin width is what keeps the
-    // capsule out of surfaces. Real depenetration needs a shape-overlap query (10 §4, not built yet).
+    // capsule out of surfaces, and Depenetrate gets it out of anything it ends up inside (issue #259).
     private SweepHit Sweep(Vector3 feet, float height, float radius, Vector3 direction, float distance, LayerMask mask)
     {
         // The same factory the entity's own collider uses, so the shape it sweeps and the shape the

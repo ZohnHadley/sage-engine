@@ -36,11 +36,11 @@ A world with no physics plugin has no `IPhysicsWorld` resource, and code that ca
 
 | Type (file) | Role |
 |---|---|
-| `IPhysicsWorld` (`Simulation/Physics/IPhysicsWorld.cs`) | The facade: `AddBody`, `AddHull`, `AddMesh`, `RemoveBody`, `MoveStatic`, `SetPose`, `PoseOf`, velocity and impulse calls, `Raycast`, `Sweep`, `OverlapBox`, event spans, `Rebase`, `DebugDraw`. |
+| `IPhysicsWorld` (`Simulation/Physics/IPhysicsWorld.cs`) | The facade: `AddBody`, `AddHull`, `AddMesh`, `RemoveBody`, `MoveStatic`, `SetPose`, `PoseOf`, velocity and impulse calls, `Raycast`, `Sweep`, `OverlapBox`, `Overlap` (narrow phase, #259), event spans, `Rebase`, `DebugDraw`. |
 | `PhysicsSpace` (`Sage.Physics3D/PhysicsSpace.cs`, `PhysicsSpace.Joints.cs`) | The Bepu implementation. |
 | `Collider`, `RigidBody`, `BodyKind`, `ColliderShape` (`PhysicsData.cs`) | Components `sage:collider` and `sage:rigid_body`. `Collider.Standing(...)` anchors a capsule at the feet. |
 | `LayerMatrix`, `LayerMask`, `PhysicsLayersRecord` | Which layers collide, by name. Query-only layers (hitboxes) are seen only by a mask that names nothing else. |
-| `RayHit`, `SweepHit`, `TriggerOverlap`, `ContactEvent`, `JointBroken` | Query results and event records. |
+| `RayHit`, `SweepHit`, `OverlapHit`, `TriggerOverlap`, `ContactEvent`, `JointBroken` | Query results and event records. |
 | `JointDesc`, `JointKind` (Ball, Hinge, Fixed, Distance), `PhysicsJoint` (`PhysicsJoints.cs`) | Joints. Experimental (SAGE0134). |
 | `CharacterController`, `MovementProfileRecord`, `World.AddCharacter` (`Physics/Character.cs`) | The kinematic character and its tuning record. |
 | `PawnIntent` | The controller's input: move, look, jump, crouch, run. Set by the player controller or AI. |
@@ -90,7 +90,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 - A character on the default layer is told it will ignore the ground; a layer list over 32 logs an error; a joint part whose limits are the wrong way round is a load error; a joint on an entity with no dynamic body logs an error and makes nothing.
 - A hull that fails to build returns a default `PhysicsBody`, and callers must check it.
 - Log category `Physics`. `phys_debug 1` draws what the backend actually simulates, `phys_stats` prints counts and step time.
-- A mover closing on a character does not push or stop it (TODO bug 61, reproducible in the Sandbox hut), because `MoverSystem` teleports the static collider with `MoveStatic` and the controller only has a ground fix-up for standing inside the ground. #259 and #260 fix this.
+- A mover closing on a character does not push or stop it (TODO bug 61, reproducible in the Sandbox hut), because `MoverSystem` teleports the static collider with `MoveStatic` and nothing sweeps ahead of the mover. The controller now gets out of whatever it ends up inside (#259); #260 makes the mover push or stop.
 
 ## 9. Requirements
 
@@ -99,12 +99,12 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-01 | Physics shall sit behind a backend-neutral facade in origin space, so combat, AI and levels never name the engine. | Must | Done | test: ThePhysicsPluginInstallsItsSpaceAsTheWorldsIPhysicsWorld |
 | REQ-PHYS-02 | The facade shall support static, kinematic and dynamic bodies that fall and rest, with 32 named layers and an ignore matrix. | Must | Done | test: ADynamicBoxFallsAndRestsOnAStaticOne; test: LayerMasks |
 | REQ-PHYS-03 | Raycast, shape sweep and box overlap shall respect layer masks, skip triggers unless asked, and ignore the asking entity. | Must | Done | test: RaycastHitsTheNearestCollider_AndRespectsLayers |
-| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Not started | #259, #269 |
+| REQ-PHYS-04 | Queries shall include a narrow-phase shape overlap, `RaycastAll` and a sphere overlap; today's `OverlapBox` reports bounds only. | Should | Partial: `Overlap` tests shapes, with depth and the way out; `RaycastAll` not started | test: OverlapTestsShapesNotBoundsAndSaysWhichWayIsOut; #269 |
 | REQ-PHYS-05 | Trigger volumes shall fire `OnStartTouch` and `OnEndTouch` on entity I/O, including for bodies asleep inside them. | Must | Done | test: WalkingIntoATriggerVolumeFiresOnStartTouch; test: SomethingAsleepInATriggerIsStillInsideIt |
 | REQ-PHYS-06 | Colliders that ask shall report contact begin and end, with an impulse for impact sounds and damage. | Must | Partial: begin and end only, as spans | test: AColliderThatAsksForContactsReportsTheirBeginningAndEnd; #269 |
 | REQ-PHYS-07 | Trigger and contact events shall be published as typed game events. | Should | Not started | #269 |
 | REQ-PHYS-08 | The character controller shall walk, slide along walls, step up low ledges, climb gentle slopes and not cliffs, jump only when grounded, and crouch without standing under a ceiling. | Must | Done | test: StepsOntoALowLedgeButNotAHighOne; test: CrouchesAndCannotStandUnderACeiling |
-| REQ-PHYS-09 | A character that ends up inside geometry (a closing door, a teleport) shall be pushed out over a few ticks. | Must | Partial: put back on top of the ground only | test: ACharacterStandingInsideTheGroundIsPutBackOnTopOfIt; #259 |
+| REQ-PHYS-09 | A character that ends up inside geometry (a closing door, a teleport) shall be pushed out over a few ticks. | Must | Done | test: ACharacterPlacedInsideABoxIsPushedOutAndWalksOn; test: ACharacterDeepInsideComesOutAFewTicksLaterNeverMoreThanARadiusATick |
 | REQ-PHYS-10 | Movers shall sweep their collider and push or block what is in the way (stop, reverse or crush), firing `OnBlocked`. | Must | Not started | #260 |
 | REQ-PHYS-11 | Movers shall be kinematic bodies with velocity that carry riders and props, and the controller shall inherit the ground's velocity. | Should | Not started | #261 |
 | REQ-PHYS-12 | Movers shall include hinged and multi-stage path movers with lock state, for Daggerfall, Morrowind and Half-Life doors and trains. | Should | Not started | #266 |
