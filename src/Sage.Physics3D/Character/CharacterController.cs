@@ -477,7 +477,7 @@ internal sealed class CharacterMovementSystem : ISystem
         // At the top: a ledge behind the rungs within step height is stepped onto, and that is the dismount
         // — a capsule's width onto it, so it stands on the top rather than balancing on the lip.
         if (toward > 0f &&
-            TryStep(position, -normal * (2f * profile.Radius + Skin), character.Height, profile, mask, cosSlope, out Vector3 stepped) &&
+            TryStep(position, -normal * (2f * profile.Radius + Skin), character.Height, profile.StepHeight, profile, mask, cosSlope, out Vector3 stepped) &&
             Vector3.Dot(stepped - position, -normal) >= profile.Radius)   // over the lip, not stopped against it
         {
             position = stepped;
