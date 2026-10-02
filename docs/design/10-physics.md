@@ -103,7 +103,7 @@ waking one deallocates it.
   - **Inside something, it gets out first (issue #259).** Before moving, the controller asks `IPhysicsWorld.Overlap` what its capsule actually intersects and pushes out along the deepest overlap's way out, up to four times (getting out of one surface can put it into another), at most a capsule radius per tick so a capsule deep in a wall comes out over a few ticks instead of jumping through it; velocity into the surface is dropped. Resting a skin width above the floor is touching, not overlapping, so a standing character is left alone (test: ACharacterPlacedInsideABoxIsPushedOutAndWalksOn; test: ACharacterStandingOnTheFloorOverlapsNothing).
   - **Starting inside the ground is survivable.** A sweep that begins overlapping carries no normal, and the controller's sweeps leave such overlaps out (`ignoreInitialOverlaps`); if the ground check believed that, a character placed a few centimetres into a hill would fall through the world (review #55). When the sweep finds nothing it casts a ray down from the capsule's centre and, if that finds walkable ground, puts the feet back on top of it.
 - **One call to place one:** `world.AddCharacter(entity, layer, profile)` adds the controller, a `Pawn`, a `PawnIntent` **seeded from the entity's rotation**, a `Collider.Standing` on the same layer and a kinematic `RigidBody`. Doing it by hand is what let the sweep layer, the collider layer and the capsule height drift apart, and what silently discarded the direction a scene placed a character facing (review #43).
-- **Limitations:** no moving platforms; no smooth crouch interpolation; **crouching shrinks the sweep capsule but not the `Collider`**, so a crouching character still blocks the world at full height until `PhysicsSpace` can update a shape; the GoldSrc air-strafe profile is still "later".
+- **Limitations:** no smooth crouch interpolation; **crouching shrinks the sweep capsule but not the `Collider`**, so a crouching character still blocks the world at full height until `PhysicsSpace` can update a shape; the GoldSrc air-strafe profile is still "later".
 
 - **Not yet:** the origin rebasing hook (`Rebase` exists but nothing calls it until R6).
 
@@ -153,6 +153,10 @@ public struct Collider : IComponent
     // if, there, it would overlap nothing but the mover, and a dynamic body gets at least the mover's
     // speed; a character with no room blocks it, and the mover goes back, stops or crushes
     // (Mover.OnBlocked), firing OnBlocked (test: ADoorThatCannotPushACharacterReopensAndSaysWhoBlockedIt).
+    // Once it first moves, a mover's static becomes a kinematic body (MakeKinematic) moved with
+    // MoveKinematic at its own velocity (issue #261): a crate on it rides, and a grounded character
+    // stands on its CharacterController.GroundVelocity, carried along before it moves itself
+    // (tests: ACrateAndAPlayerRideALiftUpAndStayOnIt, APlayerStandingOnAMovingPlatformIsCarriedWithIt).
     public static Collider Box(Vector3 size, byte layer = 0);
     public static Collider Standing(float radius, float totalHeight, byte layer = 0);   // stands on the origin
 }
@@ -182,7 +186,7 @@ The terrain's `HeightAt` (14) stopped being the only "collision" once F6 landed:
   - `phys_debug` (colliders via `DebugDraw`) and `phys_stats`;
   - log category `Physics`.
 - **Done since:** joints (constraints) and ragdolls, phase 4k (#130): "As built (joints)" and "As built (the joint part)" above, and design/12 "As built (going ragdoll)" to "As built (phase 4k's exit, issue #249)" for ragdolls (Lugaru/HL1 deaths, F11).
-- **Later:** powered and partial ragdolls, mounts (F8), moving platforms, the GoldSrc movement profile, per-region simulations for very large active areas.
+- **Later:** powered and partial ragdolls, mounts (F8), hinged and path movers (#266), the GoldSrc movement profile, per-region simulations for very large active areas.
 
 ## 12. Multiplayer-later notes
 Only the local player's KCC would be predicted (against static geometry). Bepu's lack of rollback doesn't matter for that (survey §5).
@@ -191,5 +195,5 @@ Only the local player's KCC would be predicted (against static geometry). Bepu's
 1. ~~`PhysicsSpace` resource + `Collider`/`RigidBody`/`PhysicsBody` + body sync~~ **Done 2026-09-22** (TODO F6).
 2. ~~Raycast/sweep/overlap queries + layers~~ **Done 2026-09-22** (overlap is broad phase only).
 3. Triggers → game events. **Overlaps are collected as lists (`IPhysicsWorld.TriggerEnter`/`TriggerExit`) and drive entity I/O's `OnStartTouch`/`OnEndTouch` (F17). The event bus exists (04, R13); moving the overlaps onto it is not done.**
-4. ~~KCC + movement profile records~~ **Done 2026-09-22** (TODO F7). Left: depenetration (TODO bug 61).
+4. ~~KCC + movement profile records~~ **Done 2026-09-22** (TODO F7). Depenetration done 2026-10-02 (#259).
 5. ~~Origin rebasing hook (with 14)~~ **Done 2026-09-24** (R6; "As built (rebasing)").
