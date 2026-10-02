@@ -33,6 +33,13 @@ space — +Y up, facing -Z, its right hand on +X, feet on y = 0 — every rest r
                                 back to aim (0.8 s)
          reload    1.4 s        from aim: the weapon tilts down, the left hand drops to the belt (0.3 s:
                                 `mag_out`), comes back up under it (0.9 s: `mag_in`), back to aim
+         getup_back  1.6 s      from lying on its back, head towards +Z and feet towards -Z (it faces its
+                                feet): sits up (0.7 s, knees drawn up), crouches over its feet (1.05 s),
+                                stands, and ends in idle's first pose
+         getup_front 1.6 s      from lying on its front, head towards -Z (it faces where its head
+                                points): pushes up, kneels (0.75 s), crouches (1.1 s), stands into idle
+                                (both keep the pelvis over the root, which a ragdoll getting up puts on
+                                the ground under its pelvis: engine issue #247)
 
   Aim IK's split (the prefab's `aim_ik`): the chest ends up turned by half the pitch and the head by all
   of it, so the aim_up/aim_down clips add the other half (30° at 60°) to the arms, which hang from the
@@ -453,7 +460,94 @@ def mannequin_clips():
         (J['forearm_l'], 'rotation', [(0.0, aim['forearm_l']), (0.3, rx(20)), (0.7, rx(20)), (0.9, rx(60)), (1.4, aim['forearm_l'])]),
         (J['head'], 'rotation', [(0.0, IDENTITY), (0.2, rx(-25)), (1.1, rx(-25)), (1.4, IDENTITY)]),
     ]
+    clips['getup_back'] = getup_clip(GETUP_BACK)
+    clips['getup_front'] = getup_clip(GETUP_FRONT)
     return clips
+
+
+# ---- getting up (engine issue #247) ---------------------------------------------------------------------
+#
+# Every key is planar, about X: the pelvis's height and pitch over the root (which stays where the pelvis
+# lay, on the ground), the legs either lying along the ground (`straight`) or with the ankle placed by a
+# two-bone solve at `ankle` metres ahead of the hip (-Z) and 8 cm up, sole flat, or set by hand (`knees`:
+# the thigh's and shin's pitches, kneeling); and the spine, chest, head
+# and arms by their own pitch. Pitches follow rx: + tips a spine back and swings a hanging limb forward.
+
+HIP_DROP = P['pelvis'][1] - P['thigh_l'][1]     # 0.03 m: the hips hang under the pelvis joint
+
+
+def leg_pitches(height, pelvis, ankle):
+    """The thigh's and shin's local pitches (and the foot's, flat) that put the ankle `ankle` metres ahead of
+    the hip (-Z, along the ground) at the ankle's height, under a pelvis at `height` pitched by `pelvis`."""
+    p = math.radians(pelvis)
+    hip_y = height - HIP_DROP * math.cos(p)
+    hip_z = -HIP_DROP * math.sin(p)
+    target_z = hip_z - ankle
+    vz, vy = target_z - hip_z, P['foot_l'][1] - hip_y
+    reach = math.sqrt(vz * vz + vy * vy)
+    if reach >= THIGH + SHIN - 1e-3:
+        return 0.0, 0.0, 0.0                      # straight down: the leg at full stretch, as it stands
+    phi = math.atan2(-vz, -vy)
+    knee = -math.acos(max(-1.0, min(1.0, (reach * reach - THIGH * THIGH - SHIN * SHIN) / (2 * THIGH * SHIN))))
+    beta = math.atan2(SHIN * math.sin(-knee), THIGH + SHIN * math.cos(knee))
+    a = phi + beta
+    # Check: the ankle lands where it was asked to.
+    end_z = hip_z - THIGH * math.sin(a) - SHIN * math.sin(a + knee)
+    end_y = hip_y - THIGH * math.cos(a) - SHIN * math.cos(a + knee)
+    assert abs(end_z - target_z) < 1e-3 and abs(end_y - P['foot_l'][1]) < 1e-3, (end_z, end_y)
+    thigh = math.degrees(a) - pelvis
+    shin = math.degrees(knee)
+    foot = -(math.degrees(a) + shin)
+    return thigh, shin, foot
+
+
+# (time, pelvis height, pelvis pitch, legs: 'straight' / ('ankle', metres ahead) / ('knees', thigh, shin),
+#  spine, chest, head, upper arm pitch, forearm pitch)
+GETUP_BACK = [
+    (0.0, 0.10, 90, 'straight', 0, 0, 0, 0, 6),
+    (0.35, 0.11, 50, 'straight', -10, -10, -20, -25, 20),
+    (0.7, 0.10, 5, ('ankle', 0.40), -10, -15, -10, 45, 30),
+    (1.05, 0.48, -40, ('ankle', 0.0), -5, -10, 15, 40, 20),
+    (1.35, 0.80, -12, ('ankle', 0.0), 0, -5, 5, 15, 10),
+    (1.6, 0.95, 0, ('ankle', 0.0), 0, 0, 0, 0, 6),
+]
+GETUP_FRONT = [
+    (0.0, 0.10, -90, 'straight', 0, 0, 0, 0, 6),
+    (0.35, 0.18, -75, 'straight', 10, 15, 20, 60, 10),
+    (0.75, 0.45, -40, ('knees', 40, -90), 0, 5, 15, 35, 10),
+    (1.1, 0.48, -40, ('ankle', 0.0), -5, -10, 15, 40, 20),
+    (1.35, 0.80, -12, ('ankle', 0.0), 0, -5, 5, 15, 10),
+    (1.6, 0.95, 0, ('ankle', 0.0), 0, 0, 0, 0, 6),
+]
+
+
+def getup_clip(keys):
+    tracks = {}
+
+    def key(joint, path, t, value):
+        tracks.setdefault((J[joint], path), []).append((t, value))
+
+    for t, height, pelvis, legs, spine, chest, head, arm, forearm in keys:
+        key('pelvis', 'translation', t, pelvis_at(height - P['pelvis'][1]))
+        key('pelvis', 'rotation', t, rx(pelvis))
+        if legs == 'straight':                    # along the ground: towards -Z lying back, +Z lying front
+            thigh, shin, foot = (90.0 if pelvis > 0 else -90.0) - pelvis, 0.0, 0.0
+        elif legs[0] == 'knees':
+            thigh, shin, foot = legs[1], legs[2], 0.0
+        else:
+            thigh, shin, foot = leg_pitches(height, pelvis, legs[1])
+        for side in ('l', 'r'):
+            key('thigh_' + side, 'rotation', t, rx(thigh))
+            key('shin_' + side, 'rotation', t, rx(shin))
+            key('foot_' + side, 'rotation', t, rx(foot))
+        key('spine', 'rotation', t, rx(spine))
+        key('chest', 'rotation', t, rx(chest))
+        key('head', 'rotation', t, rx(head))
+        key('upper_arm_l', 'rotation', t, euler(x=arm, z=-5))
+        key('upper_arm_r', 'rotation', t, euler(x=arm, z=5))
+        key('forearm_l', 'rotation', t, rx(forearm))
+        key('forearm_r', 'rotation', t, rx(forearm))
+    return [(joint, path, values) for (joint, path), values in tracks.items()]
 
 
 # ---- first-person arms ---------------------------------------------------------------------------------

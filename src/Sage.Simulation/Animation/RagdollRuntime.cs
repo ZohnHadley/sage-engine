@@ -72,9 +72,24 @@ public sealed class RagdollPart : IPrefabPart
     public bool OnDeath = true;
     [Property(Min = 0, Unit = "N*s", Tooltip = "The impulse a damaging hit gives the body nearest where it landed, along the hit")]
     public float HitImpulse = 30f;
+    // Getting up (issue #247, RagdollGetUp.cs): kept in their own component, sage:ragdoll_get_up.
+    [Property(Min = 0, Unit = "s", Tooltip = "Gets up by itself this long after going down (never once it has died); 0 = only when told (the GetUp input)")]
+    public float GetUpAfter;
+    [Property(Tooltip = "The animator state it gets up with from lying face up")]
+    public string GetUpBack = RagdollGetUp.DefaultBack;
+    [Property(Tooltip = "The animator state it gets up with from lying face down")]
+    public string GetUpFront = RagdollGetUp.DefaultFront;
+    [Property(Min = 0, Unit = "s", Tooltip = "How long the pose it lay in fades into the get-up state")]
+    public float GetUpFade = RagdollGetUp.DefaultFade;
 
-    public void Apply(in PrefabPartContext ctx) =>
+    public void Apply(in PrefabPartContext ctx)
+    {
         ctx.World.Add(ctx.Entity, new Ragdoll { Record = Record, OnDeath = OnDeath, HitImpulse = MathF.Max(0f, HitImpulse) });
+        ctx.World.Add(ctx.Entity, new RagdollGetUp
+        {
+            After = MathF.Max(0f, GetUpAfter), Back = GetUpBack ?? "", Front = GetUpFront ?? "", Fade = MathF.Max(0f, GetUpFade),
+        });
+    }
 }
 
 public static partial class Ragdolls
