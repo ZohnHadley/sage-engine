@@ -732,6 +732,18 @@ numbered (test: AQuestConditionAsksHowFarAlongItIs). Dialogue's `requires`/`then
 reads a `requires` besides dialogue — wires, relays, state machines, topics — is the rest of phase 4b
 (#91–#93). Details: 16 "As built (one condition and action language)".
 
+As built (issue #275): the base's words cover what a data-only game needs. Conditions `random` (the
+world's own saved SplitMix64 stream, so runs and loads draw alike; test: RandomIsDeterministic_AcrossRunsAndASave),
+`entity_exists`, `distance_to` (test: EntityExistsAndDistanceToFindEntitiesByName) and `in_scene`; actions
+`spawn_prefab`, `destroy`, `teleport` (test: SpawnDestroyAndTeleportChangeTheWorld), `play_sound`, `log`,
+`message` (test: PlaySoundMessageAndLogSayWhatTheySay), `pass_time`, `save_game`
+(test: PassTimeAndSaveGameRunAtTheTickBoundary), `load_scene` (test: LoadSceneGoesThereAndInSceneSaysSo) and
+`wait`, which runs the rest of a list N seconds later on the tick a delayed wire would arrive and is saved
+with the list as content wrote it (test: AWaitPutsOffTheRestOfTheList) (test: AWaitSavedHalfWayFinishesAfterALoad).
+Gameplay's `has_tag`/`lacks_tag` ask any entity, and `is_alive`, `set_tag` and `cue` join them
+(test: TagsAliveAndCuesWorkOnAnyEntity). An entity is named as a wire names it (`LogicTargets`).
+tests/games/scripted-sequence uses them with no C#.
+
 As built (issue #93): **topics** are the language's first reader besides node options. A
 `dialogue_topic` is a keyword and ordered infos, each one `requires` condition, a `then` and a line; the
 first that holds answers (test: ATopicAnswersByStandingQuestStageAndAVar). The listener's learnt topics
