@@ -5,6 +5,7 @@ Status: design, revised 2026-09-22 (third pass: research-backed; see §9), and m
 | Document | Role |
 |---|---|
 | **This file** | The overview: what Sage is, layers, rules, decisions, strategy |
+| [`docs/spec/`](docs/spec/README.md) | The specification (2026-10-02): SRS, TDD (supersedes this file where they differ), API contract, subsystem spec sheets |
 | [`docs/design/`](docs/design/00-index.md) | How each subsystem works (18 design docs + glossary) |
 | [`docs/research/engine-survey.md`](docs/research/engine-survey.md) | How other engines are built and why, with sources |
 | [`docs/ENGINE_DESIGN_PLAN.md`](docs/ENGINE_DESIGN_PLAN.md) | The approved plan that produced this revision |
