@@ -1,6 +1,6 @@
 # 08 · Physics and movement
 
-> Status: built for walking-simulator scale. The facade, the Bepu backend, layers, queries, triggers, contacts, the character controller, simple movers and (from phase 4k) joints and collision groups work and are tested. Movers do not sweep or push, water and ladders are not started, and joints beyond the facade and the `joint` part are in progress in another thread. Owning assemblies: `Sage.Simulation` (`Physics`, the facade and data), `Sage.Physics3D` (Bepu backend and character controller), `Sage.Gameplay` (`Movers`). Design doc: [10 Physics](../../design/10-physics.md).
+> Status: built for walking-simulator scale. The facade, the Bepu backend, layers, queries, triggers, contacts, the character controller, simple movers and (from phase 4k) joints and collision groups work and are tested. Movers do not sweep or push, ladders are not started (water and swimming are built, #262), and joints beyond the facade and the `joint` part are in progress in another thread. Owning assemblies: `Sage.Simulation` (`Physics`, the facade and data), `Sage.Physics3D` (Bepu backend and character controller), `Sage.Gameplay` (`Movers`). Design doc: [10 Physics](../../design/10-physics.md).
 
 ## 1. Purpose and scope
 
@@ -111,7 +111,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-13 | Joints (ball, hinge, fixed, distance) and collision groups shall be in the facade, with removal with the body and break reporting. | Must | Done (#242) | test: AHingeStopsAtItsLimits; test: SameGroupBodiesPassThroughEachOtherAndOtherGroupsDont |
 | REQ-PHYS-14 | A `joint` prefab part shall make joints from data, fire `OnBreak`, and survive a save mid-swing. | Must | Done (#245) | test: ASaveMidSwingResumesTheSwingInAFreshApp |
 | REQ-PHYS-15 | The rest of phase 4k (ragdolls, joint tuning and tools) shall follow the joint facade. | Should | Done | test: TheTumblerFallsOnItsWire_SettlesWithinItsLimits_AndGetsUpIntoIdle, test: ASettledRagdollSleeps_AndLoadsDownSettledAndAsleep |
-| REQ-PHYS-16 | Swimming shall work: water volumes with surface, drag and buoyancy, a swim mode, surface exit, and floating bodies. | Must | Not started | #262 |
+| REQ-PHYS-16 | Swimming shall work: water volumes with surface, drag and buoyancy, a swim mode, surface exit, and floating bodies. | Must | Done (#262) | test: ACharacterFallingIntoWaterSwimsWithItsHeadOut; test: ASwimmerClimbsOutOntoTheBank; test: ACrateFloatsHalfUnder |
 | REQ-PHYS-17 | Ladders and climbing shall work from a ladder volume prefab part. | Must | Not started | #263 |
 | REQ-PHYS-18 | The controller shall offer movement modes: walk, noclip and fly, GoldSrc air-strafe, smooth crouch with a shrinking collider. | Should | Not started | #267 |
 | REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Not started | #268 |

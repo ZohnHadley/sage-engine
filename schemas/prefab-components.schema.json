@@ -1100,6 +1100,14 @@
         }
       ]
     },
+    "sage:water_volume": {
+      "description": "Component sage:water_volume (WaterVolume).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:water_volume"
+        }
+      ]
+    },
     "sage:weapon_state": {
       "description": "Component sage:weapon_state (WeaponState).",
       "allOf": [
@@ -1225,6 +1233,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:viewmodel"
+        }
+      ]
+    },
+    "water_volume": {
+      "description": "The component sage:water_volume (WaterVolume), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:water_volume"
         }
       ]
     },
@@ -2543,6 +2559,34 @@
           "description": "Crouched: the capsule is the profile's crouch height. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "inWater": {
+          "description": "Its feet are in a water volume (set by the controller) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "swimming": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "underwater": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "immersion": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "water": {
+          "description": "Not saved. (Entity)"
+        },
+        "underwaterSeconds": {
+          "description": "Seconds its eyes have been under water; 0 in air. Unit: s. (float, default 0)",
+          "default": 0,
+          "type": "number"
         }
       },
       "additionalProperties": false,
@@ -5138,6 +5182,54 @@
       },
       "additionalProperties": false,
       "description": "Component sage:viewmodel (Viewmodel)."
+    },
+    "sage:water_volume": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "Full extents of the box, centred on the entity; its top face is the surface. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "drag": {
+          "description": "How fast the water slows what moves through it, relative to its current. Unit: 1/s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "buoyancy": {
+          "description": "Lift on a fully submerged body as a multiple of its weight: above 1 floats, below 1 sinks. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "current": {
+          "description": "The water's own flow: what it carries a floating or swimming thing along with. Unit: m/s. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:water_volume (WaterVolume)."
     },
     "sage:weapon_state": {
       "type": "object",
