@@ -488,7 +488,6 @@ Sage.Simulation.EngineSignalKind.WorldCreated = 0 -> Sage.Simulation.EngineSigna
 Sage.Simulation.EngineSignals
 Sage.Simulation.EngineSignals.EngineSignals() -> void
 Sage.Simulation.EngineSignals.PauseChanged -> System.Action<Sage.Simulation.World!, bool>?
-Sage.Simulation.EngineSignals.RaisePaused(Sage.Simulation.World! world, bool paused) -> void
 Sage.Simulation.EngineSignals.SceneLoaded -> System.Action<Sage.Simulation.World!, Sage.Core.RecordId>?
 Sage.Simulation.EngineSignals.WorldCreated -> System.Action<Sage.Simulation.World!>?
 Sage.Simulation.EngineSignals.WorldDestroying -> System.Action<Sage.Simulation.World!>?
