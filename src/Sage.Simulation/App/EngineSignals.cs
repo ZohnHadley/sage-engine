@@ -14,11 +14,13 @@ namespace Sage.Simulation;
 //   whoever loaded the scene. A reader asked for in a system's constructor sees the `WorldCreated` of
 //   its own world, because systems are added before the world is finished.
 //
-// **Pause is not raised here yet.** Who owns pausing (`World.Paused` today, world time and its scale in
-// #283) calls `RaisePaused(world, paused)` when it changes. Note for a reader: a Fixed system that does
-// not run while paused (RunCondition.WhenNotPaused, the default) reads `Paused` only when the world
-// resumes, and in a world that keeps ticking while paused `ev_maxage` may drop it first; read it from a
-// Frame-schedule system or one that runs `Always`.
+// **Pause** is the world's time's flag (`WorldTime.Paused`, `World.Paused`; #283), which anything may set
+// (code, the `pause` command, a loaded save). The world raises `Paused` / `Resumed` itself at the start
+// of the first real tick that sees the flag changed (World.RunFixed), so a pause set and cleared between
+// two ticks raises nothing. Note for a reader: a Fixed system that does not run while paused
+// (RunCondition.WhenNotPaused, the default) reads `Paused` only when the world resumes, and in a world
+// that keeps ticking while paused `ev_maxage` may drop it first; read it from a Frame-schedule system or
+// one that runs `Always`.
 public sealed class EngineSignals
 {
     // A world has been made and furnished: every module's resources and systems, its scene placed and its
@@ -32,7 +34,7 @@ public sealed class EngineSignals
     // or a journey (Scenes.Load, Travel). Not raised for the start of a world with no scene.
     public event Action<World, RecordId>? SceneLoaded;
 
-    // A world was paused (true) or resumed (false), by whoever owns pause calling RaisePaused.
+    // A world was paused (true) or resumed (false): raised on the first real tick that sees the change.
     public event Action<World, bool>? PauseChanged;
 
     internal void RaiseWorldCreated(World world)
@@ -49,12 +51,16 @@ public sealed class EngineSignals
         SceneLoaded?.Invoke(world, scene);
     }
 
-    // The hook for pause (#283): call it when a world's pause changes, not every tick it stays paused.
-    public void RaisePaused(World world, bool paused)
+    // Called by World.RunFixed when the world's pause has changed since its last tick.
+    internal void RaisePaused(World world, bool paused)
     {
-        world.Events.Send(new EngineSignal(paused ? EngineSignalKind.Paused : EngineSignalKind.Resumed, default));
+        SendPaused(world, paused);
         PauseChanged?.Invoke(world, paused);
     }
+
+    // The in-world half alone, for a world made without an engine.
+    internal static void SendPaused(World world, bool paused) =>
+        world.Events.Send(new EngineSignal(paused ? EngineSignalKind.Paused : EngineSignalKind.Resumed, default));
 }
 
 public enum EngineSignalKind
