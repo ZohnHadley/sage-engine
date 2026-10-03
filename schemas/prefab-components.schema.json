@@ -5148,7 +5148,7 @@
           ]
         },
         "state": {
-          "description": "The state it is in, by name; empty until its first tick puts it in the initial state. (string)",
+          "description": "The state it is in, by name (the first innermost one, when nested or parallel); empty until its first tick puts it in the initial state. (string)",
           "type": "string"
         },
         "timeInState": {
@@ -5158,7 +5158,64 @@
           "minimum": 0
         },
         "activator": {
-          "description": "Not saved. (Entity)"
+          "description": "Who last moved it (the subject of its actions); saved by persistent id. (Entity)"
+        },
+        "active": {
+          "description": "Every state it is in, outer before inner, with seconds in each; filled on its first tick. (ActiveState[])",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "The state, by name. (string)",
+                "type": "string"
+              },
+              "time": {
+                "description": "Seconds in it. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "active+": {
+          "description": "Adds to \"active\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "The state, by name. (string)",
+                "type": "string"
+              },
+              "time": {
+                "description": "Seconds in it. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "active-": {
+          "description": "Removes these from \"active\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "The state, by name. (string)",
+                "type": "string"
+              },
+              "time": {
+                "description": "Seconds in it. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false,
