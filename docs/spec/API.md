@@ -196,7 +196,7 @@ with `Plugin = "id"`. All analyzer ids are errors; the table is
 |---|---|---|---|
 | `[Component("ns:name", Version, FormerNames)]` | `struct : IComponent` | The component id in prefabs and saves | SAGE0004–0007 |
 | `[Tag("ns:name")]` | `struct : ITag` | The tag id | SAGE0004–0006 |
-| `[Record("type")]` | A class with a public parameterless constructor | The record `type` | SAGE0001–0003, SAGE0021 |
+| `[Record("type", Reload)]` | A class with a public parameterless constructor | The record `type`; `Reload = ReloadPolicy.Live` makes a hot reload reach what was built from it (`prefab`, `scene`), `NextSpawn` (the default) only what is built next (#287; `RecordStore.ReloadPolicyOf`) | SAGE0001–0003, SAGE0021 |
 | `[SavedResource("name", Version)]` | `class : ISavedResource` | The key in the save | SAGE0001–0003, SAGE0021–0022 |
 | `[PrefabPart("id", After, Shorthand)]` | `class : IPrefabPart` | The key under `parts` | SAGE0010–0012 |
 | `[System("id", Phase.X, Before, After)]` | `class : ISystem` | The system id | SAGE0011–0013 |
@@ -328,7 +328,7 @@ All of this is on `World` (`Sage.Simulation`) or its extension classes; names ar
 | Systems | `world.AddSystem(system)`; `world.Systems.Replace(id, s)`, `Disable(id)`, `Find(id)` |
 | Entity I/O | `world.FireOutput(source, "OnX", activator)` (and value overloads); `world.IO().FireInput(target, "Open", parameter, delay)`; `world.FindByName(name)`; inputs registered with `engine.Inputs.Register(name, handler)` or `Register<TComponent>(...)`, outputs declared with `engine.Outputs.Declare(name, help)` |
 | Spawning | `world.Spawn(prefabId, position, yawDegrees)`, and the overload with `PrefabOverrides` (SAGE0131) |
-| Timers and tweens | Usually content (`timer`, `tween` parts); in code `Timers.Start`, `Tweens.Begin` (SAGE0124) |
+| Timers, tweens and spawners | Usually content (`timer`, `tween`, `spawner` parts); in code `Timers.Start`, `Tweens.Begin`, `Spawners.Spawn(world, spawner)` (SAGE0124) |
 | Records | `world.Resources.Get<RecordStore>()` or `engine.Records`: `Get<T>(id)`, `TryGet<T>`, `All<T>()` |
 | Physics | `world.Resources.Get<IPhysicsWorld>()`: `Raycast`, `Sweep`, `TriggerEnter`/`TriggerExit`, layers by name |
 
@@ -442,7 +442,11 @@ space in `Sage.Physics3D` is an implementation detail, so a 2D backend can repla
 
 A component is saved by declaring it (§4); a world singleton by `[SavedResource]`; a value type the save
 cannot write by default by `SaveSystem.AddConverter` in `Init`. `GameRules.OnLoaded` runs after a load;
-`ISavedResource.AfterLoad` runs per resource.
+`ISavedResource.AfterLoad` runs per resource. A save is snapshotted on the tick and, when taken while
+playing, written on a thread-pool thread (#285): a component made only of values and strings is serialised
+by the writer, and one a plugin's converter writes (it may read the world) in the snapshot, on the tick. A client sets
+`SaveSystem.Thumbnail` to hand over the frame's pixels; `SaveSystem.WaitForWrites`, `IsWriting` and
+`Report(slot)` (a `SaveVersionReport`) are SAGE0131, as are `SaveSlot.Title`, `ThumbnailPath` and `Compressed`.
 
 ## 9. Events and messages
 

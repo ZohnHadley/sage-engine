@@ -488,7 +488,8 @@ Creatures walk round things instead of into them.
   now says how many plans each answered and how many tiles are baked.
 - **Not done:** one body size (the default movement profile's) is baked, so a much bigger creature is
   planned for as if it were a person; `nav_debug` still draws the grid and the corners, not the mesh;
-  off-screen agents still walk straight (#284).
+  ~~off-screen agents still walk straight~~ (since #284 they plan round walls on a coarse graph of their own,
+  "As built (off-screen pathing, unvisited sectors and far anchors)").
 
 ### As built (doors, off-mesh links and things that move, issue #265, 2026-10-02)
 - **A door is a crossing, keyed off `Mover`** (`src/Sage.Gameplay/Navigation/NavLinks.cs`). Every mover
@@ -745,10 +746,15 @@ hour, and the AI walks there. Generic engine AI, in `Sage.Gameplay/AI`. Experime
   force and the anchor are internal to `AIState` and never written; they are worked out again after a load,
   so a creature saved on its way arrives (test: SavedMidWalkHeArrivesAfterALoad). The golden saves are
   unchanged.
+- **Far anchors (issue #284).** An anchor that is not in the world is walked to where the content has it:
+  a placement in a sector not placed, or a `.map` targetname with no prefab (`OffscreenMap`), in this scene;
+  in another scene, the door of this one that leads there. A creature with the `offscreen` part that reaches
+  that door goes through it, out of the world and into the off-screen table at the door's entry (tests:
+  ALiveNpcWalksToAnAnchorThatIsOnlyInTheContent, ALiveNpcWhoseAnchorIsInAnotherSceneGoesThroughTheDoor).
+  One without the part stops at the door.
 - **Not yet:** the catch-up does not path-find (a wall between him and the forge does not slow him), and a
-  creature that could not have arrived is not moved part of the way; nothing loaded walks through a door to
-  an anchor in another scene (4g-5 doors; off-screen agents do since 4g-6, "As built (off-screen simulation)"); the navigation window is 96 m, so an anchor further
-  than that is walked at in a straight line.
+  creature that could not have arrived is not moved part of the way; the navigation window is 96 m, so an
+  anchor in this scene further than that, a far one included, is walked at in a straight line.
 
 ### As built (off-screen simulation, 2026-10-01 — issue 4g-6)
 A-Life-lite: an NPC keeps its routine, and a fight still happens, while the player is somewhere else. Generic
@@ -796,10 +802,46 @@ engine, in `Sage.Gameplay`; the seam it stands on is in `Sage.Simulation`. Exper
   entities; what was missing was the symmetric question, `AreHostile`. Doors are read from content as 4g-5's
   `load_door` part (`{ "scene", "entry" }`, on the prefab or the placement's overrides); until 4g-5 lands no
   content has one, so the door test adds its door in code (`OffscreenMap.AddDoor`).
-- **Not yet:** an NPC joins the table only when its cell first goes dormant, so one in a sector the player has
-  never placed stays where it was put; a live NPC whose anchor is in another scene idles until its cell
-  sleeps (it does not walk to the door in view); anchors are placements only (not a `.map`'s targetnames);
-  movement ignores terrain and walls; the kit's attribute-based fight rule is the kit's to add (decision 4).
+- **Not yet:** movement ignores terrain; the kit's attribute-based fight rule is the kit's to add (decision
+  4). The rest of this list was built by issue #284, below.
+
+### As built (off-screen pathing, unvisited sectors and far anchors, 2026-10-03 — issue #284)
+The 4g-6 agents walked straight through walls, appeared only once their cell had been visited and gone to
+sleep, and knew only placements as anchors. Code: `src/Sage.Gameplay/World/OffscreenRoutes.cs`
+(`OffscreenGraph`), `Offscreen.cs` (`OffscreenMap`, `OffscreenSystem`, `OffscreenDoorway`),
+`src/Sage.Gameplay/AI/Routines.cs` (far anchors), `src/Sage.Simulation/Content/CellHandoff.cs`
+(`CellContent.SeedUnplaced`) and `StreamedScene.Seed`. Tests: `tests/Sage.Tests/Gameplay/OffscreenRoutesTests.cs`.
+
+- **A coarse graph per scene, from content.** `OffscreenMap` reads each scene's records, not the world, so
+  it does not depend on what is loaded, and is made again when records reload. **Walls** are the static
+  solids content places — a non-trigger `body` without mass, a `collider` with no rigid body or a static
+  one, a `.map`'s worldspawn brushes and solid entities that are not triggers — that are taller than a step
+  (0.5 m) and overlap a body's height (1.8 m) above where the agent walks; each is its box, turned by the
+  placement's yaw and boxed again, so a round tower is a square one. **Doors** are not walls: a `mover` is a
+  way through, a node at its foot, unless its `nav_door` is `locked`. **Nav links** (`nav_link`) are edges
+  of their length plus their cost, one way unless `twoWay`. **Corners**, 0.6 m out of each wall's, are
+  nodes too, so an agent walks round a building where nobody drew a door.
+- **Straight while clear, A* when not.** An agent walks straight while the next minute's walk is clear
+  (`OffscreenMap.Blocked`); when it is not, it plans from where it is over nodes within 256 m that see each
+  other, and follows the corners. Its `Route` and `RouteGoal` are saved on the agent, so a run saved half
+  way walks the same corners. A plan that finds nothing walks straight, as before. Planning allocates;
+  walking a route or a clear line does not. (test: AnAgentCrossesAWalledTownByItsGate)
+- **A `.map` a scene places counts.** Its targetnames are anchors, its brushes walls, its movers doors, and
+  an entity whose classname is a prefab with a `load_door` (with `load_door.scene` and `load_door.entry`
+  keys over it) a door to another scene; an anchor on the ground keeps its height above the terrain.
+  (test: AMapsTargetnamesAreAnchorsAndItsBrushesWalls)
+- **Sectors nobody has visited.** Once streaming knows which sectors are in the world, the placements with
+  the `offscreen` part in the current streamed scene's sectors never placed are spawned, handed to the
+  off-screen system as if their sector had been placed and gone to sleep at once, and tombstoned there:
+  each joins the table at its routine's place, once per placing of the scene, and walking there finds it,
+  never twice, across a walk away and back and a save (`CellContent.SeedUnplaced`;
+  test: ANeverVisitedSectorsNpcAppearsAtItsRoutinePosition).
+- **Live NPCs with far anchors** walk to where the content has the anchor, or to the door to its scene,
+  and go through it with the part ("As built (NPC routines)" above; the doorway is `OffscreenDoorway`, read
+  by the off-screen system at its next run, since nothing may leave the world while the AI thinks).
+- **Not done here:** seeding covers only the current streamed scene, and costs one tick's hitch when it
+  runs; walls are boxes; a far anchor in the same scene beyond the 96 m navigation window is walked at
+  straight.
 
 ### As built (attributes, tags and effects, 2026-09-22)
 - **Code:** `src/Sage.Gameplay/Attributes/Attributes.cs` (attribute and tag records, the id registries, the `Attributes` and `GameplayTags` components) and `Effects.cs` (`effect` records, `ActiveEffects`, `Effects.Apply/Remove/IsActive`, `EffectSystem`).

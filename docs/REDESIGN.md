@@ -1065,14 +1065,14 @@ what the base therefore needs first:
 | Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ◐ attributes and effects; skills and levelling in 4f |
 | Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ◐ grid with weight, equipment, loot and shop screens (4c); containers, money and loot tables in 4f |
 | Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ topics, quests, journal and factions in data (4b, 4c); barks and richer objectives in 4r |
-| Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary in 4m |
-| AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g); hearing, behaviour trees and squads in 4r |
+| Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary, nested state machines and the rest of HL1's and Source's logic set: multisource, logic_case, logic_auto, filtered triggers, spawners (4m) |
+| AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g) that paths round walls, covers sectors never visited and takes NPCs through doors (4m); hearing, behaviour trees and squads in 4r |
 | Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); LOD in 4m and 4n |
-| Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h) |
-| Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i) |
+| Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m) |
+| Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i); thumbnails, compression, a background write and a version report (4m), though a 10k-entity snapshot still costs more than a frame |
 | Mod culture (data mods first) | ○ | ● | ●● | ●● | ◐ data mods (4j); packed and code mods in 9 |
 
-*"Sage today" refreshed 2026-10-02.* The owner also named **Lugaru** (third-person skeletal fighting) as a game to emulate: rendering must carry lit, normal-mapped meshes and skinned characters as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410 (Stage B, part 2).
+*"Sage today" refreshed 2026-10-03.* The owner also named **Lugaru** (third-person skeletal fighting) as a game to emulate: rendering must carry lit, normal-mapped meshes and skinned characters as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410 (Stage B, part 2).
 
 ### Stage A: make the base able to hold any game (unchanged, and ready as GitHub issues)
 

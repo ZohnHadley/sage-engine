@@ -1,6 +1,6 @@
 # 14 · World, streaming and time
 
-> Status: built and tested for the 4g exit game; streaming has a far ring of coarse ground and far looks, per-sector asset scopes, generation on jobs and budgeted per-chunk collision (#277); a world's time scale, pause and hit-stop are a saved service (`WorldTime`, #283); the calendar is minimal. Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes, the far ring). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
+> Status: built and tested for the 4g exit game; streaming has a far ring of coarse ground and far looks, per-sector asset scopes, generation on jobs and budgeted per-chunk collision (#277); a world's time scale, pause and hit-stop are a saved service (`WorldTime`, #283); the calendar has leap years, seasons, moon phases and scheduled calendar events (#289); off-screen agents walk a coarse graph of the content's walls and doors, start in sectors never placed and take live NPCs through doors (#284). Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes, the far ring). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
 
 ## 1. Purpose and scope
 
@@ -44,9 +44,10 @@ Plugins: `sage.streaming` (`StreamingModule`) installs the `Terrain` resource an
 | `Cells`, `InCell`, `ICellHandoff` | `Content/Cells.cs`, `CellHandoff.cs` | Dormant store, cell ownership, the hand-off seam. |
 | `Travel`, `TravelLog` | `World/Travel.cs` | `To`, `ToPoint`, `Use`, `HoursTo`; the saved list of discovered points. |
 | `WorldClock`, `Time` | `World/WorldClock.cs`, `World/Time.cs` | Day and hour, scale; `Time.Pass(world, hours, reason)`. |
-| `CalendarRecord` | `World/Calendar.cs` | Months, weekdays, start year; `WorldClock.Date`. |
+| `CalendarRecord` | `World/Calendar.cs` | Months, weekdays, start year, leap rule, seasons, moon cycle; `WorldClock.Date`, `IsLeapYear`, `SeasonOf`, `MoonPhaseOf` (#289). |
+| `CalendarEventRecord`, `CalendarEventListener` | `World/CalendarEvents.cs` | A dated (or moon-phase) event and the component that fires `OnCalendarEvent` on its day (#289). |
 
-Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_enabled`, `stream_place_budget`, `travel <point>`, `travel_speed`, `scene_load`, `time`, `time_set`, `time_pass <hours>`, `offscreen_status`. Inputs: the `Travel` input goes through a door, or takes `"<scene> <entry>"` sent to any entity; the Use action opens a `load_door`. Events: `Origin.Rebased`, `TimePassed(Hours, Reason, FromElapsed, ToElapsed)`, and `OffscreenDied`.
+Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_enabled`, `stream_place_budget`, `travel <point>`, `travel_speed`, `scene_load`, `time`, `time_set`, `time_pass <hours>`, `offscreen_status`. Inputs: the `Travel` input goes through a door, or takes `"<scene> <entry>"` sent to any entity; the Use action opens a `load_door`. Events: `Origin.Rebased`, `TimePassed(Hours, Reason, FromElapsed, ToElapsed)`, and `OffscreenDied`. Output: `OnCalendarEvent` (#289). Conditions: `weekday`, `date_between`, `season`, `moon_phase`, `on_date`.
 
 ## 5. Data model
 
@@ -54,7 +55,9 @@ Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_ena
 |---|---|---|
 | `scene` | record | `streamed`, `space` (`Exterior` or `Interior`), `terrain` reference, `environment`, placements, levels. |
 | `terrain` | record | `Flat` or `Hills`, with `seed`, `height`, `amplitude`, `wavelength`. |
-| `calendar` | record | `Months` (name, days), `Weekdays`, `StartYear`, `StartWeekday`. No leap years by default. |
+| `calendar` | record | `Months` (name, days), `Weekdays`, `StartYear`, `StartWeekday`; `LeapEvery`, `LeapSkipEvery`, `LeapRestoreEvery`, `LeapMonth` (no leap years by default); `Seasons` (name, month, day; each runs to the next start; the default calendar has four from 1 March); `MoonCycle` (days, default 29.53), `MoonStart` (#289). |
+| `calendar_event` | record | `Name`, `Month` (0: any month, with a moon phase), `Day`, `Year` (0: every year), `Moon` (a phase name) (#289). |
+| `sage:calendar_event` | component and part `calendar_event` | `Event` (a `calendar_event` record); saved with `LastDay`, so a day fires once and a skipped day fires once on waking. |
 | `sage:cell` | component (`InCell`, saved) | `Source`: `scene:<id>` or `sector:<scene>:<x>,<z>`. |
 | `sage:sector_owned` | component | Marks what a sector brought (terrain chunks, collision body). |
 | `sage:load_door` | component and part `load_door` | `scene`, `entry`, `hours`. Not saved. |
@@ -69,11 +72,11 @@ Dormant cells are written in the save under `dormant`, by source, each with its 
 
 ## 6. Lifecycle and data flow
 
-At the fixed tick: `sage.world.clock` (Phase.Commands) advances the clock; `sage.ai.offscreen` (Commands, before AI think) catches up the off-screen agents to the clock; `sage.streaming.sectors` and `sage.streaming.owners` (Phase.Late) keep the ring, rebase, and re-own roots that crossed an edge; `sage.world.travel_points` (Late) discovers points. After the fixed phases, at the tick boundary, `Scenes.TickEnded` unloads sectors that left the ring and places those that entered, nearest first, within `stream_place_budget` (default 64 entities a tick); `Travel` and `Time.Pass` requests also run here, so no system sees a scene or hour change under it.
+At the fixed tick: `sage.world.clock` (Phase.Commands) advances the clock; `sage.ai.offscreen` (Commands, before AI think) catches up the off-screen agents to the clock; `sage.streaming.sectors` and `sage.streaming.owners` (Phase.Late) keep the ring, rebase, and re-own roots that crossed an edge; `sage.world.travel_points` (Late) discovers points; `sage.world.calendar_events` (Phase.EntityIO, before the dispatch) fires `OnCalendarEvent` for each listener whose event fell since the day it last looked. After the fixed phases, at the tick boundary, `Scenes.TickEnded` unloads sectors that left the ring and places those that entered, nearest first, within `stream_place_budget` (default 64 entities a tick); `Travel` and `Time.Pass` requests also run here, so no system sees a scene or hour change under it.
 
 A rebase moves every root, both poses of every `GlobalTransform`, every physics body and static, and the cameras at once, then raises `Origin.Rebased`. Order for travel and `warp` is rebase, generate ground, then place the player.
 
-Going dormant writes live entities and the cell's runtime spawns as save entries, destroys them, and keeps the entries per source; waking lays them back on the placed content by stable id. Off-screen agents are taken out of the cell by `ICellHandoff` before it is written, and come back when their scene and sector are live. A time skip steps every game minute of the skip for off-screen agents. Save and load: the clock, travel log and off-screen table are saved resources; cells are the `dormant` section.
+Going dormant writes live entities and the cell's runtime spawns as save entries, destroys them, and keeps the entries per source; waking lays them back on the placed content by stable id. Off-screen agents are taken out of the cell by `ICellHandoff` before it is written, and come back when their scene and sector are live. Placements with the `offscreen` part in sectors of the current streamed scene that were never placed join the table once per placing of the scene, at their routine's place, and are tombstoned in their sector (`CellContent.SeedUnplaced`, #284). A time skip steps every game minute of the skip for off-screen agents. Save and load: the clock, travel log and off-screen table are saved resources; cells are the `dormant` section.
 
 ## 7. Threading, memory and performance
 
@@ -98,11 +101,11 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 | REQ-WORLD-09 | A time skip shall run at a tick boundary and never tick the simulation. | Must | Done | test: `PassingTimeNeverTicksTheSimulation` |
 | REQ-WORLD-10 | A calendar shall give months, weekdays and years from the clock. | Must | Done | test: `MonthsAndYearsWrapInACustomCalendar` |
 | REQ-WORLD-11 | The reference open-world game shall run headless: dungeon trip, a day passes, NPC keeps its schedule, nothing doubled. | Must | Done | test: `OpenWorldExit_AwayADayInTheCrypt_TheSmithKeptHisScheduleAndNothingIsDoubled` |
-| REQ-WORLD-12 | NPCs shall keep routines and fight off-screen, deterministically, with no per-step allocation. | Should | Partial: straight-line movement, only after a cell first sleeps | test: `TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime`; #284 |
+| REQ-WORLD-12 | NPCs shall keep routines and fight off-screen, deterministically, with no per-step allocation. | Should | Done (#284): round walls by the content's coarse graph, from sectors never placed; planning a way round allocates, walking does not | test: `TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime`, `FiveHundredAgentsStepWithoutAllocating`, `AnAgentCrossesAWalledTownByItsGate`, `ANeverVisitedSectorsNpcAppearsAtItsRoutinePosition` |
 | REQ-WORLD-13 | Streaming shall not stall a frame: generation on jobs, LOD and HLOD past the ring, per-sector asset scopes. | Must | Done | test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`, `TheFarRingHasCoarseGroundAndFarLooksPastTheFullRing`, `ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept`, `SectorEdgeNormalsMatchTheNeighboursSoLightingHasNoSeam` |
 | REQ-WORLD-14 | Prefabs shall nest and keep per-placement overrides across sectors. | Should | Done | test: `AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing` |
 | REQ-WORLD-15 | The world shall offer a time scale, pause and hit-stop as services. | Should | Done | `src/Sage.Simulation/World/WorldTime.cs` (the saved `time` resource); test: TheWorldsTimeSurvivesASave, PauseStopsScaledTimeButNotRealTime |
-| REQ-WORLD-16 | The calendar shall add seasons, moon phases, leap years and scheduled events. | Could | Not started | #289 |
+| REQ-WORLD-16 | The calendar shall add seasons, moon phases, leap years and scheduled events. | Could | Done (#289) | test: `LeapYearsFollowTheRule`, `SeasonsRunToTheNextStart`, `TheMoonCyclesThroughEightPhases`, `OnDateMatchesADayOfTheYear_AndALeapDayOnlyInLeapYears`, `AFestivalFiresItsWireOnItsDay`, `ASkippedFestivalStillFires` |
 | REQ-WORLD-17 | There shall be several streaming sources, each with its own ring. | Could | Not started | #290 |
 | REQ-WORLD-18 | Interiors shall be separate spaces, and companions shall follow through doors. | Could | Not started | #291 |
 
@@ -110,8 +113,6 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 
 Milestone 2 (epic #274).
 
-- #284 4m-10 Off-screen simulation: pathing, unvisited cells, live NPCs with far anchors (P2)
-- #289 4m-15 Calendar and clock: seasons, moon phases, leap years, scheduled calendar events (P3)
 - #290 4m-16 Several streaming sources and per-source rings (P3)
 - #291 4m-17 Interiors as separate spaces and companions through doors (P3)
 

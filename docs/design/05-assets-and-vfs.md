@@ -214,6 +214,38 @@ prefabs. Code: `src/Sage.Simulation/Content/PrefabOverrides.cs` (`PrefabOverride
   for children and map entities are 4i-3, saving a diff against the prefab as placed is 4i-5. Overrides
   do not add or remove tags.
 
+### As built (hot reload reaches live instances, 2026-10-03 — issue #287)
+
+A record reload updated the records in place, but a prefab's component values had been *copied* into
+every entity spawned from it, so editing a prefab while the game ran changed only the next spawn. Code:
+`src/Sage.Simulation/Content/PrefabReload.cs` (`SaveSystem.ReloadPrefabInstances`, `PrefabDelta`), the
+`Reload` property of `[Record]` and `ReloadPolicy` in `src/Sage.Core/Content/RecordId.cs`,
+`RecordStore.ReloadPolicyOf`; tests in `tests/Sage.Tests/Content/PrefabReloadTests.cs`.
+
+- **A record type declares its reload policy**: `[Record("x", Reload = ReloadPolicy.Live)]` or
+  `NextSpawn`, the default. Records are updated in place either way, so whatever looks one up sees the new
+  values; the policy is about values copied out of a record into the world. `prefab` and `scene` are
+  `Live`; every other engine type is `NextSpawn` (test: RecordTypesDeclareTheirReloadPolicy).
+- **A scene is placed again** (`Scenes.Respawn`, as since issue #29). **A prefab's live instances** (runtime
+  spawns, the rules' player, prefab children) **follow the edit field by field**, where the field is
+  *unmodified*: still equal to the entity's spawn baseline, the same test a save diff uses. So a value code
+  or the game set, one a load laid back and one a placement's or map's override owns are kept, while the
+  same component's other fields follow (tests: EditingAPrefabUpdatesTheFieldsNoOneChangedOnEveryLiveInstance,
+  AValueALoadPutBackIsKeptByAReload, InTheSandboxEditingAPrefabUpdatesItsUnmodifiedInstances). A
+  `[Transient]` component has no baseline; its field is unmodified when it still equals the old body.
+- **What changed** is read from the body each entity was spawned from, which the spawn baseline now keeps
+  (`SpawnBaseline.Body` and `Tags`), against the body now, since the record itself has already been
+  overwritten. Compared at a component's top level, as a save diffs: a list or a nested struct is one value.
+- **What follows a reload:** a changed field of a component the prefab writes, a component the prefab now
+  writes that the entity lacks (added whole), and tags the prefab added or dropped. **What waits for the
+  next spawn:** a component the prefab no longer writes, `parts` (read once, at spawn), `children`, `name`,
+  `persist`, and the `Transform`. A reload fires no `Spawned`.
+- **Afterwards each instance is rebased** onto the new prefab, so a save diffs against it and a second
+  reload follows from the first (tests: ASaveAfterAReloadDiffsAgainstTheNewPrefab, EachReloadFollowsFromTheLastOne).
+- **Not done here:** parts, children and removed components on live instances; a scene's own placements
+  are still placed again rather than followed; every other record type is left `NextSpawn`; the editor's
+  per-field revert is #372.
+
 ### As built (declared parts, 2026-09-28 — issue #17)
 
 Parts used to be string-keyed delegates (`Prefabs.Register("light", PrefabParts.Light)`) whose options
@@ -508,7 +540,7 @@ than as art.
     - **checks per record type**: `RecordStore.AddCheck<T>((record, check) => …)`, added in a plugin's `Init`, runs after every load with the built records; `RecordCheck` reports at a path inside the record (`check.Error("Tasks[2]", …)` → that line) and offers the load's own field and reference checks for data only the check can type. The engine adds one for prefabs (§ prefabs below), `AIModule` one for schedules' interrupt names (test: AISchedules_NameTheirLineForAnUnknownInterruptOrTask). `RecordStore.Where(type, id, path)` gives the same `file:line:column` after the load, for problems only a world can judge (an AI task name);
     - **prefab bodies are checked at load**, not at the first spawn: each component by id (with the nearest id), its fields, each tag, each part by id (a part declared `Optional` is skipped), its options (shorthand included), and every record and asset they name. A prefab with problems still loads and spawns without the bad pieces, and the spawn logs them at Debug, since the load said so already (test: PrefabBodies_AreCheckedAtLoad_AtTheirLines). `AddBodyTypes<T>` tells the loader what type a keyed body is, so bare ids inside a patched prefab's components and parts mean the patching file's namespace too (test: APatchedPrefabBody_QualifiesBareIdsInThePatchersNamespace);
     - **`sage validate <game> [--mounts dir[=ns] …]`** (`src/Sage.Cli`, headless, `ContentValidation.Run`): boots the game as a dedicated server would, plus the client's record types, with missing assets as errors, through the game's first world, and exits 1 on any error. CI runs it on Hello, the Sandbox and `tests/games/no-plugins` (test: Validate_TheSandboxAndHelloHaveNoErrors, test: Validate_AModMountWithMistakesFails_NamingEachOne). Options of parts only a client declares are not read there; the real host's load checks them;
-  - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place.
+  - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place. (Since issue #287 a prefab's live instances follow too: "As built (hot reload reaches live instances)".)
 - **Hot reload** (`RecordHotReload`, dev builds): a `FileSystemWatcher` on each folder mount's `data/`, polled from the main thread and reloaded after 200 ms of quiet, while `rec_hotreload` is on. `games/Sandbox` respawns its scene on reload, so editing `content/data/scene.json` updates the running game.
 - **Assets — as built (R12, 2026-09-24):** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads everything through the VFS, so any asset can come from any mount and be shadowed like any other file:
   - models: `.glb`/`.gltf`, read by `GltfLoader` (SharpGLTF) into vertex and index buffers the renderer owns and disposes;

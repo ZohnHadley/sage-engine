@@ -1185,8 +1185,8 @@ What the clock's day count means as a date, and a way to move the clock a long w
   arithmetic, and a day before day 0 still has a date (test: MonthsAndYearsWrapInACustomCalendar). A world
   chooses one with `WorldClock.Calendar`; with none (or a record that is gone) it has
   `CalendarRecord.Default`: twelve months of the usual lengths, no leap years, Monday to Sunday, year 1, day 0
-  a Monday (test: TheDefaultCalendarHasMonday). There are no leap years or moons yet: the year is the sum of
-  the months.
+  a Monday (test: TheDefaultCalendarHasMonday). *Leap years, seasons and the moon came with issue #289:
+  "As built (seasons, moons, leap years and calendar events)" below.*
 - **`weekday`** is `{ "weekday": { "is": "Monday" } }` or `{ "weekday": { "anyOf": ["Saturday", "Sunday"] } }`,
   by the world's calendar's names, case ignored (test: WeekdayReadsMonday). **`date_between`** is
   `{ "date_between": { "fromMonth": 12, "fromDay": 1, "toMonth": 2, "toDay": 28 } }`: a window of the year,
@@ -1209,6 +1209,45 @@ What the clock's day count means as a date, and a way to move the clock a long w
   the format 2 and 3 golden saves still load).
 - **Not yet:** routines read `TimePassed` (issue 4g-4, design 16 "As built (NPC routines)"); the off-screen
   simulation (4g-6) and rest and wait screens (4g-7) do not yet; a scene cannot choose a calendar, as it can a sky.
+
+### As built (seasons, moons, leap years and calendar events, 2026-10-03 — issue #289)
+
+The calendar had months, weekdays and years; a festival, the season or a full moon had to be a game's
+own C#. Now they are fields of the same record and three conditions, and a dated event fires a wire.
+Experimental, SAGE0129.
+
+- **Code:** `src/Sage.Simulation/World/Calendar.cs` (the new `CalendarRecord` fields, `IsLeapYear`,
+  `DaysIn(month, year)`, `SeasonOf`, `MoonAge`, `MoonPhaseOf`, `MoonLight`, `CalendarSeason`, the `season`,
+  `moon_phase` and `on_date` conditions), `src/Sage.Simulation/World/CalendarEvents.cs`
+  (`CalendarEventRecord`, the `sage:calendar_event` component and part, `CalendarEventSystem`). Tests:
+  `tests/Sage.Tests/Gameplay/CalendarEventsTests.cs`.
+- **Leap years**: `leapEvery`, `leapSkipEvery`, `leapRestoreEvery` (4, 100 and 400 is the Gregorian rule) and
+  `leapMonth` (0: the last month), which has one more day in a leap year. A skip that is not a multiple of the
+  period, or a restore that is not a multiple of the skip, is ignored. The year of a day count is found by
+  arithmetic, not by walking years (test: LeapYearsFollowTheRule). With no `leapEvery` there are none, so
+  every calendar from before reads the same dates.
+- **Seasons**: `seasons`, each `{ "name", "month", "day" }`, runs to the next one's start, and a date
+  before the first is in the last, wrapped (test: SeasonsRunToTheNextStart). The default calendar has
+  spring, summer, autumn and winter from 1 March, 1 June, 1 September and 1 December; a custom one has
+  seasons only when it lists them. **`season`** is `{ "season": { "is": "winter" } }` or `anyOf`.
+- **The moon**: `moonCycle` (days; 0 means 29.53) and `moonStart` (how far into the cycle day 0 is). Eight
+  phases, `new`, `waxing_crescent`, `first_quarter`, `waxing_gibbous`, `full`, `waning_gibbous`,
+  `last_quarter`, `waning_crescent`, each an eighth of the cycle centred on its moment (test:
+  TheMoonCyclesThroughEightPhases). **`moon_phase`** is `{ "moon_phase": { "is": "full" } }` or `anyOf`.
+- **`on_date`** is `{ "on_date": { "month": 12, "day": 25 } }`, every year, or with `year` that one day only;
+  a leap day matches only in leap years (test: OnDateMatchesADayOfTheYear_AndALeapDayOnlyInLeapYears).
+- **Calendar events.** A `calendar_event` record names a `month` and `day`, a `year` (0: every year) and
+  optionally a `moon` phase; `month` 0 with a `moon` is the first day of each such phase ("every full
+  moon"). An entity with the `calendar_event` part (`{ "event": "harvest_fest" }`, component
+  `sage:calendar_event`) fires **`OnCalendarEvent`** on the day it falls (test: AFestivalFiresItsWireOnItsDay).
+  `sage.world.calendar_events` runs in `Phase.EntityIO` before the dispatch, so undelayed wires arrive
+  that tick, and costs nothing on a tick that is the same day as the last.
+- **Once a day, skips included.** The listener saves the last day it looked at, so a load does not fire the
+  day again; a time skip is looked through day by day (at most 4000 days back), and an event that fell in it
+  fires once, on waking (test: ASkippedFestivalStillFires).
+- **Not done here:** no `calendar_event` action or world-wide event, so only an entity with the part hears
+  one; an event is not tied to a calendar record (it is read by whichever calendar the world has); a scene
+  still cannot choose a calendar.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
