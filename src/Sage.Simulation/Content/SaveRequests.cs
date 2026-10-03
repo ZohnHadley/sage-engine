@@ -50,7 +50,7 @@ public sealed partial class SaveSystem
     public const string QuickLoadAction = "QuickLoad";
 
     // Saves asked for this tick, in order; a null slot is an autosave, whose slot is chosen when it runs.
-    private readonly List<(string? Slot, SaveKind Kind)> _pendingSaves = new(4);
+    private readonly List<(string? Slot, SaveKind Kind, string? Title)> _pendingSaves = new(4);
     private string? _pendingLoad;
     private bool _autosaveDue;
     private float _sinceAutosave;
@@ -58,6 +58,8 @@ public sealed partial class SaveSystem
     private CVar<bool>? _autosave;
     private CVar<int>? _autosaveSlots;
     private CVar<float>? _autosaveInterval;
+    private CVar<string>? _quickSlot;
+    private CVar<string>? _autosavePrefix;
 
     // Whether any of the engine's worlds is in the middle of a tick just now.
     internal bool IsMidTick
@@ -77,10 +79,15 @@ public sealed partial class SaveSystem
 
     // Asks for a save at the next tick boundary: at the end of this tick when one is running, else now.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
-    public void RequestSave(string slot, SaveKind kind = SaveKind.Manual)
+    public void RequestSave(string slot, SaveKind kind = SaveKind.Manual) => RequestSave(slot, kind, null);
+
+    // The same, with the title a menu shows (issue #285). Between ticks it is snapshotted now and, like
+    // one asked for mid-tick, written in the background (`save_background`).
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public void RequestSave(string slot, SaveKind kind, string? title)
     {
-        if (IsMidTick) Queue(slot, kind);
-        else Save(slot, kind);
+        if (IsMidTick) Queue(slot, kind, title);
+        else SaveWhilePlaying(slot, kind, title);
     }
 
     // Asks for a load at the next tick boundary, after any save asked for in the same tick.
@@ -95,48 +102,65 @@ public sealed partial class SaveSystem
 
     // F5 and F9, and the `quicksave` and `quickload` commands.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
-    public void QuickSave() => RequestSave(QuickSlot, SaveKind.Quick);
+    public void QuickSave() => RequestSave(QuickSlotName, SaveKind.Quick);
 
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
-    public void QuickLoad() => RequestLoad(QuickSlot);
+    public void QuickLoad() => RequestLoad(QuickSlotName);
+
+    // The slot quick-save and quick-load use (issue #285): `save_quick_slot`, QuickSlot by default. A game
+    // with a save per character sets it to that character's slot.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public string QuickSlotName => _quickSlot is { Value: { Length: > 0 } name } && !string.IsNullOrWhiteSpace(name) ? name : QuickSlot;
+
+    // What autosave slots are called before their number (issue #285): `save_autosave_prefix`, AutosavePrefix
+    // by default.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public string AutosavePrefixName => _autosavePrefix is { Value: { Length: > 0 } prefix } && !string.IsNullOrWhiteSpace(prefix) ? prefix : AutosavePrefix;
 
     // An autosave into the next slot of the rotation, at the next tick boundary.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public void Autosave()
     {
-        if (IsMidTick) Queue(null, SaveKind.Auto);
-        else Save(NextAutosaveSlot(), SaveKind.Auto);
+        if (IsMidTick) Queue(null, SaveKind.Auto, null);
+        else SaveWhilePlaying(NextAutosaveSlot(), SaveKind.Auto, null);
     }
 
     // The slot the next autosave writes: the first of `autosave1`…`autosaveN` that does not exist, else
-    // the one written longest ago (the lower number when two say the same time).
+    // the one written longest ago (the lower number when two say the same time). A slot of that name the
+    // player saved into (not an autosave, issue #285) is theirs and is never overwritten: the rotation
+    // passes over it and, when it has to, takes the next number after the last.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public string NextAutosaveSlot()
     {
         int count = Math.Max(1, _autosaveSlots?.Value ?? 3);
+        string prefix = AutosavePrefixName;
         string? oldest = null;
         DateTime oldestTime = DateTime.MaxValue;
-        for (int i = 1; i <= count; i++)
+        int taken = 0;
+        for (int i = 1; taken < count && i <= count + 100; i++)
         {
-            string name = AutosavePrefix + i;
+            string name = prefix + i;
             if (!Exists(name)) return name;
-            var when = SlotTime(name);
+            var (kind, when) = SlotInfo(name);
+            if (kind != SaveKind.Auto) continue;   // the player's own save, under an autosave's name
+            taken++;
             if (when < oldestTime) { oldest = name; oldestTime = when; }
         }
-        return oldest ?? AutosavePrefix + 1;
+        return oldest ?? prefix + 1;
     }
 
-    private DateTime SlotTime(string name)
+    private (SaveKind Kind, DateTime When) SlotInfo(string name)
     {
         foreach (var slot in Slots)
-            if (SameSlot(slot.Name, name)) return slot.SavedUtc;
-        return default;   // not listed (unreadable): the first to go
+            if (SameSlot(slot.Name, name)) return (slot.Kind, slot.SavedUtc);
+        return (SaveKind.Auto, default);   // not listed (unreadable): the first to go
     }
 
     // Removes a slot from disk (a menu's Delete). Returns whether there was one and it went.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public bool Delete(string slot)
     {
+        WaitForWrites();   // a save of it still on its way would put it back
         string directory = SlotDirectory(slot);
         if (!Directory.Exists(directory)) { Log.Warn(LogCat.Save, $"No save '{slot}' in {Root} to delete"); return false; }
         try
@@ -173,12 +197,16 @@ public sealed partial class SaveSystem
         if (_autosaveDue)
         {
             _autosaveDue = false;
-            Queue(null, SaveKind.Auto);
+            Queue(null, SaveKind.Auto, null);
         }
         if (!HasPendingRequests || IsMidTick) return;
 
-        foreach (var (slot, kind) in _pendingSaves)
-            Save(slot ?? NextAutosaveSlot(), kind);
+        // Snapshotted now, at the boundary; written in the background (issue #285). The autosave's slot is
+        // chosen first, so choosing it does not wait for a save this boundary just handed to the writer.
+        for (int i = 0; i < _pendingSaves.Count; i++)
+            if (_pendingSaves[i].Slot == null) _pendingSaves[i] = (NextAutosaveSlot(), _pendingSaves[i].Kind, _pendingSaves[i].Title);
+        foreach (var (slot, kind, title) in _pendingSaves)
+            SaveWhilePlaying(slot!, kind, title);
         _pendingSaves.Clear();
         if (_pendingLoad is { } load)
         {
@@ -193,18 +221,18 @@ public sealed partial class SaveSystem
         if (_autosave is { Value: true }) _autosaveDue = true;
     }
 
-    private void Queue(string? slot, SaveKind kind)
+    private void Queue(string? slot, SaveKind kind, string? title)
     {
         for (int i = 0; i < _pendingSaves.Count; i++)
         {
             var pending = _pendingSaves[i].Slot;
             if (slot == null ? pending == null : pending != null && SameSlot(pending, slot))
             {
-                _pendingSaves[i] = (slot, kind);
+                _pendingSaves[i] = (slot, kind, title);
                 return;
             }
         }
-        _pendingSaves.Add((slot, kind));
+        _pendingSaves.Add((slot, kind, title));
     }
 
     private static bool SameSlot(string a, string b) =>
@@ -235,8 +263,13 @@ public sealed partial class SaveSystem
         _autosaveInterval = cvars.Register("save_autosave_interval", 300f, CVarFlags.Archive,
             "Seconds of play between autosaves, counted from the last save or load; 0: none on a timer.", 0f, 86400f);
 
-        cvars.RegisterCommand("quicksave", CVarFlags.None, "Quick-save into the \"quick\" slot (F5), at the next tick boundary.", _ => QuickSave());
-        cvars.RegisterCommand("quickload", CVarFlags.None, "Load the \"quick\" slot (F9), at the next tick boundary.", _ => QuickLoad());
+        _quickSlot = cvars.Register("save_quick_slot", QuickSlot, CVarFlags.Archive,
+            "The slot quick-save (F5) and quick-load (F9) use.");
+        _autosavePrefix = cvars.Register("save_autosave_prefix", AutosavePrefix, CVarFlags.Archive,
+            "What autosave slots are called before their number (autosave1…).");
+
+        cvars.RegisterCommand("quicksave", CVarFlags.None, "Quick-save into the quick slot (save_quick_slot; F5), at the next tick boundary.", _ => QuickSave());
+        cvars.RegisterCommand("quickload", CVarFlags.None, "Load the quick slot (save_quick_slot; F9), at the next tick boundary.", _ => QuickLoad());
         cvars.RegisterCommand("autosave", CVarFlags.None, "Autosave now, into the next slot of the rotation.", _ => Autosave());
         cvars.RegisterCommand("save_delete", CVarFlags.None, "save_delete <slot>: delete a save.", a =>
         {

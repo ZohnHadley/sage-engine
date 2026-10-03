@@ -289,6 +289,11 @@ public sealed class Engine : IDisposable
 
     public void Dispose()
     {
+        // A save still being written in the background is finished first (issue #285): quitting straight
+        // after F5 keeps the save.
+#pragma warning disable SAGE0131 // the engine's own save system
+        Saves.WaitForWrites();
+#pragma warning restore SAGE0131
         for (int i = _worlds.Count - 1; i >= 0; i--)
             _worlds[i].Dispose();
         _worlds.Clear();

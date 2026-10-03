@@ -59,6 +59,7 @@ const Sage.Simulation.SaveSystem.AutosavePrefix = "autosave" -> string!
 const Sage.Simulation.SaveSystem.QuickLoadAction = "QuickLoad" -> string!
 const Sage.Simulation.SaveSystem.QuickSaveAction = "QuickSave" -> string!
 const Sage.Simulation.SaveSystem.QuickSlot = "quick" -> string!
+const Sage.Simulation.SaveSystem.ThumbnailFile = "thumbnail.png" -> string!
 const Sage.Simulation.ShadowMath.DefaultCasterReach = 200 -> float
 const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
 const Sage.Simulation.ShadowMath.DefaultSize = 2048 -> int
@@ -106,6 +107,7 @@ override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
 override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
 override Sage.Simulation.GameDate.ToString() -> string!
+override Sage.Simulation.SaveVersionReport.ToString() -> string!
 Sage.Simulation.ActionAttribute
 Sage.Simulation.ActionAttribute.ActionAttribute(string! id) -> void
 Sage.Simulation.ActionContext
@@ -1103,16 +1105,69 @@ Sage.Simulation.SaveKind
 Sage.Simulation.SaveKind.Auto = 2 -> Sage.Simulation.SaveKind
 Sage.Simulation.SaveKind.Manual = 0 -> Sage.Simulation.SaveKind
 Sage.Simulation.SaveKind.Quick = 1 -> Sage.Simulation.SaveKind
+Sage.Simulation.SaveSlot.Compressed.get -> bool
 Sage.Simulation.SaveSlot.Kind.get -> Sage.Simulation.SaveKind
+Sage.Simulation.SaveSlot.ThumbnailPath.get -> string?
+Sage.Simulation.SaveSlot.Title.get -> string!
 Sage.Simulation.SaveSystem.Autosave() -> void
+Sage.Simulation.SaveSystem.AutosavePrefixName.get -> string!
 Sage.Simulation.SaveSystem.Delete(string! slot) -> bool
 Sage.Simulation.SaveSystem.HasPendingRequests.get -> bool
+Sage.Simulation.SaveSystem.IsWriting.get -> bool
 Sage.Simulation.SaveSystem.NextAutosaveSlot() -> string!
 Sage.Simulation.SaveSystem.QuickLoad() -> void
 Sage.Simulation.SaveSystem.QuickSave() -> void
+Sage.Simulation.SaveSystem.QuickSlotName.get -> string!
+Sage.Simulation.SaveSystem.Report(string! slot) -> Sage.Simulation.SaveVersionReport?
 Sage.Simulation.SaveSystem.RequestLoad(string! slot) -> void
 Sage.Simulation.SaveSystem.RequestSave(string! slot, Sage.Simulation.SaveKind kind = Sage.Simulation.SaveKind.Manual) -> void
+Sage.Simulation.SaveSystem.RequestSave(string! slot, Sage.Simulation.SaveKind kind, string? title) -> void
 Sage.Simulation.SaveSystem.Save(string! slot, Sage.Simulation.SaveKind kind) -> bool
+Sage.Simulation.SaveSystem.Save(string! slot, Sage.Simulation.SaveKind kind, string? title) -> bool
+Sage.Simulation.SaveSystem.Thumbnail.get -> System.Func<Sage.Simulation.SaveThumbnail?>?
+Sage.Simulation.SaveSystem.Thumbnail.set -> void
+Sage.Simulation.SaveSystem.WaitForWrites() -> void
+Sage.Simulation.SaveThumbnail
+Sage.Simulation.SaveThumbnail.Height.get -> int
+Sage.Simulation.SaveThumbnail.Rgba.get -> byte[]!
+Sage.Simulation.SaveThumbnail.SaveThumbnail(int width, int height, byte[]! rgba) -> void
+Sage.Simulation.SaveThumbnail.Shrink(int maxWidth) -> Sage.Simulation.SaveThumbnail!
+Sage.Simulation.SaveThumbnail.Width.get -> int
+Sage.Simulation.SaveVersionEntry
+Sage.Simulation.SaveVersionEntry.Count.get -> int
+Sage.Simulation.SaveVersionEntry.Count.init -> void
+Sage.Simulation.SaveVersionEntry.CurrentVersion.get -> int?
+Sage.Simulation.SaveVersionEntry.CurrentVersion.init -> void
+Sage.Simulation.SaveVersionEntry.Id.get -> string!
+Sage.Simulation.SaveVersionEntry.Id.init -> void
+Sage.Simulation.SaveVersionEntry.Kind.get -> string!
+Sage.Simulation.SaveVersionEntry.Kind.init -> void
+Sage.Simulation.SaveVersionEntry.SavedVersion.get -> int
+Sage.Simulation.SaveVersionEntry.SavedVersion.init -> void
+Sage.Simulation.SaveVersionEntry.SaveVersionEntry() -> void
+Sage.Simulation.SaveVersionEntry.SaveVersionEntry(string! Kind, string! Id, int SavedVersion, int? CurrentVersion, int Count, Sage.Simulation.SaveVersionStatus Status, int UpgradeSteps) -> void
+Sage.Simulation.SaveVersionEntry.Status.get -> Sage.Simulation.SaveVersionStatus
+Sage.Simulation.SaveVersionEntry.Status.init -> void
+Sage.Simulation.SaveVersionEntry.UpgradeSteps.get -> int
+Sage.Simulation.SaveVersionEntry.UpgradeSteps.init -> void
+Sage.Simulation.SaveVersionReport
+Sage.Simulation.SaveVersionReport.CanLoad.get -> bool
+Sage.Simulation.SaveVersionReport.Count(Sage.Simulation.SaveVersionStatus status) -> int
+Sage.Simulation.SaveVersionReport.EngineVersion.get -> string!
+Sage.Simulation.SaveVersionReport.Entries.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SaveVersionEntry>!
+Sage.Simulation.SaveVersionReport.FormatUpgrade.get -> bool
+Sage.Simulation.SaveVersionReport.FormatVersion.get -> int
+Sage.Simulation.SaveVersionReport.IsCurrent.get -> bool
+Sage.Simulation.SaveVersionReport.Lines() -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Simulation.SaveVersionReport.Mismatches.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.SaveVersionReport.Problems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.SaveVersionReport.Slot.get -> string!
+Sage.Simulation.SaveVersionReport.Summary.get -> string!
+Sage.Simulation.SaveVersionStatus
+Sage.Simulation.SaveVersionStatus.Current = 0 -> Sage.Simulation.SaveVersionStatus
+Sage.Simulation.SaveVersionStatus.Newer = 2 -> Sage.Simulation.SaveVersionStatus
+Sage.Simulation.SaveVersionStatus.Unknown = 3 -> Sage.Simulation.SaveVersionStatus
+Sage.Simulation.SaveVersionStatus.Upgrade = 1 -> Sage.Simulation.SaveVersionStatus
 Sage.Simulation.SceneEnvironment.Ambient -> System.Numerics.Vector3
 Sage.Simulation.SceneEnvironment.Hour -> float?
 Sage.Simulation.SceneEnvironment.Sky -> Sage.Core.RecordRef<Sage.Simulation.SkyRecord!>

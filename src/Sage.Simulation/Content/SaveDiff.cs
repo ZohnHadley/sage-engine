@@ -43,11 +43,18 @@ namespace Sage.Simulation;
 // always did. So formats 1–3 read as they did, and the format stays 3.
 internal sealed class SpawnBaseline
 {
-    public SpawnBaseline(JsonObject components, IReadOnlyList<string>? fromPlacement = null)
+    public SpawnBaseline(JsonObject components, IReadOnlyList<string>? fromPlacement = null,
+                         IReadOnlyDictionary<string, object>? values = null)
     {
         Components = components;
         FromPlacement = fromPlacement ?? Array.Empty<string>();
+        _values = values;
     }
+
+    // The components as spawned, as boxed copies (issue #285): a save compares a component with its own
+    // before it serialises anything, and leaves out one that has not changed. A baseline rebased by a
+    // prefab hot reload (#287) has none, so its entities are compared field by field as before.
+    private readonly IReadOnlyDictionary<string, object>? _values;
 
     // One entity's own: the shared baseline with its `[FromPlacement]` components as *it* was spawned
     // (issue 4m-4), so a value derived from its placement is compared with its own and not the first spawn's.
@@ -55,6 +62,7 @@ internal sealed class SpawnBaseline
     {
         Components = shared.Components;
         FromPlacement = shared.FromPlacement;
+        _values = shared._values;
         Body = shared.Body;
         Tags = shared.Tags;
         _shared = shared;
@@ -84,6 +92,11 @@ internal sealed class SpawnBaseline
     public IReadOnlyList<string> FromPlacement { get; }
 
     // A component's entry as spawned: this entity's own for one derived from its placement.
+    // A component's boxed value as the prefab spawned it; null for one this entity has its own of (a
+    // `[FromPlacement]` one) or when none was kept.
+    public object? ValueAsSpawned(string id) =>
+        _own != null && _own.ContainsKey(id) ? null : _values != null && _values.TryGetValue(id, out var value) ? value : null;
+
     public JsonNode? Entry(string id) =>
         _own != null && _own.TryGetPropertyValue(id, out var own) ? own : Components[id];
 }

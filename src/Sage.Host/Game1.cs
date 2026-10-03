@@ -158,6 +158,10 @@ public class Game1 : Game
         }
         engine.Modules.ProvideHostService(new ClientHost(this));
         engine.Modules.ProvideHostService(devices);
+        // A save's thumbnail (issue #285): the last frame drawn, shrunk, handed over when the save is taken.
+#pragma warning disable SAGE0131 // the host ships with the engine that declares the save API
+        engine.Saves.Thumbnail = CaptureThumbnail;
+#pragma warning restore SAGE0131
         engine.Modules.ProvideHostService(actions);
         app.Start();
 #if SAGE_DEV
@@ -411,6 +415,29 @@ public class Game1 : Game
 #endif
         Profiler.EndFrame();
     }
+
+    // What a save keeps of the screen (issue #285): the back buffer, at most 320 pixels wide. A save is
+    // taken at a tick boundary, in Update, so this is the frame last drawn: the one the player saw when
+    // they pressed F5. Read on this thread, which owns the device; encoded and written by the save's writer.
+#pragma warning disable SAGE0131 // the host ships with the engine that declares the save API
+    private SaveThumbnail? CaptureThumbnail()
+    {
+        int w = graphicsDevice.PresentationParameters.BackBufferWidth, h = graphicsDevice.PresentationParameters.BackBufferHeight;
+        if (w <= 0 || h <= 0) return null;
+        var pixels = new Color[w * h];
+        graphicsDevice.GetBackBufferData(pixels);
+        var rgba = new byte[w * h * 4];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            var c = pixels[i];
+            rgba[i * 4] = c.R;
+            rgba[i * 4 + 1] = c.G;
+            rgba[i * 4 + 2] = c.B;
+            rgba[i * 4 + 3] = 255;   // a thumbnail is opaque, whatever the back buffer's alpha says
+        }
+        return new SaveThumbnail(w, h, rgba).Shrink(320);
+    }
+#pragma warning restore SAGE0131
 
     // The back buffer as drawn this frame (scene + dev UI), before Present.
     private void SaveScreenshot()
