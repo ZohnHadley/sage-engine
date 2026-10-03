@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Sage.Simulation;
 
@@ -30,6 +32,11 @@ namespace Sage.Simulation;
 //
 // The generator (09 §3.2) replaces the reflection with emitted readers and writers. What is written
 // does not change when it does, so saves keep loading.
+// One component a save left for its writer to serialise (issue #285): where it goes, its boxed copy, and
+// what the diff against its prefab needs (a copy of the baseline's data).
+internal sealed record DeferredComponent(JsonObject Target, string Id, int Version, Type Type, object Value,
+                                         bool HasBaseline, JsonNode? Was, bool ByField);
+
 internal sealed class SaveSerializer
 {
     private readonly ComponentSchema _schema;
@@ -67,6 +74,15 @@ internal sealed class SaveSerializer
         return ids ?? (IReadOnlyList<string>)Array.Empty<string>();
     }
 
+    // The entity's declared components as boxed copies, by id: what a prefab spawned it with, kept beside its
+    // baseline (issue #285) so a save can tell an unchanged one without serialising it.
+    public Dictionary<string, object> ValuesOf(Entity entity)
+    {
+        var values = new Dictionary<string, object>(StringComparer.Ordinal);
+        foreach (var (id, value) in _schema.ComponentsOf(entity)) values[id] = value;
+        return values;
+    }
+
     public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json) =>
         WriteComponents(world, entity, json, baseline: null, removed: null);
 
@@ -75,8 +91,14 @@ internal sealed class SaveSerializer
     // has go in `removed`. `quiet`: taking a baseline at spawn, where an unwritable field is the save's
     // business to report, not the spawn's.
     // `only`: just these component ids (a spawn's `[FromPlacement]` ones, 4m-4).
+    // `deferred` (issue #285, a save taken while playing): a component whose type serialises without the
+    // world (SaveJson's stateless converters only, no reference fields but strings) is not serialised here,
+    // on the tick: its boxed copy is kept, with what its diff needs, and the save's writer serialises it on
+    // its own thread (ResolveDeferred). One unchanged since its prefab spawned it, bit for bit, is left out
+    // at once, without serialising anything.
     public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json, SpawnBaseline? baseline,
-                                      JsonArray? removed, bool quiet = false, IReadOnlyList<string>? only = null)
+                                      JsonArray? removed, bool quiet = false, IReadOnlyList<string>? only = null,
+                                      List<DeferredComponent>? deferred = null)
     {
         var result = new JsonObject();
         HashSet<string>? had = baseline != null ? new HashSet<string>(StringComparer.Ordinal) : null;
@@ -87,6 +109,23 @@ internal sealed class SaveSerializer
             if (only != null && !Contains(only, id)) continue;
             var declaration = _schema.DeclarationOf(type)!;
             had?.Add(id);
+            if (deferred != null && CanDefer(type, json))
+            {
+                JsonNode? wasData = null;
+                bool hasBaseline = false, byField = false;
+                if (baseline != null && id != TransformId
+                    && baseline.Entry(id) is JsonObject spawnedEntry
+                    && spawnedEntry["version"] is JsonValue sv && sv.TryGetValue(out int spawnedVersion) && spawnedVersion == declaration.Version)
+                {
+                    if (baseline.ValueAsSpawned(id) is { } asSpawned && SameBits(type, value, asSpawned)) continue;
+                    hasBaseline = true;
+                    wasData = spawnedEntry["data"]?.DeepClone();   // the writer's own: a baseline is shared
+                    byField = SaveDiff.ByField(type, json);
+                }
+                result[id] = null;   // its place, so the order is what it would have been
+                deferred.Add(new DeferredComponent(result, id, declaration.Version, type, value, hasBaseline, wasData, byField));
+                continue;
+            }
             try
             {
                 var data = JsonSerializer.SerializeToNode(value, type, json);
@@ -118,6 +157,99 @@ internal sealed class SaveSerializer
             foreach (var (id, _) in baseline.Components)
                 if (!had!.Contains(id)) removed.Add(id);
         return result;
+    }
+
+    // ---- deferred components (issue #285) -----------------------------------------------------------
+
+    // Serialises what WriteComponents deferred, on the save writer's thread, into the places it kept: the
+    // same entry, diffed against the same baseline, that it would have written on the tick. A place the
+    // tick took out again since (a transform left at its placement) stays out.
+    public static void ResolveDeferred(List<DeferredComponent> deferred, JsonSerializerOptions json)
+    {
+        foreach (var d in deferred)
+        {
+            if (!d.Target.ContainsKey(d.Id)) continue;
+            try
+            {
+                var data = JsonSerializer.SerializeToNode(d.Value, d.Type, json);
+                if (d.HasBaseline)
+                {
+                    if (data is JsonObject fields && d.Was is JsonObject wasFields && d.ByField)
+                    {
+                        var changed = SaveDiff.Fields(fields, wasFields);
+                        if (changed.Count == 0) { d.Target.Remove(d.Id); continue; }
+                        data = changed;
+                    }
+                    else if (JsonNode.DeepEquals(data, d.Was)) { d.Target.Remove(d.Id); continue; }
+                }
+                d.Target[d.Id] = Entry(d.Version, data);
+            }
+            catch (Exception ex) when (ex is NotSupportedException or JsonException or ArgumentException)
+            {
+                d.Target.Remove(d.Id);
+                Log.Once(LogCat.Save, LogLevel.Error, $"unwritable:{d.Id}",
+                    $"{d.Id} cannot be saved: {ex.Message}. Give the field a converter or mark it [Transient] (09 §3.3)");
+            }
+        }
+    }
+
+    // Whether a component type can be serialised off the tick: a struct whose fields, all the way down, are
+    // values or strings (a copy of it is the whole of it, and nothing it says can change under the writer),
+    // with no [JsonConverter] of its own and no converter of a plugin's (which may read the world) for it or
+    // anything in it. Asked on the tick; remembered per type.
+    private readonly Dictionary<Type, bool> _deferrable = new();
+
+    private bool CanDefer(Type type, JsonSerializerOptions json)
+    {
+        if (_deferrable.TryGetValue(type, out bool known)) return known;
+        bool result = Plain(type, json, new HashSet<Type>());
+        _deferrable[type] = result;
+        return result;
+    }
+
+    private static bool Plain(Type type, JsonSerializerOptions json, HashSet<Type> seen)
+    {
+        if (type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal)) return true;
+        if (!type.IsValueType || type.IsPointer || type.IsByRefLike) return false;
+        if (!seen.Add(type)) return true;
+        if (type.GetCustomAttribute<JsonConverterAttribute>() != null) return false;
+        foreach (var converter in json.Converters)
+            if (!IsStateless(converter) && converter.CanConvert(type)) return false;
+        foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+        {
+            if (field.GetCustomAttribute<JsonConverterAttribute>() != null) return false;
+            if (!Plain(field.FieldType, json, seen)) return false;
+        }
+        return true;
+    }
+
+    // SaveJson's own converters that read nothing but the value.
+    private static bool IsStateless(JsonConverter converter) =>
+        converter is Vector2JsonConverter or Vector3JsonConverter or QuaternionJsonConverter or JsonStringEnumConverter;
+
+    // The same value, bit for bit (a struct with no references), or by its fields' Equals (one with
+    // strings). Equal here means the JSON would be the same; unequal only means it is serialised.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Func<object, object, bool>> Comparers = new();
+
+    private static bool SameBits(Type type, object a, object b) =>
+        a.GetType() == b.GetType() && Comparers.GetOrAdd(type, MakeComparer)(a, b);
+
+    private static Func<object, object, bool> MakeComparer(Type type)
+    {
+        bool references = (bool)typeof(System.Runtime.CompilerServices.RuntimeHelpers)
+            .GetMethod(nameof(System.Runtime.CompilerServices.RuntimeHelpers.IsReferenceOrContainsReferences))!
+            .MakeGenericMethod(type).Invoke(null, null)!;
+        if (references) return static (a, b) => a.Equals(b);
+        return typeof(SaveSerializer).GetMethod(nameof(BitEquals), BindingFlags.Static | BindingFlags.NonPublic)!
+            .MakeGenericMethod(type).CreateDelegate<Func<object, object, bool>>();
+    }
+
+    private static bool BitEquals<T>(object a, object b) where T : struct
+    {
+        ref T x = ref System.Runtime.CompilerServices.Unsafe.Unbox<T>(a);
+        ref T y = ref System.Runtime.CompilerServices.Unsafe.Unbox<T>(b);
+        return MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref x, 1))
+            .SequenceEqual(MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref y, 1)));
     }
 
     // Always written in full, never diffed (SaveDiff): a runtime spawn is rebuilt where it stood.

@@ -131,28 +131,70 @@ public sealed partial class SaveSystem
     // Saves every world the engine has, as a manual save. Called at a tick boundary, never mid-tick: a
     // save taken half-way through a phase would catch components some systems had updated and others had
     // not. Called during a tick (by a system), it is a request instead and runs when the tick ends (4i-6).
+    //
+    // Between ticks it is written before it returns, so the result says whether it was: what a menu's
+    // Overwrite, a tool and a test want. The saves a game takes while it plays (F5, autosaves, a request
+    // from a system) are written in the background instead (issue #285, WriteInBackground).
     public bool Save(string slot) => Save(slot, SaveKind.Manual);
 
     // The same, saying which kind of save it is (4i-6): the header keeps it, and SaveSlot.Kind reads it.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
-    public bool Save(string slot, SaveKind kind)
+    public bool Save(string slot, SaveKind kind) => Save(slot, kind, null);
+
+    // The same, with a title the player gave it (issue #285): the header keeps it and SaveSlot.Title
+    // reads it back, so a menu can show "Before the dragon" for a slot whose folder is `slot3`.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public bool Save(string slot, SaveKind kind, string? title)
     {
         if (IsMidTick)
         {
-            RequestSave(slot, kind);
+            RequestSave(slot, kind, title);
             return true;
         }
+        var snapshot = Snapshot(slot, kind, title);
+        if (snapshot == null) return false;
+        WaitForWrites();   // one written in the background to the same slot goes first
+        bool written = Write(snapshot);
+        _slots = null;     // the listing a menu shows has a new or newer slot in it
+        return written;
+    }
 
-        string directory = SlotDirectory(slot);
-        // Written beside the real folder and moved into place, so a crash mid-save leaves the previous
-        // save intact rather than half of two (09 §3.6).
-        string staging = directory + ".writing";
+    // ---- the snapshot, on the tick ------------------------------------------------------------------
 
+    // What a save is, taken at a tick boundary and owned by nobody else: the header, each world's file as
+    // a JSON tree (built from the world's state now, sharing nothing with it), and the thumbnail's pixels.
+    // Turning that into bytes, compressing it and writing it is the writer's, on any thread (issue #285).
+    // One world's file in a snapshot: its tree, the components left for the writer to serialise into it
+    // (SaveSerializer.ResolveDeferred), and the dialect to do it in.
+    internal sealed record SnapshotWorld(string File, JsonObject Root, List<DeferredComponent> Deferred, JsonSerializerOptions Json);
+
+    internal sealed class SaveSnapshot
+    {
+        public required string Slot { get; init; }
+        public required string Directory { get; init; }   // where it goes, fixed when it was taken
+        public required SaveKind Kind { get; init; }
+        public required JsonObject Header { get; init; }
+        public required List<SnapshotWorld> Worlds { get; init; }
+        public required int Entities { get; init; }
+        public required bool Compress { get; init; }
+        public SaveThumbnail? Thumbnail { get; init; }
+        public TimeSpan Took { get; init; }
+        public int WorldCount => Worlds.Count;
+    }
+
+    // How long the last save spent on each side (issue #285): `Snapshot` on the tick that took it, `Write`
+    // on whichever thread wrote it. For the measurement of a big save; nothing else reads it.
+    internal readonly record struct SaveTiming(TimeSpan Snapshot, TimeSpan Write);
+
+    internal SaveTiming LastTiming => _lastTiming;
+    private SaveTiming _lastTiming;
+
+    // Null, said in the log, when a world cannot be captured: nothing was written and nothing changed.
+    private SaveSnapshot? Snapshot(string slot, SaveKind kind, string? title)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true);
-            Directory.CreateDirectory(staging);
-
             var header = new JsonObject
             {
                 ["formatVersion"] = FormatVersion,
@@ -177,21 +219,85 @@ public sealed partial class SaveSystem
                     ["id"] = m.Id, ["version"] = m.Version,
                 }).ToArray()),
             };
-            File.WriteAllText(Path.Combine(staging, "header.json"), header.ToJsonString(Indented));
+            if (!string.IsNullOrWhiteSpace(title)) header["title"] = title.Trim();
+
+            bool compress = _compress is { Value: true };
+            if (compress) header["compression"] = "gzip";
+
+            // The client's picture of the frame (SaveSystem.Thumbnail), taken now, on the thread that owns
+            // the device; encoded and written with the rest. A hook that fails costs the picture, not the save.
+            SaveThumbnail? thumbnail = null;
+            if (Thumbnail is { } capture)
+            {
+                try { thumbnail = capture(); }
+                catch (Exception ex) { Log.Warn(LogCat.Save, $"Save '{slot}': the thumbnail could not be taken: {ex.Message}"); }
+                if (thumbnail != null && !thumbnail.IsValid)
+                {
+                    Log.Warn(LogCat.Save, $"Save '{slot}': the thumbnail is {thumbnail.Width}x{thumbnail.Height} with " +
+                                          $"{thumbnail.Rgba?.Length ?? 0} bytes, not 4 a pixel; left out");
+                    thumbnail = null;
+                }
+                if (thumbnail != null) header["thumbnail"] = ThumbnailFile;
+            }
 
             int total = 0;
+            var worlds = new List<SnapshotWorld>(_engine.Worlds.Count);
             foreach (var world in _engine.Worlds)
             {
-                var (json, count) = WriteWorld(world);
-                File.WriteAllText(Path.Combine(staging, $"world_{Sanitise(world.Name)}.json"), json);
+                var deferred = new List<DeferredComponent>();
+                var (root, count, json) = WriteWorld(world, deferred);
+                worlds.Add(new SnapshotWorld($"world_{Sanitise(world.Name)}.json{(compress ? ".gz" : "")}", root, deferred, json));
                 total += count;
             }
+            _sinceAutosave = 0;   // the autosave clock counts from the last save of any kind
+            return new SaveSnapshot
+            {
+                Slot = slot, Directory = SlotDirectory(slot), Kind = kind, Header = header, Worlds = worlds, Entities = total,
+                Compress = compress, Thumbnail = thumbnail, Took = clock.Elapsed,
+            };
+        }
+        // Everything, as the write does: a world that cannot be captured is a save that did not happen.
+        catch (Exception ex)
+        {
+            Log.Error(LogCat.Save, $"Save '{slot}' failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    // ---- the write, on any thread -------------------------------------------------------------------
+
+    // The file a slot's thumbnail is written to (issue #285), named by the header's "thumbnail".
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public const string ThumbnailFile = "thumbnail.png";
+
+    // Writes a snapshot into its slot. Touches no world and no engine state but the log, so it runs on the
+    // writer's thread as well as the caller's.
+    private bool Write(SaveSnapshot s)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        string directory = s.Directory;
+        // Written beside the real folder and moved into place, so a crash mid-save leaves the previous
+        // save intact rather than half of two (09 §3.6).
+        string staging = directory + ".writing";
+        try
+        {
+            if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true);
+            Directory.CreateDirectory(staging);
+
+            File.WriteAllText(Path.Combine(staging, "header.json"), s.Header.ToJsonString(Indented));
+            foreach (var world in s.Worlds)
+            {
+                SaveSerializer.ResolveDeferred(world.Deferred, world.Json);
+                WriteJson(Path.Combine(staging, world.File), world.Root, s.Compress);
+            }
+            if (s.Thumbnail is { } thumbnail)
+                File.WriteAllBytes(Path.Combine(staging, ThumbnailFile), Png.Encode(thumbnail.Width, thumbnail.Height, thumbnail.Rgba));
 
             if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
             Directory.Move(staging, directory);
-            _slots = null;   // the listing a menu shows has a new or newer slot in it
-            _sinceAutosave = 0;   // the autosave clock counts from the last save of any kind
-            Log.Info(LogCat.Save, $"Saved '{slot}' ({KindName(kind)}): {total} entities across {_engine.Worlds.Count} world(s)");
+            _slotsStale = true;
+            _lastTiming = new SaveTiming(s.Took, clock.Elapsed);
+            Log.Info(LogCat.Save, $"Saved '{s.Slot}' ({KindName(s.Kind)}): {s.Entities} entities across {s.WorldCount} world(s)");
             return true;
         }
         // Everything, on purpose: a save is the one operation where a leaked half-written folder is
@@ -200,13 +306,58 @@ public sealed partial class SaveSystem
         // and the previous save untouched but shadowed in the listing.
         catch (Exception ex)
         {
-            Log.Error(LogCat.Save, $"Save '{slot}' failed: {ex.Message}");
+            Log.Error(LogCat.Save, $"Save '{s.Slot}' failed: {ex.Message}");
             try { if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true); } catch { /* nothing more to try */ }
             return false;
         }
     }
 
-    private (string Json, int Count) WriteWorld(World world)
+    // A world file, streamed rather than built as one string: indented as before, or gzip-compressed
+    // compact JSON when `save_compress` is on (issue #285).
+    private static void WriteJson(string path, JsonObject root, bool compress)
+    {
+        using var file = File.Create(path);
+        if (compress)
+        {
+            using var gzip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionLevel.Fastest);
+            using var writer = new Utf8JsonWriter(gzip);
+            root.WriteTo(writer, Compact);
+        }
+        else
+        {
+            using var writer = new Utf8JsonWriter(file, new JsonWriterOptions { Indented = true });
+            root.WriteTo(writer, Indented);
+        }
+    }
+
+    // A world file's text: `world_x.json`, else `world_x.json.gz` (issue #285); null when it has neither.
+    // An uncompressed file is read as it always was, so every save from before still loads.
+    internal static string? ReadWorldText(string directory, string worldName)
+    {
+        string plain = Path.Combine(directory, $"world_{Sanitise(worldName)}.json");
+        if (File.Exists(plain)) return File.ReadAllText(plain);
+        string packed = plain + ".gz";
+        return File.Exists(packed) ? ReadWorldFile(packed) : null;
+    }
+
+    private static string ReadWorldFile(string path)
+    {
+        if (!path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase)) return File.ReadAllText(path);
+        using var file = File.OpenRead(path);
+        using var gzip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionMode.Decompress);
+        using var reader = new StreamReader(gzip, System.Text.Encoding.UTF8);
+        return reader.ReadToEnd();
+    }
+
+    private static bool IsWorldFile(string path)
+    {
+        string name = Path.GetFileName(path);
+        return name.StartsWith("world_", StringComparison.Ordinal)
+               && (name.EndsWith(".json", StringComparison.Ordinal) || name.EndsWith(".json.gz", StringComparison.Ordinal));
+    }
+
+    // `deferred`: where to leave the components the writer serialises (issue #285); null: all of them now.
+    private (JsonObject Root, int Count, JsonSerializerOptions Json) WriteWorld(World world, List<DeferredComponent>? deferred)
     {
         var json = SaveJson.For(world, _engine.Records, _converters);
         var entities = new JsonArray();
@@ -214,7 +365,7 @@ public sealed partial class SaveSystem
 
         // Disabled ones included: a placeholder is disabled so that nothing else sees it (issue 4i-2).
         foreach (var entity in world.PersistentIncludingDisabled())
-            if (WriteEntity(world, entity, json, baseline) is { } saved) entities.Add(saved);
+            if (WriteEntity(world, entity, json, baseline, deferred) is { } saved) entities.Add(saved);
 
         // **Which sector these positions are relative to** (R6, 14 §3). Every position in this file is
         // in origin space; without the origin, a save taken a hundred kilometres out would load its
@@ -274,11 +425,12 @@ public sealed partial class SaveSystem
                 if (!resources.ContainsKey(name) && entry != null) resources[name] = entry.DeepClone();
         if (resources.Count > 0) root["resources"] = resources;
 
-        return (root.ToJsonString(Indented), entities.Count);
+        return (root, entities.Count, json);
     }
 
     // One persistent entity as a save writes it; null for one without an id.
-    private JsonObject? WriteEntity(World world, Entity entity, JsonSerializerOptions json, ContentBaseline? baseline)
+    private JsonObject? WriteEntity(World world, Entity entity, JsonSerializerOptions json, ContentBaseline? baseline,
+                                    List<DeferredComponent>? deferred = null)
     {
         var persistent = entity.GetComponent<Persistent>();
         if (persistent.Id.IsEmpty) return null;
@@ -308,7 +460,7 @@ public sealed partial class SaveSystem
         // Spawned from a prefab: only what differs from it as spawned, and what it lost (4i-5, SaveDiff).
         var asSpawned = world.TryGet<FromPrefab>(entity, out var spawned) ? spawned.Baseline : null;
         var removed = new JsonArray();
-        var components = _serializer.WriteComponents(world, entity, json, asSpawned, removed);
+        var components = _serializer.WriteComponents(world, entity, json, asSpawned, removed, deferred: deferred);
         if (asSpawned != null)
         {
             saved["diff"] = true;
@@ -370,7 +522,12 @@ public sealed partial class SaveSystem
 
     // ---- reading ------------------------------------------------------------------------------------
 
-    public bool Exists(string slot) => File.Exists(Path.Combine(SlotDirectory(slot), "header.json"));
+    // Waits for a save still being written in the background (issue #285), so it is never missed.
+    public bool Exists(string slot)
+    {
+        WaitForWrites();
+        return File.Exists(Path.Combine(SlotDirectory(slot), "header.json"));
+    }
 
     // Loads into the engine's existing worlds by reconciling (4i-3): content is placed again as it is now,
     // the save's tombstones removed from it and its state laid onto what matches by id, and what the game
@@ -414,9 +571,8 @@ public sealed partial class SaveSystem
 
             foreach (var world in _engine.Worlds)
             {
-                string file = Path.Combine(directory, $"world_{Sanitise(world.Name)}.json");
-                if (!File.Exists(file)) { Log.Warn(LogCat.Save, $"'{slot}' has nothing for world '{world.Name}'"); continue; }
-                prepared.Add(Prepare(world, File.ReadAllText(file), version, $"{slot}/world_{world.Name}"));
+                if (ReadWorldText(directory, world.Name) is not { } text) { Log.Warn(LogCat.Save, $"'{slot}' has nothing for world '{world.Name}'"); continue; }
+                prepared.Add(Prepare(world, text, version, $"{slot}/world_{world.Name}"));
             }
         }
         // Wide on purpose, and safe to be: nothing has been changed yet. A malformed record id is a
@@ -881,7 +1037,7 @@ public sealed partial class SaveSystem
         {
             baselines.Dialect ??= SaveJson.For(world, _engine.Records, _converters);
             baseline = new SpawnBaseline(_serializer.WriteComponents(world, entity, baselines.Dialect, baseline: null, removed: null, quiet: true),
-                                         _serializer.FromPlacementIds(entity));
+                                         _serializer.FromPlacementIds(entity), _serializer.ValuesOf(entity));
             baselines.Add(prefab, record, key, baseline);
         }
         // What derives from where this one was placed is this one's own (4m-4): only those components.
@@ -1148,6 +1304,7 @@ public sealed partial class SaveSystem
 
     public IEnumerable<(string Slot, DateTime SavedUtc, int Entities)> List()
     {
+        WaitForWrites();
         if (!Directory.Exists(Root)) yield break;
         foreach (string directory in Directory.EnumerateDirectories(Root).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
@@ -1160,11 +1317,11 @@ public sealed partial class SaveSystem
             {
                 if (JsonNode.Parse(File.ReadAllText(headerPath)) is JsonObject header)
                     DateTime.TryParse((string?)header["savedUtc"], out saved);
-                foreach (string file in Directory.EnumerateFiles(directory, "world_*.json"))
-                    if (JsonNode.Parse(File.ReadAllText(file)) is JsonObject world && world["entities"] is JsonArray list)
+                foreach (string file in Directory.EnumerateFiles(directory, "world_*").Where(IsWorldFile))
+                    if (JsonNode.Parse(ReadWorldFile(file)) is JsonObject world && world["entities"] is JsonArray list)
                         entities += list.Count;
             }
-            catch (Exception ex) when (ex is IOException or JsonException) { /* a broken save still lists */ }
+            catch (Exception ex) when (ex is IOException or JsonException or InvalidDataException) { /* a broken save still lists */ }
 
             yield return (Path.GetFileName(directory), saved, entities);
         }
@@ -1180,7 +1337,17 @@ public sealed partial class SaveSystem
     // from disk once and kept: a menu reads this every frame it is open, so the folder is scanned again
     // only after a Save, a change of Root, or Rescan (a menu opening calls it, in case another process
     // wrote a save meanwhile). Unlike List it opens only the headers, never the world files.
-    public IReadOnlyList<SaveSlot> Slots => _slots ??= ScanSlots();
+    //
+    // A save still being written in the background is waited for first (issue #285): a slot never lists
+    // as missing, or as the save before, while its files are on their way.
+    public IReadOnlyList<SaveSlot> Slots
+    {
+        get
+        {
+            if (_slotsStale || IsWriting) WaitForWrites();
+            return _slots ??= ScanSlots();
+        }
+    }
 
     // Moves each time Slots is read from disk again, so a view-model rebuilds its rows only then.
     public int SlotsVersion { get { _ = Slots; return _slotsVersion; } }
@@ -1207,6 +1374,8 @@ public sealed partial class SaveSystem
             List<SavedPlugin>? plugins = null;
             List<SavedContent>? content = null;
             List<SavedMod>? mods = null;
+            string? title = null, thumbnail = null;
+            bool compressed = false;
             try
             {
                 if (JsonNode.Parse(File.ReadAllText(headerPath)) is JsonObject header)
@@ -1221,6 +1390,13 @@ public sealed partial class SaveSystem
                     plugins = ReadPlugins(header);
                     content = ReadContent(header);
                     mods = ReadMods(header);
+                    title = header["title"] is JsonValue t && t.TryGetValue(out string? named) ? named : null;
+                    // The thumbnail the header names, when its file is there (issue #285); only a bare file
+                    // name is trusted, so a header cannot point a menu outside its slot.
+                    if (header["thumbnail"] is JsonValue p && p.TryGetValue(out string? picture) && picture is { Length: > 0 }
+                        && picture == Path.GetFileName(picture) && File.Exists(Path.Combine(directory, picture)))
+                        thumbnail = Path.GetFullPath(Path.Combine(directory, picture));
+                    compressed = header["compression"] is JsonValue c && c.TryGetValue(out string? packing) && packing == "gzip";
                 }
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException)
@@ -1229,7 +1405,12 @@ public sealed partial class SaveSystem
             }
             slots.Add(new SaveSlot(name, saved, format, game, engine, kind,
                 plugins ?? new List<SavedPlugin>(), content ?? new List<SavedContent>(),
-                mods ?? new List<SavedMod>(), Mismatches(plugins, content, mods)));
+                mods ?? new List<SavedMod>(), Mismatches(plugins, content, mods))
+            {
+                Title = string.IsNullOrWhiteSpace(title) ? name : title,
+                ThumbnailPath = thumbnail,
+                Compressed = compressed,
+            });
         }
         slots.Sort((a, b) =>
         {
@@ -1243,16 +1424,18 @@ public sealed partial class SaveSystem
 
     public void RegisterCommands(CVarRegistry cvars)
     {
-        cvars.RegisterCommand("save", CVarFlags.None, "save [slot]: write a save (no slot: a quick-save, as quicksave).", a =>
+        cvars.RegisterCommand("save", CVarFlags.None, "save [slot [title...]]: write a save, with the title a menu shows (no slot: a quick-save, as quicksave).", a =>
         {
-            if (a.Count > 0) Save(a[0], SaveKind.Manual);
-            else Save(QuickSlot, SaveKind.Quick);
+            if (a.Count > 0) Save(a[0], SaveKind.Manual, a.Count > 1 ? string.Join(' ', a.Args.Skip(1)) : null);
+            else Save(QuickSlotName, SaveKind.Quick);
         });
 
         cvars.RegisterCommand("load", CVarFlags.None, "load [slot]: read a save back (no slot: the quick-save).", a =>
-            Load(a.Count > 0 ? a[0] : QuickSlot));
+            Load(a.Count > 0 ? a[0] : QuickSlotName));
 
         RegisterQuickCommands(cvars);
+        RegisterBackgroundCommands(cvars);
+        RegisterReportCommands(cvars);
 
         cvars.RegisterCommand("saves", CVarFlags.None, "What saves exist.", _ =>
         {
@@ -1275,6 +1458,12 @@ public sealed partial class SaveSystem
     private static readonly JsonSerializerOptions Indented = new()
     {
         WriteIndented = true,
+        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
+    };
+
+    // The same, on one line: a compressed world file, which nobody reads by eye (issue #285).
+    private static readonly JsonSerializerOptions Compact = new()
+    {
         TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
     };
 
@@ -1341,6 +1530,20 @@ public sealed class SaveSlot
     // loaded"): what a load warns about, and what a menu can show beside the slot. It still loads.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public IReadOnlyList<string> Mismatches { get; }
+
+    // What a menu shows for it (issue #285): the title it was saved with (`save <slot> <title>`,
+    // Save(slot, kind, title)), else its name.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public string Title { get; internal init; } = "";
+
+    // The full path of its thumbnail (`thumbnail.png`, issue #285), for a load menu to show; null when it
+    // was saved without one (no client hook, a headless game, a save from before).
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public string? ThumbnailPath { get; internal init; }
+
+    // Its world files are gzip-compressed (`save_compress`, issue #285). Either kind loads.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public bool Compressed { get; internal init; }
 
     // Whether this build reads its format: not newer than FormatVersion, not older than OldestReadableFormat.
     public bool CanLoad => FormatVersion >= SaveSystem.OldestReadableFormat && FormatVersion <= SaveSystem.FormatVersion;
