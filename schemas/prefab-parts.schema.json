@@ -283,6 +283,14 @@
         }
       ]
     },
+    "nav_area": {
+      "description": "Prefab part 'nav_area' (NavAreaPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/nav_area"
+        }
+      ]
+    },
     "nav_door": {
       "description": "Prefab part 'nav_door' (NavDoorPart).",
       "allOf": [
@@ -1691,6 +1699,36 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'mover' (MoverPart)."
+    },
+    "nav_area": {
+      "type": "object",
+      "properties": {
+        "area": {
+          "description": "The nav_area record the ground inside is. Names a nav_area record. (RecordRef<NavAreaRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:nav_area"
+            }
+          ]
+        },
+        "size": {
+          "description": "Full extents of the box, centred on the entity. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'nav_area' (NavAreaPart)."
     },
     "nav_door": {
       "type": "object",

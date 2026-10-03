@@ -446,8 +446,8 @@ Creatures walk round things instead of into them.
   cannot tell steering and planning apart.
 - **Not built here:** a navmesh for brush-built interiors and a coarse graph for travelling across sectors
   (both arrived with #264, below), doors and other links a path has to *act* on (#265, below), crowds avoiding each
-  other (creatures are left out of the stamp on purpose), and paths that cost ground differently (mud,
-  water, roads).
+  other (creatures are still left out of the stamp on purpose; they steer round each other since #271,
+  below), and paths that cost ground differently (mud, water, roads; #271, below).
 
 ### As built (the navmesh, issue #264, 2026-10-02)
 - **A navmesh first, the grid as its fallback** (`src/Sage.Gameplay/Navigation/NavMesh.cs`). `Navigation.Plan`
@@ -530,6 +530,52 @@ Creatures walk round things instead of into them.
   grid fallback still stamps a closed prefab door as a wall and knows no links; `sage validate` does not
   count a level's links when it asks whether a marker can be reached; a link is resolved only within
   48 m of a plan's ends, so a teleport to the far side of the world is used once a creature is near it.
+
+### As built (crowds, ground that costs and body sizes, issue #271, 2026-10-02)
+- **Creatures steer round each other** (`src/Sage.Gameplay/Navigation/Crowd.cs`). Characters on one physics
+  layer pass through each other, so before this twenty villagers in one street walked through each other
+  (test: WithoutAvoidanceTheSameCrowdWalksThroughItself). Now a walking creature with anybody within four
+  metres scores a fan of candidate velocities — the one it wants, sixteen directions at three speeds, and
+  standing still — by how far each is from what it wants and from what it is doing, how soon it would
+  touch a neighbour (reciprocally toward another creature, which takes half the swerve; wholly toward the
+  player), and a small penalty for passing on the left, and walks the cheapest one that a knee-high ray
+  says has room. Keeping right is what turns two files meeting head-on into lanes rather than a standoff,
+  and a creature that has hardly moved for a second while it wants to raises that bias until it is moving.
+  It walks the chosen velocity at once, sideways if need be, while it turns to face it; with nobody near
+  it walks exactly as before. Twenty creatures meeting head-on in a 4 m corridor all reach the far end
+  inside twenty seconds (about ten, measured) and no two centres come within 0.6 m (touching is 0.7; test:
+  TwentyCreaturesConvergingInACorridorAllGetThroughRoundEachOther). `nav_avoid 0` is the A/B.
+- **Ground that costs** (`src/Sage.Gameplay/Navigation/NavAreas.cs`): a `nav_area` record has a `cost` per
+  metre (1 is ordinary ground; under 1 is allowed, and the planners scale their estimates by the cheapest),
+  the `forbidden` factions that never plan through it, the `surfaces` (physics_materials, #270) whose
+  ground it is, and `water` (every water volume, #262). Ground is an area by a `nav_area` volume (the part
+  of that name, `area` and `size`; where two overlap the dearer wins), else by water, else by what it is
+  made of — a brush face's texture, a collider's `surface`, a terrain layer (test:
+  BrushTexturesAndTerrainLayersAreTheAreaOfWhatTheyAreMadeOf) — else it is ordinary ground.
+  Each navmesh span takes its area when its tile is baked, regions split where the area changes (and link
+  to each other inside a tile), the coarse search weighs a region by its area and the fine one a step by
+  the spans it is between, a span within a body's radius of dearer ground costs halfway to it (so a path
+  keeps a body's width inside a road), and straightening never cuts across ground dearer than the stretch
+  it replaces. A pool with a dry strip beside it is planned round (test:
+  ThePlannerGoesRoundDearWaterAndStraightensOnlyOverCheapGround), and a creature takes a gravel road 45 m
+  round a grass field rather than 24 m across it, without leaving the road (test:
+  ACreatureTakesTheRoadRoundAFieldRatherThanTheShortWayAcrossIt; with no areas it walks across, test:
+  WithoutAreasTheSameCreatureWalksStraightAcrossTheField). A clear line is no longer always the answer: with
+  areas in the game a creature walks straight only when every span of the line is the cheapest ground there
+  is, and plans otherwise.
+- **Ground closed to a faction.** A plan for a member of a `forbidden` faction does not enter the area (the
+  span it starts on excepted, so one that finds itself inside can walk out), and a goal inside it is no
+  route (test: GroundClosedToAFactionIsPlannedRoundByItAndCrossedByOthers). A creature whose straight line to
+  what it chases crosses such ground walks to its edge and stands there (test:
+  AWolfChasingIntoGroundClosedToItStopsAtTheEdge).
+- **Body sizes.** The navmesh is baked per size class: small (0.25 m radius, 1 m tall), a person (the
+  default profile's 0.35 m and 1.8 m) and large (0.8 m, 3 m). A body takes the smallest class its movement
+  profile's radius and standing height fit, so a rat goes under a beam a person cannot and an ogre does not
+  try a door a person fits (test: EachBodyPlansOnTheMeshOfItsOwnSize). A class's mesh exists only once a
+  body of that size has planned; every change drops the tiles of all of them.
+- **Not done:** the local grid (where there is no mesh) knows no areas; the classes are fixed in code, not
+  data; a creature that is pushed into closed ground walks out but does not hurry; and the crowd steers only
+  creatures that are walking somewhere (one standing at its post does not step aside).
 
 ### As built (conventions, the `Died` event and the narrative plugins, issue #26, 2026-09-29)
 - **`gameplay_conventions`** (`src/Sage.Gameplay/Conventions/GameplayConventions.cs`, owned by `sage.gameplay.attributes`): one record says which attribute is health, which tags are dead and invulnerable, the default damage type, attack, movement and AI profiles, the player's faction, the attribute spellmaker spells cost, the five schedules the AI's built-in choice picks (`idle`, `chase`, `meleeAttack`, `castSpell`, `holdGround`) and the action names combat, items, abilities, AI and the character controller read. The engine ships `sage:default_conventions` in `engine_content/data/conventions.json` (with a `sage:player` faction in `factions.json`) and code reads it with `world.Conventions()` (test: TheEngineShipsItsConventionsAsOneRecord); a game patches it, which is how it renames health to hp (test: AGameRenamesHealthToHpByChangingOneRecord). Fourteen `new RecordId("sage", …)` constants are gone from `Sage.Gameplay` and `Sage.Physics3D` and the Sandbox's two literals with them; a test greps those folders and `games/` for any that come back (test: NoGameplayCodeNamesAnEngineRecordId).

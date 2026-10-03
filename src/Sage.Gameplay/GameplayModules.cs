@@ -416,6 +416,7 @@ public sealed class AIModule : IModule
     private CVar<int>? _navNodes;
     private CVar<int>? _navPlans;
     private CVar<bool>? _navMesh;
+    private CVar<bool>? _navAvoid;
     private CVar<int>? _offscreenBudget;
 
     public IReadOnlyList<Type> Dependencies => new[] { typeof(CombatModule) };
@@ -454,6 +455,9 @@ public sealed class AIModule : IModule
         // Off, every plan is the local grid's, which does not see brushes.
         _navMesh = ctx.Engine.CVars.Register("nav_mesh", true, CVarFlags.Cheat,
             "Plan on the navmesh baked from brushes, terrain and static colliders; off, only the local grid (#264).");
+        // Crowds (#271): creatures steer round each other. Off, they walk through each other as they did.
+        _navAvoid = ctx.Engine.CVars.Register("nav_avoid", true, CVarFlags.Cheat,
+            "Let creatures steer round each other (sampled velocity obstacles, #271); off, they walk through each other.");
         var navEngine = ctx.Engine;
         ctx.Engine.CVars.RegisterCommand("nav_rebuild", CVarFlags.None,
             "Drop every baked navmesh tile; they are baked again from what is there now, as creatures need them.", _ =>
@@ -482,7 +486,11 @@ public sealed class AIModule : IModule
         _records.Reloaded += () =>
         {
             foreach (var world in engine.Worlds)
+            {
                 if (world.Resources.TryGet<OffscreenMap>(out var map) && map != null) map.Invalidate();
+                // The nav_area records may have changed, and every tile baked from them (#271).
+                if (world.Resources.TryGet<Navigation>(out var nav) && nav != null) nav.ReloadAreas();
+            }
         };
         ctx.Engine.CVars.RegisterCommand("offscreen_status", CVarFlags.None,
             "The off-screen agents of each world: how many, how many dead, and the game minute simulated to.", _ =>
@@ -505,7 +513,8 @@ public sealed class AIModule : IModule
                 if (!world.Resources.TryGet<Navigation>(out var nav) || nav == null) continue;
                 Log.Info(LogCat.Console,
                     $"'{world.Name}': {nav.Plans} plans ({nav.MeshPlans} on the navmesh, {nav.GridPlans} on the grid), " +
-                    $"{nav.Refused} over budget, {nav.NoRoute} with no way through; navmesh {nav.Mesh.TileCount} tile(s), " +
+                    $"{nav.Refused} over budget, {nav.NoRoute} with no way through; {nav.Crowd.Steered} steer(s) round {nav.Crowd.Count} character(s); " +
+                    $"{nav.Areas.Count} nav_area(s); navmesh {nav.Mesh.TileCount} tile(s), " +
                     $"{nav.Mesh.Baked} baked, {nav.Mesh.LastNodes} nodes last search; last grid {nav.Grid.Width}x{nav.Grid.Height} " +
                     $"cells of {nav.Grid.CellSize:F2} m, {nav.Grid.BlockedCells()} blocked, {nav.Grid.LastNodes} nodes searched");
                 nav.ResetStats();
@@ -556,6 +565,7 @@ public sealed class AIModule : IModule
             MaxNodes = _navNodes!.Value,
             PlansPerTick = _navPlans!.Value,
             UseMesh = _navMesh!.Value,
+            Avoidance = _navAvoid!.Value,
         });
         world.AddSystem(new AIDebugSystem(world, _records!, _aiDebug!));   // 16 §11
         // Off-screen simulation (issue 4g-6): the saved table of agents, and what steps it.

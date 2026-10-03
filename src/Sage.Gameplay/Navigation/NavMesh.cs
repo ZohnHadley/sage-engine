@@ -50,12 +50,17 @@ internal readonly struct NavSolid
 {
     public readonly Vector3 Min, Max;
     public readonly Vector4[]? Planes;   // outward normal in XYZ, distance in W: inside is n·p <= w
+    // The area its top is (#271): a box's one, or a hull's per face (null: all ground).
+    public readonly byte Area;
+    public readonly byte[]? FaceAreas;
 
-    public NavSolid(Vector3 min, Vector3 max, Vector4[]? planes = null)
+    public NavSolid(Vector3 min, Vector3 max, Vector4[]? planes = null, byte area = NavAreas.Ground, byte[]? faceAreas = null)
     {
         Min = min;
         Max = max;
         Planes = planes;
+        Area = area;
+        FaceAreas = faceAreas;
     }
 }
 
@@ -66,10 +71,16 @@ internal sealed class NavGeometry
     public readonly List<NavSolid> Solids = new();
     public Terrain? Terrain;
 
-    // A brush's planes, oriented outward and moved by `offset` (level-local to absolute).
-    public static NavSolid FromBrush(LevelBrush brush, Vector3 offset)
+    // What the ground costs (#271): the areas, and the boxes of them (nav_area and water volumes).
+    public NavAreas Areas = NavAreas.None;
+    public readonly List<NavAreaBox> Volumes = new();
+
+    // A brush's planes, oriented outward and moved by `offset` (level-local to absolute). `areaOf` says
+    // which area a face's texture is; without it every face is ordinary ground.
+    public static NavSolid FromBrush(LevelBrush brush, Vector3 offset, Func<string, byte>? areaOf = null)
     {
         var planes = new Vector4[brush.Faces.Length];
+        byte[]? areas = null;
         var centre = brush.Centre;
         for (int i = 0; i < planes.Length; i++)
         {
@@ -78,8 +89,10 @@ internal sealed class NavGeometry
             float d = Vector3.Dot(n, face.Positions[0]);
             if (Vector3.Dot(n, centre) > d) { n = -n; d = -d; }   // whatever the winding said, outward
             planes[i] = new Vector4(n, d + Vector3.Dot(n, offset));
+            byte area = areaOf?.Invoke(face.Texture) ?? NavAreas.Ground;
+            if (area != NavAreas.Ground) (areas ??= new byte[planes.Length])[i] = area;
         }
-        return new NavSolid(brush.Min + offset, brush.Max + offset, planes);
+        return new NavSolid(brush.Min + offset, brush.Max + offset, planes, faceAreas: areas);
     }
 
     public void AddLevel(MapLevel level, Vector3 absolutePosition)
@@ -101,8 +114,12 @@ internal sealed class NavTile
     public short[] Column = Array.Empty<short>();     // which column a span is in
     public int[] Links = Array.Empty<int>();          // span*4 + direction: a packed span, or -1
     public short[] Region = Array.Empty<short>();
+    public byte[] Area = Array.Empty<byte>();         // which nav_area a span is (#271); 0 is ordinary ground
+    public byte[]? Near;                              // the dearest area within a body's radius of it (null: no areas)
     public int RegionCount;
     public Vector3[] RegionCentre = Array.Empty<Vector3>();
+    public byte[] RegionArea = Array.Empty<byte>();   // a region is all one area
+    public int[][] RegionNeighbours = Array.Empty<int[]>();   // regions of this tile it links to (another area)
     public byte[] RegionSides = Array.Empty<byte>();  // bit d: the region has spans on the edge facing d
 
     // The fine search's working set, stamped with a search number rather than cleared.
@@ -114,6 +131,9 @@ internal sealed class NavTile
 }
 
 internal enum NavMeshAnswer { Found, NoRoute, CannotAnswer }
+
+// What walking straight would cross (NavMesh.Line, #271).
+internal enum NavLine : byte { Best, Dearer, Forbidden }
 
 internal sealed class NavMesh
 {
@@ -247,6 +267,9 @@ internal sealed class NavMesh
 
     // Scratch for one bake, kept so a bake allocates only the tile it makes.
     private float[] _pFloor = Array.Empty<float>(), _pCeil = Array.Empty<float>();
+    private byte[] _pArea = Array.Empty<byte>(), _pNear = Array.Empty<byte>();
+    private readonly int[] _nearSpans = new int[64];
+    private readonly List<int> _volumes = new();
     private int[] _pCount = Array.Empty<int>(), _pLinks = Array.Empty<int>(), _pDist = Array.Empty<int>(), _pMap = Array.Empty<int>();
     private int[] _queue = Array.Empty<int>();
     private readonly List<int> _candidates = new();
@@ -255,6 +278,7 @@ internal sealed class NavMesh
     private struct Interval
     {
         public float Lo, Hi, TopNy;
+        public byte Area;
     }
 
     public NavTile Bake(int tx, int tz, NavGeometry geometry)
@@ -266,6 +290,8 @@ internal sealed class NavMesh
         {
             _pFloor = new float[capacity];
             _pCeil = new float[capacity];
+            _pArea = new byte[capacity];
+            _pNear = new byte[capacity];
             _pLinks = new int[capacity * 4];
             _pDist = new int[capacity];
             _pMap = new int[capacity];
@@ -298,9 +324,17 @@ internal sealed class NavMesh
                     terrain.Sector(Terrain.SectorOf(cx, cz)) is { } sector)
                 {
                     var corner = sector.Coord.Origin(Terrain.SectorSize);
-                    float h = sector.Heights.HeightAt(cx - corner.X, cz - corner.Z);
-                    float ny = sector.Heights.NormalAt(cx - corner.X, cz - corner.Z).Y;
-                    Push(ref n, -1e9f, h, ny);
+                    var heights = sector.Heights;
+                    float h = heights.HeightAt(cx - corner.X, cz - corner.Z);
+                    float ny = heights.NormalAt(cx - corner.X, cz - corner.Z).Y;
+                    // What the ground is made of, by its layer (#270), is the area it is (#271).
+                    byte area = NavAreas.Ground;
+                    if (geometry.Areas.Count > 0 && terrain.SurfaceLayers.Count > 0)
+                    {
+                        byte layer = heights.LayerAt((int)MathF.Floor((cx - corner.X) / heights.Spacing), (int)MathF.Floor((cz - corner.Z) / heights.Spacing));
+                        area = geometry.Areas.OfSurface(terrain.SurfaceLayers[layer < terrain.SurfaceLayers.Count ? layer : 0]);
+                    }
+                    Push(ref n, -1e9f, h, ny, area);
                 }
 
                 foreach (int index in _candidates)
@@ -308,8 +342,9 @@ internal sealed class NavMesh
                     var solid = geometry.Solids[index];
                     if (solid.Max.X <= cx - half + Touch || solid.Min.X >= cx + half - Touch ||
                         solid.Max.Z <= cz - half + Touch || solid.Min.Z >= cz + half - Touch) continue;
-                    if (solid.Planes == null) { Push(ref n, solid.Min.Y, solid.Max.Y, 1f); continue; }
-                    if (Column(solid.Planes, cx, cz, half, out float lo, out float hi, out float topNy)) Push(ref n, lo, hi, topNy);
+                    if (solid.Planes == null) { Push(ref n, solid.Min.Y, solid.Max.Y, 1f, solid.Area); continue; }
+                    if (Column(solid.Planes, cx, cz, half, out float lo, out float hi, out float topNy, out int top))
+                        Push(ref n, lo, hi, topNy, solid.FaceAreas != null && top >= 0 ? solid.FaceAreas[top] : NavAreas.Ground);
                 }
 
                 // Sorted bottom up (insertion: a column has a handful), then merged where they touch.
@@ -326,7 +361,7 @@ internal sealed class NavMesh
                     if (merged > 0 && _intervals[a].Lo <= _intervals[merged - 1].Hi + MergeGap)
                     {
                         ref var last = ref _intervals[merged - 1];
-                        if (_intervals[a].Hi > last.Hi) { last.Hi = _intervals[a].Hi; last.TopNy = _intervals[a].TopNy; }
+                        if (_intervals[a].Hi > last.Hi) { last.Hi = _intervals[a].Hi; last.TopNy = _intervals[a].TopNy; last.Area = _intervals[a].Area; }
                         continue;
                     }
                     _intervals[merged++] = _intervals[a];
@@ -341,9 +376,13 @@ internal sealed class NavMesh
                     int span = column * MaxLayers + count++;
                     _pFloor[span] = floor;
                     _pCeil[span] = ceiling;
+                    _pArea[span] = _intervals[a].Area;
                 }
                 _pCount[column] = count;
             }
+
+        // 1b. Areas by volume (#271): water, then nav_area boxes over it, the dearest of those winning.
+        if (geometry.Volumes.Count > 0) PaintVolumes(geometry, x0, z0, w);
 
         // 2. Links to the neighbouring columns: a step up or down, with room for a body across it.
         for (int j = 0; j < w; j++)
@@ -406,6 +445,21 @@ internal sealed class NavMesh
             }
         }
 
+        // 3b. With areas (#271): the dearest area within a body's radius of each span. A step is costed as if
+        // half on it, so a path keeps a body's width inside the road rather than hugging the grass.
+        bool areas = geometry.Areas.Count > 0;
+        if (areas)
+            for (int j = pad; j < pad + Cells; j++)
+                for (int i = pad; i < pad + Cells; i++)
+                {
+                    int column = j * w + i;
+                    for (int k = 0; k < _pCount[column]; k++)
+                    {
+                        int span = column * MaxLayers + k;
+                        _pNear[span] = DearestNear(span, pad - 1, geometry.Areas);
+                    }
+                }
+
         // 4. The tile's own spans: the inner columns, eroded, compacted.
         int kept = 0;
         for (int j = 0; j < Cells; j++)
@@ -426,8 +480,9 @@ internal sealed class NavMesh
             X = tx, Z = tz, Slot = slot,
             ColumnStart = new int[Cells * Cells + 1],
             Floor = new float[kept], Ceiling = new float[kept], Column = new short[kept],
-            Links = new int[kept * 4], Region = new short[kept],
+            Links = new int[kept * 4], Region = new short[kept], Area = new byte[kept],
             Cost = new float[kept], From = new int[kept], Visited = new int[kept],
+            Near = areas ? new byte[kept] : null,
         };
         int written = 0;
         for (int j = 0; j < Cells; j++)
@@ -442,6 +497,8 @@ internal sealed class NavMesh
                     if (_pMap[span] < 0) continue;
                     tile.Floor[written] = _pFloor[span];
                     tile.Ceiling[written] = _pCeil[span];
+                    tile.Area[written] = _pArea[span];
+                    if (tile.Near != null) tile.Near[written] = _pNear[span];
                     tile.Column[written] = (short)local;
                     for (int d = 0; d < 4; d++)
                     {
@@ -466,23 +523,91 @@ internal sealed class NavMesh
         return tile;
     }
 
-    private void Push(ref int n, float lo, float hi, float topNy)
+    // The dearest area of the spans within `depth` links of `span` (itself included), in the padded bake.
+    private byte DearestNear(int span, int depth, NavAreas areas)
+    {
+        byte dearest = _pArea[span];
+        int count = 0, head = 0;
+        _nearSpans[count++] = span;
+        for (int level = 0; level < depth; level++)
+        {
+            int end = count;
+            for (; head < end; head++)
+                for (int d = 0; d < 4; d++)
+                {
+                    int next = _pLinks[_nearSpans[head] * 4 + d];
+                    if (next < 0) continue;
+                    bool seen = false;
+                    for (int k = 0; k < count; k++) if (_nearSpans[k] == next) { seen = true; break; }
+                    if (seen || count == _nearSpans.Length) continue;
+                    _nearSpans[count++] = next;
+                    if (areas.Cost(_pArea[next]) > areas.Cost(dearest)) dearest = _pArea[next];
+                }
+        }
+        return dearest;
+    }
+
+    private void Push(ref int n, float lo, float hi, float topNy, byte area)
     {
         if (n == _intervals.Length) Array.Resize(ref _intervals, n * 2);
-        _intervals[n++] = new Interval { Lo = lo, Hi = hi, TopNy = topNy };
+        _intervals[n++] = new Interval { Lo = lo, Hi = hi, TopNy = topNy, Area = area };
+    }
+
+    // The volumes over the padded tile paint the spans whose floor is inside them. Water first, so a
+    // nav_area box over a ford wins; among boxes the dearest wins, whatever order they came in.
+    private void PaintVolumes(NavGeometry geometry, float x0, float z0, int w)
+    {
+        float x1 = x0 + w * Cell, z1 = z0 + w * Cell;
+        _volumes.Clear();
+        for (int i = 0; i < geometry.Volumes.Count; i++)
+        {
+            var box = geometry.Volumes[i];
+            if (box.Max.X < x0 || box.Min.X > x1 || box.Max.Z < z0 || box.Min.Z > z1) continue;
+            _volumes.Add(i);
+        }
+        if (_volumes.Count == 0) return;
+
+        var areas = geometry.Areas;
+        for (int j = 0; j < w; j++)
+            for (int i = 0; i < w; i++)
+            {
+                int column = j * w + i;
+                float cx = x0 + (i + 0.5f) * Cell, cz = z0 + (j + 0.5f) * Cell;
+                for (int k = 0; k < _pCount[column]; k++)
+                {
+                    int span = column * MaxLayers + k;
+                    float floor = _pFloor[span];
+                    byte water = NavAreas.Ground, painted = NavAreas.Ground;
+                    float dearest = float.MinValue;
+                    foreach (int v in _volumes)
+                    {
+                        var box = geometry.Volumes[v];
+                        if (cx < box.Min.X || cx > box.Max.X || cz < box.Min.Z || cz > box.Max.Z) continue;
+                        // A floor under the water's surface (a riverbed, a ford) is in it; one in a box,
+                        // or a step below its bottom (a road box laid on the ground), is in that.
+                        if (floor > box.Max.Y || floor < box.Min.Y - Agent.StepHeight) continue;
+                        if (box.IsWater) { water = box.Area; continue; }
+                        if (areas.Cost(box.Area) > dearest) { dearest = areas.Cost(box.Area); painted = box.Area; }
+                    }
+                    if (painted != NavAreas.Ground) _pArea[span] = painted;
+                    else if (water != NavAreas.Ground) _pArea[span] = water;
+                }
+            }
     }
 
     // The vertical extent of a convex hull over a square cell centred on (cx, cz), conservatively: every
     // plane is relaxed by how far the cell's corners reach along it, so a thin wall between two cell
     // centres still blocks the cell it is in rather than slipping between them (but one that only touches
     // a cell's edge is not in it: `Touch`).
-    private static bool Column(Vector4[] planes, float cx, float cz, float half, out float lo, out float hi, out float topNy)
+    private static bool Column(Vector4[] planes, float cx, float cz, float half, out float lo, out float hi, out float topNy, out int top)
     {
         lo = float.NegativeInfinity;
         hi = float.PositiveInfinity;
         topNy = 1f;
-        foreach (var p in planes)
+        top = -1;
+        for (int i = 0; i < planes.Length; i++)
         {
+            var p = planes[i];
             float s = p.X * cx + p.Z * cz;
             float slack = half * (MathF.Abs(p.X) + MathF.Abs(p.Z));
             if (MathF.Abs(p.Y) < 1e-4f)
@@ -491,7 +616,7 @@ internal sealed class NavMesh
                 continue;
             }
             float bound = (p.W - s + slack) / p.Y;
-            if (p.Y > 0f) { if (bound < hi) { hi = bound; topNy = p.Y; } }
+            if (p.Y > 0f) { if (bound < hi) { hi = bound; topNy = p.Y; top = i; } }
             else if (bound > lo) lo = bound;
         }
         return lo < hi && !float.IsInfinity(hi);
@@ -519,6 +644,7 @@ internal sealed class NavMesh
         if (_queue.Length < count) _queue = new int[count];
         var centres = new List<Vector3>();
         var sides = new List<byte>();
+        var areas = new List<byte>();
         for (int seed = 0; seed < count; seed++)
         {
             if (tile.Region[seed] >= 0) continue;
@@ -526,6 +652,7 @@ internal sealed class NavMesh
             int head = 0, tail = 0;
             _queue[tail++] = seed;
             tile.Region[seed] = region;
+            byte area = tile.Area[seed];
             Vector3 sum = Vector3.Zero;
             byte mask = 0;
             while (head < tail)
@@ -542,17 +669,37 @@ internal sealed class NavMesh
                     int link = tile.Links[span * 4 + d];
                     if (link < 0) continue;
                     int next = link & SpanMask;
-                    if (tile.Region[next] >= 0) continue;
+                    if (tile.Region[next] >= 0 || tile.Area[next] != area) continue;   // a region is one area (#271)
                     tile.Region[next] = region;
                     _queue[tail++] = next;
                 }
             }
             centres.Add(sum / tail);
             sides.Add(mask);
+            areas.Add(area);
         }
         tile.RegionCount = centres.Count;
         tile.RegionCentre = centres.ToArray();
         tile.RegionSides = sides.ToArray();
+        tile.RegionArea = areas.ToArray();
+
+        // Regions of different areas side by side in one tile link to each other (#271): without areas a
+        // tile's regions are apart by construction, and the coarse search only looked across its edges.
+        var neighbours = new List<int>?[tile.RegionCount];
+        bool any = false;
+        for (int span = 0; span < count; span++)
+            for (int d = 0; d < 4; d++)
+            {
+                int link = tile.Links[span * 4 + d];
+                if (link < 0) continue;
+                int a = tile.Region[span], b = tile.Region[link & SpanMask];
+                if (a == b) continue;
+                var list = neighbours[a] ??= new List<int>();
+                if (!list.Contains(b)) { list.Add(b); any = true; }
+            }
+        tile.RegionNeighbours = new int[tile.RegionCount][];
+        for (int r = 0; r < tile.RegionCount; r++)
+            tile.RegionNeighbours[r] = any && neighbours[r] is { } list ? list.ToArray() : Array.Empty<int>();
     }
 
     // Links the spans along the edge two tiles share, both ways. `d` is the direction from `a` to `b`.
@@ -703,14 +850,21 @@ internal sealed class NavMesh
     // The same, with doors and off-mesh links (#265). When the way goes through a door or over a link the
     // corners stop at its far side, and `crossing` says at which corner it starts and what it is: the
     // creature acts on it there and plans again from the far side.
+    //
+    // `filter` is the areas this plan may not enter (#271): a faction's forbidden ground. The span it starts
+    // on is always allowed, so a creature that finds itself inside one can still walk out.
     public NavMeshAnswer Plan(Vector3 from, Vector3 to, NavGeometry geometry, NavCrossings? crossings, int maxNodes,
-                              Span<Vector3> corners, out int count, out bool reachedGoal, out NavMeshCrossing crossing)
+                              Span<Vector3> corners, out int count, out bool reachedGoal, out NavMeshCrossing crossing,
+                              NavFilter filter = default)
     {
         count = 0;
         reachedGoal = false;
         crossing = default;
         LastNodes = 0;
         _crossings = null;
+        _areas = geometry.Areas;
+        _filter = filter;
+        _minCost = MathF.Min(_areas.MinCost, 1f);
         _edges.Clear();
         _doors.Clear();
         if (corners.Length == 0) return NavMeshAnswer.CannotAnswer;
@@ -728,6 +882,7 @@ internal sealed class NavMesh
         {
             goal = FindSpan(to);
             if (goal < 0) return NavMeshAnswer.CannotAnswer;   // standing on something the mesh does not have
+            if (goal != start && _filter.Forbids(AreaOf(goal))) return NavMeshAnswer.NoRoute;   // in ground closed to it
         }
 
         ResolveCrossings(from, to, geometry, crossings);
@@ -741,7 +896,8 @@ internal sealed class NavMesh
         int startNode = RegionNode(startSlot, startRegion);
         _nodes[startNode].Cost = 0f;
         _nodes[startNode].Parent = -1;
-        _coarseOpen.Push(startNode, XZ(_nodes[startNode].At, to));
+        _startNode = startNode;
+        _coarseOpen.Push(startNode, XZ(_nodes[startNode].At, to) * _minCost);
 
         int goalNode;
         if (goal >= 0)
@@ -770,7 +926,7 @@ internal sealed class NavMesh
                 if (_nodes[next].Parent != -2 && cost >= _nodes[next].Cost) continue;
                 _nodes[next].Cost = cost;
                 _nodes[next].Parent = current;
-                _coarseOpen.Push(next, cost + XZ(_nodes[next].At, to));
+                _coarseOpen.Push(next, cost + XZ(_nodes[next].At, to) * _minCost);
             }
         }
         LastNodes = nodes;
@@ -796,7 +952,7 @@ internal sealed class NavMesh
         startTile.Cost[startSpan] = 0f;
         startTile.From[startSpan] = -1;
         startTile.LastUsed = ++_useClock;
-        _fineOpen.Push(start, XYZ(PositionOf(start), aim));
+        _fineOpen.Push(start, XYZ(PositionOf(start), aim) * _minCost);
 
         int end = -1;
         while (_fineOpen.Count > 0 && nodes < maxNodes)
@@ -810,8 +966,16 @@ internal sealed class NavMesh
 
             if (corridorHasGoal ? current == goal : IsExit(current, _route[last], exitNode)) { end = current; break; }
 
+            // A step costs its length times the areas it is between (#271): ordinary ground is 1, so a
+            // world with no areas searches exactly as before.
+            float here = _areas.Count > 0 ? SpanCost(current) : 1f;
             for (int dir = 0; dir < 8; dir++)
-                Relax(current, Step(current, dir), tile.Cost[span] + (dir < 4 ? Cell : Cell * 1.41421356f), last, aim);
+            {
+                int next = Step(current, dir);
+                if (next < 0) continue;
+                float per = _areas.Count > 0 ? (here + SpanCost(next)) * 0.5f : 1f;
+                Relax(current, next, tile.Cost[span] + (dir < 4 ? Cell : Cell * 1.41421356f) * per, last, aim);
+            }
 
             // And over any link that starts here (#265).
             foreach (var edge in _edges)
@@ -945,6 +1109,7 @@ internal sealed class NavMesh
         var nextTile = TileAt(next);
         int nextSpan = next & SpanMask;
         if (nextTile.Visited[nextSpan] == -_search) return;
+        if (_filter.Forbids(nextTile.Area[nextSpan])) return;
         int door = DoorAt(next);
         if (door >= 0 && !_crossings!.Doors[door].Open) cost += ClosedDoorCost * Cell;
         if (nextTile.Visited[nextSpan] == _search && cost >= nextTile.Cost[nextSpan]) return;
@@ -952,8 +1117,36 @@ internal sealed class NavMesh
         nextTile.Cost[nextSpan] = cost;
         nextTile.From[nextSpan] = current;
         nextTile.LastUsed = _useClock;
-        _fineOpen.Push(next, cost + XYZ(PositionOf(next), aim));
+        _fineOpen.Push(next, cost + XYZ(PositionOf(next), aim) * _minCost);
     }
+
+    // ---- areas (#271) ----------------------------------------------------------------------------------
+
+    private NavAreas _areas = NavAreas.None;
+    private NavFilter _filter;
+    private float _minCost = 1f;
+    private int _startNode;
+
+    public byte AreaOf(int packed) => TileAt(packed).Area[packed & SpanMask];
+
+    // What a metre on a span costs: its area's, or, within a body's radius of a dearer area, halfway to that.
+    private float SpanCost(int packed)
+    {
+        var tile = TileAt(packed);
+        int span = packed & SpanMask;
+        byte area = tile.Area[span];
+        float cost = _areas.Cost(area);
+        if (tile.Near is { } near && near[span] != area) cost = (cost + _areas.Cost(near[span])) * 0.5f;
+        return cost;
+    }
+
+    // A coarse node's cost per metre: its region's area, or the cheapest there is for a tile not baked yet.
+    private float NodeCost(int node) =>
+        _nodes[node].Slot < 0 ? _minCost : _areas.Cost(_slots[_nodes[node].Slot]!.RegionArea[_nodes[node].Region]);
+
+    private bool NodeForbidden(int node) =>
+        _filter.Any && _nodes[node].Slot >= 0 && node != _startNode &&
+        _filter.Forbids(_slots[_nodes[node].Slot]!.RegionArea[_nodes[node].Region]);
 
     // The first door or link along the fine path: `before` is the last span short of it, `after` the
     // first beyond it (a door's: the first span out from under it).
@@ -1069,8 +1262,11 @@ internal sealed class NavMesh
             }
         }
 
-        // The regions a link from this one lands in (#265), for what walking to it and over it costs.
+        // The regions of other areas beside it in its own tile (#271).
         if (n.Slot < 0) return;
+        foreach (int r in _slots[n.Slot]!.RegionNeighbours[n.Region]) AddNeighbour(RegionNode(n.Slot, r), node);
+
+        // The regions a link from this one lands in (#265), for what walking to it and over it costs.
         foreach (var edge in _edges)
         {
             if ((edge.From >> SpanBits) != n.Slot || _slots[n.Slot]!.Region[edge.From & SpanMask] != n.Region) continue;
@@ -1082,7 +1278,8 @@ internal sealed class NavMesh
 
     private void AddNeighbour(int next, int from, float cost = -1f)
     {
-        if (cost < 0f) cost = XZ(_nodes[from].At, _nodes[next].At);
+        if (NodeForbidden(next)) return;
+        if (cost < 0f) cost = XZ(_nodes[from].At, _nodes[next].At) * (NodeCost(from) + NodeCost(next)) * 0.5f;
         int i = _neighbours.IndexOf(next);
         if (i >= 0) { _neighbourCost[i] = MathF.Min(_neighbourCost[i], cost); return; }
         _neighbours.Add(next);
@@ -1160,7 +1357,11 @@ internal sealed class NavMesh
 
     // Can a body walk straight from one span to another over the mesh? Steps the cells the line crosses,
     // following links, and a diagonal step only where both ways round agree (as `Step`).
-    public bool LineIsClear(int from, int to)
+    public bool LineIsClear(int from, int to) => LineIsClear(from, to, float.MaxValue);
+
+    // The same, and every span on the way no dearer than `limit` and not closed to this plan (#271): a
+    // straightened path does not cut across the field it went round.
+    private bool LineIsClear(int from, int to, float limit)
     {
         var a = PositionOf(from);
         var b = PositionOf(to);
@@ -1200,8 +1401,56 @@ internal sealed class NavMesh
                 error += dx;
                 z += sz;
             }
+            if (limit < float.MaxValue && Dear(at, limit)) return false;
         }
         return at == to;
+    }
+
+    private float _lineDearest;
+    private bool _lineForbidden;
+    private int _lineEdge;
+
+    private bool Dear(int packed, float limit)
+    {
+        byte area = AreaOf(packed);
+        float cost = SpanCost(packed);
+        if (cost > _lineDearest) _lineDearest = cost;
+        bool forbidden = _filter.Forbids(area);
+        if (!forbidden && !_lineForbidden) _lineEdge = packed;
+        _lineForbidden |= forbidden;
+        return cost > limit + 1e-4f || forbidden;
+    }
+
+    // What the straight line between two absolute points crosses, as far as areas go (#271): `Best` when
+    // every span on it is the cheapest ground there is (no plan can beat it), `Forbidden` when it enters
+    // ground closed to this filter, `Dearer` otherwise — including when the mesh cannot follow the line
+    // (an edge, a tile not baked yet), which a plan will sort out. Where the mesh has nothing under either
+    // end, `Best`: walking straight is what a creature did before. `edge` is the last span on the line
+    // before ground closed to it (absolute): where a creature that may not go on stops.
+    public NavLine Line(Vector3 from, Vector3 to, NavGeometry geometry, NavFilter filter, out Vector3 edge)
+    {
+        edge = from;
+        _areas = geometry.Areas;
+        _filter = filter;
+        TryBake(TileOf(from.X), TileOf(from.Z), geometry, unbudgeted: true);
+        int a = FindSpan(from);
+        if (a < 0) return NavLine.Best;
+        if (!TryBake(TileOf(to.X), TileOf(to.Z), geometry)) return NavLine.Dearer;
+        int b = FindSpan(to);
+        if (b < 0) return NavLine.Best;
+
+        _lineDearest = 0f;
+        _lineForbidden = false;
+        _lineEdge = a;
+        Dear(a, float.MaxValue);
+        bool clear = LineIsClear(a, b, 1e30f);
+        if (_lineForbidden)
+        {
+            edge = PositionOf(_lineEdge);
+            return NavLine.Forbidden;
+        }
+        if (!clear) return NavLine.Dearer;
+        return _lineDearest > MathF.Min(_areas.MinCost, 1f) + 1e-4f ? NavLine.Dearer : NavLine.Best;
     }
 
     // The fine path's corners: keep a span only where the line from the last corner to the span after it
@@ -1210,15 +1459,21 @@ internal sealed class NavMesh
     // straight walk — the creature plans again from there.
     //
     // `end` is the last span of the path to straighten (a crossing's near side stops it short).
+    // With areas (#271) a shortcut may be no dearer than the stretch of path it replaces: `limit` is the
+    // dearest span from the last corner on.
     private int Straighten(Span<Vector3> corners, int end, out bool whole)
     {
         int written = 0;
         int anchor = _fine[0];
+        bool areas = _areas.Count > 0;
+        float limit = areas ? SpanCost(anchor) : float.MaxValue;
         for (int i = 1; i < end; i++)
         {
-            if (LineIsClear(anchor, _fine[i + 1])) continue;
+            if (areas) limit = MathF.Max(limit, MathF.Max(SpanCost(_fine[i]), SpanCost(_fine[i + 1])));
+            if (LineIsClear(anchor, _fine[i + 1], limit)) continue;
             corners[written++] = PositionOf(_fine[i]);
             anchor = _fine[i];
+            if (areas) limit = SpanCost(anchor);
             if (written == corners.Length) { whole = false; return written; }
         }
         corners[written++] = PositionOf(_fine[end]);

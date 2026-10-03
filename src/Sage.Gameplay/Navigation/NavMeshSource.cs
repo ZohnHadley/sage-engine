@@ -23,9 +23,27 @@ namespace Sage.Gameplay;
 // cells first, so a body settling by millimetres does not drop the tiles under it every tick. The doors
 // and the off-mesh links are gathered here too (`Crossings`), and `Version` changes whenever any of it
 // changes what a plan would say, which is how a creature knows its path is out of date.
+//
+// **Areas (#271).** Each solid carries the area its top is — a brush face's texture, a collider's surface,
+// both through the physics_material a `nav_area` covers — and the nav_area and water volumes are gathered
+// beside them; a volume added, moved or removed drops the tiles under it like a collider does.
 internal sealed class NavWorldGeometry
 {
     public NavGeometry Geometry { get; } = new();
+
+    // Every mesh baked from this geometry, one per body size (#271): a change drops the tiles of all of them.
+    public List<NavMesh> Meshes { get; } = new();
+
+    // The areas the solids and volumes are read as; set by Navigation, and Reset when they change.
+    public NavAreas Areas
+    {
+        get => Geometry.Areas;
+        set => Geometry.Areas = value;
+    }
+
+    private List<NavAreaBox> _volumes = new(), _previousVolumes = new();
+    private Query<NavArea, Transform>? _areaVolumes;
+    private Query<WaterVolume, Transform>? _waterVolumes;
 
     public NavCrossings Crossings { get; } = new();
 
@@ -60,7 +78,7 @@ internal sealed class NavWorldGeometry
     public int StaticBoxes => _boxes.Count;
     public int Levels => _levels.Count;
 
-    public void Sync(World world, NavMesh mesh)
+    public void Sync(World world)
     {
         if (world.Tick == _syncedTick && ReferenceEquals(world, _world)) return;
         _syncedTick = world.Tick;
@@ -70,14 +88,22 @@ internal sealed class NavWorldGeometry
             _colliders = world.Query<Transform, Collider>();
             _movers = world.Query<Mover, Transform>();
             _links = world.Query<NavLink, Transform>();
+            _areaVolumes = world.Query<NavArea, Transform>();
+            _waterVolumes = world.Query<WaterVolume, Transform>();
         }
 
         var offset = world.Resources.TryGet<Origin>(out var origin) && origin != null ? origin.ToAbsolute(Vector3.Zero) : Vector3.Zero;
-        bool changed = SyncTerrain(world, mesh);
-        changed |= SyncLevels(world, mesh, offset);
-        changed |= SyncColliders(world, mesh, offset);
+        bool changed = SyncTerrain(world);
+        changed |= SyncLevels(world, offset);
+        changed |= SyncColliders(world, offset);
+        bool volumes = SyncVolumes(offset);
         bool crossings = SyncCrossings(world, offset);
-        if (changed || crossings) Version++;
+        if (changed || crossings || volumes) Version++;
+        if (volumes)
+        {
+            Geometry.Volumes.Clear();
+            Geometry.Volumes.AddRange(_volumes);
+        }
         if (!changed) return;
 
         Geometry.Solids.Clear();
@@ -85,7 +111,68 @@ internal sealed class NavWorldGeometry
         Geometry.Solids.AddRange(_boxes);
     }
 
-    private bool SyncTerrain(World world, NavMesh mesh)
+    // Forgets everything it has seen, so the next Sync reads the world afresh: the areas changed (a
+    // reload), and what each solid is has to be read again. The meshes are cleared by the caller.
+    public void Reset()
+    {
+        _levels.Clear();
+        _boxes.Clear();
+        _previousBoxes.Clear();
+        _sectors.Clear();
+        _volumes.Clear();
+        _previousVolumes.Clear();
+        Geometry.Solids.Clear();
+        Geometry.Volumes.Clear();
+        _syncedTick = long.MinValue;
+        Version++;
+    }
+
+    private void Invalidate(Vector3 min, Vector3 max)
+    {
+        foreach (var mesh in Meshes) mesh.Invalidate(min, max);
+    }
+
+    // The nav_area and water volumes, against the last tick's (#271).
+    private bool SyncVolumes(Vector3 offset)
+    {
+        (_previousVolumes, _volumes) = (_volumes, _previousVolumes);
+        _volumes.Clear();
+        if (Areas.Count > 0)
+        {
+            if (Areas.Water != NavAreas.Ground)
+                foreach (var (waters, transforms, _) in _waterVolumes!.Value.Chunks)
+                {
+                    var w = waters.Span;
+                    var t = transforms.Span;
+                    for (int n = 0; n < w.Length; n++)
+                    {
+                        var centre = t[n].LocalPosition + offset;
+                        _volumes.Add(new NavAreaBox(centre - w[n].Size * 0.5f, centre + w[n].Size * 0.5f, Areas.Water, true));
+                    }
+                }
+            foreach (var (areas, transforms, _) in _areaVolumes!.Value.Chunks)
+            {
+                var a = areas.Span;
+                var t = transforms.Span;
+                for (int n = 0; n < a.Length; n++)
+                {
+                    byte area = Areas.Of(a[n].Area);
+                    if (area == NavAreas.Ground) continue;
+                    var centre = t[n].LocalPosition + offset;
+                    _volumes.Add(new NavAreaBox(centre - a[n].Size * 0.5f, centre + a[n].Size * 0.5f, area, false));
+                }
+            }
+        }
+
+        bool same = _volumes.Count == _previousVolumes.Count;
+        for (int i = 0; same && i < _volumes.Count; i++) same = _volumes[i] == _previousVolumes[i];
+        if (same) return false;
+        foreach (var box in _previousVolumes) Invalidate(box.Min, box.Max);
+        foreach (var box in _volumes) Invalidate(box.Min, box.Max);
+        return true;
+    }
+
+    private bool SyncTerrain(World world)
     {
         world.Resources.TryGet<Terrain>(out var terrain);
         Geometry.Terrain = terrain;
@@ -93,20 +180,20 @@ internal sealed class NavWorldGeometry
         if (terrain != null) foreach (var sector in terrain.Sectors) _sectorScratch.Add(sector.Coord);
         if (_sectorScratch.SetEquals(_sectors)) return false;
 
-        foreach (var coord in _sectorScratch) if (!_sectors.Contains(coord)) DropSector(mesh, coord);
-        foreach (var coord in _sectors) if (!_sectorScratch.Contains(coord)) DropSector(mesh, coord);
+        foreach (var coord in _sectorScratch) if (!_sectors.Contains(coord)) DropSector(coord);
+        foreach (var coord in _sectors) if (!_sectorScratch.Contains(coord)) DropSector(coord);
         _sectors.Clear();
         _sectors.UnionWith(_sectorScratch);
         return false;   // terrain is read through Geometry.Terrain, not the solids list
     }
 
-    private static void DropSector(NavMesh mesh, SectorCoord coord)
+    private void DropSector(SectorCoord coord)
     {
         var corner = coord.Origin(Terrain.SectorSize);
-        mesh.Invalidate(corner, corner + new Vector3(Terrain.SectorSize, 0, Terrain.SectorSize));
+        Invalidate(corner, corner + new Vector3(Terrain.SectorSize, 0, Terrain.SectorSize));
     }
 
-    private bool SyncLevels(World world, NavMesh mesh, Vector3 offset)
+    private bool SyncLevels(World world, Vector3 offset)
     {
         _levelScratch.Clear();
         bool changed = false;
@@ -121,9 +208,9 @@ internal sealed class NavWorldGeometry
                     _levelScratch.Add(known);
                     continue;
                 }
-                var placed = Place(level, at);
-                mesh.Invalidate(placed.Min, placed.Max);
-                if (known != null) mesh.Invalidate(known.Min, known.Max);
+                var placed = Place(level, at, world);
+                Invalidate(placed.Min, placed.Max);
+                if (known != null) Invalidate(known.Min, known.Max);
                 _levelScratch.Add(placed);
                 changed = true;
             }
@@ -131,7 +218,7 @@ internal sealed class NavWorldGeometry
         foreach (var old in _levels)
             if (Known(_levelScratch, old.Level) == null)
             {
-                mesh.Invalidate(old.Min, old.Max);
+                Invalidate(old.Min, old.Max);
                 changed = true;
             }
 
@@ -146,7 +233,7 @@ internal sealed class NavWorldGeometry
         return null;
     }
 
-    private static PlacedLevel Place(MapLevel level, Vector3 at)
+    private PlacedLevel Place(MapLevel level, Vector3 at, World world)
     {
         var min = new Vector3(float.MaxValue);
         var max = new Vector3(float.MinValue);
@@ -156,11 +243,18 @@ internal sealed class NavWorldGeometry
             max = Vector3.Max(max, brush.Max + at);
         }
         var placed = new PlacedLevel { Level = level, At = at, Min = min, Max = max };
-        foreach (var brush in level.Brushes) placed.Solids.Add(NavGeometry.FromBrush(brush, at));
+        // A face's texture is a physics_material (#270), and that is an area (#271).
+        Func<string, byte>? areaOf = null;
+        if (Areas.Count > 0 && world.Resources.TryGet<RecordStore>(out var records) && records != null)
+        {
+            var areas = Areas;
+            areaOf = texture => areas.OfSurface(level.SurfaceOf(texture, records));
+        }
+        foreach (var brush in level.Brushes) placed.Solids.Add(NavGeometry.FromBrush(brush, at, areaOf));
         return placed;
     }
 
-    private bool SyncColliders(World world, NavMesh mesh, Vector3 offset)
+    private bool SyncColliders(World world, Vector3 offset)
     {
         (_previousBoxes, _boxes) = (_boxes, _previousBoxes);
         _boxes.Clear();
@@ -192,7 +286,8 @@ internal sealed class NavWorldGeometry
                 var rotation = t[n].LocalRotation;
                 var centre = t[n].LocalPosition + Vector3.Transform(collider.Center, rotation) + offset;
                 var half = Rotated(HalfExtents(collider), rotation);
-                _boxes.Add(moves ? Snapped(centre - half, centre + half) : new NavSolid(centre - half, centre + half));
+                byte area = Areas.OfSurface(collider.Surface);
+                _boxes.Add(moves ? Snapped(centre - half, centre + half, area) : new NavSolid(centre - half, centre + half, area: area));
             }
         }
 
@@ -209,7 +304,7 @@ internal sealed class NavWorldGeometry
                 // The bounds are about where it is now; shut is where it was drawn.
                 var closedMin = shape.Min - t[n].LocalPosition + m[n].Closed + offset;
                 var closedMax = shape.Max - t[n].LocalPosition + m[n].Closed + offset;
-                bool door = closedMax.Y - closedMin.Y > mesh.Agent.StepHeight && m[n].OpenOffset != Vector3.Zero;
+                bool door = closedMax.Y - closedMin.Y > NavMeshAgent.Default.StepHeight && m[n].OpenOffset != Vector3.Zero;
                 if (!door)
                 {
                     _boxes.Add(Snapped(shape.Min + offset, shape.Max + offset));
@@ -228,8 +323,8 @@ internal sealed class NavWorldGeometry
         _boxKeys.Clear();
         foreach (var box in _previousBoxes) _boxKeys.Add((box.Min, box.Max));
         foreach (var box in _boxes)
-            if (!_boxKeys.Remove((box.Min, box.Max))) mesh.Invalidate(box.Min, box.Max);
-        foreach (var (min, max) in _boxKeys) mesh.Invalidate(min, max);
+            if (!_boxKeys.Remove((box.Min, box.Max))) Invalidate(box.Min, box.Max);
+        foreach (var (min, max) in _boxKeys) Invalidate(min, max);
         _boxKeys.Clear();
         return true;
     }
@@ -274,12 +369,12 @@ internal sealed class NavWorldGeometry
     }
 
     // Outward to the mesh's cells: a box that has moved by less than a cell bakes the same.
-    private static NavSolid Snapped(Vector3 min, Vector3 max)
+    private static NavSolid Snapped(Vector3 min, Vector3 max, byte area = NavAreas.Ground)
     {
         const float c = NavMesh.Cell;
         return new NavSolid(
             new Vector3(MathF.Floor(min.X / c) * c, MathF.Floor(min.Y / c) * c, MathF.Floor(min.Z / c) * c),
-            new Vector3(MathF.Ceiling(max.X / c) * c, MathF.Ceiling(max.Y / c) * c, MathF.Ceiling(max.Z / c) * c));
+            new Vector3(MathF.Ceiling(max.X / c) * c, MathF.Ceiling(max.Y / c) * c, MathF.Ceiling(max.Z / c) * c), area: area);
     }
 
     // Where a mover's solid is now, in origin space: its collider's box, or the hull a map built for it.

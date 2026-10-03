@@ -1,6 +1,6 @@
 # 09 · Navigation and AI
 
-> Status: partly built. Sight-only HL1-style AI with schedules, a navmesh baked from brushes, terrain and static colliders (with the local grid as its fallback), casting, NPC routines and off-screen simulation work and are tested. Hearing, behaviour trees and squads are planned. Owning assemblies: `Sage.Gameplay` (with a seam in `Sage.Simulation`). Design docs: [16 Gameplay framework](../../design/16-gameplay-framework.md) (§3.4 and the AI status sections), [14 World streaming](../../design/14-world-streaming.md).
+> Status: partly built. Sight-only HL1-style AI with schedules, a navmesh baked from brushes, terrain and static colliders (with the local grid as its fallback), crowd avoidance, ground that costs or is closed to a faction, per-size navmeshes, casting, NPC routines and off-screen simulation work and are tested. Hearing, behaviour trees and squads are planned. Owning assemblies: `Sage.Gameplay` (with a seam in `Sage.Simulation`). Design docs: [16 Gameplay framework](../../design/16-gameplay-framework.md) (§3.4 and the AI status sections), [14 World streaming](../../design/14-world-streaming.md).
 
 ## 1. Purpose and scope
 
@@ -18,6 +18,7 @@ It deliberately does not do: combat rules, damage, abilities (the gameplay sheet
 - Find a walkable route on a navmesh baked from brush floors, terrain and static colliders, across levels and sector borders, falling back to a local grid A* where there is no mesh; within a per-tick budget.
 - Warn, under `sage validate`, about a level's `info_` markers that no body can walk to.
 - Plan through doors (a creature opens one and waits) and over off-mesh links (walk, jump, drop, ladder, teleport), and plan again when a blocker comes to rest in a path.
+- Steer walking creatures round each other, weigh ground by its `nav_area` (by surface, water or volume), keep a faction out of ground closed to it, and plan each body on the navmesh of its size class.
 - Remember a target that went out of sight and walk to where it was last seen.
 - Ask the faction rules who is an enemy, and take whoever hurt it as a target.
 - Keep NPC routines by the hour: pick a schedule and an anchor place from the clock.
@@ -39,6 +40,8 @@ Plugin ids: `sage.gameplay.ai` (declared by `AIModule`, which requires `sage.gam
 | `NavGrid` | Window of up to 96 by 96 cells, stamped from colliders and steep ground; A* over eight neighbours; the fallback where there is no navmesh | same |
 | `NavMesh` (internal) | Tiles of 8 m (32 cells of 25 cm) baked on demand from brush planes, terrain heights and static collider boxes, eroded by a 0.35 m body; a coarse A* over each tile's regions (a tile not baked yet is one optimistic node), then a span A* inside a corridor of up to eight regions, straightened into corners | `src/Sage.Gameplay/Navigation/NavMesh.cs` |
 | `NavWorldGeometry` (internal) | What the mesh is baked from, kept in step with the world: drops the tiles under a level placed or unloaded, a terrain sector loaded or unloaded, or a static collider added, moved or removed | `src/Sage.Gameplay/Navigation/NavMeshSource.cs` |
+| `Crowd` (internal) | Steering round other characters: a once-a-tick snapshot of every character, and a sampled velocity-obstacle choice per walking creature with a neighbour within 4 m | `src/Sage.Gameplay/Navigation/Crowd.cs` |
+| `NavAreas` (internal), `NavAreaRecord`, `NavArea`, `NavAreaPart` | Areas as numbers (cost, factions shut out, the surfaces and water they cover) and the `nav_area` record, component and part | `src/Sage.Gameplay/Navigation/NavAreas.cs` |
 | `NavMeshChecks` (internal) | The unreachable-marker check on `map` records | `src/Sage.Gameplay/Navigation/NavMeshChecks.cs` |
 | `NavPath` | Up to six corners an agent is walking, with replan timers | same |
 | `IAITask`, `AITaskContext` | A task is `Start`/`Run` returning `AITaskStatus`; the context exposes the agent's components | `src/Sage.Gameplay/AI/AI.cs` |
@@ -49,7 +52,7 @@ Plugin ids: `sage.gameplay.ai` (declared by `AIModule`, which requires `sage.gam
 | `IOffscreenFight` | How an off-screen fight round is settled; engine entry `strength` | `src/Sage.Gameplay/World/Offscreen.cs` |
 | `Factions` | `Between`, `AreHostile` and the player's stance, read by AI, combat and abilities | `src/Sage.Gameplay/Factions/Factions.cs` |
 
-Console and cvars: `ai_debug` (draws sight and chase targets, needs `r_debugdraw 1`), `nav_enabled`, `nav_mesh`, `nav_debug`, `nav_cellsize`, `nav_maxnodes`, `nav_plans`, commands `nav_stats` and `nav_rebuild`, cvar `offscreen_budget`, command `offscreen_status`, and the faction commands `rep` and `rep_set`.
+Console and cvars: `ai_debug` (draws sight and chase targets, needs `r_debugdraw 1`), `nav_enabled`, `nav_mesh`, `nav_avoid`, `nav_debug`, `nav_cellsize`, `nav_maxnodes`, `nav_plans`, commands `nav_stats` and `nav_rebuild`, cvar `offscreen_budget`, command `offscreen_status`, and the faction commands `rep` and `rep_set`.
 
 Events: the AI reads `Damaged` (to turn on an attacker), `TimePassed` (to catch routines up after a time skip) and `Origin.Rebased` (to shift stored paths). It raises `OffscreenDied` when an off-screen agent dies. Entity inputs and outputs: none of its own; AI conditions are also usable from the shared condition language through the vocabulary.
 
@@ -61,6 +64,8 @@ Events: the AI reads `Damaged` (to turn on an attacker), `TimePassed` (to catch 
 | `ai_schedule` | Record | `Tasks` (each an object such as `{ "task": "Wait", "seconds": 1.5 }`) and `Interrupts` (condition names) |
 | `routine` | Record | `entries`: hour window, optional `days`, `schedule`, `at` anchor, optional `scene` |
 | `faction` | Record | Relations to other factions, a default stance, the player's `Standing` and thresholds, `KillCost` |
+| `nav_area` | Record | `Cost` per metre (1 is ordinary ground), `Forbidden` factions, the `Surfaces` (physics_materials) and `Water` it covers |
+| `sage:nav_area` | Component and `nav_area` prefab part | `Area` and `Size`: a box of ground that is that area, over water and surfaces |
 | `sage:ai_state` | Component | Profile, schedule, task index, target (saved); conditions, path, last seen (transient) |
 | `sage:routine` | Component and `routine` prefab part | The entity's own routine, which wins over its profile's |
 | `sage:offscreen` | Component and `offscreen` prefab part | `speed`, `strength`, `corpse`, `fight`; opts an NPC into simulation |
@@ -83,6 +88,8 @@ Registration: tasks are open until the first world is created and are checked th
 ## 7. Threading, memory and performance
 
 Everything runs on the simulation thread. The grid, open set and corner buffer are reused; a search allocates nothing. Budgets are explicit: a search stops after `nav_maxnodes` nodes (4096; on the navmesh the coarse regions and the fine spans together), at most `nav_plans` plans run a tick (4), at most 16 navmesh tiles are baked a tick besides the one a planning creature stands in (beyond that a tile is planned through as one optimistic node and baked later), a failed search backs off to one try every 2.5 s, and "is the line clear" is cached for 0.2 s. Ground steepness is sampled at terrain resolution by the grid, and per 25 cm column by the navmesh. Baked tiles are kept (about 40 KB each, at most 2048, least recently used first out) and keyed by absolute position, so a rebase rebuilds nothing; a bake allocates its tile, a search reuses its working set.
+
+Crowd steering reads one snapshot of every character a tick into kept arrays and a hashed grid, and scores 50 candidate velocities against at most ten neighbours, with at most six rays for room; a creature with nobody within 4 m pays one grid lookup. Areas cost nothing in a game without `nav_area` records; with them, the straight-line check walks the navmesh cells of the line five times a second, and a tile keeps one byte of area and one of nearby area per span. Each size class has its own tiles, baked only once a body of that size plans.
 
 Off-screen catch-up is limited to `offscreen_budget` agent-steps a tick. An off-screen step allocates nothing (test: FiveHundredAgentsStepWithoutAllocating). The AI think and navigation are written to the same rule; no dedicated measurement test exists for them yet (see #273 range for the physics-side numbers).
 
@@ -110,15 +117,11 @@ Debug tools: `ai_debug`, `nav_debug`, `nav_stats` (plans on the mesh and on the 
 | REQ-AI-12 | Paths shall handle doors, dynamic obstacles and off-mesh links. | Should | Done | test: ACreatureOpensAClosedDoorAndWalksThroughIt, test: ALockedDoorIsAWallToThePlanner, test: ACreatureDropsFromALedgeByALink, test: WithoutTheLinkTheCreatureStaysOnTheLedge, test: ACreatureReplansWhenABlockerComesToRestInItsWay, test: EachKindOfLinkIsCrossed |
 | REQ-AI-13 | A game shall be able to select behaviour with behaviour trees or utility scoring beside schedules. | Should | Not started | #387 |
 | REQ-AI-14 | Hostile groups shall move in combat (strafe, retreat, cover) and as squads. | Should | Not started | #388 |
-| REQ-AI-15 | Agents shall avoid each other and weigh terrain costs and area flags. | Could | Not started | #271 |
+| REQ-AI-15 | Agents shall avoid each other and weigh terrain costs and area flags. | Could | Done | test: TwentyCreaturesConvergingInACorridorAllGetThroughRoundEachOther, test: WithoutAvoidanceTheSameCrowdWalksThroughItself, test: ACreatureTakesTheRoadRoundAFieldRatherThanTheShortWayAcrossIt, test: ThePlannerGoesRoundDearWaterAndStraightensOnlyOverCheapGround, test: BrushTexturesAndTerrainLayersAreTheAreaOfWhatTheyAreMadeOf, test: GroundClosedToAFactionIsPlannedRoundByItAndCrossedByOthers, test: AWolfChasingIntoGroundClosedToItStopsAtTheEdge, test: EachBodyPlansOnTheMeshOfItsOwnSize |
 | REQ-AI-16 | Off-screen simulation shall path round walls, cover cells never visited and handle live NPCs with far anchors. | Should | Partial: straight-line walking only | #284 |
 | REQ-AI-17 | Crime, witnesses, bounty and faction ranks shall be expressible as data. | Should | Not started | #389 |
 
 ## 10. Open work
-
-Milestone 1, physics, movement and navigation (epic #258):
-
-- #271 4l-13 Crowd avoidance, terrain costs and area flags (P2)
 
 Milestone 2, world, logic and saves (epic #274):
 

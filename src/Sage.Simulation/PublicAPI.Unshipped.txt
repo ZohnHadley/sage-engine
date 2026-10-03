@@ -1725,6 +1725,7 @@ Sage.Simulation.IPhysicsWorld.SetShape(in Sage.Simulation.PhysicsBody body, in S
 Sage.Simulation.ColliderPart
 Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
 Sage.Simulation.ColliderPart.ColliderPart() -> void
+Sage.Simulation.MapLevel.SurfaceOf(string! texture, Sage.Core.RecordStore! records) -> Sage.Core.RecordId
 static Sage.Simulation.WorldTime.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldTime!
 Sage.Simulation.ActiveState
 Sage.Simulation.ActiveState.ActiveState() -> void

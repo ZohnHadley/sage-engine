@@ -174,6 +174,21 @@ Sage.Gameplay.IOffscreenFight.Round(Sage.Gameplay.OffscreenAgent! a, Sage.Gamepl
 Sage.Gameplay.KnownTopics
 Sage.Gameplay.KnownTopics.KnownTopics() -> void
 Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
+Sage.Gameplay.NavArea
+Sage.Gameplay.NavArea.Area -> Sage.Core.RecordId
+Sage.Gameplay.NavArea.NavArea() -> void
+Sage.Gameplay.NavArea.Size -> System.Numerics.Vector3
+Sage.Gameplay.NavAreaPart
+Sage.Gameplay.NavAreaPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.NavAreaPart.Area -> Sage.Core.RecordRef<Sage.Gameplay.NavAreaRecord!>
+Sage.Gameplay.NavAreaPart.NavAreaPart() -> void
+Sage.Gameplay.NavAreaPart.Size -> System.Numerics.Vector3
+Sage.Gameplay.NavAreaRecord
+Sage.Gameplay.NavAreaRecord.Cost -> float
+Sage.Gameplay.NavAreaRecord.Forbidden -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.FactionRecord!>>!
+Sage.Gameplay.NavAreaRecord.NavAreaRecord() -> void
+Sage.Gameplay.NavAreaRecord.Surfaces -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>>!
+Sage.Gameplay.NavAreaRecord.Water -> bool
 Sage.Gameplay.NavDoor
 Sage.Gameplay.NavDoor.Locked -> bool
 Sage.Gameplay.NavDoor.NavDoor() -> void
