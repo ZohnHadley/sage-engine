@@ -169,6 +169,11 @@ public sealed class RecordStore
 
     public IEnumerable<string> TypeNames => _typesByName.Keys.OrderBy(n => n, StringComparer.Ordinal);
 
+    // What a hot reload of a record type does to what was built from it (`[Record(Reload = …)]`, issue
+    // #287); NextSpawn for a type that is not registered.
+    public ReloadPolicy ReloadPolicyOf(string typeName) =>
+        TypeOf(typeName)?.GetCustomAttribute<RecordAttribute>()?.Reload ?? ReloadPolicy.NextSpawn;
+
     // The C# type registered for a record type name, or null (the metadata table is keyed by it).
     public Type? TypeOf(string typeName) => _typesByName.TryGetValue(typeName, out var type) ? type : null;
 

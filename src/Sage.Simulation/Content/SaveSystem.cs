@@ -871,7 +871,9 @@ public sealed partial class SaveSystem
     // Called by a prefab spawn once the prefab (with `overrides`) is applied and before anything else is
     // done to the entity: notes its components as they are now as the baseline a save diffs it against
     // (SaveDiff). Taken once per prefab and overrides in each world, and shared.
-    internal void NoteSpawned(World world, Entity entity, RecordId prefab, PrefabRecord record, PrefabOverrides? overrides)
+    // `effective` is the prefab with the overrides merged in, as it was applied: its body is kept with the
+    // baseline, for a hot reload to see what the prefab changed (PrefabReload, issue #287).
+    internal void NoteSpawned(World world, Entity entity, RecordId prefab, PrefabRecord record, PrefabRecord effective, PrefabOverrides? overrides)
     {
         if (!world.Has<FromPrefab>(entity)) return;
         var baselines = world.Resources.GetOrAdd(() => new PrefabBaselines());
@@ -881,7 +883,11 @@ public sealed partial class SaveSystem
         {
             baselines.Dialect ??= SaveJson.For(world, _engine.Records, _converters);
             baseline = new SpawnBaseline(_serializer.WriteComponents(world, entity, baselines.Dialect, baseline: null, removed: null, quiet: true),
-                                         _serializer.FromPlacementIds(entity));
+                                         _serializer.FromPlacementIds(entity))
+            {
+                Body = (JsonObject?)effective.Components?.DeepClone() ?? new JsonObject(),
+                Tags = effective.Tags.ToArray(),
+            };
             baselines.Add(prefab, record, key, baseline);
         }
         // What derives from where this one was placed is this one's own (4m-4): only those components.
