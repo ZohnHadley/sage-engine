@@ -45,6 +45,24 @@ public sealed class RecordAttribute : Attribute
     // run just before that plugin's Init. Leave it out when the assembly has one plugin (a game);
     // RegistrationOwners.Core for the engine's own.
     public string? Plugin { get; set; }
+
+    // What a hot reload of this type does to what was built from it (issue #287). Records are updated in
+    // place, so anything that looks a record up or holds it sees the new values at once whatever this
+    // says; the policy is about values that were *copied out* of a record into the world (a prefab's
+    // component values, a scene's placements). NextSpawn, the default: what was built keeps the old
+    // values and the next thing built gets the new ones. Live: the engine applies the edit to what is
+    // already in the world as well (`prefab`: every unmodified field of every instance, SaveSystem
+    // PrefabReload; `scene`: the scene placed again, Scenes.Respawn). Read with RecordStore.ReloadPolicyOf.
+    public ReloadPolicy Reload { get; set; } = ReloadPolicy.NextSpawn;
+}
+
+// See RecordAttribute.Reload (issue #287).
+public enum ReloadPolicy
+{
+    // A hot reload reaches what is made from the record after it; what was made before keeps its values.
+    NextSpawn,
+    // A hot reload reaches what the world already has from the record too.
+    Live,
 }
 
 // While the RecordStore deserializes one record, bare RecordId references resolve against that

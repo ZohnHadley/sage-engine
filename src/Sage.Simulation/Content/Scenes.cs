@@ -21,7 +21,7 @@ namespace Sage.Simulation;
 //
 // Not here yet: the game's rules and conventions. Phase 3's `gameplay_conventions` record (#26) is the
 // place for those; a scene will name one when it exists (a `conventions` field), not before.
-[Record("scene", Plugin = RegistrationOwners.Core)]
+[Record("scene", Plugin = RegistrationOwners.Core, Reload = ReloadPolicy.Live)]   // placed again on a reload (Respawn)
 [Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed class SceneRecord
 {
