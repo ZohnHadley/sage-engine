@@ -6,6 +6,8 @@ const Sage.Simulation.Animators.AimPitchParam = "aim_pitch" -> string!
 const Sage.Simulation.Animators.AimYawParam = "aim_yaw" -> string!
 const Sage.Simulation.Animators.SystemId = "sage.animation.animator" -> string!
 const Sage.Simulation.Animators.TriggerInput = "AnimTrigger" -> string!
+const Sage.Simulation.CalendarEvents.OnCalendarEvent = "OnCalendarEvent" -> string!
+const Sage.Simulation.CalendarRecord.MoonPhaseCount = 8 -> int
 const Sage.Simulation.Camera.DefaultFar = 1000 -> float
 const Sage.Simulation.Camera.DefaultFovY = 45 -> float
 const Sage.Simulation.Camera.DefaultNear = 0.1 -> float
@@ -263,6 +265,24 @@ Sage.Simulation.BoneAttachmentPart.Drop -> bool
 Sage.Simulation.BoneAttachmentPart.Offset -> System.Numerics.Vector3
 Sage.Simulation.BoneAttachmentPart.Socket -> string!
 Sage.Simulation.BoneAttachments
+Sage.Simulation.CalendarEventListener
+Sage.Simulation.CalendarEventListener.CalendarEventListener() -> void
+Sage.Simulation.CalendarEventListener.Event -> Sage.Core.RecordId
+Sage.Simulation.CalendarEventListener.LastDay -> int
+Sage.Simulation.CalendarEventListener.Seen -> bool
+Sage.Simulation.CalendarEventPart
+Sage.Simulation.CalendarEventPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.CalendarEventPart.CalendarEventPart() -> void
+Sage.Simulation.CalendarEventPart.Event -> Sage.Core.RecordId
+Sage.Simulation.CalendarEventRecord
+Sage.Simulation.CalendarEventRecord.CalendarEventRecord() -> void
+Sage.Simulation.CalendarEventRecord.Day -> int
+Sage.Simulation.CalendarEventRecord.FallsOn(Sage.Simulation.CalendarRecord! calendar, int day) -> bool
+Sage.Simulation.CalendarEventRecord.Month -> int
+Sage.Simulation.CalendarEventRecord.Moon -> string!
+Sage.Simulation.CalendarEventRecord.Name -> string!
+Sage.Simulation.CalendarEventRecord.Year -> int
+Sage.Simulation.CalendarEvents
 Sage.Simulation.CalendarMonth
 Sage.Simulation.CalendarMonth.CalendarMonth() -> void
 Sage.Simulation.CalendarMonth.Days -> int
@@ -271,10 +291,24 @@ Sage.Simulation.CalendarRecord
 Sage.Simulation.CalendarRecord.CalendarRecord() -> void
 Sage.Simulation.CalendarRecord.DateOf(int day) -> Sage.Simulation.GameDate
 Sage.Simulation.CalendarRecord.DaysIn(int month) -> int
+Sage.Simulation.CalendarRecord.DaysIn(int month, int year) -> int
 Sage.Simulation.CalendarRecord.DaysInYear.get -> int
+Sage.Simulation.CalendarRecord.DaysInYearOf(int year) -> int
+Sage.Simulation.CalendarRecord.IsLeapYear(int year) -> bool
+Sage.Simulation.CalendarRecord.LeapEvery -> int
+Sage.Simulation.CalendarRecord.LeapMonth -> int
+Sage.Simulation.CalendarRecord.LeapRestoreEvery -> int
+Sage.Simulation.CalendarRecord.LeapSkipEvery -> int
 Sage.Simulation.CalendarRecord.MonthCount.get -> int
 Sage.Simulation.CalendarRecord.MonthName(int month) -> string!
 Sage.Simulation.CalendarRecord.Months -> System.Collections.Generic.List<Sage.Simulation.CalendarMonth!>!
+Sage.Simulation.CalendarRecord.MoonAge(int day) -> double
+Sage.Simulation.CalendarRecord.MoonCycle -> double
+Sage.Simulation.CalendarRecord.MoonLight(int day) -> double
+Sage.Simulation.CalendarRecord.MoonPhaseOf(int day) -> int
+Sage.Simulation.CalendarRecord.MoonStart -> double
+Sage.Simulation.CalendarRecord.SeasonOf(Sage.Simulation.GameDate date) -> string!
+Sage.Simulation.CalendarRecord.Seasons -> System.Collections.Generic.List<Sage.Simulation.CalendarSeason!>!
 Sage.Simulation.CalendarRecord.StartWeekday -> int
 Sage.Simulation.CalendarRecord.StartYear -> int
 Sage.Simulation.CalendarRecord.WeekdayCount.get -> int
@@ -283,6 +317,11 @@ Sage.Simulation.CalendarRecord.WeekdayName(int weekday) -> string!
 Sage.Simulation.CalendarRecord.WeekdayOf(int day) -> int
 Sage.Simulation.CalendarRecord.Weekdays -> System.Collections.Generic.List<string!>!
 Sage.Simulation.Calendars
+Sage.Simulation.CalendarSeason
+Sage.Simulation.CalendarSeason.CalendarSeason() -> void
+Sage.Simulation.CalendarSeason.Day -> int
+Sage.Simulation.CalendarSeason.Month -> int
+Sage.Simulation.CalendarSeason.Name -> string!
 Sage.Simulation.Camera
 Sage.Simulation.Camera.Camera() -> void
 Sage.Simulation.Camera.Enabled -> bool
@@ -1455,6 +1494,7 @@ Sage.Simulation.WorldTime.Stepping.get -> bool
 Sage.Simulation.WorldTime.Unscaled.get -> double
 Sage.Simulation.WorldTime.Unscaled.set -> void
 Sage.Simulation.WorldTime.WorldTime() -> void
+static readonly Sage.Simulation.CalendarRecord.MoonPhaseNames -> System.Collections.Generic.IReadOnlyList<string!>!
 static readonly Sage.Simulation.PlayerCameraSystem.Prefab -> Sage.Core.RecordId
 Sage.Simulation.Placement.Outputs -> System.Collections.Generic.List<Sage.Simulation.Connection!>!
 Sage.Simulation.ScriptedCamera
@@ -1490,6 +1530,8 @@ static Sage.Simulation.BoneAttachments.OffsetMatrix(System.Numerics.Vector3 offs
 static Sage.Simulation.BoneAttachments.TryFindSocket(Sage.Core.RecordStore! records, Sage.Core.AssetPath model, string! name, out Sage.Simulation.SkeletonSocket? socket) -> bool
 static Sage.Simulation.CalendarRecord.Default.get -> Sage.Simulation.CalendarRecord!
 static Sage.Simulation.CalendarRecord.InWindow(Sage.Simulation.GameDate date, int fromMonth, int fromDay, int toMonth, int toDay) -> bool
+static Sage.Simulation.CalendarRecord.MoonPhaseIndex(string! name) -> int
+static Sage.Simulation.Calendars.DayOf(Sage.Simulation.World! world) -> int
 static Sage.Simulation.Calendars.Of(Sage.Simulation.World! world) -> Sage.Simulation.CalendarRecord!
 static Sage.Simulation.Calendars.Today(Sage.Simulation.World! world) -> Sage.Simulation.GameDate
 static Sage.Simulation.Calendars.Today(Sage.Simulation.World! world, out Sage.Simulation.CalendarRecord! calendar) -> Sage.Simulation.GameDate
