@@ -280,10 +280,11 @@ internal static class PlacementWires
             string at = $"{path}.Outputs[{i}]";
             if (wire == null) { check.Error(at, "an empty wire"); continue; }
             if (wire.Output.Length == 0) check.Error(at, "a wire needs an \"output\" (the one of this entity's that sends it)");
-            if (wire.Target.Length == 0) check.Error(at, "a wire needs a \"target\" (an entity's name, or !self / !activator / !caller)");
+            if (wire.Target.Length == 0) check.Error(at, "a wire needs a \"target\" (an entity's name, @group, or !self / !activator / !caller)");
             if (wire.Input.Length == 0) check.Error(at, "a wire needs an \"input\"");
             else if (!engine.Inputs.Has(wire.Input))
                 check.Error(at, $"'{wire.Input}' is not an input (see io_list; is the plugin that registers it on?)");
+            if (wire.Target.Length > 0 && IOTargets.Problem(engine, wire.Target) is { } problem) check.Error(at, problem);
             if (wire.Output.Length > 0 && !engine.Outputs.Has(wire.Output))
                 check.Warn(at, $"no plugin declares the output '{wire.Output}' (see io_list), so nothing may ever fire it");
         }

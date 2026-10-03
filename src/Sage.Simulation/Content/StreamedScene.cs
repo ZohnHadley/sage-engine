@@ -200,6 +200,30 @@ internal sealed class StreamedScene
         }
     }
 
+    // ---- the far ring (#277) ----------------------------------------------------------------------------
+
+    // What a sector past the full ring shows: each placement in it whose prefab has a far look and that is
+    // not dead. Where things that walked out of the sector went is not followed — the far ring is scenery.
+    public void FarProxies(World world, SectorCoord sector, List<FarProxy> into)
+    {
+        if (!_buckets.TryGetValue(sector, out var bucket)) return;
+        world.Resources.TryGet<ContentBaseline>(out var baseline);
+        string source = SourceOf(sector);
+        foreach (var item in bucket.Items)
+        {
+            if (!_engine.Records.TryGet(item.Placement.Prefab.Id, out PrefabRecord prefab) || prefab.Far is not { } far) continue;
+            if (baseline != null && baseline.IsTombstoned(source, item.Id)) continue;
+            var placement = item.Placement;
+            var (absolute, onGround) = (placement.RelativeTo ?? item.Frame) switch
+            {
+                PlacementFrame.Origin => (item.Origin + placement.At, false),
+                PlacementFrame.Ground => ((item.Origin with { Y = 0f }) + placement.At, true),   // y: above the ground there
+                _ => (placement.At, false),
+            };
+            into.Add(new FarProxy(absolute, onGround, placement.Yaw, far.Mesh, far.Size, far.Material));
+        }
+    }
+
     // ---- crossing an edge -------------------------------------------------------------------------------
 
     // A root that is in `now` and belongs elsewhere (SectorOwnersSystem). `placed`: a sector placed it.
@@ -330,8 +354,11 @@ internal sealed class StreamedScene
 
         // Before anything goes, so what is dead now is what the game destroyed (4i-3).
         ContentIds.Forget(world, source);
-        foreach (var root in roots)
-            if (world.IsAlive(root)) world.Destroy(root);
+        // Its meshes go with it, unless something still in the world draws them too (#277, SectorAssets).
+        world.Resources.TryGet<SectorAssets>(out var assets);
+        using (assets?.Leave())
+            foreach (var root in roots)
+                if (world.IsAlive(root)) world.Destroy(root);
 
         var progress = _active[sector];
         if (progress.Levels.Count > 0 && world.Resources.TryGet<MapLevels>(out var levels) && levels != null)

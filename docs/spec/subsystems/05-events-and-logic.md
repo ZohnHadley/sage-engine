@@ -53,14 +53,15 @@ Commands and cvars: `ev_stats` (queues, readers, age of the oldest event), `ev_m
 | `EntityInputs` (`Logic/EntityIO.cs`) | The input table. `Register(name, handler)` for any entity, `Register<T>(name, handler)` to route a short name to the component that takes it (`Toggle` means a mover's on a door and a branch's on a branch). Sealed after init. |
 | `EntityOutputs` | Declared output names with a description, for `io_list`, the FGD and checks. |
 | `Connection` | One wire: `Output`, `Target`, `Input`, `Parameter`, `Delay`, `Times`, and an optional `Requires` condition. Targets are an entity name or `!self`, `!activator`, `!caller`. |
-| `IOConnections` (`sage:io_connections`) | The component holding an entity's wires. Written in a scene or placements document as `outputs`, or in a `.map` as `"OnStartTouch" "target,input,parameter,delay,times"`. |
+| `IOConnections` (`sage:io_connections`) | The component holding an entity's wires. Written in a scene or placements document as `outputs`, or in a `.map` as `"OnStartTouch" "target,input,parameter,delay,times"`. A target is a name, `!self`/`!activator`/`!caller`, or a group: `@name`, `@class:prefab`, `@tag:ns:id` (#276). |
+| `IOGroup` (`sage:io_group`) | The groups an entity is in (`names`, space- or comma-separated), for `@name` targets. A prefab writes the component; a `.map` entity its `group` key. |
 | `EntityIO` (saved resource `entity_io`) | The queue: `Fire`, `FireInput`, `PendingCount`, `Budget`, `Trace`. |
 | `IOContext` | What a handler receives: `Self`, `Activator`, `Caller`, `Parameter`, `Number()`. |
 | `World.FireOutput(...)`, `World.IO()`, `World.FindByName(...)` | The calls game code uses. |
 
 Inputs every game has: `Kill`, `Say`, `Fire` (fire one of this entity's own outputs). Outputs: `OnStartTouch`, `OnEndTouch` from trigger volumes. Others come from the parts below and from cameras (`CameraOn`, `CameraOff`, `OnCameraOn`, `OnCameraOff`), movers, joints (`Break`, `OnBreak`), and the bridges in 4.5.
 
-Commands and cvars: `ent_fire <name|!player> <input> [parameter] [delay]`, `io_list`, `io_trace`, `io_maxdispatch` (default 256 inputs a tick).
+Commands and cvars: `ent_fire <name|!player|@group> <input> [parameter] [delay]`, `io_list`, `io_trace`, `io_history [name] [count]` (the last 256 deliveries and what became of each), `io_maxdispatch` (default 256 inputs a tick).
 
 ### 4.3 Logic entities, timers, tweens, state machines
 
@@ -83,14 +84,15 @@ Parameters are words separated by spaces, never commas, because a `.map` wire is
 
 | Owner | Conditions | Actions |
 |---|---|---|
-| Base (`sage.core`) | `all`, `any`, `not`, `var`, `weekday`, `date_between`, `time_between`, `anim_param`, `anim_finished` | `fire`, `set_var`, `add_var` |
+| Base (`sage.core`) | `all`, `any`, `not`, `var`, `weekday`, `date_between`, `time_between`, `anim_param`, `anim_finished`, `random`, `entity_exists`, `distance_to`, `in_scene` | `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait` |
 | `sage.gameplay.items` | `has_item` | `give_item`, `take_item` |
-| `sage.gameplay.attributes` | `has_tag`, `lacks_tag` | `apply_effect` |
+| `sage.gameplay.attributes` | `has_tag`, `lacks_tag` (on the subject, or `entity`), `is_alive` | `apply_effect`, `set_tag` |
+| `sage.gameplay.abilities` | | `cue` |
 | `sage.gameplay.quests` | `quest` | `start_quest`, `set_stage`, `finish_quest` |
 | `sage.gameplay.factions` | `standing` | `change_standing` |
 | `sage.gameplay.dialogue` | `speaker` | `add_topic` |
 
-`Vars` (saved resource `vars`) holds the named numbers that `var`, `set_var` and `add_var` use. Other vocabularies in the engine follow the same declaration pattern (`ai_condition`, `quest_objective`, `effect_execution`, `item_use`, `ability_delivery`, `hit_delivery`); the registry dump lists them all.
+`Vars` (saved resource `vars`) holds the named numbers that `var`, `set_var` and `add_var` use. A word that names an entity reads it as a wire's target does (`LogicTargets`: a name, `!subject`, `!other`). `random` draws from the world's own SplitMix64 stream, seeded from the world's name and saved as the `random` resource. `wait` stops an action list and the rest runs that many seconds later (`sage.logic.sequences`), with what is still waiting saved as the `sequences` resource (the rest of each list as content writes it). `play_sound` sends `SoundRequested`, which the client's audio plays. Other vocabularies in the engine follow the same declaration pattern (`ai_condition`, `quest_objective`, `effect_execution`, `item_use`, `ability_delivery`, `hit_delivery`); the registry dump lists them all.
 
 ### 4.5 Bridge I/O (gameplay)
 
@@ -101,8 +103,8 @@ Inputs `SetStage`, `StartDialogue`, `GiveItem`, `ApplyEffect`, `SetFaction`; out
 | Kind | Ids as declared |
 |---|---|
 | Records | `state_machine` (states with `enter`, `exit`, `tags`, `transitions` using `on`, `when`, `after`, `then`; top-level `initial` and `transitions`) |
-| Components | `sage:io_connections`, `sage:logic_relay`, `sage:logic_relay_script` (transient), `sage:logic_counter`, `sage:logic_compare`, `sage:logic_branch`, `sage:math_remap`, `sage:timer`, `sage:tween`, `sage:state_machine` |
-| Saved resources | `entity_io` (pending inputs, delays in flight, wire fire counts), `vars` |
+| Components | `sage:io_connections`, `sage:io_group`, `sage:logic_relay`, `sage:logic_relay_script` (transient), `sage:logic_counter`, `sage:logic_compare`, `sage:logic_branch`, `sage:math_remap`, `sage:timer`, `sage:tween`, `sage:state_machine` |
+| Saved resources | `entity_io` (pending inputs, delays in flight, wire fire counts), `vars`, `random` (the world's stream for `random`), `sequences` (action lists a `wait` put off) |
 | Prefab parts | `logic_relay`, `logic_counter`, `logic_compare`, `logic_branch`, `math_remap`, `timer`, `tween`, `state_machine` |
 | Vocabularies | `condition`, `action` |
 
@@ -113,12 +115,12 @@ A state machine is saved by state name and seconds in the state, so a save writt
 | Piece | When it runs |
 |---|---|
 | Game events | Sent in any phase; queues are pruned at the end of the schedule that owns them, never mid-phase. In a world that draws, `ev_maxage` is checked at the end of each frame so a frame reader is not blamed for a catch-up. |
-| `sage.logic.timers`, `sage.logic.tweens`, `sage.logic.state_machines` | Phase `EntityIO`, in that order, before `sage.io.dispatch`. |
+| `sage.logic.timers`, `sage.logic.tweens`, `sage.logic.state_machines`, `sage.logic.sequences` | Phase `EntityIO`, in that order, before `sage.io.dispatch`. |
 | `sage.io.dispatch` | Phase `EntityIO`: delivers every input that is due. |
 | `sage.io.triggers` | Phase `PostPhysics`: turns physics trigger enter and exit into `OnStartTouch` and `OnEndTouch`. |
 | Bridge systems | Phase `Gameplay`. |
 
-Timing is uniform on purpose: a timer, tween or `after` of N seconds started on tick D fires on the tick that an input sent on tick D with a delay of N would arrive, and undelayed wires from its output arrive that same tick. A relay can be marked same-tick, so a chain of relays runs in one tick up to the budget.
+Timing is uniform on purpose: a timer, tween, `wait` or `after` of N seconds started on tick D fires on the tick that an input sent on tick D with a delay of N would arrive, and undelayed wires from its output arrive that same tick. A relay can be marked same-tick, so a chain of relays runs in one tick up to the budget.
 
 Registration happens in module `Init` (inputs, outputs, vocabulary entries by generated code); the tables are sealed afterwards, and a registration written later is build error SAGE0020. After a load, `EntityIO.AfterLoad` rebinds queued inputs: targets are found by identity, and by name when the handle is dead, so a target spawned meanwhile is still found. Wires are resolved when content loads and checked against the input table then.
 
@@ -126,7 +128,7 @@ Registration happens in module `Init` (inputs, outputs, vocabulary entries by ge
 
 Single-threaded on the simulation thread. Event queues grow to their high-water mark and then stop; a queue nobody reads drops immediately. Readers and iterators are allocation-free, as are condition evaluation (lists are read once at load, reasons are constants), timers, tweens, state machines, logic entities and the I/O dispatch in steady state. Handlers must not keep an `IOContext` past the call.
 
-Measured: tests assert zero managed allocation per tick for evaluation (test: EvaluatingConditionsAllocatesNothing), for logic entities (test: LogicEntitiesAllocateNothingPerTick), for timers, tweens and I/O together (test: TimersTweensAndEntityIOAllocateNothingPerTick) and for state machines (test: StateMachinesAllocateNothingPerTick).
+Measured: tests assert zero managed allocation per tick for evaluation (test: EvaluatingConditionsAllocatesNothing), for logic entities (test: LogicEntitiesAllocateNothingPerTick), for timers, tweens and I/O together (test: TimersTweensAndEntityIOAllocateNothingPerTick), for state machines (test: StateMachinesAllocateNothingPerTick) and for the data-only game's conditions once a name is found (test: TheNewConditionsAllocateNothing).
 
 ## 8. Errors and diagnostics
 
@@ -134,7 +136,9 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 - A target that does not exist yet is not an error: it is late-bound by name when the wire fires.
 - A wire that fires itself, or an output wired to too much, is cut with a warning (`io_maxdispatch`; the cap on one output's fan-out).
 - The `ev_maxage` warning names the reader that is behind (log category `Events`).
-- Tools: `io_list` (every input with the components that take it, and every output), `io_trace`, `ent_fire`, `ev_stats`, `ev_trace`.
+- An input handler that throws is logged at Error with the wire (caller, output, target, input, parameter) and recorded as `Failed`; the rest of the tick's inputs still arrive (#402).
+- A wire target `@` with nothing after it, or `@tag:` a tag nobody declares, is a load error; a group with no members in the level is a warning.
+- Tools: `io_list` (every input with the components that take it, and every output), `io_trace`, `io_history`, `ent_fire`, `ev_stats`, `ev_trace`.
 
 ## 9. Requirements
 
@@ -149,15 +153,15 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 | REQ-LOGIC-07 | A wire to an input that does not exist shall be a load error, not a runtime no-op. | Must | Done | test: AnInputThatDoesNotExistIsRefusedWhenTheLevelLoadsNotWhenItFires |
 | REQ-LOGIC-08 | A wire shall be able to carry a `requires` condition, and a wire that does not fire shall not count toward `times`. | Must | Done | test: AConditionalWireFiresOnlyWhenItsConditionHolds_AndAFailureIsNotCounted |
 | REQ-LOGIC-09 | A runaway wire loop shall be cut at a per-tick budget with a warning. | Must | Done | test: AWireThatFiresItselfCannotRunAwayInsideOneTick |
-| REQ-LOGIC-10 | A wire shall be able to address a group of entities (a tag or class selector), and the I/O history shall be inspectable. | Should | Not started | #276 |
-| REQ-LOGIC-11 | A caught failure in one input handler shall not stop the rest of the tick's dispatch. | Must | Not started | #402 |
+| REQ-LOGIC-10 | A wire shall be able to address a group of entities (a tag or class selector), and the I/O history shall be inspectable. | Should | Done (#276) | test: ATriggerFiresEveryEntityInAGroup; test: TheHistoryKeepsTheLastDeliveriesInARing_AndSaysWhatBecameOfEach |
+| REQ-LOGIC-11 | A caught failure in one input handler shall not stop the rest of the tick's dispatch. | Must | Done (#402) | test: AnInputThatThrowsIsLoggedWithItsWire_AndTheRestOfTheTickStillArrives |
 | REQ-LOGIC-12 | The base shall provide relay, counter, compare, branch and remap entities, and, for Half-Life style puzzles, multi-source, math, random, case, template and spawner entities. | Must | Partial: first five built | test: ACounterCountsBetweenItsLimitsAndHandsItsValueOn; #281 |
 | REQ-LOGIC-13 | Timers shall support repeat, a random spread that is deterministic across runs and saves, and start/stop/reset inputs. | Must | Done | test: ARandomTimerIsDeterministic_AcrossRunsAndASave |
 | REQ-LOGIC-14 | Tweens shall move, turn or scale a transform along a named easing curve, from a wire, deterministically and across a save. | Must | Done | test: TweensAreDeterministicAndSurviveASave |
 | REQ-LOGIC-15 | State machines shall be data records, saved by state name, and survive a record hot reload. | Must | Done | test: StateAndTimeInItSurviveSaveAndLoad |
 | REQ-LOGIC-16 | State machines shall support actions that run each tick in a state, nested and parallel states, per-state outputs, and placement overrides of the `machine`. | Should | Not started | #280 |
 | REQ-LOGIC-17 | Conditions and actions shall be open vocabularies registered by the owning plugin, and an unknown id shall suggest the nearest one. | Must | Done | test: AnUnknownIdSuggestsTheNearestOne |
-| REQ-LOGIC-18 | The base vocabulary shall cover what a data-only game needs: chance, entity existence and distance, spawn, destroy, teleport, sound, tags, time passing, scene load, save, log and wait. | Must | Partial: a handful of base words | #275 |
+| REQ-LOGIC-18 | The base vocabulary shall cover what a data-only game needs: chance, entity existence and distance, spawn, destroy, teleport, sound, tags, time passing, scene load, save, log and wait. | Must | Done | test: SpawnDestroyAndTeleportChangeTheWorld; test: RandomIsDeterministic_AcrossRunsAndASave; test: AWaitSavedHalfWayFinishesAfterALoad; test: TagsAliveAndCuesWorkOnAnyEntity |
 | REQ-LOGIC-19 | Delays, timers and tweens shall pause with a paused world, and honour a world time scale. | Should | Partial: pause done, scale not | test: APausedWorldsDelaysWait; #283 |
 | REQ-LOGIC-20 | A steady-state tick of events, I/O, timers, tweens, state machines and condition evaluation shall allocate nothing. | Must | Done | test: TimersTweensAndEntityIOAllocateNothingPerTick |
 
@@ -165,13 +169,10 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 
 Milestone 4m, World, logic and saves (epic #274):
 
-- #275 4m-1 Widen the base condition and action vocabulary for data-only games (P1)
-- #276 4m-2 Entity I/O: group targets, editor link view and output history (P1)
 - #280 4m-6 State machines: per-tick actions, nested/parallel states, per-state outputs (P2)
 - #281 4m-7 Logic entities: round out the set (multi-source, math, random, case, template, spawner) (P2)
 - #282 4m-8 Events: structural `Added<T>`/`Removed<T>` and `EngineSignals` (P2)
 - #283 4m-9 Time scale, pause and hit-stop as world services (P2)
-- #402 4m-18 Entity I/O input handler exceptions are not caught per dispatch (P2)
 - #286 4m-12 Tests: hierarchy, multi-world, timers and tweens across a save (P2)
 
 Milestone 10b, Editor part 2: #370 10b-5 Conditions and actions editor, and a `requires` form (P2), which is the editor side of REQ-LOGIC-18.

@@ -362,6 +362,7 @@ public class HitboxAllocationTests
             npcs[i] = world.Spawn(NpcLocomotionTests.Npc, new Vector3(-12 + (i % 10) * 2.5f, 0, 8 + (i / 10) * 2f));
         int boxes = world.Query<Hitbox>().Count;
         Assert.True(boxes >= 50 * 11, $"{boxes} hitboxes");
+        app.Records.Get<HitboxBudgetRecord>(world.Conventions().HitboxBudget.Id).MaxCreatures = 0;   // all fifty on (#273)
 
         var space = world.Resources.Get<IPhysicsWorld>();
         var attack = app.Records.Get<AttackRecord>(new RecordId("hits", "peashooter"));
@@ -399,7 +400,7 @@ public class HitboxAllocationTests
         long physicsBefore = ScopeBytes("Fixed.Physics");
         var allocated = AllocationProbe.Measure(300, Step);
         long physics = ScopeBytes("Fixed.Physics") - physicsBefore;
-        Assert.True(allocated.Bytes - physics == 0, allocated.ToString());
+        Assert.True(allocated.Bytes == 0 && physics == 0, allocated.ToString());   // the step too (#273)
     }
 
     private static long ScopeBytes(string name)

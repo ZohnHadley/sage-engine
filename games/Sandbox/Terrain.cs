@@ -5,33 +5,35 @@ namespace Sandbox;
 // The Sandbox's terrain (docs/design/14 §3): rolling hills from a few sine waves plus value noise,
 // so the slice has ground to stand on. A real game would generate from its world map (and later
 // blend in authored overrides). The scene sits in the middle of the sector.
-public sealed class HillsGenerator : ITerrainGenerator
+//
+// It is also an ITerrainSampler (issue #277): Generate and SampleHeight are one function of absolute
+// position, so streaming can ask for a neighbour's heights and light the sector edges without a seam.
+public sealed class HillsGenerator : ITerrainGenerator, ITerrainSampler
 {
     public void Generate(SectorCoord sector, Heightfield heights, int seed)
     {
         var origin = sector.Origin(Terrain.SectorSize);
-        float spacing = heights.Spacing;
+        double spacing = heights.Spacing;
 
         for (int z = 0; z < heights.Resolution; z++)
-        {
             for (int x = 0; x < heights.Resolution; x++)
-            {
                 // World position of this vertex, so neighbouring sectors line up at their edges.
-                float wx = origin.X + x * spacing, wz = origin.Z + z * spacing;
-                // Wavelengths of roughly 300 m and 120 m: hills you can see across one sector.
-                float height =
-                    11f * MathF.Sin(wx * 0.021f + seed * 0.37f) * MathF.Cos(wz * 0.018f) +
-                    4f * MathF.Sin(wx * 0.052f + 1.3f) * MathF.Sin(wz * 0.047f + 0.6f) +
-                    1.5f * Noise(wx * 0.08f, wz * 0.08f, seed);
+                heights[x, z] = SampleHeight(origin.X + x * spacing, origin.Z + z * spacing, seed);
+    }
 
-                // A flat clearing around the scene, rising into hills just beyond it.
-                float dx = wx - SceneCenter.X, dz = wz - SceneCenter.Z;
-                float distance = MathF.Sqrt(dx * dx + dz * dz);
-                height *= Smooth((distance - 12f) / 45f);
+    public float SampleHeight(double absoluteX, double absoluteZ, int seed)
+    {
+        float wx = (float)absoluteX, wz = (float)absoluteZ;
+        // Wavelengths of roughly 300 m and 120 m: hills you can see across one sector.
+        float height =
+            11f * MathF.Sin(wx * 0.021f + seed * 0.37f) * MathF.Cos(wz * 0.018f) +
+            4f * MathF.Sin(wx * 0.052f + 1.3f) * MathF.Sin(wz * 0.047f + 0.6f) +
+            1.5f * Noise(wx * 0.08f, wz * 0.08f, seed);
 
-                heights[x, z] = height;
-            }
-        }
+        // A flat clearing around the scene, rising into hills just beyond it.
+        float dx = wx - SceneCenter.X, dz = wz - SceneCenter.Z;
+        float distance = MathF.Sqrt(dx * dx + dz * dz);
+        return height * Smooth((distance - 12f) / 45f);
     }
 
     public static readonly Vector3 SceneCenter = new(Terrain.SectorSize * 0.5f, 0, Terrain.SectorSize * 0.5f);
