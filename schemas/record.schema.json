@@ -40,6 +40,7 @@
             "faction",
             "gameplay_conventions",
             "hit_location",
+            "hitbox_budget",
             "hitboxes",
             "input_map",
             "item",
@@ -314,6 +315,21 @@
           },
           "then": {
             "$ref": "hit_location.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "hitbox_budget"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "hitbox_budget.schema.json"
           }
         },
         {

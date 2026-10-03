@@ -341,9 +341,9 @@ public class StreamingTests
     // allocates nothing (02 §4.6). Loading a sector allocates — it makes a heightfield — so the claim
     // is about the ticks in between, which is all of them once the ring is up.
     //
-    // Measured as a **difference**, with streaming off and then on, because the tick is not otherwise
-    // silent: Bepu's own profiler allocates about 40 bytes inside `Timestep` (TODO #41), and a test
-    // asserting a flat zero here would be failing somebody else's allocation.
+    // Measured as a **difference**, with streaming off and then on, so that only streaming is counted:
+    // a flat zero here would be answering for every other plugin of the fixture's tick. (The physics
+    // step, once thought to allocate 40 bytes a tick inside Bepu, allocates nothing since #273.)
     [Xunit.Fact]
     public void StandingStillCostsNothingPerTick()
     {

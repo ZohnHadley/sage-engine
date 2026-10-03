@@ -228,6 +228,14 @@
         }
       ]
     },
+    "hitbox_set": {
+      "description": "The component sage:hitbox_set (HitboxSet), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:hitbox_set"
+        }
+      ]
+    },
     "hop": {
       "description": "The component sandbox:hop (Hop), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -769,6 +777,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:hitbox"
+        }
+      ]
+    },
+    "sage:hitbox_set": {
+      "description": "Component sage:hitbox_set (HitboxSet).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:hitbox_set"
         }
       ]
     },
@@ -3187,6 +3203,23 @@
       },
       "additionalProperties": false,
       "description": "Component sage:hitbox (Hitbox)."
+    },
+    "sage:hitbox_set": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "want": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:hitbox_set (HitboxSet)."
     },
     "sage:inventory": {
       "type": "object",

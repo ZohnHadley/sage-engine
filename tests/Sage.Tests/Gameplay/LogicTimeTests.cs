@@ -522,9 +522,7 @@ public class LogicTimeAllocationTests
         });
         world.IO().FireInput(timer, "TimerStart");
         world.IO().FireInput(lift, "TweenTo", "offset 0 1 0");
-        // The I/O plugin needs a physics world (its trigger system), but the Bepu step allocates 40 bytes a
-        // tick of its own even when empty, which is physics' to answer for, not this test's.
-        Assert.True(world.Systems.Disable("sage.physics.step"));
+        // The I/O plugin needs a physics world (its trigger system); its step allocates nothing (#273).
 
         for (int i = 0; i < 120; i++) { world.RunFixed(1f / 60f); Profiler.EndFrame(); }   // warm: lists grown, paths JITted
         _count = 0;
@@ -541,7 +539,6 @@ public class LogicTimeAllocationTests
         var camera = Camera.Perspective(priority: 100);
         camera.Enabled = false;
         world.Add(cam, camera);
-        Assert.True(world.Systems.Disable("sage.physics.step"));    // its 40 bytes a tick are not the blend's
         world.RunFixed(1f / 60f);
         world.RunFrame(1f / 60f, 1f);
         world.IO().FireInput(cam, "CameraOn", "0 5");

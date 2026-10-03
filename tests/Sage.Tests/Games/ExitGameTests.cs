@@ -1,6 +1,7 @@
 #nullable enable
 using System.IO;
 using System.Linq;
+using System.Numerics;
 
 namespace Sage.Tests;
 
@@ -100,6 +101,22 @@ public class ExitGameTests
         Assert.Equal(3f, world.Get<LogicCounter>(steps).Value);
         Assert.Equal(1, Vars.Of(world).Get("sequence_done"));
         Assert.Contains(Said(world), m => m == "The sequence is done.");
+
+        // Then the base's words (issue #275): a line at once, and a second after the finale a reward at the
+        // keeper, the crate gone and an hour passed; the check relay found the lift beside the keeper.
+        Assert.Contains(Said(world), m => m == "The keeper nods.");
+        Assert.Equal(1, Vars.Of(world).Get("keeper_reached"));
+        Assert.Equal(0, Vars.Of(world).Get("reward_given"));
+        double hours = WorldClock.Of(world).Elapsed;
+        Assert.False(world.FindByName("falling crate").IsNull);
+        Step(world, 60);
+        Assert.Equal(1, Vars.Of(world).Get("reward_given"));
+        var reward = world.FindByName("reward");
+        Assert.False(reward.IsNull);
+        Assert.True(Vector3.Distance(world.Get<GlobalTransform>(world.FindByName("keeper")).Current.Position + Vector3.UnitY,
+                                     world.Get<Transform>(reward).LocalPosition) < 1f);   // a crate: it may have begun to fall
+        Assert.True(world.FindByName("falling crate").IsNull);
+        Assert.True(WorldClock.Of(world).Elapsed - hours >= 1.0);
     }
 
     // One topic, two answers: the first info whose `requires` holds. A relay in the scene raises the river.

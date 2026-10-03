@@ -22,6 +22,7 @@ internal sealed class PhysicsSyncSystem : ISystem
     private readonly PhysicsSpace _space;
     private readonly Query<Transform, Collider> _pending;
     private readonly Query<Transform, Collider, PhysicsBody> _bodies;
+    private readonly Query<PhysicsBody> _switchedOff;                         // ColliderOff, still with a body
     private readonly List<Entity> _toAdd = new();
     private readonly List<Entity> _rebuild = new();                          // compounds to (re)build this run
     private readonly List<PhysicsSpace.CompoundPart> _parts = new();
@@ -30,8 +31,10 @@ internal sealed class PhysicsSyncSystem : ISystem
     public PhysicsSyncSystem(World world, PhysicsSpace space)
     {
         _space = space;
-        _pending = world.Query<Transform, Collider>().WithoutComponent<PhysicsBody>();   // and no ColliderPart: checked below
+        var off = Tags.Get<ColliderOff>();
+        _pending = world.Query<Transform, Collider>().WithoutComponent<PhysicsBody>().WithoutAnyTags(off);   // and no ColliderPart: checked below
         _bodies = world.Query<Transform, Collider, PhysicsBody>();
+        _switchedOff = world.Query<PhysicsBody>().AllTags(off).WithoutComponent<ColliderPart>();
     }
 
     public void Run(in SystemContext ctx)
@@ -39,6 +42,7 @@ internal sealed class PhysicsSyncSystem : ISystem
         var world = ctx.World;
         _rebuild.Clear();
         Drain(world);
+        SwitchOff(world);
 
         // New colliders: collect first, then add the components (adding changes the archetypes we're
         // iterating).
@@ -124,6 +128,20 @@ internal sealed class PhysicsSyncSystem : ISystem
                 var pose = Pose.Combine(PhysicsPoses.WorldPose(parent), Pose.FromLocal(t[n]));
                 if (!_space.IsAt(h[n], c[n], pose)) _space.SetPose(h[n], c[n], pose);
             }
+        }
+    }
+
+    // Colliders tagged ColliderOff (issue #273) lose their bodies; the pending query above leaves them
+    // without one until the tag goes. Collected first: removing PhysicsBody changes the archetypes.
+    private void SwitchOff(World world)
+    {
+        _toAdd.Clear();
+        foreach (var (_, entities) in _switchedOff.Chunks)
+            for (int n = 0; n < entities.Length; n++) _toAdd.Add(entities.EntityAt(n));
+        foreach (var entity in _toAdd)
+        {
+            _space.RemoveBody(world.Get<PhysicsBody>(entity));
+            world.Remove<PhysicsBody>(entity);
         }
     }
 

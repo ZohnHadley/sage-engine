@@ -84,7 +84,7 @@ The simulation runs at a fixed tick (60 Hz by default). Physics phases, in order
 
 ## 7. Threading, memory and performance
 
-The step is called from the simulation thread, and Bepu spreads its work over its own worker threads (a thread dispatcher sized to the processor count minus one). Cross-run determinism is not yet checked by a test (#273). A steady-state step allocates about 40 bytes a tick (a Bepu profiler allocation, tracked in #273); a chain of twenty limited joints adds nothing to that (test: AChainOfTwentyLinksAllocatesNothingPerTick). Queries take a caller-supplied span and allocate nothing. Sleeping bodies are not re-bounded until they wake, which a rebase accounts for. Many hitboxes on many NPCs cost step time; a budget is part of #273. The whole Sandbox tick uses 0.76 ms of a 16.67 ms budget at 2,000 entities (scale review in the [SRS](../SRS.md) REQ-PERF-04).
+The step is called from the simulation thread, and Bepu spreads its work over its own worker threads (a thread dispatcher sized to the processor count minus one). The dispatcher never has fewer than two threads, because Bepu's deterministic mode gives the same bits with any two or more but other bits with one or none; the same scene gives bit-identical bodies run after run and with two or seven workers (test: TheSameSceneGivesBitIdenticalBodiesEveryRun). A steady-state step allocates nothing on any thread (test: ASteadyStateStepAllocatesNothingOnAnyThread); the 40 bytes a tick once blamed on Bepu's profiler were our own Stopwatch (#273). A chain of twenty limited joints adds nothing either (test: AChainOfTwentyLinksAllocatesNothingPerTick). Queries take a caller-supplied span and allocate nothing. A rebase re-bounds every body where it now is and leaves a sleeping one asleep (test: ASleepingCrateStaysAsleepAcrossARebaseAndIsFoundWhereItNowIs). Hitboxes are budgeted: a creature far from every player, or past the nearest `maxCreatures`, has its hitboxes off (`ColliderOff`, no bodies) and is struck on its body (test: AFarCreaturesHitboxesAreOffAndAStrikeOnItLandsOnItsBody). The whole Sandbox tick uses 0.76 ms of a 16.67 ms budget at 2,000 entities (scale review in the [SRS](../SRS.md) REQ-PERF-04).
 
 ## 8. Errors and diagnostics
 
@@ -117,7 +117,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 | REQ-PHYS-19 | Colliders shall be re-shapeable in place and valid on child entities. | Should | Done (#268) | test: SetShapeShrinksACharactersCapsuleInPlace; test: AChildColliderFollowsItsParentAndIsHitByARayWhereItIs; test: ADynamicBodyAndItsChildrensCollidersAreOneCompound |
 | REQ-PHYS-20 | Physics materials and surface types shall be records on colliders, terrain layers and brush textures, returned in hit results. | Should | Done (#270) | test: ABrushFaceIsTheSurfaceItsTextureNames; test: ATerrainLayerIsTheSurfaceOfTheGroundItCovers; test: AFootstepPicksItsCueFromTheSurfaceUnderfoot |
 | REQ-PHYS-21 | Bodies shall follow a floating-origin rebase, including sleeping ones and statics. | Must | Done | test: PhysicsBodiesRebaseWithTheWorld |
-| REQ-PHYS-22 | A steady-state step shall allocate nothing, hitbox cost shall be budgeted, and runs shall be cross-run deterministic. | Should | Partial: about 40 B a tick | #273 |
+| REQ-PHYS-22 | A steady-state step shall allocate nothing, hitbox cost shall be budgeted, and runs shall be cross-run deterministic. | Should | Done (#273) | test: ASteadyStateStepAllocatesNothingOnAnyThread; test: TheSameSceneGivesBitIdenticalBodiesEveryRun; test: OnlyTheNearestMaxCreaturesKeepTheirHitboxes; test: ASleepingCrateStaysAsleepAcrossARebaseAndIsFoundWhereItNowIs |
 | REQ-PHYS-23 | Every `Mover` field shall have a headless assertion, with travel time, `CloseAfter`, a save mid-travel, a world with no physics, a replayed run and a busy level covered. | Should | Done (#272) | test: ATripTakesItsSecondsAndEndsAtItsOpenOffset; test: CloseAfterShutsADoorByItselfAndZeroLeavesItOpen; test: AMoverSavedMidTravelAndMidHoldCarriesOnFromThere; test: AMoverInAWorldWithNoPhysicsStillTravelsAndArrives; test: BlockedIsSetWhileSomethingItCannotPushIsInTheWay; test: ReplayingASteppingRunGivesBitIdenticalPositions; test: ManyMoversBodiesAndCharactersStepWithinABudget |
 
 ## 10. Open work
@@ -137,7 +137,7 @@ Milestone 4l, Physics, movement and navigation (epic #258):
 - #269 4l-11 Game events from physics (Collided, TriggerEntered/Exited) and richer queries (P2)
 - #270 4l-12 Physics materials and surface types (P2)
 - ~~#272 4l-14 Mover and physics test coverage (P2)~~ done: `MoverTests` and `MoverBudgetTests`
-- #273 4l-15 Perf and determinism: 40 B/tick allocation, hitbox cost, sleeping and rebase wake (P3)
+- ~~#273 4l-15 Perf and determinism: 40 B/tick allocation, hitbox cost, sleeping and rebase wake (P3)~~ done: the step allocates nothing, bit-identical runs on any core count, the hitbox budget, sleepers stay asleep across a rebase
 
 Navigation issues of the same milestone (#264, #265, #271) are in sheet [09](09-navigation-and-ai.md).
 

@@ -22,7 +22,9 @@ namespace Sage.Simulation;
 // Sage.Gameplay (decision D2; SAGE0120 is experimental, MAKING_A_GAME §10b).
 //
 // The base owns the words that need nothing but a world: `all`, `any`, `not`, `var` (Vars.cs); `fire`,
-// `set_var`, `add_var`. The words that need gameplay — `has_item`, `standing`, `quest`, `give_item` —
+// `set_var`, `add_var`; and, for a data-only game (issue #275, Words.cs), `random`, `entity_exists`,
+// `distance_to`, `in_scene`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`,
+// `load_scene`, `save_game`, `log`, `message` and `wait` (Sequences.cs). The words that need gameplay — `has_item`, `standing`, `quest`, `give_item` —
 // are Gameplay's, registered by the plugin that owns what they ask about, and read the same way.
 //
 // **Asking allocates nothing.** Lists are read into once when content loads; a test walks them by index
@@ -103,11 +105,22 @@ public static class Conditions
     public static bool Evaluate(World world, Entity subject, IReadOnlyList<ICondition>? conditions, Entity other = default) =>
         TestAll(conditions, new ConditionContext(world, subject, other), out _);
 
-    // Every action, in order.
-    public static void Run(IReadOnlyList<IAction>? actions, in ActionContext context)
+    // Every action, in order. A `wait` (issue #275) stops the list there and runs the rest that many
+    // seconds later (LogicSequences), with the same subject and other.
+    public static void Run(IReadOnlyList<IAction>? actions, in ActionContext context) => RunFrom(actions, 0, in context);
+
+    internal static void RunFrom(IReadOnlyList<IAction>? actions, int start, in ActionContext context)
     {
         if (actions == null) return;
-        for (int i = 0; i < actions.Count; i++) actions[i]?.Run(in context);
+        for (int i = start; i < actions.Count; i++)
+        {
+            if (actions[i] is WaitAction wait)
+            {
+                if (i + 1 < actions.Count) LogicSequences.Of(context.World).Defer(in context, actions, i + 1, wait.Seconds);
+                return;
+            }
+            actions[i]?.Run(in context);
+        }
     }
 
     public static void Run(World world, Entity subject, IReadOnlyList<IAction>? actions, Entity other = default) =>
@@ -203,27 +216,19 @@ internal sealed class FireAction : IAction
             return;
         }
 
-        Entity target;
-        if (Target[0] == '!')
-        {
-            if (Is("!subject") || Is("!activator") || Is("!player")) target = context.Subject;
-            else if (Is("!other") || Is("!self") || Is("!caller")) target = context.Other;
-            else
-            {
-                Log.Once(LogCat.Events, LogLevel.Warn, $"fire-target:{Target}",
-                    $"fire: no target '{Target}' (a name, or !subject / !activator / !other / !self)");
-                return;
-            }
-        }
-        else
+        if (Target[0] != '!')
         {
             // By name, found when it arrives (late binding, #90): a delayed `fire` at something spawned
             // or respawned meanwhile still reaches it.
             io.FireInput(Target, Input, Parameter, Delay, context.Subject, context.Other);
             return;
         }
-        io.FireInput(target, Input, Parameter, Delay, context.Subject, context.Other);
+        if (!LogicTargets.IsKnown(Target))
+        {
+            LogicTargets.WarnUnknown("fire", Target);
+            return;
+        }
+        io.FireInput(LogicTargets.Find(context.World, Target, context.Subject, context.Other), Input, Parameter, Delay,
+                     context.Subject, context.Other);
     }
-
-    private bool Is(string special) => string.Equals(Target, special, StringComparison.OrdinalIgnoreCase);
 }

@@ -127,7 +127,7 @@ developer's machine, and the zero-allocation rules are the hard requirements.
 | ID | Requirement | Priority | Status |
 |---|---|---|---|
 | REQ-PERF-01 | The simulation shall run at a fixed tick, 60 Hz by default (`sim_tickrate`), with interpolated rendering and a catch-up cap (`sim_maxframetime`). | Must | Done |
-| REQ-PERF-02 | A steady-state tick of the core systems (ECS, logic, animation, combat, AI think) shall allocate nothing on the managed heap. | Must | Done for the systems with Measurements tests; the physics backend allocates about 40 B a tick (#273) |
+| REQ-PERF-02 | A steady-state tick of the core systems (ECS, logic, animation, combat, AI think) shall allocate nothing on the managed heap. | Must | Done for the systems with Measurements tests, the physics step included since #273 (test: ASteadyStateStepAllocatesNothingOnAnyThread) |
 | REQ-PERF-03 | A frame shall allocate nothing in steady state with the developer overlay closed. | Must | Partial (dev tools allocate; 10b) |
 | REQ-PERF-04 | The Sandbox shall hold 60 frames per second with 2,000 entities, and a tick shall use under a quarter of its budget at that size. | Must | Done for the tick (scale review 2026-09-24: 0.76 ms of 16.67 ms) |
 | REQ-PERF-05 | Crossing a streaming sector edge shall not stall a frame beyond the frame budget. | Must | Done (generation on jobs, one sector a tick, collision four chunks a tick; #277; test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`) |
