@@ -102,6 +102,13 @@ Sage.Simulation.ActionContext.Subject.get -> Sage.Simulation.Entity
 Sage.Simulation.ActionContext.Subject.init -> void
 Sage.Simulation.ActionContext.World.get -> Sage.Simulation.World!
 Sage.Simulation.ActionContext.World.init -> void
+Sage.Simulation.Added<T>
+Sage.Simulation.Added<T>.Added() -> void
+Sage.Simulation.Added<T>.Added(Sage.Simulation.Entity Entity, long Sequence) -> void
+Sage.Simulation.Added<T>.Entity.get -> Sage.Simulation.Entity
+Sage.Simulation.Added<T>.Entity.init -> void
+Sage.Simulation.Added<T>.Sequence.get -> long
+Sage.Simulation.Added<T>.Sequence.init -> void
 Sage.Simulation.AimChainIk
 Sage.Simulation.AimIk
 Sage.Simulation.AimIk.AimIk() -> void
@@ -463,6 +470,26 @@ Sage.Simulation.Engine.Animations.get -> Sage.Simulation.GltfAnimationReader!
 Sage.Simulation.Engine.ModManager.get -> Sage.Simulation.ModManager!
 Sage.Simulation.Engine.Mods.get -> Sage.Core.ModLoadResult!
 Sage.Simulation.Engine.Mods.set -> void
+Sage.Simulation.Engine.Signals.get -> Sage.Simulation.EngineSignals!
+Sage.Simulation.EngineSignal
+Sage.Simulation.EngineSignal.EngineSignal() -> void
+Sage.Simulation.EngineSignal.EngineSignal(Sage.Simulation.EngineSignalKind Kind, Sage.Core.RecordId Scene) -> void
+Sage.Simulation.EngineSignal.Kind.get -> Sage.Simulation.EngineSignalKind
+Sage.Simulation.EngineSignal.Kind.init -> void
+Sage.Simulation.EngineSignal.Scene.get -> Sage.Core.RecordId
+Sage.Simulation.EngineSignal.Scene.init -> void
+Sage.Simulation.EngineSignalKind
+Sage.Simulation.EngineSignalKind.Paused = 2 -> Sage.Simulation.EngineSignalKind
+Sage.Simulation.EngineSignalKind.Resumed = 3 -> Sage.Simulation.EngineSignalKind
+Sage.Simulation.EngineSignalKind.SceneLoaded = 1 -> Sage.Simulation.EngineSignalKind
+Sage.Simulation.EngineSignalKind.WorldCreated = 0 -> Sage.Simulation.EngineSignalKind
+Sage.Simulation.EngineSignals
+Sage.Simulation.EngineSignals.EngineSignals() -> void
+Sage.Simulation.EngineSignals.PauseChanged -> System.Action<Sage.Simulation.World!, bool>?
+Sage.Simulation.EngineSignals.RaisePaused(Sage.Simulation.World! world, bool paused) -> void
+Sage.Simulation.EngineSignals.SceneLoaded -> System.Action<Sage.Simulation.World!, Sage.Core.RecordId>?
+Sage.Simulation.EngineSignals.WorldCreated -> System.Action<Sage.Simulation.World!>?
+Sage.Simulation.EngineSignals.WorldDestroying -> System.Action<Sage.Simulation.World!>?
 Sage.Simulation.EntityInputs.ComponentsTaking(string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.EntityInputs.Register<T>(string! name, Sage.Simulation.EntityInput! handler) -> void
 Sage.Simulation.EntityInputs.Takes(Sage.Simulation.Entity entity, string! name) -> bool
@@ -913,6 +940,15 @@ Sage.Simulation.RagdollTable.Friction.get -> float
 Sage.Simulation.RagdollTable.SettleSpeed.get -> float
 Sage.Simulation.RagdollTable.SettleTime.get -> float
 Sage.Simulation.RayHit.Surface -> Sage.Core.RecordId
+Sage.Simulation.Removed<T>
+Sage.Simulation.Removed<T>.Entity.get -> Sage.Simulation.Entity
+Sage.Simulation.Removed<T>.Entity.init -> void
+Sage.Simulation.Removed<T>.Removed() -> void
+Sage.Simulation.Removed<T>.Removed(Sage.Simulation.Entity Entity, T Value, long Sequence) -> void
+Sage.Simulation.Removed<T>.Sequence.get -> long
+Sage.Simulation.Removed<T>.Sequence.init -> void
+Sage.Simulation.Removed<T>.Value.get -> T
+Sage.Simulation.Removed<T>.Value.init -> void
 Sage.Simulation.RenderEnvironment.DrawSky -> bool
 Sage.Simulation.RenderEnvironment.FogDensity -> float
 Sage.Simulation.RenderEnvironment.FogMode -> Sage.Simulation.FogMode

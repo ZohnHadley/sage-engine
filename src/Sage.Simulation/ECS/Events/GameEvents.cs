@@ -217,6 +217,9 @@ public sealed class GameEvents
     // what we want — it ages from now, not from tick zero.
     public long NowTick { get; internal set; }
 
+    // The world's structural changes, for `Added<T>`/`Removed<T>` queues; null on a bus with no world.
+    internal StructuralEvents? Structural { get; set; }
+
     public EventQueue<T> Queue<T>(Schedule schedule = Schedule.Fixed) where T : struct
     {
         var key = (typeof(T), schedule);
@@ -225,6 +228,9 @@ public sealed class GameEvents
         var queue = new EventQueue<T>(schedule);
         _queues[key] = queue;
         (schedule == Schedule.Fixed ? _fixed : _frame).Add(queue);
+        // `Added<T>`/`Removed<T>` (StructuralEvents.cs): the world starts publishing T's changes into
+        // this queue now that it exists, and not before. Once per queue, so the box is no matter.
+        if (Structural != null && default(T) is IStructuralEvent structural) structural.Attach(Structural, queue);
         return queue;
     }
 
