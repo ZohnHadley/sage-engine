@@ -32,6 +32,7 @@
             "attack",
             "attribute",
             "calendar",
+            "calendar_event",
             "cue",
             "damage_type",
             "dialogue",
@@ -196,6 +197,21 @@
           },
           "then": {
             "$ref": "calendar.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "calendar_event"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "calendar_event.schema.json"
           }
         },
         {

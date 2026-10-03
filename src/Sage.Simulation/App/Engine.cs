@@ -74,6 +74,7 @@ public sealed class Engine : IDisposable
             // I/O plugin to reach a wire, as every output does.
             Timers.Register(this);
             Tweens.Register(this);
+            CalendarEvents.Register(this);                       // OnCalendarEvent (issue 4m-15)
             // Relays, counters, comparisons, branches and remaps (issue #91), the same way.
             LogicEntities.Register(this);
             // State machines (issue #92): the engine's too; SetState, OnStateChanged and the `on` names
@@ -93,6 +94,9 @@ public sealed class Engine : IDisposable
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
         Scenes = new Scenes(this);
+        // After the scenes are placed again: what they placed is new already, and the rest of what was
+        // spawned from a prefab follows its edit where the game did not change it (issue #287).
+        Records.Reloaded += () => Saves.ReloadPrefabInstances();
     }
 
     // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).
@@ -203,6 +207,7 @@ public sealed class Engine : IDisposable
             world.Resources.Add(new Vars());                     // world variables (issue #89), saved
             world.Resources.Add(new WorldClock());               // time of day (issue 4h-2), saved
             world.AddSystem(new WorldClockSystem(world));
+            world.AddSystem(new CalendarEventSystem(world));     // calendar events fire their wires (issue 4m-15)
             world.AddSystem(new SkySystem(world));               // lights the world by its `sky`, if it has one
             world.Resources.Add(new TravelLog());                // discovered travel points (issue 4g-5), saved
             world.AddSystem(new TravelPointSystem(world));

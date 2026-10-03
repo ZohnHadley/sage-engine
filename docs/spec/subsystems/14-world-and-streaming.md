@@ -1,6 +1,6 @@
 # 14 · World, streaming and time
 
-> Status: built and tested for the 4g exit game; streaming has a far ring of coarse ground and far looks, per-sector asset scopes, generation on jobs and budgeted per-chunk collision (#277); the calendar and time services are minimal. Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes, the far ring). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
+> Status: built and tested for the 4g exit game; streaming has a far ring of coarse ground and far looks, per-sector asset scopes, generation on jobs and budgeted per-chunk collision (#277); a world's time scale, pause and hit-stop are a saved service (`WorldTime`, #283); the calendar is minimal. Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes, the far ring). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
 
 ## 1. Purpose and scope
 
@@ -61,6 +61,7 @@ Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_ena
 | `sage:travel_point` | component and part `travel_point` | `label`, `radius`, `discovered`. |
 | `sage:offscreen` | component and part `offscreen` | `speed`, `strength`, `corpse`, `fight`. |
 | `clock` | saved resource | `Day`, `Hour`, `Scale`, `Sky`, `Calendar`. |
+| `time` | saved resource | `WorldTime` (#283): `Scale` (world speed), `Paused`, `HitStopLeft`, `Unscaled`, `Scaled`, `Carry`. The clock advances on its steps, so at half speed the hours go by at half speed too. Console `world_speed`, `hit_stop`; actions `world_speed`, `hit_stop`. |
 | `travel` | saved resource | The `TravelLog`: discovered points with scene and absolute place. |
 | `offscreen` | saved resource | The table of agents that are simulated while their cell sleeps. |
 
@@ -100,7 +101,7 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 | REQ-WORLD-12 | NPCs shall keep routines and fight off-screen, deterministically, with no per-step allocation. | Should | Partial: straight-line movement, only after a cell first sleeps | test: `TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime`; #284 |
 | REQ-WORLD-13 | Streaming shall not stall a frame: generation on jobs, LOD and HLOD past the ring, per-sector asset scopes. | Must | Done | test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`, `TheFarRingHasCoarseGroundAndFarLooksPastTheFullRing`, `ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept`, `SectorEdgeNormalsMatchTheNeighboursSoLightingHasNoSeam` |
 | REQ-WORLD-14 | Prefabs shall nest and keep per-placement overrides across sectors. | Should | Done | test: `AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing` |
-| REQ-WORLD-15 | The world shall offer a time scale, pause and hit-stop as services. | Should | Not started | #283 |
+| REQ-WORLD-15 | The world shall offer a time scale, pause and hit-stop as services. | Should | Done | `src/Sage.Simulation/World/WorldTime.cs` (the saved `time` resource); test: TheWorldsTimeSurvivesASave, PauseStopsScaledTimeButNotRealTime |
 | REQ-WORLD-16 | The calendar shall add seasons, moon phases, leap years and scheduled events. | Could | Not started | #289 |
 | REQ-WORLD-17 | There shall be several streaming sources, each with its own ring. | Could | Not started | #290 |
 | REQ-WORLD-18 | Interiors shall be separate spaces, and companions shall follow through doors. | Could | Not started | #291 |
@@ -109,7 +110,6 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 
 Milestone 2 (epic #274).
 
-- #283 4m-9 Time scale, pause and hit-stop as world services (P2)
 - #284 4m-10 Off-screen simulation: pathing, unvisited cells, live NPCs with far anchors (P2)
 - #289 4m-15 Calendar and clock: seasons, moon phases, leap years, scheduled calendar events (P3)
 - #290 4m-16 Several streaming sources and per-source rings (P3)
