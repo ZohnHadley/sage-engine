@@ -64,7 +64,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1598 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1682 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: code mods, the editor's brushes and asset
 browser (its first half, phase 10a, is a mode of the dev host: [`docs/EDITOR.md`](docs/EDITOR.md)), and
@@ -135,6 +135,7 @@ searches both. Some worth knowing:
 | `rec_list`, `rec_get prefab watcher`, `rec_reload` | what records loaded, one record's values and where each field came from, reload them |
 | `vfs_mounts`, `vfs_which textures/creature.png` | the mount stack, and which mount a path resolves to |
 | `pause`, `host_timescale 0.3`, `sim_tickrate 30` | stop time, slow it, change the tick rate |
+| `world_speed 0.5`, `hit_stop 0.1` | bullet time in every world, a short freeze (saved with the game, unlike `host_timescale`) |
 | `warp 120000 -80000`, `stream_status`, `stream_radius 2` | go a hundred kilometres away and watch the world stream in around you; the simulation stays near its own origin |
 | `scale_spawn 2000 tree`, `scale_report` | fill the world and print what a frame costs, phase by phase ([the numbers](docs/history/scale-2026-09-24.md)) |
 | `r_sprite_facecamera 1` | turn billboards toward the camera's position instead of the view plane |
@@ -333,7 +334,7 @@ you write, how to get a character walking about, levels, your HUD, and the list 
 do nothing if you forget them. It describes the engine as it is rather than as it is planned.
 
 [`games/Hello`](games/Hello) is that guide as a runnable game — the smallest one this engine can run:
-four files, 46 lines of code. It is in the solution and covered by tests, so it cannot rot. <!-- counts: files games/Hello, code games/Hello -->
+four files, 47 lines of code. It is in the solution and covered by tests, so it cannot rot. <!-- counts: files games/Hello, code games/Hello -->
 
 ```bash
 dotnet run --project src/Sage.Host -c Development -- -game games/Hello

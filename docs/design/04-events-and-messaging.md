@@ -37,7 +37,7 @@ How parts of the engine and game tell each other that something happened, withou
   under a system that hasn't run yet this tick would skip events for it.
 - **A reader must keep up.** `MessageLog` drains at the end of every tick as well as every frame,
   because a dedicated server never draws and would otherwise be reported as the laggard.
-- **Not done here:** `Added<T>`/`Removed<T>` structural events (§3.3), entity I/O (§3.4), `ISystem`
+- **Not done here:** ~~`Added<T>`/`Removed<T>` structural events (§3.3)~~ (built with #282, §3.3), ~~entity I/O (§3.4)~~ (F17, §3.4a), `ISystem`
   access declarations. A reader is asked for in a system's constructor (`world.Events.Reader<T>(this)`)
   rather than declared, until `SystemAccess` exists (03 §3.5, R16).
 
@@ -78,7 +78,25 @@ How parts of the engine and game tell each other that something happened, withou
 ### 3.3 Structural notifications in detail
 - *Internally* the world calls registered listeners immediately at flush points (03 §3.5): query caches, the `PersistentId` index, subsystems that mirror data (physics bodies, 10), and the editor.
 - *For gameplay*, the same changes are available as game events: `Added<T>` and `Removed<T>` (carrying the `EntityRef` and, for `Removed`, a copy of the component), plus `Spawned` and `Destroyed`. Systems read them like any other game event.
-- **Built in step 3** as `World` C# events (`EntitySpawned`, `ComponentAdded`, `ComponentRemoved`, `EntityDestroyed`); the queued `Added<T>`/`Removed<T>` game events come with the event bus.
+- **Built in step 3** as `World` C# events (`EntitySpawned`, `ComponentAdded`, `ComponentRemoved`, `EntityDestroyed`); the queued `Added<T>`/`Removed<T>` game events came with issue #282 (below). `Spawned`/`Destroyed` as queued events are not built: `World.EntitySpawned`/`EntityDestroyed` stay the immediate form.
+
+#### As built (structural events, 2026-10-03, issue #282)
+- **`Added<T>(Entity, Sequence)` and `Removed<T>(Entity, Value, Sequence)`** are `[GameEvent]` structs
+  (`src/Sage.Simulation/ECS/Events/StructuralEvents.cs`), read with a cursor like any game event:
+  `world.Events.Reader<Added<Health>>(this)`. A reactive system sees exactly one add and one remove per
+  entity, whether the component was removed, went with its entity, or went at a command buffer's playback;
+  giving a component a new value is not an add, and `Removed<T>.Value` is the component as it went
+  (test: AReactiveSystemSeesOneAddAndOneRemovePerEntity).
+- **Opt-in per type.** Nothing is published for a T until a queue of `Added<T>` or `Removed<T>` exists,
+  which asking for a reader makes; a type nobody reads costs an array lookup per change, and a world with no
+  structural readers a null check (test: ATypeNobodyReadsIsNotPublished).
+- **Sent when the change happens.** An add and a remove in one tick are both delivered, each in its own
+  queue; `Sequence` counts up per world across both, for the reader that must know which came first
+  (test: AnAddAndARemoveInOneTickAreBothDeliveredInOrder). The changes go to the Fixed queue and to a Frame
+  one if a display-rate reader asked for it (test: AFrameReaderSeesTheChanges).
+- **Allocation-free once warm** (test: ReadingAddsAndRemovesAllocatesNothingPerTick).
+- The immediate `World.ComponentAdded`/`ComponentRemoved` stay, for the world's own bookkeeping (indexes,
+  physics mirrors, the editor); gameplay reads the queued form.
 - Ordering guarantees (kept from the old `EntityContext`, enforced by `World` on top of Friflo, 03 §3.1 E5): `Spawned` comes before any `Added<T>` for that entity; the `Removed<T>` events come before `Destroyed`.
 
 ### 3.4 Entity I/O in detail
@@ -256,9 +274,20 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   and a blend instead of actions — steps with the same rules, animation events arriving as `on` names;
   `tags` and `StateMachines.HasTag` let a HUD or a layer read a state without knowing its name
   (test: FirstTransitionTakesTheFirstThatMatches).
-- **Not built:** `during`/`update` actions each tick, per-state outputs (`enter` can `fire` instead),
-  nested or parallel states, a saved activator (it is a handle, as a timer's is), and an engine prefab
-  (a game writes its own prefab with the part). A placement overrides the part's `machine` as it does any
+- **Built since, with issue #280 (2026-10-03):** `during` actions each tick in a state (outer states
+  first, from the tick after it is entered, before transitions are tried); nested states (`states` and
+  `initial` inside a state, whose transitions apply in every state inside it) and parallel regions
+  (`"parallel": true`, all entered together, each moving at most once a tick); each state's own outputs
+  `OnEnter<state>` and `OnExit<state>`; the activator saved by persistent id, and every active state with
+  its time (`StateMachine.Active`, `ActiveState`); and the engine prefab `sage:logic_state_machine`, the
+  part with no machine, for a placement to name one
+  (test: NestedStatesMoveInsideTheirParent_AndParallelRegionsMoveOnTheirOwn)
+  (test: ANestedMachineRoundTripsASaveMidState_WithItsActivator)
+  (test: TheEnginePrefabRunsTheMachineAPlacementNames_AndAStatesOutputsAreWirable)
+  (test: NestedAndParallelMachinesWithDuringAllocateNothingPerTick). A save written before #280, with
+  only `State`, places the states around it (test: ASaveWithOnlyTheStatePlacesTheStatesAroundIt); names
+  are unique across the machine, and a nested state's `initial` and a parallel state's regions are
+  checked at load (test: NestedStatesAreCheckedAtLoad). A placement overrides the part's `machine` as it does any
   part option, `"overrides": { "parts": { "state_machine": { "machine": "door_b" } } }`, and keeps it
   across a sector crossing and a save (issue #279; test:
   AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing).
@@ -401,6 +430,22 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
 
 Handlers are expected to be cheap: invalidate a cache, mark something dirty. Heavy work is scheduled for later.
 
+#### As built (engine signals, 2026-10-03, issue #282)
+- **`engine.Signals`** (`EngineSignals`, `src/Sage.Simulation/App/EngineSignals.cs`) has `WorldCreated`
+  (at the end of `Engine.CreateWorld`, the world furnished, its scene placed and its rules started),
+  `WorldDestroying` (the world still whole), `SceneLoaded(World, RecordId)` (a start scene, `scene_load`
+  or a journey) and `PauseChanged(World, bool)`. Raised on the main thread where the thing happens, never
+  inside a tick's phases.
+- **The same signals in the world** as the `EngineSignal` game event (`Kind`: `WorldCreated`,
+  `SceneLoaded`, `Paused`, `Resumed`; `Scene`), on the Fixed queue, so a system reads them with a cursor
+  instead of running inside whoever loaded the scene. A reader asked for while the world is being furnished
+  sees its own world's `WorldCreated` (test: EngineSignalsSayAWorldWasCreatedAndASceneLoaded).
+- **Pause is not signalled yet.** `EngineSignals.RaisePaused(world, paused)` exists for whoever owns pause,
+  but nothing calls it: `World.Paused` / `WorldTime.Paused` (#283) changing does not raise `PauseChanged`.
+  That wiring is a follow-up.
+- **Not built from the list above:** `AssetReloaded`, `RecordsReloaded` (hot reload raises its own
+  `RecordStore.Reloaded`, 05), `CVarChanged`, the window and gamepad signals and `ModuleInitialized`.
+
 ## 4. Public API sketch
 
 ```csharp
@@ -488,8 +533,8 @@ I/O connections are part of map/prefab entity data (09):
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| (old) `EntityContext.OnEntityAdded/OnEntityRemoved/OnComponentAdded/OnComponentRemoved`, now `World.EntitySpawned/ComponentAdded/ComponentRemoved/EntityDestroyed` (step 3) | Structural notifications (§3.3): immediate internal listeners + queued `Spawned`/`Destroyed`/`Added<T>`/`Removed<T>` |
-| (old) `EntityContextListener` re-broadcast + `ArchetypeView.OnEnter/OnExit` | **Done (step 3):** typed Friflo queries (03); `Added<T>`/`Removed<T>` queued events later |
+| (old) `EntityContext.OnEntityAdded/OnEntityRemoved/OnComponentAdded/OnComponentRemoved`, now `World.EntitySpawned/ComponentAdded/ComponentRemoved/EntityDestroyed` (step 3) | Structural notifications (§3.3): immediate internal listeners + queued `Added<T>`/`Removed<T>` (**done**, #282); queued `Spawned`/`Destroyed` not built |
+| (old) `EntityContextListener` re-broadcast + `ArchetypeView.OnEnter/OnExit` | **Done (step 3):** typed Friflo queries (03); `Added<T>`/`Removed<T>` queued events since #282 |
 | `InputSystem` C# events (`OnKeyPressed`, `OnMouseDrag`, …) used by `DevCamera` | **Done (step 6):** the listener events live on `InputDevices` for **UI/editor/camera** use (08); gameplay reads `PlayerCommand` (`PlayerControlSystem` turns it into the possessed pawn's `PawnIntent`) |
 | `CVar`-like fields and ad-hoc delegates (none yet) | Engine signals |
 
@@ -511,6 +556,6 @@ Game events are simulation-internal and stay on the server. Clients get the *eff
 
 ## 14. Build steps
 1. ~~Game event queues + `EventReader`/`EventWriter` + declarations~~ **Done 2026-09-23** (R13; "As built (game events)").
-2. Structural notifications from `World` (with 03 step 2). **Partly:** `World` raises plain C# events (`EntityDestroyed`, …); the queued form in §3.1 is not built.
-3. `EngineSignals` (with 01/05). Not built.
+2. ~~Structural notifications from `World` (with 03 step 2)~~ **Done:** `World` raises plain C# events (`EntityDestroyed`, …), and the queued `Added<T>`/`Removed<T>` came with issue #282 (§3.3, 2026-10-03).
+3. `EngineSignals` (with 01/05). **Partly, issue #282 (§3.5):** world created and destroying, scene loaded, and the `EngineSignal` event in the world; pause is not raised yet, and the asset, record, cvar, window and module signals are not built.
 4. ~~Entity I/O: connections, load-time resolution, `ent_fire`~~ **Done 2026-09-24** (F17; §3.4a). Left: attributes and generated dispatch, which wait for the source generator (09 §3.2, REDESIGN §3.4).
