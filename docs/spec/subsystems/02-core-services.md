@@ -19,7 +19,7 @@ They deliberately do not include content loading and errors with file and line (
 - Build identity: `BuildInfo` (configuration, SemVer from git tags), `GameManifest`, `SemVersion`.
 - The registration seal (`RegistrationSeal`), which turns a late registration into an exception.
 
-Not responsible for: drawing the console or the stat overlays, content errors and reports, the world clock and calendar ([14 world and streaming](14-world-and-streaming.md)), pausing and time scale per world (#283), or a job system (design 02 §4.5, not built).
+Not responsible for: drawing the console or the stat overlays, content errors and reports, the world clock and calendar ([14 world and streaming](14-world-and-streaming.md)), pausing and time scale per world (`WorldTime`, [14 world and streaming](14-world-and-streaming.md)), or a job system (design 02 §4.5, not built).
 
 ## 3. Placement and dependencies
 
@@ -103,7 +103,7 @@ Not built: `stat render` and `stat assets`, a Chrome-trace export of profiler sc
 | REQ-CORE-13 | Give each app in a process its own log sinks, user folder and crash report. | Should | Not started | #49 |
 | REQ-CORE-14 | Offer a job system on the thread pool for decoding and generation, with main-thread completion. | Should | Partial: terrain generation on the thread pool with main-thread completion (test: `GenerationOnJobsIsTheSameGroundAsOnTheMainThread`); no general job API | design 02 §4.5 |
 | REQ-CORE-15 | Expose content errors in a shipped game without the editor (`problems` command and badge). | Should | Not started | #301 |
-| REQ-CORE-16 | Offer world and per-system time scale, pause and hit-stop. | Should | Not started | #283 |
+| REQ-CORE-16 | Offer world and per-system time scale, pause and hit-stop. | Should | Done | `src/Sage.Simulation/World/WorldTime.cs`; per system: the world's time, or real time by `RunCondition.Always` (no per-system factor); test: HalfScaleHalvesTimerTweenAndClockProgress, AHitStopFreezesTheWorldForRealSeconds |
 | REQ-CORE-17 | Version the engine from git tags and check plugin, kit and game ranges against it. | Must | Done | `BuildInfo.EngineSemVersion`; first tag pending (#295) |
 
 ## 10. Open work
@@ -114,9 +114,6 @@ R1, Tooling and the first release (milestone 3):
 - #300 R1-8 Diagnostics gaps: visual logger, stat render, async load/job stats, trace dump (P3)
 - #301 R1-9 An in-game problems list without the editor (P3)
 - #303 R1-11 Docs: refresh stale status markers (P3)
-
-4m, World, logic and saves (milestone 2):
-- #283 4m-9 Time scale, pause and hit-stop as world services (P2)
 
 Existing: #49 per-app log, user folder and crash reporter (P2).
 

@@ -13,7 +13,7 @@ This subsystem is how one part of a game tells another that something happened, 
 | Logic entities, timers, tweens, state machines | Level logic written as data: relays, counters, waits, eases, guard moods. | Designers |
 | The condition and action vocabulary | One language for "may this happen?" and "what happens?", shared by wires, dialogue, quests, topics and state machines. | Designers, kits |
 
-It does not do scripting in a general-purpose language (the scripting decision waits for the phase-5 samples, see [SRS](../SRS.md) §10), pathfinding or AI (sheet [09](09-navigation-and-ai.md)), or dialogue and quest content (sheet [16](16-gameplay.md)). Engine plumbing signals such as "scene loaded" are a separate, not yet built mechanism (`EngineSignals`, #282).
+It does not do scripting in a general-purpose language (the scripting decision waits for the phase-5 samples, see [SRS](../SRS.md) §10), pathfinding or AI (sheet [09](09-navigation-and-ai.md)), or dialogue and quest content (sheet [16](16-gameplay.md)). Engine plumbing signals such as "scene loaded" are a separate mechanism (`EngineSignals`, `engine.Signals`, and the `EngineSignal` game event, #282).
 
 ## 2. Responsibilities
 
@@ -147,7 +147,7 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 | REQ-LOGIC-01 | Each event reader shall see every event of its queue exactly once, in order, with its own cursor, even when several ticks run in one frame. | Must | Done | test: AReaderSeesWhatWasSentAndThenNothing |
 | REQ-LOGIC-02 | An event shall be dropped once every reader has passed it, and a queue with no readers shall not grow. | Must | Done | test: AQueueNobodyReadsDoesNotGrow |
 | REQ-LOGIC-03 | A lagging reader shall be named in a warning and its events dropped at `ev_maxage`, so a disabled system never leaks memory. | Must | Done | test: ALaggingReaderIsDroppedAtMaxAgeRatherThanHoldingTheQueue |
-| REQ-LOGIC-04 | Systems shall be able to react to a component being added or removed through queued `Added<T>` and `Removed<T>` events, and to engine signals (scene loaded, world created, paused). | Should | Not started | #282 |
+| REQ-LOGIC-04 | Systems shall be able to react to a component being added or removed through queued `Added<T>` and `Removed<T>` events, and to engine signals (scene loaded, world created, paused). | Should | Done: structural events and the world-created, scene-loaded, paused and resumed signals | test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, AnAddAndARemoveInOneTickAreBothDeliveredInOrder, EngineSignalsSayAWorldWasCreatedAndASceneLoaded |
 | REQ-LOGIC-05 | An entity output shall reach its wired input after the wire's delay, deterministically, with `times` limiting how often it fires. | Must | Done | test: ADelayedWireArrivesLateAndNotBefore |
 | REQ-LOGIC-06 | The pending I/O queue shall be saved, so a delayed input saved half-way arrives on the tick it would have, and a spent wire stays spent. | Must | Done | test: ADelayedInputSavedHalfWayArrivesOnTheTickItWould_AndItsWireStaysSpent |
 | REQ-LOGIC-07 | A wire to an input that does not exist shall be a load error, not a runtime no-op. | Must | Done | test: AnInputThatDoesNotExistIsRefusedWhenTheLevelLoadsNotWhenItFires |
@@ -159,21 +159,17 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 | REQ-LOGIC-13 | Timers shall support repeat, a random spread that is deterministic across runs and saves, and start/stop/reset inputs. | Must | Done | test: ARandomTimerIsDeterministic_AcrossRunsAndASave |
 | REQ-LOGIC-14 | Tweens shall move, turn or scale a transform along a named easing curve, from a wire, deterministically and across a save. | Must | Done | test: TweensAreDeterministicAndSurviveASave |
 | REQ-LOGIC-15 | State machines shall be data records, saved by state name, and survive a record hot reload. | Must | Done | test: StateAndTimeInItSurviveSaveAndLoad |
-| REQ-LOGIC-16 | State machines shall support actions that run each tick in a state, nested and parallel states, per-state outputs, and placement overrides of the `machine`. | Should | Not started | #280 |
+| REQ-LOGIC-16 | State machines shall support actions that run each tick in a state, nested and parallel states, per-state outputs, and placement overrides of the `machine`. | Should | Done | test: NestedStatesMoveInsideTheirParent_AndParallelRegionsMoveOnTheirOwn, ANestedMachineRoundTripsASaveMidState_WithItsActivator, TheEnginePrefabRunsTheMachineAPlacementNames_AndAStatesOutputsAreWirable, NestedAndParallelMachinesWithDuringAllocateNothingPerTick |
 | REQ-LOGIC-17 | Conditions and actions shall be open vocabularies registered by the owning plugin, and an unknown id shall suggest the nearest one. | Must | Done | test: AnUnknownIdSuggestsTheNearestOne |
 | REQ-LOGIC-18 | The base vocabulary shall cover what a data-only game needs: chance, entity existence and distance, spawn, destroy, teleport, sound, tags, time passing, scene load, save, log and wait. | Must | Done | test: SpawnDestroyAndTeleportChangeTheWorld; test: RandomIsDeterministic_AcrossRunsAndASave; test: AWaitSavedHalfWayFinishesAfterALoad; test: TagsAliveAndCuesWorkOnAnyEntity |
-| REQ-LOGIC-19 | Delays, timers and tweens shall pause with a paused world, and honour a world time scale. | Should | Partial: pause done, scale not | test: APausedWorldsDelaysWait; #283 |
+| REQ-LOGIC-19 | Delays, timers and tweens shall pause with a paused world, and honour a world time scale. | Should | Done | test: APausedWorldsDelaysWait, HalfScaleHalvesTimerTweenAndClockProgress, RealTimeTimersAndTweensIgnoreScalePauseAndHitStop |
 | REQ-LOGIC-20 | A steady-state tick of events, I/O, timers, tweens, state machines and condition evaluation shall allocate nothing. | Must | Done | test: TimersTweensAndEntityIOAllocateNothingPerTick |
 
 ## 10. Open work
 
 Milestone 4m, World, logic and saves (epic #274):
 
-- #280 4m-6 State machines: per-tick actions, nested/parallel states, per-state outputs (P2)
 - #281 4m-7 Logic entities: round out the set (multi-source, math, random, case, template, spawner) (P2)
-- #282 4m-8 Events: structural `Added<T>`/`Removed<T>` and `EngineSignals` (P2)
-- #283 4m-9 Time scale, pause and hit-stop as world services (P2)
-- #286 4m-12 Tests: hierarchy, multi-world, timers and tweens across a save (P2)
 
 Milestone 10b, Editor part 2: #370 10b-5 Conditions and actions editor, and a `requires` form (P2), which is the editor side of REQ-LOGIC-18.
 

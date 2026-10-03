@@ -101,14 +101,13 @@ Log category `Save`. `saves` lists slots with kind, time and entity count. Two p
 | REQ-SAVE-15 | Saves shall offer thumbnails, optional compression, an asynchronous write and named slots, and quick-save keys shall work while paused. | Should | Not started | #285 |
 | REQ-SAVE-16 | A save-version report shall say what a save would lose or change under the current content and mods. | Could | Not started | #285 |
 | REQ-SAVE-17 | A pre-release save-format window shall be closed: format 1 shall stop being read once the first release ships. | Could | Not started | #295 (first release) |
-| REQ-SAVE-18 | Tests shall cover timers and tweens across a save, and hierarchy and multi-world saves. | Should | Not started | #286 |
+| REQ-SAVE-18 | Tests shall cover timers and tweens across a save, and hierarchy and multi-world saves. | Should | Done | test: ARandomTimerIsDeterministic_AcrossRunsAndASave, TweensAreDeterministicAndSurviveASave, TwoWorldsKeepTheirOwnClocksAndEntities_AcrossASaveAndALoad, ATimeSkipWhileASectorSleeps_PassesOnceAndTheSectorWakesIntact |
 
 ## 10. Open work
 
 Milestone 2 (epic #274).
 
 - #285 4m-11 Saves: thumbnails, compression, async write, named slots and a save-version report (P2)
-- #286 4m-12 Tests: hierarchy, multi-world, timers and tweens across a save (P2)
 
 Related: #396 9-1 code mods (P1) changes what a save must survive; #398 9-3 namespaced mod assets (P1).
 
