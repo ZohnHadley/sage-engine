@@ -86,6 +86,8 @@ const Sage.Simulation.Viewmodel.DefaultFovY = 54 -> float
 const Sage.Simulation.Viewmodel.DefaultNear = 0.01 -> float
 const Sage.Simulation.Viewmodels.SystemId = "sage.camera.viewmodel" -> string!
 const Sage.Simulation.WorldClock.HoursPerDay = 24 -> double
+const Sage.Simulation.WorldTime.MaxScale = 16 -> double
+const Sage.Simulation.WorldTime.MaxStepsPerTick = 16 -> int
 override Sage.Simulation.CameraViewport.Equals(object? obj) -> bool
 override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
@@ -761,6 +763,7 @@ Sage.Simulation.LogicTimer.Activator -> Sage.Simulation.Entity
 Sage.Simulation.LogicTimer.Interval -> float
 Sage.Simulation.LogicTimer.LogicTimer() -> void
 Sage.Simulation.LogicTimer.Random -> uint
+Sage.Simulation.LogicTimer.RealTime -> bool
 Sage.Simulation.LogicTimer.Remaining -> float
 Sage.Simulation.LogicTimer.Repeat -> bool
 Sage.Simulation.LogicTimer.Running -> bool
@@ -769,6 +772,7 @@ Sage.Simulation.LogicTimerPart
 Sage.Simulation.LogicTimerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Simulation.LogicTimerPart.Interval -> float
 Sage.Simulation.LogicTimerPart.LogicTimerPart() -> void
+Sage.Simulation.LogicTimerPart.RealTime -> bool
 Sage.Simulation.LogicTimerPart.Repeat -> bool
 Sage.Simulation.LogicTimerPart.Seed -> uint
 Sage.Simulation.LogicTimerPart.Spread -> float
@@ -1323,6 +1327,8 @@ Sage.Simulation.TriggerExited.Trigger.get -> Sage.Simulation.Entity
 Sage.Simulation.TriggerExited.Trigger.init -> void
 Sage.Simulation.TriggerExited.TriggerExited() -> void
 Sage.Simulation.TriggerExited.TriggerExited(Sage.Simulation.Entity Trigger, Sage.Simulation.Entity Other) -> void
+Sage.Simulation.Tween.RealTime -> bool
+Sage.Simulation.TweenPart.RealTime -> bool
 Sage.Simulation.TwoBoneIk
 Sage.Simulation.UnknownSavedData
 Sage.Simulation.UnknownSavedData.Components -> string!
@@ -1414,6 +1420,7 @@ Sage.Simulation.WeatherRecord.FogEndScale -> float
 Sage.Simulation.WeatherRecord.FogStartScale -> float
 Sage.Simulation.WeatherRecord.FogTint -> System.Numerics.Vector3
 Sage.Simulation.WeatherRecord.SkyTint -> System.Numerics.Vector3
+Sage.Simulation.World.RunFixed(float dt, System.Action<Sage.Simulation.World!>? beforeStep) -> void
 Sage.Simulation.WorldClock
 Sage.Simulation.WorldClock.Advance(double realSeconds) -> void
 Sage.Simulation.WorldClock.Calendar.get -> Sage.Core.RecordId
@@ -1429,6 +1436,26 @@ Sage.Simulation.WorldClock.Scale.set -> void
 Sage.Simulation.WorldClock.Sky.get -> Sage.Core.RecordId
 Sage.Simulation.WorldClock.Sky.set -> void
 Sage.Simulation.WorldClock.WorldClock() -> void
+Sage.Simulation.WorldTime
+Sage.Simulation.WorldTime.Carry.get -> double
+Sage.Simulation.WorldTime.Carry.set -> void
+Sage.Simulation.WorldTime.HitStop(double seconds) -> void
+Sage.Simulation.WorldTime.HitStopLeft.get -> double
+Sage.Simulation.WorldTime.HitStopLeft.set -> void
+Sage.Simulation.WorldTime.HostScale.get -> double
+Sage.Simulation.WorldTime.HostScale.set -> void
+Sage.Simulation.WorldTime.Paused.get -> bool
+Sage.Simulation.WorldTime.Paused.set -> void
+Sage.Simulation.WorldTime.RealDt.get -> float
+Sage.Simulation.WorldTime.Running.get -> bool
+Sage.Simulation.WorldTime.Scale.get -> double
+Sage.Simulation.WorldTime.Scale.set -> void
+Sage.Simulation.WorldTime.Scaled.get -> double
+Sage.Simulation.WorldTime.Scaled.set -> void
+Sage.Simulation.WorldTime.Stepping.get -> bool
+Sage.Simulation.WorldTime.Unscaled.get -> double
+Sage.Simulation.WorldTime.Unscaled.set -> void
+Sage.Simulation.WorldTime.WorldTime() -> void
 static readonly Sage.Simulation.PlayerCameraSystem.Prefab -> Sage.Core.RecordId
 Sage.Simulation.Placement.Outputs -> System.Collections.Generic.List<Sage.Simulation.Connection!>!
 Sage.Simulation.ScriptedCamera
@@ -1699,6 +1726,7 @@ Sage.Simulation.ColliderPart
 Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
 Sage.Simulation.ColliderPart.ColliderPart() -> void
 Sage.Simulation.MapLevel.SurfaceOf(string! texture, Sage.Core.RecordStore! records) -> Sage.Core.RecordId
+static Sage.Simulation.WorldTime.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldTime!
 Sage.Simulation.ActiveState
 Sage.Simulation.ActiveState.ActiveState() -> void
 Sage.Simulation.ActiveState.Name -> string?

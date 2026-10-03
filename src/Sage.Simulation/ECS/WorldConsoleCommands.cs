@@ -278,7 +278,16 @@ internal static class WorldConsoleCommands
         _ => value.ToString() ?? "-",
     };
 
-    // `time`, `time_set` and `time_scale` (issue 4h-2): the world's clock, from the console.
+    // ", speed x0.5, paused": the world's time (WorldTime), for `time` and `world_speed`.
+    private static string Speed(World world)
+    {
+        var time = WorldTime.Of(world);
+        return $" speed x{time.Scale:0.##}" + (time.HostScale != 1.0 ? $" (host x{time.HostScale:0.##})" : "")
+             + (time.Paused ? ", paused" : "") + (time.HitStopLeft > 0 ? $", hit-stop {time.HitStopLeft:0.###} s" : "");
+    }
+
+    // `time`, `time_set` and `time_scale` (issue 4h-2): the world's clock, from the console; `world_speed`
+    // and `hit_stop` (issue #283): the world's time.
     private static void RegisterClock(CVarRegistry cvars, Engine engine)
     {
         cvars.RegisterCommand("time", CVarFlags.None,
@@ -289,7 +298,7 @@ internal static class WorldConsoleCommands
                 if (!world.Resources.TryGet<WorldClock>(out var clock) || clock == null) continue;
                 Log.Info(LogCat.Console,
                     $"'{world.Name}': day {clock.Day} ({Calendars.Today(world)}) {WorldClock.Format(clock.Hour)} (x{clock.Scale:0.##} game seconds a second)" +
-                    (clock.Sky.IsEmpty ? ", no sky" : $", sky {clock.Sky}"));
+                    (clock.Sky.IsEmpty ? ", no sky" : $", sky {clock.Sky}") + "," + Speed(world));
             }
         });
 
@@ -321,6 +330,43 @@ internal static class WorldConsoleCommands
             }
             foreach (var world in engine.Worlds)
                 Time.Pass(world, hours, "console");
+        });
+
+        // The world's own speed (WorldTime, issue #283): how many simulation steps a real second runs.
+        // Not `time_scale`, which is how fast the clock's hours go by in those steps.
+        cvars.RegisterCommand("world_speed", CVarFlags.Cheat,
+            "world_speed [n]: the simulation's speed in every world (1 normal, 0.5 bullet time, 0 stopped); no number: show it.", a =>
+        {
+            if (a.Count == 0)
+            {
+                foreach (var world in engine.Worlds) Log.Info(LogCat.Console, $"'{world.Name}':{Speed(world)}");
+                return;
+            }
+            if (!double.TryParse(a[0], System.Globalization.NumberStyles.Float,
+                                 System.Globalization.CultureInfo.InvariantCulture, out double speed)
+                || !double.IsFinite(speed) || speed < 0 || speed > WorldTime.MaxScale)
+            {
+                Log.Warn(LogCat.Console, $"world_speed <n>, 0 <= n <= {WorldTime.MaxScale}");
+                return;
+            }
+            foreach (var world in engine.Worlds)
+            {
+                WorldTime.Of(world).Scale = speed;
+                Log.Info(LogCat.Console, $"'{world.Name}':{Speed(world)}");
+            }
+        });
+
+        cvars.RegisterCommand("hit_stop", CVarFlags.Cheat,
+            "hit_stop <seconds>: freeze the simulation in every world for that many real seconds.", a =>
+        {
+            if (a.Count == 0 || !double.TryParse(a[0], System.Globalization.NumberStyles.Float,
+                                                 System.Globalization.CultureInfo.InvariantCulture, out double seconds)
+                || !double.IsFinite(seconds) || seconds <= 0)
+            {
+                Log.Warn(LogCat.Console, "hit_stop <seconds>, seconds > 0, e.g. hit_stop 0.1");
+                return;
+            }
+            foreach (var world in engine.Worlds) WorldTime.Of(world).HitStop(seconds);
         });
 
         cvars.RegisterCommand("time_scale", CVarFlags.Cheat,

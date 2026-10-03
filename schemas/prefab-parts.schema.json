@@ -2192,6 +2192,11 @@
           "default": 0,
           "type": "integer",
           "minimum": 0
+        },
+        "realTime": {
+          "description": "Count real seconds: through a pause, a hit-stop and any world speed (WorldTime) (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2294,6 +2299,11 @@
             "SmoothStep",
             "SmootherStep"
           ]
+        },
+        "realTime": {
+          "description": "Play in real seconds: through a pause, a hit-stop and any world speed (WorldTime) (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

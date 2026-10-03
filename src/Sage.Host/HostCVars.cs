@@ -19,7 +19,7 @@ internal sealed class HostCVars
         MaxFrameTime = r.Register("sim_maxframetime", 0.25f, CVarFlags.None,
             "Longest frame the simulation catches up on, in seconds (avoids the spiral of death after a hitch).", 0.02f, 2f);
         TimeScale = r.Register("host_timescale", 1f, CVarFlags.DevOnly | CVarFlags.Cheat,
-            "Simulation speed multiplier (0.2 = slow motion).", 0f, 10f);
+            "Simulation speed multiplier, on top of each world's own (WorldTime.HostScale; 0.2 = slow motion).", 0f, 10f);
         VSync = r.Register("r_vsync", true, CVarFlags.Archive,
             "Wait for the display's vertical sync.");
         ExitAfter = r.Register("host_exitafter", 0f, CVarFlags.DevOnly,
