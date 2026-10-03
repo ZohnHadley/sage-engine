@@ -976,7 +976,11 @@ internal sealed class TriggerOutputSystem : ISystem
     public void Run(in SystemContext ctx)
     {
         foreach (var overlap in _space.TriggerEnter)
+        {
             _world.FireOutput(overlap.Trigger, "OnStartTouch", overlap.Other);
+            // trigger_once / trigger_multiple (issue #281): OnTrigger, filtered, when it has a `trigger` part.
+            if (_world.IsAlive(overlap.Trigger) && _world.Has<LogicTrigger>(overlap.Trigger)) LogicGates.Touched(_world, overlap.Trigger, overlap.Other);
+        }
         foreach (var overlap in _space.TriggerExit)
             _world.FireOutput(overlap.Trigger, "OnEndTouch", overlap.Other);
     }

@@ -1,0 +1,116 @@
+[
+  // A Half-Life-style puzzle chain with no C# (issue #281): "restore the power to open the vault". A
+  // logic_auto arms the room, starts a generator timer with a random wait and sets a fan looping a tween
+  // sequence; a crate dropping on a trigger_once plate and the generator are a multisource's two sources;
+  // when both are set, a multi_manager-style relay (delayed wires) sends a colour to a logic_case, whose
+  // case sets a counter to its max, which lifts the vault door, whose arrival has a spawner place a
+  // template (a beacon wired to its own lamp, names fixed up). The floor and the crate are scene.json's.
+  // tests/Sage.Tests/Games/LogicPuzzleTests.cs starts this scene headlessly.
+
+  // trigger_once: a trigger volume with the `trigger` part. Only while the room is armed (a var).
+  { "type": "prefab", "id": "plate", "name": "plate",
+    "parts": { "body": { "size": [4, 3, 2], "trigger": true }, "trigger": { "once": true, "requires": { "var": "armed", "eq": 1 } } } },
+
+  // The generator: a one-shot timer whose wait is anywhere from half a second to a second.
+  { "type": "prefab", "id": "generator", "name": "generator",
+    "parts": { "timer": { "repeat": false, "randomMin": 0.5, "randomMax": 1, "seed": 7 } } },
+
+  // The fan: a tween sequence (a quarter turn, then another), played round and round.
+  { "type": "prefab", "id": "fan", "name": "fan",
+    "parts": { "tween": { "loop": "Restart", "sequence": ["turn 0 90 0 0.25 linear", "turn 0 90 0 0.25 linear"] } } },
+
+  // The vault door lifts three metres over a second (a TweenTo's own words, below); the dial reads a colour; the lock is a counter to 3.
+  { "type": "prefab", "id": "vault_door", "name": "vault door",
+    "parts": { "tween": { "ease": "QuadInOut" } } },
+  { "type": "prefab", "id": "dial", "name": "dial", "parts": { "logic_case": { "cases": ["red", "green", "blue"] } } },
+  { "type": "prefab", "id": "lock", "name": "lock", "parts": { "logic_counter": { "min": 0, "max": 3 } } },
+
+  // What the vault's spawner places each time: a beacon that, when it is placed, lights its own lamp.
+  { "type": "prefab", "id": "beacon", "name": "beacon", "parts": { "logic_auto": { } } },
+  { "type": "prefab", "id": "lamp", "name": "lamp" },
+
+  // Arming the room, and the end of the puzzle, are relays with actions.
+  { "type": "prefab", "id": "arm", "name": "arm", "parts": { "logic_relay": { "then": [ { "set_var": "armed", "value": 1 } ] } } },
+  { "type": "prefab", "id": "done", "name": "done", "parts": { "logic_relay": { "then": [ { "set_var": "puzzle_done", "value": 1 } ] } } },
+
+  {
+    "type": "scene",
+    "id": "vault",
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+
+      // 1. The level starts: arm the room, start the generator, set the fan going.
+      {
+        "prefab": "sage:logic_auto", "at": [0, 0, 0], "name": "start",
+        "outputs": [
+          { "output": "OnMapSpawn", "target": "arm", "input": "Trigger" },
+          { "output": "OnMapSpawn", "target": "generator", "input": "TimerStart" },
+          { "output": "OnMapSpawn", "target": "fan", "input": "TweenPlay" },
+          { "output": "OnMapSpawn", "target": "!self", "input": "Say", "parameter": "Restore the power." }
+        ]
+      },
+      { "prefab": "arm", "at": [0, 0, 0], "name": "arm" },
+      { "prefab": "fan", "at": [5, 2, -5], "name": "fan" },
+
+      // 2. Two sources of power: the crate on the plate, and the generator spinning up.
+      {
+        "prefab": "plate", "at": [10, 1.5, 0], "name": "plate",
+        "outputs": [ { "output": "OnTrigger", "target": "power", "input": "SetSource", "parameter": "1" } ]
+      },
+      { "prefab": "crate", "at": [10, 4, 0], "name": "falling crate" },
+      {
+        "prefab": "generator", "at": [0, 0, 0], "name": "generator",
+        "outputs": [ { "output": "OnTimer", "target": "power", "input": "SetSource", "parameter": "2" } ]
+      },
+
+      // 3. Both on: a multi_manager (a relay with delayed wires) reads the dial and says so.
+      {
+        "prefab": "sage:logic_multisource", "at": [0, 0, 0], "name": "power",
+        "outputs": [ { "output": "OnAllSet", "target": "sequence", "input": "Trigger" } ]
+      },
+      {
+        "prefab": "sage:logic_relay", "at": [0, 0, 0], "name": "sequence",
+        "outputs": [
+          { "output": "OnTrigger", "target": "!self", "input": "Say", "parameter": "Power restored." },
+          { "output": "OnTrigger", "target": "dial", "input": "InValue", "parameter": "green", "delay": 0.5 }
+        ]
+      },
+
+      // 4. The dial's case: green sets the lock to three, which lifts the door; anything else is a buzz.
+      {
+        "prefab": "dial", "at": [0, 0, 0], "name": "dial",
+        "outputs": [
+          { "output": "OnCase02", "target": "lock", "input": "SetValue", "parameter": "3" },
+          { "output": "OnDefault", "target": "!self", "input": "Say", "parameter": "Bzzt." }
+        ]
+      },
+      {
+        "prefab": "lock", "at": [0, 0, 0], "name": "lock",
+        // (A parameter of its own: with none, OnHitMax would hand on its value, 3, as TweenTo's seconds.)
+        "outputs": [ { "output": "OnHitMax", "target": "vault door", "input": "TweenTo", "parameter": "offset 0 3 0 1" } ]
+      },
+
+      // 5. The door arrives: the spawner places its template (once) and the puzzle is done.
+      {
+        "prefab": "vault_door", "at": [-6, 1.5, 0], "name": "vault door",
+        "outputs": [
+          { "output": "OnTweenDone", "target": "treasure", "input": "Spawn" },
+          { "output": "OnTweenDone", "target": "done", "input": "Trigger" }
+        ]
+      },
+      {
+        "prefab": "sage:logic_spawner", "at": [-6, 0, -3], "name": "treasure",
+        // Its template's prefabs by full id: a bare one inside an override of an engine (sage:) prefab means sage's.
+        "overrides": { "parts": { "spawner": {
+          "limit": 1, "uniqueNames": true,
+          "place": [
+            { "prefab": "scriptedsequence:beacon", "at": [0, 0, -1], "name": "beacon",
+              "outputs": [ { "output": "OnMapSpawn", "target": "lamp", "input": "Say", "parameter": "The vault is open." } ] },
+            { "prefab": "scriptedsequence:lamp", "at": [0, 2, -1], "name": "lamp" }
+          ]
+        } } }
+      },
+      { "prefab": "done", "at": [0, 0, 0], "name": "done" }
+    ]
+  }
+]

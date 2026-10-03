@@ -12,13 +12,18 @@ namespace Sage.Simulation;
 //
 //   prefab           component              inputs                                         outputs
 //   sage:logic_relay sage:logic_relay       Trigger, Enable, Disable, Toggle               OnTrigger
-//   sage:logic_counter sage:logic_counter   Add, Subtract, SetValue, Reset, GetValue,      OnChanged, OnHitMax, OnHitMin,
-//                                           Enable, Disable                                OnGetValue
+//   sage:logic_counter sage:logic_counter   Add, Subtract, Multiply, Divide, SetValue,     OnChanged, OnHitMax, OnHitMin,
+//                                           Reset, GetValue, SetMaxValue, SetMinValue,     OnGetValue
+//                                           Enable, Disable
 //   sage:logic_compare sage:logic_compare   SetValue, SetValueCompare, SetCompareValue,    OnEqual, OnNotEqual, OnLess,
 //                                           Compare                                        OnGreater
 //   sage:logic_branch sage:logic_branch     SetValue, SetValueTest, Toggle, ToggleTest,    OnTrue, OnFalse
 //                                           Test
 //   sage:math_remap  sage:math_remap        SetValue                                       OnValue
+//
+// And the rest of Half-Life's and Source's set (issue #281, LogicGates.cs and Spawners.cs): multisource,
+// logic_case (with its random picks), logic_auto, trigger_once / trigger_multiple and env_entity_maker /
+// point_template. multi_manager needs no entity of its own: it is a relay whose OnTrigger wires have delays.
 //
 // **The short names are routed** (EntityInputs.Register<T>): `SetValue` means a counter's on a counter
 // and a branch's on a branch, `Toggle` a branch's here and a mover's on a door. An entity with two of
@@ -266,12 +271,18 @@ public static class LogicEntities
             ref var relay = ref world.Get<LogicRelay>(io.Self);
             relay.Disabled = !relay.Disabled;
         });
-        outputs.Declare(OnTrigger, "This relay was triggered, its requires held and its then ran (sage:logic_relay); hands on Trigger's parameter.");
+        outputs.Declare(OnTrigger, "This relay was triggered, its requires held and its then ran (sage:logic_relay; hands on Trigger's parameter), "
+                                 + "or something that passed this trigger's filter touched it (sage:trigger).");
 
         // counter
         inputs.Register<LogicCounter>("Add", static (World world, in IOContext io) => Count(world, io, "Add", +1));
         inputs.Register<LogicCounter>("Subtract", static (World world, in IOContext io) => Count(world, io, "Subtract", -1));
         inputs.Register<LogicCounter>("SetValue", static (World world, in IOContext io) => Count(world, io, "SetValue", 0));
+        // Source's math_counter arithmetic (issue #281): times or over the parameter, and new limits.
+        inputs.Register<LogicCounter>("Multiply", static (World world, in IOContext io) => Scale(world, io, "Multiply", divide: false));
+        inputs.Register<LogicCounter>("Divide", static (World world, in IOContext io) => Scale(world, io, "Divide", divide: true));
+        inputs.Register<LogicCounter>("SetMaxValue", static (World world, in IOContext io) => Limit(world, io, "SetMaxValue", max: true));
+        inputs.Register<LogicCounter>("SetMinValue", static (World world, in IOContext io) => Limit(world, io, "SetMinValue", max: false));
         inputs.Register<LogicCounter>("Reset", static (World world, in IOContext io) =>
         {
             ref var counter = ref world.Get<LogicCounter>(io.Self);
@@ -370,6 +381,30 @@ public static class LogicEntities
         if (sign != 0 && io.Parameter.Length == 0) amount = 1f;
         else if (!TryNumber(io, input, out amount)) return;
         SetCount(world, io, sign == 0 ? amount : counter.Value + sign * amount);
+    }
+
+    // Multiply or Divide by the parameter (issue #281). Divide by nothing is refused, not infinity.
+    private static void Scale(World world, in IOContext io, string input, bool divide)
+    {
+        ref var counter = ref world.Get<LogicCounter>(io.Self);
+        if (counter.Disabled || !TryNumber(io, input, out float by)) return;
+        if (divide && by == 0f)
+        {
+            Log.Warn(LogCat.Events, $"I/O: {input}(0) at {World.Describe(io.Self)}: dividing by nothing; the count stays {counter.Value}");
+            return;
+        }
+        SetCount(world, io, divide ? counter.Value / by : counter.Value * by);
+    }
+
+    // SetMaxValue / SetMinValue (issue #281): new limits, and the count kept inside them (which may fire
+    // OnChanged and OnHitMax or OnHitMin, as any change would).
+    private static void Limit(World world, in IOContext io, string input, bool max)
+    {
+        if (!TryNumber(io, input, out float value)) return;
+        ref var counter = ref world.Get<LogicCounter>(io.Self);
+        if (max) counter.Max = value;
+        else counter.Min = value;
+        if (counter.IsLimited() && !counter.Disabled) SetCount(world, io, counter.Value);
     }
 
     private static void SetCount(World world, in IOContext io, float value)
