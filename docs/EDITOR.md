@@ -86,8 +86,11 @@ the free camera in a window of its own.
   **Turn** with the rotate gizmo: drag the ring to turn about Y. A whole drag is one undo step.
 - **Snapping** is on by default: moves snap to a 0.5 m grid, turns to 15°. The toolbar or `ed_snap`,
   `ed_grid`, `ed_angle` change it.
-- **Wires** are drawn as lines between wired things, the selection's brighter, with an arrowhead and the
-  output and input they connect.
+- **Wires** are drawn as lines between wired things, dim, with an arrowhead. The selection's **link
+  view** is drawn bright and labelled with the output and input: the wires that leave it in yellow, the
+  wires that reach it in green (from placements and map entities alike), a wire to a group fanned out to
+  every member, and a wire whose target is not in the world as a short red stub with the name it waits
+  for (issue #276).
 - The editor's own cameras are never picked.
 
 ### The palette
@@ -127,6 +130,12 @@ viewport or the outliner, choose one of the **inputs** that target takes (a door
 `Toggle`), then a delay and a value if you want them. Only inputs the target actually takes are offered,
 and a target needs a name: the panel offers to give it one. Each wire's delay and value can be edited in the
 list. A wire's `requires` condition is shown but not edited yet (§11).
+
+A target can also be a **group**: type `@lamps` (every entity in the group `lamps`, given by a prefab's
+`sage:io_group` component or a map's `group` key), `@class:torch` or `@tag:ns:id`. The list says whom a
+group reaches now, and the panel lists the wires that **reach** the selection below its own. What was
+actually delivered is `io_history [name]` in the console (the last 256 inputs, in the play world while
+playing).
 
 ### Problems and the log
 
