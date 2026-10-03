@@ -200,16 +200,34 @@ public static class Routines
         if (state.AnchorFor == state.RoutineEntry)
         {
             if (world.IsAlive(state.Anchor)) return true;
-            if (time < state.AnchorRetryAt) return false;
+            if (time < state.AnchorRetryAt) return state.AnchorFar;
         }
         state.AnchorFor = state.RoutineEntry;
         state.Anchor = entry.At.Length > 0 ? world.FindByName(entry.At) : default;
         state.AnchorElsewhere = state.Anchor.IsNull && IsElsewhere(world, records, entry);
+        state.AnchorFar = state.Anchor.IsNull && Far(world, entry, out state.FarAt, out state.FarDoorTo);
         state.AnchorRetryAt = time + RetrySeconds;
-        if (state.Anchor.IsNull && !state.AnchorElsewhere)
+        if (state.Anchor.IsNull && !state.AnchorElsewhere && !state.AnchorFar)
             Log.Once(LogCat.AI, LogLevel.Warn, $"routine-anchor:{entry.At}",
                 $"a routine's anchor '{entry.At}' is not in '{world.Name}'; creatures that go there idle until it is");
-        return !state.Anchor.IsNull;
+        return !state.Anchor.IsNull || state.AnchorFar;
+    }
+
+    // An anchor that is not in the world, where the content has it (4m-10, OffscreenMap): in this scene, a
+    // placement in a sector not placed (or a map's targetname); in another, the door of this scene that leads
+    // there, with `doorTo` that scene. Absolute.
+    private static bool Far(World world, RoutineEntry entry, out Vector3 at, out RecordId doorTo)
+    {
+        at = default;
+        doorTo = default;
+        var here = CellContent.SceneOf(world);
+        if (here.IsEmpty || entry.At.Length == 0) return false;
+        var map = OffscreenMap.Of(world);
+        var scene = entry.Scene.IsEmpty ? here : entry.Scene;
+        if (scene == here) return map.TryAnchor(here, entry.At, out at);
+        if (!map.TryDoor(here, scene, out at, out _)) return false;
+        doorTo = scene;
+        return true;
     }
 
     // An anchor named in a scene that is not the one the world has placed.
@@ -271,11 +289,26 @@ public static class Routines
 
     // The anchor the running task works toward. False with the status to return when there is none: Running
     // while the think has not looked yet (the first tick after a load), Failed when it looked and found none.
-    internal static bool AnchorFor(ref AITaskContext c, out Entity anchor, out AITaskStatus status)
+    // `at` and `yaw` are where it is (origin space) and which way it faces; a far anchor (4m-10) has no
+    // entity, and faces nowhere in particular.
+    internal static bool AnchorFor(ref AITaskContext c, out Entity anchor, out Vector3 at, out float yaw, out AITaskStatus status)
     {
         anchor = c.State.Anchor;
         status = AITaskStatus.Running;
-        if (!anchor.IsNull && c.World.IsAlive(anchor)) return true;
+        at = default;
+        yaw = 0f;
+        if (!anchor.IsNull && c.World.IsAlive(anchor))
+        {
+            PositionOf(c.World, anchor, out at, out yaw);
+            return true;
+        }
+        anchor = default;
+        if (c.State.AnchorFar && c.State.AnchorFor == c.State.RoutineEntry && c.State.RoutineEntry != 0)
+        {
+            at = c.World.Origin().ToOrigin(c.State.FarAt);
+            yaw = c.Intent.Yaw;
+            return true;
+        }
         c.Intent.Move = Vector2.Zero;
         if (c.State.RoutineEntry != 0 && c.State.AnchorFor == c.State.RoutineEntry) status = AITaskStatus.Failed;
         return false;
@@ -365,12 +398,14 @@ internal sealed class MoveToAnchorTask : IAITask
 
     public AITaskStatus Run(ref AITaskContext c)
     {
-        if (!Routines.AnchorFor(ref c, out var anchor, out var status)) return status;
-        Routines.PositionOf(c.World, anchor, out var at, out _);
+        if (!Routines.AnchorFor(ref c, out var anchor, out var at, out _, out var status)) return status;
         Vector3 self = c.Transform.LocalPosition;
         if (SageMath.DistanceXZ(self, at) <= (c.Param > 0 ? c.Param : 0.75f))
         {
             c.Intent.Move = Vector2.Zero;
+            // At the door to the scene its anchor is in (4m-10): one the off-screen simulation keeps goes through.
+            if (anchor.IsNull && !c.State.FarDoorTo.IsEmpty && c.World.Has<Offscreen>(c.Entity))
+                OffscreenDoorway.Of(c.World).Arrived(c.Entity, c.State.FarDoorTo);
             return AITaskStatus.Succeeded;
         }
         MoveToTargetTask.WalkToward(ref c, self, at, anchor);
@@ -387,8 +422,7 @@ internal sealed class FaceAnchorTask : IAITask
     public AITaskStatus Run(ref AITaskContext c)
     {
         c.Intent.Move = Vector2.Zero;
-        if (!Routines.AnchorFor(ref c, out var anchor, out var status)) return status;
-        Routines.PositionOf(c.World, anchor, out var at, out float facing);
+        if (!Routines.AnchorFor(ref c, out _, out var at, out float facing, out var status)) return status;
         Vector3 self = c.Transform.LocalPosition;
         float wanted = SageMath.DistanceXZ(self, at) > OnIt ? AIMath.YawTo(self, at) : facing;
         c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, wanted, c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
@@ -406,8 +440,7 @@ internal sealed class StayAtTask : IAITask
     public AITaskStatus Run(ref AITaskContext c)
     {
         c.Intent.Move = Vector2.Zero;
-        if (!Routines.AnchorFor(ref c, out var anchor, out var status)) return status;
-        Routines.PositionOf(c.World, anchor, out var at, out _);
+        if (!Routines.AnchorFor(ref c, out _, out var at, out _, out var status)) return status;
         return SageMath.DistanceXZ(c.Transform.LocalPosition, at) > (c.Param > 0 ? c.Param : 2f)
             ? AITaskStatus.Failed : AITaskStatus.Running;
     }

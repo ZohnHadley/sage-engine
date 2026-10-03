@@ -31,7 +31,7 @@ namespace Sage.Simulation;
 //     "tags": ["hostile"],
 //     "parts": { "character": { "layer": "enemy" }, "melee": { "attack": "sage:claw" },
 //                "attributes": {}, "effects": ["sage:tough_hide"] } }
-[Record("prefab", Plugin = RegistrationOwners.Core)]
+[Record("prefab", Plugin = RegistrationOwners.Core, Reload = ReloadPolicy.Live)]   // instances follow an edit (PrefabReload, #287)
 public sealed class PrefabRecord
 {
     public string Name = "";              // what World.Describe calls it; empty = the record id
@@ -480,7 +480,7 @@ public static class PrefabExtensions
 
         // What it was spawned as, for a save to diff it against (4i-5): before its children, a name or
         // an id are added, none of which is the prefab's.
-        engine.Saves.NoteSpawned(world, entity, prefab, asAuthored, overrides);
+        engine.Saves.NoteSpawned(world, entity, prefab, asAuthored, record, overrides);
 
         // Only the root of a runtime spawn: a child is re-spawned by its parent on load, so a *random* id of
         // its own would duplicate it (FromParentPrefab, #161); SpawnPlaced derives the children's from this.

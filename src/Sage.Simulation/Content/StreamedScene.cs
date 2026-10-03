@@ -385,6 +385,68 @@ internal sealed class StreamedScene
         _orphans.Clear();
     }
 
+    // ---- seeding what was never placed (4m-10) -----------------------------------------------------------
+
+    // Whether Seed has made its one pass over this placing of the scene.
+    internal bool Seeded { get; private set; }
+
+    // Hands `handoff` the placements `wants` picks in every sector that has never been in the world: not
+    // placed or being placed, not in the ring (it is about to be), and with no dormant state. Each is spawned
+    // as its sector would place it, then offered to the handoff as that sector's root, exactly as if the sector
+    // had been placed and gone dormant; what the handoff does not take is withdrawn again, leaving no trace.
+    // Once per placing of the scene (a load or a reload builds it again, and what was taken is a tombstone
+    // then). Nothing before the ring is known: everything would look never placed.
+    public int Seed(World world, Func<PrefabRecord, PrefabOverrides?, bool> wants, ICellHandoff handoff)
+    {
+        if (Seeded || !world.Resources.TryGet<SectorRing>(out var ring) || ring == null || !ring.Ready) return 0;
+        Seeded = true;
+        var baseline = ContentIds.Baseline(world);
+        int taken = 0;
+        var roots = new List<Entity>();
+        var order = new List<SectorCoord>(_buckets.Keys);
+        order.Sort((a, b) => a.X != b.X ? a.X.CompareTo(b.X) : a.Z.CompareTo(b.Z));   // the same every run
+        foreach (var sector in order)
+        {
+            var bucket = _buckets[sector];
+            if (_active.ContainsKey(sector) || ring.Live.Contains(sector)) continue;
+            string source = SourceOf(sector);
+            if (baseline.IsLive(source) || baseline.IsDormant(source)) continue;
+
+            roots.Clear();
+            foreach (var item in bucket.Items)
+            {
+                if (baseline.IsTombstoned(source, item.Id) || !world.Resolve(item.Id).IsNull) continue;
+                if (!_engine.Records.TryGet(item.Placement.Prefab.Id, out PrefabRecord prefab) || !wants(prefab, item.Placement.Overrides)) continue;
+                var placement = item.Placement;
+                var entity = world.SpawnWithoutId(placement.Prefab.Id, world.PlacementPosition(placement, item.Origin, item.Frame),
+                                                  placement.Yaw, placement.Overrides, item.Label);
+                if (entity.IsNull) continue;
+                if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
+                PlacementWires.Attach(world, entity, placement);
+                entity.AddTag<FromScene>();
+                ContentIds.Place(world, source, entity, item.Id);
+                roots.Add(entity);
+            }
+            if (roots.Count == 0) continue;
+            world.FlushCommands();
+
+            handoff.Sleeping(world, source, roots);
+            foreach (var root in roots)
+            {
+                if (!world.IsAlive(root))
+                {
+                    taken++;
+                    continue;
+                }
+                baseline.Withdraw(root, source);
+                world.Destroy(root);
+            }
+            world.FlushCommands();
+        }
+        if (taken > 0) Log.Debug(LogCat.Streaming, $"{Scene}: {taken} placement(s) in sectors never placed taken off-screen");
+        return taken;
+    }
+
     // Whether a sector is in the world with everything it places (4g-6: an off-screen agent that walked into
     // it is spawned there).
     public bool IsPlaced(SectorCoord sector) => _active.TryGetValue(sector, out var progress) && progress.Done;

@@ -72,6 +72,22 @@ public static class CellContent
         return root;
     }
 
+    // What content would place in the world's streamed scene, in the sectors that have never been in the
+    // world (4m-10): each placement `wants` picks is spawned there and offered to `handoff` as its sector's
+    // root, as if that sector had been placed and gone dormant at once. What the handoff Releases is its own
+    // (tombstoned in its sector, so placing the sector later does not place it twice); the rest is taken back
+    // without a trace. One pass per placing of the scene, once streaming knows which sectors are in the
+    // world: true when that pass has been made (now or before), false while it waits. `taken` counts what
+    // this call handed over. A scene placed whole has nothing never placed: true at once.
+    public static bool SeedUnplaced(World world, System.Func<PrefabRecord, PrefabOverrides?, bool> wants, ICellHandoff handoff, out int taken)
+    {
+        taken = 0;
+        if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null || state.Streamed is not { } streamed) return true;
+        if (streamed.Seeded) return true;
+        taken = streamed.Seed(world, wants, handoff);
+        return streamed.Seeded;
+    }
+
     // The scene the world is in; empty for none.
     public static RecordId SceneOf(World world) =>
         world.Resources.TryGet<ActiveScene>(out var state) && state != null ? state.Id : default;

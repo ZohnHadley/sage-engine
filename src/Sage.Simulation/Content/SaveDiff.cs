@@ -55,10 +55,27 @@ internal sealed class SpawnBaseline
     {
         Components = shared.Components;
         FromPlacement = shared.FromPlacement;
+        Body = shared.Body;
+        Tags = shared.Tags;
+        _shared = shared;
         _own = own;
     }
 
     private readonly JsonObject? _own;
+    private readonly SpawnBaseline? _shared;
+
+    // The shared baseline this one is (itself), or the one an entity's own is made from.
+    public SpawnBaseline Shared => _shared ?? this;
+
+    // This entity's own `[FromPlacement]` entries; null for a shared baseline.
+    public JsonObject? Own => _own;
+
+    // The prefab's `components` and `tags` as written, overrides merged, when this was taken (issue #287):
+    // what a hot reload compares the reloaded prefab with, to know which fields the *prefab* changed —
+    // the record itself is updated in place, so the old values are gone from it. Null when not taken (a
+    // baseline made by hand); such an entity does not follow a reload.
+    public JsonObject? Body { get; init; }
+    public IReadOnlyList<string>? Tags { get; init; }
 
     // Component id -> `{ "version", "data" }`, as a save writes it (the shared part).
     public JsonObject Components { get; }

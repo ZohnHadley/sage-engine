@@ -147,6 +147,11 @@ public struct AIState : IComponent
     internal int AnchorFor;                // the RoutineEntry `Anchor` was looked up for
     internal Entity Anchor;                // the entity it is to be at; null when not found or elsewhere
     internal bool AnchorElsewhere;         // the anchor is in a scene that is not loaded (4g-6's)
+    // Not in the world, but the content says where (4m-10): an anchor in a sector not placed, or the door
+    // to the scene an anchor is in. Walked to like an anchor; absolute, so a rebase does not move it.
+    internal bool AnchorFar;
+    internal Vector3 FarAt;
+    internal RecordId FarDoorTo;           // the far anchor is the door to this scene; empty: the anchor itself
     internal float AnchorRetryAt;          // sim time to look for a missing anchor again
 }
 

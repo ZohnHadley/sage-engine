@@ -248,6 +248,8 @@ Sage.Gameplay.OffscreenAgent.Lift -> float
 Sage.Gameplay.OffscreenAgent.Name -> string!
 Sage.Gameplay.OffscreenAgent.OffscreenAgent() -> void
 Sage.Gameplay.OffscreenAgent.Prefab -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Route -> System.Collections.Generic.List<System.Numerics.Vector3>!
+Sage.Gameplay.OffscreenAgent.RouteGoal -> System.Numerics.Vector3
 Sage.Gameplay.OffscreenAgent.Routine -> Sage.Core.RecordId
 Sage.Gameplay.OffscreenAgent.Scene -> Sage.Core.RecordId
 Sage.Gameplay.OffscreenAgent.Speed -> float
@@ -278,6 +280,7 @@ Sage.Gameplay.OffscreenFightAttribute
 Sage.Gameplay.OffscreenFightAttribute.OffscreenFightAttribute(string! id) -> void
 Sage.Gameplay.OffscreenFights
 Sage.Gameplay.OffscreenMap
+Sage.Gameplay.OffscreenMap.Blocked(Sage.Core.RecordId scene, System.Numerics.Vector3 a, System.Numerics.Vector3 b) -> bool
 Sage.Gameplay.OffscreenMap.AddDoor(Sage.Core.RecordId from, System.Numerics.Vector3 exit, Sage.Core.RecordId to, System.Numerics.Vector3 entry) -> void
 Sage.Gameplay.OffscreenMap.OffscreenMap() -> void
 Sage.Gameplay.OffscreenMap.TryAnchor(Sage.Core.RecordId scene, string! name, out System.Numerics.Vector3 at) -> bool

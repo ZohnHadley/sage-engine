@@ -97,6 +97,9 @@ public sealed class Engine : IDisposable
         finally { Registrations.Owner = "host"; }
         Modules = new ModuleManager(this);
         Scenes = new Scenes(this);
+        // After the scenes are placed again: what they placed is new already, and the rest of what was
+        // spawned from a prefab follows its edit where the game did not change it (issue #287).
+        Records.Reloaded += () => Saves.ReloadPrefabInstances();
     }
 
     // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).

@@ -1656,6 +1656,7 @@ static Sage.Simulation.CellContent.Release(Sage.Simulation.World! world, Sage.Si
 static Sage.Simulation.CellContent.RemoveHandoff(Sage.Simulation.World! world, Sage.Simulation.ICellHandoff! handoff) -> void
 static Sage.Simulation.CellContent.Restore(Sage.Simulation.World! world, System.Collections.Generic.IReadOnlyList<System.Text.Json.Nodes.JsonObject!>! saved, System.Numerics.Vector3 position, string! cell) -> Sage.Simulation.Entity
 static Sage.Simulation.CellContent.SceneOf(Sage.Simulation.World! world) -> Sage.Core.RecordId
+static Sage.Simulation.CellContent.SeedUnplaced(Sage.Simulation.World! world, System.Func<Sage.Simulation.PrefabRecord!, Sage.Simulation.PrefabOverrides?, bool>! wants, Sage.Simulation.ICellHandoff! handoff, out int taken) -> bool
 static Sage.Simulation.Conditions.Evaluate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, Sage.Simulation.ICondition? condition, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> bool
 static Sage.Simulation.Conditions.Evaluate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, System.Collections.Generic.IReadOnlyList<Sage.Simulation.ICondition!>? conditions, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> bool
 static Sage.Simulation.Conditions.Run(Sage.Simulation.World! world, Sage.Simulation.Entity subject, System.Collections.Generic.IReadOnlyList<Sage.Simulation.IAction!>? actions, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> void
