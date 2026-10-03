@@ -18,8 +18,17 @@ internal sealed class PhysicsCallbackData
 
     private Entry[] _bodies = new Entry[Grow];
     private Entry[] _statics = new Entry[Grow];
-    private readonly List<(uint A, uint B)>[] _workerTriggers;
-    private readonly List<ContactReport>[] _workerContacts;
+    // One buffer per Bepu worker, indexed by the worker index Bepu hands each callback. Which worker
+    // gets which pair changes from step to step (Bepu's workers take jobs as they come free), so a
+    // buffer would otherwise grow the first time its worker happens to draw more pairs than ever before,
+    // at any tick, on whichever thread that is: worker 0 is the thread that steps, and an 8-to-16 grow
+    // of its trigger list was the 152 bytes a steady-state step allocated now and then with workers on
+    // (test: ASteadyStateStepAllocatesNothingOnAnyThread). BeginStep sizes every buffer to hold the
+    // busiest step's whole count (`_triggerPeak`, `_contactPeak`), so only a busier scene than ever
+    // grows one, as it would on one thread (test: EveryWorkerBufferHoldsTheBusiestStep).
+    private List<(uint A, uint B)>[] _workerTriggers = Array.Empty<List<(uint A, uint B)>>();
+    private List<ContactReport>[] _workerContacts = Array.Empty<List<ContactReport>>();
+    private int _triggerPeak, _contactPeak;
 
     private readonly HashSet<(uint A, uint B)> _overlapping = new();   // pairs overlapping last step
     private readonly HashSet<(uint A, uint B)> _current = new();
@@ -38,15 +47,34 @@ internal sealed class PhysicsCallbackData
     private Dictionary<(uint A, uint B), (float Speed, float Impulse)> _approach = new();
     private Dictionary<(uint A, uint B), (float Speed, float Impulse)> _approachNow = new();
 
-    public PhysicsCallbackData(int workerCount)
+    public PhysicsCallbackData(int workerCount) => UseWorkers(workerCount);
+
+    // One buffer per worker the dispatcher has (between steps, main thread). It used to be sized by the
+    // processor count while the dispatcher could have more workers (UseWorkers(7) on a four-core
+    // machine, or two on one core): the extra workers' reports were folded into buffer 0, and two
+    // threads added to one List at once.
+    public void UseWorkers(int workerCount)
     {
+        workerCount = Math.Max(1, workerCount);
         _workerTriggers = new List<(uint, uint)>[workerCount];
         _workerContacts = new List<ContactReport>[workerCount];
         for (int i = 0; i < workerCount; i++)
         {
-            _workerTriggers[i] = new List<(uint, uint)>();
-            _workerContacts[i] = new List<ContactReport>();
+            _workerTriggers[i] = new List<(uint, uint)>(_triggerPeak);
+            _workerContacts[i] = new List<ContactReport>(_contactPeak);
         }
+    }
+
+    internal int WorkerBuffers => _workerTriggers.Length;
+
+    // The smallest a worker's buffer is against the busiest step seen, for the test that every worker
+    // could take the whole of that step without growing.
+    internal (int TriggerCapacity, int TriggerPeak, int ContactCapacity, int ContactPeak) BufferHeadroom()
+    {
+        int triggers = int.MaxValue, contacts = int.MaxValue;
+        foreach (var list in _workerTriggers) triggers = Math.Min(triggers, list.Capacity);
+        foreach (var list in _workerContacts) contacts = Math.Min(contacts, list.Capacity);
+        return (triggers, _triggerPeak, contacts, _contactPeak);
     }
 
     // The simulation these callbacks belong to, for the step boundaries: a pair whose bodies are all
@@ -284,8 +312,8 @@ internal sealed class PhysicsCallbackData
 
     public void BeginStep()
     {
-        foreach (var list in _workerTriggers) list.Clear();
-        foreach (var list in _workerContacts) list.Clear();
+        foreach (var list in _workerTriggers) { list.Clear(); list.EnsureCapacity(_triggerPeak); }
+        foreach (var list in _workerContacts) { list.Clear(); list.EnsureCapacity(_contactPeak); }
         _entered.Clear();
         _exited.Clear();
         _contactBegin.Clear();
@@ -295,6 +323,12 @@ internal sealed class PhysicsCallbackData
     // Turns this step's overlapping pairs into enter/exit lists (10 §3).
     public void EndStep()
     {
+        int triggers = 0, contacts = 0;
+        foreach (var list in _workerTriggers) triggers += list.Count;
+        foreach (var list in _workerContacts) contacts += list.Count;
+        _triggerPeak = Math.Max(_triggerPeak, triggers);
+        _contactPeak = Math.Max(_contactPeak, contacts);
+
         _current.Clear();
         foreach (var list in _workerTriggers)
             foreach (var pair in list)

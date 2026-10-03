@@ -23,6 +23,7 @@ internal sealed class AudioSystem : ISystem
     private readonly CVar<bool> _enabled;
 
     private readonly EventReader<CueTriggered> _cues;
+    private readonly EventReader<SoundRequested> _sounds;
     private readonly EventReader<Damaged> _damage;
     private readonly EventReader<Used> _used;
     private readonly Query<Transform, AudioSource> _sources;
@@ -47,6 +48,7 @@ internal sealed class AudioSystem : ISystem
         // the Frame queue finds an empty one for ever, which is exactly what the first version did --
         // the game fought in silence while every test passed. `MessageLog` reads `Said` the same way.
         _cues = world.Events.Reader<CueTriggered>(this, Schedule.Fixed);
+        _sounds = world.Events.Reader<SoundRequested>(this, Schedule.Fixed);   // `play_sound` (issue #275)
         _damage = world.Events.Reader<Damaged>(this, Schedule.Fixed);
         _used = world.Events.Reader<Used>(this, Schedule.Fixed);
         _sources = world.Query<Transform, AudioSource>();
@@ -71,6 +73,7 @@ internal sealed class AudioSystem : ISystem
         if (_enabled.Value)
         {
             foreach (ref readonly var cue in _cues.Read()) Cue(cue);
+            foreach (ref readonly var sound in _sounds.Read()) Sound(sound);
             foreach (ref readonly var hit in _damage.Read()) Damage(hit);
             foreach (ref readonly var used in _used.Read()) Used(used);
             Sources(world);
@@ -80,6 +83,7 @@ internal sealed class AudioSystem : ISystem
             // Drained anyway: a reader that stops reading holds the queue open for everybody (04 §3.1),
             // and turning the sound off must not make the event bus grow.
             _cues.Read();
+            _sounds.Read();
             _damage.Read();
             _used.Read();
         }
@@ -93,6 +97,13 @@ internal sealed class AudioSystem : ISystem
     {
         if (!_records.TryGet(cue.Cue, out CueRecord record) || record.Sound.IsEmpty) return;
         Play(record.Sound, cue.Point, positional: true);
+    }
+
+    // A sound content asked for by name (`play_sound`): at a place, or everywhere.
+    private void Sound(in SoundRequested sound)
+    {
+        _records.TryGet(sound.Sound, out SoundRecord record);
+        _mixer.Play(sound.Sound, record, sound.Point, sound.Positional, volume: sound.Volume <= 0f ? 1f : sound.Volume);
     }
 
     // A hit makes the *damage type's* noise: one entry for fire covers a fireball, a torch and a trap,

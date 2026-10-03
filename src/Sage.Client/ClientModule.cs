@@ -347,6 +347,9 @@ public sealed class ClientModule : IModule
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
         world.AddSystem(new TerrainMeshSystem(world, _renderer!));
+        // The far ring's coarse ground and far looks (#277), when sage.streaming keeps one.
+        if (world.Resources.TryGet<SectorLod>(out _))
+            world.AddSystem(new FarLodSystem(world, _renderer!));
         // Brush levels (15 §3, F16), when sage.maps is loaded. The client comes after every simulation
         // plugin (SageApp adds host modules after them), so what they furnish is there to look for.
         if (world.Resources.TryGet<MapLevels>(out _))

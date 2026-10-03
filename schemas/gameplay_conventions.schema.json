@@ -84,6 +84,14 @@
         }
       ]
     },
+    "hitboxBudget": {
+      "description": "Which creatures keep their hitboxes on (issue #273); empty, every creature's are always on. Names a hitbox_budget record. Category: Combat. (RecordRef<HitboxBudgetRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:hitbox_budget"
+        }
+      ]
+    },
     "movement": {
       "description": "How a character with no movement profile of its own moves. Names a movement_profile record. Category: Profiles. (RecordRef<MovementProfileRecord>)",
       "allOf": [

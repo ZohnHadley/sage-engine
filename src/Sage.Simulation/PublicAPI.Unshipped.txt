@@ -14,6 +14,7 @@ const Sage.Simulation.CameraDirector.Id = "sage.camera.director" -> string!
 const Sage.Simulation.CameraMath.MaxFovY = 3.1241393 -> float
 const Sage.Simulation.DebugCamera.IdlePriority = -2147483647 -> int
 const Sage.Simulation.DebugCamera.OverridePriority = 2147483647 -> int
+const Sage.Simulation.EntityIO.HistoryCapacity = 256 -> int
 const Sage.Simulation.FirstPersonRigSystem.Id = "sage.camera.first_person" -> string!
 const Sage.Simulation.FogMath.Invisible = 0.001953125 -> float
 const Sage.Simulation.JointDesc.DefaultDamping = 1 -> float
@@ -31,6 +32,8 @@ const Sage.Simulation.LogicEntities.OnNotEqual = "OnNotEqual" -> string!
 const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
+const Sage.Simulation.LogicTargets.Other = "!other" -> string!
+const Sage.Simulation.LogicTargets.Subject = "!subject" -> string!
 const Sage.Simulation.ModManager.MountPrefix = "mods/" -> string!
 const Sage.Simulation.PhysicsJointIO.Break = "Break" -> string!
 const Sage.Simulation.PhysicsJointIO.OnBreak = "OnBreak" -> string!
@@ -464,9 +467,13 @@ Sage.Simulation.EntityInputs.ComponentsTaking(string! name) -> System.Collection
 Sage.Simulation.EntityInputs.Register<T>(string! name, Sage.Simulation.EntityInput! handler) -> void
 Sage.Simulation.EntityInputs.Takes(Sage.Simulation.Entity entity, string! name) -> bool
 Sage.Simulation.EntityIO.AfterLoad(Sage.Simulation.World! world) -> void
+Sage.Simulation.EntityIO.ClearHistory() -> void
 Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
 Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
 Sage.Simulation.EntityIO.Fire(Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
+Sage.Simulation.EntityIO.HistoryAt(int i) -> Sage.Simulation.IORecord
+Sage.Simulation.EntityIO.HistoryCount.get -> int
+Sage.Simulation.EntityIO.HistoryOf(Sage.Simulation.Entity entity, System.Collections.Generic.List<Sage.Simulation.IORecord>! into, int max = 256) -> void
 Sage.Simulation.EntityIO.Now.get -> double
 Sage.Simulation.EntityIO.FireInput(string! targetName, string! input, string! parameter = "", float delay = 0, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity), Sage.Simulation.Entity caller = default(Sage.Simulation.Entity)) -> void
 Sage.Simulation.FirstPersonRig
@@ -519,6 +526,38 @@ Sage.Simulation.ICellHandoff
 Sage.Simulation.ICellHandoff.Sleeping(Sage.Simulation.World! world, string! cell, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>! roots) -> void
 Sage.Simulation.ICondition
 Sage.Simulation.ICondition.Test(in Sage.Simulation.ConditionContext context, out string! why) -> bool
+Sage.Simulation.IOGroup
+Sage.Simulation.IOGroup.Has(System.ReadOnlySpan<char> group) -> bool
+Sage.Simulation.IOGroup.IOGroup() -> void
+Sage.Simulation.IOGroup.Names -> string!
+Sage.Simulation.IOOutcome
+Sage.Simulation.IOOutcome.Delivered = 0 -> Sage.Simulation.IOOutcome
+Sage.Simulation.IOOutcome.Failed = 4 -> Sage.Simulation.IOOutcome
+Sage.Simulation.IOOutcome.NobodyTookIt = 3 -> Sage.Simulation.IOOutcome
+Sage.Simulation.IOOutcome.NoSuchInput = 2 -> Sage.Simulation.IOOutcome
+Sage.Simulation.IOOutcome.NoTarget = 1 -> Sage.Simulation.IOOutcome
+Sage.Simulation.IORecord
+Sage.Simulation.IORecord.Caller.get -> Sage.Simulation.Entity
+Sage.Simulation.IORecord.Caller.init -> void
+Sage.Simulation.IORecord.Input.get -> string!
+Sage.Simulation.IORecord.Input.init -> void
+Sage.Simulation.IORecord.IORecord() -> void
+Sage.Simulation.IORecord.IORecord(long Tick, double Time, Sage.Simulation.Entity Caller, string! Output, Sage.Simulation.Entity Target, string! TargetName, string! Input, string! Parameter, Sage.Simulation.IOOutcome Outcome) -> void
+Sage.Simulation.IORecord.Outcome.get -> Sage.Simulation.IOOutcome
+Sage.Simulation.IORecord.Outcome.init -> void
+Sage.Simulation.IORecord.Output.get -> string!
+Sage.Simulation.IORecord.Output.init -> void
+Sage.Simulation.IORecord.Parameter.get -> string!
+Sage.Simulation.IORecord.Parameter.init -> void
+Sage.Simulation.IORecord.Target.get -> Sage.Simulation.Entity
+Sage.Simulation.IORecord.Target.init -> void
+Sage.Simulation.IORecord.TargetName.get -> string!
+Sage.Simulation.IORecord.TargetName.init -> void
+Sage.Simulation.IORecord.Tick.get -> long
+Sage.Simulation.IORecord.Tick.init -> void
+Sage.Simulation.IORecord.Time.get -> double
+Sage.Simulation.IORecord.Time.init -> void
+Sage.Simulation.IOTargets
 Sage.Simulation.IPhysicsWorld.AddBody(Sage.Simulation.Entity entity, in Sage.Simulation.Collider collider, in Sage.Simulation.RigidBody body, in Sage.Simulation.Pose pose, int group) -> Sage.Simulation.PhysicsBody
 Sage.Simulation.IPhysicsWorld.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
 Sage.Simulation.IPhysicsWorld.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.PhysicsBody b, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
@@ -689,6 +728,7 @@ Sage.Simulation.LogicRelayScript
 Sage.Simulation.LogicRelayScript.LogicRelayScript() -> void
 Sage.Simulation.LogicRelayScript.Requires -> Sage.Simulation.ICondition?
 Sage.Simulation.LogicRelayScript.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>?
+Sage.Simulation.LogicTargets
 Sage.Simulation.LogicTimer
 Sage.Simulation.LogicTimer.Activator -> Sage.Simulation.Entity
 Sage.Simulation.LogicTimer.Interval -> float
@@ -1113,6 +1153,19 @@ Sage.Simulation.SkyState.SunElevation.get -> float
 Sage.Simulation.SkyState.SunElevation.init -> void
 Sage.Simulation.SkyState.Zenith.get -> System.Numerics.Vector3
 Sage.Simulation.SkyState.Zenith.init -> void
+Sage.Simulation.SoundRequested
+Sage.Simulation.SoundRequested.Point.get -> System.Numerics.Vector3
+Sage.Simulation.SoundRequested.Point.init -> void
+Sage.Simulation.SoundRequested.Positional.get -> bool
+Sage.Simulation.SoundRequested.Positional.init -> void
+Sage.Simulation.SoundRequested.Sound.get -> Sage.Core.RecordId
+Sage.Simulation.SoundRequested.Sound.init -> void
+Sage.Simulation.SoundRequested.SoundRequested() -> void
+Sage.Simulation.SoundRequested.SoundRequested(Sage.Core.RecordId Sound, Sage.Simulation.Entity Source, System.Numerics.Vector3 Point, bool Positional, float Volume) -> void
+Sage.Simulation.SoundRequested.Source.get -> Sage.Simulation.Entity
+Sage.Simulation.SoundRequested.Source.init -> void
+Sage.Simulation.SoundRequested.Volume.get -> float
+Sage.Simulation.SoundRequested.Volume.init -> void
 Sage.Simulation.StateMachine
 Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
 Sage.Simulation.StateMachine.Machine -> Sage.Core.RecordId
@@ -1416,6 +1469,7 @@ static Sage.Simulation.Easing.Apply(Sage.Simulation.Ease ease, float t) -> float
 static Sage.Simulation.Easing.IsMonotonic(Sage.Simulation.Ease ease) -> bool
 static Sage.Simulation.Easing.Lerp(Sage.Simulation.Ease ease, float a, float b, float t) -> float
 static Sage.Simulation.Easing.TryParse(System.ReadOnlySpan<char> text, out Sage.Simulation.Ease ease) -> bool
+static Sage.Simulation.EntityIO.Describe(Sage.Simulation.IORecord record) -> string!
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string! value) -> void
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, float value, bool sameTick = false) -> void
 static Sage.Simulation.EntityIOExtensions.FireOutput(this Sage.Simulation.World! world, Sage.Simulation.Entity source, string! output, Sage.Simulation.Entity activator, string? value, bool sameTick) -> void
@@ -1425,8 +1479,14 @@ static Sage.Simulation.FogMath.Factor(Sage.Simulation.FogMode mode, float distan
 static Sage.Simulation.FogMath.Hides(float cullDistance, System.Numerics.Vector3 center, float radius) -> bool
 static Sage.Simulation.FogMath.ShaderParam(Sage.Simulation.FogMode mode, float start, float end, float density) -> float
 static Sage.Simulation.GltfAnimationReader.Read(System.IO.Stream! stream, string! name) -> Sage.Simulation.AnimationSet?
+static Sage.Simulation.IOTargets.IsSelector(string? target) -> bool
+static Sage.Simulation.IOTargets.Members(Sage.Simulation.World! world, string! target, System.Collections.Generic.List<Sage.Simulation.Entity>! into) -> void
+static Sage.Simulation.IOTargets.Problem(Sage.Simulation.Engine! engine, string! target) -> string?
 static Sage.Simulation.JointDesc.FromWorld(Sage.Simulation.JointKind kind, in Sage.Simulation.Pose a, in Sage.Simulation.Pose b, System.Numerics.Vector3 worldAnchor, System.Numerics.Vector3 worldAxis = default(System.Numerics.Vector3)) -> Sage.Simulation.JointDesc
 static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
+static Sage.Simulation.LogicTargets.Find(Sage.Simulation.World! world, string! target, Sage.Simulation.Entity subject, Sage.Simulation.Entity other) -> Sage.Simulation.Entity
+static Sage.Simulation.LogicTargets.Find(Sage.Simulation.World! world, string! target, Sage.Simulation.Entity subject, Sage.Simulation.Entity other, ref Sage.Simulation.Entity cache) -> Sage.Simulation.Entity
+static Sage.Simulation.LogicTargets.IsKnown(string! target) -> bool
 static Sage.Simulation.MainViewExtensions.TryGetMainView(this Sage.Simulation.World! world, out Sage.Simulation.CameraView view) -> bool
 static Sage.Simulation.PlayerCameraSystem.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity pawn) -> Sage.Simulation.Entity
 *REMOVED*Sage.Simulation.FirstPersonCameraSystem
@@ -1612,6 +1672,17 @@ Sage.Simulation.MachineState.Parallel -> bool
 Sage.Simulation.MachineState.States -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.MachineState!>?
 Sage.Simulation.StateMachine.Active -> Sage.Simulation.ActiveState[]?
 static Sage.Simulation.StateMachines.IsIn(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state) -> bool
+Sage.Simulation.FarLook
+Sage.Simulation.FarLook.FarLook() -> void
+Sage.Simulation.FarLook.Material -> Sage.Core.RecordId
+Sage.Simulation.FarLook.Mesh -> Sage.Core.AssetPath
+Sage.Simulation.FarLook.Size -> System.Numerics.Vector3
+Sage.Simulation.ITerrainSampler
+Sage.Simulation.ITerrainSampler.SampleHeight(double absoluteX, double absoluteZ, int seed) -> float
+Sage.Simulation.PrefabRecord.Far -> Sage.Simulation.FarLook?
+Sage.Simulation.TerrainSector.Budgeted -> bool
+Sage.Simulation.ColliderOff
+Sage.Simulation.ColliderOff.ColliderOff() -> void
 Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
 Sage.Simulation.Unsaved
 Sage.Simulation.Unsaved.Unsaved() -> void

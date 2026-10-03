@@ -58,6 +58,7 @@ internal static class FgdExport
 
         text.AppendLine("@baseclass = Named [");
         text.AppendLine("    targetname(target_source) : \"Name\" : : \"The entity's name in the world, for anything that looks it up.\"");
+        text.AppendLine("    group(string) : \"Groups\" : : \"The groups it is in, separated by spaces: a wire to @name reaches every member.\"");
         text.AppendLine("]");
         text.AppendLine();
         text.AppendLine("@baseclass = Angled [");
@@ -87,7 +88,9 @@ internal static class FgdExport
         text.AppendLine("//   \"OnUse\"  \"hut_door,Open\"           using this opens the door named hut_door");
         text.AppendLine("//   \"OnStartTouch\" \"!self,Say,Hello,0,1\"  once, when something walks in");
         text.AppendLine("//");
-        text.AppendLine("// Targets may be a targetname, or !self / !activator / !caller.");
+        text.AppendLine("// Targets may be a targetname, !self / !activator / !caller, or a group: @name (every entity whose");
+        text.AppendLine("// `group` key has name), @class:prefab (every entity of that classname) or @tag:ns:id.");
+        text.AppendLine("//   \"OnTrigger\" \"@lamps,Toggle\"       toggles every entity with \"group\" \"lamps\"");
         var outputs = new List<string>(engine.Outputs.Names);
         outputs.Sort(StringComparer.OrdinalIgnoreCase);
         text.AppendLine("// Outputs this game fires:");

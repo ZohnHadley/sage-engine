@@ -54,7 +54,7 @@ Each module is a plugin with a stable id, picked in `game.json`:
 | `Factions`, `ReputationChanged` | `Factions/Factions.cs` | Stance of a faction to another and to the player. |
 | `Quests`, `QuestChanged`, `DialogueTopics`, `Spoke` | `Narrative/` | Journal rules; topic answering; speech event. |
 
-Vocabularies a game extends by attribute: `hit_delivery`, `ability_delivery`, `effect_execution`, `item_use`, `quest_objective` (`kill`, `have`, `reach`, `talk`), plus the base condition and action words each plugin owns (`has_tag`, `has_item`, `standing`, `quest`, `apply_effect`, `give_item`, `change_standing`, `start_quest`, `set_stage`, `add_topic`, `speaker`).
+Vocabularies a game extends by attribute: `hit_delivery`, `ability_delivery`, `effect_execution`, `item_use`, `quest_objective` (`kill`, `have`, `reach`, `talk`), plus the base condition and action words each plugin owns (`has_tag`, `lacks_tag`, `is_alive`, `has_item`, `standing`, `quest`, `apply_effect`, `set_tag`, `cue`, `give_item`, `change_standing`, `start_quest`, `set_stage`, `add_topic`, `speaker`).
 
 Console: `give`, `equip`, `unequip`, `drop`, `use_item`, `cast`, `learn`, `hurt`, `god`, `rep`, `rep_set`, `quests`, `quest_start`, `quest_stage`, `cast_debug`, `combat_debug`. Cvar `g_interact_range` (2.5 m). Events: `Damaged`, `Died`, `Used`, `WeaponFired`, `DryFire`, `CastRefused`, `CueTriggered`, `ReputationChanged`, `QuestChanged`, `Spoke`.
 
@@ -134,7 +134,7 @@ Milestone 10, AI, combat and narrative depth (epic #385).
 - #393 4r-8 Friendly-fire and ability gaps: self-heal, buffs, projectile bounce/stick (P3)
 - #394 4r-9 Tests for the kit screens and combat edge cases (P3)
 
-Related: #359 4p-3 directional attack and block sets (P2), #275 4m-1 wider condition and action vocabulary (P1), #344 4q-7 loot, topics and shop from gameplay (P1).
+Related: #359 4p-3 directional attack and block sets (P2), #344 4q-7 loot, topics and shop from gameplay (P1).
 
 ## 11. References
 

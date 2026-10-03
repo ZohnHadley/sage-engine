@@ -234,6 +234,34 @@
         },
         "additionalProperties": false
       }
+    },
+    "far": {
+      "description": "How a streamed placement of this prefab is drawn from the far ring: a low-detail mesh or a box. (FarLook)",
+      "type": "object",
+      "properties": {
+        "mesh": {
+          "description": "A low-detail model drawn in its place from the far ring; left out, a box of `size`. A mesh path. (AssetPath)",
+          "type": "string"
+        },
+        "size": {
+          "description": "The box drawn when there is no mesh: width, height and depth, standing on its position. Unit: m. (Vector3)",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "material": {
+          "description": "Empty = sage:lit_default. Names a material record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

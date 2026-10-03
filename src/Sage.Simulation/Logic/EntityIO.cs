@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json.Serialization;
@@ -338,6 +339,7 @@ public sealed class EntityIO : ISavedResource
         public double Due;
         public long Order;                  // ties broken by when it was queued, so a tick is deterministic
         public Entity Target;
+        public string Output;               // the wire's output, for the history ("" when sent directly)
         public string Input;
         public string Parameter;
         public Entity Activator;
@@ -414,26 +416,27 @@ public sealed class EntityIO : ISavedResource
             string parameter = wire.Parameter.Length > 0 ? wire.Parameter
                              : text ?? (hasNumber ? IOValues.Format(number) : "");
             var target = Resolve(world, wire, source, activator);
-            Queue(target, wire.Input, parameter, wire.Delay, activator, source, wire.Target, sameTick && wire.Delay <= 0f);
+            Queue(target, wire.Output, wire.Input, parameter, wire.Delay, activator, source, wire.Target, sameTick && wire.Delay <= 0f);
         }
     }
 
     // Fires one input directly, from code or the console.
     public void FireInput(Entity target, string input, string parameter = "", float delay = 0f,
                           Entity activator = default, Entity caller = default) =>
-        Queue(target, input, parameter, delay, activator, caller, "", false);
+        Queue(target, "", input, parameter, delay, activator, caller, "", false);
 
     // Fires one input at an entity by name, found when it arrives rather than now (a wire's late
     // binding, 04 §3.4): what a delayed `fire` action (#89) or a wire aims at may be spawned, or
     // respawned, in the meantime. Nothing by that name when it arrives: nothing happens (logged at Debug).
+    // A selector (`@lamps`, `@class:torch`, `@tag:ns:id`; IOTargets) reaches every member it has then.
     public void FireInput(string targetName, string input, string parameter = "", float delay = 0f,
                           Entity activator = default, Entity caller = default)
     {
-        var target = _world != null ? _world.FindByName(targetName) : default;
-        Queue(target, input, parameter, delay, activator, caller, targetName ?? "", false);
+        var target = _world != null && !IOTargets.IsSelector(targetName) ? _world.FindByName(targetName) : default;
+        Queue(target, "", input, parameter, delay, activator, caller, targetName ?? "", false);
     }
 
-    private void Queue(Entity target, string input, string parameter, float delay,
+    private void Queue(Entity target, string output, string input, string parameter, float delay,
                        Entity activator, Entity caller, string targetName, bool sameTick)
     {
         if (sameTick) _sameTickQueued = true;
@@ -442,6 +445,7 @@ public sealed class EntityIO : ISavedResource
             Due = Clock(_world) + Math.Max(0f, delay),
             Order = _order++,
             Target = target,
+            Output = output,
             Input = input,
             Parameter = parameter ?? "",
             Activator = activator,
@@ -475,6 +479,8 @@ public sealed class EntityIO : ISavedResource
             if (string.Equals(wire.Target, "!activator", StringComparison.OrdinalIgnoreCase)) return activator;
             if (string.Equals(wire.Target, "!caller", StringComparison.OrdinalIgnoreCase)) return self;
         }
+        // A selector is resolved when the input arrives, member by member (Deliver).
+        if (IOTargets.IsSelector(wire.Target)) return default;
 
         if (!wire.Resolved.IsNull && world.IsAlive(wire.Resolved)) return wire.Resolved;
         return wire.Resolved = world.FindByName(wire.Target);
@@ -523,15 +529,26 @@ public sealed class EntityIO : ISavedResource
 
         foreach (var pending in _due)
         {
-            if (DispatchedLastTick >= Budget)
+            if (DispatchedLastTick >= Budget) { WarnBudget(); return false; }
+
+            if (IOTargets.IsSelector(pending.TargetName) && pending.Target.IsNull)
             {
-                if (!_warnedBudget)
+                // A group (issue #276): every member it has now, each one delivery. Collected first,
+                // because an input may change the world (Kill) and a query cannot be walked meanwhile.
+                _members.Clear();
+                _selectors.Collect(world, pending.TargetName, _members);
+                if (_members.Count == 0)
                 {
-                    _warnedBudget = true;
-                    Log.Warn(LogCat.Events, $"Entity I/O: more than {Budget} inputs in one tick; the rest are dropped "
-                                          + "(a wire that fires itself?). `io_trace 1` shows the chain.");
+                    Record(world, pending, default, IOOutcome.NoTarget);
+                    Log.Debug(LogCat.Events, $"I/O: '{pending.Input}' had no target in '{pending.TargetName}'");
+                    continue;
                 }
-                return false;
+                for (int m = 0; m < _members.Count; m++)
+                {
+                    if (DispatchedLastTick >= Budget) { WarnBudget(); return false; }
+                    if (world.IsAlive(_members[m])) DeliverOne(world, inputs, pending, _members[m]);
+                }
+                continue;
             }
 
             var target = pending.Target;
@@ -540,37 +557,132 @@ public sealed class EntityIO : ISavedResource
 
             if (target.IsNull || !world.IsAlive(target))
             {
+                Record(world, pending, default, IOOutcome.NoTarget);
                 Log.Debug(LogCat.Events, $"I/O: '{pending.Input}' had no target"
                                        + (pending.TargetName.Length > 0 ? $" named '{pending.TargetName}'" : ""));
                 continue;
             }
 
-            if (Trace)
-                Log.Info(LogCat.Events, $"I/O: {World.Describe(pending.Caller)} → {World.Describe(target)}."
-                                      + $"{pending.Input}({pending.Parameter})");
+            DeliverOne(world, inputs, pending, target);
+        }
+        return true;
+    }
 
-            DispatchedLastTick++;
-            var delivered = inputs.Deliver(world, pending.Input, new IOContext
+    private void WarnBudget()
+    {
+        if (_warnedBudget) return;
+        _warnedBudget = true;
+        Log.Warn(LogCat.Events, $"Entity I/O: more than {Budget} inputs in one tick; the rest are dropped "
+                              + "(a wire that fires itself?). `io_trace 1` shows the chain, `io_history` the last of it.");
+    }
+
+    // One input at one live entity: the handlers, the history, and what went wrong said once.
+    private void DeliverOne(World world, EntityInputs inputs, in Queued pending, Entity target)
+    {
+        if (Trace)
+            Log.Info(LogCat.Events, $"I/O: {World.Describe(pending.Caller)}"
+                                  + (pending.Output.Length > 0 ? $".{pending.Output}" : "")
+                                  + $" → {World.Describe(target)}.{pending.Input}({pending.Parameter})"
+                                  + (pending.TargetName.Length > 0 && IOTargets.IsSelector(pending.TargetName) ? $" via {pending.TargetName}" : ""));
+
+        DispatchedLastTick++;
+        EntityInputs.Delivery delivered;
+        try
+        {
+            delivered = inputs.Deliver(world, pending.Input, new IOContext
             {
                 Self = target,
                 Activator = pending.Activator,
                 Caller = pending.Caller,
                 Parameter = pending.Parameter,
             });
-            if (delivered == EntityInputs.Delivery.NoSuchInput)
-            {
-                // Logged at load too, but a `ent_fire` typo arrives here.
-                DispatchedLastTick--;
-                Log.Warn(LogCat.Events, $"I/O: no input called '{pending.Input}' ({World.Describe(target)})");
-            }
-            else if (delivered == EntityInputs.Delivery.NobodyTookIt)
-            {
-                Log.Warn(LogCat.Events, $"I/O: '{pending.Input}' at {World.Describe(target)}, which has nothing that takes it "
-                                      + $"(it is for {string.Join(", ", inputs.ComponentsTaking(pending.Input))})");
-            }
         }
-        return true;
+        catch (Exception ex) when (ex is not SageFatalException)
+        {
+            // 04 §8 (issue #402): one bad handler — a game's own input, as often as not — costs that one
+            // delivery, said with the wire it came down, and the rest of the tick's inputs still arrive.
+            Record(world, pending, target, IOOutcome.Failed);
+            Log.Error(LogCat.Events, $"I/O: {World.Describe(pending.Caller)}"
+                                   + (pending.Output.Length > 0 ? $".{pending.Output}" : "")
+                                   + $" → {World.Describe(target)}.{pending.Input}({pending.Parameter}) threw "
+                                   + $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+            if (Debugger.IsAttached) Debugger.Break();
+            return;
+        }
+
+        if (delivered == EntityInputs.Delivery.NoSuchInput)
+        {
+            // Logged at load too, but a `ent_fire` typo arrives here.
+            DispatchedLastTick--;
+            Record(world, pending, target, IOOutcome.NoSuchInput);
+            Log.Warn(LogCat.Events, $"I/O: no input called '{pending.Input}' ({World.Describe(target)})");
+        }
+        else if (delivered == EntityInputs.Delivery.NobodyTookIt)
+        {
+            Record(world, pending, target, IOOutcome.NobodyTookIt);
+            Log.Warn(LogCat.Events, $"I/O: '{pending.Input}' at {World.Describe(target)}, which has nothing that takes it "
+                                  + $"(it is for {string.Join(", ", inputs.ComponentsTaking(pending.Input))})");
+        }
+        else Record(world, pending, target, IOOutcome.Delivered);
     }
+
+    // ---- History (issue #276) ---------------------------------------------------------------------------
+
+    // The last inputs delivered (or not), oldest overwritten first: what `io_history` prints and the
+    // editor's link view shows beside a wire. A preallocated ring of structs whose strings are the wires'
+    // own, so keeping it costs nothing per delivery. Not saved: it is a debugging aid about this session.
+    public const int HistoryCapacity = 256;
+    private readonly IORecord[] _history = new IORecord[HistoryCapacity];
+    private int _historyNext, _historyCount;
+
+    [Transient] public int HistoryCount => _historyCount;
+
+    // Record `i`, 0 the oldest kept and HistoryCount - 1 the newest.
+    public IORecord HistoryAt(int i)
+    {
+        if ((uint)i >= (uint)_historyCount) throw new ArgumentOutOfRangeException(nameof(i));
+        int oldest = (_historyNext - _historyCount + HistoryCapacity) % HistoryCapacity;
+        return _history[(oldest + i) % HistoryCapacity];
+    }
+
+    // The records about `entity` (as the target, or as the caller whose output sent it), newest first,
+    // up to `max`, added to `into`. For a tool: it walks the ring.
+    public void HistoryOf(Entity entity, List<IORecord> into, int max = HistoryCapacity)
+    {
+        for (int i = _historyCount - 1; i >= 0 && max > 0; i--)
+        {
+            var record = HistoryAt(i);
+            if (record.Target != entity && record.Caller != entity) continue;
+            into.Add(record);
+            max--;
+        }
+    }
+
+    public void ClearHistory() { _historyNext = 0; _historyCount = 0; }
+
+    // One record as a line: `[t 1.25] relay.OnTrigger -> lamp_2.TurnOn("") via @lamps: Delivered`.
+    public static string Describe(IORecord record) =>
+        "[t " + record.Time.ToString("0.00", CultureInfo.InvariantCulture) + "] "
+        + (record.Caller.IsNull ? "(direct)" : World.Describe(record.Caller))
+        + (record.Output.Length > 0 ? "." + record.Output : "")
+        + " -> " + (record.Target.IsNull ? record.TargetName : World.Describe(record.Target))
+        + "." + record.Input + "(\"" + record.Parameter + "\")"
+        + (IOTargets.IsSelector(record.TargetName) && !record.Target.IsNull ? " via " + record.TargetName : "")
+        + ": " + record.Outcome;
+
+    private void Record(World world, in Queued pending, Entity target, IOOutcome outcome)
+    {
+        _history[_historyNext] = new IORecord(world.Tick, _time, pending.Caller, pending.Output, target,
+                                              pending.TargetName, pending.Input, pending.Parameter, outcome);
+        _historyNext = (_historyNext + 1) % HistoryCapacity;
+        if (_historyCount < HistoryCapacity) _historyCount++;
+    }
+
+    // A selector's members now (IOTargets.Members), with this world's cached queries.
+    private readonly IOSelectorCache _selectors = new();
+    private readonly List<Entity> _members = new();
+
+    internal void Collect(World world, string selector, List<Entity> into) => _selectors.Collect(world, selector, into);
 
     internal void Clear()
     {
@@ -905,13 +1017,25 @@ public sealed class EntityIOModule : IModule
             "How many inputs one tick may deliver before the rest are dropped.", 1, 100000);
 
         ctx.Engine.CVars.RegisterCommand("ent_fire", CVarFlags.Cheat,
-            "ent_fire <name|!player> <input> [parameter] [delay]: send an input to an entity by name.", a =>
+            "ent_fire <name|!player|@group> <input> [parameter] [delay]: send an input to an entity by name, or to every member of a group.", a =>
         {
-            if (a.Count < 2) { Log.Warn(LogCat.Console, "ent_fire <name> <input> [parameter] [delay]"); return; }
+            if (a.Count < 2) { Log.Warn(LogCat.Console, "ent_fire <name|@group> <input> [parameter] [delay]"); return; }
 
             foreach (var world in ctx.Engine.Worlds)
             {
                 if (!world.Resources.TryGet<EntityIO>(out var io) || io == null) continue;
+
+                if (IOTargets.IsSelector(a[0]))
+                {
+                    if (IOTargets.Problem(ctx.Engine, a[0]) is { } problem) { Log.Warn(LogCat.Console, $"ent_fire: {problem}"); return; }
+                    if (!ctx.Engine.Inputs.Has(a[1])) { Log.Warn(LogCat.Console, $"ent_fire: no input '{a[1]}' (see io_list)"); return; }
+                    var members = new List<Entity>();
+                    IOTargets.Members(world, a[0], members);
+                    float wait = a.Count > 3 && float.TryParse(a[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float w) ? w : 0f;
+                    io.FireInput(a[0], a[1], a.Count > 2 ? a[2] : "", wait);
+                    Log.Info(LogCat.Console, $"fired {a[1]} at {a[0]} ({members.Count} member(s) now)");
+                    return;
+                }
 
                 // `!player` because half of what you want to fire at from a console is the player, and
                 // the help said so before this did (found by the second pass: an untrue help string is
@@ -928,6 +1052,38 @@ public sealed class EntityIOModule : IModule
                 Log.Info(LogCat.Console, $"fired {a[1]} at {World.Describe(target)}");
                 return;
             }
+        });
+
+        ctx.Engine.CVars.RegisterCommand("io_history", CVarFlags.None,
+            "io_history [name] [count]: the last inputs delivered (all, or to or from one entity), newest last, with what became of each.", a =>
+        {
+            int count = 20;
+            string? name = null;
+            for (int i = 0; i < a.Count; i++)
+            {
+                if (int.TryParse(a[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out int n)) count = Math.Max(1, n);
+                else name = a[i];
+            }
+            // Every world that has delivered anything (the editor's play world beside the edit world).
+            int shown = 0;
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<EntityIO>(out var io) || io == null || io.HistoryCount == 0) continue;
+                var records = new List<IORecord>();
+                if (name != null)
+                {
+                    var entity = world.FindByName(name);
+                    if (entity.IsNull) continue;
+                    io.HistoryOf(entity, records, count);
+                    records.Reverse();
+                }
+                else
+                    for (int i = Math.Max(0, io.HistoryCount - count); i < io.HistoryCount; i++) records.Add(io.HistoryAt(i));
+                Log.Info(LogCat.Console, $"world '{world.Name}': {records.Count} of {io.HistoryCount} kept (the last {EntityIO.HistoryCapacity})");
+                foreach (var r in records) Log.Info(LogCat.Console, "  " + EntityIO.Describe(r));
+                shown++;
+            }
+            if (shown == 0) Log.Info(LogCat.Console, name != null ? $"io_history: nothing sent to or from '{name}' yet" : "io_history: no input delivered yet");
         });
 
         ctx.Engine.CVars.RegisterCommand("io_list", CVarFlags.None, "Every entity input and output this game has.", _ =>
