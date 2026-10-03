@@ -132,6 +132,113 @@
       "default": 0,
       "type": "integer",
       "minimum": 0
+    },
+    "leapEvery": {
+      "description": "A year divisible by this is a leap year; 0: no leap years. Unit: years. At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "leapSkipEvery": {
+      "description": "Unless divisible by this too (a multiple of leapEvery; 100 in the Gregorian rule); 0: no exception. Unit: years. At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "leapRestoreEvery": {
+      "description": "Unless divisible by this as well (a multiple of leapSkipEvery; 400 in the Gregorian rule); 0: none. Unit: years. At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "leapMonth": {
+      "description": "The month that has the extra day in a leap year (1 is the first); 0: the last month. At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "seasons": {
+      "description": "The seasons, each starting on a month and day and running to the next one's start. Empty: none (the default calendar has the four usual ones) (List<CalendarSeason>)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The season's name, as the `season` condition names it. (string)",
+            "type": "string"
+          },
+          "month": {
+            "description": "The month it starts in (1 is the first) At least 1. (int)",
+            "type": "integer",
+            "minimum": 1
+          },
+          "day": {
+            "description": "The day of that month it starts on. At least 1. (int)",
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "seasons+": {
+      "description": "Adds to \"seasons\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The season's name, as the `season` condition names it. (string)",
+            "type": "string"
+          },
+          "month": {
+            "description": "The month it starts in (1 is the first) At least 1. (int)",
+            "type": "integer",
+            "minimum": 1
+          },
+          "day": {
+            "description": "The day of that month it starts on. At least 1. (int)",
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "seasons-": {
+      "description": "Removes these from \"seasons\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The season's name, as the `season` condition names it. (string)",
+            "type": "string"
+          },
+          "month": {
+            "description": "The month it starts in (1 is the first) At least 1. (int)",
+            "type": "integer",
+            "minimum": 1
+          },
+          "day": {
+            "description": "The day of that month it starts on. At least 1. (int)",
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "moonCycle": {
+      "description": "Days from one new moon to the next; 0: 29.53. Unit: days. At least 0. (double, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "moonStart": {
+      "description": "How many days into the moon's cycle the clock's day 0 is (0 is a new moon) Unit: days. (double, default 0)",
+      "default": 0,
+      "type": "number"
     }
   },
   "additionalProperties": false

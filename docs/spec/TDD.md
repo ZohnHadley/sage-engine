@@ -148,12 +148,13 @@ folder beside the executable it stops with an error. See [subsystems/03-app-and-
 MonoGame. A windowed host calls `Update(realDt, ...)` from `Game.Update` and `Frame()` from `Game.Draw`;
 a headless host calls both from its own loop.
 
-1. `FixedStepClock.Advance` clamps the real frame time to `sim_maxframetime` (0.25 s default), scales it by
-   `host_timescale`, adds it to an accumulator, and returns how many whole ticks of `1 / sim_tickrate`
+1. `FixedStepClock.Advance` clamps the real frame time to `sim_maxframetime` (0.25 s default), adds it to an
+   accumulator (unscaled since #283: `host_timescale` goes to each world's `WorldTime.HostScale`), and returns how many whole ticks of `1 / sim_tickrate`
    (60 Hz default) to run, plus `Alpha`, the remainder as a fraction of a tick.
-2. For each tick, every world in `Engine.Worlds` runs `World.RunFixed(dt)` in creation order. Before each,
-   the host's `beforeTick` hands the player's world one `PlayerCommand` sampled from `CommandLatch`, so a
-   pressed edge belongs to exactly one tick. A world created during a tick starts on the next one.
+2. For each tick, every world in `Engine.Worlds` runs `World.RunFixed(dt)` in creation order, which its
+   `WorldTime` turns into zero or more simulation steps of exactly `dt` (its scale, pause and hit-stop;
+   design 01 §5.2). Before each step, the host's `beforeTick` hands the player's world one `PlayerCommand`
+   sampled from `CommandLatch`, so a pressed edge belongs to exactly one step. A world created during a tick starts on the next one.
 3. `Frame()` runs `World.RunFrame(dt, alpha, realTime)` once per world.
 
 `GlobalTransform` stores the previous and current pose; propagation copies poses at the start of each tick

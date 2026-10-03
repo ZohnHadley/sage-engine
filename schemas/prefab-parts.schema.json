@@ -80,6 +80,14 @@
         }
       ]
     },
+    "calendar_event": {
+      "description": "Prefab part 'calendar_event' (CalendarEventPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/calendar_event"
+        }
+      ]
+    },
     "camera": {
       "description": "Prefab part 'camera' (CameraPart).",
       "allOf": [
@@ -793,6 +801,21 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'box_mesh' (BoxMeshPart)."
+    },
+    "calendar_event": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "description": "The calendar_event record to fire OnCalendarEvent for. Names a calendar_event record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:calendar_event"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'calendar_event' (CalendarEventPart)."
     },
     "camera": {
       "type": "object",

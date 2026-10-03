@@ -4718,7 +4718,7 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, any, date_between, distance_to, entity_exists, has_item, has_tag, in_scene, is_alive, lacks_tag, not, quest, random, speaker, standing, time_between, var, weekday.",
+      "description": "A condition by id: all, anim_finished, anim_param, any, date_between, distance_to, entity_exists, has_item, has_tag, in_scene, is_alive, lacks_tag, moon_phase, not, on_date, quest, random, season, speaker, standing, time_between, var, weekday.",
       "type": "string",
       "enum": [
         "All",
@@ -4733,9 +4733,12 @@
         "InScene",
         "IsAlive",
         "LacksTag",
+        "MoonPhase",
         "Not",
+        "OnDate",
         "Quest",
         "Random",
+        "Season",
         "Speaker",
         "Standing",
         "TimeBetween",
@@ -4753,9 +4756,12 @@
         "in_scene",
         "is_alive",
         "lacks_tag",
+        "moon_phase",
         "not",
+        "on_date",
         "quest",
         "random",
+        "season",
         "speaker",
         "standing",
         "time_between",
@@ -5317,6 +5323,61 @@
                 "properties": {
                   "condition": {
                     "enum": [
+                      "moon_phase",
+                      "MoonPhase"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "anyOf": {
+                    "description": "Or any of these phases. (List<string>)",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "anyOf+": {
+                    "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "anyOf-": {
+                    "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "condition": {
+                    "description": "The condition: moon_phase.",
+                    "enum": [
+                      "moon_phase",
+                      "MoonPhase"
+                    ]
+                  },
+                  "is": {
+                    "description": "The phase it must be: new, waxing_crescent, first_quarter, waxing_gibbous, full, waning_gibbous, last_quarter, waning_crescent. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'moon_phase' (MoonPhaseCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
                       "not",
                       "Not"
                     ]
@@ -5352,6 +5413,52 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'not' (NotCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "on_date",
+                      "OnDate"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: on_date.",
+                    "enum": [
+                      "on_date",
+                      "OnDate"
+                    ]
+                  },
+                  "day": {
+                    "description": "The day of the month. At least 1. (int, default 1)",
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "month": {
+                    "description": "The month (1 is the first) At least 1. (int, default 1)",
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "year": {
+                    "description": "The year; 0: every year. (int, default 0)",
+                    "default": 0,
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'on_date' (OnDateCondition)."
               }
             },
             {
@@ -5450,6 +5557,61 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'random' (RandomCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "season",
+                      "Season"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "anyOf": {
+                    "description": "Or any of these seasons. (List<string>)",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "anyOf+": {
+                    "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "anyOf-": {
+                    "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "condition": {
+                    "description": "The condition: season.",
+                    "enum": [
+                      "season",
+                      "Season"
+                    ]
+                  },
+                  "is": {
+                    "description": "The season it must be, as the calendar names it. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'season' (SeasonCondition)."
               }
             },
             {
@@ -7067,6 +7229,156 @@
         {
           "type": "object",
           "properties": {
+            "anyOf": {
+              "description": "Or any of these phases. (List<string>)",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf+": {
+              "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf-": {
+              "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "is": {
+              "description": "The phase it must be: new, waxing_crescent, first_quarter, waxing_gibbous, full, waning_gibbous, last_quarter, waning_crescent. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "moon_phase": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "is": {
+                      "description": "The phase it must be: new, waxing_crescent, first_quarter, waxing_gibbous, full, waning_gibbous, last_quarter, waning_crescent. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "anyOf": {
+                      "description": "Or any of these phases. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf+": {
+                      "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf-": {
+                      "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'moon_phase' (MoonPhaseCondition), in shorthand."
+            }
+          },
+          "required": [
+            "moon_phase"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "MoonPhase": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "is": {
+                      "description": "The phase it must be: new, waxing_crescent, first_quarter, waxing_gibbous, full, waning_gibbous, last_quarter, waning_crescent. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "anyOf": {
+                      "description": "Or any of these phases. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf+": {
+                      "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf-": {
+                      "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'moon_phase' (MoonPhaseCondition), in shorthand."
+            },
+            "anyOf": {
+              "description": "Or any of these phases. (List<string>)",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf+": {
+              "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf-": {
+              "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "is": {
+              "description": "The phase it must be: new, waxing_crescent, first_quarter, waxing_gibbous, full, waning_gibbous, last_quarter, waning_crescent. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "MoonPhase"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "not": {
               "description": "condition 'not' (NotCondition), in shorthand.",
               "allOf": [
@@ -7121,6 +7433,120 @@
           },
           "required": [
             "Not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "day": {
+              "description": "The day of the month. At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "month": {
+              "description": "The month (1 is the first) At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "on_date": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "month": {
+                      "description": "The month (1 is the first) At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "day": {
+                      "description": "The day of the month. At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "year": {
+                      "description": "The year; 0: every year. (int, default 0)",
+                      "default": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'on_date' (OnDateCondition), in shorthand."
+            },
+            "year": {
+              "description": "The year; 0: every year. (int, default 0)",
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "on_date"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "OnDate": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "month": {
+                      "description": "The month (1 is the first) At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "day": {
+                      "description": "The day of the month. At least 1. (int, default 1)",
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "year": {
+                      "description": "The year; 0: every year. (int, default 0)",
+                      "default": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'on_date' (OnDateCondition), in shorthand."
+            },
+            "day": {
+              "description": "The day of the month. At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "month": {
+              "description": "The month (1 is the first) At least 1. (int, default 1)",
+              "default": 1,
+              "type": "integer",
+              "minimum": 1
+            },
+            "year": {
+              "description": "The year; 0: every year. (int, default 0)",
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "OnDate"
           ],
           "additionalProperties": false
         },
@@ -7383,6 +7809,156 @@
           },
           "required": [
             "Random"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "anyOf": {
+              "description": "Or any of these seasons. (List<string>)",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf+": {
+              "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf-": {
+              "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "is": {
+              "description": "The season it must be, as the calendar names it. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "season": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "is": {
+                      "description": "The season it must be, as the calendar names it. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "anyOf": {
+                      "description": "Or any of these seasons. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf+": {
+                      "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf-": {
+                      "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'season' (SeasonCondition), in shorthand."
+            }
+          },
+          "required": [
+            "season"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Season": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "is": {
+                      "description": "The season it must be, as the calendar names it. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "anyOf": {
+                      "description": "Or any of these seasons. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf+": {
+                      "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "anyOf-": {
+                      "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "condition 'season' (SeasonCondition), in shorthand."
+            },
+            "anyOf": {
+              "description": "Or any of these seasons. (List<string>)",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf+": {
+              "description": "Adds to \"anyOf\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "anyOf-": {
+              "description": "Removes these from \"anyOf\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "is": {
+              "description": "The season it must be, as the calendar names it. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Season"
           ],
           "additionalProperties": false
         },

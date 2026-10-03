@@ -119,8 +119,8 @@ public class VocabularyDeclarationTests
                              "action:pass_time", "action:play_sound", "action:save_game", "action:set_var", "action:spawn_prefab",
                              "action:teleport", "action:wait", "action:world_speed",
                              "condition:all", "condition:anim_finished", "condition:anim_param", "condition:any", "condition:date_between",
-                             "condition:distance_to", "condition:entity_exists", "condition:in_scene", "condition:not", "condition:random",
-                             "condition:time_between", "condition:var", "condition:weekday" },
+                             "condition:distance_to", "condition:entity_exists", "condition:in_scene", "condition:moon_phase", "condition:not", "condition:on_date", "condition:random",
+                             "condition:season", "condition:time_between", "condition:var", "condition:weekday" },
                      entries.Select(e => $"{e.Name}:{e.Id}").OrderBy(e => e, System.StringComparer.Ordinal));
     }
 }

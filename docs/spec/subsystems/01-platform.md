@@ -61,7 +61,7 @@ The rule that makes headless work is the split above: every decision (is this a 
 | `r_vsync` | true | Archive | Vertical sync. |
 | `sim_tickrate` | 60 | none | Fixed ticks per second. |
 | `sim_maxframetime` | 0.25 | none | Longest frame the simulation catches up on. |
-| `host_timescale` | 1 | DevOnly, Cheat | Simulation speed multiplier. |
+| `host_timescale` | 1 | DevOnly, Cheat | Simulation speed multiplier, on top of each world's own (`WorldTime.HostScale`); it also slows real time for real-time timers and the hit-stop countdown. |
 | `host_exitafter` | 0 | DevOnly | Quit after N real seconds and log frame and tick counts. |
 | `rec_hotreload` | developer >= 1 | DevOnly | Reload record files when they change on disk. |
 | `snd_enabled` | true | Archive | Silent backend when false. |
