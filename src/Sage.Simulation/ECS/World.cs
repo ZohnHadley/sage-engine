@@ -385,12 +385,22 @@ public sealed class World : IDisposable
     // (`RunCondition.Always`) run. At scale 1, unpaused, that is exactly one step, as it always was.
     public void RunFixed(float dt) => RunFixed(dt, null);
 
+    // The pause state last raised as an engine signal (EngineSignals.RaisePaused).
+    private bool _pauseSignalled;
+
     // The same, calling `beforeStep` before every step (the host hands the player's command over there),
     // and before a held pass when the world is paused: a paused world drops what it is handed, as it
     // always did, while a slowed or hit-stopped one keeps a press for its next step.
     public void RunFixed(float dt, Action<World>? beforeStep)
     {
         var time = WorldTime.Of(this);
+        if (time.Paused != _pauseSignalled)
+        {
+            // Paused or resumed since the last tick, by whoever set the flag (or a loaded save): say so once.
+            _pauseSignalled = time.Paused;
+            if (Engine != null) Engine.Signals.RaisePaused(this, time.Paused);
+            else EngineSignals.SendPaused(this, time.Paused);
+        }
         int steps = time.BeginTick(dt);
         if (steps == 0)
         {

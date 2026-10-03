@@ -163,8 +163,14 @@ public class StructuralEventTests
         Assert.Equal(new[] { "scene sceneonly:yard in main", "created main" }, log);
 
         Assert.True(app.Engine.Scenes.Load(world, yard));
-        app.Engine.Signals.RaisePaused(world, true);    // what the owner of pause calls (#283)
-        app.Engine.Signals.RaisePaused(world, false);
+        world.Paused = true;     // raised by the next tick, once however many ticks it stays paused
+        world.RunFixed(1f / 60f);
+        world.RunFixed(1f / 60f);
+        world.Paused = false;
+        world.RunFixed(1f / 60f);
+        world.Paused = true;     // paused and resumed between two ticks: nothing to say
+        world.Paused = false;
+        world.RunFixed(1f / 60f);
         Assert.Equal("scene sceneonly:yard in main", log[2]);
         Assert.Equal(new[] { "paused True", "paused False" }, log.Skip(3));
 
