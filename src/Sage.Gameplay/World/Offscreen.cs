@@ -103,6 +103,11 @@ public sealed class OffscreenAgent
     public bool Dead;
     public List<JsonObject> Entity = new(); // its save entries: the root's, then its prefab's children's
 
+    // The way round what is in its way (4m-10): the corners still to walk, absolute, its goal last, toward
+    // `RouteGoal`; empty while it walks straight. Saved, so a run saved half way walks the same corners.
+    public List<Vector3> Route = new();
+    public Vector3 RouteGoal;
+
     // Worked out from the above when it joins or a save is loaded; never saved.
     internal PersistentId PersistentId;
     internal int Key;
@@ -202,24 +207,43 @@ public static class OffscreenFights
 
 // ---- where things are, from the content ------------------------------------------------------------------
 
-// Where an off-screen agent can go: every named placement of every scene (its anchors), and the doors
-// between scenes, in absolute metres. Read from the records, not the world, so it does not depend on what
-// is loaded; made again when records reload.
+// Where an off-screen agent can go: every named placement of every scene and every `targetname` of the
+// `.map`s a scene places (its anchors), the doors between scenes, and each scene's coarse graph of walls and
+// ways round them (OffscreenGraph, 4m-10), in absolute metres. Read from the records, not the world, so it
+// does not depend on what is loaded; made again when records reload.
 //
 // **Doors** are placements whose prefab (or the placement's overrides) has a `load_door` part, `{ "scene",
-// "entry" }` (issue 4g-5's): the door's position is the way out of its scene, and the named entry in the
+// "entry" }` (issue 4g-5's), and map entities whose classname is such a prefab (with `load_door.scene` and
+// `load_door.entry` keys over it): the door's position is the way out of its scene, and the named entry in the
 // other scene the way in. Code may add doors of its own (`AddDoor`), which a reload keeps.
 [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
 public sealed class OffscreenMap
 {
     public const string DoorPart = "load_door";
 
-    private readonly Dictionary<(RecordId Scene, string Name), Vector3> _anchors = new();
+    // Each anchor's absolute position, and its height above the terrain when it stands on it (else NaN).
+    private readonly Dictionary<(RecordId Scene, string Name), (Vector3 At, float Lift)> _anchors = new();
     private readonly Dictionary<(RecordId From, RecordId To), (Vector3 Exit, Vector3 Entry)> _doors = new();
     private readonly Dictionary<(RecordId From, RecordId To), (Vector3 Exit, Vector3 Entry)> _added = new();
+    private readonly Dictionary<RecordId, OffscreenGraph> _graphs = new();
+    private static readonly OffscreenGraph Empty = new();
     private bool _built;
 
-    public bool TryAnchor(RecordId scene, string name, out Vector3 at) => _anchors.TryGetValue((scene, name), out at);
+    public bool TryAnchor(RecordId scene, string name, out Vector3 at)
+    {
+        bool found = _anchors.TryGetValue((scene, name), out var anchor);
+        at = anchor.At;
+        return found;
+    }
+
+    // `lift`: the anchor's height above the terrain, when it stands on it (a ground-framed placement, a level
+    // on the terrain); NaN when its height is absolute.
+    internal bool TryAnchor(RecordId scene, string name, out Vector3 at, out float lift)
+    {
+        bool found = _anchors.TryGetValue((scene, name), out var anchor);
+        (at, lift) = found ? anchor : (default, float.NaN);
+        return found;
+    }
 
     // The way from `from` to `to`: where to leave `from` and where that comes out in `to`.
     public bool TryDoor(RecordId from, RecordId to, out Vector3 exit, out Vector3 entry)
@@ -236,70 +260,247 @@ public sealed class OffscreenMap
 
     public void AddDoor(RecordId from, Vector3 exit, RecordId to, Vector3 entry) => _added[(from, to)] = (exit, entry);
 
+    // Whether a wall of `scene`'s content stands between two absolute points (4m-10).
+    public bool Blocked(RecordId scene, Vector3 a, Vector3 b) => GraphOf(scene).Blocked(a, b);
+
+    internal OffscreenGraph GraphOf(RecordId scene) => _graphs.TryGetValue(scene, out var graph) ? graph : Empty;
+
     internal void Invalidate() => _built = false;
 
-    internal OffscreenMap Ensure(RecordStore records)
+    internal OffscreenMap Ensure(RecordStore records, Engine? engine)
     {
         if (_built) return this;
         _built = true;
         _anchors.Clear();
         _doors.Clear();
+        _graphs.Clear();
         var exits = new List<(RecordId From, Vector3 Exit, RecordId To, string Entry)>();
+        bool maps = records.TypeNameOf(typeof(MapRecord)) != null;   // sage.maps may be off
         foreach (var id in records.Ids("scene"))
         {
             if (!records.TryGet(id, out SceneRecord scene)) continue;
-            foreach (var placement in scene.Place) Note(records, id, placement, scene.Origin, scene.RelativeTo, exits);
+            var graph = new OffscreenGraph();
+            _graphs[id] = graph;
+            foreach (var placement in scene.Place) Note(records, id, graph, placement, scene.Origin, scene.RelativeTo, exits);
             foreach (var document in scene.Placements)
                 if (records.TryGet(document.Id, out PlacementsRecord placements))
-                    foreach (var placement in placements.Place) Note(records, id, placement, placements.Origin, placements.RelativeTo, exits);
+                    foreach (var placement in placements.Place) Note(records, id, graph, placement, placements.Origin, placements.RelativeTo, exits);
+            if (engine != null && maps)
+                foreach (var map in scene.Maps)
+                    if (records.TryGet(map.Id, out MapRecord level)) NoteMap(engine, records, id, graph, map.Id, level, exits);
+            graph.Finish();
         }
         foreach (var (from, exit, to, entry) in exits)
-            if (_anchors.TryGetValue((to, entry), out var inside)) _doors.TryAdd((from, to), (exit, inside));
+            if (_anchors.TryGetValue((to, entry), out var inside)) _doors.TryAdd((from, to), (exit, inside.At));
         return this;
     }
 
-    private void Note(RecordStore records, RecordId scene, Placement placement, Vector3 origin, PlacementFrame frame,
+    private void Note(RecordStore records, RecordId scene, OffscreenGraph graph, Placement placement, Vector3 origin, PlacementFrame frame,
                       List<(RecordId, Vector3, RecordId, string)> exits)
     {
-        var at = (placement.RelativeTo ?? frame) == PlacementFrame.World ? placement.At : origin + placement.At;
-        if (!string.IsNullOrEmpty(placement.Name)) _anchors.TryAdd((scene, placement.Name), at);
+        var relativeTo = placement.RelativeTo ?? frame;
+        var at = relativeTo == PlacementFrame.World ? placement.At : origin + placement.At;
+        bool ground = relativeTo == PlacementFrame.Ground;
+        if (!string.IsNullOrEmpty(placement.Name)) _anchors.TryAdd((scene, placement.Name), (at, ground ? placement.At.Y : float.NaN));
 
-        var door = Part(placement.Overrides?.Parts);
-        if (records.TryGet(placement.Prefab.Id, out PrefabRecord prefab) && Part(prefab.Parts) is { } own)
-            door = door == null ? own : Merge(own, door);
-        if (door == null) return;
-        string? to = Text(door, "scene"), entry = Text(door, "entry");
-        if (to is not { Length: > 0 } || entry is not { Length: > 0 }) return;
-        try { exits.Add((scene, at, RecordId.Parse(to, placement.Prefab.Id.Namespace), entry)); }
-        catch (FormatException) { }   // the door's own check says so
+        records.TryGet(placement.Prefab.Id, out PrefabRecord prefab);
+        var parts = placement.Overrides?.Parts;
+        var door = Options(prefab?.Parts, parts, DoorPart);
+        if (door != null && Text(door, "scene") is { Length: > 0 } to && Text(door, "entry") is { Length: > 0 } entry)
+        {
+            try { exits.Add((scene, at, RecordId.Parse(to, placement.Prefab.Id.Namespace), entry)); }
+            catch (FormatException) { }   // the door's own check says so
+        }
+        // On the ground, a wall's height is measured from the terrain, as the placement's is.
+        if (prefab != null) Solid(graph, prefab, placement.Overrides, ground ? at with { Y = placement.At.Y } : at, placement.Yaw, ground);
     }
 
-    // The `load_door` part's options, its key matched as 4g-5's own check matches it (ignoring case).
-    private static JsonObject? Part(JsonObject? parts)
+    // What a placed prefab is to an agent walking past: a wall, a door, a link, or nothing.
+    private static void Solid(OffscreenGraph graph, PrefabRecord prefab, PrefabOverrides? overrides, Vector3 at, float yaw, bool ground)
     {
-        if (parts == null) return null;
-        foreach (var (key, value) in parts)
-            if (string.Equals(key, DoorPart, StringComparison.OrdinalIgnoreCase)) return value as JsonObject;
-        return null;
+        var parts = overrides?.Parts;
+        if (Options(prefab.Parts, parts, "nav_link") is { } link && Vector(link, "end") is { } end)
+            graph.AddLink(at, at + end, Flag(link, "twoWay"), Number(link, "cost") ?? 0f, ground);
+
+        if (!Shape(prefab, overrides, out var centre, out var half)) return;
+        var rotation = SageMath.RotationFromYaw(yaw * MathF.PI / 180f);
+        var middle = at + Vector3.Transform(centre, rotation);
+        bool mover = Options(prefab.Parts, parts, "mover") != null;
+        bool locked = Options(prefab.Parts, parts, "nav_door") is { } navDoor && Flag(navDoor, "locked");
+        if (mover && !locked)
+        {
+            graph.AddNode(middle with { Y = middle.Y - half.Y }, ground);   // a door: a way through, at its foot
+            return;
+        }
+
+        // The box round the turned box.
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+            {
+                var corner = middle + Vector3.Transform(new Vector3(sx * half.X, 0f, sz * half.Z), rotation);
+                min = Vector3.Min(min, corner);
+                max = Vector3.Max(max, corner);
+            }
+        min.Y = middle.Y - half.Y;
+        max.Y = middle.Y + half.Y;
+        graph.AddWall(min, max, ground);
     }
 
-    private static JsonObject Merge(JsonObject prefab, JsonObject overrides)
+    // A static, solid shape: its centre (from the placement) and half extents. A `body` part without mass, or
+    // a `collider` with no rigid body or a static one; never a trigger.
+    private static bool Shape(PrefabRecord prefab, PrefabOverrides? overrides, out Vector3 centre, out Vector3 half)
     {
-        var merged = (JsonObject)prefab.DeepClone();
-        foreach (var (key, value) in overrides) merged[key] = value?.DeepClone();
+        centre = half = default;
+        if (Options(prefab.Parts, overrides?.Parts, "body") is { } body)
+        {
+            if (Flag(body, "trigger") || (Number(body, "mass") ?? 0f) > 0f) return false;
+            string shape = Text(body, "shape") ?? "Box";
+            float radius = Number(body, "radius") ?? 0f, height = Number(body, "height") ?? 0f;
+            if (shape.Equals("Capsule", StringComparison.OrdinalIgnoreCase))
+            {
+                centre = new Vector3(0f, height * 0.5f, 0f);   // a capsule stands on its point
+                half = new Vector3(radius, height * 0.5f, radius);
+            }
+            else if (shape.Equals("Sphere", StringComparison.OrdinalIgnoreCase)) half = new Vector3(radius);
+            else half = (Vector(body, "size") ?? Vector3.Zero) * 0.5f;
+            return half.X > 0f && half.Z > 0f;
+        }
+        if (Options(prefab.Components, overrides?.Components, "collider") is { } collider)
+        {
+            if (Flag(collider, "isTrigger")) return false;
+            if (Options(prefab.Components, overrides?.Components, "rigid_body") is { } rigid
+                && Text(rigid, "kind") is { } kind && !kind.Equals("Static", StringComparison.OrdinalIgnoreCase)) return false;
+            var size = Vector(collider, "size") ?? Vector3.Zero;
+            string shape = Text(collider, "shape") ?? "Box";
+            if (shape.Equals("Sphere", StringComparison.OrdinalIgnoreCase)) half = new Vector3(size.X);
+            else if (shape.Equals("Capsule", StringComparison.OrdinalIgnoreCase)) half = new Vector3(size.X, size.Y * 0.5f + size.X, size.X);
+            else if (shape.Equals("Box", StringComparison.OrdinalIgnoreCase)) half = size * 0.5f;
+            centre = Vector(collider, "center") ?? Vector3.Zero;
+            return half.X > 0f && half.Z > 0f;
+        }
+        return false;
+    }
+
+    // A `.map` a scene places (4m-10): its targetnames are anchors, its worldspawn brushes and solid entities
+    // walls, its movers doors, and a classname with a load_door a door.
+    private void NoteMap(Engine engine, RecordStore records, RecordId scene, OffscreenGraph graph, RecordId id, MapRecord record,
+                         List<(RecordId, Vector3, RecordId, string)> exits)
+    {
+        if (MapLevel.Read(engine, id, record) is not { } level) return;   // its own load says why
+        var origin = record.At;
+        bool ground = record.OnTerrain;
+        foreach (var brush in level.Brushes) graph.AddWall(origin + brush.Min, origin + brush.Max, ground);
+
+        foreach (var entity in level.PointEntities)
+        {
+            var at = origin + level.LocalPositionOf(entity);
+            if (entity.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name)) _anchors.TryAdd((scene, name), (at, ground ? at.Y : float.NaN));
+            if (!records.TryGet(ClassPrefab(id, entity.ClassName), out PrefabRecord prefab)) continue;
+            var door = Options(prefab.Parts, null, DoorPart);
+            string? to = Key(entity, DoorPart + ".scene") ?? (door != null ? Text(door, "scene") : null);
+            string? entry = Key(entity, DoorPart + ".entry") ?? (door != null ? Text(door, "entry") : null);
+            if (to is { Length: > 0 } && entry is { Length: > 0 })
+            {
+                try { exits.Add((scene, at, RecordId.Parse(to, id.Namespace), entry)); }
+                catch (FormatException) { }
+            }
+            if (Options(prefab.Parts, null, "nav_link") is { } link)
+            {
+                Vector3? end = Key(entity, "nav_link.end") is { } text && ParseVector(text) is { } written ? written : Vector(link, "end");
+                if (end is { } offset) graph.AddLink(at, at + offset, Flag(link, "twoWay"), Number(link, "cost") ?? 0f, ground);
+            }
+        }
+
+        foreach (var solid in level.Solids)
+        {
+            var at = origin + solid.Origin;
+            if (solid.Source.Keys.TryGetValue("targetname", out var name) && !string.IsNullOrEmpty(name)) _anchors.TryAdd((scene, name), (at, ground ? at.Y : float.NaN));
+            if (solid.IsTrigger) continue;
+            records.TryGet(ClassPrefab(id, solid.Source.ClassName), out PrefabRecord prefab);
+            bool mover = prefab != null && Options(prefab.Parts, null, "mover") != null;
+            bool locked = prefab != null && Options(prefab.Parts, null, "nav_door") is { } navDoor && Flag(navDoor, "locked");
+            if (mover && !locked)
+            {
+                graph.AddNode(at, ground);
+                continue;
+            }
+            foreach (var brush in solid.Brushes) graph.AddWall(origin + brush.Min, origin + brush.Max, ground);
+        }
+    }
+
+    // A classname is a prefab of the level's namespace unless it names another (as the level's own load reads it).
+    private static RecordId ClassPrefab(RecordId level, string className)
+    {
+        if (string.IsNullOrEmpty(className)) return default;
+        if (className.IndexOf(':') < 0) return new RecordId(level.Namespace, className);
+        try { return RecordId.Parse(className, level.Namespace); }
+        catch (FormatException) { return default; }
+    }
+
+    private static string? Key(MapEntity entity, string key) => entity.Keys.TryGetValue(key, out var text) && text.Length > 0 ? text : null;
+
+    private static Vector3? ParseVector(string text)
+    {
+        var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        if (parts.Length != 3) return null;
+        return float.TryParse(parts[0], System.Globalization.NumberStyles.Float, culture, out float x)
+            && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, culture, out float y)
+            && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, culture, out float z) ? new Vector3(x, y, z) : null;
+    }
+
+    // ---- reading content's JSON -----------------------------------------------------------------------------
+
+    // A part's (or component's) options, the prefab's with the placement's overrides over them; keys matched
+    // ignoring case, a component's with or without its namespace.
+    private static JsonObject? Options(JsonObject? own, JsonObject? overrides, string key)
+    {
+        var mine = Find(own, key);
+        var theirs = Find(overrides, key);
+        if (theirs == null) return mine;
+        if (mine == null) return theirs;
+        var merged = (JsonObject)mine.DeepClone();
+        foreach (var (name, value) in theirs) merged[name] = value?.DeepClone();
         return merged;
     }
 
-    private static string? Text(JsonObject json, string key)
+    private static JsonObject? Find(JsonObject? json, string key)
     {
+        if (json == null) return null;
         foreach (var (name, value) in json)
-            if (string.Equals(name, key, StringComparison.OrdinalIgnoreCase) && value is JsonValue v && v.TryGetValue(out string? text))
-                return text;
+            if (string.Equals(name, key, StringComparison.OrdinalIgnoreCase)
+                || (name.Length > key.Length && name[name.Length - key.Length - 1] == ':' && name.EndsWith(key, StringComparison.OrdinalIgnoreCase)))
+                return value as JsonObject;
         return null;
     }
 
+    private static JsonNode? Field(JsonObject json, string key)
+    {
+        foreach (var (name, value) in json)
+            if (string.Equals(name, key, StringComparison.OrdinalIgnoreCase)) return value;
+        return null;
+    }
+
+    private static string? Text(JsonObject json, string key) =>
+        Field(json, key) is JsonValue value && value.TryGetValue(out string? text) ? text : null;
+
+    private static float? Number(JsonObject json, string key) =>
+        Field(json, key) is JsonValue value && value.TryGetValue(out double number) ? (float)number : null;
+
+    private static bool Flag(JsonObject json, string key) =>
+        Field(json, key) is JsonValue value && value.TryGetValue(out bool flag) && flag;
+
+    private static Vector3? Vector(JsonObject json, string key)
+    {
+        if (Field(json, key) is not JsonArray array || array.Count != 3) return null;
+        float Get(int i) => array[i] is JsonValue v && v.TryGetValue(out double d) ? (float)d : 0f;
+        return new Vector3(Get(0), Get(1), Get(2));
+    }
+
     public static OffscreenMap Of(World world) =>
-        world.Resources.GetOrAdd(() => new OffscreenMap()).Ensure(world.Records());
+        world.Resources.GetOrAdd(() => new OffscreenMap()).Ensure(world.Records(), world.Engine);
 }
 
 // ---- the simulation ----------------------------------------------------------------------------------------
@@ -338,6 +539,13 @@ internal sealed class OffscreenSystem : ISystem, ICellHandoff, IDisposable
             foreach (ref readonly var _ in _timePassed.Read()) skipped = true;
         if (!world.Resources.TryGet<OffscreenAgents>(out var table) || table == null) return;
         if (!world.Resources.TryGet<WorldClock>(out var clock) || clock == null) return;
+
+        // What the content placed in sectors never in the world joins the table, at its routine's place, once
+        // per placing of the scene (4m-10); and what walked through a door in view goes on off-screen.
+        _seeding = true;
+        try { CellContent.SeedUnplaced(world, Wants, this, out _); }
+        finally { _seeding = false; }
+        if (world.Resources.TryGet<OffscreenDoorway>(out var doorway) && doorway != null && doorway.Count > 0) GoThrough(world, table, doorway);
 
         long now = (long)Math.Floor(clock.Elapsed * 60.0);
         if (table.Minute < 0 || now < table.Minute || table.Agents.Count == 0) table.Minute = now;
@@ -442,7 +650,8 @@ internal sealed class OffscreenSystem : ISystem, ICellHandoff, IDisposable
         return Fallback;
     }
 
-    // Toward its routine's anchor, in a straight line; through a door when the anchor is in another scene.
+    // Toward its routine's anchor; through a door when the anchor is in another scene. Straight while the
+    // minute's walk is clear, round what is in the way (OffscreenGraph, 4m-10) when it is not.
     private void Move(OffscreenAgent agent, OffscreenMap map, CalendarRecord calendar, double hours)
     {
         if (agent.Routine.IsEmpty || agent.Speed <= 0f || !_records.TryGet(agent.Routine, out RoutineRecord routine)) return;
@@ -451,30 +660,66 @@ internal sealed class OffscreenSystem : ISystem, ICellHandoff, IDisposable
         var entry = routine.Entries[index];
         var scene = entry.Scene.IsEmpty ? agent.Scene : entry.Scene;
 
-        Vector3 target, inside = default;
+        Vector3 goal, inside = default;
+        float lift = float.NaN;
         bool door = scene != agent.Scene;
-        if (door ? !map.TryDoor(agent.Scene, scene, out target, out inside) : !map.TryAnchor(scene, entry.At, out target)) return;
+        if (door ? !map.TryDoor(agent.Scene, scene, out goal, out inside) : !map.TryAnchor(scene, entry.At, out goal, out lift)) return;
 
-        double dx = target.X - agent.X, dz = target.Z - agent.Z;
-        double distance = Math.Sqrt(dx * dx + dz * dz);
-        double step = agent.Speed * 60.0;
-        if (distance <= step)
+        if (agent.RouteGoal != goal || agent.Route.Count > 0 && agent.Route[^1] != goal)
         {
+            agent.Route.Clear();
+            agent.RouteGoal = goal;
+        }
+        var graph = map.GraphOf(agent.Scene);
+        double budget = agent.Speed * 60.0;
+        while (budget > 0)
+        {
+            var next = agent.Route.Count > 0 ? agent.Route[0] : goal;
+            double dx = next.X - agent.X, dz = next.Z - agent.Z;
+            double distance = Math.Sqrt(dx * dx + dz * dz);
+
+            // Straight, until this minute's walk would go through a wall: then the way round, from here.
+            if (agent.Route.Count == 0 && graph.WallCount > 0)
+            {
+                double f = distance > budget ? budget / distance : 1.0;
+                var here = new Vector3((float)agent.X, (float)agent.Y, (float)agent.Z);
+                var ahead = new Vector3((float)(agent.X + dx * f), (float)(agent.Y + (next.Y - agent.Y) * f), (float)(agent.Z + dz * f));
+                if (graph.Blocked(here, ahead))
+                {
+                    if (!graph.Plan(here, goal, agent.Route)) agent.Route.Add(goal);   // no way round: straight, as before
+                    continue;
+                }
+            }
+
+            if (distance > budget)
+            {
+                double f = budget / distance;
+                agent.X += dx * f;
+                agent.Z += dz * f;
+                agent.Y += (next.Y - agent.Y) * f;
+                return;
+            }
+            budget -= distance;
+            agent.X = next.X;
+            agent.Y = next.Y;
+            agent.Z = next.Z;
+            bool arrived = agent.Route.Count <= 1;   // the last corner is the goal
+            if (agent.Route.Count > 0) agent.Route.RemoveAt(0);
+            if (!arrived) continue;
+
             if (door)
             {
                 agent.Scene = scene;
-                target = inside;
+                agent.X = inside.X;
+                agent.Y = inside.Y;
+                agent.Z = inside.Z;
                 agent.Lift = float.NaN;   // another space: it stands where the entry is
+                agent.Route.Clear();
+                agent.RouteGoal = default;
             }
-            agent.X = target.X;
-            agent.Y = target.Y;
-            agent.Z = target.Z;
+            else if (!float.IsNaN(lift)) agent.Lift = lift;
             return;
         }
-        double f = step / distance;
-        agent.X += dx * f;
-        agent.Z += dz * f;
-        agent.Y += (target.Y - agent.Y) * f;
     }
 
     private sealed class ByPlace : IComparer<OffscreenAgent>
@@ -513,8 +758,9 @@ internal sealed class OffscreenSystem : ISystem, ICellHandoff, IDisposable
         {
             if (!world.IsAlive(root) || !world.TryGet<Offscreen>(root, out var offscreen) || !world.Has<Transform>(root) || IsDead(world, root)) continue;
             var agent = Take(world, root, offscreen, scene);
+            if (_seeding) AtRoutine(world, agent);
             table.Add(agent);
-            Log.Debug(LogCat.AI, $"{agent} is off-screen ({cell} went dormant)");
+            Log.Debug(LogCat.AI, _seeding ? $"{agent} is off-screen ({cell} was never placed)" : $"{agent} is off-screen ({cell} went dormant)");
         }
     }
 
@@ -571,6 +817,63 @@ internal sealed class OffscreenSystem : ISystem, ICellHandoff, IDisposable
         return !dead.IsEmpty && world.Resources.TryGet<GameplayRegistries>(out _) && world.HasTag(entity, dead);
     }
 
+    // ---- the never placed, and doors in view (4m-10) ----------------------------------------------------------
+
+    private bool _seeding;
+
+    // What seeding takes: a placement whose prefab, or whose overrides, have the `offscreen` part.
+#pragma warning disable SAGE0131 // placement overrides (phase 4i): what the seam hands over; this reads them only
+    private static readonly Func<PrefabRecord, PrefabOverrides?, bool> Wants = (prefab, overrides) =>
+        HasPart(prefab.Parts) || HasPart(overrides?.Parts);
+#pragma warning restore SAGE0131
+
+    private static bool HasPart(JsonObject? parts)
+    {
+        if (parts == null) return false;
+        foreach (var (key, _) in parts)
+            if (string.Equals(key, "offscreen", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    // An NPC whose sector was never placed has been living its routine all along: it is where the entry in
+    // force has it, in that entry's scene, when the content says where that is; else where it was put.
+    private void AtRoutine(World world, OffscreenAgent agent)
+    {
+        if (agent.Routine.IsEmpty || !_records.TryGet(agent.Routine, out RoutineRecord routine)
+            || !world.Resources.TryGet<WorldClock>(out var clock) || clock == null) return;
+        int index = Routines.EntryAt(routine, Calendars.Of(world), clock.Elapsed);
+        if (index < 0) return;
+        var entry = routine.Entries[index];
+        var scene = entry.Scene.IsEmpty ? agent.Scene : entry.Scene;
+        if (!OffscreenMap.Of(world).TryAnchor(scene, entry.At, out var at, out float lift)) return;
+        agent.Scene = scene;
+        agent.X = at.X;
+        agent.Y = at.Y;
+        agent.Z = at.Z;
+        agent.Lift = lift;
+    }
+
+    // Live NPCs that reached the door to the scene their anchor is in (MoveToAnchorTask): out of the world,
+    // and on the other side of it, off-screen.
+    private void GoThrough(World world, OffscreenAgents table, OffscreenDoorway doorway)
+    {
+        var scene = CellContent.SceneOf(world);
+        var map = OffscreenMap.Of(world);
+        foreach (var (entity, to) in doorway.Take())
+        {
+            if (scene.IsEmpty || !world.IsAlive(entity) || !world.TryGet<Offscreen>(entity, out var offscreen) || !world.Has<Transform>(entity)
+                || IsDead(world, entity) || !entity.Parent.IsNull || !map.TryDoor(scene, to, out _, out var entry)) continue;
+            var agent = Take(world, entity, offscreen, scene);
+            agent.Scene = to;
+            agent.X = entry.X;
+            agent.Y = entry.Y;
+            agent.Z = entry.Z;
+            agent.Lift = float.NaN;
+            table.Add(agent);
+            Log.Debug(LogCat.AI, $"{agent} went through the door to {to}");
+        }
+    }
+
     // Every agent whose scene and sector are in the world is spawned there.
     private void Reconcile(World world, OffscreenAgents table)
     {
@@ -621,8 +924,36 @@ internal sealed class OffscreenSystem : ISystem, ICellHandoff, IDisposable
             state.AnchorFor = 0;
             state.Anchor = default;
             state.AnchorElsewhere = false;
+            state.AnchorFar = false;
+            state.FarDoorTo = default;
             state.Path.Clear();
         }
         Log.Debug(LogCat.AI, $"{agent} is back in the world");
+    }
+}
+
+// The live NPCs that reached the door to the scene their routine's anchor is in (4m-10): MoveToAnchorTask
+// notes them while the AI thinks, where nothing may leave the world, and the off-screen system takes them
+// through at its next run. A world resource.
+internal sealed class OffscreenDoorway
+{
+    private readonly List<(Entity Entity, RecordId To)> _arrived = new();
+
+    public int Count => _arrived.Count;
+
+    public static OffscreenDoorway Of(World world) => world.Resources.GetOrAdd(() => new OffscreenDoorway());
+
+    public void Arrived(Entity entity, RecordId to)
+    {
+        foreach (var (had, _) in _arrived)
+            if (had == entity) return;
+        _arrived.Add((entity, to));
+    }
+
+    public (Entity Entity, RecordId To)[] Take()
+    {
+        var taken = _arrived.ToArray();
+        _arrived.Clear();
+        return taken;
     }
 }

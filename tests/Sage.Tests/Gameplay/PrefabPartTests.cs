@@ -165,6 +165,7 @@ public class PrefabPartTests
             ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hitboxes"] = "sage.gameplay.combat", ["hop"] = "sandbox", ["inventory"] = "sage.gameplay.items",
             ["joint"] = "sage.physics3d", ["ladder"] = "sage.gameplay.character", ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
             ["logic_branch"] = "sage.core", ["logic_compare"] = "sage.core", ["logic_counter"] = "sage.core",
+            ["logic_auto"] = "sage.core", ["logic_case"] = "sage.core", ["logic_multisource"] = "sage.core", ["spawner"] = "sage.core", ["trigger"] = "sage.core",
             ["load_door"] = "sage.core", ["logic_relay"] = "sage.core", ["math_remap"] = "sage.core", ["quest_watch"] = "sage.gameplay.quests", ["routine"] = "sage.gameplay.ai", ["offscreen"] = "sage.gameplay.ai", ["nav_link"] = "sage.gameplay.ai", ["nav_door"] = "sage.gameplay.ai", ["nav_area"] = "sage.gameplay.ai",
             ["pickup"] = "sage.gameplay.items", ["ragdoll"] = "sage.core", ["scripted_camera"] = "sage.core", ["skinned_mesh"] = "sage.core", ["sprite"] = "sage.gameplay.animation", ["third_person_rig"] = "sage.core",
             ["state_machine"] = "sage.core", ["timer"] = "sage.core", ["travel_point"] = "sage.core", ["tween"] = "sage.core", ["viewmodel"] = "sage.core",

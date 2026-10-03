@@ -73,6 +73,48 @@
     }
   },
 
+  // The rest of the set (issue #281). An AND gate of numbered sources (HL1's multisource):
+  // SetSource n / ClearSource n / ToggleSource n / Reset / Test → OnAllSet, OnNotAllSet, OnTrue, OnFalse.
+  {
+    "type": "prefab",
+    "id": "logic_multisource",
+    "name": "logic multisource",
+    "parts": {
+      "logic_multisource": { "sources": 2 }
+    }
+  },
+  // A switch on a value, or a random pick (Source's logic_case): InValue v → OnCase01…16 or OnDefault;
+  // PickRandom / PickRandomShuffle → one of OnCase01…NN. A placement gives it its cases or choices:
+  //   "overrides": { "parts": { "logic_case": { "cases": ["red", "green"] } } }
+  {
+    "type": "prefab",
+    "id": "logic_case",
+    "name": "logic case",
+    "parts": {
+      "logic_case": { "cases": [] }
+    }
+  },
+  // When the level starts (Source's logic_auto): OnMapSpawn once, the first tick after it is placed.
+  {
+    "type": "prefab",
+    "id": "logic_auto",
+    "name": "logic auto",
+    "parts": {
+      "logic_auto": { }
+    }
+  },
+  // A spawner (env_entity_maker, point_template): Spawn → OnSpawned. A placement says what it spawns:
+  //   "overrides": { "parts": { "spawner": { "prefab": "game:crate", "limit": 3 } } }
+  // (A trigger_once or trigger_multiple is the `trigger` part on a trigger volume: { "once": true }.)
+  {
+    "type": "prefab",
+    "id": "logic_spawner",
+    "name": "logic spawner",
+    "parts": {
+      "spawner": { }
+    }
+  },
+
   // A state machine on its own (issue #280): a sequence's steps, a level's alarm. The part names no
   // machine, so a placement says which, with the machine's full id (a bare one would be read in sage:):
   //

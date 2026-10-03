@@ -77,6 +77,9 @@ public sealed class Engine : IDisposable
             CalendarEvents.Register(this);                       // OnCalendarEvent (issue 4m-15)
             // Relays, counters, comparisons, branches and remaps (issue #91), the same way.
             LogicEntities.Register(this);
+            // Multisources, cases, autos, trigger filters and spawners (issue #281), the same way.
+            LogicGates.Register(this);
+            Spawners.Register(this);
             // State machines (issue #92): the engine's too; SetState, OnStateChanged and the `on` names
             // content listens for.
             StateMachines.Register(this);
@@ -217,6 +220,7 @@ public sealed class Engine : IDisposable
             world.AddSystem(new CameraBlendSystem(world));        // CameraOn with a blend time (issue #90)
             world.AddSystem(new LogicTimerSystem(world));         // sage:timer and sage:tween (issue #90)
             world.AddSystem(new TweenSystem(world));
+            world.AddSystem(new LogicGateSystem(world));          // logic_auto and triggers' waits (issue #281)
             world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
             world.AddSystem(new LogicSequenceSystem(world));     // what a `wait` put off (issue #275)
             world.AddSystem(new QuickSaveKeysSystem(world, this)); // F5 and F9 (issue 4i-6)

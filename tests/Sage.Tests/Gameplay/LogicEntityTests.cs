@@ -131,7 +131,7 @@ public class LogicEntityTests
         Assert.True(world.Get<LogicBranch>(both).Value);
         Assert.Equal(new[] { lamp }, toggled);                             // the global one, only where nobody else did
 
-        Assert.Equal(new[] { "sage:logic_branch", "sage:logic_relay", "sage:mover" }, engine.Inputs.ComponentsTaking("Toggle").OrderBy(c => c));
+        Assert.Equal(new[] { "sage:logic_branch", "sage:logic_relay", "sage:mover", "sage:trigger" }, engine.Inputs.ComponentsTaking("Toggle").OrderBy(c => c));
         Assert.True(engine.Inputs.Takes(lamp, "Toggle"));
         Assert.False(engine.Inputs.Takes(lamp, "Trigger"));
         Assert.True(engine.Inputs.Takes(world.Create(Transform.Identity, "r"), "Kill"));
@@ -686,6 +686,64 @@ public class LogicEntityAllocationTests
         _count = 0;
         AllocationProbe.AssertNone(300, () => { world.RunFixed(1f / 60f); Profiler.EndFrame(); });
         Assert.True(_count > 20, $"the chain should have reached the remap often ({_count})");
+    }
+
+    // Issue #281's set: a timer toggles a multisource's source, whose edges shuffle a case, whose picks
+    // multiply a counter; a ping-ponging tween and a looping sequence run beside them, and a trigger cools.
+    [Fact]
+    public void TheRestOfTheLogicSetAllocatesNothingPerTick()
+    {
+        using var app = HeadlessApp.Bare().With(new PhysicsModule(), new EntityIOModule()).OnRegistered(a =>
+            a.Engine.Inputs.Register("Count", static (World w, in IOContext io) => _count++)).Boot("io");
+        var world = app.World;
+
+        var timer = Named(world, "timer");
+        world.Add(timer, new LogicTimer { Interval = 0.05f, Repeat = true });
+        world.Add(timer, new IOConnections { Wires = new[] { new Connection { Output = "OnTimer", Target = "gate", Input = "ToggleSource", Parameter = "1" } } });
+        var gate = Named(world, "gate");
+        world.Add(gate, new LogicMultisource { Sources = 1 });
+        world.Add(gate, new IOConnections
+        {
+            Wires = new[]
+            {
+                new Connection { Output = "OnAllSet", Target = "case", Input = "PickRandomShuffle" },
+                new Connection { Output = "OnNotAllSet", Target = "case", Input = "InValue", Parameter = "b" },
+            },
+        });
+        var @case = Named(world, "case");
+        world.Add(@case, new LogicCase());
+        world.Add(@case, new LogicCaseScript { Cases = new[] { "a", "b", "c" } });
+        world.Add(@case, new IOConnections
+        {
+            Wires = new[]
+            {
+                new Connection { Output = "OnCase01", Target = "counter", Input = "Multiply", Parameter = "2" },
+                new Connection { Output = "OnCase02", Target = "counter", Input = "Divide", Parameter = "2" },
+                new Connection { Output = "OnCase03", Target = "!self", Input = "Count" },
+            },
+        });
+        var counter = Named(world, "counter");
+        world.Add(counter, new LogicCounter { Value = 1, Min = 1, Max = 64 });
+        var pulley = Named(world, "pulley");
+        world.Add(pulley, new Tween { Duration = 0.3f, Ease = Ease.Linear, Loop = TweenLoop.PingPong, Target = new Vector3(0, 1, 0), Relative = true });
+        var lift = Named(world, "lift");
+        world.Add(lift, new Tween { Ease = Ease.Linear, Loop = TweenLoop.Restart, Duration = 0.2f });
+        world.Add(lift, new TweenSequence { Steps = new[] { "offset 0 1 0", "offset 0 -1 0" } });
+        var plate = Named(world, "plate");
+        world.Add(plate, new LogicTrigger { Wait = 1f, Cooldown = 1000f });
+        var auto = Named(world, "auto");
+        world.Add(auto, new LogicAuto());
+
+        world.IO().FireInput(timer, "TimerStart");
+        world.IO().FireInput(pulley, "TweenTo");
+        world.IO().FireInput(lift, "TweenPlay");
+
+        for (int i = 0; i < 180; i++) { world.RunFixed(1f / 60f); Profiler.EndFrame(); }   // warm
+        _count = 0;
+        AllocationProbe.AssertNone(300, () => { world.RunFixed(1f / 60f); Profiler.EndFrame(); });
+        Assert.True(_count > 5, $"the shuffle should have reached its third case often ({_count})");
+        Assert.True(world.Get<Tween>(pulley).Played > 10);
+        Assert.True(world.Get<Tween>(lift).Played > 10);
     }
 
     // A condition read from JSON as content reads it (the `var` condition is internal to the engine).
