@@ -455,7 +455,7 @@ entry inside an object; an entry that takes no settings can be written as its ba
 |---|---|---|
 | `quest_objective` (key `kind`, default `kill`) | a quest stage's `objectives` | `kill`, `have`, `reach`, `talk` |
 | `condition` (key `condition`, or its id as a property) | a dialogue option's `conditions`; any `requires` | the base's `all`, `any`, `not`, `var`, `time_between`, `weekday`, `date_between` (the last two: the calendar, issue 4g-2), `random`, `entity_exists`, `distance_to`, `in_scene`; gameplay's `has_tag`, `lacks_tag`, `is_alive`, `has_item`, `standing`, `quest`; dialogue's `speaker` |
-| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait`; gameplay's `give_item`, `take_item`, `apply_effect`, `set_tag`, `cue`, `change_standing`, `start_quest`, `set_stage`, `finish_quest`; dialogue's `add_topic` |
+| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait`, `world_speed`, `hit_stop` (issue #283, §5 "Time"); gameplay's `give_item`, `take_item`, `apply_effect`, `set_tag`, `cue`, `change_standing`, `start_quest`, `set_stage`, `finish_quest`; dialogue's `add_topic` |
 | `ability_delivery` | an ability's `delivery` (its `targeting` still names one) | `self`, `touch`, `touch_area`, `area`, `projectile` |
 | `hit_delivery` | an attack's `delivery` (empty: `sweep`) | `sweep` (a swing: `reach`, `radius`, `arcDegrees`), `ray` (hitscan to `range`, `pellets` rays), `projectile` (a carrier, the `projectile` prefab, flying `range` at `projectileSpeed`, falling at `projectileGravity`, through `projectilePierce` targets) |
 | `effect_execution` (key `execution`) | an effect's `executions` | `knockback`, `teleport`, `summon`, `dispel` |
@@ -612,15 +612,15 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `pickup` | makes it something you can pick up — `item`, `count` |
 | `faction` | who it belongs to |
 | `dialogue` | something to say |
-| `timer` | a timer that fires `OnTimer` — `interval`, `spread` (± seconds, at random), `repeat`, `startOn`, `seed` (issue #90) |
-| `tween` | something a `TweenTo` wire moves, turns or scales — `channel`, `target`, `relative`, `duration`, `ease` (issue #90) |
+| `timer` | a timer that fires `OnTimer` — `interval`, `spread` (± seconds, at random), `repeat`, `startOn`, `seed`, `realTime` (count real seconds through a pause, a hit-stop and any world speed, issue #283) (issue #90) |
+| `tween` | something a `TweenTo` wire moves, turns or scales — `channel`, `target`, `relative`, `duration`, `ease`, `realTime` (as a timer's, issue #283) (issue #90) |
 | `logic_relay` | a relay: `Trigger` asks `requires`, runs `then` and fires `OnTrigger` — `requires`, `then`, `startDisabled`, `sameTick` (issue #91) |
 | `logic_counter` | a counter — `start`, `min`, `max` (no limits while max ≤ min), `startDisabled` (issue #91) |
 | `logic_compare` | a comparison — `value`, `compareValue` (issue #91) |
 | `logic_branch` | a remembered true or false — `value` (issue #91) |
 | `math_remap` | a number from one range to another — `inMin`, `inMax`, `outMin`, `outMax`, `clamp`, `ease` (issue #91) |
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
-| `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines") |
+| `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines"); the engine's `sage:logic_state_machine` prefab is this part with no machine, for a placement to name one (issue #280) |
 
 Thirty-three here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
@@ -1030,7 +1030,7 @@ a named *input* on another entity:
 ```
 
 Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` / `OnFullyClosed`, `OnBlocked` (a mover, with what blocked it as the activator), `OnArrived` (a mover at any stop of its path, the stop as its value), `OnLocked` (a locked mover someone tried to open, the activator),
-`OnCameraOn` / `OnCameraOff`, `OnEnterWater` / `OnExitWater` (a character and the water it went into), `OnTimer`, `OnTweenDone`, `OnStateChanged`, an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
+`OnCameraOn` / `OnCameraOff`, `OnEnterWater` / `OnExitWater` (a character and the water it went into), `OnTimer`, `OnTweenDone`, `OnStateChanged`, a state machine's `OnEnter<state>` / `OnExit<state>` (`OnEnterAlert`; issue #280), an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, a mover's `Next` / `Previous` / `GoTo` (a stop by number, 0 = shut), `Lock` / `Unlock` and `SetSpeed`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
 `TimerStop` / `TimerReset`, `TweenTo` / `TweenStop`, `SetState`, a light's `TurnOn` / `TurnOff` / `Toggle`, the logic entities' and gameplay's
@@ -1084,7 +1084,7 @@ prefab by its full id, `"classname" "sage:scripted_camera"`.
 | `TimerStop` / `TimerReset` | | Stops it; or starts its wait again from full, running or not |
 | `TweenTo` | `[position\|rotation\|scale\|offset\|turn] [x y z] [seconds] [ease]`, all optional | Moves, turns or scales a `tween` from where it is to the goal (metres; degrees of pitch, yaw, roll; factors); `offset` and `turn` are *by* rather than *to*. Left out, the tween's own `target`, `duration` and `ease`. Fires `OnTweenDone` on arrival |
 | `TweenStop` | | Stops a tween where it is |
-| `SetState` | a state's name | Sends a `state_machine` to that state now (its exits and enters run, `OnStateChanged` fires); already there, nothing |
+| `SetState` | a state's name | Sends a `state_machine` to that state now, nested or not (its exits and enters run, with their `OnExit<state>` / `OnEnter<state>`, and `OnStateChanged` fires); already there, nothing |
 | `SetAnimParam` | `name value` (a number, true/false, on/off; a trigger's name alone) | Sets an `animator`'s param (issue #118) |
 | `AnimTrigger` | a trigger param's name | Sets an `animator`'s trigger: its next tick's transitions with that `on` may take it |
 | `Trigger` | handed on (optional) | A `logic_relay`: if enabled and its `requires` holds (of the activator), runs its `then` and fires `OnTrigger` |
@@ -1101,7 +1101,13 @@ prefab by its full id, `"classname" "sage:scripted_camera"`.
 | `SetFaction` | a faction, or nothing | Sets the entity's faction, or clears it |
 
 **Time.** A delay counts from the tick the output fired in, wherever in the tick that was (a trigger's
-and a relay's arrive together), and stands still while the game is paused. A `timer` fires on the tick
+and a relay's arrive together), and stands still while the game is paused. All of it runs on the world's
+time (`WorldTime`, issue #283): `{ "world_speed": 0.5 }` in any `then` is bullet time (half as many
+simulation steps a second, each the same length, so physics behaves the same; the clock's hours go by at
+half speed too), `{ "hit_stop": 0.08 }` freezes the world for that many real seconds, and both are saved
+with the game. A `timer` or `tween` with `"realTime": true` counts real seconds instead, through a pause,
+a hit-stop and any speed (its outputs are still delivered when the world next runs a step). From the
+console: `world_speed [n]`, `hit_stop <seconds>`, `pause`. A `timer` fires on the tick
 a delay of the same length would arrive; a `tween` is a pure function of its elapsed time, so it plays
 the same every run. The engine's `sage:logic_timer` prefab is a timer and nothing else, stopped until
 `TimerStart`:
@@ -1137,6 +1143,36 @@ state). Changing runs the old state's `exit`, the transition's `then` and the ne
 fires `OnStateChanged`, whose wires are handed the new state's name when they have no parameter of their
 own. `SetState <name>` jumps. The state is saved by name with the time spent in it; if a save or a hot
 reload names a state the machine no longer has, it goes back to `initial` with a warning.
+
+A state can do more (issue #280). `during` is a list of actions run each tick it is in the state, from
+the tick after it is entered, before its transitions are tried. A state can hold `states` of its own with
+an `initial` (entering it enters that one; its transitions apply in every state inside it), or
+`"parallel": true` with `states` that are regions, all entered together and each moving on its own — a
+soldier's legs and arms in one `combat` state:
+
+```json
+"combat": { "parallel": true, "transitions": [ { "to": "patrol", "on": "Calm" } ],
+            "states": {
+              "legs": { "initial": "advance", "states": { "advance": { … }, "cover": { … } } },
+              "arms": { "initial": "aim", "states": {
+                "aim":   { "transitions": [ { "to": "shoot", "after": 0.25 } ] },
+                "shoot": { "during": [ { "add_var": "shots" } ] } } } } }
+```
+
+Names are unique across the machine, so `to`, `SetState` and a wire name any state, however deep. Each
+state fires its own outputs, `OnEnter<state>` and `OnExit<state>` (handed its name; the case of the state
+is free, `OnEnterCombat`), so a wire can listen for one state instead of testing `OnStateChanged`'s
+value. The activator (who sent the input that last moved the machine, `!activator` in its actions) is
+saved with it, by persistent id, and so is every state a nested machine is in. A level that needs a
+machine and nothing else places the engine's `sage:logic_state_machine` prefab and names the machine:
+
+```json
+{ "prefab": "sage:logic_state_machine", "name": "alarm",
+  "overrides": { "parts": { "state_machine": { "machine": "yourgame:alarm" } } },
+  "outputs": [ { "output": "OnEnterRinging", "target": "siren", "input": "Open" } ] }
+```
+
+(test: NestedStatesMoveInsideTheirParent_AndParallelRegionsMoveOnTheirOwn, ANestedMachineRoundTripsASaveMidState_WithItsActivator, TheEnginePrefabRunsTheMachineAPlacementNames_AndAStatesOutputsAreWirable)
 
 **Animation graphs** (issue #118, SAGE0126). A skinned character's clips are played by an `anim_graph`
 record through the `animator` part, beside the `skinned_mesh` that draws it:
@@ -1212,7 +1248,7 @@ Curves are named the way you would expect — `QuadInOut`, `ease_out_bounce`, `S
 
 **Logic entities** (issue #91) are what a sequence needs between "the player walked in" and "the door
 opens": the engine's `sage:logic_relay`, `sage:logic_counter`, `sage:logic_compare`,
-`sage:logic_branch` and `sage:math_remap` prefabs, each an entity with nothing but its part (put the part
+`sage:logic_branch` and `sage:math_remap` prefabs (and `sage:logic_timer` and `sage:logic_state_machine`, above), each an entity with nothing but its part (put the part
 on your own prefab to change the defaults, or set `logic_counter.max` on a map entity). Three levers, and
 the gate opens only if the alarm is off:
 
@@ -1292,6 +1328,18 @@ public void OnWorldCreated(World world) => world.AddSystem(new TideSystem(world)
   not in this world (its plugin is turned off) is simply no constraint.
 - Ask for event readers with `this` as the owner, in the constructor: when the system is removed (or
   replaced, or disabled) its readers are released, and a system that is `IDisposable` is disposed.
+- To react to a component being gained or lost, read `Added<T>` and `Removed<T>` (issue #282) like any
+  other event: `world.Events.Reader<Added<Health>>(this)`. `Removed<T>` carries the component as it was,
+  because its entity may be gone by the time you read it; a component that was only given a new value is
+  not an `Added<T>`, and a destroyed entity sends a `Removed<T>` for each component it had. Nothing is
+  published for a type until somebody asks for a reader of it
+  (test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, ATypeNobodyReadsIsNotPublished).
+- What happens *to* a world rather than in it comes as engine signals: `engine.Signals` has the C# events
+  `WorldCreated`, `SceneLoaded`, `WorldDestroying` and `PauseChanged` for code that is not a system, and a
+  system reads the same thing as the `EngineSignal` event (`Kind` is `WorldCreated`, `SceneLoaded`,
+  `Paused` or `Resumed`; `Scene` the scene placed). A reader asked for in a system's constructor sees its
+  own world's `WorldCreated` (test: EngineSignalsSayAWorldWasCreatedAndASceneLoaded). Pausing a world does
+  not raise `Paused` yet.
 - A plugin can **replace** or **disable** a system it did not add — `world.Systems.Replace("sage.ai.think",
   new MyThink(world))`, `world.Systems.Disable("sage.effects.tick")` — from `OnWorldCreated`, in a
   plugin that depends on the one it changes. Both are logged against your plugin, and `sys_list` shows
@@ -1858,7 +1906,7 @@ names their types needs the opt-in.
 | SAGE0121 | Scenes and placements in C# (issue #29): `SceneRecord`, `SceneEnvironment`, `Scenes`, `SceneWorldExtensions`, `Placement`, `PlacementFrame`, `PlacementsRecord`, `PlacementExtensions` | The level editor (#61) will reshape the document model |
 | SAGE0122 | Brush maps from TrenchBroom (`.map`): `MapRecord`, `MapLevel`, `MapLevels`, `SolidEntity`, `MapBrush`, `MapFace`, `MapEntity`, `MapSpace`, `LevelBrush`, `BrushGeometry` | Kept until the level editor replaces the importer (REDESIGN §4.6) |
 | SAGE0123 | Cameras as entities (issue #76): `Camera`, `CameraPose`, `CameraProjection`, `CameraViewport`, `CameraView`, `CameraViews`, `CameraDirector`, `CameraMath`, `CameraPart`; render targets and the screen (issue #77): `Renderer.DeclareTarget`, `FindTarget`, `ReleaseTarget`, `ScreenWorld`, `RenderStats.Views`/`TargetViews`, `MaterialParam.RenderTarget`; scripted cameras (issue #80): `ScriptedCamera`, `ScriptedCameraPart`; camera blends (issue #90): `CameraBlend`, `CameraBlends`; rigs (#78, #79): `FirstPersonRig`, `FirstPersonRigPart`, `FirstPersonRigSystem`, `ThirdPersonRig`, `ThirdPersonRigPart`, `ThirdPersonRigSystem`, `ToggleViewSystem`, `PlayerCamera`, `PlayerCameraSystem`, `CameraRigKind`, `CameraRigs`; the editor's cameras (#81): `DebugCamera`, `MainViewExtensions` (`world.TryGetMainView`) | Phase 4a is done (#75), and it stays experimental until its first consumers outside 4a exist: 4b's tweens will blend between views, 4c's UI toolkit will draw render targets in widgets, and phase 10's editor host will own the viewport |
-| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
+| SAGE0124 | Phase 4b's logic (#87): the condition and action language's API (issue #89): `Conditions`, `Vars`, `Quests.HasReached`; topics (issue #93): `DialogueTopics`, `AvailableTopic`, `TopicRecord`, `TopicInfo`, `KnownTopics`; and the vocabulary shorthand (`VocabularyAttribute.Shorthand`, `EntryValueAttribute`, `RecordStore.PolymorphicShorthand`); easing, timers and tweens (issue #90): `Ease`, `Easing` (`Apply`, `Lerp`, `IsMonotonic`, `TryParse`), `LogicTimer`, `LogicTimerPart`, `Timers`, `Tween`, `TweenPart`, `TweenChannel`, `Tweens`; logic entities and bridges (issue #91): `EntityInputs.Register<T>` / `Takes` / `ComponentsTaking`, `EntityIO.Fire` and `FireOutput` with a value, `LogicRelay`, `LogicRelayScript`, `LogicCounter`, `LogicCompare`, `LogicBranch`, `MathRemap` and their parts, `LogicEntities`, `BridgeIO`, `QuestWatch`, `QuestWatchPart`; state machines (issue #92): `StateMachineRecord`, `MachineState`, `StateTransition`, `StateMachine`, `ActiveState` (issue #280), `StateMachinePart`, `StateMachines`, `RecordStore.Latest` | Phase 4b is still building on it: wires, relays, state machines and topics will read it |
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack` (with `OpenHud`, issue #99), `UiLayer`, `UiTween`; and the RPG kit's view-models (issues #98, #99): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `ShopView`, `IPriceRule`, `StubPriceRule` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98), the HUD, journal, map, menu and shop (#99) |
 | SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; sockets and IK (issue #120): `SkeletonPoses`, `TwoBoneIk`, `AimChainIk`, `AimJoint`, `PoseSampler.ToModelSpace(…, firstJoint)`, `SkeletonSocketsRecord`, `SkeletonSocket`, `BoneAttachment`, `BoneAttachmentPart`, `BoneAttachments`, `AimIk`, `AimIkJoint`, `AimIkPart`, and in Gameplay `FootIk`, `FootIkLeg`, `FootIkPart`; animation graphs (issue #118): `AnimGraphRecord`, `AnimState`, `AnimBlendSpace`, `AnimBlendPoint`, `AnimLayer`, `AnimParam`, `AnimParamKind`, `AnimParamSource`, `Animator`, `AnimatorLayer`, `AnimatorParam`, `AnimatorPart`, `Animators` (`SetParam`, `SetTrigger`, `GetParam`, `StateOf`, `HasTag`, `ClipWeight`, `Play`, `TryGetPose`, `Describe`), `Engine.Animations`; first-person arms (issue #121): `ViewmodelRecord`, `Viewmodel`, `ViewmodelPart`, `ViewmodelLayer`, `Viewmodels` (`Show`, `ArmsOf`, `WeaponOf`, `CameraOf`, `IsDrawn`), and in Gameplay `AttackRecord.Arms`; clip events (issue #119): `AnimEventsRecord`, `AnimEventEntry`, `IAnimationEventSink`, `Animators.TryGetClip`, `Animators.SpriteSwingGraph`, `Animators.AnimEventOutput`. Complete for phase 4d: its exit (issue #122) added no API — an NPC walking, running, aiming and attacking, and first-person arms reloading, are content over these (`tests/games/skeletal`) | Stable after the Sandbox's creatures move to skeletons and 4e's weapons build on it; until then it may change |
 | SAGE0127 | Weapons and combat generalised (issue #133, phase 4e): the hit pipeline — `HitRequest`, `HitResult`, `Combat.ApplyHit`, the `hit_delivery` vocabulary (`IHitDelivery`, `HitDeliveryAttribute`, `HitContext`, `HitDeliveries`), the shared queries `Hits` (`Sweep`, `Ray`, `CanBeHurt`, `Launch`), `DamageInfo.Location`/`Damaged.Location`, `AttackRecord.Delivery`/`Range`/`Pellets`/`ProjectileSpeed` and `Projectile.Attack`; since #134 `AttackRecord.Projectile`/`ProjectileGravity`/`ProjectilePierce`, `Projectile.Gravity`/`Pierce`/`Passed` and the attack overload of `ProjectileExtensions.Launch`; hit locations (issue #137): the `hit_location` and `hitboxes` records (`HitLocationRecord`, `HitboxesRecord`, `HitboxShape`), the `hitboxes` part, `Hitbox`, `Hitboxes`, `HitLocations`, and the query-only physics layers (`LayerMatrix.QueryOnly`, `Sees`); ammunition (issue #135): `AttackRecord.Ammo`/`Magazine`/`AmmoPerShot`/`ReloadTime`/`Automatic`/`RateOfFire`, `Magazine`, `MagazineSlot`, `Ammunition`, `WeaponFired`, `DryFire`; spread and recoil (issue #136): the `spread` and `recoil` records (`SpreadRecord`, `RecoilRecord`), `AttackRecord.Spread`/`Recoil`, `WeaponState`, `ShotRandom`, `Spread`, `HitContext.Cone`/`Shot`/`PelletAim`; and in the RPG kit (issue #138) `AmmoReadout` and `EquipmentView.Ammo`. Since #138 a projectile lands on hitboxes like a sweep or a ray, with no API change | Phase 4e's exit (#139) is a data-only weapons game over it; stable once that and a game with real weapons have used it |

@@ -21,7 +21,7 @@ Bepu v2 (survey §3.7): .NET 8, SIMD, multithreaded, CCD; ragdoll and character 
   3. `PostPhysics`: dynamic bodies → `Transform`; contact/trigger buffers → the entity-I/O outputs `OnStartTouch`/`OnEndTouch` (04 §3.4) and the **game events** `TriggerEntered`/`TriggerExited`/`Collided`/`CollisionEnded` (04 §3.2, issue #269; see "As built (physics events)" below).
 - **Coordinates:** Bepu runs in origin space (the same as `GlobalTransform`). When the origin sector changes (14), all bodies are shifted once.
 - **Layers:** a 32-bit layer mask per collider plus a collision matrix record (`physics_layers`). Filtered in Bepu's narrow-phase callbacks.
-- **Contact callbacks run on Bepu worker threads.** They write only to per-thread pooled buffers, which are merged on the main thread in `PostPhysics` (no world access from callbacks).
+- **Contact callbacks run on Bepu worker threads.** They write only to per-thread pooled buffers, which are merged on the main thread in `PostPhysics` (no world access from callbacks). As built (PR #442): one trigger buffer and one contact buffer per dispatcher worker, however many workers the space uses, each made big enough before every step for the busiest step so far, so a step whose pairs land on a different worker than last time does not grow a list (test: EveryWorkerBufferHoldsTheBusiestStep).
 - **Kinematic character controller (KCC)**, not a dynamic body:
   - a capsule;
   - collide-and-slide with sweep tests (up to 4 iterations);
