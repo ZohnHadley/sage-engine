@@ -1698,6 +1698,16 @@ Sage.Simulation.IPhysicsWorld.SetShape(in Sage.Simulation.PhysicsBody body, in S
 Sage.Simulation.ColliderPart
 Sage.Simulation.ColliderPart.Body -> Sage.Simulation.Entity
 Sage.Simulation.ColliderPart.ColliderPart() -> void
+Sage.Simulation.ActiveState
+Sage.Simulation.ActiveState.ActiveState() -> void
+Sage.Simulation.ActiveState.Name -> string?
+Sage.Simulation.ActiveState.Time -> float
+Sage.Simulation.MachineState.During -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Simulation.MachineState.Initial -> string!
+Sage.Simulation.MachineState.Parallel -> bool
+Sage.Simulation.MachineState.States -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.MachineState!>?
+Sage.Simulation.StateMachine.Active -> Sage.Simulation.ActiveState[]?
+static Sage.Simulation.StateMachines.IsIn(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state) -> bool
 Sage.Simulation.FarLook
 Sage.Simulation.FarLook.FarLook() -> void
 Sage.Simulation.FarLook.Material -> Sage.Core.RecordId

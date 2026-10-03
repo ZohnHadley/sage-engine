@@ -251,9 +251,13 @@ public sealed class EntityOutputs
                                   (Ledger?.OwnerOf("entity output", name) is { } first ? $" (first by {first})" : ""));
     }
 
-    public bool Has(string name) => _outputs.ContainsKey(name);
+    public bool Has(string name) => _outputs.ContainsKey(name) || (Fired != null && Fired(name));
     public string? Describe(string name) => _outputs.TryGetValue(name, out var d) ? d : null;
     public IEnumerable<string> Names => _outputs.Keys;
+
+    // Outputs content fires rather than code (issue #280): a state machine's OnEnter<state> and
+    // OnExit<state>, for Has. Set by the engine (StateMachines.Register).
+    internal Func<string, bool>? Fired;
 }
 
 // One wire: "when this entity fires `Output`, send `Input` to `Target` after `Delay` seconds". Written
