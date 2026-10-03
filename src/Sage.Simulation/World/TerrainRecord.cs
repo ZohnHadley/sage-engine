@@ -59,16 +59,18 @@ internal static class BuiltInTerrain
             _ => false,
         };
 
-    internal sealed class FlatGenerator : ITerrainGenerator
+    internal sealed class FlatGenerator : ITerrainGenerator, ITerrainSampler
     {
         public FlatGenerator(float height) => Height = height;
         public float Height { get; }
 
         public void Generate(SectorCoord sector, Heightfield heights, int seed) => Array.Fill(heights.Heights, Height);
+
+        public float SampleHeight(double absoluteX, double absoluteZ, int seed) => Height;
     }
 
     // Two octaves of smoothed value noise on a lattice `wavelength` apart, in absolute metres.
-    internal sealed class HillsGenerator : ITerrainGenerator
+    internal sealed class HillsGenerator : ITerrainGenerator, ITerrainSampler
     {
         public HillsGenerator(float height, float amplitude, float wavelength)
         {
@@ -83,13 +85,16 @@ internal static class BuiltInTerrain
 
         public void Generate(SectorCoord sector, Heightfield heights, int seed)
         {
+            // In doubles, from the corner, exactly as Terrain asks SampleHeight past the edge: a vertex two
+            // sectors share gets the same height from both, and so do the normals there (#277).
             var corner = sector.Origin(Terrain.SectorSize);
+            double spacing = heights.Spacing;
             for (int z = 0; z < heights.Resolution; z++)
                 for (int x = 0; x < heights.Resolution; x++)
-                    heights[x, z] = HeightAt(corner.X + x * heights.Spacing, corner.Z + z * heights.Spacing, seed);
+                    heights[x, z] = SampleHeight(corner.X + x * spacing, corner.Z + z * spacing, seed);
         }
 
-        public float HeightAt(float absoluteX, float absoluteZ, int seed)
+        public float SampleHeight(double absoluteX, double absoluteZ, int seed)
         {
             // Doubles for the lattice coordinate: a hundred kilometres out, a float would step.
             double u = absoluteX / (double)Wavelength, v = absoluteZ / (double)Wavelength;

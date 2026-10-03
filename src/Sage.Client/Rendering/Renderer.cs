@@ -268,11 +268,33 @@ public sealed class Renderer : IDisposable
 
     internal MeshData Mesh(int id) => _meshes[id];
 
+    // Frees a model's buffers (#277: the sector that used it left, SectorAssets). Its slot draws the error
+    // mesh from now on, and the path loads afresh the next time something resolves it. A mesh registered
+    // from a stream (RegisterMesh) is not on a mount to load again, so it is kept.
+    internal bool UnloadMesh(AssetPath path)
+    {
+        if (_registered.Contains(path) || !_meshIds.Remove(path, out int id)) return false;
+        if (id == 0) return true;
+        var mesh = _meshes[id];
+        if (mesh.Owned)
+            foreach (var part in mesh.Parts)
+            {
+                part.VertexBuffer.Dispose();
+                part.IndexBuffer.Dispose();
+            }
+        _meshes[id] = _meshes[0];
+        Log.Debug(LogCat.Render, $"Mesh '{path}' unloaded: nothing draws it now");
+        return true;
+    }
+
+    private readonly HashSet<AssetPath> _registered = new();
+
     // A .glb that is not on a mount (the generated `r_testskin` model), under a name nothing else uses:
     // afterwards `path` resolves to it like any other mesh.
     internal int RegisterMesh(AssetPath path, System.IO.Stream stream)
     {
         if (_meshIds.TryGetValue(path, out int id) && id != 0) return id;
+        _registered.Add(path);
         return _meshIds[path] = LoadMesh(path.ToString(), stream);
     }
 

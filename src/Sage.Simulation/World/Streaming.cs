@@ -47,6 +47,9 @@ public sealed class StreamingModule : IModule
     private CVar<int>? _radius;
     private CVar<bool>? _enabled;
     private CVar<int>? _budget;
+    private CVar<int>? _farRadius;
+    private CVar<int>? _loadBudget;
+    private CVar<bool>? _jobs;
 
     public void Init(ModuleContext ctx)
     {
@@ -56,6 +59,14 @@ public sealed class StreamingModule : IModule
             "Load and unload terrain around the player, and move the origin to follow (R6, F14).");
         _budget = ctx.Engine.CVars.Register("stream_place_budget", 64, CVarFlags.Archive,
             "Entities a streamed scene places per tick at most, as sectors come into the ring (4g-3).", 1, 100000);
+        _farRadius = ctx.Engine.CVars.Register("stream_far_radius", 4, CVarFlags.Archive,
+            "Sectors kept as coarse ground and far looks past the full ring (#277): drawn, never simulated. " +
+            "0, or not more than stream_radius, = no far ring.", 0, 16);
+        _loadBudget = ctx.Engine.CVars.Register("stream_load_budget", 1, CVarFlags.Archive,
+            "Full-detail sectors made live per tick once the ring is up, nearest first (#277); a jump or the first " +
+            "load takes its whole ring at once.", 1, 81);
+        _jobs = ctx.Engine.CVars.Register("stream_jobs", true, CVarFlags.None,
+            "Generate the sectors just past the ring, and the far ring's coarse ground, on the thread pool (#277).");
         ctx.Engine.CVars.RegisterCommand("warp", CVarFlags.Cheat,
             "warp <x> <z>: put the player at these absolute metres; the world streams in around them.", a =>
         {
@@ -84,6 +95,19 @@ public sealed class StreamingModule : IModule
                         : "";
                     Log.Info(LogCat.Console, $"  ring: {ring.Live.Count} sector(s){content}");
                 }
+                if (world.Resources.TryGet<SectorLod>(out var lod) && lod != null && lod.Count > 0)
+                {
+                    int ready = 0, proxies = 0;
+                    foreach (var far in lod.Sectors)
+                    {
+                        if (far.Heights != null) ready++;
+                        proxies += far.Proxies.Count;
+                    }
+                    Log.Info(LogCat.Console, $"  far ring: {lod.Count} sector(s) out to {lod.Radius}, {ready} with coarse ground, {proxies} far look(s)");
+                }
+                Log.Info(LogCat.Console, $"  generated: {terrain.GeneratedHere} here, {terrain.GeneratedOnJobs} on jobs (stream_jobs {(terrain.Jobs ? 1 : 0)})");
+                if (world.Resources.TryGet<SectorAssets>(out var assets) && assets != null)
+                    Log.Info(LogCat.Console, $"  assets: {assets.HeldPaths} mesh path(s) held; released {assets.ReleasedPaths} path(s) and {assets.ReleasedHandles} built mesh(es) with their sectors");
                 foreach (var sector in terrain.Sectors)
                     Log.Info(LogCat.Console, $"  {sector.Coord}  corner {terrain.CornerOf(sector.Coord).X:F0},{terrain.CornerOf(sector.Coord).Z:F0} m");
             }
@@ -138,10 +162,13 @@ public sealed class StreamingModule : IModule
         // that reads it (collision, navigation, levels, the renderer) copes with that.
         world.Resources.Add(new Terrain { Origin = world.Origin() });
         world.Resources.Add(new SectorRing { Radius = Math.Clamp(_radius!.Value, 0, 8) });
+        world.Resources.Add(new SectorLod());                 // the far ring (#277)
+        var assets = new SectorAssets(world);                 // what a sector's meshes are released with (#277)
+        world.Resources.Add(assets);
 
         // Late in the tick: everything has moved by now, so the ring is computed from where the player
         // actually ended up, and a rebase lands between ticks rather than in the middle of one.
-        world.AddSystem(new StreamingSystem(world, _radius!, _enabled!, _budget!));
+        world.AddSystem(new StreamingSystem(world, new StreamingCVars(_radius!, _enabled!, _budget!, _farRadius!, _loadBudget!, _jobs!)));
         // And what crossed a sector edge this tick belongs to the sector it is in now (4g-3).
         world.AddSystem(new SectorOwnersSystem(world));
 
@@ -151,13 +178,16 @@ public sealed class StreamingModule : IModule
         terrain.Unloaded += coord =>
         {
             int destroyed = 0;
-            foreach (var entity in world.Query<SectorOwned>().Entities.ToEntityList())
+            using (assets.Leave())   // its chunk meshes, and whatever else only it drew, are released (#277)
             {
-                if (world.Get<SectorOwned>(entity).Sector != coord) continue;
-                world.Destroy(entity);
-                destroyed++;
+                foreach (var entity in world.Query<SectorOwned>().Entities.ToEntityList())
+                {
+                    if (world.Get<SectorOwned>(entity).Sector != coord) continue;
+                    world.Destroy(entity);
+                    destroyed++;
+                }
+                world.FlushCommands();
             }
-            world.FlushCommands();
             if (destroyed > 0) Log.Debug(LogCat.Streaming, $"sector {coord}: {destroyed} owned entities destroyed");
         };
     }
@@ -185,18 +215,33 @@ internal sealed class SectorRing
 
     // The world's scene is an interior (4g-5): no ring, no terrain, until an exterior is placed again.
     public bool Suspended;
+
+    // Full sectors whose ground was loaded on the last tick streaming ran (#277): the per-tick work the
+    // scale test bounds by `stream_load_budget`.
+    public int LoadedLastTick;
 }
 
+internal sealed record StreamingCVars(CVar<int> Radius, CVar<bool> Enabled, CVar<int> PlaceBudget,
+                                      CVar<int> FarRadius, CVar<int> LoadBudget, CVar<bool> Jobs);
+
+// The rings (14 §3; #277 for the far ring, the load budget and generation ahead on jobs):
+//
+//   * **full**: within `stream_radius` of a source. Its ground is loaded — at once when the source's own
+//     sector is not (a jump, or the first tick), otherwise `stream_load_budget` sectors a tick, nearest
+//     first — and only a sector whose ground is in joins `SectorRing.Live`, so nothing is placed on ground
+//     that is not there yet. Kept until past the ring plus the margin.
+//   * **ahead**: the ring plus one is generated on the thread pool before it is needed, so crossing an edge
+//     takes finished heights instead of generating three sectors in one tick. Dropped past the ring plus two.
+//   * **far**: out to `stream_far_radius`, not full: coarse ground on a job and far looks (SectorLod).
 [System("sage.streaming.sectors", Phase.Late)]
 internal sealed class StreamingSystem : ISystem
 {
     private readonly World _world;
     private readonly Terrain _terrain;
     private readonly SectorRing _ring;
+    private readonly SectorLod _lod;
     private readonly Origin _origin;
-    private readonly CVar<int> _radius;
-    private readonly CVar<bool> _enabled;
-    private readonly CVar<int> _budget;
+    private readonly StreamingCVars _cvars;
 
     private readonly Query<Transform> _sources;
     private readonly Query<Transform> _players;
@@ -204,21 +249,21 @@ internal sealed class StreamingSystem : ISystem
     // Reused every tick: this runs in the fixed schedule, where allocating is not allowed (02 §4.6).
     private readonly List<SectorCoord> _sourceSectors = new();
     private readonly List<SectorCoord> _stale = new();
+    private readonly List<SectorCoord> _missing = new();
 
     // How far past the ring a sector survives before being dropped, and how far a source may drift
     // from the origin before everything shifts. Both in sectors.
     private const int KeepMargin = 1;
     private const float RebaseDistance = 1.5f;
 
-    public StreamingSystem(World world, CVar<int> radius, CVar<bool> enabled, CVar<int> budget)
+    public StreamingSystem(World world, StreamingCVars cvars)
     {
         _world = world;
         _terrain = world.Resources.Get<Terrain>();
         _ring = world.Resources.Get<SectorRing>();
+        _lod = world.Resources.Get<SectorLod>();
         _origin = world.Origin();
-        _radius = radius;
-        _enabled = enabled;
-        _budget = budget;
+        _cvars = cvars;
         _sources = world.Query<Transform>().AllTags(Tags.Get<StreamingSource>());
         // Before a game marks anything, the local player is the obvious source: a world streaming
         // around nothing would unload the ground under the only thing standing on it.
@@ -227,24 +272,22 @@ internal sealed class StreamingSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        _ring.Radius = Math.Clamp(_radius.Value, 0, 8);
-        if (!_enabled.Value || _ring.Suspended) return;   // an interior has no ring (4g-5)
+        int radius = Math.Clamp(_cvars.Radius.Value, 0, 8);
+        _ring.Radius = radius;
+        _terrain.Jobs = _cvars.Jobs.Value;
+        if (!_cvars.Enabled.Value) return;
+        if (_ring.Suspended)   // an interior has no ring (4g-5), and no horizon
+        {
+            if (_lod.Count > 0) _lod.Clear();
+            return;
+        }
 
         CollectSources();
         if (_sourceSectors.Count == 0) return;
 
-        int radius = Math.Clamp(_radius.Value, 0, 8);
         bool ground = _terrain.Generator != null;
-
-        // Load the ring around each source: the sectors (4g-3), and their ground when there is a generator.
-        foreach (var centre in _sourceSectors)
-            for (int z = -radius; z <= radius; z++)
-                for (int x = -radius; x <= radius; x++)
-                {
-                    var coord = new SectorCoord(centre.X + x, centre.Z + z);
-                    _ring.Live.Add(coord);
-                    if (ground && !_terrain.IsLoaded(coord)) _terrain.Load(coord);
-                }
+        LoadRing(radius, ground);
+        if (ground) Ahead(radius);
 
         // Drop anything past the ring plus its margin. Collected first, because unloading raises an
         // event that destroys entities and the terrain's own list must not be walked while it changes.
@@ -260,7 +303,9 @@ internal sealed class StreamingSystem : ISystem
         for (int i = 0; i < _stale.Count; i++) _ring.Live.Remove(_stale[i]);
         _ring.Ready = true;
         _ring.Centre = _sourceSectors[0];
-        _ring.Budget = _budget.Value;
+        _ring.Budget = _cvars.PlaceBudget.Value;
+
+        Far(radius, ground);
 
         // And the origin follows, once the nearest source is far enough that precision would suffer.
         var nearest = _sourceSectors[0];
@@ -271,6 +316,127 @@ internal sealed class StreamingSystem : ISystem
             if (d < distance) { distance = d; nearest = _sourceSectors[i]; }
         }
         if (distance > RebaseDistance) _world.Rebase(nearest);
+    }
+
+    // The full ring around each source: the sectors (4g-3), and their ground when there is a generator.
+    private void LoadRing(int radius, bool ground)
+    {
+        _missing.Clear();
+        _ring.LoadedLastTick = 0;
+        foreach (var centre in _sourceSectors)
+        {
+            // A source standing where there is no ground has jumped (or just arrived): its ring loads now,
+            // because it is about to fall through the world otherwise.
+            bool jump = ground && !_terrain.IsLoaded(centre);
+            for (int z = -radius; z <= radius; z++)
+                for (int x = -radius; x <= radius; x++)
+                {
+                    var coord = new SectorCoord(centre.X + x, centre.Z + z);
+                    if (!ground || _terrain.IsLoaded(coord)) { _ring.Live.Add(coord); continue; }
+                    if (jump) Load(coord);
+                    else if (!_missing.Contains(coord)) _missing.Add(coord);
+                }
+        }
+        if (_missing.Count == 0) return;
+
+        // Walking: the nearest few a tick (`stream_load_budget`), so crossing an edge costs one sector's
+        // collision and meshes a tick rather than a column's in one. Insertion sort: no allocation, and
+        // a handful of entries.
+        for (int i = 1; i < _missing.Count; i++)
+        {
+            var item = _missing[i];
+            int j = i - 1;
+            while (j >= 0 && Before(item, _missing[j])) { _missing[j + 1] = _missing[j]; j--; }
+            _missing[j + 1] = item;
+        }
+        int budget = Math.Min(Math.Max(1, _cvars.LoadBudget.Value), _missing.Count);
+        for (int i = 0; i < budget; i++)
+            if (Load(_missing[i]) is { } sector) sector.Budgeted = true;   // collision may follow over a few ticks
+    }
+
+    private TerrainSector? Load(SectorCoord coord)
+    {
+        var sector = _terrain.Load(coord);
+        _ring.Live.Add(coord);
+        _ring.LoadedLastTick++;
+        return sector;
+    }
+
+    // Nearest to a source first, then by coordinate: the same order every run.
+    private bool Before(SectorCoord a, SectorCoord b)
+    {
+        int da = NearestSource(a), db = NearestSource(b);
+        if (da != db) return da < db;
+        return a.X != b.X ? a.X < b.X : a.Z < b.Z;
+    }
+
+    private int NearestSource(SectorCoord coord)
+    {
+        int best = int.MaxValue;
+        for (int i = 0; i < _sourceSectors.Count; i++)
+        {
+            var s = _sourceSectors[i];
+            best = Math.Min(best, Math.Abs(coord.X - s.X) * Math.Abs(coord.X - s.X) + Math.Abs(coord.Z - s.Z) * Math.Abs(coord.Z - s.Z));
+        }
+        return best;
+    }
+
+    // The ring plus one, generated on jobs before the ring reaches it; what was generated ahead and is
+    // now past the ring plus two is dropped unused.
+    private void Ahead(int radius)
+    {
+        if (!_terrain.Jobs) return;
+        int ahead = radius + 1;
+        foreach (var centre in _sourceSectors)
+            for (int z = -ahead; z <= ahead; z++)
+                for (int x = -ahead; x <= ahead; x++)
+                    _terrain.Prefetch(new SectorCoord(centre.X + x, centre.Z + z));
+
+        _stale.Clear();
+        _terrain.CollectAhead(_stale);
+        for (int i = 0; i < _stale.Count; i++)
+            if (!WithinAnySource(_stale[i], ahead + KeepMargin)) _terrain.DropAhead(_stale[i]);
+    }
+
+    // The far ring (SectorLod): what is within `stream_far_radius` and not full has coarse ground and far
+    // looks; what came into the full ring, or went past the far one plus the margin, is dropped.
+    private void Far(int radius, bool ground)
+    {
+        int far = Math.Clamp(_cvars.FarRadius.Value, 0, 16);
+        _lod.Radius = far;
+        StreamedScene? streamed = _world.Resources.TryGet<ActiveScene>(out var scene) ? scene?.Streamed : null;
+        if (_lod.TerrainVersion != _terrain.Version || !ReferenceEquals(_lod.Scene, streamed))
+        {
+            _lod.Clear();   // another ground, or another scene: what was far is something else now
+            _lod.TerrainVersion = _terrain.Version;
+            _lod.Scene = streamed;
+        }
+        if (far <= radius || (!ground && streamed == null))
+        {
+            if (_lod.Count > 0) _lod.Clear();
+            return;
+        }
+
+        _stale.Clear();
+        var sectors = _lod.Sectors;
+        for (int i = 0; i < sectors.Count; i++)
+        {
+            var coord = sectors[i].Coord;
+            if (_ring.Live.Contains(coord) || !WithinAnySource(coord, far + KeepMargin)) _stale.Add(coord);
+        }
+        for (int i = 0; i < _stale.Count; i++) _lod.Remove(_stale[i]);
+
+        foreach (var centre in _sourceSectors)
+            for (int z = -far; z <= far; z++)
+                for (int x = -far; x <= far; x++)
+                {
+                    var coord = new SectorCoord(centre.X + x, centre.Z + z);
+                    if (_lod.Contains(coord) || _ring.Live.Contains(coord) || WithinAnySource(coord, radius)) continue;
+                    var sector = _lod.Add(coord);
+                    if (ground) sector.Job = _terrain.Coarse(coord);
+                    streamed?.FarProxies(_world, coord, sector.Proxies);
+                }
+        _lod.Collect();
     }
 
     // Tagged sources if there are any, the local player otherwise.
