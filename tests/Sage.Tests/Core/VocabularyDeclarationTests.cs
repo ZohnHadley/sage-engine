@@ -115,9 +115,9 @@ public class VocabularyDeclarationTests
         using var app = HeadlessApp.Bare().Build();
         var entries = app.Engine.Vocabularies.All.SelectMany(v => v.Entries.Select(e => (v.Name, e.Id, e.Owner))).ToList();
         Assert.All(entries, e => Assert.Equal("sage.core", e.Owner));
-        Assert.Equal(new[] { "action:add_var", "action:destroy", "action:fire", "action:load_scene", "action:log", "action:message",
+        Assert.Equal(new[] { "action:add_var", "action:destroy", "action:fire", "action:hit_stop", "action:load_scene", "action:log", "action:message",
                              "action:pass_time", "action:play_sound", "action:save_game", "action:set_var", "action:spawn_prefab",
-                             "action:teleport", "action:wait",
+                             "action:teleport", "action:wait", "action:world_speed",
                              "condition:all", "condition:anim_finished", "condition:anim_param", "condition:any", "condition:date_between",
                              "condition:distance_to", "condition:entity_exists", "condition:in_scene", "condition:not", "condition:random",
                              "condition:time_between", "condition:var", "condition:weekday" },

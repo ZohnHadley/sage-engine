@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, cue, destroy, finish_quest, fire, give_item, load_scene, log, message, pass_time, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, take_item, teleport, wait.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, pass_time, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -198,6 +198,7 @@
         "FinishQuest",
         "Fire",
         "GiveItem",
+        "HitStop",
         "LoadScene",
         "Log",
         "Message",
@@ -212,6 +213,7 @@
         "TakeItem",
         "Teleport",
         "Wait",
+        "WorldSpeed",
         "add_topic",
         "add_var",
         "apply_effect",
@@ -221,6 +223,7 @@
         "finish_quest",
         "fire",
         "give_item",
+        "hit_stop",
         "load_scene",
         "log",
         "message",
@@ -234,7 +237,8 @@
         "start_quest",
         "take_item",
         "teleport",
-        "wait"
+        "wait",
+        "world_speed"
       ]
     },
     "action": {
@@ -618,6 +622,42 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'give_item' (GiveItemAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "hit_stop",
+                      "HitStop"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: hit_stop.",
+                    "enum": [
+                      "hit_stop",
+                      "HitStop"
+                    ]
+                  },
+                  "seconds": {
+                    "description": "Real seconds to freeze the world for. Unit: s. Range: 0 to 60. (double, default 0.1)",
+                    "default": 0.1,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 60
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'hit_stop' (HitStopAction)."
               }
             },
             {
@@ -1287,6 +1327,42 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'wait' (WaitAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "world_speed",
+                      "WorldSpeed"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: world_speed.",
+                    "enum": [
+                      "world_speed",
+                      "WorldSpeed"
+                    ]
+                  },
+                  "scale": {
+                    "description": "Simulated seconds per real second: 1 normal, 0.5 half speed. Range: 0 to 16. (double, default 1)",
+                    "default": 1,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'world_speed' (WorldSpeedAction)."
               }
             }
           ]
@@ -2186,6 +2262,88 @@
           },
           "required": [
             "GiveItem"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "hit_stop": {
+              "anyOf": [
+                {
+                  "description": "Real seconds to freeze the world for. Unit: s. Range: 0 to 60. (double, default 0.1)",
+                  "default": 0.1,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 60
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "seconds": {
+                      "description": "Real seconds to freeze the world for. Unit: s. Range: 0 to 60. (double, default 0.1)",
+                      "default": 0.1,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 60
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'hit_stop' (HitStopAction), in shorthand."
+            },
+            "seconds": {
+              "description": "Real seconds to freeze the world for. Unit: s. Range: 0 to 60. (double, default 0.1)",
+              "default": 0.1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 60
+            }
+          },
+          "required": [
+            "hit_stop"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "HitStop": {
+              "anyOf": [
+                {
+                  "description": "Real seconds to freeze the world for. Unit: s. Range: 0 to 60. (double, default 0.1)",
+                  "default": 0.1,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 60
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "seconds": {
+                      "description": "Real seconds to freeze the world for. Unit: s. Range: 0 to 60. (double, default 0.1)",
+                      "default": 0.1,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 60
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'hit_stop' (HitStopAction), in shorthand."
+            },
+            "seconds": {
+              "description": "Real seconds to freeze the world for. Unit: s. Range: 0 to 60. (double, default 0.1)",
+              "default": 0.1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 60
+            }
+          },
+          "required": [
+            "HitStop"
           ],
           "additionalProperties": false
         },
@@ -3984,6 +4142,88 @@
           },
           "required": [
             "Wait"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "scale": {
+              "description": "Simulated seconds per real second: 1 normal, 0.5 half speed. Range: 0 to 16. (double, default 1)",
+              "default": 1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 16
+            },
+            "world_speed": {
+              "anyOf": [
+                {
+                  "description": "Simulated seconds per real second: 1 normal, 0.5 half speed. Range: 0 to 16. (double, default 1)",
+                  "default": 1,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 16
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "scale": {
+                      "description": "Simulated seconds per real second: 1 normal, 0.5 half speed. Range: 0 to 16. (double, default 1)",
+                      "default": 1,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 16
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'world_speed' (WorldSpeedAction), in shorthand."
+            }
+          },
+          "required": [
+            "world_speed"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "WorldSpeed": {
+              "anyOf": [
+                {
+                  "description": "Simulated seconds per real second: 1 normal, 0.5 half speed. Range: 0 to 16. (double, default 1)",
+                  "default": 1,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 16
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "scale": {
+                      "description": "Simulated seconds per real second: 1 normal, 0.5 half speed. Range: 0 to 16. (double, default 1)",
+                      "default": 1,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 16
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'world_speed' (WorldSpeedAction), in shorthand."
+            },
+            "scale": {
+              "description": "Simulated seconds per real second: 1 normal, 0.5 half speed. Range: 0 to 16. (double, default 1)",
+              "default": 1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 16
+            }
+          },
+          "required": [
+            "WorldSpeed"
           ],
           "additionalProperties": false
         }

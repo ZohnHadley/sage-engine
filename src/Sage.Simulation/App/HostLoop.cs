@@ -25,21 +25,28 @@ public sealed class HostLoop
     // next Frame uses.
     public FixedStepResult Last { get; private set; }
 
-    // Runs as many whole ticks as `realDt` pays for, every world each tick, in the order the worlds were
-    // created. A world created during a tick starts ticking on the next one.
+    // Runs as many whole real ticks as `realDt` pays for, every world each tick, in the order the worlds
+    // were created. A world created during a tick starts ticking on the next one. `Ticks` in the result
+    // counts real ticks; how many simulation steps each world ran in them is its WorldTime's business.
     public FixedStepResult Update(double realDt, int tickRate, double maxFrameTime, double timeScale,
                                   Action<World>? beforeTick = null)
     {
-        var step = _clock.Advance(realDt, tickRate, maxFrameTime, timeScale);
+        // Real ticks at the real rate; the time scale is each world's (WorldTime, issue #283), which turns a
+        // real tick into as many constant-length steps as are due. `timeScale` (host_timescale) goes there
+        // too, as WorldTime.HostScale, rather than into this clock.
+        if (!double.IsFinite(timeScale) || timeScale < 0) timeScale = 0;
+        var real = _clock.Advance(realDt, tickRate, maxFrameTime, 1.0);
+        var step = new FixedStepResult(real.Ticks, real.TickDt, real.Alpha, (float)(real.FrameDt * timeScale));
         var worlds = _engine.Worlds;
+        for (int i = 0; i < worlds.Count; i++) WorldTime.Of(worlds[i]).HostScale = timeScale;
         for (int tick = 0; tick < step.Ticks; tick++)
         {
             int count = worlds.Count;   // indexed, not foreach: no allocation, and a new world waits a tick
             for (int i = 0; i < count && i < worlds.Count; i++)
             {
                 var world = worlds[i];
-                beforeTick?.Invoke(world);
-                world.RunFixed(step.TickDt);
+                WorldTime.Of(world).HostScale = timeScale;   // a world made during the ticks
+                world.RunFixed(step.TickDt, beforeTick);   // the player's command before each of its steps
             }
         }
         Last = step;

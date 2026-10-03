@@ -69,6 +69,8 @@ public struct Tween : IComponent
     public float Duration;
     [Property(Tooltip = "The easing curve a TweenTo with no curve uses")]
     public Ease Ease;
+    [Property(Tooltip = "Play in real seconds: through a pause, a hit-stop and any world speed (WorldTime)")]
+    public bool RealTime;
 
     // The one playing now: saved, so a save taken half-way ends where it would have.
     public bool Playing;
@@ -103,6 +105,8 @@ public sealed class TweenPart : IPrefabPart
     public float Duration = 1f;
     [Property(Tooltip = "The easing curve a TweenTo with no curve uses")]
     public Ease Ease = Ease.SmoothStep;
+    [Property(Tooltip = "Play in real seconds: through a pause, a hit-stop and any world speed (WorldTime)")]
+    public bool RealTime;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -113,6 +117,7 @@ public sealed class TweenPart : IPrefabPart
             Relative = Relative,
             Duration = Timers.Seconds(Duration, 1f, "duration", ctx),
             Ease = Ease,
+            RealTime = RealTime,
         });
     }
 }
@@ -251,9 +256,9 @@ public static class Tweens
 }
 
 // EntityIO phase, before the dispatch: every playing tween one tick further along; OnTweenDone when it
-// arrives. Allocation-free.
+// arrives. Allocation-free. In every pass, for the `realTime` tweens (issue #283; see LogicTimerSystem).
 [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // easing, timers and tweens (#90)
-[System(Id, Phase.EntityIO, Before = new[] { "?sage.io.dispatch" })]
+[System(Id, Phase.EntityIO, Before = new[] { "?sage.io.dispatch" }, Condition = RunCondition.Always)]
 internal sealed class TweenSystem : ISystem
 {
     public const string Id = "sage.logic.tweens";
@@ -272,7 +277,9 @@ internal sealed class TweenSystem : ISystem
     {
         // Physics is a plugin, installed after the engine's systems are: looked up until found.
         if (_space == null) _world.Resources.TryGet(out _space);
-        float dt = ctx.Tick.Dt;
+        float stepDt = ctx.Tick.Dt;
+        float realDt = WorldTime.Of(_world).RealDt;
+        if (stepDt <= 0f && realDt <= 0f) return;
         foreach (var (tweens, transforms, entities) in _tweens.Chunks)
         {
             var tw = tweens.Span;
@@ -281,6 +288,8 @@ internal sealed class TweenSystem : ISystem
             {
                 ref var tween = ref tw[i];
                 if (!tween.Playing) continue;
+                float dt = tween.RealTime ? realDt : stepDt;
+                if (dt <= 0f) continue;
                 tween.Elapsed += dt;
                 // Done on the tick its seconds are up, not one later for float dust (Timers.Epsilon).
                 bool done = tween.Elapsed >= tween.PlayingDuration - Timers.Epsilon;

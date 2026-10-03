@@ -5315,6 +5315,11 @@
           "type": "number",
           "minimum": 0
         },
+        "realTime": {
+          "description": "Count real seconds: through a pause, a hit-stop and any world speed (WorldTime) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
         "random": {
           "description": "(uint, default 0)",
           "default": 0,
@@ -5474,6 +5479,11 @@
             "SmoothStep",
             "SmootherStep"
           ]
+        },
+        "realTime": {
+          "description": "Play in real seconds: through a pause, a hit-stop and any world speed (WorldTime) (bool, default false)",
+          "default": false,
+          "type": "boolean"
         },
         "playing": {
           "description": "(bool, default false)",
