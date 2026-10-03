@@ -260,6 +260,14 @@
         }
       ]
     },
+    "io_group": {
+      "description": "The component sage:io_group (IOGroup), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:io_group"
+        }
+      ]
+    },
     "item_grid": {
       "description": "The component rpg:item_grid (ItemGridPlacements), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -809,6 +817,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:io_connections"
+        }
+      ]
+    },
+    "sage:io_group": {
+      "description": "Component sage:io_group (IOGroup).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:io_group"
         }
       ]
     },
@@ -3452,6 +3468,17 @@
       "additionalProperties": false,
       "description": "Component sage:io_connections (IOConnections)."
     },
+    "sage:io_group": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "description": "The groups this entity is in, separated by spaces or commas; a wire to @name reaches every member. (string)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:io_group (IOGroup)."
+    },
     "sage:joint": {
       "type": "object",
       "properties": {
@@ -5167,7 +5194,7 @@
           ]
         },
         "state": {
-          "description": "The state it is in, by name; empty until its first tick puts it in the initial state. (string)",
+          "description": "The state it is in, by name (the first innermost one, when nested or parallel); empty until its first tick puts it in the initial state. (string)",
           "type": "string"
         },
         "timeInState": {
@@ -5177,7 +5204,64 @@
           "minimum": 0
         },
         "activator": {
-          "description": "Not saved. (Entity)"
+          "description": "Who last moved it (the subject of its actions); saved by persistent id. (Entity)"
+        },
+        "active": {
+          "description": "Every state it is in, outer before inner, with seconds in each; filled on its first tick. (ActiveState[])",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "The state, by name. (string)",
+                "type": "string"
+              },
+              "time": {
+                "description": "Seconds in it. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "active+": {
+          "description": "Adds to \"active\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "The state, by name. (string)",
+                "type": "string"
+              },
+              "time": {
+                "description": "Seconds in it. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "active-": {
+          "description": "Removes these from \"active\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "The state, by name. (string)",
+                "type": "string"
+              },
+              "time": {
+                "description": "Seconds in it. Unit: s. At least 0. (float)",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false,

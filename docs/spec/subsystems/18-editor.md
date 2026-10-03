@@ -166,7 +166,7 @@ The ImGui panels have no unit tests: only the smoke run touches them (#371).
 - #61 Brushes and block-out in the editor (P1)
 - #49 Per-app log, user folder and crash reporter (P2)
 
-Related: #362 4p-6 skeletal animation coverage and an editor preview (P2), #276 4m-2 entity I/O editor link view, #301 R1-9 in-game problems list.
+Related: #362 4p-6 skeletal animation coverage and an editor preview (P2), #276 4m-2 entity I/O editor link view (done: `WiringModel.Links`, test: TheLinkViewFansAGroupWireOutToEveryMember_AndShowsWhatReachesAnEntity), #301 R1-9 in-game problems list.
 
 ## 11. References
 

@@ -45,12 +45,12 @@
       "type": "boolean"
     },
     "initial": {
-      "description": "The state a machine starts in, and goes back to when its saved state is not in the machine any more. (string, default \"\")",
+      "description": "The state a machine starts in (a nested one enters its parents first), and goes back to when its saved state is not in the machine any more. (string, default \"\")",
       "default": "",
       "type": "string"
     },
     "states": {
-      "description": "The states, by name. (Dictionary<string, MachineState>)",
+      "description": "The states, by name; a state may hold states of its own (nested, or parallel regions). Names are unique across the machine. (Dictionary<string, MachineState>)",
       "type": "object",
       "additionalProperties": {
         "type": "object",
@@ -92,6 +92,27 @@
           },
           "exit-": {
             "description": "Removes these from \"exit\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "during": {
+            "description": "What it does each tick it is in it, from the tick after it is entered, before its transitions are tried. (List<IAction>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "during+": {
+            "description": "Adds to \"during\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "during-": {
+            "description": "Removes these from \"during\" (as a base or an earlier definition listed it).",
             "type": "array",
             "items": {
               "$ref": "vocabularies.schema.json#/definitions/action"
@@ -273,13 +294,409 @@
             "items": {
               "type": "string"
             }
+          },
+          "states": {
+            "description": "States inside it (nested): in it means in one of them, or in all of them when parallel. (Dictionary<string, MachineState>)",
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "enter": {
+                  "description": "What entering it does: the activator is the subject, the machine the other. (List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "enter+": {
+                  "description": "Adds to \"enter\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "enter-": {
+                  "description": "Removes these from \"enter\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "exit": {
+                  "description": "What leaving it does, before the transition's then and the next state's enter. (List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "exit+": {
+                  "description": "Adds to \"exit\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "exit-": {
+                  "description": "Removes these from \"exit\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "during": {
+                  "description": "What it does each tick it is in it, from the tick after it is entered, before its transitions are tried. (List<IAction>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "during+": {
+                  "description": "Adds to \"during\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "during-": {
+                  "description": "Removes these from \"during\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/action"
+                  }
+                },
+                "transitions": {
+                  "description": "Where it can go, tried in order: the first that matches wins. (List<StateTransition>)",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "to": {
+                        "description": "The state it goes to. (string)",
+                        "type": "string"
+                      },
+                      "on": {
+                        "description": "An input's name: only when that input arrives at the entity (any name; registered ones too) (string)",
+                        "type": "string"
+                      },
+                      "when": {
+                        "description": "Only while this holds, asked about the activator with the machine as the other. (ICondition)",
+                        "allOf": [
+                          {
+                            "$ref": "vocabularies.schema.json#/definitions/condition"
+                          }
+                        ]
+                      },
+                      "after": {
+                        "description": "Only once the machine has been in the state this long; 0 = no wait. Unit: s. At least 0. (float)",
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "then": {
+                        "description": "What taking it does, between the old state's exit and the new one's enter. (List<IAction>)",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "then+": {
+                        "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "then-": {
+                        "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "transitions+": {
+                  "description": "Adds to \"transitions\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "to": {
+                        "description": "The state it goes to. (string)",
+                        "type": "string"
+                      },
+                      "on": {
+                        "description": "An input's name: only when that input arrives at the entity (any name; registered ones too) (string)",
+                        "type": "string"
+                      },
+                      "when": {
+                        "description": "Only while this holds, asked about the activator with the machine as the other. (ICondition)",
+                        "allOf": [
+                          {
+                            "$ref": "vocabularies.schema.json#/definitions/condition"
+                          }
+                        ]
+                      },
+                      "after": {
+                        "description": "Only once the machine has been in the state this long; 0 = no wait. Unit: s. At least 0. (float)",
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "then": {
+                        "description": "What taking it does, between the old state's exit and the new one's enter. (List<IAction>)",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "then+": {
+                        "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "then-": {
+                        "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "transitions-": {
+                  "description": "Removes these from \"transitions\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "to": {
+                        "description": "The state it goes to. (string)",
+                        "type": "string"
+                      },
+                      "on": {
+                        "description": "An input's name: only when that input arrives at the entity (any name; registered ones too) (string)",
+                        "type": "string"
+                      },
+                      "when": {
+                        "description": "Only while this holds, asked about the activator with the machine as the other. (ICondition)",
+                        "allOf": [
+                          {
+                            "$ref": "vocabularies.schema.json#/definitions/condition"
+                          }
+                        ]
+                      },
+                      "after": {
+                        "description": "Only once the machine has been in the state this long; 0 = no wait. Unit: s. At least 0. (float)",
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "then": {
+                        "description": "What taking it does, between the old state's exit and the new one's enter. (List<IAction>)",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "then+": {
+                        "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "then-": {
+                        "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "tags": {
+                  "description": "Free words for whatever reads the machine (StateMachines.HasTag): a HUD, an animation layer. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "tags+": {
+                  "description": "Adds to \"tags\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "tags-": {
+                  "description": "Removes these from \"tags\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "states": {
+                  "description": "States inside it (nested): in it means in one of them, or in all of them when parallel. (Dictionary<string, MachineState>)",
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "enter": {
+                        "description": "What entering it does: the activator is the subject, the machine the other. (List<IAction>)",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "enter+": {
+                        "description": "Adds to \"enter\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "enter-": {
+                        "description": "Removes these from \"enter\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "exit": {
+                        "description": "What leaving it does, before the transition's then and the next state's enter. (List<IAction>)",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "exit+": {
+                        "description": "Adds to \"exit\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "exit-": {
+                        "description": "Removes these from \"exit\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "during": {
+                        "description": "What it does each tick it is in it, from the tick after it is entered, before its transitions are tried. (List<IAction>)",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "during+": {
+                        "description": "Adds to \"during\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "during-": {
+                        "description": "Removes these from \"during\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "$ref": "vocabularies.schema.json#/definitions/action"
+                        }
+                      },
+                      "transitions": {
+                        "description": "Where it can go, tried in order: the first that matches wins. (List<StateTransition>)",
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "transitions+": {
+                        "description": "Adds to \"transitions\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "transitions-": {
+                        "description": "Removes these from \"transitions\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "tags": {
+                        "description": "Free words for whatever reads the machine (StateMachines.HasTag): a HUD, an animation layer. (List<string>)",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "tags+": {
+                        "description": "Adds to \"tags\": what a base or an earlier definition listed, then these.",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "tags-": {
+                        "description": "Removes these from \"tags\" (as a base or an earlier definition listed it).",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "states": {
+                        "description": "States inside it (nested): in it means in one of them, or in all of them when parallel. (Dictionary<string, MachineState>)",
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "object"
+                        }
+                      },
+                      "initial": {
+                        "description": "With states: the one entering it enters (one of its states, or deeper) (string)",
+                        "type": "string"
+                      },
+                      "parallel": {
+                        "description": "With states: in all of them at once (parallel regions), each moving on its own. (bool)",
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "initial": {
+                  "description": "With states: the one entering it enters (one of its states, or deeper) (string)",
+                  "type": "string"
+                },
+                "parallel": {
+                  "description": "With states: in all of them at once (parallel regions), each moving on its own. (bool)",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "initial": {
+            "description": "With states: the one entering it enters (one of its states, or deeper) (string)",
+            "type": "string"
+          },
+          "parallel": {
+            "description": "With states: in all of them at once (parallel regions), each moving on its own. (bool)",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
       }
     },
     "transitions": {
-      "description": "Transitions from any state, tried after the state's own; never to the state it is in. (List<StateTransition>)",
+      "description": "Transitions from any state, tried after the states' own; never to a state it is in. (List<StateTransition>)",
       "type": "array",
       "items": {
         "type": "object",

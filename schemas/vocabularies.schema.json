@@ -186,31 +186,55 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, finish_quest, fire, give_item, set_stage, set_var, start_quest, take_item.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, cue, destroy, finish_quest, fire, give_item, load_scene, log, message, pass_time, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, take_item, teleport, wait.",
       "type": "string",
       "enum": [
         "AddTopic",
         "AddVar",
         "ApplyEffect",
         "ChangeStanding",
+        "Cue",
+        "Destroy",
         "FinishQuest",
         "Fire",
         "GiveItem",
+        "LoadScene",
+        "Log",
+        "Message",
+        "PassTime",
+        "PlaySound",
+        "SaveGame",
         "SetStage",
+        "SetTag",
         "SetVar",
+        "SpawnPrefab",
         "StartQuest",
         "TakeItem",
+        "Teleport",
+        "Wait",
         "add_topic",
         "add_var",
         "apply_effect",
         "change_standing",
+        "cue",
+        "destroy",
         "finish_quest",
         "fire",
         "give_item",
+        "load_scene",
+        "log",
+        "message",
+        "pass_time",
+        "play_sound",
+        "save_game",
         "set_stage",
+        "set_tag",
         "set_var",
+        "spawn_prefab",
         "start_quest",
-        "take_item"
+        "take_item",
+        "teleport",
+        "wait"
       ]
     },
     "action": {
@@ -395,6 +419,82 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "cue",
+                      "Cue"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: cue.",
+                    "enum": [
+                      "cue",
+                      "Cue"
+                    ]
+                  },
+                  "at": {
+                    "description": "Where: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                    "default": "!subject",
+                    "type": "string"
+                  },
+                  "cue": {
+                    "description": "The cue to raise. Names a cue record. (RecordRef<CueRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:cue"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'cue' (CueAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "destroy",
+                      "Destroy"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: destroy.",
+                    "enum": [
+                      "destroy",
+                      "Destroy"
+                    ]
+                  },
+                  "target": {
+                    "description": "Who goes: an entity's name, or !subject / !other. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'destroy' (DestroyAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "finish_quest",
                       "FinishQuest"
                     ]
@@ -525,6 +625,274 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "load_scene",
+                      "LoadScene"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: load_scene.",
+                    "enum": [
+                      "load_scene",
+                      "LoadScene"
+                    ]
+                  },
+                  "entry": {
+                    "description": "Where the player arrives: a placement's name or a map entity's targetname; empty: the scene's start. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "hours": {
+                    "description": "Game hours the journey takes. Unit: h. At least 0. (double, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "scene": {
+                    "description": "The scene to go to. Names a scene record. (RecordRef<SceneRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:scene"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'load_scene' (LoadSceneAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "log",
+                      "Log"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: log.",
+                    "enum": [
+                      "log",
+                      "Log"
+                    ]
+                  },
+                  "level": {
+                    "description": "How loud: Debug, Info, Warn or Error. (LogLevel, default \"Info\")",
+                    "default": "Info",
+                    "type": "string",
+                    "enum": [
+                      "Trace",
+                      "Debug",
+                      "Info",
+                      "Warn",
+                      "Error",
+                      "Fatal"
+                    ]
+                  },
+                  "text": {
+                    "description": "What the log says. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'log' (LogAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "message",
+                      "Message"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: message.",
+                    "enum": [
+                      "message",
+                      "Message"
+                    ]
+                  },
+                  "kind": {
+                    "description": "What it is about, for its colour: Info, Good or Bad. (MessageKind, default \"Info\")",
+                    "default": "Info",
+                    "type": "string",
+                    "enum": [
+                      "Info",
+                      "Good",
+                      "Bad"
+                    ]
+                  },
+                  "seconds": {
+                    "description": "How long it stays on screen. Unit: s. At least 0. (float, default 5)",
+                    "default": 5,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "text": {
+                    "description": "What the player reads. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'message' (MessageAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "pass_time",
+                      "PassTime"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: pass_time.",
+                    "enum": [
+                      "pass_time",
+                      "PassTime"
+                    ]
+                  },
+                  "hours": {
+                    "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "reason": {
+                    "description": "Why, for whoever hears TimePassed: rest, wait, travel. (string, default \"wait\")",
+                    "default": "wait",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'pass_time' (PassTimeAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "play_sound",
+                      "PlaySound"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: play_sound.",
+                    "enum": [
+                      "play_sound",
+                      "PlaySound"
+                    ]
+                  },
+                  "at": {
+                    "description": "Where it is heard from: an entity's name, or !subject / !other; empty: everywhere. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "sound": {
+                    "description": "The sound record to play. Names a sound record. (RecordRef<SoundRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:sound"
+                      }
+                    ]
+                  },
+                  "volume": {
+                    "description": "How loud, before the sound's own volume and the buses. Range: 0 to 1. (float, default 1)",
+                    "default": 1,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'play_sound' (PlaySoundAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "save_game",
+                      "SaveGame"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: save_game.",
+                    "enum": [
+                      "save_game",
+                      "SaveGame"
+                    ]
+                  },
+                  "slot": {
+                    "description": "The slot to save into; empty: an autosave. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'save_game' (SaveGameAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "set_stage",
                       "SetStage"
                     ]
@@ -567,6 +935,53 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "set_tag",
+                      "SetTag"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: set_tag.",
+                    "enum": [
+                      "set_tag",
+                      "SetTag"
+                    ]
+                  },
+                  "on": {
+                    "description": "Give it (on) or take it away (off) (bool, default true)",
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "tag": {
+                    "description": "The gameplay tag. Names a tag record. (RecordRef<TagRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:tag"
+                      }
+                    ]
+                  },
+                  "target": {
+                    "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                    "default": "!subject",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'set_tag' (SetTagAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "set_var",
                       "SetVar"
                     ]
@@ -599,6 +1014,86 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'set_var' (SetVarAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "spawn_prefab",
+                      "SpawnPrefab"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: spawn_prefab.",
+                    "enum": [
+                      "spawn_prefab",
+                      "SpawnPrefab"
+                    ]
+                  },
+                  "at": {
+                    "description": "Where: an entity's name, or !subject / !other; empty: at `position`. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "The name it is given, for wires and other words to find it by. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "offset": {
+                    "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+                    "default": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "position": {
+                    "description": "Where in world coordinates, when there is no `at`. Unit: m. (Vector3, default [0,0,0])",
+                    "default": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "prefab": {
+                    "description": "The prefab to spawn. Names a prefab record. (RecordRef<PrefabRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:prefab"
+                      }
+                    ]
+                  },
+                  "yaw": {
+                    "description": "Its heading; with `at`, added to that entity's. Unit: deg. (float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'spawn_prefab' (SpawnPrefabAction)."
               }
             },
             {
@@ -679,6 +1174,119 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'take_item' (TakeItemAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "teleport",
+                      "Teleport"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: teleport.",
+                    "enum": [
+                      "teleport",
+                      "Teleport"
+                    ]
+                  },
+                  "offset": {
+                    "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+                    "default": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "position": {
+                    "description": "Where in world coordinates, when there is no `to`. Unit: m. (Vector3, default [0,0,0])",
+                    "default": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "target": {
+                    "description": "Who moves: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                    "default": "!subject",
+                    "type": "string"
+                  },
+                  "to": {
+                    "description": "Where to: an entity's name, or !subject / !other; empty: `position`. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "yaw": {
+                    "description": "The heading it ends up with; leave out to face as `to` does (or keep its own) Unit: deg. (float?)",
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'teleport' (TeleportAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "wait",
+                      "Wait"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: wait.",
+                    "enum": [
+                      "wait",
+                      "Wait"
+                    ]
+                  },
+                  "seconds": {
+                    "description": "Seconds before the rest of the list runs. Unit: s. At least 0. (float, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'wait' (WaitAction)."
               }
             }
           ]
@@ -1080,6 +1688,176 @@
         {
           "type": "object",
           "properties": {
+            "at": {
+              "description": "Where: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            },
+            "cue": {
+              "anyOf": [
+                {
+                  "description": "The cue to raise. Names a cue record. (RecordRef<CueRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:cue"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cue": {
+                      "description": "The cue to raise. Names a cue record. (RecordRef<CueRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:cue"
+                        }
+                      ]
+                    },
+                    "at": {
+                      "description": "Where: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'cue' (CueAction), in shorthand."
+            }
+          },
+          "required": [
+            "cue"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Cue": {
+              "anyOf": [
+                {
+                  "description": "The cue to raise. Names a cue record. (RecordRef<CueRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:cue"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cue": {
+                      "description": "The cue to raise. Names a cue record. (RecordRef<CueRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:cue"
+                        }
+                      ]
+                    },
+                    "at": {
+                      "description": "Where: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'cue' (CueAction), in shorthand."
+            },
+            "at": {
+              "description": "Where: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            },
+            "cue": {
+              "description": "The cue to raise. Names a cue record. (RecordRef<CueRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:cue"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Cue"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "destroy": {
+              "anyOf": [
+                {
+                  "description": "Who goes: an entity's name, or !subject / !other. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "description": "Who goes: an entity's name, or !subject / !other. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'destroy' (DestroyAction), in shorthand."
+            },
+            "target": {
+              "description": "Who goes: an entity's name, or !subject / !other. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "destroy"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Destroy": {
+              "anyOf": [
+                {
+                  "description": "Who goes: an entity's name, or !subject / !other. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "description": "Who goes: an entity's name, or !subject / !other. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'destroy' (DestroyAction), in shorthand."
+            },
+            "target": {
+              "description": "Who goes: an entity's name, or !subject / !other. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Destroy"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "finish_quest": {
               "anyOf": [
                 {
@@ -1414,6 +2192,696 @@
         {
           "type": "object",
           "properties": {
+            "entry": {
+              "description": "Where the player arrives: a placement's name or a map entity's targetname; empty: the scene's start. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "hours": {
+              "description": "Game hours the journey takes. Unit: h. At least 0. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "load_scene": {
+              "anyOf": [
+                {
+                  "description": "The scene to go to. Names a scene record. (RecordRef<SceneRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:scene"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "scene": {
+                      "description": "The scene to go to. Names a scene record. (RecordRef<SceneRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:scene"
+                        }
+                      ]
+                    },
+                    "entry": {
+                      "description": "Where the player arrives: a placement's name or a map entity's targetname; empty: the scene's start. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "hours": {
+                      "description": "Game hours the journey takes. Unit: h. At least 0. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'load_scene' (LoadSceneAction), in shorthand."
+            },
+            "scene": {
+              "description": "The scene to go to. Names a scene record. (RecordRef<SceneRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:scene"
+                }
+              ]
+            }
+          },
+          "required": [
+            "load_scene"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "LoadScene": {
+              "anyOf": [
+                {
+                  "description": "The scene to go to. Names a scene record. (RecordRef<SceneRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:scene"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "scene": {
+                      "description": "The scene to go to. Names a scene record. (RecordRef<SceneRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:scene"
+                        }
+                      ]
+                    },
+                    "entry": {
+                      "description": "Where the player arrives: a placement's name or a map entity's targetname; empty: the scene's start. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "hours": {
+                      "description": "Game hours the journey takes. Unit: h. At least 0. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'load_scene' (LoadSceneAction), in shorthand."
+            },
+            "entry": {
+              "description": "Where the player arrives: a placement's name or a map entity's targetname; empty: the scene's start. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "hours": {
+              "description": "Game hours the journey takes. Unit: h. At least 0. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "scene": {
+              "description": "The scene to go to. Names a scene record. (RecordRef<SceneRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:scene"
+                }
+              ]
+            }
+          },
+          "required": [
+            "LoadScene"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "level": {
+              "description": "How loud: Debug, Info, Warn or Error. (LogLevel, default \"Info\")",
+              "default": "Info",
+              "type": "string",
+              "enum": [
+                "Trace",
+                "Debug",
+                "Info",
+                "Warn",
+                "Error",
+                "Fatal"
+              ]
+            },
+            "log": {
+              "anyOf": [
+                {
+                  "description": "What the log says. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "description": "What the log says. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "level": {
+                      "description": "How loud: Debug, Info, Warn or Error. (LogLevel, default \"Info\")",
+                      "default": "Info",
+                      "type": "string",
+                      "enum": [
+                        "Trace",
+                        "Debug",
+                        "Info",
+                        "Warn",
+                        "Error",
+                        "Fatal"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'log' (LogAction), in shorthand."
+            },
+            "text": {
+              "description": "What the log says. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "log"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Log": {
+              "anyOf": [
+                {
+                  "description": "What the log says. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "description": "What the log says. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "level": {
+                      "description": "How loud: Debug, Info, Warn or Error. (LogLevel, default \"Info\")",
+                      "default": "Info",
+                      "type": "string",
+                      "enum": [
+                        "Trace",
+                        "Debug",
+                        "Info",
+                        "Warn",
+                        "Error",
+                        "Fatal"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'log' (LogAction), in shorthand."
+            },
+            "level": {
+              "description": "How loud: Debug, Info, Warn or Error. (LogLevel, default \"Info\")",
+              "default": "Info",
+              "type": "string",
+              "enum": [
+                "Trace",
+                "Debug",
+                "Info",
+                "Warn",
+                "Error",
+                "Fatal"
+              ]
+            },
+            "text": {
+              "description": "What the log says. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Log"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "description": "What it is about, for its colour: Info, Good or Bad. (MessageKind, default \"Info\")",
+              "default": "Info",
+              "type": "string",
+              "enum": [
+                "Info",
+                "Good",
+                "Bad"
+              ]
+            },
+            "message": {
+              "anyOf": [
+                {
+                  "description": "What the player reads. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "description": "What the player reads. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "kind": {
+                      "description": "What it is about, for its colour: Info, Good or Bad. (MessageKind, default \"Info\")",
+                      "default": "Info",
+                      "type": "string",
+                      "enum": [
+                        "Info",
+                        "Good",
+                        "Bad"
+                      ]
+                    },
+                    "seconds": {
+                      "description": "How long it stays on screen. Unit: s. At least 0. (float, default 5)",
+                      "default": 5,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'message' (MessageAction), in shorthand."
+            },
+            "seconds": {
+              "description": "How long it stays on screen. Unit: s. At least 0. (float, default 5)",
+              "default": 5,
+              "type": "number",
+              "minimum": 0
+            },
+            "text": {
+              "description": "What the player reads. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Message": {
+              "anyOf": [
+                {
+                  "description": "What the player reads. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "description": "What the player reads. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "kind": {
+                      "description": "What it is about, for its colour: Info, Good or Bad. (MessageKind, default \"Info\")",
+                      "default": "Info",
+                      "type": "string",
+                      "enum": [
+                        "Info",
+                        "Good",
+                        "Bad"
+                      ]
+                    },
+                    "seconds": {
+                      "description": "How long it stays on screen. Unit: s. At least 0. (float, default 5)",
+                      "default": 5,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'message' (MessageAction), in shorthand."
+            },
+            "kind": {
+              "description": "What it is about, for its colour: Info, Good or Bad. (MessageKind, default \"Info\")",
+              "default": "Info",
+              "type": "string",
+              "enum": [
+                "Info",
+                "Good",
+                "Bad"
+              ]
+            },
+            "seconds": {
+              "description": "How long it stays on screen. Unit: s. At least 0. (float, default 5)",
+              "default": 5,
+              "type": "number",
+              "minimum": 0
+            },
+            "text": {
+              "description": "What the player reads. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Message"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "hours": {
+              "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "pass_time": {
+              "anyOf": [
+                {
+                  "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "hours": {
+                      "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "reason": {
+                      "description": "Why, for whoever hears TimePassed: rest, wait, travel. (string, default \"wait\")",
+                      "default": "wait",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'pass_time' (PassTimeAction), in shorthand."
+            },
+            "reason": {
+              "description": "Why, for whoever hears TimePassed: rest, wait, travel. (string, default \"wait\")",
+              "default": "wait",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pass_time"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "PassTime": {
+              "anyOf": [
+                {
+                  "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "hours": {
+                      "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "reason": {
+                      "description": "Why, for whoever hears TimePassed: rest, wait, travel. (string, default \"wait\")",
+                      "default": "wait",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'pass_time' (PassTimeAction), in shorthand."
+            },
+            "hours": {
+              "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "reason": {
+              "description": "Why, for whoever hears TimePassed: rest, wait, travel. (string, default \"wait\")",
+              "default": "wait",
+              "type": "string"
+            }
+          },
+          "required": [
+            "PassTime"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "at": {
+              "description": "Where it is heard from: an entity's name, or !subject / !other; empty: everywhere. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "play_sound": {
+              "anyOf": [
+                {
+                  "description": "The sound record to play. Names a sound record. (RecordRef<SoundRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:sound"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "sound": {
+                      "description": "The sound record to play. Names a sound record. (RecordRef<SoundRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:sound"
+                        }
+                      ]
+                    },
+                    "at": {
+                      "description": "Where it is heard from: an entity's name, or !subject / !other; empty: everywhere. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "volume": {
+                      "description": "How loud, before the sound's own volume and the buses. Range: 0 to 1. (float, default 1)",
+                      "default": 1,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'play_sound' (PlaySoundAction), in shorthand."
+            },
+            "sound": {
+              "description": "The sound record to play. Names a sound record. (RecordRef<SoundRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:sound"
+                }
+              ]
+            },
+            "volume": {
+              "description": "How loud, before the sound's own volume and the buses. Range: 0 to 1. (float, default 1)",
+              "default": 1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "play_sound"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "PlaySound": {
+              "anyOf": [
+                {
+                  "description": "The sound record to play. Names a sound record. (RecordRef<SoundRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:sound"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "sound": {
+                      "description": "The sound record to play. Names a sound record. (RecordRef<SoundRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:sound"
+                        }
+                      ]
+                    },
+                    "at": {
+                      "description": "Where it is heard from: an entity's name, or !subject / !other; empty: everywhere. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "volume": {
+                      "description": "How loud, before the sound's own volume and the buses. Range: 0 to 1. (float, default 1)",
+                      "default": 1,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'play_sound' (PlaySoundAction), in shorthand."
+            },
+            "at": {
+              "description": "Where it is heard from: an entity's name, or !subject / !other; empty: everywhere. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "sound": {
+              "description": "The sound record to play. Names a sound record. (RecordRef<SoundRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:sound"
+                }
+              ]
+            },
+            "volume": {
+              "description": "How loud, before the sound's own volume and the buses. Range: 0 to 1. (float, default 1)",
+              "default": 1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "PlaySound"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "save_game": {
+              "anyOf": [
+                {
+                  "description": "The slot to save into; empty: an autosave. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "slot": {
+                      "description": "The slot to save into; empty: an autosave. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'save_game' (SaveGameAction), in shorthand."
+            },
+            "slot": {
+              "description": "The slot to save into; empty: an autosave. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "save_game"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SaveGame": {
+              "anyOf": [
+                {
+                  "description": "The slot to save into; empty: an autosave. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "slot": {
+                      "description": "The slot to save into; empty: an autosave. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'save_game' (SaveGameAction), in shorthand."
+            },
+            "slot": {
+              "description": "The slot to save into; empty: an autosave. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "SaveGame"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "quest": {
               "description": "Names a quest record. (RecordRef<QuestRecord>)",
               "allOf": [
@@ -1522,6 +2990,134 @@
         {
           "type": "object",
           "properties": {
+            "on": {
+              "description": "Give it (on) or take it away (off) (bool, default true)",
+              "default": true,
+              "type": "boolean"
+            },
+            "set_tag": {
+              "anyOf": [
+                {
+                  "description": "The gameplay tag. Names a tag record. (RecordRef<TagRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:tag"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "description": "The gameplay tag. Names a tag record. (RecordRef<TagRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:tag"
+                        }
+                      ]
+                    },
+                    "target": {
+                      "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    },
+                    "on": {
+                      "description": "Give it (on) or take it away (off) (bool, default true)",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_tag' (SetTagAction), in shorthand."
+            },
+            "tag": {
+              "description": "The gameplay tag. Names a tag record. (RecordRef<TagRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:tag"
+                }
+              ]
+            },
+            "target": {
+              "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            }
+          },
+          "required": [
+            "set_tag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SetTag": {
+              "anyOf": [
+                {
+                  "description": "The gameplay tag. Names a tag record. (RecordRef<TagRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:tag"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "description": "The gameplay tag. Names a tag record. (RecordRef<TagRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:tag"
+                        }
+                      ]
+                    },
+                    "target": {
+                      "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    },
+                    "on": {
+                      "description": "Give it (on) or take it away (off) (bool, default true)",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_tag' (SetTagAction), in shorthand."
+            },
+            "on": {
+              "description": "Give it (on) or take it away (off) (bool, default true)",
+              "default": true,
+              "type": "boolean"
+            },
+            "tag": {
+              "description": "The gameplay tag. Names a tag record. (RecordRef<TagRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:tag"
+                }
+              ]
+            },
+            "target": {
+              "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            }
+          },
+          "required": [
+            "SetTag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "name": {
               "description": "The world variable to set. (string, default \"\")",
               "default": "",
@@ -1606,6 +3202,266 @@
           },
           "required": [
             "SetVar"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "at": {
+              "description": "Where: an entity's name, or !subject / !other; empty: at `position`. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "name": {
+              "description": "The name it is given, for wires and other words to find it by. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "position": {
+              "description": "Where in world coordinates, when there is no `at`. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "prefab": {
+              "description": "The prefab to spawn. Names a prefab record. (RecordRef<PrefabRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:prefab"
+                }
+              ]
+            },
+            "spawn_prefab": {
+              "anyOf": [
+                {
+                  "description": "The prefab to spawn. Names a prefab record. (RecordRef<PrefabRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:prefab"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "prefab": {
+                      "description": "The prefab to spawn. Names a prefab record. (RecordRef<PrefabRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:prefab"
+                        }
+                      ]
+                    },
+                    "at": {
+                      "description": "Where: an entity's name, or !subject / !other; empty: at `position`. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "position": {
+                      "description": "Where in world coordinates, when there is no `at`. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "offset": {
+                      "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "yaw": {
+                      "description": "Its heading; with `at`, added to that entity's. Unit: deg. (float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    },
+                    "name": {
+                      "description": "The name it is given, for wires and other words to find it by. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'spawn_prefab' (SpawnPrefabAction), in shorthand."
+            },
+            "yaw": {
+              "description": "Its heading; with `at`, added to that entity's. Unit: deg. (float, default 0)",
+              "default": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "spawn_prefab"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SpawnPrefab": {
+              "anyOf": [
+                {
+                  "description": "The prefab to spawn. Names a prefab record. (RecordRef<PrefabRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:prefab"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "prefab": {
+                      "description": "The prefab to spawn. Names a prefab record. (RecordRef<PrefabRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:prefab"
+                        }
+                      ]
+                    },
+                    "at": {
+                      "description": "Where: an entity's name, or !subject / !other; empty: at `position`. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "position": {
+                      "description": "Where in world coordinates, when there is no `at`. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "offset": {
+                      "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "yaw": {
+                      "description": "Its heading; with `at`, added to that entity's. Unit: deg. (float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    },
+                    "name": {
+                      "description": "The name it is given, for wires and other words to find it by. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'spawn_prefab' (SpawnPrefabAction), in shorthand."
+            },
+            "at": {
+              "description": "Where: an entity's name, or !subject / !other; empty: at `position`. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "name": {
+              "description": "The name it is given, for wires and other words to find it by. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "position": {
+              "description": "Where in world coordinates, when there is no `at`. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "prefab": {
+              "description": "The prefab to spawn. Names a prefab record. (RecordRef<PrefabRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:prefab"
+                }
+              ]
+            },
+            "yaw": {
+              "description": "Its heading; with `at`, added to that entity's. Unit: deg. (float, default 0)",
+              "default": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "SpawnPrefab"
           ],
           "additionalProperties": false
         },
@@ -1806,6 +3662,328 @@
           },
           "required": [
             "TakeItem"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "offset": {
+              "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "position": {
+              "description": "Where in world coordinates, when there is no `to`. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "target": {
+              "description": "Who moves: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            },
+            "teleport": {
+              "anyOf": [
+                {
+                  "description": "Who moves: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                  "default": "!subject",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "description": "Who moves: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    },
+                    "to": {
+                      "description": "Where to: an entity's name, or !subject / !other; empty: `position`. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "position": {
+                      "description": "Where in world coordinates, when there is no `to`. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "offset": {
+                      "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "yaw": {
+                      "description": "The heading it ends up with; leave out to face as `to` does (or keep its own) Unit: deg. (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'teleport' (TeleportAction), in shorthand."
+            },
+            "to": {
+              "description": "Where to: an entity's name, or !subject / !other; empty: `position`. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "yaw": {
+              "description": "The heading it ends up with; leave out to face as `to` does (or keep its own) Unit: deg. (float?)",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "teleport"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Teleport": {
+              "anyOf": [
+                {
+                  "description": "Who moves: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                  "default": "!subject",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "description": "Who moves: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    },
+                    "to": {
+                      "description": "Where to: an entity's name, or !subject / !other; empty: `position`. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "position": {
+                      "description": "Where in world coordinates, when there is no `to`. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "offset": {
+                      "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+                      "default": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "yaw": {
+                      "description": "The heading it ends up with; leave out to face as `to` does (or keep its own) Unit: deg. (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'teleport' (TeleportAction), in shorthand."
+            },
+            "offset": {
+              "description": "Added to where it goes, in world axes. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "position": {
+              "description": "Where in world coordinates, when there is no `to`. Unit: m. (Vector3, default [0,0,0])",
+              "default": [
+                0,
+                0,
+                0
+              ],
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "target": {
+              "description": "Who moves: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            },
+            "to": {
+              "description": "Where to: an entity's name, or !subject / !other; empty: `position`. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "yaw": {
+              "description": "The heading it ends up with; leave out to face as `to` does (or keep its own) Unit: deg. (float?)",
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Teleport"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "seconds": {
+              "description": "Seconds before the rest of the list runs. Unit: s. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "wait": {
+              "anyOf": [
+                {
+                  "description": "Seconds before the rest of the list runs. Unit: s. At least 0. (float, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "seconds": {
+                      "description": "Seconds before the rest of the list runs. Unit: s. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'wait' (WaitAction), in shorthand."
+            }
+          },
+          "required": [
+            "wait"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Wait": {
+              "anyOf": [
+                {
+                  "description": "Seconds before the rest of the list runs. Unit: s. At least 0. (float, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "seconds": {
+                      "description": "Seconds before the rest of the list runs. Unit: s. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'wait' (WaitAction), in shorthand."
+            },
+            "seconds": {
+              "description": "Seconds before the rest of the list runs. Unit: s. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "Wait"
           ],
           "additionalProperties": false
         }
@@ -2300,7 +4478,7 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, any, date_between, has_item, has_tag, lacks_tag, not, quest, speaker, standing, time_between, var, weekday.",
+      "description": "A condition by id: all, anim_finished, anim_param, any, date_between, distance_to, entity_exists, has_item, has_tag, in_scene, is_alive, lacks_tag, not, quest, random, speaker, standing, time_between, var, weekday.",
       "type": "string",
       "enum": [
         "All",
@@ -2308,11 +4486,16 @@
         "AnimParam",
         "Any",
         "DateBetween",
+        "DistanceTo",
+        "EntityExists",
         "HasItem",
         "HasTag",
+        "InScene",
+        "IsAlive",
         "LacksTag",
         "Not",
         "Quest",
+        "Random",
         "Speaker",
         "Standing",
         "TimeBetween",
@@ -2323,11 +4506,16 @@
         "anim_param",
         "any",
         "date_between",
+        "distance_to",
+        "entity_exists",
         "has_item",
         "has_tag",
+        "in_scene",
+        "is_alive",
         "lacks_tag",
         "not",
         "quest",
+        "random",
         "speaker",
         "standing",
         "time_between",
@@ -2607,6 +4795,90 @@
                 "properties": {
                   "condition": {
                     "enum": [
+                      "distance_to",
+                      "DistanceTo"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: distance_to.",
+                    "enum": [
+                      "distance_to",
+                      "DistanceTo"
+                    ]
+                  },
+                  "from": {
+                    "description": "The entity measured from: a name, or !subject / !other. (string, default \"!subject\")",
+                    "default": "!subject",
+                    "type": "string"
+                  },
+                  "max": {
+                    "description": "The most the distance may be. Unit: m. At least 0. (float)",
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "min": {
+                    "description": "The least the distance may be. Unit: m. At least 0. (float, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "to": {
+                    "description": "The entity measured to: a name, or !subject / !other. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'distance_to' (DistanceToCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "entity_exists",
+                      "EntityExists"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: entity_exists.",
+                    "enum": [
+                      "entity_exists",
+                      "EntityExists"
+                    ]
+                  },
+                  "entity": {
+                    "description": "An entity's name, or !subject / !other. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'entity_exists' (EntityExistsCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
                       "has_item",
                       "HasItem"
                     ]
@@ -2669,8 +4941,13 @@
                       "HasTag"
                     ]
                   },
+                  "entity": {
+                    "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
                   "tag": {
-                    "description": "Names a tag record. (RecordRef<TagRecord>)",
+                    "description": "The gameplay tag it must have. Names a tag record. (RecordRef<TagRecord>)",
                     "allOf": [
                       {
                         "$ref": "ids.schema.json#/definitions/record:tag"
@@ -2680,6 +4957,77 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'has_tag' (HasTagCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "in_scene",
+                      "InScene"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: in_scene.",
+                    "enum": [
+                      "in_scene",
+                      "InScene"
+                    ]
+                  },
+                  "scene": {
+                    "description": "The scene the world must be in. Names a scene record. (RecordRef<SceneRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:scene"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'in_scene' (InSceneCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "is_alive",
+                      "IsAlive"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: is_alive.",
+                    "enum": [
+                      "is_alive",
+                      "IsAlive"
+                    ]
+                  },
+                  "entity": {
+                    "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                    "default": "!subject",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'is_alive' (IsAliveCondition)."
               }
             },
             {
@@ -2706,8 +5054,13 @@
                       "LacksTag"
                     ]
                   },
+                  "entity": {
+                    "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
                   "tag": {
-                    "description": "Names a tag record. (RecordRef<TagRecord>)",
+                    "description": "The gameplay tag it must not have. Names a tag record. (RecordRef<TagRecord>)",
                     "allOf": [
                       {
                         "$ref": "ids.schema.json#/definitions/record:tag"
@@ -2821,6 +5174,42 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'quest' (QuestCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "random",
+                      "Random"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "chance": {
+                    "description": "The chance it holds, from 0 (never) to 1 (always); each ask draws again. Range: 0 to 1. (double, default 0.5)",
+                    "default": 0.5,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "condition": {
+                    "description": "The condition: random.",
+                    "enum": [
+                      "random",
+                      "Random"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'random' (RandomCondition)."
               }
             },
             {
@@ -3748,6 +6137,210 @@
         {
           "type": "object",
           "properties": {
+            "distance_to": {
+              "anyOf": [
+                {
+                  "description": "The entity measured to: a name, or !subject / !other. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "to": {
+                      "description": "The entity measured to: a name, or !subject / !other. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The entity measured from: a name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    },
+                    "min": {
+                      "description": "The least the distance may be. Unit: m. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "max": {
+                      "description": "The most the distance may be. Unit: m. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'distance_to' (DistanceToCondition), in shorthand."
+            },
+            "from": {
+              "description": "The entity measured from: a name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            },
+            "max": {
+              "description": "The most the distance may be. Unit: m. At least 0. (float)",
+              "type": "number",
+              "minimum": 0
+            },
+            "min": {
+              "description": "The least the distance may be. Unit: m. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "to": {
+              "description": "The entity measured to: a name, or !subject / !other. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "distance_to"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "DistanceTo": {
+              "anyOf": [
+                {
+                  "description": "The entity measured to: a name, or !subject / !other. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "to": {
+                      "description": "The entity measured to: a name, or !subject / !other. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "from": {
+                      "description": "The entity measured from: a name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    },
+                    "min": {
+                      "description": "The least the distance may be. Unit: m. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "max": {
+                      "description": "The most the distance may be. Unit: m. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'distance_to' (DistanceToCondition), in shorthand."
+            },
+            "from": {
+              "description": "The entity measured from: a name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            },
+            "max": {
+              "description": "The most the distance may be. Unit: m. At least 0. (float)",
+              "type": "number",
+              "minimum": 0
+            },
+            "min": {
+              "description": "The least the distance may be. Unit: m. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "to": {
+              "description": "The entity measured to: a name, or !subject / !other. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "DistanceTo"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entity": {
+              "description": "An entity's name, or !subject / !other. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "entity_exists": {
+              "anyOf": [
+                {
+                  "description": "An entity's name, or !subject / !other. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "entity": {
+                      "description": "An entity's name, or !subject / !other. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'entity_exists' (EntityExistsCondition), in shorthand."
+            }
+          },
+          "required": [
+            "entity_exists"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "EntityExists": {
+              "anyOf": [
+                {
+                  "description": "An entity's name, or !subject / !other. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "entity": {
+                      "description": "An entity's name, or !subject / !other. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'entity_exists' (EntityExistsCondition), in shorthand."
+            },
+            "entity": {
+              "description": "An entity's name, or !subject / !other. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "EntityExists"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "count": {
               "description": "At least 1. (int, default 1)",
               "default": 1,
@@ -3860,10 +6453,15 @@
         {
           "type": "object",
           "properties": {
+            "entity": {
+              "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
             "has_tag": {
               "anyOf": [
                 {
-                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "description": "The gameplay tag it must have. Names a tag record. (RecordRef<TagRecord>)",
                   "allOf": [
                     {
                       "$ref": "ids.schema.json#/definitions/record:tag"
@@ -3874,12 +6472,17 @@
                   "type": "object",
                   "properties": {
                     "tag": {
-                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "description": "The gameplay tag it must have. Names a tag record. (RecordRef<TagRecord>)",
                       "allOf": [
                         {
                           "$ref": "ids.schema.json#/definitions/record:tag"
                         }
                       ]
+                    },
+                    "entity": {
+                      "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -3888,7 +6491,7 @@
               "description": "condition 'has_tag' (HasTagCondition), in shorthand."
             },
             "tag": {
-              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "description": "The gameplay tag it must have. Names a tag record. (RecordRef<TagRecord>)",
               "allOf": [
                 {
                   "$ref": "ids.schema.json#/definitions/record:tag"
@@ -3907,7 +6510,7 @@
             "HasTag": {
               "anyOf": [
                 {
-                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "description": "The gameplay tag it must have. Names a tag record. (RecordRef<TagRecord>)",
                   "allOf": [
                     {
                       "$ref": "ids.schema.json#/definitions/record:tag"
@@ -3918,12 +6521,17 @@
                   "type": "object",
                   "properties": {
                     "tag": {
-                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "description": "The gameplay tag it must have. Names a tag record. (RecordRef<TagRecord>)",
                       "allOf": [
                         {
                           "$ref": "ids.schema.json#/definitions/record:tag"
                         }
                       ]
+                    },
+                    "entity": {
+                      "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -3931,8 +6539,13 @@
               ],
               "description": "condition 'has_tag' (HasTagCondition), in shorthand."
             },
+            "entity": {
+              "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
             "tag": {
-              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "description": "The gameplay tag it must have. Names a tag record. (RecordRef<TagRecord>)",
               "allOf": [
                 {
                   "$ref": "ids.schema.json#/definitions/record:tag"
@@ -3948,10 +6561,173 @@
         {
           "type": "object",
           "properties": {
+            "in_scene": {
+              "anyOf": [
+                {
+                  "description": "The scene the world must be in. Names a scene record. (RecordRef<SceneRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:scene"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "scene": {
+                      "description": "The scene the world must be in. Names a scene record. (RecordRef<SceneRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:scene"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'in_scene' (InSceneCondition), in shorthand."
+            },
+            "scene": {
+              "description": "The scene the world must be in. Names a scene record. (RecordRef<SceneRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:scene"
+                }
+              ]
+            }
+          },
+          "required": [
+            "in_scene"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "InScene": {
+              "anyOf": [
+                {
+                  "description": "The scene the world must be in. Names a scene record. (RecordRef<SceneRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:scene"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "scene": {
+                      "description": "The scene the world must be in. Names a scene record. (RecordRef<SceneRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:scene"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'in_scene' (InSceneCondition), in shorthand."
+            },
+            "scene": {
+              "description": "The scene the world must be in. Names a scene record. (RecordRef<SceneRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:scene"
+                }
+              ]
+            }
+          },
+          "required": [
+            "InScene"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entity": {
+              "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            },
+            "is_alive": {
+              "anyOf": [
+                {
+                  "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                  "default": "!subject",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "entity": {
+                      "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'is_alive' (IsAliveCondition), in shorthand."
+            }
+          },
+          "required": [
+            "is_alive"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "IsAlive": {
+              "anyOf": [
+                {
+                  "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                  "default": "!subject",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "entity": {
+                      "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+                      "default": "!subject",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'is_alive' (IsAliveCondition), in shorthand."
+            },
+            "entity": {
+              "description": "Who: an entity's name, or !subject / !other. (string, default \"!subject\")",
+              "default": "!subject",
+              "type": "string"
+            }
+          },
+          "required": [
+            "IsAlive"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entity": {
+              "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
             "lacks_tag": {
               "anyOf": [
                 {
-                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "description": "The gameplay tag it must not have. Names a tag record. (RecordRef<TagRecord>)",
                   "allOf": [
                     {
                       "$ref": "ids.schema.json#/definitions/record:tag"
@@ -3962,12 +6738,17 @@
                   "type": "object",
                   "properties": {
                     "tag": {
-                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "description": "The gameplay tag it must not have. Names a tag record. (RecordRef<TagRecord>)",
                       "allOf": [
                         {
                           "$ref": "ids.schema.json#/definitions/record:tag"
                         }
                       ]
+                    },
+                    "entity": {
+                      "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -3976,7 +6757,7 @@
               "description": "condition 'lacks_tag' (LacksTagCondition), in shorthand."
             },
             "tag": {
-              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "description": "The gameplay tag it must not have. Names a tag record. (RecordRef<TagRecord>)",
               "allOf": [
                 {
                   "$ref": "ids.schema.json#/definitions/record:tag"
@@ -3995,7 +6776,7 @@
             "LacksTag": {
               "anyOf": [
                 {
-                  "description": "Names a tag record. (RecordRef<TagRecord>)",
+                  "description": "The gameplay tag it must not have. Names a tag record. (RecordRef<TagRecord>)",
                   "allOf": [
                     {
                       "$ref": "ids.schema.json#/definitions/record:tag"
@@ -4006,12 +6787,17 @@
                   "type": "object",
                   "properties": {
                     "tag": {
-                      "description": "Names a tag record. (RecordRef<TagRecord>)",
+                      "description": "The gameplay tag it must not have. Names a tag record. (RecordRef<TagRecord>)",
                       "allOf": [
                         {
                           "$ref": "ids.schema.json#/definitions/record:tag"
                         }
                       ]
+                    },
+                    "entity": {
+                      "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -4019,8 +6805,13 @@
               ],
               "description": "condition 'lacks_tag' (LacksTagCondition), in shorthand."
             },
+            "entity": {
+              "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
             "tag": {
-              "description": "Names a tag record. (RecordRef<TagRecord>)",
+              "description": "The gameplay tag it must not have. Names a tag record. (RecordRef<TagRecord>)",
               "allOf": [
                 {
                   "$ref": "ids.schema.json#/definitions/record:tag"
@@ -4270,6 +7061,88 @@
           },
           "required": [
             "Quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "chance": {
+              "description": "The chance it holds, from 0 (never) to 1 (always); each ask draws again. Range: 0 to 1. (double, default 0.5)",
+              "default": 0.5,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "random": {
+              "anyOf": [
+                {
+                  "description": "The chance it holds, from 0 (never) to 1 (always); each ask draws again. Range: 0 to 1. (double, default 0.5)",
+                  "default": 0.5,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "chance": {
+                      "description": "The chance it holds, from 0 (never) to 1 (always); each ask draws again. Range: 0 to 1. (double, default 0.5)",
+                      "default": 0.5,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'random' (RandomCondition), in shorthand."
+            }
+          },
+          "required": [
+            "random"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Random": {
+              "anyOf": [
+                {
+                  "description": "The chance it holds, from 0 (never) to 1 (always); each ask draws again. Range: 0 to 1. (double, default 0.5)",
+                  "default": 0.5,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "chance": {
+                      "description": "The chance it holds, from 0 (never) to 1 (always); each ask draws again. Range: 0 to 1. (double, default 0.5)",
+                      "default": 0.5,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'random' (RandomCondition), in shorthand."
+            },
+            "chance": {
+              "description": "The chance it holds, from 0 (never) to 1 (always); each ask draws again. Range: 0 to 1. (double, default 0.5)",
+              "default": 0.5,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "Random"
           ],
           "additionalProperties": false
         },

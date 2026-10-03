@@ -311,19 +311,31 @@ internal sealed class PhysicsWriteBackSystem : ISystem
     }
 }
 
-// PrePhysics: gives loaded terrain sectors a collision mesh (14 §3, closes F13's collision gap).
-// One static mesh per sector; with streaming this becomes per chunk and is built on a job (F14).
+// PrePhysics: gives loaded terrain sectors collision (14 §3, closes F13's collision gap).
+//
+// **Per chunk, on a budget** (#277): a sector is 4x4 static meshes of 32x32 cells, not one of 128x128, and a
+// sector streaming made live while the player walks (`TerrainSector.Budgeted`: a kilometre away, at least)
+// gets `ChunksPerTick` of them a tick, so crossing an edge does not build 32,000 triangles' worth of tree in
+// one tick. Anything else — the first ring, a jump, travel, a sector a game loaded itself — is built whole at
+// once, because something may be about to stand on it.
 #pragma warning disable SAGE0133 // as sage.physics.sync: the ground is pickable in the editor too (#219)
 [System("sage.physics.terrain", Phase.PrePhysics, Condition = RunCondition.EvenWhenEditing)]
 #pragma warning restore SAGE0133
 internal sealed class TerrainCollisionSystem : ISystem
 {
+    public const int ChunkCells = 32;
+    public const int ChunksPerTick = 4;
+
     private readonly PhysicsSpace _space;
     private Terrain? _terrain;
     private readonly World _world;
     private Vector3[] _vertices = Array.Empty<Vector3>();
     private int[] _indices = Array.Empty<int>();
     private byte[] _triangleLayers = Array.Empty<byte>();
+
+    // Chunks built so far of the sectors under way (by sector object: a sector unloaded and loaded again is a new one).
+    private readonly Dictionary<TerrainSector, int> _progress = new();
+    private readonly List<TerrainSector> _gone = new();
 
     public TerrainCollisionSystem(World world, PhysicsSpace space)
     {
@@ -337,20 +349,43 @@ internal sealed class TerrainCollisionSystem : ISystem
         // does, and a world with no streaming plugin has no terrain at all.
         if (_terrain == null && !_world.Resources.TryGet(out _terrain)) return;
         var sectors = _terrain!.Sectors;
+        int budget = ChunksPerTick;
         for (int i = 0; i < sectors.Count; i++)
         {
             var sector = sectors[i];
             if (sector.CollisionBuilt) continue;
-            Build(sector);
-            sector.CollisionBuilt = true;
+            int chunks = (sector.Heights.Resolution - 1) / ChunkCells;
+            int total = Math.Max(1, chunks * chunks);
+            _progress.TryGetValue(sector, out int done);
+            int upTo = sector.Budgeted ? Math.Min(total, done + budget) : total;
+            if (upTo <= done) continue;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            for (int c = done; c < upTo; c++) Build(sector, c, chunks);
+            if (sector.Budgeted) budget -= upTo - done;
+            if (upTo == total)
+            {
+                sector.CollisionBuilt = true;
+                _progress.Remove(sector);
+            }
+            else _progress[sector] = upTo;
+            Log.Debug(LogCat.Physics, $"Terrain sector {sector.Coord}: collision chunks {done}..{upTo - 1} of {total} in {watch.Elapsed.TotalMilliseconds:F1} ms");
         }
+
+        // A sector unloaded part-way: forget it.
+        if (_progress.Count == 0) return;
+        _gone.Clear();
+        foreach (var (sector, _) in _progress)
+            if (!ReferenceEquals(_terrain.Sector(sector.Coord), sector)) _gone.Add(sector);
+        for (int i = 0; i < _gone.Count; i++) _progress.Remove(_gone[i]);
     }
 
-    private void Build(TerrainSector sector)
+    // One chunk: (cx, cz) = (index % chunks, index / chunks); the whole field when it does not divide.
+    private void Build(TerrainSector sector, int index, int chunks)
     {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
         var heights = sector.Heights;
-        int side = heights.Resolution, cells = side - 1;
+        int cells = chunks == 0 ? heights.Resolution - 1 : ChunkCells;
+        int x0 = chunks == 0 ? 0 : index % chunks * ChunkCells, z0 = chunks == 0 ? 0 : index / chunks * ChunkCells;
+        int side = cells + 1;
         // Origin space, not absolute: this mesh has to sit where the simulation currently is, and
         // move with it when the origin does (R6).
         Vector3 origin = _terrain!.CornerOf(sector.Coord);
@@ -361,36 +396,37 @@ internal sealed class TerrainCollisionSystem : ISystem
 
         for (int z = 0; z < side; z++)
             for (int x = 0; x < side; x++)
-                _vertices[z * side + x] = new Vector3(x * spacing, heights[x, z], z * spacing);
+                _vertices[z * side + x] = new Vector3((x0 + x) * spacing, heights[x0 + x, z0 + z], (z0 + z) * spacing);
 
-        int index = 0;
+        int n = 0;
         for (int z = 0; z < cells; z++)
             for (int x = 0; x < cells; x++)
             {
                 int v = z * side + x;
-                _indices[index++] = v; _indices[index++] = v + 1; _indices[index++] = v + side;
-                _indices[index++] = v + 1; _indices[index++] = v + side + 1; _indices[index++] = v + side;
+                _indices[n++] = v; _indices[n++] = v + 1; _indices[n++] = v + side;
+                _indices[n++] = v + 1; _indices[n++] = v + side + 1; _indices[n++] = v + side;
             }
 
-        var entity = _world.Create(Transform.At(origin), $"terrain collision {sector.Coord}");
-        var body = _space.AddMesh(entity, _vertices.AsSpan(0, side * side), _indices.AsSpan(0, index), origin);
+        var entity = _world.Create(Transform.At(origin), $"terrain collision {sector.Coord} {index}");
+        var body = _space.AddMesh(entity, _vertices.AsSpan(0, side * side), _indices.AsSpan(0, n), origin);
         _world.Add(entity, body);
         _world.Add(entity, new SectorOwned { Sector = sector.Coord });   // unloading the sector takes it
-        Surfaces(body, heights, index / 3);
-        Log.Info(LogCat.Physics, $"Terrain sector {sector.Coord}: collision mesh with {index / 3} triangles in {watch.Elapsed.TotalMilliseconds:F1} ms");
+        Surfaces(body, heights, x0, z0, cells);
     }
 
     // What the ground is made of (issue #270): one surface when the sector is all layer 0, else each
     // triangle takes its cell's layer (two triangles a cell, in the order they were built above).
-    private void Surfaces(in PhysicsBody body, Heightfield heights, int triangles)
+    private void Surfaces(in PhysicsBody body, Heightfield heights, int x0, int z0, int cells)
     {
         var layers = _terrain!.SurfaceLayers;
         if (layers.Count == 0) return;
         if (heights.CellLayers == null) { _space.SetSurface(body, layers[0]); return; }
+        int triangles = cells * cells * 2;
         if (_triangleLayers.Length < triangles) _triangleLayers = new byte[triangles];
         for (int t = 0; t < triangles; t++)
         {
-            byte layer = heights.CellLayers[t / 2];
+            int cell = t / 2;
+            byte layer = heights.LayerAt(x0 + cell % cells, z0 + cell / cells);
             _triangleLayers[t] = layer < layers.Count ? layer : (byte)0;
         }
         _space.SetSurfaces(body, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(layers), _triangleLayers.AsSpan(0, triangles));

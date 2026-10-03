@@ -3,7 +3,9 @@
   // door, the door's OnFullyOpen raises a lift, the lift's OnFullyOpen has an NPC speak, and a logic_counter
   // that every step feeds reaches 3 and fires a relay. All of it is wiring in the scene's own placements.
   // CI validates it and runs it in the real host (tools/smoke_run.sh): a crate falls through the trigger
-  // as the game starts, so the chain runs with nobody at the keys.
+  // as the game starts, so the chain runs with nobody at the keys. The finale then uses the base's words for a
+  // data-only game (issue #275): a message, a wait, a spawned reward, a destroyed crate, an hour passing, and
+  // a relay that asks entity_exists, distance_to and in_scene.
   // tests/Sage.Tests/Games/ExitGameTests.cs boots it headlessly.
   "name": "Scripted sequence",
   "id": "scriptedsequence",
