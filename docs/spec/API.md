@@ -453,8 +453,8 @@ first three.
 |---|---|---|
 | Game events (`[GameEvent]` struct, `world.Events`) | Queued per schedule; each reader has a cursor | Facts between systems: `Damaged`, `Died`, `Used` |
 | Entity I/O (outputs to inputs) | Queued by due time, dispatched in `Phase.EntityIO` | Level logic wired in data |
-| Structural notifications | Immediate inside the world (internal); queued `Added<T>`/`Removed<T>` are planned (#282 4m-8) | Mirrors such as physics bodies |
-| Engine signals (plain C# events) | Immediate, main thread, outside ticks | `RecordStore` reloads, cvar changes |
+| Structural events (`Added<T>`, `Removed<T>`, #282) | Queued like game events, read by cursor (`world.Events.Reader<Added<Health>>(this)`); published only for a type somebody reads; the immediate `World.ComponentAdded`/`ComponentRemoved` stay for the world's own bookkeeping | Reacting to a component being gained or lost: mirrors, indexes, effects |
+| Engine signals (`engine.Signals`, plain C# events; and the `EngineSignal` game event in each world) | Immediate, main thread, outside ticks; in the world, queued for systems | World created, scene loaded, world destroying, paused and resumed (raised by the world on the first tick that sees its pause changed); `RecordStore` reloads, cvar changes |
 
 **Game event guarantees.** One queue per event type per schedule (Fixed by default). A reader sees every
 event sent after it was created, exactly once, in send order, which is deterministic because systems run
@@ -538,7 +538,6 @@ can. Neither should surface as a crash in play.
 | Packed `.sagemod` mods and namespaced mod assets (#397 9-2, #398 9-3) | Asset paths gain a mod namespace | Phase 9 |
 | Keyed list merge, `"$remove"` and `"replace": true` in patches (#399 9-4) | Lists of objects with a key merge by key; per-key conflicts | Phase 9 |
 | UI actions from data: a button names a UI action or console command (#347 4q-10) | Screens work without C# `Activated` handlers | 4q |
-| Queued structural events and engine signals (#282 4m-8) | `Added<T>`/`Removed<T>` readable by cursor | 4m |
 | Render pass replacement and disabling by id (#322 4n-18) | `sage:` passes become replaceable | 4n |
 | First tagged release and Shipped freeze (#295 R1-3) | Version numbers stop being pre-releases | R1 |
 

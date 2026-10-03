@@ -1,6 +1,6 @@
 # 04 · ECS, scenes and prefabs
 
-> Status: mostly built. Worlds, entities, components with stable ids, tags, typed queries, command buffers, the hierarchy, transforms with interpolation and large-world rebasing, per-world resources, prefabs with parts, children and per-placement overrides, scenes, placements and persistent ids all work and are tested. Queued add and remove events, overrides surviving a sector handoff, revert-to-prefab beyond the editor, and parallel systems are open. Owning assembly: `Sage.Simulation` (`ECS/`, `Content/`), with the declarations in `Sage.Core` and the generators in `Sage.Generators`. Design docs: [03 world and ECS](../../design/03-world-and-ecs.md), [09 serialization and saves](../../design/09-serialization-and-saves.md), [05 assets and VFS](../../design/05-assets-and-vfs.md) (prefabs, scenes).
+> Status: mostly built. Worlds, entities, components with stable ids, tags, typed queries, command buffers, the hierarchy, transforms with interpolation and large-world rebasing, per-world resources, prefabs with parts, children and per-placement overrides, scenes, placements and persistent ids all work and are tested. Queued add and remove events (#282) and overrides surviving a sector handoff (#279) are built; revert-to-prefab beyond the editor and parallel systems are open. Owning assembly: `Sage.Simulation` (`ECS/`, `Content/`), with the declarations in `Sage.Core` and the generators in `Sage.Generators`. Design docs: [03 world and ECS](../../design/03-world-and-ecs.md), [09 serialization and saves](../../design/09-serialization-and-saves.md), [05 assets and VFS](../../design/05-assets-and-vfs.md) (prefabs, scenes).
 
 ## 1. Purpose and scope
 
@@ -99,19 +99,16 @@ Content problems are load errors with file and line, never play-time crashes: a 
 | REQ-ECS-11 | Give persistent entities ids that survive sessions, and derive stable ids for authored placements. | Must | Done | test: PersistentIds_ResolveAndFollowDestruction |
 | REQ-ECS-12 | Keep a placed entity's overrides and wires after it leaves its sector and returns. | Must | Done | test: AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing |
 | REQ-ECS-13 | Offer revert-to-prefab and nested-prefab editing for designers. | Should | Partial (override and revert in the editor, no nesting) | #368, #372 |
-| REQ-ECS-14 | Let a placement override a part's state machine and ship an engine prefab for it. | Should | Partial (a placement overrides `machine`, #279; no engine prefab) | test: AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing; #280 |
-| REQ-ECS-15 | Publish queued `Added<T>` and `Removed<T>` events instead of immediate C# callbacks. | Should | Not started | #282 |
+| REQ-ECS-14 | Let a placement override a part's state machine and ship an engine prefab for it. | Should | Done | a placement overrides `machine` (#279); the engine prefab `sage:logic_state_machine` (#280); test: AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing, TheEnginePrefabRunsTheMachineAPlacementNames_AndAStatesOutputsAreWirable |
+| REQ-ECS-15 | Publish queued `Added<T>` and `Removed<T>` events instead of immediate C# callbacks. | Should | Done | `src/Sage.Simulation/ECS/Events/StructuralEvents.cs`; test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, ReadingAddsAndRemovesAllocatesNothingPerTick |
 | REQ-ECS-16 | Apply a changed prefab to live unmodified instances, by a declared reload policy. | Could | Not started | #287 |
 | REQ-ECS-17 | Run non-conflicting systems in parallel from declared access. | Could | Not started | #288 |
-| REQ-ECS-18 | Cover hierarchy destruction during a query, two worlds with a save, and sleeping-entity references with tests. | Should | Partial | #286 |
+| REQ-ECS-18 | Cover hierarchy destruction during a query, two worlds with a save, and sleeping-entity references with tests. | Should | Done | test: DestroyingAParentInsideAQueryIsDeferred_AndTheLoopStillSeesItsChildren, TwoWorldsKeepTheirOwnClocksAndEntities_AcrossASaveAndALoad, AWireToASleepingEntityDoesNothing_ThenWorksOnceItWakes |
 | REQ-ECS-19 | Remove unsaved live entities on load so a load cannot leave strays. | Must | Done | test: ALoadRemovesTheUnsavedSpawnsItDoesNotName, ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves |
 
 ## 10. Open work
 
 Milestone 2, 4m (World, logic and saves):
-- #280 4m-6 State machines: per-tick actions, nested/parallel states, per-state outputs (P2)
-- #282 4m-8 Events: structural `Added<T>`/`Removed<T>` and `EngineSignals` (P2)
-- #286 4m-12 Tests: hierarchy, multi-world, timers and tweens across a save (P2)
 - #287 4m-13 Hot reload for data beyond records: prefabs and scenes in running worlds (P3)
 - #288 4m-14 Parallel scheduler and access declarations (P3)
 

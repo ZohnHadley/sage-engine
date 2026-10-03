@@ -224,21 +224,22 @@ MonoGame's own fixed-step mode catches up by calling `Update` repeatedly without
 each MonoGame Update/Draw pair:
   realTime += realElapsed                             // unscaled, for host_exitafter, screenshot delay, shader Time
   frameDt   = min(realElapsed, maxFrameTime)          // sim_maxframetime, default 0.25 s → no spiral of death
-  frameDt  *= host_timescale                          // dev cvar
   input devices poll; input contexts resolve; Look added to the view angles   (08 §3.4)
-  accumulator += frameDt
+  accumulator += frameDt                              // real ticks: never scaled here
   while accumulator >= tickDt:                        // tickDt = 1 / sim_tickrate (60 Hz)
-      sample PlayerCommand for this tick              (08)
-      for each world: world.RunFixed(tickDt)           // Fixed phases (03)
+      for each world:                                 // WorldTime.HostScale = host_timescale (dev cvar)
+          world.RunFixed(tickDt, sample PlayerCommand) // 0..N steps of tickDt by the world's time (below)
       accumulator -= tickDt
-  alpha = accumulator / tickDt                        // interpolation factor for rendering
-  for each world: world.RunFrame(frameDt, alpha, realTime)   // FrameUpdate → Extract → Render → Overlay
+  alpha = accumulator / tickDt                        // interpolation factor; each world turns it into its own
+  for each world: world.RunFrame(frameDt * host_timescale, alpha, realTime)   // FrameUpdate → Extract → Render → Overlay
 ```
 
 - `sim_tickrate` default **60 Hz**; `sim_maxframetime` default 0.25 s; `host_timescale` (DevOnly, Cheat) default 1.
 - **Built in step 4** (`FixedStepClock` in `Sage.Core/Time.cs`); the loop itself is **`HostLoop`** (`Sage.Simulation/App/HostLoop.cs`, issue #10), which ticks and frames **every** world — until then the host ran only the one world it had created (test: TheLoopTicksEveryWorldNotJustTheFirst). Measured with `host_exitafter 3` and vsync off: ~2,250 fps with exactly 60.0 ticks/s at `sim_tickrate 60` and 5.0 ticks/s at `sim_tickrate 5`.
 - `Extract` interpolates transforms between the previous and current tick using `alpha` (06).
 - Pausing (`pause`, `World.Paused`) skips `WhenNotPaused` systems; ticks keep counting and Frame systems (camera, UI, rendering) keep running.
+- **Time scale, pause and hit-stop are each world's** (`WorldTime`, `src/Sage.Simulation/World/WorldTime.cs`, issue #283; saved as the `time` resource). The host runs *real* ticks; a world's real tick adds `tickDt × Scale × host_timescale` to its own accumulator and runs one step of exactly `tickDt` for each whole `tickDt` in it (at most 16). So the step never changes length — physics keeps the constant step it is tuned for, and two runs at the same scales take the same steps (test: AScaledWorldIsDeterministic) — and 0.5 is a step every other real tick, 2 two a tick (test: HalfScaleHalvesTimerTweenAndClockProgress). Scaling `dt` instead was rejected: every integrator would see a different step at each speed. A real tick with no step due (paused, hit-stopped, between the steps of a slowed world) is a *held pass*: the Fixed phases run once with `Dt` 0 and only `RunCondition.Always` systems, which read `WorldTime.RealDt` (test: RealTimeTimersAndTweensIgnoreScalePauseAndHitStop). `HitStop(seconds)` holds the world for real seconds (test: AHitStopFreezesTheWorldForRealSeconds). The player's command is sampled before each *step*, so a slowed world keeps a press for its next step; a paused one is handed one each tick and drops it, as before (test: TheHostLoopsTimeScaleRoutesThroughWorldTime). Each world's frame alpha is how far it is between its own steps (test: ASlowedWorldInterpolatesBetweenItsOwnSteps). Console: `world_speed`, `hit_stop`, `pause`.
+- **Left after #283:** a real-time timer's outputs that fire during a pause are delivered when the world next runs a step (entity I/O's dispatch runs on steps); the Frame schedule's `FrameTime.Dt` is scaled by `host_timescale` but not by a world's speed, so frame-rate effects (particles, weather) do not slow with bullet time; there is no per-system speed factor (a system runs on the world's time, or on real time by `RunCondition.Always`). A pause raises `EngineSignals.PauseChanged` on the next tick (04 §3.5, PR #443).
 - Vsync is a cvar (`r_vsync`, Archive). `host_maxfps` (a frame cap with vsync off) is **not built yet**.
 - `host_exitafter <seconds>` (DevOnly) quits after that much real time and logs frame and tick counts, for automated smoke runs.
 

@@ -51,7 +51,7 @@ The base plugins, by id: `sage.physics3d`, `sage.streaming`, `sage.maps`, the `s
 
 **`game.json` keys:** `name`, `id`, `assembly` (with `{config}`), `mounts`, `modsDirectory`, `modules.add`, `modules.disable`, `plugins`, `kits`, `scene`, `sage` (version range), `version`. A misspelt key is an error (test: AMisspeltGameJsonKeyIsAnError).
 
-**Console commands:** `plugins`, `modules`, `sys_list`, `sys_toggle`, `ev_stats`, `vfs_mounts`, `quit`, `pause`, `time_scale`.
+**Console commands:** `plugins`, `modules`, `sys_list`, `sys_toggle`, `ev_stats`, `vfs_mounts`, `quit`, `pause`, `time_scale` (the clock's hours), `world_speed`, `hit_stop` (the world's time, #283).
 
 **Launch:** `Sage.Host -game <folder> [-mods ...] [-nomods] [-edit [doc]] [-dump-registry file] [+statement ...]`. There is no implicit game: without `-game` or a `game/` folder beside the executable the host stops and lists the games it can see.
 
@@ -87,7 +87,7 @@ Engine-owned records and parts use `Plugin = RegistrationOwners.Core`, so a game
 
 Tests: ACvarRegisteredAfterConfigCfgIsAnError, ARecordTypeOrActionRegisteredAfterContentLoadedIsAnError, AModuleAddedAfterInitOrAPartAfterTheFirstWorldIsAnError. Registering in `Start`, `OnWorldCreated`, `CreateRules` or a system is also a build error (test: RegisteringACvarInStartIsABuildError).
 
-**Each frame** (`HostLoop`): `FixedStepClock.Advance` computes `min(realDt, sim_maxframetime) * host_timescale`, accumulates, and yields whole ticks of `1/sim_tickrate` plus an alpha (test: Clock_RunsWholeTicks_AndCarriesTheRemainder). Every world runs each tick in creation order, with `beforeTick` handing the player's world its command; a world created during a tick starts on the next (test: AWorldCreatedDuringATickStartsOnTheNextOne). Then `Frame()` runs every world's frame schedule.
+**Each frame** (`HostLoop`): `FixedStepClock.Advance` computes `min(realDt, sim_maxframetime)`, accumulates, and yields whole real ticks of `1/sim_tickrate` plus an alpha (test: Clock_RunsWholeTicks_AndCarriesTheRemainder). Every world runs each real tick in creation order; its `WorldTime` (#283) turns the tick into as many constant-length simulation steps as its scale, `host_timescale`, pause and hit-stop make due, none to `WorldTime.MaxStepsPerTick` (test: HalfScaleHalvesTimerTweenAndClockProgress, TheHostLoopsTimeScaleRoutesThroughWorldTime), with `beforeTick` handing the player's world its command before each step; a world created during a tick starts on the next (test: AWorldCreatedDuringATickStartsOnTheNextOne). Then `Frame()` runs every world's frame schedule.
 
 **Phases:**
 
@@ -125,8 +125,8 @@ Debug: `plugins` (each plugin, version, what it registered), `modules`, `sys_lis
 | REQ-LOOP-09 | Check phase guarantees in dev builds, not in comments. | Should | Done | test: WritingAfterTheDeclaredPhaseIsReported |
 | REQ-LOOP-10 | Reject unknown `game.json` keys and report a bad manifest with its path. | Must | Done | test: AMisspeltGameJsonKeyIsAnError |
 | REQ-LOOP-11 | Run non-conflicting systems of a phase in parallel from declared access, with identical results. | Could | Not started | #288 |
-| REQ-LOOP-12 | Run a time scale, pause and hit-stop per world. | Should | Not started | #283 |
-| REQ-LOOP-13 | Offer queued `Added<T>`/`Removed<T>` events and engine signals (scene loaded, world created, paused). | Should | Not started | #282 |
+| REQ-LOOP-12 | Run a time scale, pause and hit-stop per world. | Should | Done | `WorldTime`: constant-length steps, more or fewer per real tick; `host_timescale` goes through it; test: AScaledWorldIsDeterministic, TheHostLoopsTimeScaleRoutesThroughWorldTime |
+| REQ-LOOP-13 | Offer queued `Added<T>`/`Removed<T>` events and engine signals (scene loaded, world created, paused). | Should | Done: `Added<T>`/`Removed<T>` and `engine.Signals` (world created, scene loaded, world destroying, paused and resumed, raised on the first tick that sees the change) | test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, EngineSignalsSayAWorldWasCreatedAndASceneLoaded |
 | REQ-LOOP-14 | Put several worlds on screen at once (split-screen, secondary views). | Could | Not started | #323 |
 | REQ-LOOP-15 | Run two interior spaces or worlds live at once. | Could | Not started | #291 |
 | REQ-LOOP-16 | Load a code mod assembly into a collectible load context, ordered against the game's plugins. | Should | Not started | #396 |
@@ -140,8 +140,6 @@ Milestone 3, R1 (Tooling and the first release):
 - #294 R1-2 Fix the Release-vs-Shipping `{config}` trap (P1)
 
 Milestone 2, 4m (World, logic and saves):
-- #282 4m-8 Events: structural `Added<T>`/`Removed<T>` and `EngineSignals` (P2)
-- #283 4m-9 Time scale, pause and hit-stop as world services (P2)
 - #288 4m-14 Parallel scheduler and access declarations (P3)
 - #291 4m-17 Interiors as separate spaces and companions through doors (P3)
 

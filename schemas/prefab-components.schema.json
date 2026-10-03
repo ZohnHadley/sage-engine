@@ -76,6 +76,14 @@
         }
       ]
     },
+    "calendar_event": {
+      "description": "The component sage:calendar_event (CalendarEventListener), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:calendar_event"
+        }
+      ]
+    },
     "camera": {
       "description": "The component sage:camera (Camera), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -673,6 +681,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:bone_attachment"
+        }
+      ]
+    },
+    "sage:calendar_event": {
+      "description": "Component sage:calendar_event (CalendarEventListener).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:calendar_event"
         }
       ]
     },
@@ -2539,6 +2555,31 @@
       },
       "additionalProperties": false,
       "description": "Component sage:bone_attachment (BoneAttachment)."
+    },
+    "sage:calendar_event": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "description": "The calendar_event record it listens for. Names a calendar_event record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:calendar_event"
+            }
+          ]
+        },
+        "lastDay": {
+          "description": "The last day (the clock's day count) it looked at; the event fires when a day after it is the event's. (int, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "seen": {
+          "description": "Whether LastDay means anything yet; off until its first look. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:calendar_event (CalendarEventListener)."
     },
     "sage:camera": {
       "type": "object",
