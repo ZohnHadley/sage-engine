@@ -151,6 +151,7 @@ public sealed class Scenes
         }
         Place(world, start, scene);
         ApplyEnvironment(world, scene);
+        _engine.Signals.RaiseSceneLoaded(world, start);   // #282
     }
 
     // `scene_load`: the world's scene is swept away and another placed. The player stays, and is moved
@@ -186,6 +187,7 @@ public sealed class Scenes
         }
         Log.Info(LogCat.World, $"'{world.Name}' is in scene '{state.Id}'");
         _engine.Saves.SceneChanged();   // an autosave at the end of the next tick (4i-6)
+        _engine.Signals.RaiseSceneLoaded(world, id);   // #282
         return true;
     }
 

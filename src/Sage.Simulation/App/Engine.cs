@@ -8,8 +8,8 @@ namespace Sage.Simulation;
 // and passed in; never a static singleton. Lives in Sage.Simulation, so it holds no MonoGame types:
 // client services (renderer, input devices, audio) are provided by client modules (ModuleContext).
 //
-// Today: cvars, the VFS, records, input actions, modules and the worlds. AssetServer, JobSystem and EngineSignals
-// join in later steps.
+// Today: cvars, the VFS, records, input actions, modules, the worlds and EngineSignals (#282). AssetServer
+// and JobSystem join in later steps.
 public sealed class Engine : IDisposable
 {
     private readonly List<World> _worlds = new();
@@ -154,6 +154,9 @@ public sealed class Engine : IDisposable
     public ModuleManager Modules { get; }
     public IReadOnlyList<World> Worlds => _worlds;
 
+    // World created, scene loaded, paused: as C# events here and as `EngineSignal` in each world (#282).
+    public EngineSignals Signals { get; } = new();
+
     // Creating a world initializes the ECS schema: every assembly that defines component types must
     // already be loaded (the host loads them first; see docs/design/03 §3.1).
     public World CreateWorld(string name) => CreateWorld(name, editing: false, Scenes.Start);
@@ -260,6 +263,7 @@ public sealed class Engine : IDisposable
         // Now that every module has had its turn, the game's rules may populate the world (16 §3.1). Not
         // an edit world's: it shows the document, without a player or anything else the rules would add.
         if (!editing) rules.OnWorldStarted(world);
+        Signals.RaiseWorldCreated(world);   // furnished, placed and started (#282)
         return world;
     }
 
@@ -270,6 +274,7 @@ public sealed class Engine : IDisposable
             Assert.Ensure(false, $"DestroyWorld: '{world.Name}' is not one of this engine's worlds");
             return;
         }
+        Signals.RaiseWorldDestroying(world);
         world.Dispose();
     }
 
