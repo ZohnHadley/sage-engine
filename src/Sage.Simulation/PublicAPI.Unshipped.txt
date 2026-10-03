@@ -32,6 +32,11 @@ const Sage.Simulation.LogicEntities.OnNotEqual = "OnNotEqual" -> string!
 const Sage.Simulation.LogicEntities.OnTrigger = "OnTrigger" -> string!
 const Sage.Simulation.LogicEntities.OnTrue = "OnTrue" -> string!
 const Sage.Simulation.LogicEntities.OnValue = "OnValue" -> string!
+const Sage.Simulation.LogicGates.MaxCases = 16 -> int
+const Sage.Simulation.LogicGates.OnAllSet = "OnAllSet" -> string!
+const Sage.Simulation.LogicGates.OnDefault = "OnDefault" -> string!
+const Sage.Simulation.LogicGates.OnMapSpawn = "OnMapSpawn" -> string!
+const Sage.Simulation.LogicGates.OnNotAllSet = "OnNotAllSet" -> string!
 const Sage.Simulation.LogicTargets.Other = "!other" -> string!
 const Sage.Simulation.LogicTargets.Subject = "!subject" -> string!
 const Sage.Simulation.ModManager.MountPrefix = "mods/" -> string!
@@ -63,6 +68,8 @@ const Sage.Simulation.SkyRules.StarsOut = 0.15 -> float
 const Sage.Simulation.SkyRules.SunDiscGain = 4 -> float
 const Sage.Simulation.SkyRules.SunDiscInner = 0.9997 -> float
 const Sage.Simulation.SkyRules.SunDiscOuter = 0.99955 -> float
+const Sage.Simulation.Spawners.OnSpawned = "OnSpawned" -> string!
+const Sage.Simulation.Spawners.SpawnInput = "Spawn" -> string!
 const Sage.Simulation.StateMachines.OnStateChanged = "OnStateChanged" -> string!
 const Sage.Simulation.StateMachines.SetStateInput = "SetState" -> string!
 const Sage.Simulation.ThirdPersonRig.DefaultDistance = 3 -> float
@@ -70,6 +77,8 @@ const Sage.Simulation.ThirdPersonRig.DefaultProbeRadius = 0.25 -> float
 const Sage.Simulation.ThirdPersonRig.DefaultSmoothing = 0.3 -> float
 const Sage.Simulation.ThirdPersonRigSystem.Id = "sage.camera.third_person" -> string!
 const Sage.Simulation.Time.MaxHours = 8760000 -> double
+const Sage.Simulation.Timers.AddInput = "TimerAdd" -> string!
+const Sage.Simulation.Timers.FireInput = "TimerFire" -> string!
 const Sage.Simulation.Timers.OnTimer = "OnTimer" -> string!
 const Sage.Simulation.Timers.ResetInput = "TimerReset" -> string!
 const Sage.Simulation.Timers.StartInput = "TimerStart" -> string!
@@ -79,6 +88,9 @@ const Sage.Simulation.ToggleViewSystem.Id = "sage.camera.toggle_view" -> string!
 const Sage.Simulation.Travel.DefaultSpeed = 5000 -> float
 const Sage.Simulation.Travel.TravelInput = "Travel" -> string!
 const Sage.Simulation.Tweens.OnTweenDone = "OnTweenDone" -> string!
+const Sage.Simulation.Tweens.OnTweenLoop = "OnTweenLoop" -> string!
+const Sage.Simulation.Tweens.OnTweenStep = "OnTweenStep" -> string!
+const Sage.Simulation.Tweens.PlayInput = "TweenPlay" -> string!
 const Sage.Simulation.Tweens.StopInput = "TweenStop" -> string!
 const Sage.Simulation.Tweens.ToInput = "TweenTo" -> string!
 const Sage.Simulation.Viewmodel.DefaultFar = 10 -> float
@@ -709,6 +721,12 @@ Sage.Simulation.LoadDoorPart.Entry -> string!
 Sage.Simulation.LoadDoorPart.Hours -> float
 Sage.Simulation.LoadDoorPart.LoadDoorPart() -> void
 Sage.Simulation.LoadDoorPart.Scene -> Sage.Core.RecordRef<Sage.Simulation.SceneRecord!>
+Sage.Simulation.LogicAuto
+Sage.Simulation.LogicAuto.Fired -> bool
+Sage.Simulation.LogicAuto.LogicAuto() -> void
+Sage.Simulation.LogicAutoPart
+Sage.Simulation.LogicAutoPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicAutoPart.LogicAutoPart() -> void
 Sage.Simulation.LogicBranch
 Sage.Simulation.LogicBranch.LogicBranch() -> void
 Sage.Simulation.LogicBranch.Value -> bool
@@ -716,6 +734,20 @@ Sage.Simulation.LogicBranchPart
 Sage.Simulation.LogicBranchPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Simulation.LogicBranchPart.LogicBranchPart() -> void
 Sage.Simulation.LogicBranchPart.Value -> bool
+Sage.Simulation.LogicCase
+Sage.Simulation.LogicCase.Dealt -> uint
+Sage.Simulation.LogicCase.LogicCase() -> void
+Sage.Simulation.LogicCase.Random -> uint
+Sage.Simulation.LogicCasePart
+Sage.Simulation.LogicCasePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicCasePart.Cases -> System.Collections.Generic.List<string!>!
+Sage.Simulation.LogicCasePart.Choices -> int
+Sage.Simulation.LogicCasePart.LogicCasePart() -> void
+Sage.Simulation.LogicCasePart.Seed -> uint
+Sage.Simulation.LogicCaseScript
+Sage.Simulation.LogicCaseScript.Cases -> string![]?
+Sage.Simulation.LogicCaseScript.Choices -> int
+Sage.Simulation.LogicCaseScript.LogicCaseScript() -> void
 Sage.Simulation.LogicCompare
 Sage.Simulation.LogicCompare.CompareValue -> float
 Sage.Simulation.LogicCompare.LogicCompare() -> void
@@ -741,6 +773,17 @@ Sage.Simulation.LogicCounterPart.Min -> float
 Sage.Simulation.LogicCounterPart.Start -> float
 Sage.Simulation.LogicCounterPart.StartDisabled -> bool
 Sage.Simulation.LogicEntities
+Sage.Simulation.LogicGates
+Sage.Simulation.LogicMultisource
+Sage.Simulation.LogicMultisource.All.get -> uint
+Sage.Simulation.LogicMultisource.Complete -> bool
+Sage.Simulation.LogicMultisource.LogicMultisource() -> void
+Sage.Simulation.LogicMultisource.Set -> uint
+Sage.Simulation.LogicMultisource.Sources -> int
+Sage.Simulation.LogicMultisourcePart
+Sage.Simulation.LogicMultisourcePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicMultisourcePart.LogicMultisourcePart() -> void
+Sage.Simulation.LogicMultisourcePart.Sources -> int
 Sage.Simulation.LogicRelay
 Sage.Simulation.LogicRelay.Disabled -> bool
 Sage.Simulation.LogicRelay.LogicRelay() -> void
@@ -756,6 +799,23 @@ Sage.Simulation.LogicRelayScript
 Sage.Simulation.LogicRelayScript.LogicRelayScript() -> void
 Sage.Simulation.LogicRelayScript.Requires -> Sage.Simulation.ICondition?
 Sage.Simulation.LogicRelayScript.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>?
+Sage.Simulation.LogicSpawner
+Sage.Simulation.LogicSpawner.Disabled -> bool
+Sage.Simulation.LogicSpawner.Limit -> int
+Sage.Simulation.LogicSpawner.LogicSpawner() -> void
+Sage.Simulation.LogicSpawner.Spawned -> int
+Sage.Simulation.LogicSpawnerPart
+Sage.Simulation.LogicSpawnerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicSpawnerPart.Limit -> int
+Sage.Simulation.LogicSpawnerPart.LogicSpawnerPart() -> void
+Sage.Simulation.LogicSpawnerPart.Place -> System.Collections.Generic.List<Sage.Simulation.Placement!>!
+Sage.Simulation.LogicSpawnerPart.Prefab -> Sage.Core.RecordRef<Sage.Simulation.PrefabRecord!>
+Sage.Simulation.LogicSpawnerPart.StartDisabled -> bool
+Sage.Simulation.LogicSpawnerPart.UniqueNames -> bool
+Sage.Simulation.LogicSpawnerTemplate
+Sage.Simulation.LogicSpawnerTemplate.LogicSpawnerTemplate() -> void
+Sage.Simulation.LogicSpawnerTemplate.Place -> Sage.Simulation.Placement![]?
+Sage.Simulation.LogicSpawnerTemplate.UniqueNames -> bool
 Sage.Simulation.LogicTargets
 Sage.Simulation.LogicTimer
 Sage.Simulation.LogicTimer.Activator -> Sage.Simulation.Entity
@@ -771,11 +831,29 @@ Sage.Simulation.LogicTimerPart
 Sage.Simulation.LogicTimerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Simulation.LogicTimerPart.Interval -> float
 Sage.Simulation.LogicTimerPart.LogicTimerPart() -> void
+Sage.Simulation.LogicTimerPart.RandomMax -> float
+Sage.Simulation.LogicTimerPart.RandomMin -> float
 Sage.Simulation.LogicTimerPart.RealTime -> bool
 Sage.Simulation.LogicTimerPart.Repeat -> bool
 Sage.Simulation.LogicTimerPart.Seed -> uint
 Sage.Simulation.LogicTimerPart.Spread -> float
 Sage.Simulation.LogicTimerPart.StartOn -> bool
+Sage.Simulation.LogicTrigger
+Sage.Simulation.LogicTrigger.Cooldown -> float
+Sage.Simulation.LogicTrigger.Disabled -> bool
+Sage.Simulation.LogicTrigger.LogicTrigger() -> void
+Sage.Simulation.LogicTrigger.Once -> bool
+Sage.Simulation.LogicTrigger.Wait -> float
+Sage.Simulation.LogicTriggerPart
+Sage.Simulation.LogicTriggerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LogicTriggerPart.LogicTriggerPart() -> void
+Sage.Simulation.LogicTriggerPart.Once -> bool
+Sage.Simulation.LogicTriggerPart.Requires -> Sage.Simulation.ICondition?
+Sage.Simulation.LogicTriggerPart.StartDisabled -> bool
+Sage.Simulation.LogicTriggerPart.Wait -> float
+Sage.Simulation.LogicTriggerScript
+Sage.Simulation.LogicTriggerScript.LogicTriggerScript() -> void
+Sage.Simulation.LogicTriggerScript.Requires -> Sage.Simulation.ICondition?
 Sage.Simulation.MachineState
 Sage.Simulation.MachineState.Enter -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Simulation.MachineState.Exit -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
@@ -1205,6 +1283,7 @@ Sage.Simulation.SoundRequested.Source.get -> Sage.Simulation.Entity
 Sage.Simulation.SoundRequested.Source.init -> void
 Sage.Simulation.SoundRequested.Volume.get -> float
 Sage.Simulation.SoundRequested.Volume.init -> void
+Sage.Simulation.Spawners
 Sage.Simulation.StateMachine
 Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
 Sage.Simulation.StateMachine.Machine -> Sage.Core.RecordId
@@ -1326,8 +1405,24 @@ Sage.Simulation.TriggerExited.Trigger.get -> Sage.Simulation.Entity
 Sage.Simulation.TriggerExited.Trigger.init -> void
 Sage.Simulation.TriggerExited.TriggerExited() -> void
 Sage.Simulation.TriggerExited.TriggerExited(Sage.Simulation.Entity Trigger, Sage.Simulation.Entity Other) -> void
+Sage.Simulation.Tween.Loop -> Sage.Simulation.TweenLoop
+Sage.Simulation.Tween.Loops -> int
+Sage.Simulation.Tween.Played -> int
+Sage.Simulation.Tween.PlayingLoop -> Sage.Simulation.TweenLoop
 Sage.Simulation.Tween.RealTime -> bool
+Sage.Simulation.Tween.Sequencing -> bool
+Sage.Simulation.Tween.Step -> int
+Sage.Simulation.TweenLoop
+Sage.Simulation.TweenLoop.Once = 0 -> Sage.Simulation.TweenLoop
+Sage.Simulation.TweenLoop.PingPong = 2 -> Sage.Simulation.TweenLoop
+Sage.Simulation.TweenLoop.Restart = 1 -> Sage.Simulation.TweenLoop
+Sage.Simulation.TweenPart.Loop -> Sage.Simulation.TweenLoop
+Sage.Simulation.TweenPart.Loops -> int
 Sage.Simulation.TweenPart.RealTime -> bool
+Sage.Simulation.TweenPart.Sequence -> System.Collections.Generic.List<string!>!
+Sage.Simulation.TweenSequence
+Sage.Simulation.TweenSequence.Steps -> string![]?
+Sage.Simulation.TweenSequence.TweenSequence() -> void
 Sage.Simulation.TwoBoneIk
 Sage.Simulation.UnknownSavedData
 Sage.Simulation.UnknownSavedData.Components -> string!
@@ -1546,6 +1641,7 @@ static Sage.Simulation.IOTargets.Members(Sage.Simulation.World! world, string! t
 static Sage.Simulation.IOTargets.Problem(Sage.Simulation.Engine! engine, string! target) -> string?
 static Sage.Simulation.JointDesc.FromWorld(Sage.Simulation.JointKind kind, in Sage.Simulation.Pose a, in Sage.Simulation.Pose b, System.Numerics.Vector3 worldAnchor, System.Numerics.Vector3 worldAxis = default(System.Numerics.Vector3)) -> Sage.Simulation.JointDesc
 static Sage.Simulation.LogicEntities.Remap(in Sage.Simulation.MathRemap remap, float value) -> float
+static Sage.Simulation.LogicGates.CaseOutput(int index) -> string!
 static Sage.Simulation.LogicTargets.Find(Sage.Simulation.World! world, string! target, Sage.Simulation.Entity subject, Sage.Simulation.Entity other) -> Sage.Simulation.Entity
 static Sage.Simulation.LogicTargets.Find(Sage.Simulation.World! world, string! target, Sage.Simulation.Entity subject, Sage.Simulation.Entity other, ref Sage.Simulation.Entity cache) -> Sage.Simulation.Entity
 static Sage.Simulation.LogicTargets.IsKnown(string! target) -> bool
@@ -1596,6 +1692,7 @@ static Sage.Simulation.SkyRules.Haze(float elevation) -> float
 static Sage.Simulation.SkyRules.StarsAt(float sunElevation) -> float
 static Sage.Simulation.SkyRules.SunAt(Sage.Simulation.SkyRecord! sky, double hour) -> (System.Numerics.Vector3 ToSun, float Elevation)
 static Sage.Simulation.SkyRules.SunDisc(System.Numerics.Vector3 direction, System.Numerics.Vector3 sunDirection) -> float
+static Sage.Simulation.Spawners.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity spawner) -> Sage.Simulation.Entity
 static Sage.Simulation.StateMachines.FirstTransition(System.Collections.Generic.IReadOnlyList<Sage.Simulation.StateTransition!>? transitions, string? input, float timeInState, in Sage.Simulation.ConditionContext context) -> Sage.Simulation.StateTransition?
 static Sage.Simulation.StateMachines.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
 static Sage.Simulation.StateMachines.SetState(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! state, Sage.Simulation.Entity activator = default(Sage.Simulation.Entity)) -> bool
@@ -1611,6 +1708,7 @@ static Sage.Simulation.Travel.To(Sage.Simulation.World! world, Sage.Core.RecordI
 static Sage.Simulation.Travel.ToPoint(Sage.Simulation.World! world, string! point) -> bool
 static Sage.Simulation.Travel.Use(Sage.Simulation.World! world, Sage.Simulation.Entity door, Sage.Simulation.Entity user) -> bool
 static Sage.Simulation.TravelLog.Of(Sage.Simulation.World! world) -> Sage.Simulation.TravelLog!
+static Sage.Simulation.Tweens.TryRead(System.ReadOnlySpan<char> parameter, in Sage.Simulation.Tween tween, out Sage.Simulation.TweenChannel channel, out System.Numerics.Vector3 goal, out bool relative, out float seconds, out Sage.Simulation.Ease ease, out Sage.Simulation.TweenLoop loop) -> bool
 static Sage.Simulation.TwoBoneIk.Solve(Sage.Simulation.SkeletonPose! pose, int root, int mid, int tip, System.Numerics.Vector3 target) -> bool
 static Sage.Simulation.TwoBoneIk.Solve(Sage.Simulation.SkeletonPose! pose, int root, int mid, int tip, System.Numerics.Vector3 target, System.Numerics.Vector3 pole, float weight = 1, bool keepTipRotation = false) -> bool
 static Sage.Simulation.Vars.Of(Sage.Simulation.World! world) -> Sage.Simulation.Vars!

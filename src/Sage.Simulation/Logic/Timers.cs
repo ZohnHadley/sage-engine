@@ -15,6 +15,8 @@ namespace Sage.Simulation;
 //   inputs   TimerStart [seconds]   start counting from a full wait (a number: the new interval first)
 //            TimerStop              stop; nothing fires until TimerStart
 //            TimerReset             begin the wait again from full, running or not
+//            TimerFire              fire OnTimer now; a running timer then waits again from full (#281)
+//            TimerAdd seconds       add to (or, negative, take from) the wait left (#281)
 //   output   OnTimer                the wait ran out; the activator is whoever started the timer
 //
 // The input names say `Timer` because the input table was one global namespace (EntityInputs): `Toggle`
@@ -30,7 +32,8 @@ namespace Sage.Simulation;
 // **Random, and still deterministic.** `spread` makes each wait `interval ± spread` (never below zero),
 // drawn from the timer's own random stream: its state is in the component and saved, so a loaded game
 // draws the same waits it would have, and two runs of a level draw the same ones (the stream starts from
-// `seed`, or from the entity when there is none).
+// `seed`, or from the entity when there is none). The part's `randomMin` and `randomMax` say the same
+// as bounds, Source's LowerRandomBound and UpperRandomBound: each wait anywhere between them (#281).
 //
 // Owned by the engine (`sage.core`), like cameras (CameraIO): a data-only game has timers whatever
 // plugins it lists; their outputs reach wires when the entity I/O plugin is on, as every output does.
@@ -75,13 +78,27 @@ public sealed class LogicTimerPart : IPrefabPart
     public uint Seed;
     [Property(Tooltip = "Count real seconds: through a pause, a hit-stop and any world speed (WorldTime)")]
     public bool RealTime;
+    [Property(Min = 0, Unit = "s", Tooltip = "With randomMax: each wait is anywhere from this to randomMax (instead of interval and spread)")]
+    public float RandomMin;
+    [Property(Min = 0, Unit = "s", Tooltip = "With randomMin: each wait is anywhere from randomMin to this (instead of interval and spread)")]
+    public float RandomMax;
 
     public void Apply(in PrefabPartContext ctx)
     {
+        float interval = Timers.Seconds(Interval, 1f, "interval", ctx), spread = Timers.Seconds(Spread, 0f, "spread", ctx);
+        if (RandomMin != 0f || RandomMax != 0f)
+        {
+            float min = Timers.Seconds(RandomMin, 0f, "randomMin", ctx), max = Timers.Seconds(RandomMax, 0f, "randomMax", ctx);
+            if (max < min) ctx.Warn($"randomMax {max} is below randomMin {min}: they are swapped");
+            if (max < min) (min, max) = (max, min);
+            // interval ± spread is the same range: the middle, give or take half of it.
+            interval = (min + max) * 0.5f;
+            spread = (max - min) * 0.5f;
+        }
         var timer = new LogicTimer
         {
-            Interval = Timers.Seconds(Interval, 1f, "interval", ctx),
-            Spread = Timers.Seconds(Spread, 0f, "spread", ctx),
+            Interval = interval,
+            Spread = spread,
             Repeat = Repeat,
             RealTime = RealTime,
             Random = Seed,
@@ -98,6 +115,8 @@ public static class Timers
     public const string StartInput = "TimerStart";
     public const string StopInput = "TimerStop";
     public const string ResetInput = "TimerReset";
+    public const string FireInput = "TimerFire";
+    public const string AddInput = "TimerAdd";
     public const string OnTimer = "OnTimer";
 
     // What is left at or under this is "done": N seconds counted down in 1/60 s steps leaves float dust
@@ -131,6 +150,27 @@ public static class Timers
             ref var timer = ref world.Get<LogicTimer>(io.Self);
             timer.Remaining = NextWait(ref timer, io.Self);
         });
+        // Source's FireTimer: OnTimer now, from whoever sent it; a running timer starts its wait again.
+        engine.Inputs.Register(FireInput, static (World world, in IOContext io) =>
+        {
+            if (!Find(world, io, FireInput)) return;
+            ref var timer = ref world.Get<LogicTimer>(io.Self);
+            if (timer.Running) timer.Remaining = NextWait(ref timer, io.Self);
+            world.FireOutput(io.Self, OnTimer, io.Activator);
+        });
+        // Source's AddToTimer / SubtractFromTimer: the wait left, longer or shorter (never below nothing).
+        engine.Inputs.Register(AddInput, static (World world, in IOContext io) =>
+        {
+            if (!Find(world, io, AddInput)) return;
+            float seconds = io.Number(float.NaN);
+            if (!float.IsFinite(seconds))
+            {
+                Log.Warn(LogCat.Events, $"I/O: {AddInput}({io.Parameter}) at {World.Describe(io.Self)}: the parameter should be seconds");
+                return;
+            }
+            ref var timer = ref world.Get<LogicTimer>(io.Self);
+            timer.Remaining = MathF.Max(0f, timer.Remaining + seconds);
+        });
         engine.Outputs.Declare(OnTimer, "This timer's wait ran out (sage:timer; TimerStart starts it).");
     }
 
@@ -146,9 +186,16 @@ public static class Timers
     {
         float interval = timer.Interval >= 0f && float.IsFinite(timer.Interval) ? timer.Interval : 0f;
         if (!(timer.Spread > 0f) || !float.IsFinite(timer.Spread)) return interval;
-        if (timer.Random == 0) timer.Random = Seed(entity);
-        float unit = Next(ref timer.Random) * 2f - 1f;          // -1..1
+        float unit = Random01(ref timer.Random, entity) * 2f - 1f;   // -1..1
         return MathF.Max(0f, interval + unit * timer.Spread);
+    }
+
+    // The next draw, 0 (included) to 1 (not), from a stream kept in a saved component: 0 = not started,
+    // and the first draw seeds it from the entity. What timers, logic_case and the rest draw from.
+    internal static float Random01(ref uint state, Entity entity)
+    {
+        if (state == 0) state = Seed(entity);
+        return Next(ref state);
     }
 
     // xorshift32 (Marsaglia): tiny, fast, allocation-free and the same on every machine.

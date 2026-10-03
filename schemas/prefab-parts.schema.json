@@ -227,11 +227,34 @@
         }
       ]
     },
+    "logic_auto": {
+      "description": "Prefab part 'logic_auto' (LogicAutoPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/logic_auto"
+        }
+      ]
+    },
     "logic_branch": {
       "description": "Prefab part 'logic_branch' (LogicBranchPart).",
       "allOf": [
         {
           "$ref": "#/definitions/logic_branch"
+        }
+      ]
+    },
+    "logic_case": {
+      "description": "Prefab part 'logic_case' (LogicCasePart). A bare value is its \"cases\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/logic_case"
+        },
+        {
+          "description": "What InValue compares with, in order: a match with the first fires OnCase01, and so on (at most 16) (List<string>)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       ]
     },
@@ -248,6 +271,21 @@
       "allOf": [
         {
           "$ref": "#/definitions/logic_counter"
+        }
+      ]
+    },
+    "logic_multisource": {
+      "description": "Prefab part 'logic_multisource' (LogicMultisourcePart). A bare value is its \"sources\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/logic_multisource"
+        },
+        {
+          "description": "How many sources must be set: numbered 1 to this. Range: 1 to 32. (int, default 2)",
+          "default": 2,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
         }
       ]
     },
@@ -387,6 +425,22 @@
         }
       ]
     },
+    "spawner": {
+      "description": "Prefab part 'spawner' (LogicSpawnerPart). A bare value is its \"prefab\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/spawner"
+        },
+        {
+          "description": "A prefab Spawn places at the spawner (beside the `place` template, if any) Names a prefab record. (RecordRef<PrefabRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:prefab"
+            }
+          ]
+        }
+      ]
+    },
     "sprite": {
       "description": "Prefab part 'sprite' (SpritePart).",
       "allOf": [
@@ -424,6 +478,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/travel_point"
+        }
+      ]
+    },
+    "trigger": {
+      "description": "Prefab part 'trigger' (LogicTriggerPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/trigger"
         }
       ]
     },
@@ -1383,6 +1445,10 @@
       "additionalProperties": false,
       "description": "Prefab part 'load_door' (LoadDoorPart)."
     },
+    "logic_auto": {
+      "type": "object",
+      "description": "Prefab part 'logic_auto' (LogicAutoPart)."
+    },
     "logic_branch": {
       "type": "object",
       "properties": {
@@ -1394,6 +1460,47 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'logic_branch' (LogicBranchPart)."
+    },
+    "logic_case": {
+      "type": "object",
+      "properties": {
+        "cases": {
+          "description": "What InValue compares with, in order: a match with the first fires OnCase01, and so on (at most 16) (List<string>)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cases+": {
+          "description": "Adds to \"cases\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cases-": {
+          "description": "Removes these from \"cases\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "choices": {
+          "description": "How many OnCase outputs PickRandom chooses among; 0 = one per case. Range: 0 to 16. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        },
+        "seed": {
+          "description": "Where the random stream starts; 0 = from the entity. (uint, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'logic_case' (LogicCasePart)."
     },
     "logic_compare": {
       "type": "object",
@@ -1438,6 +1545,20 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'logic_counter' (LogicCounterPart)."
+    },
+    "logic_multisource": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "description": "How many sources must be set: numbered 1 to this. Range: 1 to 32. (int, default 2)",
+          "default": 2,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'logic_multisource' (LogicMultisourcePart)."
     },
     "logic_relay": {
       "type": "object",
@@ -2032,6 +2153,628 @@
       "additionalProperties": false,
       "description": "Prefab part 'skinned_mesh' (SkinnedMeshPart)."
     },
+    "spawner": {
+      "type": "object",
+      "properties": {
+        "prefab": {
+          "description": "A prefab Spawn places at the spawner (beside the `place` template, if any) Names a prefab record. (RecordRef<PrefabRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:prefab"
+            }
+          ]
+        },
+        "place": {
+          "description": "The template: placements Spawn places, measured from the spawner and turned as it is, with their wires. (List<Placement>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "prefab": {
+                "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:prefab"
+                  }
+                ]
+              },
+              "at": {
+                "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "yaw": {
+                "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
+                "type": "number"
+              },
+              "name": {
+                "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+                "type": "string"
+              },
+              "id": {
+                "description": "A stable id for saves, unique in its list; left out, one is derived from its place in the list. (string)",
+                "type": "string"
+              },
+              "relativeTo": {
+                "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "World",
+                      "Origin",
+                      "Ground"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "outputs": {
+                "description": "Entity I/O wires from this entity's outputs to other entities' inputs. (List<Connection>)",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "outputs+": {
+                "description": "Adds to \"outputs\": what a base or an earlier definition listed, then these.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "outputs-": {
+                "description": "Removes these from \"outputs\" (as a base or an earlier definition listed it).",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "overrides": {
+                "description": "Changes to the prefab for this placement alone: component and part bodies, merged field by field. (PrefabOverrides)",
+                "type": "object",
+                "properties": {
+                  "components": {
+                    "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+                  },
+                  "parts": {
+                    "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "place+": {
+          "description": "Adds to \"place\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "prefab": {
+                "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:prefab"
+                  }
+                ]
+              },
+              "at": {
+                "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "yaw": {
+                "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
+                "type": "number"
+              },
+              "name": {
+                "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+                "type": "string"
+              },
+              "id": {
+                "description": "A stable id for saves, unique in its list; left out, one is derived from its place in the list. (string)",
+                "type": "string"
+              },
+              "relativeTo": {
+                "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "World",
+                      "Origin",
+                      "Ground"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "outputs": {
+                "description": "Entity I/O wires from this entity's outputs to other entities' inputs. (List<Connection>)",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "outputs+": {
+                "description": "Adds to \"outputs\": what a base or an earlier definition listed, then these.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "outputs-": {
+                "description": "Removes these from \"outputs\" (as a base or an earlier definition listed it).",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "overrides": {
+                "description": "Changes to the prefab for this placement alone: component and part bodies, merged field by field. (PrefabOverrides)",
+                "type": "object",
+                "properties": {
+                  "components": {
+                    "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+                  },
+                  "parts": {
+                    "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "place-": {
+          "description": "Removes these from \"place\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "prefab": {
+                "description": "What to place. Names a prefab record. (RecordRef<PrefabRecord>)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/record:prefab"
+                  }
+                ]
+              },
+              "at": {
+                "description": "Where, in the frame `relativeTo` names: absolute metres by default. Unit: m. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "yaw": {
+                "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
+                "type": "number"
+              },
+              "name": {
+                "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
+                "type": "string"
+              },
+              "id": {
+                "description": "A stable id for saves, unique in its list; left out, one is derived from its place in the list. (string)",
+                "type": "string"
+              },
+              "relativeTo": {
+                "description": "What `at` is measured from; left out, the document's or scene's own `relativeTo`. (PlacementFrame?)",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "World",
+                      "Origin",
+                      "Ground"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "outputs": {
+                "description": "Entity I/O wires from this entity's outputs to other entities' inputs. (List<Connection>)",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "outputs+": {
+                "description": "Adds to \"outputs\": what a base or an earlier definition listed, then these.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "outputs-": {
+                "description": "Removes these from \"outputs\" (as a base or an earlier definition listed it).",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "output": {
+                      "description": "The output of this entity that sends it: OnStartTouch, OnUse, OnCameraOff; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "target": {
+                      "description": "Who receives it: an entity's name, or !self / !activator / !caller. (string)",
+                      "type": "string"
+                    },
+                    "input": {
+                      "description": "The input it sends: Open, Kill, CameraOn; io_list lists them. (string)",
+                      "type": "string"
+                    },
+                    "parameter": {
+                      "description": "Handed to the input: a hold time, a line to say, an output to fire. (string)",
+                      "type": "string"
+                    },
+                    "delay": {
+                      "description": "Seconds between the output firing and the input arriving. Unit: s. At least 0. (float)",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "times": {
+                      "description": "How many times it may fire; -1 = every time. (int)",
+                      "type": "integer"
+                    },
+                    "requires": {
+                      "description": "Fires only when this holds, asked of the activator (subject) and this entity (other); a wire that does not fire does not count toward times. (ICondition)",
+                      "allOf": [
+                        {
+                          "$ref": "vocabularies.schema.json#/definitions/condition"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "overrides": {
+                "description": "Changes to the prefab for this placement alone: component and part bodies, merged field by field. (PrefabOverrides)",
+                "type": "object",
+                "properties": {
+                  "components": {
+                    "description": "Component bodies by id, merged field by field into the prefab's. (JsonObject)"
+                  },
+                  "parts": {
+                    "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "limit": {
+          "description": "How many times it may spawn; 0 = no limit. At least 0. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "uniqueNames": {
+          "description": "Each spawn's names get #n, and the template's wires between its members follow (point_template's fix-up) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "startDisabled": {
+          "description": "Starts disabled: Spawn does nothing until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'spawner' (LogicSpawnerPart)."
+    },
     "sprite": {
       "type": "object",
       "properties": {
@@ -2197,6 +2940,18 @@
           "description": "Count real seconds: through a pause, a hit-stop and any world speed (WorldTime) (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "randomMin": {
+          "description": "With randomMax: each wait is anywhere from this to randomMax (instead of interval and spread) Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "randomMax": {
+          "description": "With randomMin: each wait is anywhere from randomMin to this (instead of interval and spread) Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
@@ -2224,6 +2979,37 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'travel_point' (TravelPointPart)."
+    },
+    "trigger": {
+      "type": "object",
+      "properties": {
+        "once": {
+          "description": "Fire once, then disable itself (trigger_once); off: again after `wait` (trigger_multiple) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "wait": {
+          "description": "Seconds after firing before it fires again (not with once) Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "requires": {
+          "description": "Only what this holds of fires it, asked of what entered (subject) and the trigger (other) (ICondition)",
+          "allOf": [
+            {
+              "$ref": "vocabularies.schema.json#/definitions/condition"
+            }
+          ]
+        },
+        "startDisabled": {
+          "description": "Starts disabled: nothing fires it until Enable. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'trigger' (LogicTriggerPart)."
     },
     "tween": {
       "type": "object",
@@ -2304,6 +3090,43 @@
           "description": "Play in real seconds: through a pause, a hit-stop and any world speed (WorldTime) (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "loop": {
+          "description": "On arriving: stop (Once), play again (Restart) or back the way it came (PingPong) (TweenLoop, default \"Once\")",
+          "default": "Once",
+          "type": "string",
+          "enum": [
+            "Once",
+            "Restart",
+            "PingPong"
+          ]
+        },
+        "loops": {
+          "description": "How many plays in all when it loops; 0 = for ever. At least 0. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "sequence": {
+          "description": "Steps TweenPlay plays one after another, each a TweenTo parameter: \"offset 0 3 0 2\", \"turn 0 90 0 1 SineInOut\". (List<string>)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sequence+": {
+          "description": "Adds to \"sequence\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sequence-": {
+          "description": "Removes these from \"sequence\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false,

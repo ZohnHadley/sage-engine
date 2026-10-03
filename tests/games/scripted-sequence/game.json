@@ -7,6 +7,9 @@
   // data-only game (issue #275): a message, a wait, a spawned reward, a destroyed crate, an hour passing, and
   // a relay that asks entity_exists, distance_to and in_scene.
   // tests/Sage.Tests/Games/ExitGameTests.cs boots it headlessly.
+  // A second scene, `vault` (vault.json, issue #281), is a Half-Life-style puzzle chain with the rest of the
+  // logic set: logic_auto, trigger_once, multisource, a multi_manager relay, logic_case, a spawner template
+  // and looping tweens; tests/Sage.Tests/Games/LogicPuzzleTests.cs starts it.
   "name": "Scripted sequence",
   "id": "scriptedsequence",
   // A player to walk about as (physics comes with it), movers for the door and lift, entity I/O for the
