@@ -440,9 +440,10 @@ Handlers are expected to be cheap: invalidate a cache, mark something dirty. Hea
   `SceneLoaded`, `Paused`, `Resumed`; `Scene`), on the Fixed queue, so a system reads them with a cursor
   instead of running inside whoever loaded the scene. A reader asked for while the world is being furnished
   sees its own world's `WorldCreated` (test: EngineSignalsSayAWorldWasCreatedAndASceneLoaded).
-- **Pause is not signalled yet.** `EngineSignals.RaisePaused(world, paused)` exists for whoever owns pause,
-  but nothing calls it: `World.Paused` / `WorldTime.Paused` (#283) changing does not raise `PauseChanged`.
-  That wiring is a follow-up.
+- **Pause** is raised by the world itself: `World.RunFixed` raises `Paused` or `Resumed` (and
+  `PauseChanged`) on the first real tick that sees `WorldTime.Paused` changed, whoever changed it (code, the
+  `pause` command, a loaded save); a pause set and cleared between two ticks raises nothing (test:
+  EngineSignalsSayAWorldWasCreatedAndASceneLoaded).
 - **Not built from the list above:** `AssetReloaded`, `RecordsReloaded` (hot reload raises its own
   `RecordStore.Reloaded`, 05), `CVarChanged`, the window and gamepad signals and `ModuleInitialized`.
 
@@ -557,5 +558,5 @@ Game events are simulation-internal and stay on the server. Clients get the *eff
 ## 14. Build steps
 1. ~~Game event queues + `EventReader`/`EventWriter` + declarations~~ **Done 2026-09-23** (R13; "As built (game events)").
 2. ~~Structural notifications from `World` (with 03 step 2)~~ **Done:** `World` raises plain C# events (`EntityDestroyed`, …), and the queued `Added<T>`/`Removed<T>` came with issue #282 (§3.3, 2026-10-03).
-3. `EngineSignals` (with 01/05). **Partly, issue #282 (§3.5):** world created and destroying, scene loaded, and the `EngineSignal` event in the world; pause is not raised yet, and the asset, record, cvar, window and module signals are not built.
+3. `EngineSignals` (with 01/05). **Partly, issue #282 (§3.5):** world created and destroying, scene loaded, paused and resumed, and the `EngineSignal` event in the world; the asset, record, cvar, window and module signals are not built.
 4. ~~Entity I/O: connections, load-time resolution, `ent_fire`~~ **Done 2026-09-24** (F17; §3.4a). Left: attributes and generated dispatch, which wait for the source generator (09 §3.2, REDESIGN §3.4).
