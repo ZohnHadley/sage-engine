@@ -28,6 +28,8 @@ namespace Sage.Physics3D;
 // Stepping allocates nothing (issue #273). The 40 bytes a tick long blamed on Bepu's profiler were the
 // Stopwatch that timed the step (Stopwatch.StartNew is a 40-byte object); Bepu 2.4's Timestep allocates
 // nothing, on the calling thread or its workers (test: ASteadyStateStepAllocatesNothingOnAnyThread).
+// Our own per-worker report buffers are sized to the busiest step before each step, since any worker,
+// the stepping thread among them, may draw all of a step's pairs (PhysicsCallbackData).
 //
 // Joints (issue #242, SAGE0134) are Bepu constraints behind PhysicsJoint handles: PhysicsSpace.Joints.cs.
 #pragma warning disable SAGE0134 // joints and groups: this is the backend that implements them
@@ -35,6 +37,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
 {
     private readonly BufferPool _pool = new();
     private ThreadDispatcher? _dispatcher;
+    private bool _stepped;   // UseWorkers is refused from then on
     private readonly PhysicsCallbackData _data;
     private readonly Dictionary<ShapeKey, TypedIndex> _shapes = new();
     private readonly List<Entity> _overlapResults = new();   // reused by OverlapBox
@@ -55,7 +58,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     public PhysicsSpace(Vector3? gravity = null)
     {
         Gravity = gravity ?? new Vector3(0, -9.81f, 0);
-        _data = new PhysicsCallbackData(Math.Max(1, Environment.ProcessorCount));
+        _data = new PhysicsCallbackData(1);
         UseWorkers(Environment.ProcessorCount - 1);
         Simulation = BepuSimulation.Create(_pool,
             new NarrowPhaseCallbacks { Data = _data },
@@ -330,20 +333,30 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     // How many of Bepu's worker threads step this space; 0 = the calling thread alone.
     internal int WorkerThreads => _dispatcher?.ThreadCount ?? 0;
 
+    // What the narrow-phase callbacks write into, for tests of its per-worker buffers.
+    internal PhysicsCallbackData CallbackData => _data;
+
     // Never one worker (issue #273): with Simulation.Deterministic, Bepu gives the same bits with any two
     // or more workers, but its one-worker and no-dispatcher paths each give different ones. A two-core
     // machine used to get one worker and so a different simulation from everyone else's, which a replay or
     // a lockstep peer would have parted from within a second. 0 (tests only) steps on the calling thread,
     // which puts every callback on the thread an allocation test measures.
+    //
+    // Only before the first step: Bepu keeps memory taken from a dispatcher's per-thread pools between
+    // steps, so disposing a dispatcher a space has stepped with frees memory the simulation still uses
+    // (a test that switched from three workers to seven after 240 steps corrupted the native heap).
     internal void UseWorkers(int count)
     {
+        if (_stepped) throw new InvalidOperationException("UseWorkers must be called before the space's first step");
         _dispatcher?.Dispose();
         _dispatcher = count <= 0 ? null : new ThreadDispatcher(Math.Max(2, count));
+        _data.UseWorkers(WorkerThreads);   // a report buffer per worker, never shared between two
     }
 
     internal void Step(float dt)
     {
         long started = System.Diagnostics.Stopwatch.GetTimestamp();   // not StartNew: that is a 40-byte object a tick (#273)
+        _stepped = true;
         _data.BeginStep();
         _broken.Clear();
         Simulation.Timestep(dt, _dispatcher);
