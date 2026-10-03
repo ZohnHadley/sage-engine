@@ -420,6 +420,57 @@ Entities placed in maps or spawned from prefabs can have **outputs** wired to **
   `WiringModel.Recent(world, entity)` reads the play world's history for it.
   (test: ThePlayWorldsHistoryIsWhatTheViewShowsAsRecent)
 
+### 3.4g As built (the rest of the logic set, 2026-10-03, issue #281)
+What Half-Life and Source maps lean on beside relays and counters, each a component with a part, an engine
+prefab in `engine_content/data/logic.json` and inputs routed by component, owned by the engine
+(`sage.core`) and saved like the rest. Code: `src/Sage.Simulation/Logic/LogicGates.cs`, `Spawners.cs`, and
+additions to `LogicEntities.cs`, `Timers.cs` and `Tweens.cs`; tests in
+`tests/Sage.Tests/Gameplay/LogicSetTests.cs` and `tests/Sage.Tests/Games/LogicPuzzleTests.cs`.
+
+- **`sage:logic_multisource`** (HL1's multisource): an AND gate of numbered sources, 1 to `sources` (at most
+  32). `SetSource n`, `ClearSource n`, `ToggleSource n`, `Reset`; `OnAllSet` the moment the last is set,
+  `OnNotAllSet` the moment one is cleared after that; `Test` fires `OnTrue` or `OnFalse`.
+  (test: AMultisourceFiresWhenEverySourceIsSet_AndAgainWhenOneIsCleared)
+- **`sage:logic_case`** (Source): `InValue v` matches the `cases` in order, as text (ignoring case) or as
+  numbers, and fires `OnCase01`…`OnCase16` for the first match, else `OnDefault`, handing the value on.
+  `PickRandom` fires one of `OnCase01`…NN (`choices`, or one per case) and `PickRandomShuffle` the same
+  without repeats until each has been dealt, both from the entity's own stream (`Timers.Random01`), saved
+  with the deck. (tests: ACaseFiresTheFirstMatch_AsTextOrNumber_ElseDefault,
+  RandomPicksAreDeterministic_AcrossRunsAndASave_AndAShuffleDealsEachOnce)
+- **`sage:logic_auto`**: `OnMapSpawn` once, the first tick after it is placed (`sage.logic.gates`, EntityIO,
+  before the dispatch); whether it fired is saved, so a load does not fire it again.
+  (test: ALogicAutoFiresOnce_AndNotAgainAfterALoad)
+- **The `trigger` part** (trigger_once, trigger_multiple) on a trigger volume: something entering that
+  passes `requires` (asked of it as subject, the trigger as other) fires `OnTrigger` with it as activator;
+  then with `once` the trigger disables itself (`Enable` re-arms it), else it ignores entries for `wait`
+  seconds. `OnStartTouch`/`OnEndTouch` still fire for every entry and exit.
+  (test: ATriggerFiresOnceOrAfterItsWait_ForWhatPassesItsFilter)
+- **Spawners** (`sage:spawner`, part `spawner`, prefab `sage:logic_spawner`; env_entity_maker and
+  point_template): `Spawn` places `prefab`, and the `place` template of placements with their wires,
+  measured from the spawner and turned as it is; `limit` (0: none) holds across a load; `OnSpawned` has the
+  first thing spawned as activator and the count as value. With `uniqueNames` each spawn's names get `#n`
+  and a template wire to another member is pointed at that spawn's (point_template's fix-up). What it spawned
+  is a runtime spawn with its wires, saved as such.
+  (test: ASpawnerPlacesItsTemplateWhereItStands_WithNamesAndWiresFixedUp_UpToItsLimit_AndASaveKeepsIt)
+- **Counters** take `Multiply`, `Divide` (by 0 refused with a warning), `SetMaxValue` and `SetMinValue`
+  (Source's math_counter). (test: ACounterMultipliesDividesAndTakesNewLimits)
+- **Timers** take `randomMin`/`randomMax` (Source's random bounds, the same as interval ± spread),
+  `TimerFire` and `TimerAdd`. (test: ATimersRandomBoundsTimerFireAndTimerAdd)
+- **Tweens** take `loop` (`Once`, `Restart`, `PingPong`) and `loops` (plays in all, 0 for ever;
+  `OnTweenLoop` between plays, carrying the overshoot), and a `sequence` of TweenTo parameters that
+  `TweenPlay [once|loop|pingpong]` plays in order (`OnTweenStep`); a TweenTo's last word may be a loop word.
+  (tests: ATweenPingPongsForItsLoops_AndASaveKeepsItsPlace, ATweenSequencePlaysItsStepsInOrder_AndLoops)
+- **multi_manager** needs no entity: it is a relay whose `OnTrigger` wires have delays.
+- **The exit:** the `vault` scene of `tests/games/scripted-sequence` is a puzzle chain in data, from a
+  `logic_auto` through a `trigger_once` plate, a random generator timer, a multisource, a delayed relay, a
+  `logic_case` and a counter to a tweened door and a spawner's wired template.
+  (tests: AHalfLifeStylePuzzleChainRuns_InAGameWithNoCode, TheLogicPuzzleSceneValidates)
+- **No allocation per tick** with the set running. (test: TheRestOfTheLogicSetAllocatesNothingPerTick)
+- **Not done here:** `env_shake` (it needs a camera shake to drive); a trigger fires on entering, not for as
+  long as something stays inside; a multisource's sources are numbers, not the entities that feed it; a
+  template placement's `relativeTo` is ignored (it is measured from the spawner); a sequence's `pingpong`
+  restarts it rather than playing it backwards.
+
 ### 3.5 Engine signals in detail
 `EngineSignals` (on `Engine`, 01) holds plain C# events, raised on the main thread at the start of a frame (never inside a tick):
 - `AssetReloaded(AssetPath)`, `RecordsReloaded(RecordType)`;

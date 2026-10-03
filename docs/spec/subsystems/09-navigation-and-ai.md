@@ -62,7 +62,7 @@ Events: the AI reads `Damaged` (to turn on an attacker), `TimePassed` (to catch 
 |---|---|---|
 | `ai_profile` | Record | `SightRange`, `SightAngleDegrees`, `MemorySeconds`, `MeleeRange`, `ThinkRate`, `TurnSpeedDegrees`, `Selector`, `Rules`, `Routine` |
 | `ai_schedule` | Record | `Tasks` (each an object such as `{ "task": "Wait", "seconds": 1.5 }`) and `Interrupts` (condition names) |
-| `routine` | Record | `entries`: hour window, optional `days`, `schedule`, `at` anchor, optional `scene` |
+| `routine` | Record | `entries`: hour window, optional `days`, `schedule`, `at` anchor (a placement's name or a `.map` targetname), optional `scene` |
 | `faction` | Record | Relations to other factions, a default stance, the player's `Standing` and thresholds, `KillCost` |
 | `nav_area` | Record | `Cost` per metre (1 is ordinary ground), `Forbidden` factions, the `Surfaces` (physics_materials) and `Water` it covers |
 | `sage:nav_area` | Component and `nav_area` prefab part | `Area` and `Size`: a box of ground that is that area, over water and surfaces |
@@ -81,7 +81,7 @@ Engine conditions (the `AICondition` bits): `SeeEnemy`, `LostEnemy`, `EnemyInMel
 
 A think is staggered per entity at the profile's `ThinkRate` (default 6 Hz). It perceives, rebuilds conditions, picks a schedule when the current one ends or an interrupt condition appears, then runs the current task every tick. Target and path state are rebuilt after a load; the schedule and task index are saved.
 
-When a cell goes dormant, `ICellHandoff` offers its roots to the off-screen system, which takes living NPCs that carry the `offscreen` part into the saved table. A step is one game minute. When the agent's cell is live again it is spawned back from its save entries. A time skip runs every minute it covers at once.
+When a cell goes dormant, `ICellHandoff` offers its roots to the off-screen system, which takes living NPCs that carry the `offscreen` part into the saved table. A step is one game minute. An agent walks straight while the minute's walk is clear and plans round walls (A* over the content's coarse graph: static boxes taller than a step are walls, movers are doors unless their `nav_door` is locked, `nav_link`s are edges, wall corners are nodes) when it is not; its `Route` and `RouteGoal` are saved. Placements with the part in sectors never placed join the table at their routine's place (`CellContent.SeedUnplaced`). A live NPC whose anchor is not in the world walks to where the content has it, or to the door to its scene, and one with the part goes through (#284). When the agent's cell is live again it is spawned back from its save entries. A time skip runs every minute it covers at once.
 
 Registration: tasks are open until the first world is created and are checked then; conditions, selectors and fight rules are sealed when content loads. Routines and off-screen simulation are `[Experimental("SAGE0129")]`.
 
@@ -118,14 +118,10 @@ Debug tools: `ai_debug`, `nav_debug`, `nav_stats` (plans on the mesh and on the 
 | REQ-AI-13 | A game shall be able to select behaviour with behaviour trees or utility scoring beside schedules. | Should | Not started | #387 |
 | REQ-AI-14 | Hostile groups shall move in combat (strafe, retreat, cover) and as squads. | Should | Not started | #388 |
 | REQ-AI-15 | Agents shall avoid each other and weigh terrain costs and area flags. | Could | Done | test: TwentyCreaturesConvergingInACorridorAllGetThroughRoundEachOther, test: WithoutAvoidanceTheSameCrowdWalksThroughItself, test: ACreatureTakesTheRoadRoundAFieldRatherThanTheShortWayAcrossIt, test: ThePlannerGoesRoundDearWaterAndStraightensOnlyOverCheapGround, test: BrushTexturesAndTerrainLayersAreTheAreaOfWhatTheyAreMadeOf, test: GroundClosedToAFactionIsPlannedRoundByItAndCrossedByOthers, test: AWolfChasingIntoGroundClosedToItStopsAtTheEdge, test: EachBodyPlansOnTheMeshOfItsOwnSize |
-| REQ-AI-16 | Off-screen simulation shall path round walls, cover cells never visited and handle live NPCs with far anchors. | Should | Partial: straight-line walking only | #284 |
+| REQ-AI-16 | Off-screen simulation shall path round walls, cover cells never visited and handle live NPCs with far anchors. | Should | Done (#284) | test: AnAgentCrossesAWalledTownByItsGate, AMapsTargetnamesAreAnchorsAndItsBrushesWalls, ANeverVisitedSectorsNpcAppearsAtItsRoutinePosition, ALiveNpcWalksToAnAnchorThatIsOnlyInTheContent, ALiveNpcWhoseAnchorIsInAnotherSceneGoesThroughTheDoor |
 | REQ-AI-17 | Crime, witnesses, bounty and faction ranks shall be expressible as data. | Should | Not started | #389 |
 
 ## 10. Open work
-
-Milestone 2, world, logic and saves (epic #274):
-
-- #284 4m-10 Off-screen simulation: pathing, unvisited cells, live NPCs with far anchors (P2)
 
 Milestone 10, AI, combat and narrative depth (epic #385):
 

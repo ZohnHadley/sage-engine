@@ -281,7 +281,7 @@ never a loaded object. A failed load logs once and the caller draws a placeholde
 
 **Hot reload** (dev builds). `RecordHotReload` and `AssetHotReload` use `FileSystemWatcher`, whose events
 only mark files changed; the main thread polls once per frame and reloads after 200 ms of quiet. Records
-update in place (instances survive). A reloaded texture or sound disposes the old object after the new one
+update in place (instances survive); a record type's `[Record(Reload = ...)]` says whether what was built from it follows too, and a prefab's live instances do, field by field where the game did not change the field (#287). A reloaded texture or sound disposes the old object after the new one
 loads. `ShaderRecompiler` runs mgfxc on a background task when `.fx` sources change, where mgfxc can run.
 
 **Mods.** `ModManager` discovers `mod.json` folders, orders them (`ModLoadOrder`, `user://mods.json`),
@@ -329,7 +329,7 @@ backend switch (DesktopVK) possible; the snapshot is the seam. Detail: [subsyste
 | **Main** (`"main"`) | Everything in §5: every world's Fixed and Frame schedules, all systems, command playback, events, saves and loads, record and asset loading, GPU work, hot-reload polling, the console. | Owner of all world and engine state. |
 | **Bepu workers** | Inside `sage.physics.step`, `PhysicsSpace` passes a `ThreadDispatcher` (processor count minus one) to `Simulation.Timestep`. The step is synchronous: the main thread waits for it. | Bepu's own buffers only; `Simulation.Deterministic = true`. |
 | **`log-writer`** | `Log` producers enqueue into a `ConcurrentQueue`; a background thread feeds the sinks (file, stdout, ring, console). | The queue only. |
-| **Thread pool** | `FileSystemWatcher` callbacks (they only set flags); `ShaderRecompiler`'s mgfxc task (writes a file the main thread then reloads). | A flag or a file. |
+| **Thread pool** | `FileSystemWatcher` callbacks (they only set flags); `ShaderRecompiler`'s mgfxc task (writes a file the main thread then reloads); a save's write (#285: serialising, compressing and writing a snapshot taken on the tick, one save after another). | A flag or a file; a save's snapshot shares nothing with the world. |
 | **MonoGame/OpenAL** | The audio device's own mixing. | Through `SoundEffect` instances, driven from the main thread. |
 
 A test may tick a world on its own thread; several tests do so in parallel. That is safe because worlds
@@ -354,7 +354,6 @@ intern table) or per thread (`Profiler` tables, `[ThreadStatic]` scratch buffers
 | Plan | Milestone | Issue |
 |---|---|---|
 | Parallel scheduler with read/write access declarations per system | 4m | #288 |
-| Async save writes (serialise on the main thread, write on a worker) | 4m | #285 |
 | A `JobSystem` over the thread pool and async asset decode with budgeted GPU upload ([`../design/02-core-services-and-logging.md`](../design/02-core-services-and-logging.md) §4.5, 05 §6) | 4n | #308 |
 | A render thread handed a copy of the snapshot (the snapshot is value data for this reason) | later | none filed |
 
@@ -419,8 +418,9 @@ boundary only.
   files use write-to-`.tmp` then move.
 - **World resources** marked `[SavedResource]` are saved beside entities and rebuilt through
   `ISavedResource.AfterLoad`. Behaviour or script state is never saved.
+- **Snapshot on the tick, write in the background** (#285). The tick pays for the snapshot; serialising, gzip (`save_compress`), the thumbnail's PNG and the files are written on a thread-pool thread, and reading a slot waits for writes in flight. A slot carries a title and, from the client, a thumbnail; `save_report` says what a load would upgrade. A 10k-entity snapshot is still about 50 to 75 ms (Debug), over a frame.
 
-Planned: thumbnails, compression and async write (#285). A load removes the live runtime spawns no save names (`Unsaved`, #278).
+A load removes the live runtime spawns no save names (`Unsaved`, #278).
 Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-serialization-and-saves.md`](../design/09-serialization-and-saves.md).
 
 ## 13. Error handling and diagnostics
@@ -508,7 +508,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Per-process statics: `UserPaths`, `Log`, `CrashReporter` | Two apps in one process (an editor hosting a server, two test apps) share one log, user folder and crash report. | #49 (Stage E); rises if a server or multiplayer starts. |
 | Asset memory is freed only for meshes | A sector's meshes are released with it (#277); textures and sounds still grow without bound over a long session. | 4n, #308. |
 | Single-threaded scheduler | Only physics uses more than one core; the tick has headroom (0.76 ms at 2,000 entities) but large worlds will not. | 4m, #288. |
-| Synchronous saves | Saving a big world can stall a frame (sector generation is on jobs since #277). | 4m, #285. |
+| Save snapshots on the tick | The write is off the tick since #285, but the snapshot of a big world still stalls a frame (about 50 to 75 ms at 10k entities, Debug). | 4m, #285 (open). |
 | ~~Bepu allocates about 40 B a tick~~ | Retired by #273: it was our Stopwatch, and the step allocates nothing. | Done (4l, #273). |
 | Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets) | Two ways to build a screen; features land in one or the other. | 4q, #350. |
 | Records and saves use reflection, not generated readers | Slower loads; not trim or AOT safe. | Generator follow-up; AOT out of scope (SRS §9). |

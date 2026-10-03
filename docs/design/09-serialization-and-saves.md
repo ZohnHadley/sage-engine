@@ -161,7 +161,8 @@ user://saves/<slot>/
   the starting sector — the numbers would look right and the player would be standing on somebody
   else's ground.
 - **Not done here:** maps, sectors, tombstones, binary, thumbnails, autosave rotation, and the mod list
-  in the header (the plugins and content arrived with issue 4i-2: "As built (a load that cannot
+  in the header (thumbnails and compression arrived with issue #285: "As built (thumbnails, compression and
+  the background write)"; binary has not) (the plugins and content arrived with issue 4i-2: "As built (a load that cannot
   half-happen)"). (Upgraders and stable ids came with issue #20: "As built (stable ids and versions)".) `GameRules` state is still not saved — the mechanism exists now, and
   nothing in the Sandbox's rules has state worth keeping yet.
 
@@ -406,11 +407,12 @@ quick-load, and autosaves rotate (`SaveRequests.cs`, experimental SAGE0131).
 - **The Sandbox's main menu** gives each row Overwrite and Delete buttons and shows a quick-save's or an
   autosave's kind. A click on the rest of the row still loads it (test: TheMainMenuOverwritesAndDeletesASlot).
 - **Limits.** A tick boundary is per world: with two worlds, a request runs when the world that asked
-  ends its tick, which is a boundary for that world and the one between ticks for the other. F5 and F9
-  are read in a tick, so a game paused with no ticks does not hear them; the console and a menu run
-  between ticks and are not held up.
-  The slot names are fixed (`quick`, `autosave<n>`); a slot the player names `autosave2` takes part in
-  the rotation.
+  ends its tick, which is a boundary for that world and the one between ticks for the other. ~~F5 and F9
+  are read in a tick, so a game paused with no ticks does not hear them~~ (since #285 they are read in a
+  paused world's held pass too); the console and a menu run between ticks and are not held up.
+  ~~The slot names are fixed (`quick`, `autosave<n>`); a slot the player names `autosave2` takes part in
+  the rotation.~~ Since #285 `save_quick_slot` and `save_autosave_prefix` name them, and the rotation
+  never overwrites a slot the player saved under an autosave's name.
 
 ### As built (the 4i exit game, issue 4i-7, 2026-10-01)
 
@@ -557,6 +559,57 @@ Three things a load or a save got quietly wrong after 4i and 4g-1.
   session, one small entry for each entity that went to sleep.
 - The golden saves (formats 1 to 4) load unchanged; an older save's transforms are laid on as before.
 
+### As built (thumbnails, compression and the background write, issue #285, 2026-10-03)
+
+What §6 planned, a save that does not stall the game, and what a load menu needs. Code:
+`src/Sage.Simulation/Content/SaveBackground.cs` (the writer, `SaveThumbnail`), `SaveReport.cs`
+(`SaveVersionReport`), `SaveSerializer.cs` (deferred components), `SaveSystem.cs`, `SaveRequests.cs`,
+`QuickSaveKeysSystem.cs`, and the host's back-buffer capture in `src/Sage.Host/Game1.cs`. Tests:
+`tests/Sage.Tests/Content/SaveWriterTests.cs`. Experimental, SAGE0131.
+
+- **A save is a snapshot and a write.** The snapshot reads the worlds into JSON trees that share nothing
+  with them, at a tick boundary on the simulation's thread: that is what a save costs the frame. The write
+  serialises the trees, compresses them, encodes the thumbnail, writes `slot.writing` and moves it into
+  place, on a thread-pool thread, one save after another in the order taken. Saves the game takes while it
+  plays (a request in a tick, an autosave, `quicksave`, `RequestSave` between ticks) are written this way
+  (`save_background`, default on); `Save(slot)` between ticks still writes before it returns, because its
+  caller wants the result (test: AQuickSaveIsWrittenOffTheTick).
+- **Nothing reads a slot half-written.** `Load`, `Exists`, `Delete`, `List` and `Slots` wait for writes in
+  flight; `WaitForWrites` does it by hand, `IsWriting` says one is going, and the engine waits when it is
+  disposed.
+- **The snapshot does as little as it can.** A component made of values and strings all the way down, with
+  none of a plugin's converters (which may read the world), is kept as a boxed copy and serialised by the
+  writer (`SaveSerializer.ResolveDeferred`); one still bit for bit as its prefab spawned it is left out
+  without serialising anything (the spawn baseline keeps the spawn's values). What stays on the tick is
+  walking the entities and what needs the world: entity references, attributes and tags by name.
+- **Measured** (Debug build, 10k spawned crates, compressed): a whole save on the tick was about 190 ms
+  before; now the tick pays about 50 to 75 ms for the snapshot and the writer about 140 to 220 ms. The
+  write is off the tick, but **the snapshot alone is still over a frame**, so issue #285's "does not stall a
+  frame" is not met (test: ATenThousandEntitySaveDoesNotStallAFrame asserts the snapshot is a part of the
+  whole save, and prints both).
+- **Compression:** `save_compress 1` writes `world_<name>.json.gz` (gzip, fastest) and the header says
+  `"compression": "gzip"`; a load reads either kind, so old plain saves still load
+  (test: CompressedSavesRoundTripAndPlainOnesStillLoad).
+- **Thumbnails:** `SaveSystem.Thumbnail` is the client's hook, called in the snapshot on the thread that
+  owns the device; it hands over RGBA pixels, top row first (`SaveThumbnail`, `Shrink(maxWidth)`). The
+  writer encodes `thumbnail.png`, the header names it, and `SaveSlot.ThumbnailPath` gives its full path
+  (tests: TheSlotListingShowsTheThumbnailPath, AThumbnailShrinksToAWidth). The host hands over its back
+  buffer at most 320 pixels wide.
+- **Titles and slot names:** `save <slot> <title…>` and the title overloads of `Save` and `RequestSave`
+  write `"title"` in the header (`SaveSlot.Title`); `save_quick_slot` and `save_autosave_prefix`
+  (`QuickSlotName`, `AutosavePrefixName`) name the quick slot and the autosaves (test:
+  SlotsHaveTitlesAndConfigurableNames).
+- **F5 and F9 while paused:** `QuickSaveKeysSystem` runs with `RunCondition.Always`, so a paused world's
+  held pass hears them, and a command is acted on once (test: QuickSaveKeysWorkWhilePaused).
+- **The save-version report:** `SaveSystem.Report(slot)` and `save_report [slot]` read a slot without
+  loading it: the format, and every component and saved resource id with its saved version, this build's
+  version, how many entities have it and what a load does with it — `Current`, `Upgrade` (with the number
+  of `[Upgrade]` steps), `Newer` (skipped) or `Unknown` (kept as data) — and the plugin, content and mod
+  mismatches a load would warn of (tests: TheSaveVersionReportSaysWhatALoadWouldUpgrade,
+  TheReportCountsUpgradeStepsForAnOlderComponent).
+- **Not done here:** a snapshot under a frame at 10k entities; the tagged binary format; thumbnails in the
+  Sandbox's load menu; and `Slots`, which a menu reads every frame, blocks while a write is in flight.
+
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
 spells a player composed are the *world's*, not any one entity's.
@@ -627,7 +680,7 @@ load:  read header (check game, mods) → destroy worlds → create world → in
 ```
 
 ## 6. Threading and memory
-- Saving snapshots component data on the main thread at a tick boundary (fast: a copy into pooled buffers). Compression and disk writing then run as a background job, so the game doesn't hitch.
+- Saving snapshots component data on the main thread at a tick boundary (fast: a copy into pooled buffers). Compression and disk writing then run as a background job, so the game doesn't hitch. *As built (#285): the snapshot is JSON trees, not pooled buffers, and the write runs on the thread pool; at 10k entities the snapshot is still over a frame ("As built (thumbnails, compression and the background write)").*
 - Loading happens behind a loading screen. Parsing can run in jobs; instantiation runs on the main thread.
 - Generated serializers don't allocate for primitive and struct fields. Strings allocate on read (acceptable at load time).
 
@@ -674,7 +727,8 @@ Summarised above:
     deliberately deferred (see the deviations above). What replaced the first two is simpler: every
     persistent entity written in full, so a destroyed one's tombstone is its absence;
   - `ser_check`.
-- **Later:** finer change tracking, one-file-per-entity maps, save thumbnails, compression tuning.
+- **Later:** finer change tracking, one-file-per-entity maps, ~~save thumbnails~~ (#285), compression tuning
+  (#285 writes gzip at its fastest level).
   (Upgraders arrived with the first format change, issue #20: "As built (stable ids and versions)".)
 
 ## 12. Multiplayer-later notes

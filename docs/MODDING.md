@@ -178,7 +178,10 @@ A save's header lists the mods that were active, with their versions. Loading a 
 What a missing mod's records made is handled the way any content change is: something the game spawned
 from a mod's prefab is kept as an **inert placeholder**, and written back unchanged by the next save, so
 turning the mod back on brings it back; something a mod's scene patch *placed* is content that is no longer
-placed, and is dropped. Nothing is doubled. The load menu shows the same mismatch lines before you load.
+placed, and is dropped. Nothing is doubled. The load menu shows the same mismatch lines before you load. From
+the console, `save_report <slot>` lists them too, with every component and resource the save holds
+against this build: current, to be upgraded, written by a newer game, or unknown here (kept as data;
+issue #285).
 
 ## 8. Checking a mod without playing
 
@@ -197,7 +200,10 @@ here too; a broken reference, an unknown field or a missing asset is an error at
 `sage mods` before you publish.
 
 While the game runs (a dev build), a saved change to your `data/`, `strings/` or assets **hot reloads**, as
-the game's own do; a change to `mod.json` says "restart to apply".
+the game's own do; a change to `mod.json` says "restart to apply". A patch to a prefab reaches what is already spawned
+from it (issue #287): every field the game has not changed takes the new value, and a placement's own
+overrides are kept; parts, children and removed components wait for the next spawn. Other record types
+reach only what is built after the reload, unless their `[Record]` says `Reload = ReloadPolicy.Live`.
 
 ## 9. What is not supported (yet)
 

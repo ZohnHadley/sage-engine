@@ -37,7 +37,7 @@ Mounts are made at boot by `SageApp`: engine content under namespace `sage`, eac
 | `IMount`, `FolderMount`, `AssemblyContentMount` (`Content/VirtualFileSystem.cs`) | Where files come from. `PhysicalPath` and `WritablePath` are null for a mount that is not a folder. |
 | `VirtualFileSystem` | `Mount`, `Exists`, `Open`, `Enumerate`, `Which`, `Shadows()`. |
 | `VirtualPath`, `AssetPath` | Normalised, validated names. `AssetPath.Intern` for a cached key. |
-| `RecordStore` (`Content/RecordStore.cs`) | `Register<T>`, `Load(vfs)`, `Get`, `TryGet`, `All`, `Ids`, `AddRuntime`, `AddCheck`, `Reloaded` event, `LoadErrors`, `MissingAssetsAreErrors`. |
+| `RecordStore` (`Content/RecordStore.cs`) | `Register<T>`, `Load(vfs)`, `Get`, `TryGet`, `All`, `Ids`, `AddRuntime`, `AddCheck`, `Reloaded` event, `ReloadPolicyOf(type)`, `LoadErrors`, `MissingAssetsAreErrors`. |
 | `RecordId`, `RecordRef<T>` | A namespaced id (`ns:name`); a typed reference that is checked at load. |
 | `RecordCheck` | What a plugin check is given: `At(path)` gives `file:line:column`, plus `Error` and `Warn`. |
 | `RecordHotReload` | Watches `data/` and `strings/` in folder mounts; reloads once changes are quiet for 200 ms. |
@@ -82,7 +82,7 @@ Schemas in `schemas/`: `record.schema.json` (root), one `<type>.schema.json` per
 2. Content errors are counted. A dev build refuses to start on them where a blank record would otherwise be handed back; `sage validate` exits 1.
 3. Scenes and prefabs are read after records, and their component and part bodies are checked at their own lines.
 4. At run time the client loads an asset on first use and caches it for the life of the process. A failed load logs once and returns null; callers draw a placeholder (the magenta error material for meshes).
-5. Hot reload (dev builds): a watcher notes a change, the main thread polls each frame, and after 200 ms of quiet the file is reloaded. Records reload as a set (`Reloaded` fires, instances update in place, string tables are re-read). Assets reload individually: the new object is built before the old one is disposed, so a bad file leaves the old texture on screen. Models swap in the renderer's mesh table, sounds stop or restart their voices, a `.mgfxo` swaps compiled effects, and a changed `.fx` or `.fxh` is recompiled in the background (effects that include a changed header are rebuilt too).
+5. Hot reload (dev builds): a watcher notes a change, the main thread polls each frame, and after 200 ms of quiet the file is reloaded. Records reload as a set (`Reloaded` fires, instances update in place, string tables are re-read). A record type's `[Record(Reload = ...)]` says what happens to what was built from it: `NextSpawn` (the default) leaves it, `Live` updates it too; `prefab` and `scene` are `Live`, so a scene is placed again and every live instance of a prefab follows the fields the game did not change (#287, design 05 §3.6). Assets reload individually: the new object is built before the old one is disposed, so a bad file leaves the old texture on screen. Models swap in the renderer's mesh table, sounds stop or restart their voices, a `.mgfxo` swaps compiled effects, and a changed `.fx` or `.fxh` is recompiled in the background (effects that include a changed header are rebuilt too).
 
 ## 7. Threading, memory and performance
 
@@ -126,7 +126,7 @@ Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` an
 | REQ-ASSET-17 | Assets shall have scopes (sector, game, UI), ref-counted release, eviction on unload and an upload budget. | Must | Partial: sector scopes for meshes, ref-counted (test: `ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept`); textures, sounds, UI scope and an upload budget open | #308 |
 | REQ-ASSET-18 | Textures shall load with mipmaps and optional compression, and the loader shall read the formats art tools write. | Should | Partial: PNG, JPG, BMP, TGA, GIF load; no mips | #317 |
 | REQ-ASSET-19 | A cook step shall produce binary meshes and compressed textures for Shipping, loaded when present. | Could | Not started | #302 |
-| REQ-ASSET-20 | Prefabs and scenes shall reload into running worlds. | Could | Not started | #287 |
+| REQ-ASSET-20 | Prefabs and scenes shall reload into running worlds. | Could | Done (#287): a scene is placed again; a prefab's live instances follow it field by field where the game did not change the field | `RecordStore.ReloadPolicyOf`; test: EditingAPrefabUpdatesTheFieldsNoOneChangedOnEveryLiveInstance, InTheSandboxEditingAPrefabUpdatesItsUnmodifiedInstances, RecordTypesDeclareTheirReloadPolicy, ASaveAfterAReloadDiffsAgainstTheNewPrefab, AValueALoadPutBackIsKeptByAReload, EachReloadFollowsFromTheLastOne |
 | REQ-ASSET-21 | The game shall offer a problems list of load errors without the editor. | Could | Not started | #301 |
 
 ## 10. Open work
@@ -149,8 +149,6 @@ Milestone R1, Tooling and the first release (epic #292):
 - #293 R1-1 sage package: build a shippable game folder (P1)
 - #302 R1-10 Cooked asset formats and a cook step for Shipping (P3)
 - #301 R1-9 An in-game problems list without the editor (P3)
-
-Milestone 4m, World, logic and saves: #287 4m-13 Hot reload for data beyond records (P3).
 
 Milestone 10b, Editor part 2: #366 10b-1 Asset browser and material preview (P1).
 

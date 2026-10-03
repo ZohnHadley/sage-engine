@@ -101,7 +101,7 @@ Content problems are load errors with file and line, never play-time crashes: a 
 | REQ-ECS-13 | Offer revert-to-prefab and nested-prefab editing for designers. | Should | Partial (override and revert in the editor, no nesting) | #368, #372 |
 | REQ-ECS-14 | Let a placement override a part's state machine and ship an engine prefab for it. | Should | Done | a placement overrides `machine` (#279); the engine prefab `sage:logic_state_machine` (#280); test: AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing, TheEnginePrefabRunsTheMachineAPlacementNames_AndAStatesOutputsAreWirable |
 | REQ-ECS-15 | Publish queued `Added<T>` and `Removed<T>` events instead of immediate C# callbacks. | Should | Done | `src/Sage.Simulation/ECS/Events/StructuralEvents.cs`; test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, ReadingAddsAndRemovesAllocatesNothingPerTick |
-| REQ-ECS-16 | Apply a changed prefab to live unmodified instances, by a declared reload policy. | Could | Not started | #287 |
+| REQ-ECS-16 | Apply a changed prefab to live unmodified instances, by a declared reload policy. | Could | Done (#287): changed fields, added components and tags follow; removed components, parts and children wait for the next spawn | `[Record(Reload = ReloadPolicy.Live)]` on `prefab` and `scene`, `src/Sage.Simulation/Content/PrefabReload.cs`; test: EditingAPrefabUpdatesTheFieldsNoOneChangedOnEveryLiveInstance, InTheSandboxEditingAPrefabUpdatesItsUnmodifiedInstances, RecordTypesDeclareTheirReloadPolicy, ASaveAfterAReloadDiffsAgainstTheNewPrefab, AValueALoadPutBackIsKeptByAReload, EachReloadFollowsFromTheLastOne |
 | REQ-ECS-17 | Run non-conflicting systems in parallel from declared access. | Could | Not started | #288 |
 | REQ-ECS-18 | Cover hierarchy destruction during a query, two worlds with a save, and sleeping-entity references with tests. | Should | Done | test: DestroyingAParentInsideAQueryIsDeferred_AndTheLoopStillSeesItsChildren, TwoWorldsKeepTheirOwnClocksAndEntities_AcrossASaveAndALoad, AWireToASleepingEntityDoesNothing_ThenWorksOnceItWakes |
 | REQ-ECS-19 | Remove unsaved live entities on load so a load cannot leave strays. | Must | Done | test: ALoadRemovesTheUnsavedSpawnsItDoesNotName, ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves |
@@ -109,7 +109,6 @@ Content problems are load errors with file and line, never play-time crashes: a 
 ## 10. Open work
 
 Milestone 2, 4m (World, logic and saves):
-- #287 4m-13 Hot reload for data beyond records: prefabs and scenes in running worlds (P3)
 - #288 4m-14 Parallel scheduler and access declarations (P3)
 
 Milestone 8, 10b (Editor, part 2):

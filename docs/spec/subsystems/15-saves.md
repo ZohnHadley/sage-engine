@@ -1,6 +1,6 @@
 # 15 · Saves
 
-> Status: built and heavily tested (format 4, four golden saves); thumbnails, compression, asynchronous writing and a few "Limits" remain. Owning assemblies: `Sage.Simulation` (`Content`), `Sage.Core` (declarations). Design doc: [09-serialization-and-saves](../../design/09-serialization-and-saves.md).
+> Status: built and heavily tested (format 4, four golden saves); thumbnails, compression, a background write, titled slots and a save-version report are built (#285), but the snapshot of a 10k-entity world still costs more than a frame on the tick. Owning assemblies: `Sage.Simulation` (`Content`), `Sage.Core` (declarations). Design doc: [09-serialization-and-saves](../../design/09-serialization-and-saves.md).
 
 ## 1. Purpose and scope
 
@@ -21,28 +21,30 @@ It deliberately does not do the following. Content loading and records are [06-a
 - Run upgraders for old component, resource and file-format versions.
 - Quick-save, quick-load and rotating autosave at a tick boundary; record plugins, content and mods in the header.
 
-Not responsible for: what a slot menu looks like, thumbnails (open, #285), deciding which gameplay state is worth saving (each type declares it), or cloud storage.
+Not responsible for: what a slot menu looks like (it is given each slot's title and thumbnail path), deciding which gameplay state is worth saving (each type declares it), or cloud storage.
 
 ## 3. Placement and dependencies
 
-`SaveSystem` is a partial class in `src/Sage.Simulation/Content` (`SaveSystem.cs`, `SaveRequests.cs`) and is owned by `Engine` (`Engine.Saves`). Companions are `SaveSerializer`, `SaveJson`, `SaveDiff`, `SaveAttributes`, `ContentBaseline` (ids and tombstones), `Cells` and `QuickSaveKeysSystem`. It is simulation-only and references nothing above `Sage.Simulation`. Declarations (`[Transient]`, `[Upgrade]`, `[SavedResource]`, `[Component(Version, FormerNames)]`) are in `Sage.Core`. Generated registration by `Sage.Generators` supplies the type lists. Most of the public surface is `[Experimental("SAGE0131")]`, the header's mod list is SAGE0132.
+`SaveSystem` is a partial class in `src/Sage.Simulation/Content` (`SaveSystem.cs`, `SaveRequests.cs`, `SaveBackground.cs`, `SaveReport.cs`) and is owned by `Engine` (`Engine.Saves`). Companions are `SaveSerializer`, `SaveJson`, `SaveDiff`, `SaveAttributes`, `ContentBaseline` (ids and tombstones), `Cells` and `QuickSaveKeysSystem`. It is simulation-only and references nothing above `Sage.Simulation`. Declarations (`[Transient]`, `[Upgrade]`, `[SavedResource]`, `[Component(Version, FormerNames)]`) are in `Sage.Core`. Generated registration by `Sage.Generators` supplies the type lists. Most of the public surface is `[Experimental("SAGE0131")]`, the header's mod list is SAGE0132.
 
 ## 4. Interfaces
 
 | Type or command | Role |
 |---|---|
-| `SaveSystem` | `Save(slot, kind)`, `Load(slot)`, `RequestSave`, `RequestLoad`, `QuickSave`, `QuickLoad`, `Autosave`, `Delete`, `Slots`, `Rescan`. Format constants `FormatVersion` (4) and `OldestReadableFormat` (1). |
-| `SaveSlot`, `SaveKind`, `SavedMod` | A slot read from its header alone: name, time, format, game, engine version, `Kind` (manual, quick, auto), `CanLoad`, plugins, content, mods, `Mismatches`. |
+| `SaveSystem` | `Save(slot, kind)`, `Load(slot)`, `RequestSave`, `RequestLoad`, `QuickSave`, `QuickLoad`, `Autosave`, `Delete`, `Slots`, `Rescan`; `Save`/`RequestSave` take a title; `Thumbnail` (the client's hook), `IsWriting`, `WaitForWrites`, `Report(slot)`, `QuickSlotName`, `AutosavePrefixName` (#285). Format constants `FormatVersion` (4) and `OldestReadableFormat` (1). |
+| `SaveSlot`, `SaveKind`, `SavedMod` | A slot read from its header alone: name, time, format, game, engine version, `Kind` (manual, quick, auto), `Title`, `ThumbnailPath`, `Compressed`, `CanLoad`, plugins, content, mods, `Mismatches`. |
+| `SaveVersionReport`, `SaveVersionEntry`, `SaveVersionStatus` | What a load of a slot would do, read without loading it: the format, and each component and resource version as `Current`, `Upgrade` (with its `[Upgrade]` steps), `Newer` or `Unknown`; the plugin, content and mod mismatches (#285). |
+| `SaveThumbnail` | RGBA pixels a client hands over; `Shrink(maxWidth)`. |
 | `Persistent`, `PersistentId` | The stable identity of a saved entity (`src/Sage.Simulation/ECS/PersistentId.cs`). |
 | `FromPrefab`, `SavePlaceholder`, `UnknownSavedData` | Components the save system itself adds: the spawn baseline key, an inert stand-in for a missing prefab, kept unknown data. |
 | `[Transient]`, `[Upgrade(fromVersion)]` | Opt a field or type out; rewrite an older shape. Helpers `RenameField`, `RemoveField`, `MoveField`. |
-| `QuickSaveKeysSystem` | `sage.saves.quick_keys` (Commands): F5 and F9 from the tick's `PlayerCommand`. |
+| `QuickSaveKeysSystem` | `sage.saves.quick_keys` (Commands, `RunCondition.Always`): F5 and F9 from the tick's `PlayerCommand`, also while the world is paused. |
 
-Console: `save [slot]`, `load [slot]`, `saves`, `quicksave`, `quickload`, `autosave`, `save_delete <slot>`. Cvars: `save_autosave`, `save_autosave_slots` (default 3), `save_autosave_interval` (seconds, default 300, 0 off). Actions: `QuickSave` and `QuickLoad`, bound in engine content and movable by a game.
+Console: `save [slot [title...]]`, `load [slot]`, `saves`, `quicksave`, `quickload`, `autosave`, `save_delete <slot>`, `save_report [slot]`. Cvars: `save_autosave`, `save_autosave_slots` (default 3), `save_autosave_interval` (seconds, default 300, 0 off), `save_quick_slot` (default `quick`), `save_autosave_prefix` (default `autosave`), `save_compress` (default off), `save_background` (default on). Actions: `QuickSave` and `QuickLoad`, bound in engine content and movable by a game.
 
 ## 5. Data model
 
-A slot is a folder: `header.json` (format version, game id and version, engine version, `kind`, `plugins`, `content`, `mods`, saved time, scene) and one world file per world. A world file holds the origin sector, `scene`, `entities`, `tombstones` by source, `dormant` cells by source, and saved resources.
+A slot is a folder: `header.json` (format version, game id and version, engine version, `kind`, `title`, `thumbnail`, `compression`, `plugins`, `content`, `mods`, saved time, scene), one world file per world (`world_<name>.json`, or `world_<name>.json.gz` with `save_compress`; either loads) and, when the client gave one, `thumbnail.png`. A world file holds the origin sector, `scene`, `entities`, `tombstones` by source, `dormant` cells by source, and saved resources.
 
 An entity entry has its persistent id, prefab id, name, `source` when content placed it, `parent` for a prefab child the game spawned, `diff: true` when it is a diff, `removed` for baseline components it lost, tags in full, and components as `"sage:id": { "version": n, "data": { ... } }`. Ids derive from the source: `scene:<scene>:<index>:<prefab>`, `placements:<doc>:<index>:<prefab>`, a `.map` entity's `id`, `targetname` or index, a placement's authored `id` when given, and a prefab child's id is its parent's plus its key.
 
@@ -52,7 +54,7 @@ Not written: `[Transient]` fields and types (`GlobalTransform`, `PhysicsBody`, `
 
 A save, load or autosave asked for during a tick is queued and runs when the tick ends (`World.RunFixed` calls the save system after every phase); asked for between ticks it runs at once. Several in one tick resolve as the saves first, then one load.
 
-Save: capture each world, write to `<slot>.writing`, then rename into place. A folder ending in `.writing` is never listed as a slot. Load:
+Save: snapshot each world on the tick into JSON trees that share nothing with it, then write: serialise, compress, encode the thumbnail, write to `<slot>.writing` and rename into place. Saves taken while playing (a request in a tick, an autosave, a quick-save) are written on a thread-pool thread, one after another (`save_background`); `Save(slot)` between ticks writes before it returns. `Load`, `Exists`, `Delete`, `List` and `Slots` wait for writes in flight. A folder ending in `.writing` is never listed as a slot. Load:
 
 1. Read the header and every world file, upgrade formats in memory, read every entity's id, prefab and name. Any fault refuses the whole save and changes nothing.
 2. Destroy what the game made (the player, drops, placeholders).
@@ -60,11 +62,11 @@ Save: capture each world, write to `<slot>.writing`, then rename into place. A f
 4. Match saved entities by id: lay the diff on content that placed one, drop one whose source no longer places it, spawn the rest from their prefabs, find prefab children under their parent.
 5. Place the scene's player, then saved resources, then run `AfterLoad`.
 
-Autosaves go to the first free `autosaveN`, then the oldest; one is taken on a timer and one after a scene change settles. A slot that is a different `Kind` is read from its header.
+Autosaves go to the first free `autosaveN`, then the oldest, never over a slot the player saved under an autosave's name; one is taken on a timer and one after a scene change settles. A slot that is a different `Kind` is read from its header.
 
 ## 7. Threading, memory and performance
 
-Saving and loading are synchronous on the main thread at a tick boundary. Parsing and writing are not on jobs yet, so a very large world can hitch (REQ-PERF-07 in the [SRS](../SRS.md); #285). The slot list is read once and cached because a menu reads it every frame (test: `SaveSlotsListTheHeadersNewestFirstAndAreReadAgainOnlyWhenTheyChange`). A save is not part of a steady-state tick, so the zero-allocation rule does not cover it.
+Loading is synchronous on the main thread at a tick boundary. A save's snapshot is on the tick; its write is on a background thread (#285). The snapshot defers components that need nothing but their own value to the writer and skips one still bit for bit as its prefab spawned it; for 10k spawned entities that took the tick's share from about 190 ms to about 50 to 75 ms (Debug build), with about 140 to 220 ms of writing moved off it; the snapshot alone is still more than a frame (REQ-PERF-07 in the [SRS](../SRS.md); test: `ATenThousandEntitySaveDoesNotStallAFrame`; #285). The slot list is read once and cached because a menu reads it every frame (test: `SaveSlotsListTheHeadersNewestFirstAndAreReadAgainOnlyWhenTheyChange`). A save is not part of a steady-state tick, so the zero-allocation rule does not cover it.
 
 ## 8. Errors and diagnostics
 
@@ -98,8 +100,8 @@ Log category `Save`. `saves` lists slots with kind, time and entity count. Two p
 | REQ-SAVE-12 | Save, change a prefab and a record, load: nothing lost, nothing doubled, in a game with no C#. | Must | Done | test: `SavesExit_AQuickSaveSurvivesARebalanceWithNothingLostOrDoubled` |
 | REQ-SAVE-13 | A load shall remove live unsaved entities, make derived values follow placement changes, and resolve references to sleeping entities. | Must | Done | tests: `ALoadRemovesTheUnsavedSpawnsItDoesNotName`, `ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves`, `AnUntouchedDoorFollowsItsPlacementAndARebalance`, `AReferenceToASleepingEntityIsKeptAndResolvesWhenItWakes` |
 | REQ-SAVE-14 | Nested prefabs and per-placement part overrides shall survive a save across sectors. | Should | Done | test: `AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing` |
-| REQ-SAVE-15 | Saves shall offer thumbnails, optional compression, an asynchronous write and named slots, and quick-save keys shall work while paused. | Should | Not started | #285 |
-| REQ-SAVE-16 | A save-version report shall say what a save would lose or change under the current content and mods. | Could | Not started | #285 |
+| REQ-SAVE-15 | Saves shall offer thumbnails, optional compression, an asynchronous write and named slots, and quick-save keys shall work while paused. | Should | Partial: all built; the write is off the tick, but a 10k-entity snapshot still costs about 50 to 75 ms on it (Debug) | test: `CompressedSavesRoundTripAndPlainOnesStillLoad`, `TheSlotListingShowsTheThumbnailPath`, `AThumbnailShrinksToAWidth`, `SlotsHaveTitlesAndConfigurableNames`, `QuickSaveKeysWorkWhilePaused`, `AQuickSaveIsWrittenOffTheTick`, `ATenThousandEntitySaveDoesNotStallAFrame`; #285 |
+| REQ-SAVE-16 | A save-version report shall say what a save would lose or change under the current content and mods. | Could | Done (#285) | test: `TheSaveVersionReportSaysWhatALoadWouldUpgrade`, `TheReportCountsUpgradeStepsForAnOlderComponent` |
 | REQ-SAVE-17 | A pre-release save-format window shall be closed: format 1 shall stop being read once the first release ships. | Could | Not started | #295 (first release) |
 | REQ-SAVE-18 | Tests shall cover timers and tweens across a save, and hierarchy and multi-world saves. | Should | Done | test: ARandomTimerIsDeterministic_AcrossRunsAndASave, TweensAreDeterministicAndSurviveASave, TwoWorldsKeepTheirOwnClocksAndEntities_AcrossASaveAndALoad, ATimeSkipWhileASectorSleeps_PassesOnceAndTheSectorWakesIntact |
 
@@ -107,7 +109,7 @@ Log category `Save`. `saves` lists slots with kind, time and entity count. Two p
 
 Milestone 2 (epic #274).
 
-- #285 4m-11 Saves: thumbnails, compression, async write, named slots and a save-version report (P2)
+- #285 4m-11 Saves: thumbnails, compression, async write, named slots and a save-version report (P2). Built except its no-stall criterion: the 10k-entity snapshot is still over a frame. Also open: the tagged binary format, thumbnails in the Sandbox's menu, and `Slots` blocking on writes in flight.
 
 Related: #396 9-1 code mods (P1) changes what a save must survive; #398 9-3 namespaced mod assets (P1).
 

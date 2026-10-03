@@ -68,15 +68,20 @@ Commands and cvars: `ent_fire <name|!player|@group> <input> [parameter] [delay]`
 | Part (prefab part id) | Component | Inputs | Outputs |
 |---|---|---|---|
 | `logic_relay` | `sage:logic_relay` | `Trigger`, `Enable`, `Disable`, `Toggle` | `OnTrigger` |
-| `logic_counter` | `sage:logic_counter` | `Add`, `Subtract`, `SetValue`, `Reset`, `GetValue`, `Enable`, `Disable` | `OnChanged`, `OnHitMax`, `OnHitMin`, `OnGetValue` |
+| `logic_counter` | `sage:logic_counter` | `Add`, `Subtract`, `Multiply`, `Divide`, `SetValue`, `SetMaxValue`, `SetMinValue`, `Reset`, `GetValue`, `Enable`, `Disable` | `OnChanged`, `OnHitMax`, `OnHitMin`, `OnGetValue` |
 | `logic_compare` | `sage:logic_compare` | `SetValue`, `SetValueCompare`, `SetCompareValue`, `Compare` | `OnEqual`, `OnNotEqual`, `OnLess`, `OnGreater` |
 | `logic_branch` | `sage:logic_branch` | `SetValue`, `SetValueTest`, `Toggle`, `ToggleTest`, `Test` | `OnTrue`, `OnFalse` |
 | `math_remap` | `sage:math_remap` | `SetValue` | `OnValue` |
-| `timer` | `sage:timer` | `TimerStart`, `TimerStop`, `TimerReset` | `OnTimer` |
-| `tween` | `sage:tween` | `TweenTo [channel] [x y z] [seconds] [ease]`, `TweenStop` | `OnTweenDone` |
+| `logic_multisource` | `sage:logic_multisource` | `SetSource n`, `ClearSource n`, `ToggleSource n`, `Reset`, `Test` | `OnAllSet`, `OnNotAllSet`, `OnTrue`, `OnFalse` |
+| `logic_case` | `sage:logic_case` | `InValue v`, `PickRandom`, `PickRandomShuffle` | `OnCase01` to `OnCase16`, `OnDefault` |
+| `logic_auto` | `sage:logic_auto` | | `OnMapSpawn` (once; not again after a load) |
+| `trigger` (on a trigger volume) | `sage:trigger` | `Enable`, `Disable`, `Toggle` | `OnTrigger` (on entry that passes `requires`; `once`, or again after `wait`) |
+| `spawner` | `sage:spawner` | `Spawn`, `Enable`, `Disable` | `OnSpawned` (the activator is the first thing spawned) |
+| `timer` | `sage:timer` | `TimerStart`, `TimerStop`, `TimerReset`, `TimerFire`, `TimerAdd` | `OnTimer` |
+| `tween` | `sage:tween` | `TweenTo [channel] [x y z] [seconds] [ease] [loop]`, `TweenPlay [once\|loop\|pingpong]`, `TweenStop` | `OnTweenDone`, `OnTweenLoop`, `OnTweenStep` |
 | `state_machine` | `sage:state_machine` | `SetState`, plus any name a transition lists under `on` | `OnStateChanged` |
 
-Parameters are words separated by spaces, never commas, because a `.map` wire is comma-separated. An output that carries a value (a counter's `OnChanged`) hands it to a wire with no parameter of its own. The engine ships prefabs for the relay, counter, compare, branch, remap and timer (`sage:logic_relay`, `sage:math_remap`, `sage:logic_timer` and so on). Easing curves are in `Logic/Easing.cs`.
+Parameters are words separated by spaces, never commas, because a `.map` wire is comma-separated. An output that carries a value (a counter's `OnChanged`) hands it to a wire with no parameter of its own. The engine ships prefabs for the relay, counter, compare, branch, remap, timer, multisource, case, auto, spawner and state machine (`sage:logic_relay`, `sage:math_remap`, `sage:logic_timer`, `sage:logic_spawner` and so on). A `multi_manager` is a relay whose `OnTrigger` wires have delays (#281). A spawner places a prefab, or a template of placements with their wires, measured from where it stands; `uniqueNames` gives each spawn's names `#n` and points the template's wires between its members at that spawn's. Easing curves are in `Logic/Easing.cs`.
 
 ### 4.4 Condition and action vocabulary
 
@@ -84,7 +89,7 @@ Parameters are words separated by spaces, never commas, because a `.map` wire is
 
 | Owner | Conditions | Actions |
 |---|---|---|
-| Base (`sage.core`) | `all`, `any`, `not`, `var`, `weekday`, `date_between`, `time_between`, `anim_param`, `anim_finished`, `random`, `entity_exists`, `distance_to`, `in_scene` | `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait` |
+| Base (`sage.core`) | `all`, `any`, `not`, `var`, `weekday`, `date_between`, `season`, `moon_phase`, `on_date`, `time_between`, `anim_param`, `anim_finished`, `random`, `entity_exists`, `distance_to`, `in_scene` | `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait` |
 | `sage.gameplay.items` | `has_item` | `give_item`, `take_item` |
 | `sage.gameplay.attributes` | `has_tag`, `lacks_tag` (on the subject, or `entity`), `is_alive` | `apply_effect`, `set_tag` |
 | `sage.gameplay.abilities` | | `cue` |
@@ -103,9 +108,9 @@ Inputs `SetStage`, `StartDialogue`, `GiveItem`, `ApplyEffect`, `SetFaction`; out
 | Kind | Ids as declared |
 |---|---|
 | Records | `state_machine` (states with `enter`, `exit`, `tags`, `transitions` using `on`, `when`, `after`, `then`; top-level `initial` and `transitions`) |
-| Components | `sage:io_connections`, `sage:io_group`, `sage:logic_relay`, `sage:logic_relay_script` (transient), `sage:logic_counter`, `sage:logic_compare`, `sage:logic_branch`, `sage:math_remap`, `sage:timer`, `sage:tween`, `sage:state_machine` |
+| Components | `sage:io_connections`, `sage:io_group`, `sage:logic_relay`, `sage:logic_relay_script` (transient), `sage:logic_counter`, `sage:logic_compare`, `sage:logic_branch`, `sage:math_remap`, `sage:timer`, `sage:tween`, `sage:tween_sequence` (transient), `sage:state_machine`, `sage:logic_multisource`, `sage:logic_case`, `sage:logic_case_script` (transient), `sage:logic_auto`, `sage:trigger`, `sage:trigger_script` (transient), `sage:spawner`, `sage:spawner_template` (transient) |
 | Saved resources | `entity_io` (pending inputs, delays in flight, wire fire counts), `vars`, `random` (the world's stream for `random`), `sequences` (action lists a `wait` put off) |
-| Prefab parts | `logic_relay`, `logic_counter`, `logic_compare`, `logic_branch`, `math_remap`, `timer`, `tween`, `state_machine` |
+| Prefab parts | `logic_relay`, `logic_counter`, `logic_compare`, `logic_branch`, `math_remap`, `logic_multisource`, `logic_case`, `logic_auto`, `trigger`, `spawner`, `timer`, `tween`, `state_machine` |
 | Vocabularies | `condition`, `action` |
 
 A state machine is saved by state name and seconds in the state, so a save written before a state was renamed still loads: an unknown state sends the machine to `initial` with a warning. A timer saves its random stream, so a loaded game draws the waits it would have drawn.
@@ -116,6 +121,7 @@ A state machine is saved by state name and seconds in the state, so a save writt
 |---|---|
 | Game events | Sent in any phase; queues are pruned at the end of the schedule that owns them, never mid-phase. In a world that draws, `ev_maxage` is checked at the end of each frame so a frame reader is not blamed for a catch-up. |
 | `sage.logic.timers`, `sage.logic.tweens`, `sage.logic.state_machines`, `sage.logic.sequences` | Phase `EntityIO`, in that order, before `sage.io.dispatch`. |
+| `sage.logic.gates` | Phase `EntityIO`, before `sage.io.dispatch`: `logic_auto`'s `OnMapSpawn` and the triggers' waits. |
 | `sage.io.dispatch` | Phase `EntityIO`: delivers every input that is due. |
 | `sage.io.triggers` | Phase `PostPhysics`: turns physics trigger enter and exit into `OnStartTouch` and `OnEndTouch`. |
 | Bridge systems | Phase `Gameplay`. |
@@ -128,7 +134,7 @@ Registration happens in module `Init` (inputs, outputs, vocabulary entries by ge
 
 Single-threaded on the simulation thread. Event queues grow to their high-water mark and then stop; a queue nobody reads drops immediately. Readers and iterators are allocation-free, as are condition evaluation (lists are read once at load, reasons are constants), timers, tweens, state machines, logic entities and the I/O dispatch in steady state. Handlers must not keep an `IOContext` past the call.
 
-Measured: tests assert zero managed allocation per tick for evaluation (test: EvaluatingConditionsAllocatesNothing), for logic entities (test: LogicEntitiesAllocateNothingPerTick), for timers, tweens and I/O together (test: TimersTweensAndEntityIOAllocateNothingPerTick), for state machines (test: StateMachinesAllocateNothingPerTick) and for the data-only game's conditions once a name is found (test: TheNewConditionsAllocateNothing).
+Measured: tests assert zero managed allocation per tick for evaluation (test: EvaluatingConditionsAllocatesNothing), for logic entities (test: LogicEntitiesAllocateNothingPerTick; the #281 set, test: TheRestOfTheLogicSetAllocatesNothingPerTick), for timers, tweens and I/O together (test: TimersTweensAndEntityIOAllocateNothingPerTick), for state machines (test: StateMachinesAllocateNothingPerTick) and for the data-only game's conditions once a name is found (test: TheNewConditionsAllocateNothing).
 
 ## 8. Errors and diagnostics
 
@@ -155,7 +161,7 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 | REQ-LOGIC-09 | A runaway wire loop shall be cut at a per-tick budget with a warning. | Must | Done | test: AWireThatFiresItselfCannotRunAwayInsideOneTick |
 | REQ-LOGIC-10 | A wire shall be able to address a group of entities (a tag or class selector), and the I/O history shall be inspectable. | Should | Done (#276) | test: ATriggerFiresEveryEntityInAGroup; test: TheHistoryKeepsTheLastDeliveriesInARing_AndSaysWhatBecameOfEach |
 | REQ-LOGIC-11 | A caught failure in one input handler shall not stop the rest of the tick's dispatch. | Must | Done (#402) | test: AnInputThatThrowsIsLoggedWithItsWire_AndTheRestOfTheTickStillArrives |
-| REQ-LOGIC-12 | The base shall provide relay, counter, compare, branch and remap entities, and, for Half-Life style puzzles, multi-source, math, random, case, template and spawner entities. | Must | Partial: first five built | test: ACounterCountsBetweenItsLimitsAndHandsItsValueOn; #281 |
+| REQ-LOGIC-12 | The base shall provide relay, counter, compare, branch and remap entities, and, for Half-Life style puzzles, multi-source, math, random, case, template and spawner entities. | Must | Done (#281) | test: ACounterCountsBetweenItsLimitsAndHandsItsValueOn, AHalfLifeStylePuzzleChainRuns_InAGameWithNoCode, TheLogicPuzzleSceneValidates, ACounterMultipliesDividesAndTakesNewLimits, AMultisourceFiresWhenEverySourceIsSet_AndAgainWhenOneIsCleared, ACaseFiresTheFirstMatch_AsTextOrNumber_ElseDefault, RandomPicksAreDeterministic_AcrossRunsAndASave_AndAShuffleDealsEachOnce, ALogicAutoFiresOnce_AndNotAgainAfterALoad, ATriggerFiresOnceOrAfterItsWait_ForWhatPassesItsFilter, ASpawnerPlacesItsTemplateWhereItStands_WithNamesAndWiresFixedUp_UpToItsLimit_AndASaveKeepsIt, ATimersRandomBoundsTimerFireAndTimerAdd, ATweenPingPongsForItsLoops_AndASaveKeepsItsPlace, ATweenSequencePlaysItsStepsInOrder_AndLoops, TheRestOfTheLogicSetAllocatesNothingPerTick |
 | REQ-LOGIC-13 | Timers shall support repeat, a random spread that is deterministic across runs and saves, and start/stop/reset inputs. | Must | Done | test: ARandomTimerIsDeterministic_AcrossRunsAndASave |
 | REQ-LOGIC-14 | Tweens shall move, turn or scale a transform along a named easing curve, from a wire, deterministically and across a save. | Must | Done | test: TweensAreDeterministicAndSurviveASave |
 | REQ-LOGIC-15 | State machines shall be data records, saved by state name, and survive a record hot reload. | Must | Done | test: StateAndTimeInItSurviveSaveAndLoad |
@@ -167,15 +173,11 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 
 ## 10. Open work
 
-Milestone 4m, World, logic and saves (epic #274):
-
-- #281 4m-7 Logic entities: round out the set (multi-source, math, random, case, template, spawner) (P2)
-
 Milestone 10b, Editor part 2: #370 10b-5 Conditions and actions editor, and a `requires` form (P2), which is the editor side of REQ-LOGIC-18.
 
 ## 11. References
 
-- [Design 04, Events and messaging](../../design/04-events-and-messaging.md): §3.2 events, §3.4 entity I/O and its build notes (§3.4a to §3.4e), §3.5 engine signals.
+- [Design 04, Events and messaging](../../design/04-events-and-messaging.md): §3.2 events, §3.4 entity I/O and its build notes (§3.4a to §3.4g), §3.5 engine signals.
 - [REDESIGN](../../REDESIGN.md) §4.3 Designer logic: open vocabularies, not a second language.
 - [MAKING_A_GAME](../../MAKING_A_GAME.md) §5 Levels: rooms, doors and triggers; §10a for SAGE ids.
 - [EDITOR](../../EDITOR.md) §11 for the wire and condition forms not yet built.
