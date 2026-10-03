@@ -208,11 +208,23 @@ public class PhysicsPerfTests
         Assert.True(before.TriggerPeak > 8, $"the crates in the zone give more trigger pairs than a list's first capacity ({before.TriggerPeak})");
         Assert.True(before.ContactPeak > 0, "the reporter reports its contacts");
 
-        space.UseWorkers(7);   // more workers than this machine may have cores: still one buffer each
-        Assert.Equal(7, data.WorkerBuffers);
-        Assert.True(data.BufferHeadroom().TriggerCapacity >= before.TriggerPeak);
+    }
+
+    // More workers than this machine may have cores still get one buffer each, and none gets one; on a
+    // space that has not stepped, since a dispatcher is chosen before stepping (PhysicsSpace.UseWorkers).
+    [Xunit.Fact]
+    public void ThereIsOneReportBufferPerWorkerHoweverManyAreAskedFor()
+    {
+        using var engine = JointTests.NewEngine();
+        var world = engine.CreateWorld("workers");
+        var space = world.Resources.Get<Sage.Physics3D.PhysicsSpace>();
+        space.UseWorkers(7);
+        Assert.Equal(7, space.CallbackData.WorkerBuffers);
         space.UseWorkers(0);
-        Assert.Equal(1, data.WorkerBuffers);
+        Assert.Equal(1, space.CallbackData.WorkerBuffers);
+
+        world.RunFixed(Dt);
+        Assert.Throws<InvalidOperationException>(() => space.UseWorkers(3));   // not once it has stepped
     }
 }
 

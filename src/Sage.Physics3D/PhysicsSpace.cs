@@ -37,6 +37,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
 {
     private readonly BufferPool _pool = new();
     private ThreadDispatcher? _dispatcher;
+    private bool _stepped;   // UseWorkers is refused from then on
     private readonly PhysicsCallbackData _data;
     private readonly Dictionary<ShapeKey, TypedIndex> _shapes = new();
     private readonly List<Entity> _overlapResults = new();   // reused by OverlapBox
@@ -340,8 +341,13 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     // machine used to get one worker and so a different simulation from everyone else's, which a replay or
     // a lockstep peer would have parted from within a second. 0 (tests only) steps on the calling thread,
     // which puts every callback on the thread an allocation test measures.
+    //
+    // Only before the first step: Bepu keeps memory taken from a dispatcher's per-thread pools between
+    // steps, so disposing a dispatcher a space has stepped with frees memory the simulation still uses
+    // (a test that switched from three workers to seven after 240 steps corrupted the native heap).
     internal void UseWorkers(int count)
     {
+        if (_stepped) throw new InvalidOperationException("UseWorkers must be called before the space's first step");
         _dispatcher?.Dispose();
         _dispatcher = count <= 0 ? null : new ThreadDispatcher(Math.Max(2, count));
         _data.UseWorkers(WorkerThreads);   // a report buffer per worker, never shared between two
@@ -350,6 +356,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     internal void Step(float dt)
     {
         long started = System.Diagnostics.Stopwatch.GetTimestamp();   // not StartNew: that is a 40-byte object a tick (#273)
+        _stepped = true;
         _data.BeginStep();
         _broken.Clear();
         Simulation.Timestep(dt, _dispatcher);
