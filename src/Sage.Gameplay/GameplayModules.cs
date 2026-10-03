@@ -234,6 +234,7 @@ public sealed class CombatModule : IModule
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
         world.AddSystem(new HitboxCleanupSystem(world));    // a hitbox goes with its owner (issue #137)
+        world.AddSystem(new HitboxBudgetSystem(world, _records!));   // far creatures' hitboxes off (issue #273)
         // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);
         // their clip events are the animator's, like everyone's (issue #119).
         world.AddSystem(new ViewmodelCombatSystem(world, _records!, _actions!));

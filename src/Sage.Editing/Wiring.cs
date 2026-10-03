@@ -24,6 +24,23 @@ public readonly record struct WireOutput(string Name, string Description, bool D
 [Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
 public readonly record struct WireLine(Placement Source, int Index, Connection Wire, Vector3 From, Vector3? To);
 
+// One wire into or out of the entity the link view is about (issue #276): who sends it, which wire of
+// theirs it is, and every entity it reaches now with where each stands — one for a name, each member for
+// a group (`@lamps`), none when the target is not in the world (drawn red). `Problem` says why a wire
+// cannot work (an input the target does not take, an empty group), or is null.
+[Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
+public sealed record WireLink(Entity Source, int Index, Connection Wire, Vector3 From,
+                              IReadOnlyList<Entity> Targets, IReadOnlyList<Vector3> To, string? Problem)
+{
+    public bool Resolved => Targets.Count > 0;
+}
+
+// The link view of one entity (issue #276, 04 §9 "I/O links drawn between entities"): the wires that
+// leave it and the wires that reach it, from anything in the world that has wires (a placement, a map
+// entity), with their targets resolved the way the dispatch would resolve them now.
+[Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
+public sealed record LinkView(Entity Entity, IReadOnlyList<WireLink> Outgoing, IReadOnlyList<WireLink> Incoming);
+
 // What the I/O panel shows for one placement (issue #225): its wires, the outputs it may name, and, for a
 // target, the inputs it takes. Wires reference their target by *name* (that is what a wire stores), so a
 // target is a placement with a name, or any entity of the world that has one.
@@ -58,19 +75,73 @@ public sealed class WiringModel
     public IReadOnlyList<WireInput> InputsOf(string target) =>
         Wiring.TargetEntity(Document, target) is { IsNull: false } entity ? Wiring.InputsOf(Document.Engine, entity) : Array.Empty<WireInput>();
 
-    // Where each wire of the document runs, for the lines drawn between wired entities.
+    // Where each wire of the document runs, for the lines drawn between wired entities: one line per
+    // entity it reaches, so a wire to a group (`@lamps`) fans out to every member (issue #276), and a
+    // line with no `To` for a wire whose target is not in the world.
     public static IReadOnlyList<WireLine> Lines(EditDocument document)
     {
         var lines = new List<WireLine>();
         if (!document.IsOpen) return lines;
+        var members = new List<Entity>();
         foreach (var placement in document.Placements)
         {
             if (placement.Outputs.Count == 0) continue;
             var from = ViewportTools.OriginOf(document, placement);
             for (int i = 0; i < placement.Outputs.Count; i++)
-                lines.Add(new WireLine(placement, i, placement.Outputs[i], from, Wiring.PositionOf(document, placement.Outputs[i].Target)));
+            {
+                var wire = placement.Outputs[i];
+                if (!IOTargets.IsSelector(wire.Target))
+                {
+                    lines.Add(new WireLine(placement, i, wire, from, Wiring.PositionOf(document, wire.Target)));
+                    continue;
+                }
+                members.Clear();
+                IOTargets.Members(document.World, wire.Target, members);
+                if (members.Count == 0) lines.Add(new WireLine(placement, i, wire, from, null));
+                foreach (var member in members) lines.Add(new WireLine(placement, i, wire, from, Wiring.PositionOf(document, member)));
+            }
         }
         return lines;
+    }
+
+    // The link view of a placement's entity (issue #276).
+    public static LinkView Links(EditDocument document, Placement placement) => Links(document, document.EntityOf(placement));
+
+    // The wires that leave `entity` and the wires that reach it, from every wired entity in the document's
+    // world. A wire reaches it when its target names it, or is a group it is in.
+    public static LinkView Links(EditDocument document, Entity entity)
+    {
+        var outgoing = new List<WireLink>();
+        var incoming = new List<WireLink>();
+        if (entity.IsNull || !document.World.IsAlive(entity)) return new LinkView(entity, outgoing, incoming);
+
+        foreach (var source in document.World.Query<IOConnections>().Entities.ToEntityList())
+        {
+            var wires = source.GetComponent<IOConnections>().Wires;
+            if (wires == null) continue;
+            for (int i = 0; i < wires.Length; i++)
+            {
+                bool mine = source == entity;
+                var targets = Wiring.TargetsOf(document, source, wires[i].Target);
+                bool reaches = targets.Contains(entity);
+                if (!mine && !reaches) continue;
+                var link = new WireLink(source, i, wires[i], Wiring.PositionOf(document, source), targets,
+                                        targets.Select(t => Wiring.PositionOf(document, t)).ToList(),
+                                        Wiring.Check(document, wires[i].Target, wires[i].Input));
+                if (mine) outgoing.Add(link);
+                if (reaches) incoming.Add(link);
+            }
+        }
+        return new LinkView(entity, outgoing, incoming);
+    }
+
+    // The last inputs sent to or from `entity` in `world` (the play world, while playing: the edit world
+    // never ticks), newest first, from its entity I/O history.
+    public static IReadOnlyList<IORecord> Recent(World world, Entity entity, int max = 16)
+    {
+        var list = new List<IORecord>();
+        if (!entity.IsNull && world.Resources.TryGet<EntityIO>(out var io) && io != null) io.HistoryOf(entity, list, max);
+        return list;
     }
 }
 
@@ -85,17 +156,41 @@ public static class Wiring
     // The entity a wire's target name means now: the document's placement of that name, else any entity of that name.
     public static Entity TargetEntity(EditDocument document, string target)
     {
-        if (target.Length == 0 || IsSpecial(target)) return default;
+        if (target.Length == 0 || IsSpecial(target) || IOTargets.IsSelector(target)) return default;
         if (document.Find(target) is { } placement) return document.EntityOf(placement);
         return document.World.FindByName(target);
     }
 
     internal static Vector3? PositionOf(EditDocument document, string target)
     {
-        if (target.Length == 0 || IsSpecial(target)) return null;
+        if (target.Length == 0 || IsSpecial(target) || IOTargets.IsSelector(target)) return null;
         if (document.Find(target) is { } placement) return ViewportTools.OriginOf(document, placement);
         var entity = document.World.FindByName(target);
         return !entity.IsNull && entity.TryGetComponent<GlobalTransform>(out var global) ? global.Current.Position : null;
+    }
+
+    // Where an entity stands: its placement's position, else its world transform.
+    internal static Vector3 PositionOf(EditDocument document, Entity entity)
+    {
+        if (document.PlacementOf(entity) is { } placement) return ViewportTools.OriginOf(document, placement);
+        if (entity.TryGetComponent<GlobalTransform>(out var global)) return global.Current.Position;
+        return entity.TryGetComponent<Transform>(out var local) ? local.LocalPosition : Vector3.Zero;
+    }
+
+    // The entities a wire on `source` reaches now: `!self` is the source, a group every member, a name
+    // the placement or entity of that name; `!activator` and `!caller` none (they are about a firing).
+    public static IReadOnlyList<Entity> TargetsOf(EditDocument document, Entity source, string target)
+    {
+        var list = new List<Entity>();
+        if (target.Length == 0) return list;
+        if (IsSpecial(target))
+        {
+            if (string.Equals(target, "!self", StringComparison.OrdinalIgnoreCase)) list.Add(source);
+            return list;
+        }
+        if (IOTargets.IsSelector(target)) { IOTargets.Members(document.World, target, list); return list; }
+        if (TargetEntity(document, target) is { IsNull: false } entity) list.Add(entity);
+        return list;
     }
 
     // What `entity` takes: every input with a handler on one of its components, and the global ones.
@@ -116,6 +211,19 @@ public static class Wiring
         if (input.Length == 0) return "no input named";
         if (target.Length == 0) return "no target named";
         if (IsSpecial(target)) return document.Engine.Inputs.Has(input) ? null : $"nothing takes '{input}' (io_list lists the inputs)";
+        if (IOTargets.IsSelector(target))
+        {
+            // A group (issue #276): it must say something, and what it sends must be taken by a member.
+            if (IOTargets.Problem(document.Engine, target) is { } problem) return problem;
+            if (!document.Engine.Inputs.Has(input)) return $"nothing takes '{input}' (io_list lists the inputs)";
+            var members = new List<Entity>();
+            IOTargets.Members(document.World, target, members);
+            if (members.Count == 0) return $"nothing in the world is in '{target}' yet (give entities that group, or check the name)";
+            if (!members.Any(m => document.Engine.Inputs.Takes(m, input))
+                && document.Engine.Inputs.Names.Contains(input, StringComparer.OrdinalIgnoreCase))
+                return $"none of the {members.Count} member(s) of '{target}' takes '{input}'";
+            return null;
+        }
         var entity = TargetEntity(document, target);
         if (entity.IsNull) return $"no placement or entity called '{target}' (a wire finds its target by name)";
         var inputs = document.Engine.Inputs;

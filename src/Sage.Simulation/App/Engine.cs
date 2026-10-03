@@ -213,6 +213,7 @@ public sealed class Engine : IDisposable
             world.AddSystem(new LogicTimerSystem(world));         // sage:timer and sage:tween (issue #90)
             world.AddSystem(new TweenSystem(world));
             world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
+            world.AddSystem(new LogicSequenceSystem(world));     // what a `wait` put off (issue #275)
             world.AddSystem(new QuickSaveKeysSystem(world, this)); // F5 and F9 (issue 4i-6)
             // Skeletal poses and what follows them (issue #120): whoever animates a skeleton registers
             // its pose here; aim IK and bone attachments adjust and follow it in the Late phase, and the
