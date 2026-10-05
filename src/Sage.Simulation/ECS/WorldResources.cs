@@ -49,16 +49,20 @@ public sealed class WorldResources
     [Obsolete("Say which you mean: Add (install; an error if one is there) or Replace (swap on purpose, disposing the old).")]
     public void Set<T>(T resource) where T : class => Replace(resource);
 
-    public T Get<T>() where T : class =>
-        _items.TryGetValue(typeof(T), out var r)
+    public T Get<T>() where T : class
+    {
+        AccessCheck.Resource(typeof(T));   // dev builds, inside a declared system (issue #288)
+        return _items.TryGetValue(typeof(T), out var r)
             ? (T)r
             : throw new InvalidOperationException($"World resource {typeof(T).Name} is not installed.");
+    }
 
     // The installed one, or `make`'s, installed now: for a resource more than one plugin can use and
     // any of them may be first to need (the camera: the character plugin drives it, the client draws
     // from it, and either may be loaded without the other).
     public T GetOrAdd<T>(Func<T> make) where T : class
     {
+        AccessCheck.Resource(typeof(T));
         if (_items.TryGetValue(typeof(T), out var r)) return (T)r;
         var resource = make();
         Add(resource);
@@ -67,6 +71,7 @@ public sealed class WorldResources
 
     public bool TryGet<T>(out T? resource) where T : class
     {
+        AccessCheck.Resource(typeof(T));
         if (_items.TryGetValue(typeof(T), out var r)) { resource = (T)r; return true; }
         resource = null;
         return false;
