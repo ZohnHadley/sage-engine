@@ -114,6 +114,7 @@ jobs:
           )
           echo "dotnet test reported $count tests"
           python3 tools/check_docs.py --self-test
+          python3 -m unittest discover -s tools -p 'test_*.py'   # the checker's own tests (issue #298)
           # Docs are updated once per merged pack of issues, not in each issue's PR (owner, 2026-10-02):
           # an issue PR's quoted counts may be stale, so they are fixed in this checkout only and listed;
           # links, test citations and vocabulary still fail. A docs PR (a branch with "docs" in its name)
