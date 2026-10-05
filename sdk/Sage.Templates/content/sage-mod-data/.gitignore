@@ -1,0 +1,3 @@
+# Written by `sage schema <game> --mods <this folder> --out schemas` (sage new mod-data --game does it):
+# they describe the game's version you have, so each modder writes their own.
+schemas/
