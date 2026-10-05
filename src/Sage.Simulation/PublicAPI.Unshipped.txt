@@ -575,6 +575,13 @@ Sage.Simulation.FogMath
 Sage.Simulation.FogMode
 Sage.Simulation.FogMode.Exp2 = 1 -> Sage.Simulation.FogMode
 Sage.Simulation.FogMode.Linear = 0 -> Sage.Simulation.FogMode
+Sage.Simulation.Follower
+Sage.Simulation.Follower.Distance -> float
+Sage.Simulation.Follower.Follower() -> void
+Sage.Simulation.FollowerPart
+Sage.Simulation.FollowerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.FollowerPart.Distance -> float
+Sage.Simulation.FollowerPart.FollowerPart() -> void
 Sage.Simulation.FromParentPrefab
 Sage.Simulation.FromParentPrefab.FromParentPrefab() -> void
 Sage.Simulation.GameDate
@@ -1404,6 +1411,15 @@ Sage.Simulation.StateTransition.StateTransition() -> void
 Sage.Simulation.StateTransition.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Simulation.StateTransition.To -> string!
 Sage.Simulation.StateTransition.When -> Sage.Simulation.ICondition?
+Sage.Simulation.StreamingRing
+Sage.Simulation.StreamingRing.FarRadius -> int
+Sage.Simulation.StreamingRing.Radius -> int
+Sage.Simulation.StreamingRing.StreamingRing() -> void
+Sage.Simulation.StreamingRingPart
+Sage.Simulation.StreamingRingPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.StreamingRingPart.FarRadius -> int
+Sage.Simulation.StreamingRingPart.Radius -> int
+Sage.Simulation.StreamingRingPart.StreamingRingPart() -> void
 Sage.Simulation.SurfaceFace
 Sage.Simulation.SurfaceFace.Normal.get -> System.Numerics.Vector3
 Sage.Simulation.SurfaceFace.Normal.init -> void

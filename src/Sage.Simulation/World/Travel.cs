@@ -230,6 +230,7 @@ public static class Travel
             transform.LocalPosition = local;
             transform.LocalRotation = SageMath.RotationFromYaw(yaw * MathF.PI / 180f);
             world.Teleport(player, transform);
+            Followers.Bring(world, player);   // companions come along, behind the player (#290)
 
             // An entry the origin is far from (a level placed out of the way): the frame follows the player.
             var sector = world.Origin().SectorOf(local);
