@@ -1980,3 +1980,34 @@ Sage.Simulation.ColliderOff.ColliderOff() -> void
 Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
 Sage.Simulation.Unsaved
 Sage.Simulation.Unsaved.Unsaved() -> void
+override Sage.Simulation.SystemAccess.ToString() -> string!
+Sage.Simulation.IDeclaresAccess
+Sage.Simulation.IDeclaresAccess.Declare(Sage.Simulation.SystemAccess! access) -> void
+Sage.Simulation.SystemAccess
+Sage.Simulation.SystemAccess.ComponentReads.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+Sage.Simulation.SystemAccess.ComponentWrites.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+Sage.Simulation.SystemAccess.ConflictsWith(Sage.Simulation.SystemAccess! other) -> bool
+Sage.Simulation.SystemAccess.EventReads.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.EventSends.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.Exclusive() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.IsExclusive.get -> bool
+Sage.Simulation.SystemAccess.Reads<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.ReadsEvents<T>(Sage.Simulation.Schedule schedule = Sage.Simulation.Schedule.Fixed) -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.ReadsResource<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.ResourceReads.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.ResourceWrites.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.Sends<T>(Sage.Simulation.Schedule schedule = Sage.Simulation.Schedule.Fixed) -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.World.get -> Sage.Simulation.World!
+Sage.Simulation.SystemAccess.Writes<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.WritesResource<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemInfo.Access.get -> Sage.Simulation.SystemAccess?
+Sage.Simulation.WorldSystems.AccessCheckLevel.get -> int?
+Sage.Simulation.WorldSystems.AccessCheckLevel.set -> void
+Sage.Simulation.WorldSystems.AccessReports.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.WorldSystems.AccessViolations.get -> int
+Sage.Simulation.WorldSystems.Parallel.get -> bool?
+Sage.Simulation.WorldSystems.Parallel.set -> void
+Sage.Simulation.WorldSystems.Threads.get -> int?
+Sage.Simulation.WorldSystems.Threads.set -> void
+Sage.Simulation.SageAppOptions.AutoexecFile.get -> string?
+Sage.Simulation.SageAppOptions.AutoexecFile.init -> void

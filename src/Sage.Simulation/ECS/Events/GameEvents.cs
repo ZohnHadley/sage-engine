@@ -147,6 +147,7 @@ public sealed class EventReader<T> where T : struct
     // Reads everything sent since the last call and advances the cursor past it. Allocation-free.
     public EventIterator<T> Read()
     {
+        AccessCheck.ReadEvent(typeof(T));   // dev builds, inside a declared system (issue #288)
         long from = Math.Max(Cursor, _queue.Base);   // pruned past us: take what is left, don't crash
         long to = _queue.End;
         Cursor = to;
@@ -260,6 +261,7 @@ public sealed class GameEvents
 
     public void Send<T>(in T ev, Schedule schedule = Schedule.Fixed) where T : struct
     {
+        AccessCheck.SendEvent(typeof(T));   // dev builds, inside a declared system (issue #288)
         Queue<T>(schedule).Send(ev, NowTick);
         if (Trace is not null && BuildInfo.IsDevBuild && (Trace == "*" || Trace == typeof(T).Name))
             Log.Trace(LogCat.Events, $"send {typeof(T).Name} ({schedule})");
