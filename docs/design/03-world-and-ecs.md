@@ -168,7 +168,7 @@ State that isn't per-entity lives in world **resources**, the equivalent of Over
   - `Schedule.Fixed`, at `sim_tickrate` (01 §5.2): `Commands → PrePhysics → Physics → PostPhysics → Gameplay → AI → Animation → EntityIO → Late`.
   - `Schedule.Frame`, once per rendered frame: `FrameUpdate → Extract → Render → Overlay`.
 - Ordering within a phase: `Before`/`After` constraints naming other systems **by id** (a stable topological sort; a cycle throws at registration). Otherwise registration order applies, deterministically. *(Built in step 4 with type constraints; ids since issue #17, see "As built (declared systems)" below. "System sets" were dropped for now.)*
-- **Access declarations** (components read/written, game events read/sent, 04 §4) are **not built yet**. The event bus (R13) landed without them — a system asks for its readers in its constructor — so they are now purely the parallel scheduler's concern. What a phase *guarantees* is covered instead by contracts (below, R16), which watch the value rather than trust a declaration. v1 runs systems sequentially.
+- **Access declarations** (components read/written, game events read/sent, 04 §4) ~~are not built yet~~ are built with the parallel scheduler (issue #288: "As built (access declarations and the parallel scheduler)" below). The event bus (R13) landed without them — a system asks for its readers in its constructor — so they are the parallel scheduler's concern, and optional: an undeclared system runs alone, in its place. What a phase *guarantees* is still covered by contracts (below, R16), which watch the value rather than trust a declaration.
 - **Run conditions:** `Default` (= `WhenNotPaused` in Fixed phases, `Always` in Frame phases), `WhenNotPaused`, `Always`, `DevOnly`. `World.Paused` (console `pause`) skips `WhenNotPaused` systems; ticks still run. Since issue #283 the flag is the world's `WorldTime.Paused`, and a slowed or hit-stopped world's real ticks with no step due skip them the same way (held passes, 01 §5.2): `Always` is the declared opt-out for a system that runs on real time.
 - **Command buffer flush points:** the end of every phase. Structural changes made during a phase become visible in the next phase.
 - Every phase and system is wrapped in a profiler scope (`Fixed.Gameplay`, `Fixed.Gameplay/FaceCameraSystem`), shown by `stat frame` and `sys_list`.
@@ -226,7 +226,7 @@ world.AddSystem(new AIThinkSystem(world, records, tasks, actions));   // id, pha
   ReplaceAndDisableAreRecordedAgainstThePluginThatDidThem).
 - **`sys_list`** prints each system's phase, average time, id, type and owning plugin, with who
   replaced or disabled it; `sys_toggle` takes an id or a type name.
-- **Not done here:** generated construction, access declarations (below), and system *sets*. Replace
+- **Not done here:** generated construction, ~~access declarations~~ (#288, below), and system *sets*. Replace
   and Disable act on one world; a plugin that wants it everywhere does it in every `OnWorldCreated`.
 
 ### As built (deferred work and phase contracts, 2026-09-23 — R14, R16)
@@ -270,7 +270,49 @@ baseline and is not reported.
 
 **Still prose:** "transforms are settled after PostPhysics" — `Transform` is written all over the
 place by design, so guarding it needs a contract that says *which* systems may, which is the access
-declaration that comes with the parallel scheduler.
+declaration that comes with the parallel scheduler. The declarations exist since #288, but no engine system
+declares its access yet, so the `Transform` contract is still open (TODO R16).
+
+### As built (access declarations and the parallel scheduler, issue #288, 2026-10-05)
+
+§3.5 planned access declarations; until now every phase ran its systems one after another on the main
+thread. Code: `src/Sage.Simulation/ECS/Systems/SystemAccess.cs` (`IDeclaresAccess`, `SystemAccess`),
+`ParallelSystems.cs` (stages, workers, the cvars), `ECS/Api/SystemCommandLog.cs`; tests:
+`tests/Sage.Tests/Ecs/ParallelSchedulerTests.cs`.
+
+- **A system declares what it touches** by implementing `IDeclaresAccess`: `Declare(SystemAccess access)` is
+  called once, when it is added (or replaces another), with `Reads<T>`, `Writes<T>`, `ReadsEvents<T>`,
+  `Sends<T>`, `ReadsResource<T>`, `WritesResource<T>`, or `Exclusive()`. What needs no declaration:
+  structural changes recorded on `ctx.Commands`, tags, whether an entity has a component, and reading events
+  of a type nobody in the phase sends. A system that does not implement it runs as it always has.
+- **Stages.** Two systems of a phase conflict when one writes what the other reads or writes (a component or
+  a resource), when one sends an event type the other sends or reads, when either is exclusive, or when one
+  is ordered against the other by `Before`/`After`. Each phase is grouped into stages: a system goes one
+  stage past the latest earlier system it conflicts with, and an undeclared or exclusive system gets a stage
+  of its own, in its old place (tests: ConflictingSystemsKeepTheirOrderAndAnUndeclaredOneRunsAlone,
+  AnExplicitOrderIsKeptAndAnExclusiveSystemRunsAlone). A stage's systems run at once on the world's thread
+  and per-world workers (test: TwoSystemsThatDoNotConflictRunAtTheSameTime).
+- **The results are a sequential run's.** Every system records its structural changes on a log of its own,
+  and the logs are replayed into the world's buffer in phase order (an exclusive system's mid-phase
+  `FlushCommands` replays them first); Friflo's count of open query loops is put back after each parallel
+  stage (tests: DeclaredSystemsRunInParallelWithResultsIdenticalToSequential,
+  ParallelResultsMatchSequentialAcrossASaveAndALoad).
+- **Checked in dev builds** (`sys_access_check`: 0 off, 1 what a declared system touches without declaring
+  it, 2, the default, and a component declared read-only that changes, by checksum): an undeclared component,
+  resource or event, or a direct structural change, is reported in `world.Systems.AccessViolations` and
+  `AccessReports` (test: ADeclaredSystemTouchingWhatItDidNotDeclareIsReported).
+- **A system that throws** in a parallel stage throws out of the tick as it would alone, and the world is left
+  usable (test: ASystemThatThrowsInAParallelStageThrowsOutOfTheTickAndLeavesTheWorldUsable).
+- **Cost:** parallel stages allocate nothing in steady state, on the world's thread or the workers (test:
+  ParallelStagesAllocateNothingInSteadyState). `Profiler.Record` credits a worker's time to the system's
+  profiler scope, so `stat frame` and `sys_list` still show it.
+- **Console:** `sys_parallel` (default on; 0 runs every phase in order on one thread), `sys_threads` (workers
+  per world; 0 is one fewer than the cores, at most 7), `sys_access_check`; `world.Systems.Parallel`,
+  `Threads` and `AccessCheckLevel` override them per world. `sys_list` shows each system's declaration.
+- **Limits.** No engine system declares its access yet, so nothing in the engine runs in parallel today and
+  the `Transform` contract (R16) is still prose. The check cannot see a resource a system took in its
+  constructor and keeps, or a `Query` it shares: declare those too, since the scheduler trusts the
+  declaration. When a system throws, the others of its stage have already run.
 
 ### 3.6 Transform hierarchy and large-world coordinates
 
@@ -359,7 +401,7 @@ public sealed class World : IDisposable
 public interface ISystem
 {
     void Run(in SystemContext ctx);
-    // void Declare(SystemAccess access);   // later, with the event bus / parallel scheduler (§3.5)
+    // As built (#288): optional, on IDeclaresAccess : ISystem — void Declare(SystemAccess access);
 }
 
 public readonly ref struct SystemContext
@@ -379,7 +421,7 @@ Example system:
 ```csharp
 sealed class DamageOverTimeSystem : ISystem                // Gameplay phase
 {
-    // (with access declarations, later: public void Declare(SystemAccess a) => a.Reads<Burning>().Writes<Health>();)
+    // with IDeclaresAccess (#288): public void Declare(SystemAccess a) => a.Reads<Burning>().Writes<Health>().Sends<Died>();
     public void Run(in SystemContext ctx)
     {
         // for each (ref Health h, in Burning b): h.Current -= b.DamagePerSecond * ctx.Tick.Dt;
@@ -446,9 +488,9 @@ None of its own. Prefabs, maps and saves use the serializer (09); prefab definit
   - ✓ `Transform` + `TransformMath`;
   - ✓ Fixed/Frame schedules with phases, `before`/`after` ordering, run conditions, per-phase command flushing (step 4);
   - ✓ `GlobalTransform` + propagation + interpolation (step 4); `SectorCoord` with R6;
-  - access declarations (with the event bus);
+  - ✓ access declarations (#288; the event bus came first, without them);
   - dev commands: ✓ `ent_list`, `sys_list`, `sys_toggle`, `pause`; `ent_dump`, `ent_kill` later.
-- **Later:** parallel system execution from the access declarations; several active worlds; per-system profiling in the editor.
+- **Later:** ~~parallel system execution from the access declarations~~ (#288); several active worlds (interiors live beside their exterior are spaces in one world since #291, 14); per-system profiling in the editor.
 
 ## 12. Multiplayer-later notes
 - Components stay data (readiness rule 3). `EntityRef` never crosses the network; a `NetId` component is added then.

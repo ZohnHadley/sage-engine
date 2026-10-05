@@ -132,3 +132,19 @@ To start a minor rather than a patch after a release (0.2.0 rather than 0.1.1), 
 until the tag: the pre-releases say 0.1.1-alpha, and tagging `v0.2.0` is what makes it 0.2.0. A branch
 that must build as 0.2.0-alpha already can set `MinVerMinimumMajorMinor` to 0.2 in
 `build/Sage.Version.props`.
+
+## 5. Configurations and shipping a game
+
+The configurations are Debug, Development and Shipping. **`Release` is Shipping** (issue #294): `-c Release`,
+which `dotnet publish` uses by default, builds a Shipping engine and game and writes `bin/Shipping`, so
+`{config}` in `game.json` (the Sage configuration's name, never `Release`) and the packed Player's Shipping
+host agree with where the dll went (`build/Sage.Configurations.props`, `SageConfiguration`; tests:
+AReleaseBuildIsShippingAndWritesTheShippingFolder, OtherConfigurationsKeepTheirOwnFolder). Only the folder
+is renamed: the MSBuild configuration is still `Release`, so a package's own `Release` conditions apply.
+
+A game ships as a folder (issue #293): `sage package <game> --out <dir>` or, with `Sage.Sdk`,
+`dotnet msbuild -t:SagePackage -p:Configuration=Shipping`, which writes the Shipping host as built (less the
+`sage` CLI) with the game beside it in `game/`, and validates the folder (MAKING_A_GAME §2, "Shipping it";
+test: APackageIsTheShippingHostWithTheGameBesideItAndNothingElse). CI packages the template game on Linux and
+Windows and runs the package on Linux (`tools/smoke_run.sh --packaged`). Mounts are copied as folders; zip
+mounts are #397.

@@ -1,6 +1,6 @@
 # 01 · Platform layer
 
-> Status: partly built. The window, graphics device, device polling, focus handling, audio device fallback and user folder work on Windows and Linux; display modes, mouse capture, gamepad extras and per-app user folders do not exist yet. Owning assemblies: `Sage.Host`, `Sage.Client` (input and audio backend halves), `Sage.Core` (`UserPaths`, `BuildInfo`). Design docs: [01 host and modules](../../design/01-host-and-modules.md), [08 input](../../design/08-input.md), [02 core services](../../design/02-core-services-and-logging.md).
+> Status: partly built. The window, graphics device, device polling, focus handling, audio device fallback and user folder work on Windows and Linux, with a frame-rate cap and `autoexec.cfg` (#299), and a game packages into a folder a player runs (#293); display modes, mouse capture, gamepad extras and per-app user folders do not exist yet. Owning assemblies: `Sage.Host`, `Sage.Client` (input and audio backend halves), `Sage.Core` (`UserPaths`, `BuildInfo`). Design docs: [01 host and modules](../../design/01-host-and-modules.md), [08 input](../../design/08-input.md), [02 core services](../../design/02-core-services-and-logging.md).
 
 ## 1. Purpose and scope
 
@@ -99,7 +99,7 @@ Shutdown: worlds, modules in reverse dependency order, Archive cvars to `config.
 
 All MonoGame calls, device polling and `Game1` run on the thread named `main`. `Log` is safe from any thread; nothing else in the platform layer is. Polling and the listeners allocate nothing in steady state; typed characters use a small reused buffer. Audio voices are `SoundEffectInstance` objects created per play, which is the one platform path that allocates, and is bounded by `snd_maxvoices`. `GetBackBufferData` in `screenshot` allocates a full frame, which is acceptable for a developer command.
 
-There is no `host_maxfps` cap; frame pacing is vsync or unbounded (#299).
+`host_maxfps` (0 to 1000, Archive; 0 is uncapped) caps the frame rate with vsync off: the host sleeps out the rest of each frame (`FrameLimiter`, #299; test: `FrameLimiter_WaitsOutTheRestOfTheFrame`). With vsync on the display paces frames.
 
 ## 8. Errors and diagnostics
 
@@ -124,25 +124,20 @@ Gaps: a window that cannot be created shows no native message box; the failure i
 | REQ-PLAT-11 | Persist rebinding to a per-user file. | Must | Not started | #328 |
 | REQ-PLAT-12 | Offer fullscreen, borderless, display choice and a resolution list. | Must | Not started | No issue yet; see section 10 |
 | REQ-PLAT-13 | Pause or throttle the simulation and mute audio on focus loss, as a setting. | Should | Not started | No issue yet; see section 10 |
-| REQ-PLAT-14 | Offer a frame-rate cap (`host_maxfps`) and an `autoexec.cfg` at boot. | Should | Not started | #299 |
-| REQ-PLAT-15 | Run a packaged game from a folder on a machine without the SDK, with Release mapped to Shipping. | Must | Not started | #293, #294 |
+| REQ-PLAT-14 | Offer a frame-rate cap (`host_maxfps`) and an `autoexec.cfg` at boot. | Should | Done (#299): `autoexec.cfg` in the user folder runs after `config.cfg` | test: `FrameLimiter_WaitsOutTheRestOfTheFrame`, `Autoexec_RunsAfterConfigAndWinsOverIt`, `Autoexec_MissingIsNotAnError` |
+| REQ-PLAT-15 | Run a packaged game from a folder on a machine without the SDK, with Release mapped to Shipping. | Must | Done (#293, #294): `sage package` writes the Shipping host with the game in `game/` beside it, and CI runs the package under Xvfb on Linux; `-c Release` builds Shipping into `bin/Shipping` | test: `APackageIsTheShippingHostWithTheGameBesideItAndNothingElse`, `ThePackagedHelloAndSceneOnlyGamesLoadAndValidateFromTheOutputFolder`, `AReleaseBuildIsShippingAndWritesTheShippingFolder` |
 | REQ-PLAT-16 | Keep MonoGame out of every simulation assembly and every decision about input and audio. | Must | Done | SAGE0024; test: EveryBaseAssemblyIsSimulationOnly |
 | REQ-PLAT-17 | Write screenshots and exit on a timer so automated real-window runs are possible. | Should | Done | `screenshot`, `quit`, `host_exitafter` |
 
 ## 10. Open work
 
 P1:
-- #293 R1-1 sage package: build a shippable game folder (P1)
-- #294 R1-2 Fix the Release-vs-Shipping `{config}` trap (P1)
 - #328 4o-4 Rebinding path: `bind`/`unbind` and `user://input.json` (P1)
 
 P2:
 - #334 4o-10 Mouse capture and the Menu/gameplay cursor handoff (P2)
 - #331 4o-7 Gamepad: rumble, multiple pads, glyphs and device hot-swap (P2)
 - #49 per-app log, user folder and crash reporter (P2)
-
-P3:
-- #299 R1-7 Dev console quality: history, Tab completion, host_maxfps, autoexec (P3)
 
 Gaps with no issue filed yet, to be raised before the platform sheet can be called complete: fullscreen and borderless modes with display choice (REQ-PLAT-12), focus-loss policy for the simulation and audio (REQ-PLAT-13), high-DPI scaling, and a native message box when no window can be created.
 
