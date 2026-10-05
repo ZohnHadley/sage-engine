@@ -11,8 +11,8 @@ Claims fall into three kinds, and only two of them can be checked by a script:
   - **Behaviour** ("walking into a trigger fires OnStartTouch") — only a test proves this, so the rule is
     that the doc *cites* the test, and this script checks the citation resolves. Writing the citation is
     what makes you notice you have no test to cite.
-  - **Vocabulary** (command, cvar, record and input names) — read from the engine's registry dump and
-    checked against every name the docs use.
+  - **Vocabulary** (command, cvar, record, output and game event names) — read from the engine's
+    registry dump and checked against every name the docs use. Its unit tests are tools/test_check_docs.py.
   - **Numbers** (how many commands, records, tests) — computed rather than typed, and `--fix` writes them.
 
 What it cannot check is whether the thing works, which is what the scripted in-game runs are for.
@@ -33,6 +33,7 @@ Usage:
     python tools/check_docs.py --tests 490     # also check the test count quoted in the docs
     python tools/check_docs.py --tests 490 --fix   # rewrite the counts to match
     python tools/check_docs.py --registry other.json   # a dump somewhere else (default user/registry.json)
+    python -m unittest discover -s tools -p 'test_*.py'   # the checker's own tests
 """
 import argparse
 import json
@@ -74,6 +75,13 @@ def read_registry(path):
         raise RegistryError('%s is registry format %r; this script reads format %d'
                             % (rel(path), dump.get('format'), REGISTRY_FORMAT))
 
+    # A dump written before the host listed game events would make every event name in the docs look
+    # wrong; say so instead.
+    if 'gameEvents' not in dump:
+        raise RegistryError('%s has no "gameEvents"; it was written by an older host, so write it again'
+                            % rel(path))
+    events = dump['gameEvents']
+
     def names(section, key='name'):
         return {entry[key] for entry in dump.get(section, [])}
 
@@ -83,6 +91,9 @@ def read_registry(path):
         'record': names('recordTypes'),
         'input': names('entityInputs'),
         'output': names('entityOutputs'),
+        # Game events by their C# name, a generic one by its stem (`Added<T>` is `Added`): nothing
+        # registers an event, so the host finds the `[GameEvent]` structs (TODO #62, issue #298).
+        'event': {entry['name'].split('<')[0] for entry in events},
         'action': names('inputActions'),
         'part': names('prefabParts', 'id'),
         'component': names('components', 'id'),
@@ -118,6 +129,44 @@ def read_code_literals():
                 text = open(os.path.join(base, name), encoding='utf-8', errors='replace').read()
                 literals.update(string.findall(comment.sub('', text)))
     return literals
+
+
+# `public event Action<UiLayer, Widget>? Activated;`: "its `Activated` event" is a C# event, not a game event.
+CSHARP_EVENT = re.compile(r'\bevent\s+[A-Za-z0-9_<>?,.\s]+?\s([A-Z][A-Za-z0-9_]*)\s*[;={]')
+
+
+def read_code_names():
+    """Every PascalCase name the code declares or uses, and every PascalCase string literal in it; and
+    the C# events it declares (the second set).
+
+    What an output or event name in a document may also be: a C# identifier (`OnWorldCreated` is a
+    module's method, not an output) or a literal (`FireOutput(trigger, "OnStartTouch")`, an output fired
+    by name). Comments are stripped and string contents are not identifiers, so a name that survives only
+    in prose or in a message does not count as existing.
+    """
+    names = set()
+    # Strings and comments in one pass, left to right, so a `//` inside a string ("http://...") is not
+    # taken for a comment, nor a quote inside a comment (or the char '"') for a string.
+    token = re.compile(r"'(?:[^'\\\n]|\\.)'|" r'"(?:[^"\\\n]|\\.)*"|//[^\n]*|/\*.*?\*/', re.S)
+    literal = re.compile(r'"([A-Z][A-Za-z0-9_]*)"')
+    identifier = re.compile(r'\b[A-Z][A-Za-z0-9_]*\b')
+
+    def strip(match):
+        found = literal.fullmatch(match.group(0))
+        if found:
+            names.add(found.group(1))
+        return '""' if match.group(0)[0] in '"\'' else ' '
+
+    events = set()
+    for directory in CODE_DIRS:
+        for base, dirs, files in os.walk(os.path.join(ROOT, directory)):
+            dirs[:] = [d for d in dirs if d not in ('obj', 'bin')]
+            for name in files:
+                if name.endswith('.cs'):
+                    text = token.sub(strip, open(os.path.join(base, name), encoding='utf-8', errors='replace').read())
+                    names.update(identifier.findall(text))
+                    events.update(CSHARP_EVENT.findall(text))
+    return names, events
 
 
 def read_content_names():
@@ -211,6 +260,58 @@ def check_citations(problems, tests):
     return checked
 
 
+BULLET = re.compile(r'\s*(?:[-*+]|\d+\.)\s')
+
+
+def claim_lines(path):
+    """The lines of a document that claim something exists, with their numbers.
+
+    Only claims about what *exists* are checked. A design document names what it plans as freely as what
+    it has — `r_instancing` in 06's API sketch is a decision, not a lie — so the checks apply to the
+    README (which describes the engine as it is), to "As built" sections, and to lines that announce
+    themselves as built. History is what was true when it was written, and is left alone.
+    """
+    if os.sep + 'history' + os.sep in path:
+        return
+
+    name = os.path.basename(path)
+    # The README and the game-making guide both describe the engine as it is, not as planned, so every
+    # line in them is a claim (the guide once told readers to type `rec_print`, which never existed, and
+    # only "As built" lines were being checked).
+    whole_file = name in ('README.md', 'MAKING_A_GAME.md')
+    section = whole_file          # inside a section that describes what exists
+    block = None                  # inside what does not: 'list' (a list under "Not yet:"), or 'bullet'
+
+    for number, line in enumerate(open(path, encoding='utf-8', errors='replace'), 1):
+        lower = line.lower()
+        indented = line.startswith((' ', '\t'))
+        bullet = BULLET.match(line) is not None
+
+        if not whole_file and line.startswith('#'):
+            # A heading decides its section: "As built" describes what exists, "Open questions" and
+            # "Not built" do not. (An earlier version let any *line* mentioning "as built" re-arm the
+            # section, so a cross-reference to §11's As built inside Open questions turned the check
+            # back on and flagged a question as a false claim.)
+            section = 'as built' in lower and not any(m in lower for m in ABSENCE)
+            block = None
+
+        # A list under "Not yet:" lasts while it is indented; a "- **Not built:** a, b and c" bullet
+        # lasts over the lines it wraps onto, and ends at the next bullet (its wrapped lines were read
+        # as claims, so 16's "a `TopicAsked` event", in a Not built bullet, was checked as one).
+        if not indented or (block == 'bullet' and bullet):
+            block = None
+        absent = any(marker in lower for marker in ABSENCE)
+        # `- **Not yet:**` ends with the emphasis, not the colon.
+        heading_of_a_list = line.rstrip().rstrip('*').rstrip().endswith(':')
+        if absent and heading_of_a_list:
+            block = 'list'        # "**Not yet:**", and the indented list under it
+        elif absent and bullet and block is None:
+            block = 'bullet'
+
+        if (section or 'as built' in lower) and block is None and not absent:
+            yield number, line
+
+
 def check_vocabulary(problems, code, literals, content_names):
     """A snake_case name that looks like a command or cvar has to exist in the registry, the code or content."""
     vocabulary = literals | content_names | code['command'] | code['cvar'] | code['record'] | code['part'] \
@@ -219,45 +320,7 @@ def check_vocabulary(problems, code, literals, content_names):
 
     checked = 0
     for path in docs():
-        # Only claims about what *exists* are checked. A design document names what it plans as freely as
-        # what it has — `r_instancing` in 06's API sketch is a decision, not a lie — so the check applies
-        # to the README (which describes the engine as it is), to "As built" sections, and to lines that
-        # announce themselves as built. History is what was true when it was written, and is left alone.
-        if os.sep + 'history' + os.sep in path:
-            continue
-
-        name = os.path.basename(path)
-        # The README and the game-making guide both describe the engine as it is, not as planned, so
-        # every line in them is a claim (the guide once told readers to type `rec_print`, which never
-        # existed, and only "As built" lines were being checked).
-        whole_file = name in ('README.md', 'MAKING_A_GAME.md')
-        section = whole_file          # inside a section that describes what exists
-        block = False                 # inside a bullet that lists what does not
-
-        for number, line in enumerate(open(path, encoding='utf-8', errors='replace'), 1):
-            lower = line.lower()
-            indented = line.startswith((' ', '\t'))
-
-            if not whole_file and line.startswith('#'):
-                # A heading decides its section: "As built" describes what exists, "Open questions" and
-                # "Not built" do not. (An earlier version let any *line* mentioning "as built" re-arm the
-                # section, so a cross-reference to §11's As built inside Open questions turned the check
-                # back on and flagged a question as a false claim.)
-                section = 'as built' in lower and not any(m in lower for m in ABSENCE)
-                block = False
-
-            if not indented:
-                block = False
-            # `- **Not yet:**` ends with the emphasis, not the colon.
-            heading_of_a_list = line.rstrip().rstrip('*').rstrip().endswith(':')
-            if any(marker in lower for marker in ABSENCE) and heading_of_a_list:
-                block = True          # "**Not yet:**", and the indented list under it
-
-            claim = (section or 'as built' in lower) and not block \
-                    and not any(marker in lower for marker in ABSENCE)
-            if not claim:
-                continue
-
+        for number, line in claim_lines(path):
             for span in CODE_SPAN.findall(line):
                 token = span.strip().split()[0] if span.strip() else ''
                 token = token.rstrip('.,;:')
@@ -269,6 +332,67 @@ def check_vocabulary(problems, code, literals, content_names):
                 if token not in vocabulary:
                     problems.append('%s:%d: `%s` reads as a command or cvar, and no such name is in the code'
                                     % (rel(path), number, token))
+    return checked
+
+
+# "the `Used` event", "game events `TriggerEntered`/`TriggerExited`", "`Damaged` and `Died` events": code
+# spans joined to the word by nothing but other spans, separators and markdown emphasis. Not a colon:
+# "**Room for events:** `Events` is a list" labels a paragraph, and names no event.
+EVENT_BEFORE = re.compile(r'\bevents?\b[\s*_]*((?:`[^`]+`(?:[\s*_,/]|\band\b|\bor\b)*)+)', re.I)
+EVENT_AFTER = re.compile(r'((?:`[^`]+`(?:[\s*_,/]|\band\b|\bor\b)*)+)\b(?:game\s+)?events?\b', re.I)
+PASCAL = re.compile(r'[A-Z][A-Za-z0-9]*')
+OUTPUT = re.compile(r'On[A-Z][A-Za-z0-9]*')
+STATE_OUTPUT = re.compile(r'On(?:Enter|Exit)[A-Z][A-Za-z0-9]*')
+
+
+def span_names(span):
+    """`TriggerEntered(Trigger, Other)` -> TriggerEntered, `Added<T>` -> Added, `A`/`B` -> A, B."""
+    names = []
+    for part in span.split('/'):
+        part = re.split(r'[<(]', part.strip(), 1)[0].strip()
+        if PASCAL.fullmatch(part):
+            names.append(part)
+    return names
+
+
+def check_outputs_and_events(problems, code, code_names, csharp_events):
+    """An output or game event a document says exists has to be one (TODO #62).
+
+    The snake_case check above cannot see these: doc 16 said interaction fires `OnUsed` (it is `OnUse`)
+    and docs 04 and 10 named `TriggerEntered`/`TriggerExited` game events before any type declared them
+    (issue #269 added them later), and the checker passed all three. An output nothing fires is silent, since wires
+    are type-checked on their *inputs*, so the docs are the only place the wrong name shows.
+
+    An `On…` name must be an output in the registry dump, a state machine's `OnEnter<state>` /
+    `OnExit<state>` (fired by content, issue #280), or a name the code uses (`OnWorldCreated` is a method;
+    a game may fire an output by a literal it never declares). A name written as an event must be a
+    `[GameEvent]` struct in the dump, or a C# `event` the code declares (a widget's `Activated`).
+    """
+    outputs = {name.lower() for name in code['output']}
+    checked = 0
+    for path in docs():
+        for number, line in claim_lines(path):
+            for span in CODE_SPAN.findall(line):
+                for name in span_names(span):
+                    if not OUTPUT.fullmatch(name):
+                        continue
+                    checked += 1
+                    if name.lower() not in outputs and name not in code_names and not STATE_OUTPUT.fullmatch(name):
+                        problems.append('%s:%d: `%s` reads as an entity output, and nothing declares or fires it'
+                                        % (rel(path), number, name))
+
+            seen = set()
+            for pattern in (EVENT_BEFORE, EVENT_AFTER):
+                for match in pattern.finditer(line):
+                    for span in CODE_SPAN.findall(match.group(1)):
+                        for name in span_names(span):
+                            if name in seen or OUTPUT.fullmatch(name):
+                                continue          # an output in a sentence about events is checked above
+                            seen.add(name)
+                            checked += 1
+                            if name not in code['event'] and name not in csharp_events:
+                                problems.append('%s:%d: `%s` reads as a game event, and no [GameEvent] struct '
+                                                'has that name' % (rel(path), number, name))
     return checked
 
 
@@ -432,6 +556,11 @@ SELF_TEST = """# Self test
 - It has nine files and about two hundred lines of code. <!-- counts: files games/Hello, code games/Hello -->
 - **4 console commands, 5 record types.** <!-- counts -->
 - `selfdump_registered_only` is a command no source file spells, and the dump has it.
+- Pressing use fires `OnUsed` on the target, and a dump-only output `OnSelftestFired`.
+- Interaction sends an `Interacted` event; the game events `SelftestEntered`/`Used` and `Added<T>` too.
+- A widget's `Activated` event is a C# event; a state machine fires `OnEnterSelftest`.
+- **Not built:** a bullet that wraps
+  onto `OnSelftestNeverFired` and a `SelftestPlanned` event, which are plans.
 
 ## Not yet
 - `map_neverexisted`, which a document may name here without being wrong.
@@ -446,6 +575,8 @@ SELF_TEST_REGISTRY = {
     'cvars': [{'name': 'selfdump_volume'}],
     'recordTypes': [{'name': n} for n in ('a', 'b', 'c', 'd', 'e')],
     'entityInputs': [{'name': 'Open'}],
+    'entityOutputs': [{'name': 'OnSelftestFired'}],
+    'gameEvents': [{'name': 'Used'}, {'name': 'Added<T>'}],
 }
 
 
@@ -471,6 +602,7 @@ def self_test(test_count=0):
         check_links(problems)
         check_citations(problems, tests)
         check_vocabulary(problems, code, read_code_literals(), read_content_names())
+        check_outputs_and_events(problems, code, *read_code_names())
         check_counts(problems, code, test_count, fix=False)
     finally:
         os.remove(path)
@@ -479,12 +611,15 @@ def self_test(test_count=0):
     mine = [p for p in problems if '_selftest' in p]
     wanted = ['nowhere-at-all.md', 'ThisTestDoesNotExist', 'map_reloadx',
               '1 console commands', '2 record types', '3 headless tests',
-              'nine files', 'hundred lines of code']
+              'nine files', 'hundred lines of code', '`OnUsed`', '`Interacted`', '`SelftestEntered`']
     missing = [w for w in wanted if not any(w in problem for problem in mine)]
     # And what must *not* be reported: a "Not yet" name, and the two lines that are true of the dump —
     # its counts, and a name only the dump has. Reported, they mean the names came from somewhere else.
+    # Nor an output or event the dump has, a C# event, a state machine's output or a Not built plan.
     wrong = [p for p in mine if 'map_neverexisted' in p or '4 console commands' in p or '5 record types' in p
-             or 'selfdump_registered_only' in p]
+             or 'selfdump_registered_only' in p
+             or any('`%s`' % n in p for n in ('OnSelftestFired', 'Used', 'Added', 'Activated', 'OnEnterSelftest',
+                                                'OnSelftestNeverFired', 'SelftestPlanned'))]
 
     for problem in mine:
         print('  found: ' + problem)
@@ -531,12 +666,14 @@ def main():
     links = check_links(problems)
     citations = check_citations(problems, tests)
     vocabulary = check_vocabulary(problems, code, literals, content_names)
+    io_names = check_outputs_and_events(problems, code, *read_code_names())
     counts = check_counts(problems, code, args.tests, args.fix)
 
-    print('%d links, %d test citations, %d vocabulary uses, %d counts checked '
-          '(%d commands, %d cvars, %d records, %d inputs in %s)'
-          % (links, citations, vocabulary, counts,
-             len(code['command']), len(code['cvar']), len(code['record']), len(code['input']), code['source']))
+    print('%d links, %d test citations, %d vocabulary uses, %d output and event names, %d counts checked '
+          '(%d commands, %d cvars, %d records, %d inputs, %d outputs, %d events in %s)'
+          % (links, citations, vocabulary, io_names, counts,
+             len(code['command']), len(code['cvar']), len(code['record']), len(code['input']),
+             len(code['output']), len(code['event']), code['source']))
     if args.tests is None:
         print('note: no --tests N, so the test count in the docs was not checked')
 

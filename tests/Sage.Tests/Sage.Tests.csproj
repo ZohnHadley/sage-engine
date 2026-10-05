@@ -62,6 +62,11 @@
     <!-- The `sage` CLI, headless like the rest: its packager (`sage package`, issue #293) is tested here. -->
     <ProjectReference Include="..\..\src\Sage.Cli\Sage.Cli.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The host's launch options (issue #298), compiled in: the host is a MonoGame executable, which a
+         headless test may not reference, but the rules for its -options are plain code. -->
+    <Compile Include="..\..\src\Sage.Host\HostOptions.cs" Link="Core\Host\HostOptions.cs" />
+  </ItemGroup>
   <!-- The tests exercise the experimental API too (issue #31, docs/MAKING_A_GAME.md §10b): the open
        vocabularies (SAGE0120), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras (SAGE0123), phase 4b's logic (SAGE0124: conditions and actions, easing) the retained UI (SAGE0125), skeletal animation (SAGE0126), the hit pipeline (SAGE0127), phase 4g's cells (SAGE0129), render passes (SAGE0130), phase 4i's saves (SAGE0131) and data mods (SAGE0132). -->
   <PropertyGroup>

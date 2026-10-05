@@ -32,7 +32,7 @@ public class ProblemsCommandTests
         using var log = new CaptureSink();
 
         Assert.True(engine.CVars.Execute("problems"));
-        var lines = log.Entries.Where(e => e.Category == LogCat.Console).Select(e => e.Message).ToList();
+        var lines = ConsoleLines(log);
         Assert.Equal("1 error, 0 warnings:", lines[0]);
         Assert.Single(lines, l => l.StartsWith("  error game:data/yard.json:3: placements sandbox:broken: "));
     }
@@ -47,7 +47,7 @@ public class ProblemsCommandTests
         using (var log = new CaptureSink())
         {
             Assert.True(engine.CVars.Execute("problems"));
-            Assert.Equal(new[] { "no problems" }, log.Entries.Where(e => e.Category == LogCat.Console).Select(e => e.Message));
+            Assert.Equal(new[] { "no problems" }, ConsoleLines(log));
         }
 
         fixture.Write("mods/one", "data/patch.json", """[{ "type": "prefab", "id": "sandbox:post", "patch": true, "name": "One" }]""");
@@ -92,7 +92,7 @@ public class ProblemsCommandTests
                 listed = ContentProblems.Build(engine.Records, engine.Vfs);
                 using var log = new CaptureSink();
                 engine.CVars.Execute("problems");
-                printed = log.Entries.Where(e => e.Category == LogCat.Console).Select(e => e.Message).ToList();
+                printed = ConsoleLines(log);
             },
         });
 
@@ -103,6 +103,14 @@ public class ProblemsCommandTests
         Assert.Equal($"{report.Errors.Count} errors, 0 warnings:", printed[0]);
         Assert.Equal(listed.Count + 1, printed.Count);
         Assert.All(listed.Where(p => p.IsError), p => Assert.True(p.Line > 0 && p.File.EndsWith(":data/mod.json", System.StringComparison.Ordinal) || p.File.EndsWith("data/mod.json", System.StringComparison.Ordinal)));
+    }
+
+    // The sink sees every test's log, and tests run in parallel (another test's console lines, an editor's
+    // status, can land in it): keep this thread's, which is where the command ran.
+    private static List<string> ConsoleLines(CaptureSink log)
+    {
+        int thread = System.Environment.CurrentManagedThreadId;
+        return log.Entries.Where(e => e.Category == LogCat.Console && e.ThreadId == thread).Select(e => e.Message).ToList();
     }
 
     // validate's line is "Category: file:line:col: message"; the list has file and line apart, so compare
