@@ -1946,3 +1946,5 @@ Sage.Simulation.ColliderOff.ColliderOff() -> void
 Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
 Sage.Simulation.Unsaved
 Sage.Simulation.Unsaved.Unsaved() -> void
+Sage.Simulation.SageAppOptions.AutoexecFile.get -> string?
+Sage.Simulation.SageAppOptions.AutoexecFile.init -> void

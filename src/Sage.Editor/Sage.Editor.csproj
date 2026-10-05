@@ -4,6 +4,7 @@
     <OutputType>Library</OutputType>
     <SageSimulationOnly>false</SageSimulationOnly>
     <SageBaseAssembly>true</SageBaseAssembly>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>   <!-- the ImGui input-text callback takes a pointer (#299) -->
   </PropertyGroup>
 
   <!-- Experimental API (issue #31, docs/MAKING_A_GAME.md §10b): the editor's free camera and viewport are camera entities drawing into a render target (SAGE0123, issue #81). -->

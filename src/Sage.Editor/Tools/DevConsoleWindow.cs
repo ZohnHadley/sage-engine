@@ -18,6 +18,7 @@ internal sealed class DevConsoleWindow
 
     private readonly CVarRegistry _cvars;
     private readonly CoreCVars _core;
+    private readonly ConsoleInput _line;
     private readonly List<LogEntry> _entries = new(2000);
     private long _seenVersion = -1;
     private string _input = "";
@@ -28,9 +29,10 @@ internal sealed class DevConsoleWindow
 
     public bool IsOpen { get; private set; }
 
-    public DevConsoleWindow(CVarRegistry cvars, CoreCVars core)
+    public DevConsoleWindow(CVarRegistry cvars, CoreCVars core, Func<IEnumerable<string>>? recordIds = null)
     {
         _cvars = cvars;
+        _line = new ConsoleInput(cvars, recordIds);
         _core = core;
         cvars.RegisterCommand("clear", CVarFlags.None, "Clear the console window.", _ => Log.Ring.Clear());
         cvars.RegisterCommand("toggleconsole", CVarFlags.None, "Open or close the console.", _ => Toggle());
@@ -116,7 +118,7 @@ internal sealed class DevConsoleWindow
         ImGui.EndChild();
     }
 
-    private void DrawInput()
+    private unsafe void DrawInput()
     {
         ImGui.SetNextItemWidth(-1);
         if (_focusInput)
@@ -124,9 +126,12 @@ internal sealed class DevConsoleWindow
             ImGui.SetKeyboardFocusHere();
             _focusInput = false;
         }
-        if (ImGui.InputText("##input", ref _input, 512, ImGuiInputTextFlags.EnterReturnsTrue))
+        // Up/Down walk the history and Tab completes (ConsoleInput, #299); the keys only land here.
+        if (ImGui.InputText("##input", ref _input, 512, ImGuiInputTextFlags.EnterReturnsTrue
+                | ImGuiInputTextFlags.CallbackHistory | ImGuiInputTextFlags.CallbackCompletion, OnInputKey))
         {
             string line = _input.Trim();
+            _line.Submit(line);
             _input = "";
             if (line.Length > 0)
             {
@@ -136,6 +141,27 @@ internal sealed class DevConsoleWindow
             }
             _focusInput = true;   // keep typing after Enter
         }
+    }
+
+    private unsafe int OnInputKey(ImGuiInputTextCallbackData* data)
+    {
+        var d = new ImGuiInputTextCallbackDataPtr(data);
+        string current = System.Text.Encoding.UTF8.GetString((byte*)d.Buf, d.BufTextLen);
+        string? replacement = null;
+        if (d.EventFlag == ImGuiInputTextFlags.CallbackHistory)
+            replacement = d.EventKey == ImGuiKey.UpArrow ? _line.Previous(current) : _line.Next(current);
+        else if (d.EventFlag == ImGuiInputTextFlags.CallbackCompletion)
+        {
+            var (completed, candidates) = _line.Complete(current);
+            if (candidates.Count > 1) Log.Info(LogCat.Console, string.Join("  ", candidates));
+            replacement = completed;
+        }
+        if (replacement != null && replacement != current)
+        {
+            d.DeleteChars(0, d.BufTextLen);
+            d.InsertChars(0, replacement);
+        }
+        return 0;
     }
 
     internal static Vector4 ColorFor(LogLevel level) => level switch
