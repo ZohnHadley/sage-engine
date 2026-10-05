@@ -2,61 +2,31 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Runtime.InteropServices;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Graphics.PackedVector;
 
-namespace Sage.Client;
+namespace Sage.Simulation;
 
-// Models, at runtime (docs/design/05 §3.4, TODO R12).
+// A model's geometry, headless (docs/design/05 §3.4, §7; issue #302): what the client's renderer turns into
+// vertex and index buffers, read either from a `.glb` (`ReadGlb`, R12's runtime glTF loading, moved here
+// from the client's GltfLoader) or from the cooked `.sgmesh` written from it (`CookedMesh`). Both give the
+// same object, so the renderer has one path and the cook can be checked against the loose file in a test.
 //
-// **glTF, read when it is asked for.** The engine used to load models as `.xnb`, which meant MGCB had
-// to run at build time and a model could not come from a mod, a downloaded asset, or a folder somebody
-// dropped a file into. A `.glb` is a self-contained file with its buffers inside it, which is exactly
-// what a VFS mount hands back (05 §3.2).
-//
-// What the engine wants out of it is small: positions, normals, texture coordinates and indices, in one
-// buffer per primitive — plus, for a skinned primitive (issue #117), four joint indices and four weights
-// per vertex and the skin's inverse bind and rest-pose joint matrices. Materials come from the
-// *material record* pointed at by whatever draws the mesh (07 §3.3), so the file's own materials are
-// read past — a model is geometry here, not a look.
-internal static class GltfLoader
+// What the engine wants out of a file is small: positions, normals, texture coordinates and indices, in one
+// array per primitive — plus, for a skinned primitive (issue #117), four joint indices and four weights per
+// vertex and the skin's inverse bind and rest-pose joint matrices. Materials come from the *material record*
+// pointed at by whatever draws the mesh (07 §3.3), so the file's own materials are read past.
+internal sealed class MeshGeometry
 {
-    // One drawable primitive: `Rigid` vertices baked into model space by their node's transform, or
-    // `Skinned` vertices left in the skin's bind space (glTF ignores a skinned mesh node's own
-    // transform: its joints place it). Exactly one of the two is set.
-    internal sealed class Part
-    {
-        public VertexPositionNormalTexture[]? Rigid;
-        public VertexSkinned[]? Skinned;
-        public required int[] Indices;
-        public int VertexCount => Rigid?.Length ?? Skinned!.Length;
-    }
+    public readonly List<MeshGeometryPart> Parts = new();
+    public MeshSkin? Skin;
+    public Vector3 BoundsCentre;
+    public float BoundsRadius = 1f;
 
-    // The file's skin (the first one; a model with several is drawn with the first, logged): each
-    // joint's inverse bind matrix and where it stands in the file's rest pose, both in model space.
-    internal sealed class Skin
+    // Reads every primitive of every mesh in a `.glb`. Returns null when the file is not glTF or has nothing
+    // drawable in it, which is a content problem (logged), not a crash.
+    public static MeshGeometry? ReadGlb(Stream stream, string name)
     {
-        public required System.Numerics.Matrix4x4[] InverseBind;
-        public required System.Numerics.Matrix4x4[] RestJoints;
-        public required string[] JointNames;
-        public required int LogicalIndex;   // which of the file's skins
-    }
-
-    internal sealed class Model
-    {
-        public readonly List<Part> Parts = new();
-        public Skin? Skin;
-        public BoundingSphere Bounds = new(Vector3.Zero, 1f);
-    }
-
-    // Reads every primitive of every mesh in the file. Returns false when the file is not glTF or has
-    // nothing drawable in it, which is a content problem and not a crash.
-    public static bool TryLoad(Stream stream, string name, out Model model)
-    {
-        model = new Model();
-
         SharpGLTF.Schema2.ModelRoot root;
         try
         {
@@ -68,12 +38,12 @@ internal static class GltfLoader
         catch (Exception ex)
         {
             Log.Warn(LogCat.Assets, $"Model '{name}': not a .glb ({ex.GetType().Name}: {ex.Message})");
-            return false;
+            return null;
         }
 
+        var model = new MeshGeometry();
         var min = new Vector3(float.MaxValue);
         var max = new Vector3(float.MinValue);
-
         try
         {
             // `Collect` recurses, so this wants *roots* only. `LogicalNodes` is every node in the file,
@@ -86,30 +56,29 @@ internal static class GltfLoader
         catch (Exception ex)
         {
             // Reading geometry can throw on a file this loader does not handle — a primitive drawn as
-            // points or lines has no triangles to ask for. Same contract as a bad header: a content
-            // problem, logged, drawn as the error mesh.
+            // points or lines has no triangles to ask for. Same contract as a bad header.
             Log.Warn(LogCat.Assets, $"Model '{name}': could not read geometry ({ex.GetType().Name}: {ex.Message})");
-            return false;
+            return null;
         }
 
         if (model.Parts.Count == 0)
         {
             Log.Warn(LogCat.Assets, $"Model '{name}': no drawable primitives");
-            return false;
+            return null;
         }
 
-        var centre = (min + max) * 0.5f;
-        model.Bounds = new BoundingSphere(centre, Math.Max((max - centre).Length(), 0.001f));
-        return true;
+        model.BoundsCentre = (min + max) * 0.5f;
+        model.BoundsRadius = Math.Max((max - model.BoundsCentre).Length(), 0.001f);
+        return model;
     }
 
-    private static void Collect(SharpGLTF.Schema2.Node node, string name, Model model, ref Vector3 min, ref Vector3 max)
+    private static void Collect(SharpGLTF.Schema2.Node node, string name, MeshGeometry model, ref Vector3 min, ref Vector3 max)
     {
         foreach (var child in node.VisualChildren) Collect(child, name, model, ref min, ref max);
         if (node.Mesh == null) return;
 
         // A skinned node: its vertices stay in bind space, and its skin says where they go.
-        System.Numerics.Matrix4x4[]? restPalette = null;
+        Matrix4x4[]? restPalette = null;
         if (node.Skin != null)
         {
             model.Skin ??= ReadSkin(node.Skin, name);
@@ -118,13 +87,13 @@ internal static class GltfLoader
                 Log.Warn(LogCat.Assets, $"Model '{name}': node '{node.Name}' uses a second skin; only the first is supported, so it is not drawn");
                 return;
             }
-            restPalette = new System.Numerics.Matrix4x4[model.Skin.RestJoints.Length];
+            restPalette = new Matrix4x4[model.Skin.RestJoints.Length];
             SkinMath.Palette(model.Skin.RestJoints, model.Skin.InverseBind, restPalette);
         }
 
         // The node's own place in the file, folded into rigid vertices: the engine draws a mesh at an
         // entity's transform, and a model with its own hierarchy would otherwise arrive inside out.
-        Matrix transform = node.WorldMatrix;   // System.Numerics → MonoGame (implicit)
+        Matrix4x4 transform = node.WorldMatrix;
 
         Span<int> j = stackalloc int[SkinMath.Influences];
         Span<float> w = stackalloc float[SkinMath.Influences];
@@ -141,25 +110,25 @@ internal static class GltfLoader
             if (restPalette != null && !skinned)
                 Log.Warn(LogCat.Assets, $"Model '{name}': a primitive of skinned node '{node.Name}' has no JOINTS_0/WEIGHTS_0; drawn rigid");
 
-            var part = new Part { Indices = Triangles(primitive) };
+            var part = new MeshGeometryPart { Indices = Triangles(primitive) };
             if (part.Indices.Length == 0) continue;
-            if (skinned) part.Skinned = new VertexSkinned[positions.Count];
-            else part.Rigid = new VertexPositionNormalTexture[positions.Count];
+            if (skinned) part.Skinned = new SkinnedMeshVertex[positions.Count];
+            else part.Rigid = new MeshVertex[positions.Count];
 
             for (int i = 0; i < positions.Count; i++)
             {
-                var p = new Vector3(positions[i].X, positions[i].Y, positions[i].Z);
-                var n = normals != null && i < normals.Count ? new Vector3(normals[i].X, normals[i].Y, normals[i].Z) : Vector3.Up;
-                var uv = uvs != null && i < uvs.Count ? new Vector2(uvs[i].X, uvs[i].Y) : Vector2.Zero;
+                var p = positions[i];
+                var n = normals != null && i < normals.Count ? normals[i] : Vector3.UnitY;
+                var uv = uvs != null && i < uvs.Count ? uvs[i] : Vector2.Zero;
 
                 if (skinned)
                 {
                     Influences(joints![i], i < weights!.Count ? weights[i] : default, restPalette!.Length, j, w);
-                    n = n.LengthSquared() > 1e-12f ? Vector3.Normalize(n) : Vector3.Up;
-                    part.Skinned![i] = new VertexSkinned(p, n, uv, new Byte4(j[0], j[1], j[2], j[3]), new Vector4(w[0], w[1], w[2], w[3]));
+                    n = n.LengthSquared() > 1e-12f ? Vector3.Normalize(n) : Vector3.UnitY;
+                    part.Skinned![i] = new SkinnedMeshVertex(p, n, uv, j, new Vector4(w[0], w[1], w[2], w[3]));
 
                     // Bounds in the rest pose, which is where the vertices are when nothing poses them.
-                    Vector3 rest = SkinMath.SkinPosition(p.ToNumerics(), restPalette, j, w);   // System.Numerics → MonoGame (implicit)
+                    var rest = SkinMath.SkinPosition(p, restPalette, j, w);
                     min = Vector3.Min(min, rest);
                     max = Vector3.Max(max, rest);
                     continue;
@@ -169,8 +138,8 @@ internal static class GltfLoader
                 n = Vector3.TransformNormal(n, transform);
                 // A zero-length normal normalises to NaN, and a NaN in a vertex buffer is invisible
                 // geometry with nothing in the log to explain it. Exporters do write them.
-                n = n.LengthSquared() > 1e-12f ? Vector3.Normalize(n) : Vector3.Up;
-                part.Rigid![i] = new VertexPositionNormalTexture(p, n, uv);
+                n = n.LengthSquared() > 1e-12f ? Vector3.Normalize(n) : Vector3.UnitY;
+                part.Rigid![i] = new MeshVertex(p, n, uv);
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);
             }
@@ -195,13 +164,13 @@ internal static class GltfLoader
         return triangles.ToArray();
     }
 
-    private static Skin ReadSkin(SharpGLTF.Schema2.Skin skin, string name)
+    private static MeshSkin ReadSkin(SharpGLTF.Schema2.Skin skin, string name)
     {
         int count = skin.JointsCount;
-        var result = new Skin
+        var result = new MeshSkin
         {
-            InverseBind = new System.Numerics.Matrix4x4[count],
-            RestJoints = new System.Numerics.Matrix4x4[count],
+            InverseBind = new Matrix4x4[count],
+            RestJoints = new Matrix4x4[count],
             JointNames = new string[count],
             LogicalIndex = skin.LogicalIndex,
         };
@@ -220,7 +189,7 @@ internal static class GltfLoader
     // A vertex's four influences, cleaned up: a joint the palette cannot hold (past MaxBones, or past
     // the skin) loses its weight, the weights are made to sum to one, and a vertex left with no weight
     // at all follows joint 0 rather than collapsing to the origin.
-    internal static void Influences(System.Numerics.Vector4 joints, System.Numerics.Vector4 weights, int jointCount, Span<int> j, Span<float> w)
+    internal static void Influences(Vector4 joints, Vector4 weights, int jointCount, Span<int> j, Span<float> w)
     {
         int limit = Math.Min(jointCount, SkinMath.MaxBones);
         j[0] = (int)joints.X; j[1] = (int)joints.Y; j[2] = (int)joints.Z; j[3] = (int)joints.W;
@@ -236,34 +205,68 @@ internal static class GltfLoader
     }
 }
 
-// A skinned vertex (issue #117): lit.fx's `Skinned` technique reads BLENDINDICES0 as four joint
-// indices into the draw's palette and BLENDWEIGHT0 as their weights. The first three elements are
-// VertexPositionNormalTexture's, so an effect that does not skin (a material without a `Skinned`
-// technique) still draws it, in its bind pose.
+// One drawable primitive: `Rigid` vertices baked into model space by their node's transform, or `Skinned`
+// vertices left in the skin's bind space (glTF ignores a skinned mesh node's own transform: its joints
+// place it). Exactly one of the two is set.
+internal sealed class MeshGeometryPart
+{
+    public MeshVertex[]? Rigid;
+    public SkinnedMeshVertex[]? Skinned;
+    public required int[] Indices;
+    public int VertexCount => Rigid?.Length ?? Skinned!.Length;
+}
+
+// The file's skin (the first one; a model with several is drawn with the first, logged): each joint's
+// inverse bind matrix and where it stands in the file's rest pose, both in model space.
+internal sealed class MeshSkin
+{
+    public required Matrix4x4[] InverseBind;
+    public required Matrix4x4[] RestJoints;
+    public required string[] JointNames;
+    public required int LogicalIndex;   // which of the file's skins
+}
+
+// A rigid vertex, laid out byte for byte as MonoGame's VertexPositionNormalTexture (32 bytes), so the
+// client hands the array to a vertex buffer as it is and a cooked file is the array's bytes.
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-internal readonly struct VertexSkinned : IVertexType
+internal readonly struct MeshVertex
 {
     public readonly Vector3 Position;
     public readonly Vector3 Normal;
     public readonly Vector2 TextureCoordinate;
-    public readonly Byte4 BlendIndices;
-    public readonly Vector4 BlendWeights;
 
-    public VertexSkinned(Vector3 position, Vector3 normal, Vector2 uv, Byte4 indices, Vector4 weights)
+    public MeshVertex(Vector3 position, Vector3 normal, Vector2 uv)
     {
         Position = position;
         Normal = normal;
         TextureCoordinate = uv;
-        BlendIndices = indices;
-        BlendWeights = weights;
     }
 
-    public static readonly VertexDeclaration VertexDeclaration = new(
-        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
-        new VertexElement(12, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0),
-        new VertexElement(24, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0),
-        new VertexElement(32, VertexElementFormat.Byte4, VertexElementUsage.BlendIndices, 0),
-        new VertexElement(36, VertexElementFormat.Vector4, VertexElementUsage.BlendWeight, 0));
+    public const int Size = 32;
+}
 
-    VertexDeclaration IVertexType.VertexDeclaration => VertexDeclaration;
+// A skinned vertex (issue #117), laid out as the client's VertexSkinned (52 bytes): lit.fx's `Skinned`
+// technique reads BLENDINDICES0 as four joint indices (bytes) and BLENDWEIGHT0 as their weights.
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+internal readonly struct SkinnedMeshVertex
+{
+    public readonly Vector3 Position;
+    public readonly Vector3 Normal;
+    public readonly Vector2 TextureCoordinate;
+    public readonly byte Joint0, Joint1, Joint2, Joint3;
+    public readonly Vector4 Weights;
+
+    public SkinnedMeshVertex(Vector3 position, Vector3 normal, Vector2 uv, ReadOnlySpan<int> joints, Vector4 weights)
+    {
+        Position = position;
+        Normal = normal;
+        TextureCoordinate = uv;
+        Joint0 = (byte)joints[0];
+        Joint1 = (byte)joints[1];
+        Joint2 = (byte)joints[2];
+        Joint3 = (byte)joints[3];
+        Weights = weights;
+    }
+
+    public const int Size = 52;
 }

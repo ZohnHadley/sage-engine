@@ -4,7 +4,7 @@
   "classifications": ["Game", "Sage", "Mod"],
   "identity": "Sage.Templates.ModData",
   "name": "Sage data mod",
-  "description": "A data mod for a Sage game: mod.json, a new weapon and a patch of the game's player. Put it in the game's mods folder; check it with sage mods <game> --mods <this folder>.",
+  "description": "A data mod for a Sage game: mod.json, a new weapon and a patch of the game's player, with VS Code mapping its records and mod.json onto the game's schemas and tasks that validate it against the game. Put it in the game's mods folder; sage new mod-data --game <game folder> writes the schemas and validates it.",
   "shortName": "sage-mod-data",
   "sourceName": "MyMod",
   "preferNameDirectory": true,
@@ -16,6 +16,13 @@
       "defaultValue": "mygame",
       "replaces": "targetgame",
       "description": "The id of the game this mod is for (its game.json's \"id\")."
+    },
+    "gameDir": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "../mygame",
+      "replaces": "SAGE_GAME_FOLDER",
+      "description": "The game's folder, relative to the mod's: what .vscode/tasks.json validates the mod and writes its schemas against."
     }
   }
 }

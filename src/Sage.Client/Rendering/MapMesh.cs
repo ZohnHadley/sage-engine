@@ -169,7 +169,7 @@ internal sealed class MapMeshSystem : ISystem
             }
 
             // The geometry is wound so a face's winding agrees with its normal, which is the convention
-            // everything else reads. This renderer wants the other one — the same flip `GltfLoader`
+            // everything else reads. This renderer wants the other one — the same flip `MeshGeometry.ReadGlb`
             // does, in the same place: where the buffers are made, once, rather than in a render state
             // that every material would have to remember.
             int before = _indices.Count;

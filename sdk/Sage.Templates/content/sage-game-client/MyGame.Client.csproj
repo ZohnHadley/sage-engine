@@ -1,0 +1,20 @@
+<Project Sdk="Sage.Sdk/SAGE_SDK_VERSION">
+  <!--
+    MyGame's client half: everything that needs a screen (a HUD, screens, parts that build meshes), for a
+    game that had none. It lives in the game's Client/ folder, a project of its own: the game folder's
+    project (the simulation half, or a data-only game's) leaves Client/ to it (Sage.Sdk). game.json loads
+    the dll this builds through "modules": { "add": ["Client/bin/{config}/MyGame.Client.dll"] }, and the
+    build checks it does (SAGE0111). `dotnet run` here builds the game folder's project too and starts the
+    Player host with -game on the game folder.
+  -->
+  <PropertyGroup>
+    <RootNamespace>MyGame</RootNamespace>
+    <!-- The game this is the client half of: game.json, content/ and the host's -game. -->
+    <SageGameDirectory>$(MSBuildProjectDirectory)/SAGE_GAME_FOLDER</SageGameDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The game folder's own project, built first; loaded by game.json, so not copied here. -->
+    <ProjectReference Include="SAGE_GAME_FOLDER/*.csproj" Private="false" />
+  </ItemGroup>
+</Project>

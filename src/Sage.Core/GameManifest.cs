@@ -16,7 +16,8 @@ namespace Sage.Core;
 //     "kits": ["sage.kits.rpg"],                       // kits the game is built on (issue #27)
 //     "scene": "main",                                 // the scene every world starts in (issue #29)
 //     "sage": "^0.1",                                  // the engine versions it was made for (issue #31)
-//     "version": "1.0.0"                               // the game's own version, for a mod's "gameVersion" (4j)
+//     "version": "1.0.0",                              // the game's own version, for a mod's "gameVersion" (4j)
+//     "cook": { "uncompressed": ["textures/ui/**"] }   // what `sage cook` leaves uncompressed (issue #302)
 //   }
 public sealed class GameManifest
 {
@@ -51,6 +52,18 @@ public sealed class GameManifest
     // This game's own version, "1.4.0": what a mod's "gameVersion" range is checked against (phase 4j).
     // Left out, the check is skipped with a note.
     public string? Version { get; set; }
+
+    // How `sage cook` (which `sage package` runs) cooks this game's content (issue #302): textures are
+    // block-compressed (BC1/BC3) unless "compress" is false or the texture's path, inside its mount, matches
+    // one of "uncompressed" ("textures/ui/**", "*.png"): pixel art, UI and fonts usually want their exact
+    // pixels, which a cooked texture keeps as premultiplied RGBA.
+    public CookSettings Cook { get; set; } = new();
+
+    public sealed class CookSettings
+    {
+        public bool Compress { get; set; } = true;
+        public List<string> Uncompressed { get; set; } = new();
+    }
 
     public sealed class ModuleSettings
     {

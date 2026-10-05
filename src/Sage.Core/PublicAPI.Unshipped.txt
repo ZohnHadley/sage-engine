@@ -242,3 +242,11 @@ static Sage.Core.WorkStats.LoadsPending.get -> int
 static Sage.Core.WorkStats.UploadBytes.get -> long
 static Sage.Core.WorkStats.Uploaded(long bytes) -> void
 static Sage.Core.WorkStats.Uploads.get -> long
+Sage.Core.GameManifest.Cook.get -> Sage.Core.GameManifest.CookSettings!
+Sage.Core.GameManifest.Cook.set -> void
+Sage.Core.GameManifest.CookSettings
+Sage.Core.GameManifest.CookSettings.CookSettings() -> void
+Sage.Core.GameManifest.CookSettings.Compress.get -> bool
+Sage.Core.GameManifest.CookSettings.Compress.set -> void
+Sage.Core.GameManifest.CookSettings.Uncompressed.get -> System.Collections.Generic.List<string!>!
+Sage.Core.GameManifest.CookSettings.Uncompressed.set -> void

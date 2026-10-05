@@ -58,7 +58,7 @@ internal sealed class MeshData
     public required MeshPart[] Parts;
     public bool IsError;
     public bool Owned;   // buffers the renderer created (error mesh, terrain chunks): it disposes them
-    public GltfLoader.Skin? Skin;              // the file's skin, if any of its parts is skinned
+    public MeshSkin? Skin;              // the file's skin, if any of its parts is skinned
 }
 
 // The client renderer (docs/design/06): owns GPU-side meshes by id, the material cache and the named
@@ -114,6 +114,7 @@ public sealed class Renderer : IDisposable
     internal Renderer(ClientHost host, ContentService content, Engine engine, RendererCVars settings, RenderPasses passes)
     {
         if (!passes.IsSealed) throw new InvalidOperationException("The render passes are ordered when they are sealed; seal them before the renderer is made.");
+        VertexLayouts.Check();   // the headless model structs go to vertex buffers as they are (issue #302)
         _passes = passes;
         _external = new bool[RenderStages.Count][];
         for (int stage = 0; stage < RenderStages.Count; stage++)
@@ -260,11 +261,16 @@ public sealed class Renderer : IDisposable
         if (_meshIds.TryGetValue(path, out int id)) return id;
         id = 0;
 
-        var stream = _content.Open(path);
-        if (stream == null)
-            Log.Warn(LogCat.Render, $"Mesh '{path}' unavailable; drawing the error mesh");
+        // The cooked .sgmesh when the package has one (issue #302), else the .glb.
+        var geometry = _content.LoadModel(path);
+        if (geometry == null)
+            Log.Warn(LogCat.Render, $"Mesh '{path}' unavailable or unreadable; drawing the error mesh");
         else
-            using (stream) id = LoadMesh(path.ToString(), stream);
+        {
+            var mesh = BuildMesh(path.ToString(), geometry);
+            _meshes.Add(mesh);
+            id = _meshes.Count - 1;
+        }
 
                 _meshIds[path] = id;
         return id;
@@ -307,13 +313,13 @@ public sealed class Renderer : IDisposable
     // error mesh) when it cannot be read.
     private int LoadMesh(string name, System.IO.Stream stream)
     {
-        var mesh = BuildMesh(name, stream);
-        if (mesh == null)
+        var geometry = MeshGeometry.ReadGlb(stream, name);
+        if (geometry == null)
         {
             Log.Warn(LogCat.Render, $"Mesh '{name}' could not be read; drawing the error mesh");
             return 0;
         }
-        _meshes.Add(mesh);
+        _meshes.Add(BuildMesh(name, geometry));
         return _meshes.Count - 1;
     }
 
@@ -326,8 +332,8 @@ public sealed class Renderer : IDisposable
     {
         if (!_meshIds.TryGetValue(path, out int id)) return false;
 
-        using var stream = _content.Open(path);
-        var fresh = stream == null ? null : BuildMesh(path.ToString(), stream);
+        var geometry = _content.LoadModel(path);
+        var fresh = geometry == null ? null : BuildMesh(path.ToString(), geometry);
         if (fresh == null)
         {
             Log.Warn(LogCat.Render, $"Mesh '{path}' did not reload; keeping the copy already loaded");
@@ -352,19 +358,11 @@ public sealed class Renderer : IDisposable
         return true;
     }
 
-    // The mesh for a `.glb` stream, not yet in the table; null when it cannot be read.
-    private MeshData? BuildMesh(string name, System.IO.Stream stream)
+    // The buffers for a model's geometry (a .glb read, or its cooked .sgmesh), not yet in the table. The
+    // headless vertex structs are laid out as MonoGame's, so the arrays go to the buffers as they are.
+    private MeshData BuildMesh(string name, MeshGeometry model)
     {
-        WorkStats.LoadStarted();   // `stat assets` (issue #300)
-        long started = System.Diagnostics.Stopwatch.GetTimestamp();
-        try { return BuildMeshTimed(name, stream); }
-        finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
-    }
-
-    private MeshData? BuildMeshTimed(string name, System.IO.Stream stream)
-    {
-        if (!GltfLoader.TryLoad(stream, name, out var model)) return null;
-
+        var bounds = new BoundingSphere(model.BoundsCentre, model.BoundsRadius);   // System.Numerics → MonoGame (implicit)
         var parts = new List<MeshPart>(model.Parts.Count);
         bool skinned = false;
         foreach (var loaded in model.Parts)
@@ -393,7 +391,7 @@ public sealed class Renderer : IDisposable
                 StartIndex = 0,
                 PrimitiveCount = loaded.Indices.Length / 3,
                 Bone = Matrix.Identity,      // the file's hierarchy is already baked in (rigid) or is the skin's (skinned)
-                Bounds = model.Bounds,
+                Bounds = bounds,
                 Skinned = loaded.Skinned != null,
             });
         }

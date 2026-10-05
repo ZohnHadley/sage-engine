@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Sage",
+  "classifications": ["Game", "Sage", "Client"],
+  "identity": "Sage.Templates.GameClient",
+  "name": "Sage game client half",
+  "description": "A client half (a HUD, screens: what needs a screen) for a Sage game that has none, such as a sage-game-data game: a project in the game's Client/ folder that builds the game's own project too, and whose dotnet run starts the game. game.json loads it through \"modules\": { \"add\": [\"Client/bin/{config}/MyGame.Client.dll\"] }; sage new game-client --game <game folder> makes it there and adds that.",
+  "shortName": "sage-game-client",
+  "sourceName": "MyGame",
+  "preferNameDirectory": true,
+  "tags": { "language": "C#", "type": "project" },
+  "symbols": {
+    "sdkVersion": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "SAGE_PACKED_VERSION",
+      "replaces": "SAGE_SDK_VERSION",
+      "description": "The Sage.Sdk version the project names (Sage.Sdk/version in its Sdk attribute). The pack sets the default to the version packed (build/Sage.Version.props, from git tags); pass it when installing the template straight from its folder."
+    },
+    "gameDir": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "..",
+      "replaces": "SAGE_GAME_FOLDER",
+      "description": "The game folder (the one with game.json), relative to the new project's folder. The default is for the game's Client/ folder."
+    }
+  }
+}

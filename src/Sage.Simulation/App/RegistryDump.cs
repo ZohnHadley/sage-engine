@@ -10,8 +10,8 @@ namespace Sage.Simulation;
 
 // Everything an app registered, as JSON (docs/REDESIGN.md §4.8 "Registry dump", issue #18): every
 // console command, cvar, record type, component, tag, saved resource, prefab part, system, entity input
-// and output, input action and vocabulary entry (issue #28), each with the plugin that registered it
-// (the ledger, issue #12) and, for the declarations, their fields from the metadata table.
+// and output, game event (issue #298), input action and vocabulary entry (issue #28), each with the plugin
+// that registered it (the ledger, issue #12) and, for the declarations, their fields from the metadata table.
 //
 //   Sage.Host -game games/Sandbox -dump-registry build/registry.json    the host: boots, writes, quits
 //   RegistryDump.Write(app.Engine, path)                                a test or a tool, headless
@@ -142,6 +142,13 @@ public static class RegistryDump
         {
             ["name"] = n, ["description"] = engine.Outputs.Describe(n), ["owner"] = ledger.OwnerOf("entity output", n),
         }));
+        // Game events (04 §3.2): the `[GameEvent]` structs of every assembly this app is made of. Nothing
+        // registers an event — a reader or a sender names the type — so they are found by their
+        // attribute, which is what a document's "the `Used` event" has to match (TODO #62, issue #298).
+        root["gameEvents"] = Array(GameEventTypes(engine).Select(t => new JsonObject
+        {
+            ["name"] = EventName(t), ["clrType"] = t.FullName, ["assembly"] = t.Assembly.GetName().Name,
+        }));
         root["inputActions"] = Array(engine.Actions.All.Select(a => new JsonObject
         {
             ["name"] = a.Name, ["kind"] = a.Kind.ToString(), ["owner"] = ledger.OwnerOf("input action", a.Name),
@@ -166,6 +173,34 @@ public static class RegistryDump
             WriteIndented = true,
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         }) + "\n";
+    }
+
+    // The engine's own assembly, every module's and every component declaration's: what the app is made of.
+    private static IEnumerable<Type> GameEventTypes(Engine engine)
+    {
+        var assemblies = new HashSet<System.Reflection.Assembly> { typeof(Engine).Assembly };
+        foreach (var module in engine.Modules.Modules) assemblies.Add(module.GetType().Assembly);
+        foreach (var declaration in engine.Components.Declarations) assemblies.Add(declaration.Type.Assembly);
+        return assemblies
+            .SelectMany(LoadableTypes)
+            .Where(t => t.IsValueType && t.IsDefined(typeof(GameEventAttribute), false))
+            .OrderBy(EventName, StringComparer.Ordinal)
+            .ThenBy(t => t.FullName, StringComparer.Ordinal);
+    }
+
+    private static IEnumerable<Type> LoadableTypes(System.Reflection.Assembly assembly)
+    {
+        try { return assembly.GetTypes(); }
+        catch (System.Reflection.ReflectionTypeLoadException ex) { return ex.Types.OfType<Type>(); }
+    }
+
+    // As C# spells it: `Used`, `Added<T>`.
+    internal static string EventName(Type type)
+    {
+        if (!type.IsGenericTypeDefinition) return type.Name;
+        int tick = type.Name.IndexOf('`');
+        string stem = tick >= 0 ? type.Name.Substring(0, tick) : type.Name;
+        return $"{stem}<{string.Join(", ", type.GetGenericArguments().Select(a => a.Name))}>";
     }
 
     // A declaration's type and fields, into its entry.

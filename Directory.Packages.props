@@ -8,6 +8,10 @@
     <!-- Simulation -->
     <PackageVersion Include="BepuPhysics" Version="2.4.0" />
     <PackageVersion Include="Friflo.Engine.ECS" Version="3.6.0" />
+    <!-- Headless decoding for cooked assets (issue #302): images for `sage cook`, Ogg Vorbis for sounds.
+         NVorbis is the version MonoGame.Framework.DesktopGL already brings, so the client has one copy. -->
+    <PackageVersion Include="StbImageSharp" Version="2.30.16" />
+    <PackageVersion Include="NVorbis" Version="0.10.4" />
     <!-- Client and tools -->
     <PackageVersion Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
     <PackageVersion Include="SharpGLTF.Core" Version="1.0.7" />
