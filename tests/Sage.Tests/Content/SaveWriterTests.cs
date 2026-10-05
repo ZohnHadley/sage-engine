@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Nodes;
@@ -11,6 +12,14 @@ using System.Threading;
 namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
+
+// An entity reference and a list: a component a save serialises on the tick (SaveCapture).
+[Component("test:writer_link")]
+public struct WriterLink : IComponent
+{
+    public Entity Target;
+    public List<int> Marks;
+}
 
 // Saves, issue #285: compressed world files, a thumbnail the client hands over, titles and configurable
 // slot names, quick-save keys heard while paused, a save written in the background, and the save-version
@@ -43,6 +52,72 @@ public class SaveWriterTests
         ref world.Get<QuickCount>(Assert.Single(world.QueryAll().Entities.ToEntityList().Where(e => e.Name == "crate").ToArray()));
 
     private static string Folder(SaveSystem saves, string slot) => Path.Combine(saves.Root, slot);
+
+    // A save written in the background is the state of the tick it was taken on, and the same file a save
+    // written there and then makes (issue #285, SaveCapture): the tick copies the entities' columns, and what
+    // needs the world (an entity reference, a list the game may change) is serialised on the tick; the
+    // writer builds the rest. What the game does after the snapshot — new values, a new name, a list grown,
+    // a reference moved, an entity destroyed — is not in it.
+    [Xunit.Fact]
+    public void ABackgroundSaveIsTheTickItWasTakenOn()
+    {
+        using var app = Boot();
+        var world = app.World;
+        var saves = app.Engine.Saves;
+        var crate = new RecordId("game", "crate");
+        var crates = Enumerable.Range(0, 5).Select(i => world.Spawn(crate, new Vector3(i, 0, 2))).ToArray();
+        for (int i = 0; i < crates.Length; i++) world.Get<QuickCount>(crates[i]).Value = 10 + i;
+        world.Get<QuickCount>(crates[0]).Value = 1;   // as its prefab spawned it: left out of the diff
+        var hero = world.Create(Transform.At(new Vector3(0, 0, 7)), "hero");
+        world.Add(hero, new Persistent { Id = PersistentId.FromName("writer_hero") });
+        world.Add(hero, new WriterLink { Target = crates[3], Marks = new List<int> { 4, 5 } });
+        world.RunFixed(Dt);
+
+        Assert.True(saves.Save("now"));   // written before it returns
+        Assert.Equal(1, saves.LastTiming.SerialisedOnTick);   // the hero's link: it names an entity
+
+        var gate = new ManualResetEventSlim(false);
+        saves.WriterGate = gate;
+        try
+        {
+            saves.QuickSave();
+            Assert.True(saves.IsWriting);
+            // After the snapshot: none of this is in the save.
+            world.Get<QuickCount>(crates[1]).Value = 99;
+            world.Get<QuickCount>(crates[0]).Value = 42;
+            crates[2].Name = "renamed";
+            world.Get<WriterLink>(hero).Marks.Add(6);
+            world.Get<WriterLink>(hero).Target = crates[4];
+            world.Get<Transform>(crates[3]).LocalPosition = new Vector3(50, 0, 50);
+            world.Destroy(crates[4]);
+            world.RunFixed(Dt);
+        }
+        finally
+        {
+            gate.Set();
+            saves.WriterGate = null;
+        }
+        saves.WaitForWrites();
+
+        static JsonNode Entities(SaveSystem saves, string slot) =>
+            JsonNode.Parse(File.ReadAllText(Assert.Single(Directory.GetFiles(Path.Combine(saves.Root, slot), "world_*"))))!["entities"]!;
+        var background = Entities(saves, SaveSystem.QuickSlot);
+        Assert.True(JsonNode.DeepEquals(Entities(saves, "now"), background),
+                    $"between ticks: {Entities(saves, "now").ToJsonString()}\nin the background: {background.ToJsonString()}");
+        var link = background.AsArray().Single(e => (string?)e!["id"] == PersistentId.FromName("writer_hero").ToString())!
+            ["components"]!["test:writer_link"]!["data"]!;
+        Assert.Equal(world.Get<Persistent>(crates[3]).Id.ToString(), (string?)link["Target"]);
+        Assert.Equal("[4,5]", link["Marks"]!.ToJsonString());
+
+        Assert.True(saves.Load(SaveSystem.QuickSlot));
+        world.RunFixed(Dt);
+        var loaded = world.QueryAll().Entities.ToEntityList().Where(e => e.Name == "crate" && world.Has<Sage.Simulation.FromPrefab>(e)
+                                                                         && world.Get<Transform>(e).LocalPosition.Z == 2).ToArray();
+        Assert.Equal(new[] { 1, 11, 12, 13, 14 }, loaded.Select(e => world.Get<QuickCount>(e).Value).OrderBy(v => v));
+        var target = world.Get<WriterLink>(world.Resolve(PersistentId.FromName("writer_hero"))).Target;
+        Assert.Equal(13, world.Get<QuickCount>(target).Value);
+        Assert.Equal(new Vector3(3, 0, 2), world.Get<Transform>(target).LocalPosition);
+    }
 
     // `save_compress 1`: the world files are gzip; the slot says so; it loads, lists its entities, and a save
     // written before (plain JSON) still loads with compression on.
@@ -355,8 +430,8 @@ public class SaveWriterTests
 }
 
 // The issue's done criterion: a 10k-entity save does not stall a frame. What a frame pays is the snapshot
-// on the tick; the write (serialising what the snapshot left, compressing, the files) runs on the writer's
-// thread. Proved without an absolute wall-clock bound, which a shared CI runner would make flaky: the
+// on the tick, which copies component columns (SaveCapture); the write (building the entities' JSON,
+// compressing, the files) runs on the writer's thread. Proved without an absolute wall-clock bound, which a shared CI runner would make flaky: the
 // writer is held shut while the tick that asked for the save runs, so that tick provably did not wait for
 // the write, and the save is complete and loads once the writer is let go; and the snapshot is compared
 // with a whole save of the same world, not with a number of milliseconds. The split is logged.
@@ -422,10 +497,13 @@ public class SaveWriterMeasurements
         saves.WaitForWrites();
         var timing = saves.LastTiming;
         Assert.True(timing.Write > TimeSpan.Zero);
-        // What the tick paid is a part of what the save cost: the serialising, compressing and writing,
-        // and the components it left to the writer (SaveSerializer.ResolveDeferred), were not on it.
-        Assert.True(timing.Snapshot < warm.Snapshot + warm.Write,
-                    $"snapshot {timing.Snapshot.TotalMilliseconds:F1} ms, a whole save {(warm.Snapshot + warm.Write).TotalMilliseconds:F1} ms");
+        // The tick built no JSON: it copied the crates' component columns (SaveCapture), and serialised
+        // nothing, since nothing in a crate needs the world; the entities' trees, the diffs against the
+        // prefab, compressing and writing were all the writer's. So what the tick paid is a small part of
+        // what the save cost (about a thirtieth when measured; a fifth leaves a slow runner its headroom).
+        Assert.Equal(0, timing.SerialisedOnTick);
+        Assert.True(timing.Snapshot * 5 < timing.Write,
+                    $"snapshot {timing.Snapshot.TotalMilliseconds:F1} ms, write {timing.Write.TotalMilliseconds:F1} ms");
         var slot = saves.Slots.Single(s => s.Name == SaveSystem.QuickSlot);
         Assert.True(slot.Compressed);
         Assert.True(saves.List().Single(s => s.Slot == SaveSystem.QuickSlot).Entities > Entities);

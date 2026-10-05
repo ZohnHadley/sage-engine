@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using F = Friflo.Engine.ECS;
 
 namespace Sage.Simulation;
@@ -56,7 +57,11 @@ public sealed class World : IDisposable
         Name = name;
         Engine = engine;
         _store = new F.EntityStore();
-        _store.OnEntityCreate += e => EntitySpawned?.Invoke(e.Entity.AsSage());
+        _store.OnEntityCreate += e =>
+        {
+            AccessCheck.Structural();
+            EntitySpawned?.Invoke(e.Entity.AsSage());
+        };
         _store.OnComponentAdded += OnComponentAdded;
         _store.OnComponentRemoved += OnComponentRemoved;
         _store.OnEntityDelete += OnEntityDelete;
@@ -297,6 +302,10 @@ public sealed class World : IDisposable
     // be written back and cleared.
     internal QueryEntities PersistentIncludingDisabled() => new(_store.Query<Persistent>().WithDisabled().Entities);
 
+    // The same, as the archetypes that hold them (issue #285): a save's snapshot copies their component
+    // columns whole rather than reading entity by entity (SaveCapture).
+    internal ReadOnlySpan<F.Archetype> PersistentArchetypes() => _store.Query<Persistent>().WithDisabled().Archetypes;
+
     // Every runtime spawn no save names (Unsaved, 4m-4), disabled ones included: what a load takes away.
     internal QueryEntities UnsavedIncludingDisabled() =>
         new(_store.Query().AllTags(F.Tags.Get<Unsaved>()).WithDisabled().Entities);
@@ -336,7 +345,8 @@ public sealed class World : IDisposable
     private SystemInfo Add(ISystem system, string? id, Phase phase, RunCondition condition, string[] before, string[] after)
     {
         var ledger = Engine?.Registrations;
-        var info = _scheduler.Add(system, id, phase, condition, before, after, ledger?.Owner ?? "host");
+        var access = Declare(system);
+        var info = _scheduler.Add(system, id, phase, condition, before, after, ledger?.Owner ?? "host", access);
         if (id != null) ledger?.Record("system", id);
         Log.Debug(LogCat.World, $"System {id ?? info.Name} ({info.Name}) added to {phase} in '{Name}' by {info.Owner}");
         return info;
@@ -351,6 +361,25 @@ public sealed class World : IDisposable
         Retire(system);
         Log.Debug(LogCat.World, $"System {info.Id ?? info.Name} removed from '{Name}'");
         return true;
+    }
+
+    // What a system declares it touches (issue #288), asked once, when it joins the world.
+    internal SystemAccess? Declare(ISystem system)
+    {
+        if (system is not IDeclaresAccess declares) return null;
+        var access = new SystemAccess(this);
+        declares.Declare(access);
+        if (BuildInfo.IsDevBuild) AccessCheck.On = true;
+        return access;
+    }
+
+    // One checksum per component type a declaration reads (dev builds): see ComponentProbe.
+    private readonly Dictionary<Type, ComponentProbe> _probes = new();
+
+    internal ComponentProbe ProbeOf<T>() where T : struct, IComponent
+    {
+        if (!_probes.TryGetValue(typeof(T), out var probe)) _probes[typeof(T)] = probe = new ComponentProbe<T>(this);
+        return probe;
     }
 
     internal void Retire(ISystem system)
@@ -498,16 +527,151 @@ public sealed class World : IDisposable
 
         using (Profiler.Begin(_scheduler.PhaseProfileName(phase)))
         {
-            var ctx = new SystemContext(this, phase, tick, frame);
-            for (int i = 0; i < systems.Count; i++)
+            if (systems.Count > 1 && ParallelEnabled && _scheduler.Plan(phase) is { HasParallelism: true } plan)
             {
-                var s = systems[i];
-                if (!s.Enabled || !ShouldRun(s)) continue;
-                using var _ = Profiler.Begin(s.ProfileName);
-                s.System.Run(ctx);
+                RunStages(plan, systems, phase, tick, frame);
+            }
+            else
+            {
+                int check = AccessCheckLevel;
+                var ctx = new SystemContext(this, phase, tick, frame);
+                for (int i = 0; i < systems.Count; i++)
+                {
+                    var s = systems[i];
+                    if (!s.Enabled || !ShouldRun(s)) continue;
+                    using var _ = Profiler.Begin(s.ProfileName);
+                    if (check > 0 && s.Access != null) RunChecked(s, ctx, check);
+                    else s.System.Run(ctx);
+                }
             }
             FlushCommands();
         }
+    }
+
+    // ---- Systems side by side (issue #288) ---------------------------------------------------------
+
+    private SystemWorkers? _workers;
+    private bool _logging;                          // a staged phase is running: structural changes go to logs
+    private IReadOnlyList<SystemInfo>? _loggedSystems;
+
+    // sys_parallel, or the world's own setting; never without a way to keep Friflo's loop count right.
+    private bool ParallelEnabled =>
+        SystemWorkers.LoopCounter != null && (Systems.Parallel ?? Engine?.Scheduling?.Parallel.Value ?? true);
+
+    // sys_access_check in dev builds (0 off, 1 touches, 2 touches and read-only values); 0 in Shipping.
+    private int AccessCheckLevel =>
+        !BuildInfo.IsDevBuild ? 0 : Systems.AccessCheckLevel ?? Engine?.Scheduling?.AccessCheck.Value ?? 2;
+
+    private int WorkerCount
+    {
+        get
+        {
+            int n = Systems.Threads ?? Engine?.Scheduling?.Threads.Value ?? 0;
+            return n > 0 ? n : Math.Clamp(Environment.ProcessorCount - 1, 0, 7);
+        }
+    }
+
+    // The phase's stages, for tests and tools.
+    internal PhasePlan PlanOf(Phase phase) => _scheduler.Plan(phase);
+
+    // A declared system run alone, checked against its declaration.
+    private void RunChecked(SystemInfo s, in SystemContext ctx, int check)
+    {
+        var run = s.Run ??= new SystemRun(this, s);
+        var probes = check >= 2 ? s.Access!.ReadProbes : Array.Empty<ComponentProbe>();
+        for (int p = 0; p < probes.Count; p++) probes[p].Before = probes[p].Checksum();
+        var previous = AccessCheck.Current;
+        AccessCheck.Current = run;
+        run.Validate = true;
+        try { s.System.Run(ctx); }
+        finally
+        {
+            run.Validate = false;
+            AccessCheck.Current = previous;
+        }
+        for (int p = 0; p < probes.Count; p++)
+            if (probes[p].Checksum() != probes[p].Before)
+                Systems.ReportAccess(s, "changed a component it declared only reading", probes[p].Type);
+    }
+
+    // A phase in stages: each stage's systems at the same time, on the workers and this thread; every
+    // system's structural changes on its own log, replayed into the world's buffer in the phase's order
+    // at the end, so the buffer plays back what a sequential run would have recorded.
+    private void RunStages(PhasePlan plan, IReadOnlyList<SystemInfo> systems, Phase phase, in TickTime tick, in FrameTime frame)
+    {
+        int check = AccessCheckLevel;
+        var counter = SystemWorkers.LoopCounter!;
+        int loops = counter.Get(_store);
+        _commands ??= new EntityCommands(_store.GetCommandBuffer());
+        _loggedSystems = systems;
+        _logging = true;
+        Exception? error = null;
+        try
+        {
+            for (int k = 0; k < plan.Stages.Length && error == null; k++)
+            {
+                var members = plan.Stages[k];
+                var batch = plan.Scratch;
+                int n = 0;
+                for (int i = 0; i < members.Length; i++)
+                {
+                    var s = members[i];
+                    if (!s.Enabled || !ShouldRun(s)) continue;
+                    var run = s.Run ??= new SystemRun(this, s);
+                    run.Validate = check > 0 && s.Access != null;
+                    batch[n++] = run;
+                }
+                if (n == 0) continue;
+
+                var probes = check >= 2 ? plan.StageProbes[k] : Array.Empty<ComponentProbe>();
+                for (int p = 0; p < probes.Length; p++) probes[p].Before = probes[p].Checksum();
+
+                if (n == 1) batch[0]!.Execute(phase, tick, frame, onWorker: false);
+                else
+                {
+                    var workers = _workers;
+                    if (workers == null || workers.Count != WorkerCount)
+                    {
+                        workers?.Dispose();
+                        _workers = workers = new SystemWorkers(WorkerCount, Name);
+                    }
+                    workers.Run(batch, n, phase, tick, frame);
+                    counter.Set(_store, loops);
+                }
+
+                for (int i = 0; i < n; i++)
+                {
+                    var run = batch[i]!;
+                    batch[i] = null;
+                    run.Validate = false;
+                    Profiler.Record(run.Info.ProfileName, run.Ticks);
+                    if (run.Bytes != 0) Interlocked.Add(ref Systems.WorkerAllocatedBytes, run.Bytes);
+                    error ??= run.Error;
+                    run.Error = null;
+                }
+
+                for (int p = 0; p < probes.Length; p++)
+                {
+                    if (probes[p].Checksum() == probes[p].Before) continue;
+                    foreach (var s in members)
+                        if (s.Access?.ReadsComponent(probes[p].Type) == true)
+                            Systems.ReportAccess(s, "ran while a component it declared only reading changed, and nothing running declared writing it", probes[p].Type);
+                }
+            }
+        }
+        finally
+        {
+            _logging = false;
+            ReplayLogs(systems);
+            _loggedSystems = null;
+        }
+        if (error != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error).Throw();
+    }
+
+    private void ReplayLogs(IReadOnlyList<SystemInfo> systems)
+    {
+        for (int i = 0; i < systems.Count; i++)
+            if (systems[i].Run is { HasLog: true } run) run.Log.ReplayInto(_commands!);
     }
 
     // An edit world runs no Fixed system but an `EvenWhenEditing` one, not even an `Always` one (issue #219).
@@ -525,12 +689,27 @@ public sealed class World : IDisposable
 
     // Record structural changes here while iterating a query; they're applied at the end of the
     // current phase (or by FlushCommands()).
-    public EntityCommands Commands => _commands ??= new EntityCommands(_store.GetCommandBuffer());
+    //
+    // While a phase runs systems side by side (issue #288), each system records on a log of its own, which
+    // the world replays here in the phase's order: the same changes, in the same order, as one buffer.
+    public EntityCommands Commands =>
+        _logging && AccessCheck.Current is { } run && run.World == this
+            ? run.Log
+            : _commands ??= new EntityCommands(_store.GetCommandBuffer());
 
     private bool HasPendingCommands => _commands is { HasPending: true };
 
     public void FlushCommands()
     {
+        if (_logging)
+        {
+            // An exclusive system flushing mid-phase: everything before it in the phase has run, so its
+            // logs go in first, in order, as their changes would have been in the buffer.
+            if (AccessCheck.Current is { OnWorker: true } worker)
+                throw new InvalidOperationException($"{worker.Info.Id ?? worker.Info.Name} flushed the world's commands while running " +
+                                                    "beside other systems: declare it Exclusive, or leave the flush to the end of the phase.");
+            ReplayLogs(_loggedSystems!);
+        }
         if (HasPendingCommands)
             _commands!.Playback();
         DestroyOrphans();
@@ -567,6 +746,7 @@ public sealed class World : IDisposable
 
     private void OnComponentAdded(F.ComponentChanged change)
     {
+        AccessCheck.Structural();
         var entity = change.Entity.AsSage();
         if (change.Type == typeof(Persistent))
             IndexPersistent(entity);
@@ -576,6 +756,7 @@ public sealed class World : IDisposable
 
     private void OnComponentRemoved(F.ComponentChanged change)
     {
+        AccessCheck.Structural();
         if (change.Type == typeof(Persistent))
             _persistent.Remove(change.OldComponent<Persistent>().Id);
         if (_structural.Any) _structural.OnRemoved(change);
@@ -586,6 +767,7 @@ public sealed class World : IDisposable
     // its components. Report each component's removal first, then the destruction (spike, 03 §3.1).
     private void OnEntityDelete(F.EntityDelete delete)
     {
+        AccessCheck.Structural();
         var entity = delete.Entity.AsSage();
         if (entity.TryGetComponent<Persistent>(out var p))
             _persistent.Remove(p.Id);
@@ -611,6 +793,8 @@ public sealed class World : IDisposable
     {
         foreach (var s in _scheduler.All)
             (s.System as IDisposable)?.Dispose();   // what a system took in its constructor (issue #17)
+        _workers?.Dispose();
+        _workers = null;
         Resources.DisposeAll();
         Log.Debug(LogCat.World, $"World '{Name}' destroyed");
     }

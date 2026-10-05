@@ -14,6 +14,8 @@ internal static class WorldConsoleCommands
 {
     public static void Register(CVarRegistry cvars, Engine engine)
     {
+        engine.Scheduling = new SchedulingCVars(cvars);   // sys_parallel, sys_threads, sys_access_check (#288)
+
         cvars.RegisterCommand("ent_list", CVarFlags.None, "ent_list [filter]: list entities in every world.", a =>
         {
             string filter = a.Count > 0 ? a[0] : "";
@@ -154,7 +156,8 @@ internal static class WorldConsoleCommands
                     string ms = p == null ? "   -   " : $"{p.AverageMs,6:F3}";
                     string state = s.DisabledBy != null ? $" (disabled by {s.DisabledBy})" : s.Enabled ? "" : " (disabled)";
                     string replaced = s.ReplacedBy != null ? $", replaced by {s.ReplacedBy}" : "";
-                    Log.Info(LogCat.Console, $"  {s.Phase,-12} {ms} ms  {s.Id ?? "(unnamed)",-32} {s.Name} [{s.Owner}{replaced}]{state}");
+                    string access = s.Access != null ? $" <{s.Access}>" : "";   // declared access (issue #288)
+                    Log.Info(LogCat.Console, $"  {s.Phase,-12} {ms} ms  {s.Id ?? "(unnamed)",-32} {s.Name} [{s.Owner}{replaced}]{state}{access}");
                 }
             }
         });

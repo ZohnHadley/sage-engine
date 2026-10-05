@@ -108,6 +108,9 @@ override Sage.Simulation.CameraViewport.GetHashCode() -> int
 override Sage.Simulation.CameraViewport.ToString() -> string!
 override Sage.Simulation.GameDate.ToString() -> string!
 override Sage.Simulation.SaveVersionReport.ToString() -> string!
+readonly Sage.Simulation.GravityRegion.Max -> System.Numerics.Vector3
+readonly Sage.Simulation.GravityRegion.Min -> System.Numerics.Vector3
+readonly Sage.Simulation.GravityRegion.Scale -> float
 Sage.Simulation.ActionAttribute
 Sage.Simulation.ActionAttribute.ActionAttribute(string! id) -> void
 Sage.Simulation.ActionContext
@@ -574,6 +577,13 @@ Sage.Simulation.FogMath
 Sage.Simulation.FogMode
 Sage.Simulation.FogMode.Exp2 = 1 -> Sage.Simulation.FogMode
 Sage.Simulation.FogMode.Linear = 0 -> Sage.Simulation.FogMode
+Sage.Simulation.Follower
+Sage.Simulation.Follower.Distance -> float
+Sage.Simulation.Follower.Follower() -> void
+Sage.Simulation.FollowerPart
+Sage.Simulation.FollowerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.FollowerPart.Distance -> float
+Sage.Simulation.FollowerPart.FollowerPart() -> void
 Sage.Simulation.FromParentPrefab
 Sage.Simulation.FromParentPrefab.FromParentPrefab() -> void
 Sage.Simulation.GameDate
@@ -597,6 +607,10 @@ Sage.Simulation.GltfAnimationReader.Forget(Sage.Core.AssetPath path) -> bool
 Sage.Simulation.GltfAnimationReader.GltfAnimationReader(Sage.Core.VirtualFileSystem! vfs) -> void
 Sage.Simulation.GltfAnimationReader.Load(Sage.Core.AssetPath path) -> Sage.Simulation.AnimationSet?
 Sage.Simulation.GltfAnimationReader.TryGet(Sage.Core.AssetPath path, out Sage.Simulation.AnimationSet? set) -> bool
+Sage.Simulation.GravityRegion
+Sage.Simulation.GravityRegion.Contains(System.Numerics.Vector3 at) -> bool
+Sage.Simulation.GravityRegion.GravityRegion() -> void
+Sage.Simulation.GravityRegion.GravityRegion(System.Numerics.Vector3 min, System.Numerics.Vector3 max, float scale) -> void
 Sage.Simulation.Heightfield.CellLayers.get -> byte[]?
 Sage.Simulation.Heightfield.Cells.get -> int
 Sage.Simulation.Heightfield.LayerAt(int cellX, int cellZ) -> byte
@@ -1169,6 +1183,7 @@ Sage.Simulation.SaveVersionStatus.Newer = 2 -> Sage.Simulation.SaveVersionStatus
 Sage.Simulation.SaveVersionStatus.Unknown = 3 -> Sage.Simulation.SaveVersionStatus
 Sage.Simulation.SaveVersionStatus.Upgrade = 1 -> Sage.Simulation.SaveVersionStatus
 Sage.Simulation.SceneEnvironment.Ambient -> System.Numerics.Vector3
+Sage.Simulation.SceneEnvironment.GravityScale -> float
 Sage.Simulation.SceneEnvironment.Hour -> float?
 Sage.Simulation.SceneEnvironment.Sky -> Sage.Core.RecordRef<Sage.Simulation.SkyRecord!>
 Sage.Simulation.SavedContent
@@ -1244,6 +1259,7 @@ Sage.Simulation.RenderStage.Transparent = 4 -> Sage.Simulation.RenderStage
 Sage.Simulation.RenderStages
 Sage.Simulation.PrefabRecord.Persist -> bool
 Sage.Simulation.SceneRecord.Space -> Sage.Simulation.SceneSpace
+Sage.Simulation.SceneRecord.Live -> bool
 Sage.Simulation.SceneRecord.Streamed -> bool
 Sage.Simulation.SceneRecord.Terrain -> Sage.Core.RecordRef<Sage.Simulation.TerrainRecord!>
 Sage.Simulation.SceneSpace
@@ -1377,6 +1393,13 @@ Sage.Simulation.SoundRequested.Source.get -> Sage.Simulation.Entity
 Sage.Simulation.SoundRequested.Source.init -> void
 Sage.Simulation.SoundRequested.Volume.get -> float
 Sage.Simulation.SoundRequested.Volume.init -> void
+Sage.Simulation.SpaceGravity
+Sage.Simulation.SpaceGravity.Region(int index) -> Sage.Simulation.GravityRegion
+Sage.Simulation.SpaceGravity.RegionCount.get -> int
+Sage.Simulation.SpaceGravity.Scale.get -> float
+Sage.Simulation.SpaceGravity.ScaleAt(Sage.Simulation.World! world, System.Numerics.Vector3 position) -> float
+Sage.Simulation.SpaceGravity.SpaceGravity() -> void
+Sage.Simulation.SpaceGravity.Version.get -> int
 Sage.Simulation.Spawners
 Sage.Simulation.StateMachine
 Sage.Simulation.StateMachine.Activator -> Sage.Simulation.Entity
@@ -1401,6 +1424,15 @@ Sage.Simulation.StateTransition.StateTransition() -> void
 Sage.Simulation.StateTransition.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.Simulation.StateTransition.To -> string!
 Sage.Simulation.StateTransition.When -> Sage.Simulation.ICondition?
+Sage.Simulation.StreamingRing
+Sage.Simulation.StreamingRing.FarRadius -> int
+Sage.Simulation.StreamingRing.Radius -> int
+Sage.Simulation.StreamingRing.StreamingRing() -> void
+Sage.Simulation.StreamingRingPart
+Sage.Simulation.StreamingRingPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.StreamingRingPart.FarRadius -> int
+Sage.Simulation.StreamingRingPart.Radius -> int
+Sage.Simulation.StreamingRingPart.StreamingRingPart() -> void
 Sage.Simulation.SurfaceFace
 Sage.Simulation.SurfaceFace.Normal.get -> System.Numerics.Vector3
 Sage.Simulation.SurfaceFace.Normal.init -> void
@@ -1790,6 +1822,7 @@ static Sage.Simulation.SkyRules.Haze(float elevation) -> float
 static Sage.Simulation.SkyRules.StarsAt(float sunElevation) -> float
 static Sage.Simulation.SkyRules.SunAt(Sage.Simulation.SkyRecord! sky, double hour) -> (System.Numerics.Vector3 ToSun, float Elevation)
 static Sage.Simulation.SkyRules.SunDisc(System.Numerics.Vector3 direction, System.Numerics.Vector3 sunDirection) -> float
+static Sage.Simulation.SpaceGravity.Of(Sage.Simulation.World! world) -> Sage.Simulation.SpaceGravity!
 static Sage.Simulation.Spawners.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity spawner) -> Sage.Simulation.Entity
 static Sage.Simulation.StateMachines.FirstTransition(System.Collections.Generic.IReadOnlyList<Sage.Simulation.StateTransition!>? transitions, string? input, float timeInState, in Sage.Simulation.ConditionContext context) -> Sage.Simulation.StateTransition?
 static Sage.Simulation.StateMachines.HasTag(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! tag) -> bool
@@ -1864,6 +1897,7 @@ Sage.Simulation.InCell
 Sage.Simulation.InCell.InCell() -> void
 Sage.Simulation.InCell.Source -> string!
 static Sage.Simulation.Scenes.Current(Sage.Simulation.World! world) -> Sage.Core.RecordId
+static Sage.Simulation.Scenes.LiveBeside(Sage.Simulation.World! world) -> System.Collections.Generic.IReadOnlyList<Sage.Core.RecordId>!
 Sage.Simulation.SaveSlot.Mods.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.SavedMod>!
 Sage.Simulation.SavedMod
 Sage.Simulation.SavedMod.Id.get -> string!
@@ -1946,3 +1980,34 @@ Sage.Simulation.ColliderOff.ColliderOff() -> void
 Sage.Simulation.World.Resolve(Sage.Simulation.Entity reference) -> Sage.Simulation.Entity
 Sage.Simulation.Unsaved
 Sage.Simulation.Unsaved.Unsaved() -> void
+override Sage.Simulation.SystemAccess.ToString() -> string!
+Sage.Simulation.IDeclaresAccess
+Sage.Simulation.IDeclaresAccess.Declare(Sage.Simulation.SystemAccess! access) -> void
+Sage.Simulation.SystemAccess
+Sage.Simulation.SystemAccess.ComponentReads.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+Sage.Simulation.SystemAccess.ComponentWrites.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+Sage.Simulation.SystemAccess.ConflictsWith(Sage.Simulation.SystemAccess! other) -> bool
+Sage.Simulation.SystemAccess.EventReads.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.EventSends.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.Exclusive() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.IsExclusive.get -> bool
+Sage.Simulation.SystemAccess.Reads<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.ReadsEvents<T>(Sage.Simulation.Schedule schedule = Sage.Simulation.Schedule.Fixed) -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.ReadsResource<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.ResourceReads.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.ResourceWrites.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+Sage.Simulation.SystemAccess.Sends<T>(Sage.Simulation.Schedule schedule = Sage.Simulation.Schedule.Fixed) -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.World.get -> Sage.Simulation.World!
+Sage.Simulation.SystemAccess.Writes<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemAccess.WritesResource<T>() -> Sage.Simulation.SystemAccess!
+Sage.Simulation.SystemInfo.Access.get -> Sage.Simulation.SystemAccess?
+Sage.Simulation.WorldSystems.AccessCheckLevel.get -> int?
+Sage.Simulation.WorldSystems.AccessCheckLevel.set -> void
+Sage.Simulation.WorldSystems.AccessReports.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.WorldSystems.AccessViolations.get -> int
+Sage.Simulation.WorldSystems.Parallel.get -> bool?
+Sage.Simulation.WorldSystems.Parallel.set -> void
+Sage.Simulation.WorldSystems.Threads.get -> int?
+Sage.Simulation.WorldSystems.Threads.set -> void
+Sage.Simulation.SageAppOptions.AutoexecFile.get -> string?
+Sage.Simulation.SageAppOptions.AutoexecFile.init -> void

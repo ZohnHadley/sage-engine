@@ -10,6 +10,7 @@ using System.Linq;
 //   sage schema <game> [<game> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...]
 //               [--engine-content <dir>] [--client <Sage.Client.dll>]
 //   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
+//   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate]
 //
 // --mods names a mod (a folder with a mod.json) or a folder of mods; each mod.json is read, the mods are
 // ordered as the game would order them (dependencies, loadAfter, loadBefore, then the order given) and
@@ -23,11 +24,18 @@ using System.Linq;
 // game the same way and writes JSON Schemas for its records, components and parts, with the ids its
 // content (and the mounted mods) loaded, into --out (default: <game>/schemas) (issue #21).
 //
+// `package` (issue #293) writes a folder a player runs: the Shipping host with the game beside it in game/
+// (GamePackage.cs says what goes in). --host is the host's build output (default: the host beside this
+// program, as in the Player package, else this repository's src/Sage.Host/bin/<config>/net8.0); --config is
+// the configuration the game was built in (default Shipping). The written folder's content is then checked as
+// `validate` would, with the host's Content/ as engine content, unless --no-validate.
+//
 // Exit codes: 0 clean (warnings allowed), 1 content errors, 2 a usage mistake.
 return args.Length == 0 ? Usage()
     : args[0] == "validate" ? Validate(args[1..])
     : args[0] == "schema" ? Schema(args[1..])
     : args[0] == "mods" ? Mods(args[1..])
+    : args[0] == "package" ? Package(args[1..])
     : Usage();
 
 static int Usage()
@@ -35,6 +43,7 @@ static int Usage()
     Console.Error.WriteLine("usage: sage validate <game folder> [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage schema <game folder> [<game folder> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>] [--client <Sage.Client.dll>]");
     Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
+    Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate]");
     return 2;
 }
 
@@ -103,6 +112,52 @@ static int Schema(string[] args)
     Console.WriteLine($"{Path.GetFullPath(output)}: {written.Count} schema file(s) for {catalog.RecordTypes.Count} record types, " +
                       $"{catalog.Components.Count} components and {catalog.Parts.Count} prefab parts; {errors} content error(s)");
     return errors == 0 ? 0 : 1;
+}
+
+// The game and a Shipping host, into one folder a player runs; then that folder's content validated.
+static int Package(string[] args)
+{
+    string? game = null, output = null, host = null, config = "Shipping";
+    bool validate = true;
+    for (int i = 0; i < args.Length; i++)
+    {
+        switch (args[i])
+        {
+            case "--out" when i + 1 < args.Length: output = args[++i]; break;
+            case "--host" when i + 1 < args.Length: host = args[++i]; break;
+            case "--config" when i + 1 < args.Length: config = args[++i]; break;
+            case "--no-validate": validate = false; break;
+            default:
+                if (args[i].StartsWith("--", StringComparison.Ordinal) || game != null) return Usage();
+                game = args[i];
+                break;
+        }
+    }
+    if (game == null || output == null) return Usage();
+    host ??= Options.FindHost(config);
+    if (host == null)
+    {
+        Console.WriteLine($"ERROR no {config} host found (beside this program, or src/Sage.Host/bin/{config}/net8.0 in a repository above here): " +
+                          $"build it with dotnet build src/Sage.Host -c {config}, or pass --host <dir>");
+        return 1;
+    }
+
+    var result = Sage.Cli.GamePackage.Run(new Sage.Cli.PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host, Configuration = config });
+    foreach (string error in result.Errors) Console.WriteLine($"ERROR {error}");
+    if (!result.Ok) return 1;
+    Console.WriteLine($"{Path.GetFullPath(output)}: {result.Files.Count} file(s), the {config} host from {Path.GetFullPath(host)} and the game in game/");
+    if (!validate) return 0;
+
+    string packaged = Path.Combine(output, "game");
+    string content = Path.Combine(output, "Content");
+    var report = Headless(() => ContentValidation.Run(new ValidateOptions
+    {
+        GameDirectory = packaged, EngineContentDirectory = Directory.Exists(content) ? content : null, AvailablePlugins = BasePlugins.All(),
+    }));
+    foreach (string warning in report.Warnings) Console.WriteLine($"WARN  {warning}");
+    foreach (string error in report.Errors) Console.WriteLine($"ERROR {error}");
+    Console.WriteLine($"{Path.GetFullPath(packaged)}: {report.Records} records, {report.Errors.Count} error(s), {report.Warnings.Count} warning(s)");
+    return report.Ok ? 0 : 1;
 }
 
 // A headless run: a throwaway user folder (no config, saves or logs written into the game's) and a log
@@ -186,6 +241,20 @@ sealed class Options
         options.EngineContent ??= FindEngineContent();
         if (allowOut) options.Client ??= FindClient();
         return options;
+    }
+
+    // The host's build output for a configuration: beside this program (the Player package keeps `sage` in each
+    // host folder), or this repository's src/Sage.Host/bin/<config>/net8.0 above the current folder or this program.
+    public static string? FindHost(string configuration)
+    {
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "Sage.Host.dll"))) return AppContext.BaseDirectory;
+        foreach (string start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+            for (var dir = new DirectoryInfo(start); dir != null; dir = dir.Parent)
+            {
+                string candidate = Path.Combine(dir.FullName, "src", "Sage.Host", "bin", configuration, "net8.0");
+                if (File.Exists(Path.Combine(candidate, "Sage.Host.dll"))) return candidate;
+            }
+        return null;
     }
 
     // The engine's client assembly: beside this program (a packaged host), or the repository's host build

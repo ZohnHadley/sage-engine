@@ -81,7 +81,8 @@ public sealed class DevTools : IDisposable
         _gui = new ImGuiRenderer(game);
         _pickable = e => e != _freeCamera && e != _viewportCamera;
         _camera = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0)) { Position = new Vector3(0, 0, 1) };
-        _console = new DevConsoleWindow(cvars, engine.Core);
+        _console = new DevConsoleWindow(cvars, engine.Core,
+            () => engine.Records.TypeNames.SelectMany(t => engine.Records.Ids(t)).Select(i => i.ToString()));
         _records = new RecordsPanel(new RecordEditor(engine));
         _stats = new StatOverlay(cvars, engine.Core);
 

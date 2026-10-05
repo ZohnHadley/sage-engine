@@ -207,7 +207,13 @@ public sealed class CVarRegistry
             return true;
         }
 
-        Log.Warn(LogCat.Console, $"Unknown command or cvar: {name}");
+        // A config file in Shipping may name what only a dev build has: config.cfg is shared by every build
+        // of a game, and a Debug run archives its DevOnly and editor cvars there (ui_entities). Not a
+        // problem a player can fix, so it is a note, not a warning (issue #293's packaged smoke run).
+        if (source == ExecSource.Config && !BuildInfo.IsDevBuild)
+            Log.Info(LogCat.Console, $"{name} is not in this build; ignored");
+        else
+            Log.Warn(LogCat.Console, $"Unknown command or cvar: {name}");
         return false;
     }
 
