@@ -21,8 +21,8 @@ public static class BuildInfo
     public static readonly bool IsDevBuild = Config != BuildConfig.Shipping;
 
     // The MSBuild configuration this assembly was built in, which names the bin/ folder it went to.
-    // Usually the same word as Config, except `Release` (what `dotnet publish` defaults to): that
-    // behaves as Shipping but writes to bin/Release, so paths must use this and not Config.
+    // The same word as Config: `Release` (what `dotnet publish` defaults to) is Shipping, writes to
+    // bin/Shipping and reports "Shipping" here (build/Sage.Configurations.props, issue #294).
     public static readonly string ConfigurationName =
         typeof(BuildInfo).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == "SageBuildConfiguration")?.Value ?? Config.ToString();
