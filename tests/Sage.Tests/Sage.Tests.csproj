@@ -59,6 +59,8 @@
          and the layering tests read it. A test loads its module only when it asks for it (With, or a
          game.json that names the kit); the scene-only and no-plugins games never do. -->
     <ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
+    <!-- The `sage` CLI, headless like the rest: its packager (`sage package`, issue #293) is tested here. -->
+    <ProjectReference Include="..\..\src\Sage.Cli\Sage.Cli.csproj" />
   </ItemGroup>
   <!-- The tests exercise the experimental API too (issue #31, docs/MAKING_A_GAME.md §10b): the open
        vocabularies (SAGE0120), scenes and placements (SAGE0121), brush maps (SAGE0122), cameras (SAGE0123), phase 4b's logic (SAGE0124: conditions and actions, easing) the retained UI (SAGE0125), skeletal animation (SAGE0126), the hit pipeline (SAGE0127), phase 4g's cells (SAGE0129), render passes (SAGE0130), phase 4i's saves (SAGE0131) and data mods (SAGE0132). -->
