@@ -32,11 +32,6 @@ namespace Sage.Simulation;
 //
 // The generator (09 §3.2) replaces the reflection with emitted readers and writers. What is written
 // does not change when it does, so saves keep loading.
-// One component a save left for its writer to serialise (issue #285): where it goes, its boxed copy, and
-// what the diff against its prefab needs (a copy of the baseline's data).
-internal sealed record DeferredComponent(JsonObject Target, string Id, int Version, Type Type, object Value,
-                                         bool HasBaseline, JsonNode? Was, bool ByField);
-
 internal sealed class SaveSerializer
 {
     private readonly ComponentSchema _schema;
@@ -91,66 +86,29 @@ internal sealed class SaveSerializer
     // has go in `removed`. `quiet`: taking a baseline at spawn, where an unwritable field is the save's
     // business to report, not the spawn's.
     // `only`: just these component ids (a spawn's `[FromPlacement]` ones, 4m-4).
-    // `deferred` (issue #285, a save taken while playing): a component whose type serialises without the
-    // world (SaveJson's stateless converters only, no reference fields but strings) is not serialised here,
-    // on the tick: its boxed copy is kept, with what its diff needs, and the save's writer serialises it on
-    // its own thread (ResolveDeferred). One unchanged since its prefab spawned it, bit for bit, is left out
-    // at once, without serialising anything.
+    // (A save does not come through here: it captures the entity's columns on the tick and writes them on
+    // its writer's thread, SaveCapture.cs, with the same Diffed.)
     public JsonObject WriteComponents(World world, Entity entity, JsonSerializerOptions json, SpawnBaseline? baseline,
-                                      JsonArray? removed, bool quiet = false, IReadOnlyList<string>? only = null,
-                                      List<DeferredComponent>? deferred = null)
+                                      JsonArray? removed, bool quiet = false, IReadOnlyList<string>? only = null)
     {
         var result = new JsonObject();
         HashSet<string>? had = baseline != null ? new HashSet<string>(StringComparer.Ordinal) : null;
         foreach (var (id, value) in _schema.ComponentsOf(entity))
         {
             var type = value.GetType();
-            if (OnTheEntity(type) || IsTransient(type)) continue;
+            if (!IsSaved(type)) continue;
             if (only != null && !Contains(only, id)) continue;
             var declaration = _schema.DeclarationOf(type)!;
             had?.Add(id);
-            if (deferred != null && CanDefer(type, json))
-            {
-                JsonNode? wasData = null;
-                bool hasBaseline = false, byField = false;
-                if (baseline != null && id != TransformId
-                    && baseline.Entry(id) is JsonObject spawnedEntry
-                    && spawnedEntry["version"] is JsonValue sv && sv.TryGetValue(out int spawnedVersion) && spawnedVersion == declaration.Version)
-                {
-                    if (baseline.ValueAsSpawned(id) is { } asSpawned && SameBits(type, value, asSpawned)) continue;
-                    hasBaseline = true;
-                    wasData = spawnedEntry["data"]?.DeepClone();   // the writer's own: a baseline is shared
-                    byField = SaveDiff.ByField(type, json);
-                }
-                result[id] = null;   // its place, so the order is what it would have been
-                deferred.Add(new DeferredComponent(result, id, declaration.Version, type, value, hasBaseline, wasData, byField));
-                continue;
-            }
             try
             {
                 var data = JsonSerializer.SerializeToNode(value, type, json);
-                if (baseline != null && id != TransformId
-                    && baseline.Entry(id) is JsonObject before
-                    && before["version"] is JsonValue v && v.TryGetValue(out int version) && version == declaration.Version)
-                {
-                    var was = before["data"];
-                    if (data is JsonObject fields && was is JsonObject wasFields && SaveDiff.ByField(type, json))
-                    {
-                        var changed = SaveDiff.Fields(fields, wasFields);
-                        if (changed.Count == 0) continue;
-                        data = changed;
-                    }
-                    else if (JsonNode.DeepEquals(data, was)) continue;
-                }
-                result[id] = Entry(declaration.Version, data);
+                if (Diffed(id, declaration.Version, type, data, baseline, json) is { } entry) result[id] = entry;
             }
             catch (Exception ex) when (ex is NotSupportedException or JsonException or ArgumentException)
             {
                 if (quiet) continue;
-                // A field type the dialect cannot express. Named once, so it can be given a converter
-                // or marked `[Transient]`, rather than quietly missing from every save.
-                Log.Once(LogCat.Save, LogLevel.Error, $"unwritable:{id}",
-                    $"{id} cannot be saved: {ex.Message}. Give the field a converter or mark it [Transient] (09 §3.3)");
+                Unwritable(id, ex);
             }
         }
         if (baseline != null && removed != null)
@@ -159,39 +117,44 @@ internal sealed class SaveSerializer
         return result;
     }
 
-    // ---- deferred components (issue #285) -----------------------------------------------------------
+    // A component type a save writes among the entity's components: not one the entity record carries
+    // itself, nor one marked [Transient].
+    public static bool IsSaved(Type type) => !OnTheEntity(type) && !IsTransient(type);
 
-    // Serialises what WriteComponents deferred, on the save writer's thread, into the places it kept: the
-    // same entry, diffed against the same baseline, that it would have written on the tick. A place the
-    // tick took out again since (a transform left at its placement) stays out.
-    public static void ResolveDeferred(List<DeferredComponent> deferred, JsonSerializerOptions json)
+    // A field type the dialect cannot express. Named once, so it can be given a converter or marked
+    // `[Transient]`, rather than quietly missing from every save.
+    public static void Unwritable(string id, Exception ex) =>
+        Log.Once(LogCat.Save, LogLevel.Error, $"unwritable:{id}",
+            $"{id} cannot be saved: {ex.Message}. Give the field a converter or mark it [Transient] (09 §3.3)");
+
+    // The entry a save writes for a component's `data`: in full, or, against the baseline its prefab spawned
+    // it with (4i-5, SaveDiff), only the fields that changed. Null when nothing did: the component is left out.
+    public static JsonObject? Diffed(string id, int version, Type type, JsonNode? data, SpawnBaseline? baseline,
+                                     JsonSerializerOptions json)
     {
-        foreach (var d in deferred)
+        if (baseline != null && id != TransformId
+            && baseline.Entry(id) is JsonObject before
+            && before["version"] is JsonValue v && v.TryGetValue(out int was) && was == version)
         {
-            if (!d.Target.ContainsKey(d.Id)) continue;
-            try
+            var wasData = before["data"];
+            if (data is JsonObject fields && wasData is JsonObject wasFields && SaveDiff.ByField(type, json))
             {
-                var data = JsonSerializer.SerializeToNode(d.Value, d.Type, json);
-                if (d.HasBaseline)
-                {
-                    if (data is JsonObject fields && d.Was is JsonObject wasFields && d.ByField)
-                    {
-                        var changed = SaveDiff.Fields(fields, wasFields);
-                        if (changed.Count == 0) { d.Target.Remove(d.Id); continue; }
-                        data = changed;
-                    }
-                    else if (JsonNode.DeepEquals(data, d.Was)) { d.Target.Remove(d.Id); continue; }
-                }
-                d.Target[d.Id] = Entry(d.Version, data);
+                var changed = SaveDiff.Fields(fields, wasFields);
+                if (changed.Count == 0) return null;
+                data = changed;
             }
-            catch (Exception ex) when (ex is NotSupportedException or JsonException or ArgumentException)
-            {
-                d.Target.Remove(d.Id);
-                Log.Once(LogCat.Save, LogLevel.Error, $"unwritable:{d.Id}",
-                    $"{d.Id} cannot be saved: {ex.Message}. Give the field a converter or mark it [Transient] (09 §3.3)");
-            }
+            else if (JsonNode.DeepEquals(data, wasData)) return null;
         }
+        return Entry(version, data);
     }
+
+    // Whether a component is still, bit for bit, what its prefab spawned it with (issue #285): then Diffed
+    // would leave it out, and nothing need be serialised to know it. False only means "serialise it".
+    public static bool UnchangedSinceSpawn(string id, int version, Type type, object value, SpawnBaseline? baseline) =>
+        baseline != null && id != TransformId
+        && baseline.Entry(id) is JsonObject spawned
+        && spawned["version"] is JsonValue v && v.TryGetValue(out int was) && was == version
+        && baseline.ValueAsSpawned(id) is { } asSpawned && SameBits(type, value, asSpawned);
 
     // Whether a component type can be serialised off the tick: a struct whose fields, all the way down, are
     // values or strings (a copy of it is the whole of it, and nothing it says can change under the writer),
@@ -199,7 +162,7 @@ internal sealed class SaveSerializer
     // anything in it. Asked on the tick; remembered per type.
     private readonly Dictionary<Type, bool> _deferrable = new();
 
-    private bool CanDefer(Type type, JsonSerializerOptions json)
+    public bool CanDefer(Type type, JsonSerializerOptions json)
     {
         if (_deferrable.TryGetValue(type, out bool known)) return known;
         bool result = Plain(type, json, new HashSet<Type>());
@@ -231,7 +194,7 @@ internal sealed class SaveSerializer
     // strings). Equal here means the JSON would be the same; unequal only means it is serialised.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Func<object, object, bool>> Comparers = new();
 
-    private static bool SameBits(Type type, object a, object b) =>
+    public static bool SameBits(Type type, object a, object b) =>
         a.GetType() == b.GetType() && Comparers.GetOrAdd(type, MakeComparer)(a, b);
 
     private static Func<object, object, bool> MakeComparer(Type type)
@@ -258,13 +221,20 @@ internal sealed class SaveSerializer
     // `{ "version": n, "data": … }`: the shape of every component and saved resource in a save.
     public static JsonObject Entry(int version, JsonNode? data) => new() { ["version"] = version, ["data"] = data };
 
-    // Tags are presence, so they are a list of ids.
-    public JsonArray WriteTags(World world, Entity entity)
+    // Tags are presence, so a save writes them as a list of ids: these, the entity's saved ones.
+    public List<string> SavedTags(Entity entity)
     {
-        var result = new JsonArray();
+        var result = new List<string>();
         foreach (string tag in _schema.TagsOf(entity))
             if (_schema.TryTag(tag, out var type) && !IsTransient(type)) result.Add(tag);
         return result;
+    }
+
+    // A declared component type's declaration; false for Friflo's own and anything undeclared.
+    public bool TryDeclared(Type type, out ComponentDeclaration declaration)
+    {
+        declaration = _schema.DeclarationOf(type)!;
+        return declaration != null && !declaration.IsTag;
     }
 
     // `unknown` collects, as saved, every entry whose id matches no component here, so the next save
