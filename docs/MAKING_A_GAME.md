@@ -32,7 +32,7 @@ console, saves, hot reload, and a renderer. **It gives you no game.** What a gam
 | Where things are | a **scene** record (the engine places it), and/or `.map` levels drawn in TrenchBroom |
 | Rules that are yours | a small amount of **C#** in your game module — or none: a game can be only `game.json` and records (§4) |
 | How it looks on screen | your **HUD** and screens, in your game's client half |
-| Art and sound | PNG, WAV, `.glb` — read at runtime, no build step |
+| Art and sound | PNG, WAV or OGG, `.glb` — read at runtime, no build step (`sage package` cooks models and textures, §2 "Shipping it") |
 
 The engine assumes no genre. What a family of games shares beyond that is a **kit**: `Sage.Kits.Rpg`
 (the readied spell and its Cast button, the spellmaker, two hands to hold things in, the bag, spellbook,
@@ -75,7 +75,37 @@ The templates:
 |---|---|
 | `sage-game` | A simulation half and a client half, `game.json`, a scene with a player on generated hills, and a HUD that shows what the rules say |
 | `sage-game-data` | No C# at all: `game.json` and records; the engine places the scene and spawns the player (like `tests/games/scene-only`) |
-| `sage-mod-data` | A data mod: `mod.json`, a new prefab and weapon, and a patch of the game's `player`. Put it in the game's `mods/` folder; check it against a game with `sage mods <game> --mods <mod>`. [docs/MODDING.md](MODDING.md) is the modder's guide |
+| `sage-game-client` | A client half (a HUD, screens, anything with a screen) for a game that has none, such as a `sage-game-data` game: a project in the game's `Client/` folder, below |
+| `sage-mod-data` | A data mod: `mod.json`, a new prefab and weapon, and a patch of the game's `player`, with `.vscode/` settings that map its records and `mod.json` onto the game's schemas and tasks that validate it against the game. Put it in the game's `mods/` folder; check it against a game with `sage mods <game> --mods <mod>`. [docs/MODDING.md](MODDING.md) is the modder's guide |
+
+**`sage new` and `sage run`** (issue #297) are the `sage` command line's way to the same two steps. `sage new
+<template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options>]` is `dotnet
+new` with the template's short name (`game`, `game-data`, `game-client`, `mod-data`); what it does not know
+(`--feed`, `--sdkVersion`) goes on to `dotnet new`, and a template it does not know exits 2. With `--game`
+it does the rest of the work a template needs from the game it is for:
+
+```bash
+sage new game -n YourGame -o ~/games/YourGame --feed ~/sage-feed
+sage new mod-data -n better_swords -o ~/mods/better_swords --game ~/games/YourGame   # schemas written, validated against the game
+sage new game-client --game ~/games/YourData                                          # Client/ made, game.json loads its dll
+sage run ~/games/YourGame                                                             # build and start it
+sage run ~/games/YourGame -- +sv_cheats 1 +map crypt                                  # after the dash: the host's arguments
+```
+
+`sage new mod-data --game <game folder>` names the mod for the game, writes the schemas its `.vscode/settings.json`
+maps (`schemas/`, from `sage schema <game> --mods <mod>`) and validates the mod against the game (test:
+New_ModData_WritesAModThatValidatesAgainstTheGame_WithItsSchemasMapped). `sage new game-client --game <game
+folder>` makes the client half in the game's `Client/` folder, named for the game, and adds its dll to
+`game.json`'s `"modules": { "add": [...] }` as `Client/bin/{config}/<Name>.Client.dll`, keeping the rest of the
+file as written (test: New_GameClient_MakesTheClientHalf_AndGameJsonLoadsIt_KeepingWhatWasWritten). The client
+half's project builds the game folder's own project first, and the game folder's project leaves `Client/`
+to it, so `dotnet run` in `Client/` builds both halves and starts the host on the game folder. `sage run
+<game> [--config c] [--host dir] [--dry-run] [-- <host arguments>]` is that `dotnet run`: on the project in
+`<game>/Client` when there is one, else the project in `<game>` (test:
+Run_ASageSdkGame_IsDotnetRunOnItsProject_WithTheHostArgumentsAfterTheDash), and for a folder with no SDK
+project (a data-only game with no client half, a package's `game/`, the Sandbox) the host of that
+configuration started with `-game <game>` (test: Run_AFolderWithNoSdkProject_StartsTheHostOnIt). `--dry-run`
+prints the command instead of running it. `sage new` needs the templates installed (`dotnet new install`, above); `sage run` does not.
 
 `sage-game` makes this:
 
@@ -86,7 +116,7 @@ YourGame/                       the game folder, and the client half
     game.json                   the manifest the host reads
     content/
         data/*.json             records: prefabs, items, materials, scene…
-        textures/*.png  audio/*.wav  models/*.glb  maps/*.map  shaders/*.fx
+        textures/*.png  audio/*.wav|ogg  models/*.glb  maps/*.map  shaders/*.fx
     .config/dotnet-tools.json   mgfxc, for the game's own shaders
     Simulation/                 the simulation half
         YourGame.csproj         <SageSimulationOnly>true</SageSimulationOnly>: the base engine only
@@ -293,8 +323,42 @@ with no `-game` it runs the `game` folder beside it. The folder's content is val
 ```bash
 dotnet build -c Shipping                                       # in your game's folder
 dotnet msbuild -t:SagePackage -p:Configuration=Shipping        # into bin/package/Shipping (SagePackageDirectory)
-sage package <game folder> --out <dir> [--host <dir>] [--config Shipping] [--no-validate]   # by hand
+sage package <game folder> --out <dir> [--host <dir>] [--config Shipping] [--no-validate] [--no-cook]   # by hand
 ```
+
+**Cooking** (issue #302). `sage package` also cooks the package's models and textures: each `.glb` gets a
+`.sgmesh` beside it (vertex and index arrays as the GPU takes them) and each `.png`, `.jpg` and `.jpeg` a
+`.sgtex` (premultiplied RGBA, or BC1 or BC3 blocks, an eighth or a quarter of the memory), and the client reads
+those in place of the loose files, so a load skips the glTF parse and the image inflate. Nothing names a cooked
+file: records and maps keep naming the `.glb` and the `.png`, and the loose files stay in the package. Your own
+game folder is never written to by `package`. `sage package --no-cook` (the SDK's `SageCook=false`) leaves them
+loose, and `sage cook <game> [--force] [--clean]` cooks a folder in place (what `package` runs on its copy;
+`--clean` removes the cooked files). In a source folder a cooked file stands in for its loose one until it is
+cooked again, so an edit to the loose file is not seen until you cook again or `--clean`. A cooked file is read
+only when its mount is at least as high as the loose file's, so **a mod's loose file still overrides your cooked
+one**, and one that cannot be read, or was cooked from a file of another length (folder mounts only), is a warning
+once and the loose file is read. The cook reports what it bought: on the Sandbox's content the test measures
+loading at least twice as fast (about 0.05 ms against 10 ms), allocating under half (about 322 KB against 2143 KB)
+and textures at a third of the memory or less (about 902 KB down to 217 KB) (tests:
+CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate,
+APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff,
+CookedAssetsLoadFasterWithLessAllocationAndTexturesTakeLessMemory).
+
+BC textures lose a little: pixel art, UI and fonts want their exact pixels. `game.json` says which:
+
+```jsonc
+"cook": { "compress": true, "uncompressed": ["textures/ui/**", "*.png"] }   // both optional; compress defaults to true
+```
+
+`uncompressed` patterns are globs (`*`, `**`, `?`) on a path inside its mount; those textures cook to exact
+premultiplied RGBA. A misspelt key is refused (tests: GameJsonCookSettingsAreReadAndAMisspeltKeyIsRefused,
+UncompressedPatternsAreGlobsInsideAMount). Not cooked: the engine's `Content/`, a game's `mods/` (a player's mods are
+loose), any other format, and no mipmaps are made. The Sandbox sets no `"cook"` block, so its pixel art is
+block-compressed (BC3); say `"uncompressed": ["textures/**"]` there if that shows.
+
+A `sound` asset may be a `.ogg` as well as a `.wav`: it is decoded whole to PCM when it loads (mono or stereo, up
+to ten minutes), so a package can ship the smaller file; streaming long music is not built yet (tests:
+AnOggFileDecodesToPcmMonoOrStereo, AFileThatIsNotOggVorbisIsRefusedWithInvalidData). There is no WAV-to-OGG step.
 
 Only a Shipping host packages: one with the editor or ImGui in it (Debug, Development) is refused, and so is
 a game not built in that configuration or an output folder already in the way, before anything is written
@@ -1893,6 +1957,22 @@ turns up one part of the engine: `level`, `events`, `physics`, `ai`, `gameplay`,
 
 **Hot reload.** With the game running, save a record file and it reloads; save a PNG and the texture
 swaps. `rec_reload`, `asset_reload [path]` and `asset_list` do it by hand.
+
+**Profiling and the visual log** (issue #300; dev builds). `stat frame` shows milliseconds per phase and system,
+`stat render` the last frame's draw calls, triangles, items drawn and culled, GPU uploads and thread-pool jobs, and
+`stat assets` what is loaded, what loading cost that frame and what is still loading. For a frame that hitches
+without showing in `stat frame`, `trace_start [max events]`, play, then `trace_dump [file]` writes a Chrome trace to
+`user/<game>/logs/` (a bare name goes there; none gives `trace-<time>.json`) that opens in ui.perfetto.dev: one track
+per thread, every phase and system a slice, the parallel systems on the workers they ran on. The buffer is fixed
+(262,144 events unless you give a number); what does not fit is dropped and counted in the file and the log.
+The **visual log** keeps debug shapes per tick so you can look at the tick that decided something: `vlog_record 1`,
+play until it happens, then `vlog_at -120` (120 ticks before the newest), `vlog_step` and `vlog_list [tick]`
+(the shapes with their text), with `r_debugdraw 1` to draw them and `vlog_window 1` for a timeline with a slider.
+`vlog_show "ai physics"` picks categories and `vlog_ticks` how many ticks are kept (600). The AI debug view and
+`phys_debug` record into it; from your own code, `world.VisualLog().Capsule("mygame", ...)` (and `Line`, `Arrow`,
+`Box`, `Sphere`, `Circle`, `Cone`) with a category of your own, checking `Recording` first when you build
+a text. `WorkStats.JobStarted()`/`JobFinished()` and `LoadStarted()`/`LoadFinished(ticks)` count your own background
+work and loads into `stat render` and `stat assets`.
 
 ---
 

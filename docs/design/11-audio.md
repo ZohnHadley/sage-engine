@@ -13,6 +13,7 @@ Positional sound effects, ambient loops, music and volume buses. A client module
 ## 3. Key decisions
 - **Backend:** MonoGame `SoundEffect`/`SoundEffectInstance` with `Apply3D(AudioListener, AudioEmitter)` for basic 3D panning and attenuation, behind an `IAudioBackend` interface. That allows a later move to OpenAL Soft or FMOD for occlusion and reverb (ARCHITECTURE §6).
 - **The simulation doesn't play sounds.** Gameplay sends game events (`Damaged`, `SpellCast`, footsteps from animation events, 12). Presentation systems in the Frame schedule read them with their own cursors (04 §3.1) and start sounds. Persistent sources (a waterfall, a campfire) are an `AudioSource` component.
+- **Sound files are WAV or OGG** (issue #302). A `.wav` goes to `SoundEffect.FromStream`; an `.ogg` is decoded **whole** to 16-bit PCM when it loads (`OggVorbis`, NVorbis, the decoder MonoGame itself depends on) and handed to a `SoundEffect`, so it is smaller on disk and in a package and the same in memory once loaded. Mono or stereo only, and at most 600 seconds per file (ten minutes of 48 kHz stereo is 110 MB of PCM); a file that is not Ogg Vorbis, has more channels or is longer is refused with `InvalidData` and costs the sound, not the frame (tests: AnOggFileDecodesToPcmMonoOrStereo, AFileThatIsNotOggVorbisIsRefusedWithInvalidData). **Streaming** long music from the file as it plays is not built (#326), and an `.ogg` is not hot reloaded (only `.wav` is watched).
 - **Sound definitions are records** (`sound`): variations (a list of `AssetPath`s), volume/pitch random ranges, bus, max concurrent instances, cooldown, attenuation (min/max distance). Gameplay refers to `RecordId`s, never to files.
 - **Buses:** `Master`, `Music`, `Sfx`, `Voice`, `Ui`, `Ambient`, with volumes from cvars (`snd_volume_master` etc., `Archive`).
 - **Voice limiting:** a cap on simultaneous instances (`snd_maxvoices`). Priority is by bus, distance and definition priority; the quietest voice is stolen.
@@ -44,7 +45,7 @@ public sealed class AudioSystem                      // client module service
   - `snd_play`/`snd_stats`;
   - log category `Audio`.
 - **Later:**
-  - streamed OGG music with crossfades (decoder choice in 05 Open questions);
+  - streamed OGG music with crossfades (OGG sounds decode whole since #302; streaming is #326);
   - reverb zones and occlusion;
   - a backend swap;
   - voice/dialogue playback with subtitles (with the Narrative module).
@@ -99,7 +100,7 @@ was the claim this doc made a day earlier: the events were already there.
   a fire loop with a cross-faded seam), so the repository ships no audio it does not own. There is no
   eighth for menus: a screen sound needs a game to say which sound a screen uses (13 §3), and a file
   nothing plays is dead weight rather than a head start.
-- **Not built:** music and crossfades, OGG (needs a decoder, 05 open questions), reverb and occlusion,
+- **Not built:** music and crossfades, OGG *streaming* (whole-file OGG decoding is built, §3), reverb and occlusion,
   footsteps from animation events (12), an attack record overriding its damage type's sound, screens
   making any noise at all, and effect records raising their cues (§13).
 

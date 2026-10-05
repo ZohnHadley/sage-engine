@@ -93,7 +93,7 @@ Phase 4l's fourth step (#258): water for Morrowind's lakes, Daggerfall's dungeon
 - **Getting out:** a swimmer with its eyes out that swims into a ledge tries the step-up with `SwimClimbHeight` (1.7 m above its feet) instead of `StepHeight`, so it climbs onto a bank up to about 0.35 m above the water and stands there (test: ASwimmerClimbsOutOntoTheBank). It is instant, like a step; a climbing animation is a game's.
 - **The breath hook:** `Underwater` (its eyes under the surface) and `UnderwaterSeconds` (how long they have been, 0 in air) are on the controller; what that costs (a breath meter, drowning, water breathing) is gameplay's (test: DivingCountsTheBreathHookAndItFloatsBackUp).
 - **Outputs:** `OnEnterWater` and `OnExitWater` fire on the character (the activator is the water) and on the volume (the activator is the character). `InWater` and `UnderwaterSeconds` are saved, so a load made while swimming carries on swimming without a second `OnEnterWater` (test: ASaveWhileSwimmingLoadsWithoutASecondSplash).
-- **Not yet:** water drawn as a map brush (a `func_water`), rotated or non-box volumes, waves, a swimming animation state, and the client's underwater fog and sound.
+- **Not yet:** the water's surface drawn animated, reflective and refractive (#411, which takes in waves); water drawn as a map brush (a `func_water`), rotated or non-box volumes, a swimming animation state, and the client's underwater fog and sound have no issue yet.
 
 ### As built (perf and determinism, issue #273, 2026-10-02)
 Phase 4l's last step (#258). Code: `PhysicsSpace.cs` (`Step`, `UseWorkers`, `Rebase`), `PhysicsSystems.cs` (`ColliderOff` in the sync), `Sage.Simulation/Physics/PhysicsData.cs` (`ColliderOff`), `Sage.Gameplay/Combat/HitboxBudget.cs`. Tests: `tests/Sage.Tests/Physics/PhysicsPerfTests.cs`, `tests/Sage.Tests/Gameplay/HitboxBudgetTests.cs`.
@@ -143,16 +143,15 @@ re-bounds every body where it is and leaves a sleeping one asleep: "As built (pe
   - **It swims (issue #262).** See "As built (water and swimming)" below.
 - **One call to place one:** `world.AddCharacter(entity, layer, profile)` adds the controller, a `Pawn`, a `PawnIntent` **seeded from the entity's rotation**, a `Collider.Standing` on the same layer and a kinematic `RigidBody`. Doing it by hand is what let the sweep layer, the collider layer and the capsule height drift apart, and what silently discarded the direction a scene placed a character facing (review #43).
 - **Ladders (issue #263).** A **`Ladder`** component (`sage:ladder`: `Facing`, a yaw in degrees on top of the entity's own, for the side a climber stands on; `Speed`, 2.5 m/s) on a trigger volume, added by the **`ladder`** prefab part (owned by `sage.gameplay.character`, in `Physics/Ladder.cs`). The volume is the entity's own trigger collider — a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity whose classname is a prefab with the part, turned by `"ladder.facing"` (a ladder brush that is not a trigger is a load warning) — and its top and bottom are the volume's. Each tick, before the walk, `CharacterMovementSystem.Climb` asks `Overlap` (with triggers) whether the capsule is in one: it **catches** the ladder when it is in the air (stepping off the top, jumping at it) or pushes toward the rungs from the ground, and walking past or away from the foot does not. **On it** there is no gravity: pushing toward the rungs climbs, pulling away climbs down, sideways moves along it at half speed, all by a three-dimensional collide-and-slide so a climber caught on the lip slides off it. It **lets go** when it reaches the ground climbing down, when it leaves the volume, when it jumps (pushed off the face, and not caught again until it has left the volume or landed: `CharacterController.LetGo`), and **at the top**, where a walkable ledge within step height is stepped onto with the stair step-up, a capsule's width over the lip (test: ClimbsALadderToTheLedgeAndStepsOff; test: MountsAtTheTopClimbsDownAndWalksAwayAtTheBottom; test: ALadderOnlyCatchesWhatPushesAtItAndJumpLetsGo). Drawn in a map as a brush entity it climbs the same (test: ALadderBrushEntityInAMapIsClimbedToItsLedge). `Climbing` and `LetGo` are transient: a save mid-climb loads in mid-air inside the volume, which catches the ladder again on the first tick. Not built: ledge grabs and mantling, a climbing animation state, and leaning on the look pitch to choose up or down the way Half-Life does.
-- **Limitations:** a crouch in the air shrinks from the top, as on the ground (Half-Life pulls the legs up instead, which is what a crouch-jump onto a higher ledge needs).
+- **Limitations:** a crouch in the air shrinks from the top, as on the ground (Half-Life pulls the legs up instead, which is what a crouch-jump onto a higher ledge needs). No issue yet; the crouch's own behaviour is the tests in "As built (movement modes)".
 
 ### As built (movement modes, issue #267, 2026-10-02)
 - **A mode per profile, and per character.** `MovementMode` is `Walk`, `AirStrafe`, `Fly` or `Noclip`; a `movement_profile`'s `mode` chooses one (Walk by default) and `CharacterController.Mode` (saved) overrides it, `Default` giving the profile's back. Swimming (#262) and ladders (#263) are part of Walk and AirStrafe, unchanged. Code: `src/Sage.Physics3D/Character/CharacterController.cs`.
 - **Smooth crouch, and a collider that crouches too.** The capsule's height moves between `StandHeight` and `CrouchHeight` over `CrouchTime` (0.2 s; 0 = instant), and `Crouching` is set from the moment it starts down until it starts up, so the crouched speed applies all the way down. Standing up still needs headroom for the whole rest of the height; without it the character stays as low as it is. After each move the controller fits the entity's `Collider` (a `Collider.Standing` capsule) to the height it swept and reshapes its body in place with `IPhysicsWorld.SetShape` (#268), same handle, only when the height changed. So a crouched character fits under a 1.3 m lintel a standing one walks into, and an enemy's sweep or ray at standing head height passes over it while one at its knees still hits it (test: ACrouchedCharacterFitsUnderALintelAndHeadHeightSweepsPassOverIt); under the lintel, letting go of Crouch keeps it down, collider and all, until it has walked out (test: ACrouchedCharacterUnderALintelStaysDownUntilItHasRoom). `Height` is not saved; a character loaded `Crouching` starts at the crouch height.
 - **GoldSrc air-strafe (`AirStrafe`).** Half-Life 1's movement: on the ground, friction always and an acceleration that only adds speed along the wish up to the wished speed; in the air, the speed added along the wish is capped at `AirStrafeSpeed` (0.76 m/s, its 30 units) while the acceleration (`AirStrafeAccelerate`, Half-Life's air-accelerate setting of 10, times the wished speed) is not, so wishing nearly at right angles to the velocity, strafing while turning toward the strafe, gains speed every tick. A jump on the landing tick skips the ground's friction, so the speed carries across a bunny-hop. A profile record with `"mode": "AirStrafe"` hopping that way passes 1.3 × its run speed, while the walk profile doing the same never passes its run speed (test: AnAirStrafeProfileBunnyHopsPastTheGroundMaximum).
 - **Fly and Noclip**, for editors and debugging: no gravity, no ground, no ladders, no swimming (the water state and the breath hook still count); it moves where it looks, pitch included, at `FlySpeed` (8 m/s, Run doubles it), Jump rises and Crouch sinks, and it stops when nothing is pressed. Fly collides and slides along what it meets; Noclip goes through everything and skips depenetration (test: FlyIgnoresGravityButCollidesAndNoclipGoesThroughWalls). The **`noclip`** and **`fly`** console commands (cheats, `sv_cheats 1`) toggle the player's own mode (test: NoclipAndFlyCommandsToggleThePlayersMode).
-- **Left:** crouch-jumping (legs pulled up in the air); a crouching animation state; GoldSrc's ground acceleration scaled by the wished speed — the air-strafe profile keeps the engine's m/s² `Acceleration` on the ground; Noclip still leaves the body solid to others.
-
-- **Not yet:** the origin rebasing hook (`Rebase` exists but nothing calls it until R6).
+- **Left** (no issue yet for any of these): crouch-jumping (legs pulled up in the air); a crouching animation state; GoldSrc's ground acceleration scaled by the wished speed — the air-strafe profile keeps the engine's m/s² `Acceleration` on the ground; Noclip still leaves the body solid to others.
+- ~~**Not yet:** the origin rebasing hook (`Rebase` exists but nothing calls it until R6).~~ Done with R6: `world.Rebase` calls the physics `Rebase` and every body, static and sleeper follows ("As built (rebasing)"; tests: PhysicsBodiesRebaseWithTheWorld, ASleepingCrateStaysAsleepAcrossARebaseAndIsFoundWhereItNowIs).
 
 ## 4. API sketch
 ```csharp
@@ -181,8 +180,19 @@ public interface IPhysicsWorld                            // world resource; Phy
     ReadOnlySpan<ContactEvent>   ContactBegin { get; }   // Collider.ReportContacts only
     ReadOnlySpan<ContactEvent>   ContactEnd { get; }
 
+    int      RaycastAll(Vector3 from, Vector3 direction, float maxDistance, Span<RayHit> results, LayerMask mask = default,
+                        bool includeTriggers = false, Entity ignore = default);   // issue #269
+    int      Overlap(in Collider shape, in Pose at, Span<OverlapHit> results, LayerMask mask = default,
+                     bool includeTriggers = false, Entity ignore = default);      // narrow phase, issue #259
+
+    PhysicsJoint AddJoint(in PhysicsBody a, in PhysicsBody b, in JointDesc desc);  // issue #242: Ball, Hinge, Fixed, Distance
+    PhysicsJoint AddJoint(in PhysicsBody a, in JointDesc desc);                    // a joint to the world
+    void         RemoveJoint(in PhysicsJoint joint);                               // RemoveBody removes a body's joints too
+    void         SetGroup(in PhysicsBody body, int group);                         // one nonzero group never collides within itself
+    ReadOnlySpan<JointBroken> JointBroken { get; }                                 // a joint past its BreakForce, reported once
+
     void DrawDebug(DebugDraw debug, Vector3 around, float range);   // phys_debug
-    // … counts, gravity, AddHull/AddMesh, SetVelocity, IsDynamic, IsAwake
+    // … counts, gravity, AddHull/AddMesh, SetVelocity, IsDynamic, IsAwake, OverlapSphere, SetSurface, ApplyImpulse
 }
 
 public struct Collider : IComponent
@@ -241,7 +251,8 @@ The terrain's `HeightAt` (14) stopped being the only "collision" once F6 landed:
   - `phys_debug` (colliders via `DebugDraw`) and `phys_stats`;
   - log category `Physics`.
 - **Done since:** water volumes and swimming (#262, "As built (water and swimming)"); joints (constraints) and ragdolls, phase 4k (#130): "As built (joints)" and "As built (the joint part)" above, and design/12 "As built (going ragdoll)" to "As built (phase 4k's exit, issue #249)" for ragdolls (Lugaru/HL1 deaths, F11).
-- **Later:** powered and partial ragdolls, mounts (F8), hinged and path movers (#266), the GoldSrc movement profile, per-region simulations for very large active areas.
+- **Done since (continued):** hinged and path movers (#266, tests AHingedDoorIsADataOnlyPrefabThatSwingsOnItsHinge and ATwoStopLiftIsADataOnlyPrefabThatStopsAtEachFloor) and the GoldSrc movement profile (#267, test AnAirStrafeProfileBunnyHopsPastTheGroundMaximum).
+- **Later** (mounts are TODO F8; no issue yet for the rest): powered and partial ragdolls, mounts (F8), per-region simulations for very large active areas.
 
 ## 12. Multiplayer-later notes
 Only the local player's KCC would be predicted (against static geometry). Bepu's lack of rollback doesn't matter for that (survey §5).
@@ -249,6 +260,6 @@ Only the local player's KCC would be predicted (against static geometry). Bepu's
 ## 14. Build steps
 1. ~~`PhysicsSpace` resource + `Collider`/`RigidBody`/`PhysicsBody` + body sync~~ **Done 2026-09-22** (TODO F6).
 2. ~~Raycast/sweep/overlap queries + layers~~ **Done 2026-09-22** (overlap is broad phase only).
-3. Triggers → game events. **Overlaps are collected as lists (`IPhysicsWorld.TriggerEnter`/`TriggerExit`) and drive entity I/O's `OnStartTouch`/`OnEndTouch` (F17). The event bus exists (04, R13); moving the overlaps onto it is not done.**
+3. ~~Triggers → game events.~~ **Done 2026-10-02** (#269): overlaps are still collected as lists (`IPhysicsWorld.TriggerEnter`/`TriggerExit`) and drive entity I/O's `OnStartTouch`/`OnEndTouch` (F17), and are also `TriggerEntered`/`TriggerExited` (and `Collided`/`CollisionEnded`) game events on the bus ("As built (physics events)"; test: TriggersAndContactsArriveOnTheEventBusWithTheImpactsImpulse).
 4. ~~KCC + movement profile records~~ **Done 2026-09-22** (TODO F7). Depenetration done 2026-10-02 (#259).
 5. ~~Origin rebasing hook (with 14)~~ **Done 2026-09-24** (R6; "As built (rebasing)").

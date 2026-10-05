@@ -42,7 +42,7 @@ reconciles missing content ([15](15-saves.md)), or the screen toolkit ([13](13-u
 | Save header | `src/Sage.Simulation/Content/SaveSystem.cs` |
 | Mods screen | `src/Sage.UI/ModsView.cs` (view-model `ui_mods`); the screen `rpg:mods` is in the RPG kit's content |
 | CLI | `src/Sage.Cli`: `sage mods`, `sage validate --mods`, `sage schema --mods` |
-| Template | `sdk/Sage.Templates/content/sage-mod-data` |
+| Template | `sdk/Sage.Templates/content/sage-mod-data`: `sage new mod-data --game <game folder>` writes its schemas and validates it against the game (#297); its `.vscode/` maps the schemas and has `sage validate`, `mods` and `schema` tasks |
 
 The manifest and merge live in `Sage.Core`, below the simulation, so the CLI and the host share them.
 The mod model is experimental (`SAGE0132`, MAKING_A_GAME §10b) and may change before 1.0. No plugin id

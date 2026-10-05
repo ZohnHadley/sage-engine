@@ -60,7 +60,9 @@ row ended with one of them being wrong while the code was right. Two rules keep 
 - **A claim about behaviour cites the test that proves it**: `(test: WalkingIntoATriggerVolumeFiresOnStartTouch)`,
   or a comma-separated list of them. The script checks each name resolves to a test in `tests/`. Writing the citation is
   the point — it is where you notice you have no test to cite.
-- **A command, cvar or record named in such a section has to exist.** Elsewhere — an API sketch, a "Not
+- **A command, cvar, record, entity output or game event named in such a section has to exist** (outputs and
+  events are read from the registry dump's `entityOutputs` and `gameEvents` and from the code, issue #298; the checker's
+  own tests are `python3 -m unittest discover -s tools -p 'test_*.py'`, run in CI). Elsewhere — an API sketch, a "Not
   yet" list, an open question — naming what does not exist yet is the job, and those are left alone.
 
 Numbers about the engine (how many commands, records, tests) go on a line marked `<!-- counts -->`, and

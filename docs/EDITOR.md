@@ -151,6 +151,19 @@ shows only while playing; otherwise the status bar has it.
 
 **Log** is the log, at or above a level, with categories hidden or shown one at a time.
 
+### The visual log
+
+`vlog_window 1` opens the **Visual log** window (issue #300), in a dev build with or without `-edit`. It is the
+timeline of the debug shapes the engine keeps while `vlog_record 1` is on: a slider over the ticks kept (`vlog_ticks`,
+ten seconds by default), a Live button to follow the newest, a checkbox per category (they write `vlog_show`), and the
+shown tick's shapes with their text. The shapes themselves are drawn in the world through the debug lines, so
+`r_debugdraw 1` shows them. The AI debug view (category `ai`: what an agent saw and where it stood) and
+`phys_debug` (category `physics`: each character's capsule and ground normal) record into it, so "why did it path
+there?" is scrubbed back to the tick that decided it. Every control is a console command too: `vlog_at <tick|-ticks|live>`,
+`vlog_step [ticks]`, `vlog_list [tick]`, `vlog_clear` (tests: ShapesAreKeptPerTickAndScrubbedBackTo,
+VlogShowPicksTheCategoriesDrawnAndListed, TheVisualLogKeepsWhatAnAgentSawAndWhereItStood). Combat, ability and
+navigation debug, and the colliders `phys_debug` draws, are not recorded.
+
 ## 4. The keys
 
 | Key | What |

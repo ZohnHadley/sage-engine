@@ -983,6 +983,7 @@ because it edits the live play world (`DevTools.cs:84-87`).
   Games build **out of tree**. This also fixes a bug: `Release` is an alias of `Shipping`, so `{config}`
   resolves to `bin/Shipping`, and the solution maps the games' Release to Debug
   (`GameManifest.cs:41`, `Sage.sln:238-267`). `dotnet publish` will probably not find the game DLL.
+  *(Fixed, issue #294: `-c Release` is Shipping, so the dll is where `{config}` says.)*
 
   *As built (issue #32, 2026-09-29).* **`Sage.Sdk`** is `sdk/Sage.Sdk/Sdk/Sdk.props` and `Sdk.targets` over
   `Microsoft.NET.Sdk`: net8.0 with RollForward=Major, the three configurations (build/'s file), nullable,
@@ -1003,16 +1004,17 @@ because it edits the live play world (`DevTools.cs:84-87`).
   the executable or stops with an error that lists the repository's games
   (test: GameManifest_Locate_WithoutAGameIsAnErrorThatListsTheGames). Templates: `sage-game` (a client
   half in the game folder, so `dotnet run` there starts the game, and the simulation half under
-  `Simulation/`), `sage-game-data` (no C#, the engine's scene) and `sage-mod-data` (a stub until data
-  mods). CI packs all three packages into a local feed and, outside the checkout, builds a game from
+  `Simulation/`), `sage-game-data` (no C#, the engine's scene) and `sage-mod-data` (a data mod, filled in by
+  #297 below). CI packs all three packages into a local feed and, outside the checkout, builds a game from
   each template, validates it (the mod against the game), checks SAGE0050 fires, and `dotnet run`s it
   under Xvfb, walking; Windows builds one with a shader of its own. Not yet: a public feed (§6 decision
-  7), `sage` as a dotnet tool, `sage-game-client`/`sage-mod-code`, ~~the Release→Shipping `{config}` fix~~
-  (issue #294: `-c Release` is Shipping and writes `bin/Shipping`, so `{config}` and the packed Player's
-  Shipping host agree; test: AReleaseBuildIsShippingAndWritesTheShippingFolder), and the Sandbox on the SDK.
+  7), `sage` as a dotnet tool (#296), `sage-mod-code` (#396), and the Sandbox on the SDK. Done since:
+  ~~the Release→Shipping `{config}` fix~~ (issue #294: `-c Release` is Shipping and writes `bin/Shipping`, so
+  `{config}` and the packed Player's Shipping host agree; test: AReleaseBuildIsShippingAndWritesTheShippingFolder)
+  and `sage-game-client` (#297, below).
 - **`dotnet new` templates:** `sage-game`, `sage-game-client`, `sage-mod-data` and `sage-mod-code`.
 - **`sage` CLI:**
-  - `new`, `run`, `validate`, `schema`, `package`;
+  - `new`, `run`, `validate`, `schema`, `mods`, `package`, `cook`;
   - `package` copies the Shipping build, packs mounts into zips and strips `tools/`.
 
   *As built (issue #293, 2026-10-05).* `sage package <game> --out <dir> [--host <dir>] [--config Shipping]
@@ -1023,7 +1025,40 @@ because it edits the live play world (`DevTools.cs:84-87`).
   ImGui in it (Debug, Development) is refused rather than stripped, and the written folder is validated with
   the host's `Content/` (tests: APackageIsTheShippingHostWithTheGameBesideItAndNothingElse,
   AHostWithTheEditorOrImGuiInItIsRefused, ThePackagedHelloAndSceneOnlyGamesLoadAndValidateFromTheOutputFolder).
-  Mounts are copied as folders, not zipped (#397); `new` and `run` are #297.
+  Mounts are copied as folders, not zipped (#397).
+
+  *As built (issue #297, 2026-10-05).* `sage new <template> [-o dir] [-n name] [--game folder-or-id]
+  [--dry-run] [dotnet new options]` is `dotnet new` with the Sage.Templates short names (`game`, `game-data`,
+  `game-client`, `mod-data`; anything else goes to `dotnet new` as it is, an unknown template exits 2).
+  `sage-mod-data` is no longer a stub: with `--game <game folder>` the mod is named for the game, its schemas
+  are written into its `schemas/` (which its `.vscode/settings.json` maps onto `data/` and `mod.json`) and it
+  is validated against the game (test: New_ModData_WritesAModThatValidatesAgainstTheGame_WithItsSchemasMapped).
+  `sage-game-client` is a client half for a game with none, a project in the game's `Client/` folder that builds
+  the game's own project too; `new game-client --game <game folder>` makes it there and adds its dll to
+  `game.json`'s `modules.add`, keeping what else the file says (test:
+  New_GameClient_MakesTheClientHalf_AndGameJsonLoadsIt_KeepingWhatWasWritten), and the SDK leaves a `Client/`
+  project's sources and dll to that project. `sage run <game> [--config c] [--host dir] [--dry-run] [-- host
+  arguments]` is `dotnet run` on the game's `Sage.Sdk` project (the `Client/` one first), the host's arguments
+  after the dash (test: Run_ASageSdkGame_IsDotnetRunOnItsProject_WithTheHostArgumentsAfterTheDash), and for a
+  folder with no such project (data only, a package's `game/`, the Sandbox) the host of that configuration
+  started with `-game` (test: Run_AFolderWithNoSdkProject_StartsTheHostOnIt). CI makes a mod and a client half
+  with the verbs, builds and validates them, and starts the data game through `sage run`
+  (`tools/smoke_run.sh --sage-run`). `sage-mod-code` waits for code mods (#396), and `sage` as a dotnet tool is
+  #296.
+
+  *As built (issue #302, 2026-10-05): the cook step.* `sage cook <game> [--force] [--clean]` writes a
+  `<path>.sgmesh` beside every `.glb` and a `<path>.sgtex` beside every `.png`/`.jpg` in the game's mounts
+  (premultiplied RGBA, or BC1/BC3 blocks unless game.json's `"cook"` says otherwise); `sage package` runs it
+  on the package's copies unless `--no-cook` (the SDK's `SageCook=false`), and the loose files stay beside
+  them. The client reads a cooked file in place of its loose one only when its mount is at least as high as
+  the loose file's, so a mod's loose file still wins, and warns once and reads the loose file when a cooked one
+  is unreadable or was cooked from a file of another length (docs/design/05 §7). Tests:
+  CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate,
+  APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff.
+
+  *As built (issue #298, 2026-10-05).* The checker's vocabulary now includes output and game-event names (the
+  registry dump has a `gameEvents` section), the checker has its own unit tests, run in CI, and the host's
+  `-options` are read by `HostOptions.cs` under test (README, "Docs are checked"; design 01 §5.1).
 - **CI (GitHub Actions), on Windows and Linux:**
   - `dotnet tool restore`, then build all three configurations;
   - tests with coverage;
@@ -1036,22 +1071,39 @@ because it edits the live play world (`DevTools.cs:84-87`).
     asked for.
 - **Build hygiene:**
   - `global.json`, a root `Directory.Build.props` (Nullable, warnings as errors, LangVersion,
-    Deterministic) and `Directory.Packages.props`.
-  - The props file doesn't set Nullable today, and 5 files lack `#nullable enable`.
-- **Repo hygiene:**
-  - Delete `pipelines/CustomModelPipeline`: dead XNA 4.0 code, with its committed `.vs/` folder.
-  - Replace the vendored `packages/MonoGame.ImGuiNet-main` (696K, samples and FBX included) with the
-    NuGet package, or `third_party/` plus a patch note.
-  - Delete branch `dev_branch_test`. It has 23 throwaway commits from 2025 and no engine work.
-  - Remove stale `.gitignore` lines.
+    Deterministic) and `Directory.Packages.props`. **Done** (issue #4, verified 2026-10-05 for #303): the
+    props file sets `Nullable` to `enable`, and no file in `src/`, `tests/`, `games/` or `sdk/` turns it off.
+    A file without its own `#nullable enable` line (some in `Sage.Client`, `Sage.Host`, `Sage.Editor` and
+    `Sage.Generators`) is still checked; only vendored `third_party/` opts out.
+- **Repo hygiene.** **Done** (#3, commit 9a6a63a, verified 2026-10-05 for #303), except what only the
+  owner can do:
+  - `pipelines/CustomModelPipeline` and its committed `.vs/` folder are gone.
+  - The vendored ImGui package is `third_party/MonoGame.ImGuiNet` (the renderer and its licence, no
+    samples or FBX), with its own `Directory.Build.props` so the repository's nullable and language settings
+    do not reach it, and a line in `THIRD_PARTY_NOTICES.md`. It is still vendored rather than a NuGet
+    package, by choice.
+  - The branch `dev_branch_test` no longer exists on the remote.
+  - `.gitignore` is the Visual Studio template plus Sage's own lines (`user/`, `imgui.ini`, the imported
+    Daggerfall art, `graphify-out/`, the `.vscode/` rule that keeps `settings.json`), each naming something the
+    repository still produces; the template's sections for tools Sage does not use are harmless and were left.
+  - **Owner only:** import `.github/rulesets/protect-main.json` (the repository's rulesets API listed none on 2026-10-05), and decide on a public feed (§6 decision 7, #296).
 - **Tests:**
-  - Replace the 35 hand-rolled bootstraps with `Sage.Testing.HeadlessApp`, turn parallelisation back on
-    once statics are gone (§3.2), and put test files in folders that match their subject (almost all
-    are in `World/`).
-  - Add golden saves and maps, a benchmark project (from `scale-2026-09-24.md`), and a first client
-    smoke test through a scripted run.
+  - Replace the hand-rolled bootstraps with `Sage.Testing.HeadlessApp`, turn parallelisation back on
+    once statics are gone (§3.2), and put test files in folders that match their subject. **Done**: no
+    test calls `new Engine(...)`, test classes run in parallel (`tests/Sage.Tests/AssemblyInfo.cs`), the
+    two kinds that cannot are in the `ProcessWideState` and `Measurements` collections, and the folders
+    are by subject (Animation, Content, Core, Ecs, Gameplay, Physics, Streaming, UI and so on).
+  - Golden saves (`tests/Sage.Tests/Content/Saves`), maps and a client smoke test through a scripted run
+    (`tools/smoke_run.sh`, CI) are built. A benchmark project (from `scale-2026-09-24.md`) is not; the
+    `Measurements` tests (time and allocation) are what exists.
 - **Registry dump.** The engine emits `--dump-registry` JSON (commands, cvars, records, I/O, conditions
   and so on) from the §3.4 metadata. `check_docs.py` reads that instead of regexes over call shapes.
+  *As built (issue #298, 2026-10-05):* the dump also lists the game events (`gameEvents`: every
+  `[GameEvent]` struct of the app's assemblies, with its assembly), which is what lets the checker catch a
+  document naming an event no type declares (TODO bug 62; a dump written by an older host without the section is
+  an error). It reads entity-output names from the dump's `entityOutputs` and from the `FireOutput` literals
+  in the code (`tools/test_check_docs.py`: test_a_wrong_output_name_fails, test_a_wrong_event_name_fails; test:
+  TheRegistryDumpListsEverythingRegisteredWithItsOwner).
 
 ---
 
@@ -1098,8 +1150,8 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 
 | Phase | State |
 |---|---|
-| 0 — Clean ground | **Done**: the publish smoke test (#6) is CI's package-and-run step (#293, R1); deleting `dev_branch_test` is the owner's |
-| 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
+| 0 — Clean ground | **Done** (#2, closed): the hygiene list in §4.8 is done (checked for #303), `dev_branch_test` is gone, and the publish smoke test (#6, closed) is CI's package-and-run step (#293, R1). Left for the owner: import the ruleset `.github/rulesets/protect-main.json` |
+| 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred (#49, open, listed under 10b #365), for when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
 | 3 — Carve the base | **Done** (#23). the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), and public API files, SemVer from git tags and `sage` ranges (#31, [RELEASING](RELEASING.md)), each with an "As built" note |
 | 4a — Cameras as components | **Done** (#75: #76–#81). Cameras are entities with a director, rigs for first and third person with the V toggle, scripted cuts from entity I/O, several views and named render targets, and the editor's free camera and viewport on them; both exit criteria run in the Sandbox with tests |
@@ -1187,6 +1239,11 @@ root motion and directional attacks (4p), knockback and blocking (4r) and richer
 
 **Closed:** #16 (generated registration, done in phase 2), #2 (phase 0) and #6 (its publish smoke test is
 CI's package-and-run step since #293).
+
+**R1 (#292) as of 2026-10-05:** #293, #294, #297 to #303 are built (§4.8, spec sheet 20). #295 has the 0.1.0
+public API frozen in `PublicAPI.Shipped.txt` and a release workflow (`.github/workflows/release.yml`, run by a
+`v*.*.*` tag), and the tag itself is the owner's push (RELEASING §4). #296, a package feed and `sage` as a
+dotnet tool, is open.
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,

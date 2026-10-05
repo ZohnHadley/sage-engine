@@ -64,7 +64,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices; written in the background, optionally compressed, with a thumbnail and a title |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1770 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1834 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: code mods, the editor's brushes and asset
 browser (its first half, phase 10a, is a mode of the dev host: [`docs/EDITOR.md`](docs/EDITOR.md)), and
@@ -92,6 +92,7 @@ To make a game of your own, outside this repository, pack the SDK and start from
 tools/pack_sdk.sh ~/sage-feed --build
 dotnet new install ~/sage-feed/Sage.Templates.*.nupkg   # the engine's version, from git tags
 dotnet new sage-game -n MyGame -o ~/games/MyGame --feed ~/sage-feed && cd ~/games/MyGame && dotnet run
+# or with `sage` (the Player package's CLI; not a dotnet tool yet, #296): sage new game -n MyGame -o ~/games/MyGame --feed ~/sage-feed && sage run ~/games/MyGame
 ```
 
 You should get a hilly field, some creatures, some crates falling through a trigger, a creature that
@@ -218,10 +219,11 @@ dotnet build Sage.sln -c Debug          # Debug | Development | Shipping
 dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug     # or -c Development; not Shipping,
                                                             # which compiles out what six tests assert
 python tools/check_docs.py --tests N    # the docs against the code (R19), N as dotnet test reported
+python3 -m unittest discover -s tools -p 'test_*.py'   # the checker's own tests (issue #298)
 ```
 
 `check_docs.py` reads the engine's names from a **registry dump** — every command, cvar, record type,
-component, prefab part, system, entity input and output and input action the Sandbox registers, with
+component, prefab part, system, entity input and output, game event (`[GameEvent]` struct) and input action the Sandbox registers, with
 the plugin that registered each and the declarations' fields — which the host writes and then quits:
 
 ```bash
@@ -236,8 +238,8 @@ registered by running code (test: ANameRegisteredAnyWayAtAllIsInTheDump). A test
 file headlessly with `RegistryDump.Write(engine, path)`.
 
 `check_docs.py` is there because three features in a row ended with the code being right and something
-it *said about itself* being wrong. It checks that links resolve, that a command or cvar named in a
-claim about what exists is really in the code, and that the numbers quoted on a `<!-- counts -->` line
+it *said about itself* being wrong. It checks that links resolve, that a command, cvar, entity output or game event named in a
+claim about what exists is really in the dump or the code (an output name nothing fires, or an event no `[GameEvent]` struct declares, fails; the checker's unit tests plant both), and that the numbers quoted on a `<!-- counts -->` line
 are the numbers there are. Behaviour it cannot check — so an "As built" bullet cites the test that
 proves it, `(test: …)`, and the script checks the name resolves.
 
@@ -253,8 +255,9 @@ and every pull request:
   warning outside the categories it expects. Last, it packs `Sage.Sdk`, `Sage.Player` and the templates
   into a local feed ([`tools/pack_sdk.sh`](tools/pack_sdk.sh)) and makes a game from each template in a
   folder outside the checkout: built against the packages alone, validated, shown to get the Sage
-  analyzers, and started with `dotnet run` under the virtual display, walking; then built in Shipping,
-  packaged with `sage package` (no developer files allowed in) and run from the package's folder.
+  analyzers, and started with `dotnet run` under the virtual display, walking; the data-only template gets a mod and a
+  client half made with `sage new` and is started with `sage run`; then the game is built in Shipping,
+  packaged with `sage package` (no developer files allowed in, models and textures cooked) and run from the package's folder.
 - **Windows** builds the whole solution, shaders included, and runs the tests; then builds a template
   game with a shader of its own against the packed SDK, which is where `mgfxc` runs for a game, and
   packages it.
@@ -263,12 +266,12 @@ Both jobs check out the whole history (`fetch-depth: 0`), because the version co
 both jobs' builds check the **declared public API**: each assembly games compile against keeps
 `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt`, and a public change the files do not have is a
 build error (RS0016/RS0017; Linux also shows it on purpose). [`docs/RELEASING.md`](docs/RELEASING.md)
-says how to update them.
+says how to update them. Pushing a `v*.*.*` tag runs [`release.yml`](.github/workflows/release.yml), which builds that commit on Windows, runs the tests, packs the SDK, the Player and the templates and attaches them to a GitHub release (RELEASING §4; nothing goes to a public feed, #296). The 0.1.0 API is frozen in the `Shipped` files; the `v0.1.0` tag is the owner's push and has not been pushed.
 
 Warnings are errors (`Directory.Build.props`), and package versions live in one place
 (`Directory.Packages.props`). `main` is
-protected by the ruleset in [`.github/rulesets/protect-main.json`](.github/rulesets/protect-main.json):
-changes go through a pull request with both CI jobs green, and `main` can't be force-pushed or deleted.
+meant to be protected by the ruleset in [`.github/rulesets/protect-main.json`](.github/rulesets/protect-main.json)
+(the owner imports it; the repository's rulesets API listed none on 2026-10-05): changes go through a pull request with both CI jobs green, and `main` can't be force-pushed or deleted.
 
 Three configurations, as UE does it: **Debug** (asserts, verbose logs, `developer 1`), **Development**
 (optimised, still has the console, cheats and dev tools) and **Shipping** (no dev cvars, no console;
@@ -292,13 +295,13 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `src/Sage.Editing` | The editor's model, headless (phase 10a): documents, the command log and undo, picking and gizmo maths, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, problems, and their `ed_*`/`doc_*` commands. **No MonoGame.** |
 | `src/Sage.Editor` | Dev camera, console window, the editor's panels (`-edit`, [`docs/EDITOR.md`](docs/EDITOR.md)), stat overlay (ImGui): they draw `Sage.Editing` |
 | `src/Sage.Host` | The executable: boot sequence and the main loop |
-| `src/Sage.Cli` | `sage`, the headless command line: `sage validate <game> [--mods <dir>] [--game-mods]` checks a game's content (and its mods') and exits non-zero on errors; `sage mods <game>` prints the mods' load order, the refused ones and the conflicts; `sage schema <game>` writes the JSON Schemas record files are edited with |
+| `src/Sage.Cli` | `sage`, the headless command line: `sage validate <game> [--mods <dir>] [--game-mods]` checks a game's content (and its mods') and exits non-zero on errors; `sage mods <game>` prints the mods' load order, the refused ones and the conflicts; `sage schema <game>` writes the JSON Schemas record files are edited with; `sage package <game> --out <dir>` writes a folder a player runs (cooked, `sage cook`); `sage new <template>` and `sage run <game>` make and start games and mods (`dotnet new` and `dotnet run` with the short names) |
 | `schemas/` | Those JSON Schemas for engine content, the Sandbox, Hello, `tests/games/scene-only`, `tests/games/camera-cut`, `tests/games/scripted-sequence`, `tests/games/topics`, `tests/games/skeletal`, `tests/games/weapons`, `tests/games/saves`, `tests/games/open-world`, `tests/games/mods` and `tests/games/editor`, generated by `sage schema` (never edit by hand); `.vscode/settings.json` maps them onto `data/**/*.json` |
 | `src/Sage.Generators` | The declarations generator (issue #16): `[Record]` and `[SavedResource]` register themselves for the plugin that owns them |
 | `games/Sandbox` | The test game's **simulation**: its module, scene records, placeholder art and tools. References only the base engine (`Sage.Core` … `Sage.Gameplay`) and the RPG kit it is built on, so it is testable headlessly |
 | `games/Sandbox.Client` | The same game's **client half**: the HUD, and the prefab part that needs a renderer |
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
-| `sdk/` | `Sage.Sdk`, the MSBuild SDK a game builds with (`<Project Sdk="Sage.Sdk/<version>">`), and the packing of it, of `Sage.Player` (the host and `sage`, per configuration) and of the `dotnet new` templates (`sage-game`, `sage-game-data`, `sage-mod-data`) |
+| `sdk/` | `Sage.Sdk`, the MSBuild SDK a game builds with (`<Project Sdk="Sage.Sdk/<version>">`), and the packing of it, of `Sage.Player` (the host and `sage`, per configuration) and of the `dotnet new` templates (`sage-game`, `sage-game-data`, `sage-game-client`, `sage-mod-data`) |
 | `tests/Sage.Tests` | xUnit, headless, in folders by subject (`Core`, `Ecs`, `Gameplay`, `Maps`, `UI`…) |
 | `tests/Sage.Testing` | The harness tests boot through — `HeadlessApp`, `MountFixture`, `EventProbe`, `CaptureSink` — for the engine's tests and a game's |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |

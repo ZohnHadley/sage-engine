@@ -213,7 +213,11 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
   (an `attack` and an `item` that carries it) and a patch of the game's `player`. It loads in a game made from `sage-game`
   and reports no conflict (test: TheTemplateMod_LoadsInAGame_AddsItsWeapon_AndPatchesThePlayer). CI's template step validates
   it with `--mods`, runs `sage mods`, puts it in the game's `mods/` and checks `--game-mods`, and checks that a `mod.json`
-  with an unknown key fails.
+  with an unknown key fails. Since issue #297 the template is made by `sage new mod-data --game <game folder>`, which
+  names the mod for the game, writes the game's schemas into the mod's `schemas/` and validates it against the game; its
+  `.vscode/settings.json` maps `data/**/*.json` and `mod.json` onto those schemas and its `.vscode/tasks.json` runs
+  `sage validate`, `sage mods` and `sage schema` against the game (test:
+  New_ModData_WritesAModThatValidatesAgainstTheGame_WithItsSchemasMapped).
 
 ## As built (the mods screen, issue 4j-6)
 
