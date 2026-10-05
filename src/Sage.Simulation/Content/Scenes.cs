@@ -63,6 +63,13 @@ public sealed class SceneRecord
     [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
     [Property(Tooltip = "Exterior (terrain, streaming, sun and sky) or Interior (none of them: lit by its lights and environment.ambient)")]
     public SceneSpace Space = SceneSpace.Exterior;
+
+    // A space of its own beside the others (4m-17, Spaces.cs): when the player leaves the scene for another,
+    // it stays placed and simulated instead of going dormant. An interior stays beside anything; an exterior
+    // stays only while the player is inside an interior (the world has one ground).
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    [Property(Tooltip = "Stay live — placed and simulated — when the player leaves for another scene, instead of going dormant (an exterior only while the player is inside)")]
+    public bool Live;
 }
 
 // Where a scene is (4g-5): outside, under the sky, or inside, out of it.
@@ -89,6 +96,12 @@ public sealed class SceneEnvironment
     [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
     [Property(Tooltip = "Interior scenes only: the ambient light, from above and below alike; the sun and sky give none inside")]
     public Vector3 Ambient = new(0.08f, 0.08f, 0.1f);
+
+    // The space's own gravity (4m-17): what falls in it, and the characters walking in it, fall at this times
+    // the world's gravity — wherever the player is (SpaceGravity).
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    [Property(Min = 0, Max = 10, Tooltip = "The scene's gravity, times the world's (1: the same; 0: none), for what falls and walks in it")]
+    public float GravityScale = 1f;
 }
 
 // Placed by a scene, so hot reload and `scene_load` know what to sweep away and put back. Never on the
@@ -115,11 +128,36 @@ internal sealed class ActiveScene
     // The scene is an interior (4g-5), and the light the world had outside, put back when it leaves.
     internal bool Interior;
     internal RenderEnvironment? Outside;
+
+    // A scene held live beside the player's (4m-17, Spaces.cs): the roots it placed, untagged FromScene so the
+    // player's scene's Clear leaves them alone, and where they stand (absolute metres), so a runtime spawn
+    // made among them belongs to it.
+    internal readonly List<Entity> Held = new();
+    internal bool Exterior;
+    internal Vector3 Min, Max;
+
+    // What the scene placed, moved to `to` (which has none): the scene's id, levels, documents and sectors.
+    internal void MoveContentTo(ActiveScene to)
+    {
+        to.Id = Id;
+        to.Levels.AddRange(Levels);
+        to.Documents.AddRange(Documents);
+        to.Streamed = Streamed;
+        to.Held.AddRange(Held);
+        to.Exterior = Exterior;
+        to.Min = Min;
+        to.Max = Max;
+        Id = default;
+        Levels.Clear();
+        Documents.Clear();
+        Streamed = null;
+        Held.Clear();
+    }
 }
 
 // The engine's scene service (Engine.Scenes).
 [Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
-public sealed class Scenes
+public sealed partial class Scenes
 {
     private readonly Engine _engine;
 
@@ -166,8 +204,10 @@ public sealed class Scenes
             Log.Error(LogCat.World, $"No scene '{id}'");
             return false;
         }
-        Clear(world);
-        Place(world, id, scene);
+        // The scene the player leaves goes dormant, or stays live beside the next when it is `live` (4m-17);
+        // one held live is taken up again as it is, not placed a second time.
+        Leave(world, id, scene);
+        if (!Resume(world, id, scene)) Place(world, id, scene);
         // A journey (Travel, movePlayer false) does not set the clock: the hour a scene starts at is for
         // starting there, and coming back through a door at 06:00 must not make it dusk again (4g-7).
         ApplyEnvironment(world, scene, setHour: movePlayer);
@@ -201,7 +241,14 @@ public sealed class Scenes
     public int Clear(World world)
     {
         if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null) return 0;
+        var placed = world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList();
+        return Clear(world, state, placed);
+    }
 
+    // `state`'s content gone (the player's scene's, or one held live beside it): `placed` are the roots its
+    // own placements made.
+    private static int Clear(World world, ActiveScene state, List<Entity> placed)
+    {
         // Before anything goes (4i-3): what the game destroyed is noted, so that placing this scene again
         // (a hot reload, a `scene_load` back to it) leaves it destroyed — and, unless a reload or a load is
         // clearing it (ContentIds.Discarding), its state and its runtime spawns go dormant (4g-1).
@@ -214,9 +261,10 @@ public sealed class Scenes
         }
 
         int removed = 0;
-        foreach (var entity in world.Query<Transform>().AllTags(Tags.Get<FromScene>()).Entities.ToEntityList())
+        var player = Player(world);
+        foreach (var entity in placed)
         {
-            if (entity == state.Player) continue;   // never tagged, but a save could have put it back tagged
+            if (entity == state.Player || entity == player || !world.IsAlive(entity)) continue;   // never tagged, but a save could have put it back tagged
             world.Destroy(entity);
             removed++;
         }
@@ -229,6 +277,7 @@ public sealed class Scenes
 
         state.Levels.Clear();
         state.Documents.Clear();
+        state.Held.Clear();
         state.Id = default;
         return removed;
     }
@@ -246,12 +295,14 @@ public sealed class Scenes
         {
             if (!world.Resources.TryGet<ActiveScene>(out var state) || state == null || state.Id.IsEmpty) continue;
             var id = state.Id;
+            var live = LiveSpaces.Of(world).Ids();   // closed by Replace, and placed again from the new records
             if (!Replace(world, id))
             {
                 Log.Warn(LogCat.World, $"Scene '{id}' is gone after the reload: '{world.Name}' is left empty");
                 continue;
             }
             var scene = Scene(world)!;
+            foreach (var beside in live) OpenLive(world, beside);
 
             // A player the rules spawned stays where it is, with what it has. One that is gone — or never
             // was, because the scene only now has a start — comes back.
@@ -273,6 +324,7 @@ public sealed class Scenes
     {
         using (ContentIds.Discarding(world))
         {
+            CloseLive(world);   // the scenes held live beside it too (4m-17): a load opens the save's again
             Clear(world);
             if (levels && world.Resources.TryGet<MapLevels>(out var loaded) && loaded != null)
                 foreach (var level in loaded.Loaded) MapLoader.ForgetEntities(world, level);
@@ -284,25 +336,32 @@ public sealed class Scenes
         return true;
     }
 
-    private void Place(World world, RecordId id, SceneRecord scene)
+    // `background`: placed to be held live beside the player's scene (4m-17), so the world's ground, light and
+    // rings are not its to set; never a streamed one.
+    private void Place(World world, RecordId id, SceneRecord scene, bool background = false)
     {
         var state = world.Resources.Get<ActiveScene>();
         state.Id = id;
+        state.Exterior = scene.Space == SceneSpace.Exterior;
         string source = ContentIds.SceneSource(id);
-        ApplyTerrain(world, scene);
-        ApplySpace(world, scene);
+        if (!background)
+        {
+            ApplyTerrain(world, scene);
+            ApplySpace(world, scene);
+        }
 
         // Streamed (4g-3): nothing is placed now but the levels that do not stand on the terrain. The
         // sectors are placed at tick boundaries as the ring reaches them (TickEnded). An interior has no
         // ring, and is placed whole.
         if (scene.Streamed && scene.Space == SceneSpace.Interior)
             Log.Once(LogCat.World, LogLevel.Warn, $"interior-streamed:{id}", $"Scene '{id}' is an interior and streamed: an interior has no ring, so it is placed whole");
-        else if (scene.Streamed && world.Resources.TryGet<SectorRing>(out _))
+        else if (scene.Streamed && !background && world.Resources.TryGet<SectorRing>(out _))
         {
             state.Streamed = StreamedScene.Build(_engine, id, scene, world);
             foreach (var map in scene.Maps)
                 if (StreamedScene.PlacedWhole(_engine, map.Id) && MapLoader.Load(world, map.Id) is { } whole) state.Levels.Add(whole);
             Log.Info(LogCat.World, $"Scene '{id}' streams by sector in '{world.Name}' ({state.Levels.Count} level(s) loaded whole)");
+            UpdateGravity(world);   // 4m-17
             return;
         }
         else if (scene.Streamed)
@@ -348,6 +407,7 @@ public sealed class Scenes
             if (MapLoader.Load(world, map.Id) is { } level) state.Levels.Add(level);
 
         Log.Info(LogCat.World, $"Scene '{id}': {placed} placed and {state.Levels.Count} level(s) loaded in '{world.Name}'");
+        if (!background) UpdateGravity(world);   // 4m-17
     }
 
     // A scene's `terrain` (4g-3): the world's ground becomes that built-in generator. Ground generated from
@@ -372,16 +432,19 @@ public sealed class Scenes
     {
         var state = world.Resources.Get<ActiveScene>();
         bool interior = scene.Space == SceneSpace.Interior;
+        // An exterior held live beside the interior (4m-17) keeps its ground and the sectors it placed; the
+        // ring only stops following the player.
+        bool keepGround = interior && LiveSpaces.Of(world).HoldsExterior;
         if (world.Resources.TryGet<SectorRing>(out var ring) && ring != null)
         {
             ring.Suspended = interior;
-            if (interior)
+            if (interior && !keepGround)
             {
                 ring.Live.Clear();
                 ring.Ready = false;
             }
         }
-        if (interior && world.Resources.TryGet<Terrain>(out var terrain) && terrain != null)
+        if (interior && !keepGround && world.Resources.TryGet<Terrain>(out var terrain) && terrain != null)
             for (int i = terrain.Sectors.Count - 1; i >= 0; i--) terrain.Unload(terrain.Sectors[i].Coord);
 
         world.Resources.TryGet<RenderEnvironment>(out var environment);
@@ -593,6 +656,7 @@ public sealed class Scenes
 
     public void RegisterCommands(CVarRegistry cvars)
     {
+        RegisterSpaceCommands(cvars);   // 4m-17
         TravelSpeed = cvars.Register("travel_speed", Travel.DefaultSpeed, CVarFlags.Archive,
             "Metres fast travel covers in a game hour: a journey costs its distance over this (4g-5).", 1f, 1_000_000f);
         cvars.RegisterCommand("travel", CVarFlags.None,

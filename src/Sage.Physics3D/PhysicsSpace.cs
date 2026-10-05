@@ -62,7 +62,7 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         UseWorkers(Environment.ProcessorCount - 1);
         Simulation = BepuSimulation.Create(_pool,
             new NarrowPhaseCallbacks { Data = _data },
-            new PoseIntegratorCallbacks(Gravity),
+            new PoseIntegratorCallbacks(Gravity, _gravityField),
             new SolveDescription(velocityIterationCount: 8, substepCount: 1));
         // Same result every run: the simulation is fixed-tick and wants repeatable behaviour for replays,
         // tests and the netcode to come (test: TheSameSceneGivesBitIdenticalBodiesEveryRun). Bepu has no
@@ -73,6 +73,23 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
     }
 
     public Vector3 Gravity { get; }
+
+    // Gravity by space (4m-17, SpaceGravity): a scale everywhere, and boxes with their own, in the frame the
+    // simulation is in. Read by the integrator on Bepu's workers, written only between steps.
+    private readonly GravityField _gravityField = new();
+    private int _gravityVersion = -1;
+    private SectorCoord _gravityFrame;
+
+#pragma warning disable SAGE0129 // space gravity (4m-17): physics ships with the engine that declares it
+    // Takes a world's space gravity before a step: copied only when it or the origin changed.
+    internal void UseGravity(SpaceGravity gravity, Origin origin)
+    {
+        if (gravity.Version == _gravityVersion && origin.Sector == _gravityFrame) return;
+        _gravityVersion = gravity.Version;
+        _gravityFrame = origin.Sector;
+        _gravityField.Set(gravity, origin);
+    }
+#pragma warning restore SAGE0129
     public LayerMatrix Layers => _data.Layers;
     public int BodyCount => Simulation.Bodies.ActiveSet.Count - AwakeAnchors();
     public int StaticCount => Simulation.Statics.Count;
@@ -692,12 +709,52 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         public void Dispose() { }
     }
 
+#pragma warning disable SAGE0129 // space gravity (4m-17): physics ships with the engine that declares it
+    // What the integrator reads of SpaceGravity: the scale, and the regions in the simulation's frame.
+    private sealed class GravityField
+    {
+        public float Scale = 1f;
+        public int Count;
+        public Vector3[] Min = Array.Empty<Vector3>(), Max = Array.Empty<Vector3>();
+        public float[] Scales = Array.Empty<float>();
+
+        public void Set(SpaceGravity gravity, Origin origin)
+        {
+            Scale = gravity.Scale;
+            int count = gravity.RegionCount;
+            if (Min.Length < count)
+            {
+                Min = new Vector3[count];
+                Max = new Vector3[count];
+                Scales = new float[count];
+            }
+            for (int i = 0; i < count; i++)
+            {
+                var region = gravity.Region(i);
+                Min[i] = origin.ToOrigin(region.Min);
+                Max[i] = origin.ToOrigin(region.Max);
+                Scales[i] = region.Scale;
+            }
+            Count = count;
+        }
+
+        public float At(Vector3 at)
+        {
+            for (int i = 0; i < Count; i++)
+                if (at.X >= Min[i].X && at.Y >= Min[i].Y && at.Z >= Min[i].Z && at.X <= Max[i].X && at.Y <= Max[i].Y && at.Z <= Max[i].Z)
+                    return Scales[i];
+            return Scale;
+        }
+    }
+#pragma warning restore SAGE0129
+
     private struct PoseIntegratorCallbacks : IPoseIntegratorCallbacks
     {
         private readonly Vector3 _gravity;
+        private readonly GravityField _field;
         private Vector3Wide _gravityDt;
 
-        public PoseIntegratorCallbacks(Vector3 gravity) { _gravity = gravity; _gravityDt = default; }
+        public PoseIntegratorCallbacks(Vector3 gravity, GravityField field) { _gravity = gravity; _field = field; _gravityDt = default; }
 
         public AngularIntegrationMode AngularIntegrationMode => AngularIntegrationMode.Nonconserving;
         public bool AllowSubstepsForUnconstrainedBodies => false;
@@ -710,7 +767,27 @@ public sealed partial class PhysicsSpace : IPhysicsWorld, IDisposable
         public void IntegrateVelocity(Vector<int> bodyIndices, Vector3Wide position, QuaternionWide orientation, BodyInertiaWide localInertia,
             Vector<int> integrationMask, int workerIndex, Vector<float> dt, ref BodyVelocityWide velocity)
         {
-            velocity.Linear += _gravityDt;
+            var field = _field;
+            if (field.Count == 0)
+            {
+                if (field.Scale == 1f) velocity.Linear += _gravityDt;
+                else
+                {
+                    var uniform = new Vector<float>(field.Scale);
+                    velocity.Linear.X += _gravityDt.X * uniform;
+                    velocity.Linear.Y += _gravityDt.Y * uniform;
+                    velocity.Linear.Z += _gravityDt.Z * uniform;
+                }
+                return;
+            }
+            // Each body falls at its space's gravity (4m-17): by where it is.
+            Span<float> lanes = stackalloc float[Vector<float>.Count];
+            for (int lane = 0; lane < Vector<float>.Count; lane++)
+                lanes[lane] = field.At(new Vector3(position.X[lane], position.Y[lane], position.Z[lane]));
+            var scale = new Vector<float>(lanes);
+            velocity.Linear.X += _gravityDt.X * scale;
+            velocity.Linear.Y += _gravityDt.Y * scale;
+            velocity.Linear.Z += _gravityDt.Z * scale;
         }
     }
 

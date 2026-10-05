@@ -196,6 +196,9 @@ public static class Travel
             world.Rebase(Terrain.SectorOf(known.At.X, known.At.Z));
             if (!interior) scenes.PrepareGround(world, scene);
         }
+        // Companions through the door (4m-17): out of the scene being left, whatever becomes of it, before it
+        // goes; back in the one arrived in as the player gets there, and Followers.Bring puts them behind.
+        var party = same ? null : Companions.Leave(world);
         if (!same)
         {
             scenes.Load(world, request.Scene, movePlayer: false);
@@ -230,6 +233,7 @@ public static class Travel
             transform.LocalPosition = local;
             transform.LocalRotation = SageMath.RotationFromYaw(yaw * MathF.PI / 180f);
             world.Teleport(player, transform);
+            if (party != null) Companions.Arrive(world, party, player);
             Followers.Bring(world, player);   // companions come along, behind the player (#290)
 
             // An entry the origin is far from (a level placed out of the way): the frame follows the player.
@@ -582,5 +586,42 @@ internal static class TravelChecks
         foreach (var map in scene.Maps)
             if (!check.TryGet<MapRecord>(map.Id, out var record) || !MapLoader.TryTargetNames(engine, record, names)) complete = false;
         return names;
+    }
+}
+
+// Companions through doors (4m-17): when a journey changes the world's scene, every follower (Followers.cs)
+// leaves the scene it was in — as save entries, tombstoned in content that placed it (CellContent.Release) —
+// before that scene goes dormant or is held live, and comes back into the cell the player arrives in, a runtime
+// spawn of it with its state, children and references, so it sleeps and wakes with the player's new scene
+// rather than the one it left.
+internal static class Companions
+{
+    public static List<List<System.Text.Json.Nodes.JsonObject>>? Leave(World world)
+    {
+        var player = Scenes.Player(world);
+        if (player.IsNull) return null;   // nobody to arrive with: they stay
+        List<Entity>? followers = null;
+        foreach (var entity in world.Query<Transform, Follower>().Entities)
+            if (entity != player && entity.Parent.IsNull && Cells.Sleeps(world, entity)) (followers ??= new()).Add(entity);
+        if (followers == null) return null;
+        followers.Sort(static (a, b) => a.Id.CompareTo(b.Id));
+        var party = new List<List<System.Text.Json.Nodes.JsonObject>>(followers.Count);
+        foreach (var follower in followers) party.Add(CellContent.Release(world, follower));
+        world.FlushCommands();
+        return party;
+    }
+
+    public static void Arrive(World world, List<List<System.Text.Json.Nodes.JsonObject>> party, Entity player)
+    {
+        var at = world.Get<Transform>(player).LocalPosition;
+        if (Cells.Current(world, player) is not { } cell)
+        {
+            Log.Warn(LogCat.World, $"'{world.Name}': the player's scene has no cell; {party.Count} companion(s) left behind");
+            return;
+        }
+        int came = 0;
+        foreach (var saved in party)
+            if (!CellContent.Restore(world, saved, at, cell).IsNull) came++;
+        Log.Info(LogCat.World, $"'{world.Name}': {came} companion(s) came through into '{cell}'");
     }
 }
