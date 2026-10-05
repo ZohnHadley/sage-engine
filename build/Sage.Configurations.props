@@ -14,15 +14,22 @@
     <Configurations>Debug;Development;Shipping</Configurations>
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
     <SageShipping Condition="'$(Configuration)' == 'Shipping' Or '$(Configuration)' == 'Release'">true</SageShipping>
+    <!-- The configuration's Sage name: Release is Shipping, here and in every path. -->
+    <SageConfiguration>$(Configuration)</SageConfiguration>
+    <SageConfiguration Condition="'$(Configuration)' == 'Release'">Shipping</SageConfiguration>
+    <!-- `-c Release` (dotnet publish's default) writes bin/Shipping/, so game.json's {config} and the
+         packed Player's Shipping host agree with where the dll went. Only the folder is renamed: the
+         MSBuild configuration stays Release, so a package's own Release conditions still apply. -->
+    <OutputPath Condition="'$(Configuration)' == 'Release' And '$(OutputPath)' == ''">bin\Shipping\</OutputPath>
   </PropertyGroup>
 
   <!--
-    The configuration's MSBuild name, which is also the folder under bin/ that the build writes to.
+    The Sage configuration's name, which is also the folder under bin/ that the build writes to.
     BuildInfo.ConfigurationName reads it, and `{config}` in game.json means it: a `-c Release` build
-    writes bin/Release even though Release behaves as Shipping.
+    is Shipping and writes bin/Shipping.
   -->
   <ItemGroup>
-    <AssemblyMetadata Include="SageBuildConfiguration" Value="$(Configuration)" />
+    <AssemblyMetadata Include="SageBuildConfiguration" Value="$(SageConfiguration)" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">

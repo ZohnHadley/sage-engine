@@ -32,10 +32,10 @@
 
     <!-- Where the host and the `sage` CLI are: the Player package's folder for this configuration, or
          this repository's build output. The package's also holds the engine a game compiles against. -->
-    <SageHostDirectory Condition="'$(SageSdkFromPackage)' == 'true'">$(PkgSage_Player)\host\$(Configuration)\</SageHostDirectory>
+    <SageHostDirectory Condition="'$(SageSdkFromPackage)' == 'true'">$(PkgSage_Player)\host\$(SageConfiguration)\</SageHostDirectory>
     <SageCliDirectory Condition="'$(SageSdkFromPackage)' == 'true'">$(SageHostDirectory)</SageCliDirectory>
-    <SageHostDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Host\bin\$(Configuration)\net8.0\</SageHostDirectory>
-    <SageCliDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Cli\bin\$(Configuration)\net8.0\</SageCliDirectory>
+    <SageHostDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Host\bin\$(SageConfiguration)\net8.0\</SageHostDirectory>
+    <SageCliDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Cli\bin\$(SageConfiguration)\net8.0\</SageCliDirectory>
     <!-- Run through `dotnet`, not the apphost: a NuGet package does not keep a file's executable bit. -->
     <SageDotnet Condition="'$(SageDotnet)' == ''">$(DOTNET_HOST_PATH)</SageDotnet>
     <SageDotnet Condition="'$(SageDotnet)' == ''">dotnet</SageDotnet>
@@ -132,16 +132,16 @@
 
   <Target Name="SageCheckHost" BeforeTargets="ComputeRunArguments;Run" Condition="'$(SageGameDirectory)' != ''">
     <Error Code="SAGE0112" Condition="!Exists('$(SageHostDirectory)Sage.Host.dll') And '$(SageSdkFromPackage)' == 'true'"
-           Text="The Sage.Player package has no '$(Configuration)' host (it has Debug, Development and Shipping; build Release as -c Shipping). Looked in $(SageHostDirectory)" />
+           Text="The Sage.Player package has no '$(SageConfiguration)' host (it has Debug, Development and Shipping; Release is Shipping). Looked in $(SageHostDirectory)" />
     <Error Code="SAGE0112" Condition="!Exists('$(SageHostDirectory)Sage.Host.dll') And '$(SageSdkFromPackage)' != 'true'"
-           Text="The host is not built in $(Configuration): dotnet build src/Sage.Host -c $(Configuration) (looked for $(SageHostDirectory)Sage.Host.dll)" />
+           Text="The host is not built in $(SageConfiguration): dotnet build src/Sage.Host -c $(Configuration) (looked for $(SageHostDirectory)Sage.Host.dll)" />
   </Target>
 
   <!-- The engine compiled against must exist, or every engine type is an unexplained CS0246. -->
   <Target Name="SageCheckEngine" BeforeTargets="ResolveAssemblyReferences"
           Condition="'$(SageSdkFromPackage)' == 'true' And '$(SageEngineReferences)' != 'false'">
     <Error Code="SAGE0112" Condition="!Exists('$(SageHostDirectory)Sage.Core.dll')"
-           Text="The Sage.Player $(SageVersion) package has no '$(Configuration)' engine to compile against (it has Debug, Development and Shipping; build Release as -c Shipping). Looked in '$(SageHostDirectory)'." />
+           Text="The Sage.Player $(SageVersion) package has no '$(SageConfiguration)' engine to compile against (it has Debug, Development and Shipping; Release is Shipping). Looked in '$(SageHostDirectory)'." />
   </Target>
 
   <!--
@@ -167,12 +167,12 @@
       <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedKits), '^"kits"\s*:\s*\[|\]$', ''))</_SageNamedKits>
       <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedKits), '\s*"([^"]*)"\s*,?', '$1;'))</_SageNamedKits>
       <_SageOwnPath>$([MSBuild]::MakeRelative('$(SageGameDirectory)\', '$(TargetPath)').Replace('\', '/'))</_SageOwnPath>
-      <_SageOwnPath>$([System.Text.RegularExpressions.Regex]::Replace('$(_SageOwnPath)', '(^|/)$(Configuration)/', '$1{config}/'))</_SageOwnPath>
+      <_SageOwnPath>$([System.Text.RegularExpressions.Regex]::Replace('$(_SageOwnPath)', '(^|/)$(SageConfiguration)/', '$1{config}/'))</_SageOwnPath>
     </PropertyGroup>
     <ItemGroup>
       <_SageNamed Include="$(_SageNamedAssembly)" Condition="'$(_SageNamedAssembly)' != ''" />
       <_SageNamed Include="$([MSBuild]::Unescape($(_SageNamedModules)))" />
-      <_SageLoaded Include="$([System.IO.Path]::Combine('$(SageGameDirectory)', '%(_SageNamed.Identity)').Replace('{config}', '$(Configuration)'))">
+      <_SageLoaded Include="$([System.IO.Path]::Combine('$(SageGameDirectory)', '%(_SageNamed.Identity)').Replace('{config}', '$(SageConfiguration)'))">
         <Named>%(_SageNamed.Identity)</Named>
       </_SageLoaded>
       <_SageLoadsThis Include="@(_SageLoaded)" Condition="'%(FullPath)' == '$(TargetPath)'" />
@@ -229,7 +229,7 @@
        CLI of this configuration, so it loads the dll this configuration built. Build first. -->
   <Target Name="SageValidate" Condition="'$(SageGameDirectory)' != ''">
     <Error Code="SAGE0112" Condition="!Exists('$(SageCliDirectory)sage.dll')"
-           Text="No `sage` CLI for $(Configuration) in $(SageCliDirectory) (in this repository: dotnet build src/Sage.Cli -c $(Configuration))." />
+           Text="No `sage` CLI for $(SageConfiguration) in $(SageCliDirectory) (in this repository: dotnet build src/Sage.Cli -c $(Configuration))." />
     <Exec Command="&quot;$(SageDotnet)&quot; &quot;$(SageCliDirectory)sage.dll&quot; validate &quot;$(SageGameDirectory)&quot;" />
   </Target>
 
