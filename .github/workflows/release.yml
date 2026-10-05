@@ -1,0 +1,71 @@
+# Release (docs/RELEASING.md §4, issue #295).
+#
+# Pushing a tag v<major>.<minor>.<patch> builds that commit on Windows (where the shaders compile, so the
+# packed Player draws), runs the tests, packs the SDK, the Player and the templates (tools/pack_sdk.sh),
+# and creates the GitHub release for the tag with the three .nupkg files as its assets. MinVer gives the
+# packages the tag's version. Nothing goes to a public feed (REDESIGN §6 item 7, issue #296).
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+jobs:
+  release:
+    name: Pack and publish the release
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore local tools (mgfxc)
+        run: dotnet tool restore
+
+      - name: Build the solution (Debug, Development, Shipping)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for config in Debug Development Shipping; do
+            dotnet build Sage.sln -c "$config"
+          done
+
+      - name: Test (Debug)
+        run: dotnet test tests/Sage.Tests/Sage.Tests.csproj -c Debug --no-build
+
+      # The packages must carry the tag's version: a tag MinVer did not see would pack a pre-release.
+      - name: Pack the SDK, the Player and the templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          feed="$(cygpath -m "$RUNNER_TEMP")/sage-feed"
+          tools/pack_sdk.sh "$feed"
+          version="${GITHUB_REF_NAME#v}"
+          for id in Sage.Sdk Sage.Player Sage.Templates; do
+            test -f "$feed/$id.$version.nupkg" || { echo "missing $id.$version.nupkg"; ls "$feed"; exit 1; }
+          done
+          echo "FEED=$feed" >> "$GITHUB_ENV"
+
+      - name: Create the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" "$FEED"/*.nupkg \
+            --title "Sage ${GITHUB_REF_NAME#v}" --generate-notes --verify-tag

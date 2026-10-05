@@ -497,7 +497,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | R§3.2 | One boot path, sealed stages | Built (#10) |
 | R§3.3 | Plugins with string ids and SemVer ranges; system ids with replace/disable | Built (#12, #17) |
 | R§3.4 | Source generator as the single declaration registry | Built (#16, #18, #19, #21) |
-| R§3.6 | Declared public API, MinVer versions, `[Experimental]` ids | Built (#31); first tag pending (#295) |
+| R§3.6 | Declared public API, MinVer versions, `[Experimental]` ids | Built (#31); 0.1.0 released (#295) |
 | R§0.5 | Base engine first, genre rules in kits | Built (#26, #27) |
 | R§6 | Open owner decisions: scripting language, editor for modders, platforms, distribution | Open (SRS §10) |
 

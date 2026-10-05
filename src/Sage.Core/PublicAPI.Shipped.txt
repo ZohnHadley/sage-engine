@@ -1,45 +1,14 @@
 #nullable enable
-abstract Sage.Core.CVar.DefaultString.get -> string!
-abstract Sage.Core.CVar.IsDefault.get -> bool
-abstract Sage.Core.CVar.Reset() -> void
-abstract Sage.Core.CVar.TrySet(string! text, out string? error) -> bool
-abstract Sage.Core.CVar.TypeName.get -> string!
-abstract Sage.Core.CVar.ValueString.get -> string!
-override Sage.Core.AssetPath.Equals(object? obj) -> bool
-override Sage.Core.AssetPath.GetHashCode() -> int
-override Sage.Core.AssetPath.ToString() -> string!
-override Sage.Core.ColourJsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> uint
-override Sage.Core.ColourJsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, uint value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Sage.Core.CVar.ToString() -> string!
-override Sage.Core.CVar<T>.DefaultString.get -> string!
-override Sage.Core.CVar<T>.IsDefault.get -> bool
-override Sage.Core.CVar<T>.Reset() -> void
-override Sage.Core.CVar<T>.TrySet(string! text, out string? error) -> bool
-override Sage.Core.CVar<T>.TypeName.get -> string!
-override Sage.Core.CVar<T>.ValueString.get -> string!
-override Sage.Core.FieldMetadata.ToString() -> string!
-override Sage.Core.FolderMount.ToString() -> string!
-override Sage.Core.LogCat.ToString() -> string!
-override Sage.Core.QuaternionJsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Numerics.Quaternion
-override Sage.Core.QuaternionJsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Numerics.Quaternion value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Sage.Core.RecordId.ToString() -> string!
-override Sage.Core.RecordRef<T>.Equals(object? obj) -> bool
-override Sage.Core.RecordRef<T>.GetHashCode() -> int
-override Sage.Core.RecordRef<T>.ToString() -> string!
-override Sage.Core.SemVersion.ToString() -> string!
-override Sage.Core.TypeMetadata.ToString() -> string!
-override Sage.Core.Vector2JsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Numerics.Vector2
-override Sage.Core.Vector2JsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Numerics.Vector2 value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Sage.Core.Vector3JsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Numerics.Vector3
-override Sage.Core.Vector3JsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Numerics.Vector3 value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Sage.Core.VersionRange.ToString() -> string!
-override Sage.Core.VirtualPath.ToString() -> string!
-override Sage.Core.VocabularyEntry.ToString() -> string!
-override Sage.Core.VocabularyJsonConverterFactory.CanConvert(System.Type! typeToConvert) -> bool
-override Sage.Core.VocabularyJsonConverterFactory.CreateConverter(System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Text.Json.Serialization.JsonConverter!
-readonly Sage.Core.AssetPath.Id -> int
-readonly Sage.Core.LogField.Key -> string?
-readonly Sage.Core.LogField.Value -> object?
+Sage.Core.AssemblyContentMount
+Sage.Core.AssemblyContentMount.AssemblyContentMount(string! name, System.Reflection.Assembly! assembly, string! recordNamespace) -> void
+Sage.Core.AssemblyContentMount.Count.get -> int
+Sage.Core.AssemblyContentMount.Enumerate(Sage.Core.VirtualPath? directory, string! searchPattern, bool recursive) -> System.Collections.Generic.IEnumerable<Sage.Core.VirtualPath>!
+Sage.Core.AssemblyContentMount.Exists(Sage.Core.VirtualPath path) -> bool
+Sage.Core.AssemblyContentMount.Name.get -> string!
+Sage.Core.AssemblyContentMount.Open(Sage.Core.VirtualPath path) -> System.IO.Stream!
+Sage.Core.AssemblyContentMount.PhysicalPath(Sage.Core.VirtualPath path) -> string?
+Sage.Core.AssemblyContentMount.RecordNamespace.get -> string!
+Sage.Core.AssemblyContentMount.WritablePath(Sage.Core.VirtualPath path) -> string?
 Sage.Core.Assert
 Sage.Core.AssetKindAttribute
 Sage.Core.AssetKindAttribute.AssetKindAttribute(string! kind) -> void
@@ -54,6 +23,47 @@ Sage.Core.BuildConfig.Debug = 0 -> Sage.Core.BuildConfig
 Sage.Core.BuildConfig.Development = 1 -> Sage.Core.BuildConfig
 Sage.Core.BuildConfig.Shipping = 2 -> Sage.Core.BuildConfig
 Sage.Core.BuildInfo
+Sage.Core.CVar
+Sage.Core.CVar.CVar(string! name, string! help, Sage.Core.CVarFlags flags) -> void
+Sage.Core.CVar.Changed -> System.Action<Sage.Core.CVar!>?
+Sage.Core.CVar.Flags.get -> Sage.Core.CVarFlags
+Sage.Core.CVar.Help.get -> string!
+Sage.Core.CVar.Name.get -> string!
+Sage.Core.CVar.RaiseChanged() -> void
+Sage.Core.CVar<T>
+Sage.Core.CVar<T>.Default.get -> T
+Sage.Core.CVar<T>.Value.get -> T
+Sage.Core.CVar<T>.Value.set -> void
+Sage.Core.CVarFlags
+Sage.Core.CVarFlags.Archive = 1 -> Sage.Core.CVarFlags
+Sage.Core.CVarFlags.Cheat = 2 -> Sage.Core.CVarFlags
+Sage.Core.CVarFlags.DevOnly = 4 -> Sage.Core.CVarFlags
+Sage.Core.CVarFlags.None = 0 -> Sage.Core.CVarFlags
+Sage.Core.CVarFlags.ReadOnly = 8 -> Sage.Core.CVarFlags
+Sage.Core.CVarRegistry
+Sage.Core.CVarRegistry.CVarRegistry() -> void
+Sage.Core.CVarRegistry.CVarSeal.get -> Sage.Core.RegistrationSeal!
+Sage.Core.CVarRegistry.CVars.get -> System.Collections.Generic.IEnumerable<Sage.Core.CVar!>!
+Sage.Core.CVarRegistry.CheatsEnabled.get -> bool
+Sage.Core.CVarRegistry.ClearPending() -> void
+Sage.Core.CVarRegistry.Commands.get -> System.Collections.Generic.IEnumerable<Sage.Core.ConsoleCommand!>!
+Sage.Core.CVarRegistry.Complete(string! prefix) -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Core.CVarRegistry.Describe(Sage.Core.CVar! cvar) -> string!
+Sage.Core.CVarRegistry.DumpNonDefault() -> string!
+Sage.Core.CVarRegistry.ExecFile(string! path, Sage.Core.ExecSource source = Sage.Core.ExecSource.Config) -> bool
+Sage.Core.CVarRegistry.Execute(string! text, Sage.Core.ExecSource source = Sage.Core.ExecSource.Console) -> bool
+Sage.Core.CVarRegistry.Find(string! name) -> Sage.Core.CVar?
+Sage.Core.CVarRegistry.FindCommand(string! name) -> Sage.Core.ConsoleCommand?
+Sage.Core.CVarRegistry.HasPendingStatements.get -> bool
+Sage.Core.CVarRegistry.Ledger.get -> Sage.Core.RegistrationLedger?
+Sage.Core.CVarRegistry.Ledger.set -> void
+Sage.Core.CVarRegistry.Pump(float dt) -> void
+Sage.Core.CVarRegistry.Register(string! name, float defaultValue, Sage.Core.CVarFlags flags, string! help, float min, float max) -> Sage.Core.CVar<float>!
+Sage.Core.CVarRegistry.Register(string! name, int defaultValue, Sage.Core.CVarFlags flags, string! help, int min, int max) -> Sage.Core.CVar<int>!
+Sage.Core.CVarRegistry.Register<T>(string! name, T defaultValue, Sage.Core.CVarFlags flags, string! help) -> Sage.Core.CVar<T>!
+Sage.Core.CVarRegistry.RegisterCommand(string! name, Sage.Core.CVarFlags flags, string! help, System.Action<Sage.Core.ConsoleArgs>! handler) -> void
+Sage.Core.CVarRegistry.SaveArchived(string! path) -> void
+Sage.Core.CVarRegistry.Wait(float seconds) -> void
 Sage.Core.ColourJsonConverter
 Sage.Core.ColourJsonConverter.ColourJsonConverter() -> void
 Sage.Core.ComponentAttribute
@@ -91,6 +101,50 @@ Sage.Core.ConsoleCommand
 Sage.Core.ConsoleCommand.Flags.get -> Sage.Core.CVarFlags
 Sage.Core.ConsoleCommand.Help.get -> string!
 Sage.Core.ConsoleCommand.Name.get -> string!
+Sage.Core.ConsoleInput
+Sage.Core.ConsoleInput.Complete(string! line) -> (string! Line, System.Collections.Generic.IReadOnlyList<string!>! Candidates)
+Sage.Core.ConsoleInput.ConsoleInput(Sage.Core.CVarRegistry! cvars, System.Func<System.Collections.Generic.IEnumerable<string!>!>? recordIds = null) -> void
+Sage.Core.ConsoleInput.History.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ConsoleInput.Next(string! current) -> string!
+Sage.Core.ConsoleInput.Previous(string! current) -> string!
+Sage.Core.ConsoleInput.Submit(string! line) -> void
+Sage.Core.ContentConflict
+Sage.Core.ContentConflict.Id.get -> Sage.Core.RecordId
+Sage.Core.ContentConflict.Kind.get -> Sage.Core.ContentConflictKind
+Sage.Core.ContentConflict.Line.get -> string!
+Sage.Core.ContentConflict.Path.get -> string!
+Sage.Core.ContentConflict.Type.get -> string!
+Sage.Core.ContentConflict.Winner.get -> Sage.Core.IMount!
+Sage.Core.ContentConflict.Writers.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.IMount!>!
+Sage.Core.ContentConflictKind
+Sage.Core.ContentConflictKind.Asset = 2 -> Sage.Core.ContentConflictKind
+Sage.Core.ContentConflictKind.Disabled = 1 -> Sage.Core.ContentConflictKind
+Sage.Core.ContentConflictKind.Value = 0 -> Sage.Core.ContentConflictKind
+Sage.Core.ContentMountReport
+Sage.Core.ContentMountReport.Added.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ContentMountReport.IsMod.get -> bool
+Sage.Core.ContentMountReport.Mount.get -> Sage.Core.IMount!
+Sage.Core.ContentMountReport.Patched.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.PatchedRecord!>!
+Sage.Core.ContentMountReport.Redefinitions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ContentMountReport.Shadows.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ShadowedAsset!>!
+Sage.Core.ContentMountReport.SkippedPatches.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ContentProblem
+Sage.Core.ContentProblem.ContentProblem(bool IsError, string! File, int Line, string! Message, Sage.Core.RecordId Record = default(Sage.Core.RecordId)) -> void
+Sage.Core.ContentProblem.File.get -> string!
+Sage.Core.ContentProblem.File.init -> void
+Sage.Core.ContentProblem.IsError.get -> bool
+Sage.Core.ContentProblem.IsError.init -> void
+Sage.Core.ContentProblem.Line.get -> int
+Sage.Core.ContentProblem.Line.init -> void
+Sage.Core.ContentProblem.Message.get -> string!
+Sage.Core.ContentProblem.Message.init -> void
+Sage.Core.ContentProblem.Record.get -> Sage.Core.RecordId
+Sage.Core.ContentProblem.Record.init -> void
+Sage.Core.ContentProblems
+Sage.Core.ContentReport
+Sage.Core.ContentReport.Conflicts.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ContentConflict!>!
+Sage.Core.ContentReport.Lines(string? mount = null) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ContentReport.Mounts.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ContentMountReport!>!
 Sage.Core.CoreCVars
 Sage.Core.CoreCVars.Cheats.get -> Sage.Core.CVar<bool>!
 Sage.Core.CoreCVars.ConsoleAvailable.get -> bool
@@ -105,47 +159,6 @@ Sage.Core.CoreCVars.LogQueueSize.get -> Sage.Core.CVar<int>!
 Sage.Core.CoreCVars.MemWarnBytes.get -> Sage.Core.CVar<int>!
 Sage.Core.CoreCVars.OwnsProcessLog.get -> bool
 Sage.Core.CrashReporter
-Sage.Core.CVar
-Sage.Core.CVar.Changed -> System.Action<Sage.Core.CVar!>?
-Sage.Core.CVar.CVar(string! name, string! help, Sage.Core.CVarFlags flags) -> void
-Sage.Core.CVar.Flags.get -> Sage.Core.CVarFlags
-Sage.Core.CVar.Help.get -> string!
-Sage.Core.CVar.Name.get -> string!
-Sage.Core.CVar.RaiseChanged() -> void
-Sage.Core.CVar<T>
-Sage.Core.CVar<T>.Default.get -> T
-Sage.Core.CVar<T>.Value.get -> T
-Sage.Core.CVar<T>.Value.set -> void
-Sage.Core.CVarFlags
-Sage.Core.CVarFlags.Archive = 1 -> Sage.Core.CVarFlags
-Sage.Core.CVarFlags.Cheat = 2 -> Sage.Core.CVarFlags
-Sage.Core.CVarFlags.DevOnly = 4 -> Sage.Core.CVarFlags
-Sage.Core.CVarFlags.None = 0 -> Sage.Core.CVarFlags
-Sage.Core.CVarFlags.ReadOnly = 8 -> Sage.Core.CVarFlags
-Sage.Core.CVarRegistry
-Sage.Core.CVarRegistry.CheatsEnabled.get -> bool
-Sage.Core.CVarRegistry.ClearPending() -> void
-Sage.Core.CVarRegistry.Commands.get -> System.Collections.Generic.IEnumerable<Sage.Core.ConsoleCommand!>!
-Sage.Core.CVarRegistry.Complete(string! prefix) -> System.Collections.Generic.IEnumerable<string!>!
-Sage.Core.CVarRegistry.CVarRegistry() -> void
-Sage.Core.CVarRegistry.CVars.get -> System.Collections.Generic.IEnumerable<Sage.Core.CVar!>!
-Sage.Core.CVarRegistry.CVarSeal.get -> Sage.Core.RegistrationSeal!
-Sage.Core.CVarRegistry.Describe(Sage.Core.CVar! cvar) -> string!
-Sage.Core.CVarRegistry.DumpNonDefault() -> string!
-Sage.Core.CVarRegistry.ExecFile(string! path, Sage.Core.ExecSource source = Sage.Core.ExecSource.Config) -> bool
-Sage.Core.CVarRegistry.Execute(string! text, Sage.Core.ExecSource source = Sage.Core.ExecSource.Console) -> bool
-Sage.Core.CVarRegistry.Find(string! name) -> Sage.Core.CVar?
-Sage.Core.CVarRegistry.FindCommand(string! name) -> Sage.Core.ConsoleCommand?
-Sage.Core.CVarRegistry.HasPendingStatements.get -> bool
-Sage.Core.CVarRegistry.Ledger.get -> Sage.Core.RegistrationLedger?
-Sage.Core.CVarRegistry.Ledger.set -> void
-Sage.Core.CVarRegistry.Pump(float dt) -> void
-Sage.Core.CVarRegistry.Register(string! name, float defaultValue, Sage.Core.CVarFlags flags, string! help, float min, float max) -> Sage.Core.CVar<float>!
-Sage.Core.CVarRegistry.Register(string! name, int defaultValue, Sage.Core.CVarFlags flags, string! help, int min, int max) -> Sage.Core.CVar<int>!
-Sage.Core.CVarRegistry.Register<T>(string! name, T defaultValue, Sage.Core.CVarFlags flags, string! help) -> Sage.Core.CVar<T>!
-Sage.Core.CVarRegistry.RegisterCommand(string! name, Sage.Core.CVarFlags flags, string! help, System.Action<Sage.Core.ConsoleArgs>! handler) -> void
-Sage.Core.CVarRegistry.SaveArchived(string! path) -> void
-Sage.Core.CVarRegistry.Wait(float seconds) -> void
 Sage.Core.DeclarationKind
 Sage.Core.DeclarationKind.Component = 0 -> Sage.Core.DeclarationKind
 Sage.Core.DeclarationKind.Other = 5 -> Sage.Core.DeclarationKind
@@ -153,6 +166,8 @@ Sage.Core.DeclarationKind.PrefabPart = 4 -> Sage.Core.DeclarationKind
 Sage.Core.DeclarationKind.Record = 2 -> Sage.Core.DeclarationKind
 Sage.Core.DeclarationKind.SavedResource = 3 -> Sage.Core.DeclarationKind
 Sage.Core.DeclarationKind.Tag = 1 -> Sage.Core.DeclarationKind
+Sage.Core.EntryValueAttribute
+Sage.Core.EntryValueAttribute.EntryValueAttribute() -> void
 Sage.Core.ExecSource
 Sage.Core.ExecSource.Code = 0 -> Sage.Core.ExecSource
 Sage.Core.ExecSource.Config = 2 -> Sage.Core.ExecSource
@@ -227,6 +242,7 @@ Sage.Core.FolderMount.PhysicalPath(Sage.Core.VirtualPath path) -> string?
 Sage.Core.FolderMount.RecordNamespace.get -> string!
 Sage.Core.FolderMount.Root.get -> string!
 Sage.Core.FolderMount.WritablePath(Sage.Core.VirtualPath path) -> string?
+Sage.Core.FrameLimiter
 Sage.Core.FrameTime
 Sage.Core.FrameTime.Alpha.get -> float
 Sage.Core.FrameTime.Alpha.init -> void
@@ -238,10 +254,20 @@ Sage.Core.FrameTime.FrameTime() -> void
 Sage.Core.FrameTime.FrameTime(long Frame, float Dt, float Alpha, double RealTime) -> void
 Sage.Core.FrameTime.RealTime.get -> double
 Sage.Core.FrameTime.RealTime.init -> void
+Sage.Core.FromPlacementAttribute
+Sage.Core.FromPlacementAttribute.FromPlacementAttribute() -> void
 Sage.Core.GameManifest
 Sage.Core.GameManifest.Assembly.get -> string!
 Sage.Core.GameManifest.Assembly.set -> void
 Sage.Core.GameManifest.AssemblyPath.get -> string!
+Sage.Core.GameManifest.Cook.get -> Sage.Core.GameManifest.CookSettings!
+Sage.Core.GameManifest.Cook.set -> void
+Sage.Core.GameManifest.CookSettings
+Sage.Core.GameManifest.CookSettings.Compress.get -> bool
+Sage.Core.GameManifest.CookSettings.Compress.set -> void
+Sage.Core.GameManifest.CookSettings.CookSettings() -> void
+Sage.Core.GameManifest.CookSettings.Uncompressed.get -> System.Collections.Generic.List<string!>!
+Sage.Core.GameManifest.CookSettings.Uncompressed.set -> void
 Sage.Core.GameManifest.Directory.get -> string!
 Sage.Core.GameManifest.GameManifest() -> void
 Sage.Core.GameManifest.Id.get -> string!
@@ -251,14 +277,14 @@ Sage.Core.GameManifest.Kits.set -> void
 Sage.Core.GameManifest.ModsDirectory.get -> string!
 Sage.Core.GameManifest.ModsDirectory.set -> void
 Sage.Core.GameManifest.ModuleAssemblies.get -> System.Collections.Generic.IEnumerable<string!>!
-Sage.Core.GameManifest.Modules.get -> Sage.Core.GameManifest.ModuleSettings!
-Sage.Core.GameManifest.Modules.set -> void
 Sage.Core.GameManifest.ModuleSettings
 Sage.Core.GameManifest.ModuleSettings.Add.get -> System.Collections.Generic.List<string!>!
 Sage.Core.GameManifest.ModuleSettings.Add.set -> void
 Sage.Core.GameManifest.ModuleSettings.Disable.get -> System.Collections.Generic.List<string!>!
 Sage.Core.GameManifest.ModuleSettings.Disable.set -> void
 Sage.Core.GameManifest.ModuleSettings.ModuleSettings() -> void
+Sage.Core.GameManifest.Modules.get -> Sage.Core.GameManifest.ModuleSettings!
+Sage.Core.GameManifest.Modules.set -> void
 Sage.Core.GameManifest.Mounts.get -> System.Collections.Generic.List<string!>!
 Sage.Core.GameManifest.Mounts.set -> void
 Sage.Core.GameManifest.Name.get -> string!
@@ -269,6 +295,8 @@ Sage.Core.GameManifest.Sage.get -> string?
 Sage.Core.GameManifest.Sage.set -> void
 Sage.Core.GameManifest.Scene.get -> string?
 Sage.Core.GameManifest.Scene.set -> void
+Sage.Core.GameManifest.Version.get -> string?
+Sage.Core.GameManifest.Version.set -> void
 Sage.Core.GeneratedComponentsAttribute
 Sage.Core.GeneratedComponentsAttribute.GeneratedComponentsAttribute(System.Type! type) -> void
 Sage.Core.GeneratedComponentsAttribute.Type.get -> System.Type!
@@ -296,6 +324,23 @@ Sage.Core.IMount.WritablePath(Sage.Core.VirtualPath path) -> string?
 Sage.Core.IRecordRef
 Sage.Core.IRecordRef.Id.get -> Sage.Core.RecordId
 Sage.Core.IRecordRef.Target.get -> System.Type!
+Sage.Core.JsonFileEdit
+Sage.Core.JsonFileEdit.AddRecord(object! record) -> void
+Sage.Core.JsonFileEdit.Changed.get -> bool
+Sage.Core.JsonFileEdit.Contains(string! type, Sage.Core.RecordId id) -> bool
+Sage.Core.JsonFileEdit.JsonFileEdit(string! text, System.Text.Json.JsonSerializerOptions? options = null) -> void
+Sage.Core.JsonFileEdit.Namespace.get -> string?
+Sage.Core.JsonFileEdit.Namespace.init -> void
+Sage.Core.JsonFileEdit.PatchRecord(string! type, Sage.Core.RecordId id, object! before, object! after) -> bool
+Sage.Core.JsonFileEdit.Read(string! type, Sage.Core.RecordId id, string! path) -> System.Text.Json.Nodes.JsonNode?
+Sage.Core.JsonFileEdit.ReadRecord(string! type, Sage.Core.RecordId id) -> System.Text.Json.Nodes.JsonNode?
+Sage.Core.JsonFileEdit.Remove(string! type, Sage.Core.RecordId id, string! path) -> bool
+Sage.Core.JsonFileEdit.RemoveRecord(string! type, Sage.Core.RecordId id) -> bool
+Sage.Core.JsonFileEdit.Save(string! path) -> void
+Sage.Core.JsonFileEdit.Set(string! type, Sage.Core.RecordId id, string! path, object? value) -> bool
+Sage.Core.JsonFileEdit.SetRecord(string! type, Sage.Core.RecordId id, object! record) -> void
+Sage.Core.JsonFileEdit.Text.get -> string!
+Sage.Core.JsonFileEdit.ToNode(object? value) -> System.Text.Json.Nodes.JsonNode?
 Sage.Core.JsonMembers
 Sage.Core.JsonMembers.Unknown
 Sage.Core.JsonMembers.Unknown.Message.get -> string!
@@ -324,8 +369,8 @@ Sage.Core.LogCat.MinLevel.set -> void
 Sage.Core.LogCat.Name.get -> string!
 Sage.Core.LogCat.ResetToDefault() -> void
 Sage.Core.LogDynamicHandler
-Sage.Core.LogDynamicHandler.AppendFormatted(string? value) -> void
 Sage.Core.LogDynamicHandler.AppendFormatted(System.ReadOnlySpan<char> value) -> void
+Sage.Core.LogDynamicHandler.AppendFormatted(string? value) -> void
 Sage.Core.LogDynamicHandler.AppendFormatted<T>(T value) -> void
 Sage.Core.LogDynamicHandler.AppendFormatted<T>(T value, int alignment) -> void
 Sage.Core.LogDynamicHandler.AppendFormatted<T>(T value, int alignment, string? format) -> void
@@ -333,8 +378,8 @@ Sage.Core.LogDynamicHandler.AppendFormatted<T>(T value, string? format) -> void
 Sage.Core.LogDynamicHandler.AppendLiteral(string! value) -> void
 Sage.Core.LogDynamicHandler.LogDynamicHandler() -> void
 Sage.Core.LogDynamicHandler.LogDynamicHandler(int literalLength, int formattedCount, Sage.Core.LogCat! cat, Sage.Core.LogLevel level, out bool shouldAppend) -> void
-Sage.Core.LogDynamicHandler.LogDynamicHandler(int literalLength, int formattedCount, Sage.Core.LogCat! cat, Sage.Core.LogLevel level, string! key, out bool shouldAppend) -> void
 Sage.Core.LogDynamicHandler.LogDynamicHandler(int literalLength, int formattedCount, Sage.Core.LogCat! cat, Sage.Core.LogLevel level, string! key, System.TimeSpan interval, out bool shouldAppend) -> void
+Sage.Core.LogDynamicHandler.LogDynamicHandler(int literalLength, int formattedCount, Sage.Core.LogCat! cat, Sage.Core.LogLevel level, string! key, out bool shouldAppend) -> void
 Sage.Core.LogEntry
 Sage.Core.LogEntry.Category.get -> Sage.Core.LogCat!
 Sage.Core.LogEntry.Category.init -> void
@@ -372,8 +417,8 @@ Sage.Core.LogField.LogField() -> void
 Sage.Core.LogField.LogField(string! key, object? value) -> void
 Sage.Core.LogFormatter
 Sage.Core.LogHandler<TLevel>
-Sage.Core.LogHandler<TLevel>.AppendFormatted(string? value) -> void
 Sage.Core.LogHandler<TLevel>.AppendFormatted(System.ReadOnlySpan<char> value) -> void
+Sage.Core.LogHandler<TLevel>.AppendFormatted(string? value) -> void
 Sage.Core.LogHandler<TLevel>.AppendFormatted<T>(T value) -> void
 Sage.Core.LogHandler<TLevel>.AppendFormatted<T>(T value, int alignment) -> void
 Sage.Core.LogHandler<TLevel>.AppendFormatted<T>(T value, int alignment, string? format) -> void
@@ -410,10 +455,66 @@ Sage.Core.LogOptions.LogOptions() -> void
 Sage.Core.LogOptions.Stdout.get -> bool
 Sage.Core.LogOptions.Stdout.init -> void
 Sage.Core.Metadata
+Sage.Core.ModList
+Sage.Core.ModList.Disabled.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModList.Disabled.set -> void
+Sage.Core.ModList.IsDisabled(string! id) -> bool
+Sage.Core.ModList.ModList() -> void
+Sage.Core.ModList.Order.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModList.Order.set -> void
+Sage.Core.ModList.Save(string! path) -> void
+Sage.Core.ModLoadOrder
+Sage.Core.ModLoadResult
+Sage.Core.ModLoadResult.Active.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>!
+Sage.Core.ModLoadResult.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>!
+Sage.Core.ModLoadResult.ModLoadResult(System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>! active, System.Collections.Generic.IReadOnlyList<Sage.Core.RefusedMod>! refused, System.Collections.Generic.IReadOnlyList<Sage.Core.ModManifest!>! disabled, System.Collections.Generic.IReadOnlyList<string!>! notes) -> void
+Sage.Core.ModLoadResult.Notes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ModLoadResult.Refused.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.RefusedMod>!
+Sage.Core.ModManifest
+Sage.Core.ModManifest.AsksForCode.get -> bool
+Sage.Core.ModManifest.Assemblies.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.Assemblies.set -> void
+Sage.Core.ModManifest.Author.get -> string!
+Sage.Core.ModManifest.Author.set -> void
+Sage.Core.ModManifest.Dependencies.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.Core.ModManifest.Dependencies.set -> void
+Sage.Core.ModManifest.Description.get -> string!
+Sage.Core.ModManifest.Description.set -> void
+Sage.Core.ModManifest.Directory.get -> string!
+Sage.Core.ModManifest.Game.get -> string?
+Sage.Core.ModManifest.Game.set -> void
+Sage.Core.ModManifest.GameVersion.get -> string?
+Sage.Core.ModManifest.GameVersion.set -> void
+Sage.Core.ModManifest.Id.get -> string!
+Sage.Core.ModManifest.Id.set -> void
+Sage.Core.ModManifest.Incompatible.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.Incompatible.set -> void
+Sage.Core.ModManifest.Kind.get -> string?
+Sage.Core.ModManifest.Kind.set -> void
+Sage.Core.ModManifest.LoadAfter.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.LoadAfter.set -> void
+Sage.Core.ModManifest.LoadBefore.get -> System.Collections.Generic.List<string!>!
+Sage.Core.ModManifest.LoadBefore.set -> void
+Sage.Core.ModManifest.ModManifest() -> void
+Sage.Core.ModManifest.Name.get -> string!
+Sage.Core.ModManifest.Name.set -> void
+Sage.Core.ModManifest.Sage.get -> string?
+Sage.Core.ModManifest.Sage.set -> void
+Sage.Core.ModManifest.SemVersion.get -> Sage.Core.SemVersion
+Sage.Core.ModManifest.Version.get -> string!
+Sage.Core.ModManifest.Version.set -> void
+Sage.Core.PatchedRecord
+Sage.Core.PatchedRecord.DefinedBy.get -> Sage.Core.IMount?
+Sage.Core.PatchedRecord.Id.get -> Sage.Core.RecordId
+Sage.Core.PatchedRecord.Type.get -> string!
+Sage.Core.PatchedRecord.Writes.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.RecordWrite>!
 Sage.Core.PluginAttribute
 Sage.Core.PluginAttribute.Id.get -> string!
 Sage.Core.PluginAttribute.PluginAttribute(string! id, string! version) -> void
 Sage.Core.PluginAttribute.Version.get -> string!
+Sage.Core.PluginContentAttribute
+Sage.Core.PluginContentAttribute.PluginContentAttribute(string! recordNamespace) -> void
+Sage.Core.PluginContentAttribute.RecordNamespace.get -> string!
 Sage.Core.PrefabPartAttribute
 Sage.Core.PrefabPartAttribute.After.get -> string![]!
 Sage.Core.PrefabPartAttribute.After.set -> void
@@ -451,6 +552,8 @@ Sage.Core.RecordAttribute
 Sage.Core.RecordAttribute.Plugin.get -> string?
 Sage.Core.RecordAttribute.Plugin.set -> void
 Sage.Core.RecordAttribute.RecordAttribute(string! type) -> void
+Sage.Core.RecordAttribute.Reload.get -> Sage.Core.ReloadPolicy
+Sage.Core.RecordAttribute.Reload.set -> void
 Sage.Core.RecordAttribute.Type.get -> string!
 Sage.Core.RecordCheck
 Sage.Core.RecordCheck.At(string? path = null) -> string!
@@ -460,6 +563,7 @@ Sage.Core.RecordCheck.Error(string? path, string! message) -> void
 Sage.Core.RecordCheck.Exists(string? type, Sage.Core.RecordId id) -> bool
 Sage.Core.RecordCheck.Id.get -> Sage.Core.RecordId
 Sage.Core.RecordCheck.Json.get -> System.Text.Json.JsonSerializerOptions!
+Sage.Core.RecordCheck.TryGet<T>(Sage.Core.RecordId id, out T? record) -> bool
 Sage.Core.RecordCheck.Type.get -> string!
 Sage.Core.RecordCheck.Warn(string? path, string! message) -> void
 Sage.Core.RecordHotReload
@@ -504,17 +608,25 @@ Sage.Core.RecordStore.Get<T>(Sage.Core.RecordId id) -> T!
 Sage.Core.RecordStore.Get<T>(Sage.Core.RecordRef<T!> id) -> T!
 Sage.Core.RecordStore.Ids(string! type) -> System.Collections.Generic.IEnumerable<Sage.Core.RecordId>!
 Sage.Core.RecordStore.Json.get -> System.Text.Json.JsonSerializerOptions!
+Sage.Core.RecordStore.Latest<T>() -> System.Collections.Generic.IReadOnlyList<T!>!
 Sage.Core.RecordStore.Ledger.get -> Sage.Core.RegistrationLedger?
 Sage.Core.RecordStore.Ledger.set -> void
 Sage.Core.RecordStore.Load(Sage.Core.VirtualFileSystem! vfs) -> void
+Sage.Core.RecordStore.LoadErrors.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.RecordStore.LoadWarnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Core.RecordStore.MissingAssetsAreErrors.get -> bool
 Sage.Core.RecordStore.MissingAssetsAreErrors.set -> void
+Sage.Core.RecordStore.MountOf(string! type, Sage.Core.RecordId id) -> Sage.Core.IMount?
+Sage.Core.RecordStore.PolymorphicShorthand.get -> System.Func<System.Type!, System.Text.Json.Nodes.JsonNode?, System.Text.Json.Nodes.JsonNode?>?
+Sage.Core.RecordStore.PolymorphicShorthand.set -> void
 Sage.Core.RecordStore.PolymorphicTypes.get -> System.Func<System.Type!, System.Text.Json.Nodes.JsonNode?, System.Type?>?
 Sage.Core.RecordStore.PolymorphicTypes.set -> void
+Sage.Core.RecordStore.RawJson(string! type, Sage.Core.RecordId id) -> System.Text.Json.Nodes.JsonObject?
 Sage.Core.RecordStore.RecordStore() -> void
 Sage.Core.RecordStore.Register<T>() -> void
 Sage.Core.RecordStore.RegisterCommands(Sage.Core.CVarRegistry! cvars) -> void
 Sage.Core.RecordStore.Reload() -> void
+Sage.Core.RecordStore.ReloadPolicyOf(string! typeName) -> Sage.Core.ReloadPolicy
 Sage.Core.RecordStore.Reloaded -> System.Action?
 Sage.Core.RecordStore.RemoveRuntime<T>(Sage.Core.RecordId id) -> bool
 Sage.Core.RecordStore.Resolve(string! type, string! text) -> Sage.Core.RecordId
@@ -527,6 +639,30 @@ Sage.Core.RecordStore.TypeOf(string! typeName) -> System.Type?
 Sage.Core.RecordStore.TypeSeal.get -> Sage.Core.RegistrationSeal!
 Sage.Core.RecordStore.WarningCount.get -> int
 Sage.Core.RecordStore.Where(string! type, Sage.Core.RecordId id, string? path = null) -> string!
+Sage.Core.RecordStore.Writes(string! type, Sage.Core.RecordId id) -> System.Collections.Generic.IReadOnlyList<Sage.Core.RecordWrite>!
+Sage.Core.RecordWrite
+Sage.Core.RecordWrite.At.get -> string!
+Sage.Core.RecordWrite.File.get -> string!
+Sage.Core.RecordWrite.Mount.get -> Sage.Core.IMount?
+Sage.Core.RecordWrite.Op.get -> Sage.Core.RecordWriteOp
+Sage.Core.RecordWrite.Path.get -> string!
+Sage.Core.RecordWrite.RecordWrite() -> void
+Sage.Core.RecordWrite.Via.get -> Sage.Core.RecordId
+Sage.Core.RecordWriteOp
+Sage.Core.RecordWriteOp.Add = 2 -> Sage.Core.RecordWriteOp
+Sage.Core.RecordWriteOp.Define = 0 -> Sage.Core.RecordWriteOp
+Sage.Core.RecordWriteOp.Disable = 4 -> Sage.Core.RecordWriteOp
+Sage.Core.RecordWriteOp.Remove = 3 -> Sage.Core.RecordWriteOp
+Sage.Core.RecordWriteOp.Set = 1 -> Sage.Core.RecordWriteOp
+Sage.Core.RefusedMod
+Sage.Core.RefusedMod.Folder.get -> string?
+Sage.Core.RefusedMod.Folder.init -> void
+Sage.Core.RefusedMod.Id.get -> string!
+Sage.Core.RefusedMod.Id.init -> void
+Sage.Core.RefusedMod.Reason.get -> string!
+Sage.Core.RefusedMod.Reason.init -> void
+Sage.Core.RefusedMod.RefusedMod() -> void
+Sage.Core.RefusedMod.RefusedMod(string! Id, string? Folder, string! Reason) -> void
 Sage.Core.RegistrationLedger
 Sage.Core.RegistrationLedger.By(string! owner) -> System.Collections.Generic.IEnumerable<(string! Kind, string! Name)>!
 Sage.Core.RegistrationLedger.Owner.get -> string!
@@ -539,6 +675,9 @@ Sage.Core.RegistrationSeal.Check(string! name) -> void
 Sage.Core.RegistrationSeal.IsSealed.get -> bool
 Sage.Core.RegistrationSeal.RegistrationSeal(string! what, string! consequence) -> void
 Sage.Core.RegistrationSeal.Seal(string! stage) -> void
+Sage.Core.ReloadPolicy
+Sage.Core.ReloadPolicy.Live = 1 -> Sage.Core.ReloadPolicy
+Sage.Core.ReloadPolicy.NextSpawn = 0 -> Sage.Core.ReloadPolicy
 Sage.Core.RequiresPluginAttribute
 Sage.Core.RequiresPluginAttribute.Id.get -> string!
 Sage.Core.RequiresPluginAttribute.Range.get -> string!
@@ -575,6 +714,10 @@ Sage.Core.SemVersion.Patch.get -> int
 Sage.Core.SemVersion.Patch.init -> void
 Sage.Core.SemVersion.SemVersion() -> void
 Sage.Core.SemVersion.SemVersion(int Major, int Minor, int Patch) -> void
+Sage.Core.ShadowedAsset
+Sage.Core.ShadowedAsset.Path.get -> Sage.Core.VirtualPath
+Sage.Core.ShadowedAsset.Shadowed.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.IMount!>!
+Sage.Core.ShadowedAsset.Winner.get -> Sage.Core.IMount!
 Sage.Core.Spelling
 Sage.Core.StdoutLogSink
 Sage.Core.StdoutLogSink.Enabled.get -> bool
@@ -644,6 +787,7 @@ Sage.Core.VirtualFileSystem.Exists(Sage.Core.VirtualPath path) -> bool
 Sage.Core.VirtualFileSystem.Mount(Sage.Core.IMount! mount) -> void
 Sage.Core.VirtualFileSystem.Mounts.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.IMount!>!
 Sage.Core.VirtualFileSystem.Open(Sage.Core.VirtualPath path) -> System.IO.Stream!
+Sage.Core.VirtualFileSystem.Shadows() -> System.Collections.Generic.IReadOnlyList<Sage.Core.ShadowedAsset!>!
 Sage.Core.VirtualFileSystem.VirtualFileSystem() -> void
 Sage.Core.VirtualFileSystem.VirtualPathOf(string! diskPath) -> Sage.Core.VirtualPath?
 Sage.Core.VirtualFileSystem.Which(Sage.Core.VirtualPath path) -> Sage.Core.IMount?
@@ -655,6 +799,7 @@ Sage.Core.VirtualPath.VirtualPath() -> void
 Sage.Core.Vocabularies
 Sage.Core.Vocabularies.All.get -> System.Collections.Generic.IEnumerable<Sage.Core.Vocabulary!>!
 Sage.Core.Vocabularies.ConcreteTypeOf(System.Type! type, System.Text.Json.Nodes.JsonNode? node) -> System.Type?
+Sage.Core.Vocabularies.Expand(System.Type! type, System.Text.Json.Nodes.JsonNode? node) -> System.Text.Json.Nodes.JsonNode?
 Sage.Core.Vocabularies.Ledger.get -> Sage.Core.RegistrationLedger?
 Sage.Core.Vocabularies.Ledger.set -> void
 Sage.Core.Vocabularies.Named(string! name) -> Sage.Core.Vocabulary?
@@ -667,11 +812,13 @@ Sage.Core.Vocabulary.Contains(string! id) -> bool
 Sage.Core.Vocabulary.Default.get -> string?
 Sage.Core.Vocabulary.Entries.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.VocabularyEntry!>!
 Sage.Core.Vocabulary.EntryType.get -> System.Type!
+Sage.Core.Vocabulary.Expand(System.Text.Json.Nodes.JsonObject! obj) -> System.Text.Json.Nodes.JsonObject?
 Sage.Core.Vocabulary.IdOf(System.Type! type) -> string?
 Sage.Core.Vocabulary.Ids.get -> System.Collections.Generic.IEnumerable<string!>!
 Sage.Core.Vocabulary.Key.get -> string!
 Sage.Core.Vocabulary.Name.get -> string!
 Sage.Core.Vocabulary.Seal.get -> Sage.Core.RegistrationSeal!
+Sage.Core.Vocabulary.Shorthand.get -> bool
 Sage.Core.Vocabulary.TryFind(string! id, out Sage.Core.VocabularyEntry! entry) -> bool
 Sage.Core.Vocabulary.TypeOf(System.Text.Json.Nodes.JsonNode? node) -> System.Type?
 Sage.Core.Vocabulary.Unknown(string! id) -> string!
@@ -686,6 +833,8 @@ Sage.Core.VocabularyAttribute.Default.set -> void
 Sage.Core.VocabularyAttribute.Key.get -> string!
 Sage.Core.VocabularyAttribute.Key.set -> void
 Sage.Core.VocabularyAttribute.Name.get -> string!
+Sage.Core.VocabularyAttribute.Shorthand.get -> bool
+Sage.Core.VocabularyAttribute.Shorthand.set -> void
 Sage.Core.VocabularyAttribute.VocabularyAttribute(string! name) -> void
 Sage.Core.VocabularyEntry
 Sage.Core.VocabularyEntry.Id.get -> string!
@@ -701,36 +850,77 @@ Sage.Core.VocabularyJsonConverterFactory.VocabularyJsonConverterFactory(Sage.Cor
 Sage.Core.VocabularyRefAttribute
 Sage.Core.VocabularyRefAttribute.Vocabulary.get -> string!
 Sage.Core.VocabularyRefAttribute.VocabularyRefAttribute(string! vocabulary) -> void
-static readonly Sage.Core.BuildInfo.Config -> Sage.Core.BuildConfig
-static readonly Sage.Core.BuildInfo.ConfigurationName -> string!
-static readonly Sage.Core.BuildInfo.EngineSemVersion -> Sage.Core.SemVersion
-static readonly Sage.Core.BuildInfo.EngineVersion -> string!
-static readonly Sage.Core.BuildInfo.IsDevBuild -> bool
-static readonly Sage.Core.LogCat.AI -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Animation -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Assets -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Audio -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Console -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Core -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Editor -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Events -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Gameplay -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Host -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Input -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Level -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Mods -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Modules -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Physics -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Records -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Render -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Save -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Shaders -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.Streaming -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.UI -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.VFS -> Sage.Core.LogCat!
-static readonly Sage.Core.LogCat.World -> Sage.Core.LogCat!
-static readonly Sage.Core.SemVersion.Zero -> Sage.Core.SemVersion
-static readonly Sage.Core.VersionRange.Any -> Sage.Core.VersionRange!
+Sage.Core.WorkStats
+Sage.Core.WorkStats.Frame
+Sage.Core.WorkStats.Frame.Frame() -> void
+Sage.Core.WorkStats.Frame.Frame(int JobsStarted, int JobsFinished, int JobsRunning, int LoadsFinished, double LoadMs, int LoadsPending, int Uploads, long UploadBytes) -> void
+Sage.Core.WorkStats.Frame.JobsFinished.get -> int
+Sage.Core.WorkStats.Frame.JobsFinished.init -> void
+Sage.Core.WorkStats.Frame.JobsRunning.get -> int
+Sage.Core.WorkStats.Frame.JobsRunning.init -> void
+Sage.Core.WorkStats.Frame.JobsStarted.get -> int
+Sage.Core.WorkStats.Frame.JobsStarted.init -> void
+Sage.Core.WorkStats.Frame.LoadMs.get -> double
+Sage.Core.WorkStats.Frame.LoadMs.init -> void
+Sage.Core.WorkStats.Frame.LoadsFinished.get -> int
+Sage.Core.WorkStats.Frame.LoadsFinished.init -> void
+Sage.Core.WorkStats.Frame.LoadsPending.get -> int
+Sage.Core.WorkStats.Frame.LoadsPending.init -> void
+Sage.Core.WorkStats.Frame.UploadBytes.get -> long
+Sage.Core.WorkStats.Frame.UploadBytes.init -> void
+Sage.Core.WorkStats.Frame.Uploads.get -> int
+Sage.Core.WorkStats.Frame.Uploads.init -> void
+abstract Sage.Core.CVar.DefaultString.get -> string!
+abstract Sage.Core.CVar.IsDefault.get -> bool
+abstract Sage.Core.CVar.Reset() -> void
+abstract Sage.Core.CVar.TrySet(string! text, out string? error) -> bool
+abstract Sage.Core.CVar.TypeName.get -> string!
+abstract Sage.Core.CVar.ValueString.get -> string!
+const Sage.Core.AssemblyContentMount.Prefix = "content/" -> string!
+const Sage.Core.ConsoleInput.MaxHistory = 100 -> int
+const Sage.Core.ContentProblem.NoFile = "(no file)" -> string!
+const Sage.Core.ContentReport.ModMountPrefix = "mods/" -> string!
+override Sage.Core.AssemblyContentMount.ToString() -> string!
+override Sage.Core.AssetPath.Equals(object? obj) -> bool
+override Sage.Core.AssetPath.GetHashCode() -> int
+override Sage.Core.AssetPath.ToString() -> string!
+override Sage.Core.CVar.ToString() -> string!
+override Sage.Core.CVar<T>.DefaultString.get -> string!
+override Sage.Core.CVar<T>.IsDefault.get -> bool
+override Sage.Core.CVar<T>.Reset() -> void
+override Sage.Core.CVar<T>.TrySet(string! text, out string? error) -> bool
+override Sage.Core.CVar<T>.TypeName.get -> string!
+override Sage.Core.CVar<T>.ValueString.get -> string!
+override Sage.Core.ColourJsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> uint
+override Sage.Core.ColourJsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, uint value, System.Text.Json.JsonSerializerOptions! options) -> void
+override Sage.Core.ContentConflict.ToString() -> string!
+override Sage.Core.ContentProblem.ToString() -> string!
+override Sage.Core.ContentReport.ToString() -> string!
+override Sage.Core.FieldMetadata.ToString() -> string!
+override Sage.Core.FolderMount.ToString() -> string!
+override Sage.Core.LogCat.ToString() -> string!
+override Sage.Core.ModManifest.ToString() -> string!
+override Sage.Core.QuaternionJsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Numerics.Quaternion
+override Sage.Core.QuaternionJsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Numerics.Quaternion value, System.Text.Json.JsonSerializerOptions! options) -> void
+override Sage.Core.RecordId.ToString() -> string!
+override Sage.Core.RecordRef<T>.Equals(object? obj) -> bool
+override Sage.Core.RecordRef<T>.GetHashCode() -> int
+override Sage.Core.RecordRef<T>.ToString() -> string!
+override Sage.Core.RecordWrite.ToString() -> string!
+override Sage.Core.SemVersion.ToString() -> string!
+override Sage.Core.TypeMetadata.ToString() -> string!
+override Sage.Core.Vector2JsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Numerics.Vector2
+override Sage.Core.Vector2JsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Numerics.Vector2 value, System.Text.Json.JsonSerializerOptions! options) -> void
+override Sage.Core.Vector3JsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Numerics.Vector3
+override Sage.Core.Vector3JsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Numerics.Vector3 value, System.Text.Json.JsonSerializerOptions! options) -> void
+override Sage.Core.VersionRange.ToString() -> string!
+override Sage.Core.VirtualPath.ToString() -> string!
+override Sage.Core.VocabularyEntry.ToString() -> string!
+override Sage.Core.VocabularyJsonConverterFactory.CanConvert(System.Type! typeToConvert) -> bool
+override Sage.Core.VocabularyJsonConverterFactory.CreateConverter(System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Text.Json.Serialization.JsonConverter!
+readonly Sage.Core.AssetPath.Id -> int
+readonly Sage.Core.LogField.Key -> string?
+readonly Sage.Core.LogField.Value -> object?
 static Sage.Core.Assert.Check(bool condition, string! message, string! file = "", int line = 0) -> void
 static Sage.Core.Assert.Dev(bool condition, string! message, string! file = "", int line = 0) -> void
 static Sage.Core.Assert.Ensure(bool condition, string! message, string! file = "", int line = 0) -> bool
@@ -743,13 +933,21 @@ static Sage.Core.ColourJsonConverter.Format(uint packed) -> string!
 static Sage.Core.ColourJsonConverter.Pack(byte r, byte g, byte b, byte a = 255) -> uint
 static Sage.Core.ColourJsonConverter.TryParse(string! text, out uint packed) -> bool
 static Sage.Core.ComponentDeclaration.IsValidId(string! id) -> bool
+static Sage.Core.ContentProblems.Build(Sage.Core.RecordStore! records, Sage.Core.VirtualFileSystem? vfs) -> System.Collections.Generic.IReadOnlyList<Sage.Core.ContentProblem!>!
+static Sage.Core.ContentProblems.Lines(System.Collections.Generic.IReadOnlyList<Sage.Core.ContentProblem!>! problems) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Core.ContentProblems.Summary(int errors, int warnings) -> string!
+static Sage.Core.ContentReport.Build(Sage.Core.RecordStore! records, Sage.Core.VirtualFileSystem! vfs) -> Sage.Core.ContentReport!
+static Sage.Core.ContentReport.IsModMount(Sage.Core.IMount? mount) -> bool
+static Sage.Core.ContentReport.NameOf(Sage.Core.IMount? mount) -> string!
 static Sage.Core.CoreCVars.Register(Sage.Core.CVarRegistry! registry, bool ownsProcessLog = false) -> Sage.Core.CoreCVars!
 static Sage.Core.CrashReporter.AddSection(string! name, System.Func<string!>! provider) -> void
 static Sage.Core.CrashReporter.Install() -> void
 static Sage.Core.CrashReporter.LastReportPath.get -> string?
 static Sage.Core.CrashReporter.Write(System.Exception? exception, string! reason) -> string?
+static Sage.Core.FrameLimiter.Remaining(int maxFps, double frameStart, double now) -> double
 static Sage.Core.GameManifest.Load(string! gameDirectory) -> Sage.Core.GameManifest!
 static Sage.Core.GameManifest.Locate(string? gameOption, string! executableDirectory) -> string!
+static Sage.Core.JsonFileEdit.Open(string! path, System.Text.Json.JsonSerializerOptions? options = null) -> Sage.Core.JsonFileEdit!
 static Sage.Core.JsonMembers.Child(string! path, string! key) -> string!
 static Sage.Core.JsonMembers.Display(string! path) -> string!
 static Sage.Core.JsonMembers.ElementOf(System.Type! type) -> System.Type?
@@ -812,12 +1010,18 @@ static Sage.Core.Metadata.Of(System.Type! type) -> Sage.Core.TypeMetadata!
 static Sage.Core.Metadata.Reflect(System.Type! type, Sage.Core.DeclarationKind kind, string! id) -> Sage.Core.TypeMetadata!
 static Sage.Core.Metadata.ShortName(System.Type! type) -> string!
 static Sage.Core.Metadata.TypedTarget(System.Type! type) -> string?
+static Sage.Core.ModList.DefaultPath.get -> string!
+static Sage.Core.ModList.Load(string! path, out string? warning) -> Sage.Core.ModList!
+static Sage.Core.ModLoadOrder.Resolve(System.Collections.Generic.IEnumerable<Sage.Core.ModManifest!>! found, Sage.Core.ModList? userList, Sage.Core.GameManifest! game, Sage.Core.SemVersion engine, System.Collections.Generic.IEnumerable<string!>? reservedIds = null) -> Sage.Core.ModLoadResult!
+static Sage.Core.ModManifest.Load(string! folder) -> Sage.Core.ModManifest!
 static Sage.Core.Profiler.All.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.Profiler.Entry!>!
 static Sage.Core.Profiler.Begin(string! name) -> Sage.Core.Profiler.Scope
 static Sage.Core.Profiler.Enabled.get -> bool
 static Sage.Core.Profiler.Enabled.set -> void
 static Sage.Core.Profiler.EndFrame() -> void
 static Sage.Core.Profiler.Find(string! name) -> Sage.Core.Profiler.Entry?
+static Sage.Core.Profiler.Record(string! name, long elapsedTicks) -> void
+static Sage.Core.Profiler.TraceSpan(string! name, long startTimestamp, long endTimestamp) -> void
 static Sage.Core.RecordId.Parse(string! text, string! defaultNamespace) -> Sage.Core.RecordId
 static Sage.Core.RecordParseContext.Namespace -> string?
 static Sage.Core.RecordRef<T>.implicit operator Sage.Core.RecordId(Sage.Core.RecordRef<T!> reference) -> Sage.Core.RecordId
@@ -828,16 +1032,17 @@ static Sage.Core.RecordRef<T>.operator !=(Sage.Core.RecordRef<T!> a, Sage.Core.R
 static Sage.Core.RecordRef<T>.operator ==(Sage.Core.RecordId a, Sage.Core.RecordRef<T!> b) -> bool
 static Sage.Core.RecordRef<T>.operator ==(Sage.Core.RecordRef<T!> a, Sage.Core.RecordId b) -> bool
 static Sage.Core.RecordRef<T>.operator ==(Sage.Core.RecordRef<T!> a, Sage.Core.RecordRef<T!> b) -> bool
+static Sage.Core.SemVersion.Parse(string! text, string! where) -> Sage.Core.SemVersion
 static Sage.Core.SemVersion.operator <(Sage.Core.SemVersion a, Sage.Core.SemVersion b) -> bool
 static Sage.Core.SemVersion.operator <=(Sage.Core.SemVersion a, Sage.Core.SemVersion b) -> bool
 static Sage.Core.SemVersion.operator >(Sage.Core.SemVersion a, Sage.Core.SemVersion b) -> bool
 static Sage.Core.SemVersion.operator >=(Sage.Core.SemVersion a, Sage.Core.SemVersion b) -> bool
-static Sage.Core.SemVersion.Parse(string! text, string! where) -> Sage.Core.SemVersion
 static Sage.Core.Spelling.Distance(string! a, string! b) -> int
 static Sage.Core.Spelling.Nearest(string! name, System.Collections.Generic.IEnumerable<string!>! candidates) -> string?
 static Sage.Core.Spelling.Suggest(string! name, System.Collections.Generic.IEnumerable<string!>! candidates) -> string!
 static Sage.Core.Upgraders.Of(System.Type! type) -> System.Collections.Generic.SortedList<int, System.Reflection.MethodInfo!>!
 static Sage.Core.Upgraders.Run(System.Type! type, System.Text.Json.Nodes.JsonObject! data, int saved, int current) -> System.Text.Json.Nodes.JsonObject!
+static Sage.Core.UserPaths.AutoexecFile.get -> string!
 static Sage.Core.UserPaths.ConfigFile.get -> string!
 static Sage.Core.UserPaths.GameId.get -> string!
 static Sage.Core.UserPaths.Initialize(string! gameId, string? overrideRoot = null) -> void
@@ -849,3 +1054,49 @@ static Sage.Core.VirtualFileSystem.RegisterCommands(Sage.Core.CVarRegistry! cvar
 static Sage.Core.VirtualPath.Parse(string! path) -> Sage.Core.VirtualPath
 static Sage.Core.Vocabularies.IsVocabulary(System.Type! type) -> bool
 static Sage.Core.Vocabulary.Normalize(string! id) -> string!
+static Sage.Core.Vocabulary.ValueFieldName(System.Type! type) -> string?
+static Sage.Core.WorkStats.EndFrame() -> void
+static Sage.Core.WorkStats.JobFinished() -> void
+static Sage.Core.WorkStats.JobStarted() -> void
+static Sage.Core.WorkStats.JobsFinished.get -> long
+static Sage.Core.WorkStats.JobsRunning.get -> int
+static Sage.Core.WorkStats.JobsStarted.get -> long
+static Sage.Core.WorkStats.LastFrame.get -> Sage.Core.WorkStats.Frame
+static Sage.Core.WorkStats.LoadFinished(long elapsedTicks) -> void
+static Sage.Core.WorkStats.LoadStarted() -> void
+static Sage.Core.WorkStats.LoadsFinished.get -> long
+static Sage.Core.WorkStats.LoadsPending.get -> int
+static Sage.Core.WorkStats.UploadBytes.get -> long
+static Sage.Core.WorkStats.Uploaded(long bytes) -> void
+static Sage.Core.WorkStats.Uploads.get -> long
+static readonly Sage.Core.BuildInfo.Config -> Sage.Core.BuildConfig
+static readonly Sage.Core.BuildInfo.ConfigurationName -> string!
+static readonly Sage.Core.BuildInfo.EngineSemVersion -> Sage.Core.SemVersion
+static readonly Sage.Core.BuildInfo.EngineVersion -> string!
+static readonly Sage.Core.BuildInfo.IsDevBuild -> bool
+static readonly Sage.Core.LogCat.AI -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Animation -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Assets -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Audio -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Console -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Core -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Editor -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Events -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Gameplay -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Host -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Input -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Level -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Mods -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Modules -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Physics -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Records -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Render -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Save -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Shaders -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.Streaming -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.UI -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.VFS -> Sage.Core.LogCat!
+static readonly Sage.Core.LogCat.World -> Sage.Core.LogCat!
+static readonly Sage.Core.ModLoadResult.Empty -> Sage.Core.ModLoadResult!
+static readonly Sage.Core.SemVersion.Zero -> Sage.Core.SemVersion
+static readonly Sage.Core.VersionRange.Any -> Sage.Core.VersionRange!

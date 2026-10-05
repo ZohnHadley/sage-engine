@@ -1,19 +1,133 @@
 #nullable enable
-abstract Sage.Gameplay.QuestObjective.Describe(Sage.Simulation.World! world, int count) -> string!
-const Sage.Gameplay.AIConditions.Max = 64 -> int
-const Sage.Gameplay.AIScheduleSelectors.Default = "default" -> string!
-const Sage.Gameplay.AIScheduleSelectors.Rules = "rules" -> string!
-const Sage.Gameplay.DamageNumbers.Default = 4293848814 -> uint
-const Sage.Gameplay.DamageNumbers.Mine = 4294932326 -> uint
-const Sage.Gameplay.GameplayRegistries.MaxTags = 256 -> int
-const Sage.Gameplay.NavGrid.MaxSide = 96 -> int
-const Sage.Gameplay.NavPath.MaxCorners = 6 -> int
-const Sage.Gameplay.QuestHappening.Killed = "killed" -> string!
-const Sage.Gameplay.QuestHappening.Polled = "polled" -> string!
-const Sage.Gameplay.QuestHappening.Talked = "talked" -> string!
-const Sage.Gameplay.TagSet.Capacity = 256 -> int
-override Sage.Gameplay.TagSet.Equals(object? obj) -> bool
-override Sage.Gameplay.TagSet.GetHashCode() -> int
+Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.CanCastAtEnemy = 64 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.CanMelee = 128 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.Casting = 512 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.EnemyInMeleeRange = 4 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.InRoutine = 2048 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.LostEnemy = 2 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.NoEnemy = 8 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.None = 0 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.RememberEnemy = 1024 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.ScheduleDone = 32 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.SeeEnemy = 1 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.SpellComingBack = 256 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.TaskFailed = 16 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AIConditionAttribute
+Sage.Gameplay.AIConditionAttribute.AIConditionAttribute(string! id) -> void
+Sage.Gameplay.AIConditions
+Sage.Gameplay.AIConditions.BitOf(string! name) -> int
+Sage.Gameplay.AIConditions.Has(ulong conditions, string! name) -> bool
+Sage.Gameplay.AIConditions.MaskOf(System.Collections.Generic.IReadOnlyList<string!>! names) -> ulong
+Sage.Gameplay.AIConditions.MaskOf(string! name) -> ulong
+Sage.Gameplay.AIConditions.NameOf(int bit) -> string?
+Sage.Gameplay.AIModule
+Sage.Gameplay.AIModule.AIModule() -> void
+Sage.Gameplay.AIModule.AITasks.get -> Sage.Gameplay.AITaskRegistry!
+Sage.Gameplay.AIModule.Dependencies.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+Sage.Gameplay.AIModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
+Sage.Gameplay.AIModule.OnWorldCreated(Sage.Simulation.World! world) -> void
+Sage.Gameplay.AIModule.Start(Sage.Simulation.ModuleContext! ctx) -> void
+Sage.Gameplay.AIPerception
+Sage.Gameplay.AIPerception.AIPerception() -> void
+Sage.Gameplay.AIPerception.Conditions -> ulong
+Sage.Gameplay.AIPerception.Entity -> Sage.Simulation.Entity
+Sage.Gameplay.AIPerception.Has(Sage.Gameplay.AICondition condition) -> bool
+Sage.Gameplay.AIPerception.Profile -> Sage.Gameplay.AIProfileRecord!
+Sage.Gameplay.AIPerception.State -> Sage.Gameplay.AIState
+Sage.Gameplay.AIPerception.Time -> float
+Sage.Gameplay.AIPerception.Transform -> Sage.Simulation.Transform
+Sage.Gameplay.AIPerception.World -> Sage.Simulation.World!
+Sage.Gameplay.AIProfileRecord
+Sage.Gameplay.AIProfileRecord.AIProfileRecord() -> void
+Sage.Gameplay.AIProfileRecord.MeleeRange -> float
+Sage.Gameplay.AIProfileRecord.MemorySeconds -> float
+Sage.Gameplay.AIProfileRecord.Routine -> Sage.Core.RecordRef<Sage.Gameplay.RoutineRecord!>
+Sage.Gameplay.AIProfileRecord.Rules -> System.Collections.Generic.List<Sage.Gameplay.AIScheduleRule!>!
+Sage.Gameplay.AIProfileRecord.Selector -> string!
+Sage.Gameplay.AIProfileRecord.SightAngleDegrees -> float
+Sage.Gameplay.AIProfileRecord.SightRange -> float
+Sage.Gameplay.AIProfileRecord.ThinkRate -> float
+Sage.Gameplay.AIProfileRecord.TurnSpeedDegrees -> float
+Sage.Gameplay.AIScheduleChoice
+Sage.Gameplay.AIScheduleChoice.AIScheduleChoice() -> void
+Sage.Gameplay.AIScheduleChoice.Conditions -> ulong
+Sage.Gameplay.AIScheduleChoice.Current -> Sage.Core.RecordId
+Sage.Gameplay.AIScheduleChoice.Entity -> Sage.Simulation.Entity
+Sage.Gameplay.AIScheduleChoice.Has(Sage.Gameplay.AICondition condition) -> bool
+Sage.Gameplay.AIScheduleChoice.Has(string! condition) -> bool
+Sage.Gameplay.AIScheduleChoice.Names -> Sage.Gameplay.AIConditions!
+Sage.Gameplay.AIScheduleChoice.Profile -> Sage.Gameplay.AIProfileRecord!
+Sage.Gameplay.AIScheduleChoice.Routine -> Sage.Core.RecordId
+Sage.Gameplay.AIScheduleChoice.Schedules -> Sage.Gameplay.AIScheduleConventions!
+Sage.Gameplay.AIScheduleChoice.World -> Sage.Simulation.World!
+Sage.Gameplay.AIScheduleConventions
+Sage.Gameplay.AIScheduleConventions.AIScheduleConventions() -> void
+Sage.Gameplay.AIScheduleConventions.CastSpell -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIScheduleConventions.Chase -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIScheduleConventions.HoldGround -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIScheduleConventions.Idle -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIScheduleConventions.MeleeAttack -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIScheduleRecord
+Sage.Gameplay.AIScheduleRecord.AIScheduleRecord() -> void
+Sage.Gameplay.AIScheduleRecord.InterruptMask(Sage.Gameplay.AIConditions! conditions) -> ulong
+Sage.Gameplay.AIScheduleRecord.Interrupts -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.AIScheduleRecord.Steps() -> Sage.Gameplay.AITaskStep[]!
+Sage.Gameplay.AIScheduleRecord.Tasks -> System.Collections.Generic.List<Sage.Gameplay.AITaskStep>!
+Sage.Gameplay.AIScheduleRule
+Sage.Gameplay.AIScheduleRule.AIScheduleRule() -> void
+Sage.Gameplay.AIScheduleRule.Matches(ulong conditions, Sage.Gameplay.AIConditions! names) -> bool
+Sage.Gameplay.AIScheduleRule.Schedule -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIScheduleRule.Unless -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.AIScheduleRule.When -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.AIScheduleSelectorAttribute
+Sage.Gameplay.AIScheduleSelectorAttribute.AIScheduleSelectorAttribute(string! id) -> void
+Sage.Gameplay.AIScheduleSelectors
+Sage.Gameplay.AIState
+Sage.Gameplay.AIState.AIState() -> void
+Sage.Gameplay.AIState.Conditions -> ulong
+Sage.Gameplay.AIState.ForgetAt -> float
+Sage.Gameplay.AIState.LastSeen -> System.Numerics.Vector3
+Sage.Gameplay.AIState.NextThink -> float
+Sage.Gameplay.AIState.Path -> Sage.Gameplay.NavPath
+Sage.Gameplay.AIState.Profile -> Sage.Core.RecordId
+Sage.Gameplay.AIState.Schedule -> Sage.Core.RecordId
+Sage.Gameplay.AIState.Spell -> Sage.Core.RecordId
+Sage.Gameplay.AIState.Target -> Sage.Simulation.Entity
+Sage.Gameplay.AIState.TaskIndex -> int
+Sage.Gameplay.AIState.TaskStarted -> bool
+Sage.Gameplay.AIState.TaskTime -> float
+Sage.Gameplay.AITaskContext
+Sage.Gameplay.AITaskContext.AITaskContext() -> void
+Sage.Gameplay.AITaskContext.Attack -> Sage.Simulation.ActionId
+Sage.Gameplay.AITaskContext.Dt -> float
+Sage.Gameplay.AITaskContext.Entity -> Sage.Simulation.Entity
+Sage.Gameplay.AITaskContext.Intent -> Sage.Simulation.PawnIntent
+Sage.Gameplay.AITaskContext.Movement -> Sage.Simulation.MovementProfileRecord!
+Sage.Gameplay.AITaskContext.Param -> float
+Sage.Gameplay.AITaskContext.Profile -> Sage.Gameplay.AIProfileRecord!
+Sage.Gameplay.AITaskContext.Space -> Sage.Simulation.IPhysicsWorld!
+Sage.Gameplay.AITaskContext.State -> Sage.Gameplay.AIState
+Sage.Gameplay.AITaskContext.Transform -> Sage.Simulation.Transform
+Sage.Gameplay.AITaskContext.World -> Sage.Simulation.World!
+Sage.Gameplay.AITaskRegistry
+Sage.Gameplay.AITaskRegistry.AITaskRegistry() -> void
+Sage.Gameplay.AITaskRegistry.Find(string! name) -> Sage.Gameplay.IAITask?
+Sage.Gameplay.AITaskRegistry.Names.get -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Gameplay.AITaskRegistry.Register(string! name, Sage.Gameplay.IAITask! task) -> void
+Sage.Gameplay.AITaskStatus
+Sage.Gameplay.AITaskStatus.Failed = 2 -> Sage.Gameplay.AITaskStatus
+Sage.Gameplay.AITaskStatus.Running = 0 -> Sage.Gameplay.AITaskStatus
+Sage.Gameplay.AITaskStatus.Succeeded = 1 -> Sage.Gameplay.AITaskStatus
+Sage.Gameplay.AITaskStep
+Sage.Gameplay.AITaskStep.AITaskStep() -> void
+Sage.Gameplay.AITaskStep.AITaskStep(string! Task, string? Argument = null, float Value = 0) -> void
+Sage.Gameplay.AITaskStep.Argument.get -> string?
+Sage.Gameplay.AITaskStep.Argument.init -> void
+Sage.Gameplay.AITaskStep.Task.get -> string!
+Sage.Gameplay.AITaskStep.Task.init -> void
+Sage.Gameplay.AITaskStep.Value.get -> float
+Sage.Gameplay.AITaskStep.Value.init -> void
 Sage.Gameplay.Abilities
 Sage.Gameplay.Abilities.Abilities() -> void
 Sage.Gameplay.Abilities.Casting -> Sage.Core.RecordId
@@ -106,22 +220,12 @@ Sage.Gameplay.AbilityTargeting.Projectile = 4 -> Sage.Gameplay.AbilityTargeting
 Sage.Gameplay.AbilityTargeting.Self = 0 -> Sage.Gameplay.AbilityTargeting
 Sage.Gameplay.AbilityTargeting.Touch = 1 -> Sage.Gameplay.AbilityTargeting
 Sage.Gameplay.AbilityTargeting.TouchArea = 3 -> Sage.Gameplay.AbilityTargeting
-Sage.Gameplay.ActionAttribute
-Sage.Gameplay.ActionAttribute.ActionAttribute(string! id) -> void
-Sage.Gameplay.ActionContext
-Sage.Gameplay.ActionContext.ActionContext() -> void
-Sage.Gameplay.ActionContext.ActionContext(Sage.Simulation.World! World, Sage.Simulation.Entity Subject, Sage.Simulation.Entity Other = default(Sage.Simulation.Entity)) -> void
-Sage.Gameplay.ActionContext.Other.get -> Sage.Simulation.Entity
-Sage.Gameplay.ActionContext.Other.init -> void
-Sage.Gameplay.ActionContext.Subject.get -> Sage.Simulation.Entity
-Sage.Gameplay.ActionContext.Subject.init -> void
-Sage.Gameplay.ActionContext.World.get -> Sage.Simulation.World!
-Sage.Gameplay.ActionContext.World.init -> void
 Sage.Gameplay.ActionConventions
 Sage.Gameplay.ActionConventions.ActionConventions() -> void
 Sage.Gameplay.ActionConventions.Attack -> string!
 Sage.Gameplay.ActionConventions.Crouch -> string!
 Sage.Gameplay.ActionConventions.Jump -> string!
+Sage.Gameplay.ActionConventions.Reload -> string!
 Sage.Gameplay.ActionConventions.Run -> string!
 Sage.Gameplay.ActionConventions.Use -> string!
 Sage.Gameplay.ActiveEffect
@@ -135,137 +239,15 @@ Sage.Gameplay.ActiveEffect.Stacks -> int
 Sage.Gameplay.ActiveEffects
 Sage.Gameplay.ActiveEffects.ActiveEffects() -> void
 Sage.Gameplay.ActiveEffects.Effects -> System.Collections.Generic.List<Sage.Gameplay.ActiveEffect>!
-Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.CanCastAtEnemy = 64 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.CanMelee = 128 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.Casting = 512 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.EnemyInMeleeRange = 4 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.LostEnemy = 2 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.NoEnemy = 8 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.None = 0 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.RememberEnemy = 1024 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.ScheduleDone = 32 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.SeeEnemy = 1 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.SpellComingBack = 256 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AICondition.TaskFailed = 16 -> Sage.Gameplay.AICondition
-Sage.Gameplay.AIConditionAttribute
-Sage.Gameplay.AIConditionAttribute.AIConditionAttribute(string! id) -> void
-Sage.Gameplay.AIConditions
-Sage.Gameplay.AIConditions.BitOf(string! name) -> int
-Sage.Gameplay.AIConditions.Has(ulong conditions, string! name) -> bool
-Sage.Gameplay.AIConditions.MaskOf(string! name) -> ulong
-Sage.Gameplay.AIConditions.MaskOf(System.Collections.Generic.IReadOnlyList<string!>! names) -> ulong
-Sage.Gameplay.AIConditions.NameOf(int bit) -> string?
-Sage.Gameplay.AIModule
-Sage.Gameplay.AIModule.AIModule() -> void
-Sage.Gameplay.AIModule.AITasks.get -> Sage.Gameplay.AITaskRegistry!
-Sage.Gameplay.AIModule.Dependencies.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
-Sage.Gameplay.AIModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
-Sage.Gameplay.AIModule.OnWorldCreated(Sage.Simulation.World! world) -> void
-Sage.Gameplay.AIModule.Start(Sage.Simulation.ModuleContext! ctx) -> void
-Sage.Gameplay.AIPerception
-Sage.Gameplay.AIPerception.AIPerception() -> void
-Sage.Gameplay.AIPerception.Conditions -> ulong
-Sage.Gameplay.AIPerception.Entity -> Sage.Simulation.Entity
-Sage.Gameplay.AIPerception.Has(Sage.Gameplay.AICondition condition) -> bool
-Sage.Gameplay.AIPerception.Profile -> Sage.Gameplay.AIProfileRecord!
-Sage.Gameplay.AIPerception.State -> Sage.Gameplay.AIState
-Sage.Gameplay.AIPerception.Time -> float
-Sage.Gameplay.AIPerception.Transform -> Sage.Simulation.Transform
-Sage.Gameplay.AIPerception.World -> Sage.Simulation.World!
-Sage.Gameplay.AIProfileRecord
-Sage.Gameplay.AIProfileRecord.AIProfileRecord() -> void
-Sage.Gameplay.AIProfileRecord.MeleeRange -> float
-Sage.Gameplay.AIProfileRecord.MemorySeconds -> float
-Sage.Gameplay.AIProfileRecord.Rules -> System.Collections.Generic.List<Sage.Gameplay.AIScheduleRule!>!
-Sage.Gameplay.AIProfileRecord.Selector -> string!
-Sage.Gameplay.AIProfileRecord.SightAngleDegrees -> float
-Sage.Gameplay.AIProfileRecord.SightRange -> float
-Sage.Gameplay.AIProfileRecord.ThinkRate -> float
-Sage.Gameplay.AIProfileRecord.TurnSpeedDegrees -> float
-Sage.Gameplay.AIScheduleChoice
-Sage.Gameplay.AIScheduleChoice.AIScheduleChoice() -> void
-Sage.Gameplay.AIScheduleChoice.Conditions -> ulong
-Sage.Gameplay.AIScheduleChoice.Current -> Sage.Core.RecordId
-Sage.Gameplay.AIScheduleChoice.Entity -> Sage.Simulation.Entity
-Sage.Gameplay.AIScheduleChoice.Has(Sage.Gameplay.AICondition condition) -> bool
-Sage.Gameplay.AIScheduleChoice.Has(string! condition) -> bool
-Sage.Gameplay.AIScheduleChoice.Names -> Sage.Gameplay.AIConditions!
-Sage.Gameplay.AIScheduleChoice.Profile -> Sage.Gameplay.AIProfileRecord!
-Sage.Gameplay.AIScheduleChoice.Schedules -> Sage.Gameplay.AIScheduleConventions!
-Sage.Gameplay.AIScheduleChoice.World -> Sage.Simulation.World!
-Sage.Gameplay.AIScheduleConventions
-Sage.Gameplay.AIScheduleConventions.AIScheduleConventions() -> void
-Sage.Gameplay.AIScheduleConventions.CastSpell -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
-Sage.Gameplay.AIScheduleConventions.Chase -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
-Sage.Gameplay.AIScheduleConventions.HoldGround -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
-Sage.Gameplay.AIScheduleConventions.Idle -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
-Sage.Gameplay.AIScheduleConventions.MeleeAttack -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
-Sage.Gameplay.AIScheduleRecord
-Sage.Gameplay.AIScheduleRecord.AIScheduleRecord() -> void
-Sage.Gameplay.AIScheduleRecord.InterruptMask(Sage.Gameplay.AIConditions! conditions) -> ulong
-Sage.Gameplay.AIScheduleRecord.Interrupts -> System.Collections.Generic.List<string!>!
-Sage.Gameplay.AIScheduleRecord.Steps() -> Sage.Gameplay.AITaskStep[]!
-Sage.Gameplay.AIScheduleRecord.Tasks -> System.Collections.Generic.List<Sage.Gameplay.AITaskStep>!
-Sage.Gameplay.AIScheduleRule
-Sage.Gameplay.AIScheduleRule.AIScheduleRule() -> void
-Sage.Gameplay.AIScheduleRule.Matches(ulong conditions, Sage.Gameplay.AIConditions! names) -> bool
-Sage.Gameplay.AIScheduleRule.Schedule -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
-Sage.Gameplay.AIScheduleRule.Unless -> System.Collections.Generic.List<string!>!
-Sage.Gameplay.AIScheduleRule.When -> System.Collections.Generic.List<string!>!
-Sage.Gameplay.AIScheduleSelectorAttribute
-Sage.Gameplay.AIScheduleSelectorAttribute.AIScheduleSelectorAttribute(string! id) -> void
-Sage.Gameplay.AIScheduleSelectors
-Sage.Gameplay.AIState
-Sage.Gameplay.AIState.AIState() -> void
-Sage.Gameplay.AIState.Conditions -> ulong
-Sage.Gameplay.AIState.ForgetAt -> float
-Sage.Gameplay.AIState.LastSeen -> System.Numerics.Vector3
-Sage.Gameplay.AIState.NextThink -> float
-Sage.Gameplay.AIState.Path -> Sage.Gameplay.NavPath
-Sage.Gameplay.AIState.Profile -> Sage.Core.RecordId
-Sage.Gameplay.AIState.Schedule -> Sage.Core.RecordId
-Sage.Gameplay.AIState.Spell -> Sage.Core.RecordId
-Sage.Gameplay.AIState.Target -> Sage.Simulation.Entity
-Sage.Gameplay.AIState.TaskIndex -> int
-Sage.Gameplay.AIState.TaskStarted -> bool
-Sage.Gameplay.AIState.TaskTime -> float
-Sage.Gameplay.AITaskContext
-Sage.Gameplay.AITaskContext.AITaskContext() -> void
-Sage.Gameplay.AITaskContext.Attack -> Sage.Simulation.ActionId
-Sage.Gameplay.AITaskContext.Dt -> float
-Sage.Gameplay.AITaskContext.Entity -> Sage.Simulation.Entity
-Sage.Gameplay.AITaskContext.Intent -> Sage.Simulation.PawnIntent
-Sage.Gameplay.AITaskContext.Movement -> Sage.Simulation.MovementProfileRecord!
-Sage.Gameplay.AITaskContext.Param -> float
-Sage.Gameplay.AITaskContext.Profile -> Sage.Gameplay.AIProfileRecord!
-Sage.Gameplay.AITaskContext.Space -> Sage.Simulation.IPhysicsWorld!
-Sage.Gameplay.AITaskContext.State -> Sage.Gameplay.AIState
-Sage.Gameplay.AITaskContext.Transform -> Sage.Simulation.Transform
-Sage.Gameplay.AITaskContext.World -> Sage.Simulation.World!
-Sage.Gameplay.AITaskRegistry
-Sage.Gameplay.AITaskRegistry.AITaskRegistry() -> void
-Sage.Gameplay.AITaskRegistry.Find(string! name) -> Sage.Gameplay.IAITask?
-Sage.Gameplay.AITaskRegistry.Names.get -> System.Collections.Generic.IEnumerable<string!>!
-Sage.Gameplay.AITaskRegistry.Register(string! name, Sage.Gameplay.IAITask! task) -> void
-Sage.Gameplay.AITaskStatus
-Sage.Gameplay.AITaskStatus.Failed = 2 -> Sage.Gameplay.AITaskStatus
-Sage.Gameplay.AITaskStatus.Running = 0 -> Sage.Gameplay.AITaskStatus
-Sage.Gameplay.AITaskStatus.Succeeded = 1 -> Sage.Gameplay.AITaskStatus
-Sage.Gameplay.AITaskStep
-Sage.Gameplay.AITaskStep.AITaskStep() -> void
-Sage.Gameplay.AITaskStep.AITaskStep(string! Task, string? Argument = null, float Value = 0) -> void
-Sage.Gameplay.AITaskStep.Argument.get -> string?
-Sage.Gameplay.AITaskStep.Argument.init -> void
-Sage.Gameplay.AITaskStep.Task.get -> string!
-Sage.Gameplay.AITaskStep.Task.init -> void
-Sage.Gameplay.AITaskStep.Value.get -> float
-Sage.Gameplay.AITaskStep.Value.init -> void
+Sage.Gameplay.Ammunition
 Sage.Gameplay.AnimationConventions
 Sage.Gameplay.AnimationConventions.AnimationConventions() -> void
 Sage.Gameplay.AnimationConventions.Attack -> string!
+Sage.Gameplay.AnimationConventions.AttackTrigger -> string!
 Sage.Gameplay.AnimationConventions.Hit -> string!
 Sage.Gameplay.AnimationConventions.Idle -> string!
+Sage.Gameplay.AnimationConventions.MagIn -> string!
+Sage.Gameplay.AnimationConventions.Reload -> string!
 Sage.Gameplay.AnimationEvent
 Sage.Gameplay.AnimationEvent.AnimationEvent() -> void
 Sage.Gameplay.AnimationEvent.AnimationEvent(Sage.Simulation.Entity Entity, string! Name) -> void
@@ -278,17 +260,34 @@ Sage.Gameplay.AnimationModule.AnimationModule() -> void
 Sage.Gameplay.AnimationModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Gameplay.AnimationModule.OnWorldCreated(Sage.Simulation.World! world) -> void
 Sage.Gameplay.AttackRecord
+Sage.Gameplay.AttackRecord.Ammo -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
+Sage.Gameplay.AttackRecord.AmmoPerShot -> int
 Sage.Gameplay.AttackRecord.Animation -> string!
 Sage.Gameplay.AttackRecord.ArcDegrees -> float
+Sage.Gameplay.AttackRecord.Arms -> Sage.Core.RecordRef<Sage.Simulation.ViewmodelRecord!>
 Sage.Gameplay.AttackRecord.AttackRecord() -> void
+Sage.Gameplay.AttackRecord.Automatic -> bool
 Sage.Gameplay.AttackRecord.Cooldown -> float
 Sage.Gameplay.AttackRecord.Damage -> float
 Sage.Gameplay.AttackRecord.DamageType -> Sage.Core.RecordRef<Sage.Gameplay.DamageTypeRecord!>
+Sage.Gameplay.AttackRecord.Delivery -> string!
 Sage.Gameplay.AttackRecord.Effects -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>!
+Sage.Gameplay.AttackRecord.Magazine -> int
+Sage.Gameplay.AttackRecord.Pellets -> int
+Sage.Gameplay.AttackRecord.Projectile -> Sage.Core.RecordRef<Sage.Simulation.PrefabRecord!>
+Sage.Gameplay.AttackRecord.ProjectileGravity -> float
+Sage.Gameplay.AttackRecord.ProjectilePierce -> int
+Sage.Gameplay.AttackRecord.ProjectileSpeed -> float
 Sage.Gameplay.AttackRecord.Radius -> float
+Sage.Gameplay.AttackRecord.Range -> float
+Sage.Gameplay.AttackRecord.RateOfFire -> float
 Sage.Gameplay.AttackRecord.Reach -> float
+Sage.Gameplay.AttackRecord.Recoil -> Sage.Core.RecordRef<Sage.Gameplay.RecoilRecord!>
 Sage.Gameplay.AttackRecord.RecoverTime -> float
+Sage.Gameplay.AttackRecord.ReloadTime -> float
+Sage.Gameplay.AttackRecord.Spread -> Sage.Core.RecordRef<Sage.Gameplay.SpreadRecord!>
 Sage.Gameplay.AttackRecord.SwingCue -> Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>
+Sage.Gameplay.AttackRecord.Trigger -> string!
 Sage.Gameplay.AttackRecord.Viewmodel -> Sage.Core.RecordRef<Sage.Simulation.SpriteSheetRecord!>
 Sage.Gameplay.AttackRecord.WindupTime -> float
 Sage.Gameplay.AttributeModifier
@@ -302,15 +301,15 @@ Sage.Gameplay.AttributeRecord.Max -> float
 Sage.Gameplay.AttributeRecord.Min -> float
 Sage.Gameplay.AttributeRecord.SpendEffect -> Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>
 Sage.Gameplay.AttributeRecord.Start -> float
-Sage.Gameplay.Attributes
-Sage.Gameplay.Attributes.Attributes() -> void
-Sage.Gameplay.Attributes.Values -> Sage.Gameplay.AttributeSet!
 Sage.Gameplay.AttributeSet
 Sage.Gameplay.AttributeSet.AttributeSet() -> void
 Sage.Gameplay.AttributeSet.BaseOf(int attribute) -> float
 Sage.Gameplay.AttributeSet.Has(int attribute) -> bool
 Sage.Gameplay.AttributeSet.SetBase(int attribute, float value) -> void
 Sage.Gameplay.AttributeSet.this[int attribute].get -> float
+Sage.Gameplay.Attributes
+Sage.Gameplay.Attributes.Attributes() -> void
+Sage.Gameplay.Attributes.Values -> Sage.Gameplay.AttributeSet!
 Sage.Gameplay.AttributesModule
 Sage.Gameplay.AttributesModule.AttributesModule() -> void
 Sage.Gameplay.AttributesModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
@@ -319,7 +318,15 @@ Sage.Gameplay.AttributesModule.Registries.get -> Sage.Gameplay.GameplayRegistrie
 Sage.Gameplay.AttributesPart
 Sage.Gameplay.AttributesPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Gameplay.AttributesPart.AttributesPart() -> void
+Sage.Gameplay.AvailableTopic
+Sage.Gameplay.AvailableTopic.AvailableTopic() -> void
+Sage.Gameplay.AvailableTopic.AvailableTopic(Sage.Core.RecordId Topic, string! Keyword) -> void
+Sage.Gameplay.AvailableTopic.Keyword.get -> string!
+Sage.Gameplay.AvailableTopic.Keyword.init -> void
+Sage.Gameplay.AvailableTopic.Topic.get -> Sage.Core.RecordId
+Sage.Gameplay.AvailableTopic.Topic.init -> void
 Sage.Gameplay.BasePlugins
+Sage.Gameplay.BridgeIO
 Sage.Gameplay.CastRefusal
 Sage.Gameplay.CastRefusal.AlreadyCasting = 5 -> Sage.Gameplay.CastRefusal
 Sage.Gameplay.CastRefusal.Blocked = 4 -> Sage.Gameplay.CastRefusal
@@ -330,10 +337,10 @@ Sage.Gameplay.CastRefusal.Unknown = 0 -> Sage.Gameplay.CastRefusal
 Sage.Gameplay.CastRefused
 Sage.Gameplay.CastRefused.Ability.get -> Sage.Core.RecordId
 Sage.Gameplay.CastRefused.Ability.init -> void
-Sage.Gameplay.CastRefused.Caster.get -> Sage.Simulation.Entity
-Sage.Gameplay.CastRefused.Caster.init -> void
 Sage.Gameplay.CastRefused.CastRefused() -> void
 Sage.Gameplay.CastRefused.CastRefused(Sage.Simulation.Entity Caster, Sage.Core.RecordId Ability, Sage.Gameplay.CastRefusal Why) -> void
+Sage.Gameplay.CastRefused.Caster.get -> Sage.Simulation.Entity
+Sage.Gameplay.CastRefused.Caster.init -> void
 Sage.Gameplay.CastRefused.Why.get -> Sage.Gameplay.CastRefusal
 Sage.Gameplay.CastRefused.Why.init -> void
 Sage.Gameplay.Combat
@@ -342,17 +349,6 @@ Sage.Gameplay.CombatModule.CombatModule() -> void
 Sage.Gameplay.CombatModule.Dependencies.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
 Sage.Gameplay.CombatModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Gameplay.CombatModule.OnWorldCreated(Sage.Simulation.World! world) -> void
-Sage.Gameplay.ConditionAttribute
-Sage.Gameplay.ConditionAttribute.ConditionAttribute(string! id) -> void
-Sage.Gameplay.ConditionContext
-Sage.Gameplay.ConditionContext.ConditionContext() -> void
-Sage.Gameplay.ConditionContext.ConditionContext(Sage.Simulation.World! World, Sage.Simulation.Entity Subject, Sage.Simulation.Entity Other = default(Sage.Simulation.Entity)) -> void
-Sage.Gameplay.ConditionContext.Other.get -> Sage.Simulation.Entity
-Sage.Gameplay.ConditionContext.Other.init -> void
-Sage.Gameplay.ConditionContext.Subject.get -> Sage.Simulation.Entity
-Sage.Gameplay.ConditionContext.Subject.init -> void
-Sage.Gameplay.ConditionContext.World.get -> Sage.Simulation.World!
-Sage.Gameplay.ConditionContext.World.init -> void
 Sage.Gameplay.Conversation
 Sage.Gameplay.Conversation.Conversation() -> void
 Sage.Gameplay.Conversation.Listener -> Sage.Simulation.Entity
@@ -361,6 +357,7 @@ Sage.Gameplay.Conversation.Record -> Sage.Core.RecordId
 Sage.Gameplay.Conversation.Running.get -> bool
 Sage.Gameplay.Conversation.Speaker -> Sage.Simulation.Entity
 Sage.Gameplay.Conversation.Stop() -> void
+Sage.Gameplay.Conversation.Topics -> bool
 Sage.Gameplay.CueRecord
 Sage.Gameplay.CueRecord.CueRecord() -> void
 Sage.Gameplay.CueRecord.Description -> string!
@@ -376,13 +373,6 @@ Sage.Gameplay.CueTriggered.Point.get -> System.Numerics.Vector3
 Sage.Gameplay.CueTriggered.Point.init -> void
 Sage.Gameplay.CueTriggered.Source.get -> Sage.Simulation.Entity
 Sage.Gameplay.CueTriggered.Source.init -> void
-Sage.Gameplay.Damaged
-Sage.Gameplay.Damaged.Applied.get -> float
-Sage.Gameplay.Damaged.Applied.init -> void
-Sage.Gameplay.Damaged.Damaged() -> void
-Sage.Gameplay.Damaged.Damaged(Sage.Gameplay.DamageInfo Hit, float Applied) -> void
-Sage.Gameplay.Damaged.Hit.get -> Sage.Gameplay.DamageInfo
-Sage.Gameplay.Damaged.Hit.init -> void
 Sage.Gameplay.DamageInfo
 Sage.Gameplay.DamageInfo.Amount.get -> float
 Sage.Gameplay.DamageInfo.Amount.init -> void
@@ -394,6 +384,8 @@ Sage.Gameplay.DamageInfo.DamageInfo() -> void
 Sage.Gameplay.DamageInfo.DamageInfo(Sage.Simulation.Entity Attacker, Sage.Simulation.Entity Target, Sage.Core.RecordId Type, float Amount, System.Numerics.Vector3 Point, System.Numerics.Vector3 Direction) -> void
 Sage.Gameplay.DamageInfo.Direction.get -> System.Numerics.Vector3
 Sage.Gameplay.DamageInfo.Direction.init -> void
+Sage.Gameplay.DamageInfo.Location.get -> Sage.Core.RecordId
+Sage.Gameplay.DamageInfo.Location.init -> void
 Sage.Gameplay.DamageInfo.Point.get -> System.Numerics.Vector3
 Sage.Gameplay.DamageInfo.Point.init -> void
 Sage.Gameplay.DamageInfo.Target.get -> Sage.Simulation.Entity
@@ -408,6 +400,14 @@ Sage.Gameplay.DamageTypeRecord.Effect -> Sage.Core.RecordRef<Sage.Gameplay.Effec
 Sage.Gameplay.DamageTypeRecord.Particles -> Sage.Core.RecordRef<Sage.Simulation.ParticleRecord!>
 Sage.Gameplay.DamageTypeRecord.Resist -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
 Sage.Gameplay.DamageTypeRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.Damaged
+Sage.Gameplay.Damaged.Applied.get -> float
+Sage.Gameplay.Damaged.Applied.init -> void
+Sage.Gameplay.Damaged.Damaged() -> void
+Sage.Gameplay.Damaged.Damaged(Sage.Gameplay.DamageInfo Hit, float Applied) -> void
+Sage.Gameplay.Damaged.Hit.get -> Sage.Gameplay.DamageInfo
+Sage.Gameplay.Damaged.Hit.init -> void
+Sage.Gameplay.Damaged.Location.get -> Sage.Core.RecordId
 Sage.Gameplay.Dialogue
 Sage.Gameplay.Dialogue.Dialogue() -> void
 Sage.Gameplay.Dialogue.Record -> Sage.Core.RecordId
@@ -421,8 +421,8 @@ Sage.Gameplay.DialogueNode.Id -> string!
 Sage.Gameplay.DialogueNode.Options -> System.Collections.Generic.List<Sage.Gameplay.DialogueOption!>!
 Sage.Gameplay.DialogueNode.Text -> string!
 Sage.Gameplay.DialogueOption
-Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Gameplay.IAction!>!
-Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Gameplay.ICondition!>!
+Sage.Gameplay.DialogueOption.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Gameplay.DialogueOption.Conditions -> System.Collections.Generic.List<Sage.Simulation.ICondition!>!
 Sage.Gameplay.DialogueOption.DialogueOption() -> void
 Sage.Gameplay.DialogueOption.End -> bool
 Sage.Gameplay.DialogueOption.Goto -> string!
@@ -430,6 +430,7 @@ Sage.Gameplay.DialogueOption.Refusal -> string!
 Sage.Gameplay.DialogueOption.Requires -> Sage.Gameplay.DialogueRequirement?
 Sage.Gameplay.DialogueOption.Text -> string!
 Sage.Gameplay.DialogueOption.Then -> Sage.Gameplay.DialogueOutcome?
+Sage.Gameplay.DialogueOption.Topics -> bool
 Sage.Gameplay.DialogueOutcome
 Sage.Gameplay.DialogueOutcome.DialogueOutcome() -> void
 Sage.Gameplay.DialogueOutcome.Effect -> Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>
@@ -468,6 +469,7 @@ Sage.Gameplay.DialogueRequirement.Stage -> string!
 Sage.Gameplay.DialogueRequirement.Tag -> Sage.Core.RecordRef<Sage.Gameplay.TagRecord!>
 Sage.Gameplay.DialogueRequirement.WithoutTag -> Sage.Core.RecordRef<Sage.Gameplay.TagRecord!>
 Sage.Gameplay.DialogueRules
+Sage.Gameplay.DialogueTopics
 Sage.Gameplay.Died
 Sage.Gameplay.Died.Died() -> void
 Sage.Gameplay.Died.Died(Sage.Simulation.Entity Victim, Sage.Simulation.Entity Killer) -> void
@@ -475,6 +477,13 @@ Sage.Gameplay.Died.Killer.get -> Sage.Simulation.Entity
 Sage.Gameplay.Died.Killer.init -> void
 Sage.Gameplay.Died.Victim.get -> Sage.Simulation.Entity
 Sage.Gameplay.Died.Victim.init -> void
+Sage.Gameplay.DryFire
+Sage.Gameplay.DryFire.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.DryFire.Attack.init -> void
+Sage.Gameplay.DryFire.DryFire() -> void
+Sage.Gameplay.DryFire.DryFire(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
+Sage.Gameplay.DryFire.Shooter.get -> Sage.Simulation.Entity
+Sage.Gameplay.DryFire.Shooter.init -> void
 Sage.Gameplay.EffectDuration
 Sage.Gameplay.EffectDuration.Infinite = 2 -> Sage.Gameplay.EffectDuration
 Sage.Gameplay.EffectDuration.Instant = 0 -> Sage.Gameplay.EffectDuration
@@ -513,15 +522,21 @@ Sage.Gameplay.EffectRecord.Period -> float
 Sage.Gameplay.EffectRecord.RequireTags -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.TagRecord!>>!
 Sage.Gameplay.EffectRecord.Stacking -> Sage.Gameplay.EffectStacking
 Sage.Gameplay.EffectRecord.Time -> float
+Sage.Gameplay.EffectStacking
+Sage.Gameplay.EffectStacking.Refresh = 1 -> Sage.Gameplay.EffectStacking
+Sage.Gameplay.EffectStacking.Separate = 0 -> Sage.Gameplay.EffectStacking
+Sage.Gameplay.EffectStacking.Stack = 2 -> Sage.Gameplay.EffectStacking
 Sage.Gameplay.Effects
 Sage.Gameplay.EffectsPart
 Sage.Gameplay.EffectsPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Gameplay.EffectsPart.EffectsPart() -> void
 Sage.Gameplay.EffectsPart.Ids -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>!
-Sage.Gameplay.EffectStacking
-Sage.Gameplay.EffectStacking.Refresh = 1 -> Sage.Gameplay.EffectStacking
-Sage.Gameplay.EffectStacking.Separate = 0 -> Sage.Gameplay.EffectStacking
-Sage.Gameplay.EffectStacking.Stack = 2 -> Sage.Gameplay.EffectStacking
+Sage.Gameplay.EquipSlots
+Sage.Gameplay.EquipSlots.EquipSlots() -> void
+Sage.Gameplay.EquipSlots.Find(string! name) -> string?
+Sage.Gameplay.EquipSlots.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Gameplay.EquipSlots.Register(string! name) -> void
+Sage.Gameplay.EquipSlots.Seal.get -> Sage.Core.RegistrationSeal!
 Sage.Gameplay.Equipment
 Sage.Gameplay.Equipment.Equipment() -> void
 Sage.Gameplay.Equipment.In(string! slot) -> Sage.Core.RecordId
@@ -530,12 +545,6 @@ Sage.Gameplay.EquippedItem
 Sage.Gameplay.EquippedItem.EquippedItem() -> void
 Sage.Gameplay.EquippedItem.Item -> Sage.Core.RecordId
 Sage.Gameplay.EquippedItem.Slot -> string!
-Sage.Gameplay.EquipSlots
-Sage.Gameplay.EquipSlots.EquipSlots() -> void
-Sage.Gameplay.EquipSlots.Find(string! name) -> string?
-Sage.Gameplay.EquipSlots.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Sage.Gameplay.EquipSlots.Register(string! name) -> void
-Sage.Gameplay.EquipSlots.Seal.get -> Sage.Core.RegistrationSeal!
 Sage.Gameplay.Faction
 Sage.Gameplay.Faction.Faction() -> void
 Sage.Gameplay.Faction.Id -> Sage.Core.RecordId
@@ -562,6 +571,54 @@ Sage.Gameplay.FactionsModule.Dependencies.get -> System.Collections.Generic.IRea
 Sage.Gameplay.FactionsModule.FactionsModule() -> void
 Sage.Gameplay.FactionsModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Gameplay.FactionsModule.OnWorldCreated(Sage.Simulation.World! world) -> void
+Sage.Gameplay.FootIk
+Sage.Gameplay.FootIk.FootHeight -> float
+Sage.Gameplay.FootIk.FootIk() -> void
+Sage.Gameplay.FootIk.Left -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIk.LeftGrounded -> bool
+Sage.Gameplay.FootIk.MaxPelvisDrop -> float
+Sage.Gameplay.FootIk.Pelvis -> string!
+Sage.Gameplay.FootIk.PelvisDrop -> float
+Sage.Gameplay.FootIk.RayAbove -> float
+Sage.Gameplay.FootIk.RayBelow -> float
+Sage.Gameplay.FootIk.Right -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIk.RightGrounded -> bool
+Sage.Gameplay.FootIk.Weight -> float
+Sage.Gameplay.FootIkLeg
+Sage.Gameplay.FootIkLeg.Foot -> string!
+Sage.Gameplay.FootIkLeg.FootIkLeg() -> void
+Sage.Gameplay.FootIkLeg.Hip -> string!
+Sage.Gameplay.FootIkLeg.Knee -> string!
+Sage.Gameplay.FootIkPart
+Sage.Gameplay.FootIkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.FootIkPart.FootHeight -> float
+Sage.Gameplay.FootIkPart.FootIkPart() -> void
+Sage.Gameplay.FootIkPart.Left -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIkPart.MaxPelvisDrop -> float
+Sage.Gameplay.FootIkPart.Pelvis -> string!
+Sage.Gameplay.FootIkPart.RayAbove -> float
+Sage.Gameplay.FootIkPart.RayBelow -> float
+Sage.Gameplay.FootIkPart.Right -> Sage.Gameplay.FootIkLeg?
+Sage.Gameplay.FootIkPart.Weight -> float
+Sage.Gameplay.Footstep
+Sage.Gameplay.Footstep.Entity.get -> Sage.Simulation.Entity
+Sage.Gameplay.Footstep.Entity.init -> void
+Sage.Gameplay.Footstep.Footstep() -> void
+Sage.Gameplay.Footstep.Footstep(Sage.Simulation.Entity Entity, System.Numerics.Vector3 Point, Sage.Core.RecordId Surface) -> void
+Sage.Gameplay.Footstep.Point.get -> System.Numerics.Vector3
+Sage.Gameplay.Footstep.Point.init -> void
+Sage.Gameplay.Footstep.Surface.get -> Sage.Core.RecordId
+Sage.Gameplay.Footstep.Surface.init -> void
+Sage.Gameplay.Footsteps
+Sage.Gameplay.Footsteps.Footsteps() -> void
+Sage.Gameplay.Footsteps.LastSurface -> Sage.Core.RecordId
+Sage.Gameplay.Footsteps.Reach -> float
+Sage.Gameplay.Footsteps.Stride -> float
+Sage.Gameplay.FootstepsPart
+Sage.Gameplay.FootstepsPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.FootstepsPart.FootstepsPart() -> void
+Sage.Gameplay.FootstepsPart.Reach -> float
+Sage.Gameplay.FootstepsPart.Stride -> float
 Sage.Gameplay.GameplayConventions
 Sage.Gameplay.GameplayConventionsRecord
 Sage.Gameplay.GameplayConventionsRecord.Actions -> Sage.Gameplay.ActionConventions!
@@ -573,6 +630,7 @@ Sage.Gameplay.GameplayConventionsRecord.DamageType -> Sage.Core.RecordRef<Sage.G
 Sage.Gameplay.GameplayConventionsRecord.Dead -> Sage.Core.RecordRef<Sage.Gameplay.TagRecord!>
 Sage.Gameplay.GameplayConventionsRecord.GameplayConventionsRecord() -> void
 Sage.Gameplay.GameplayConventionsRecord.Health -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.GameplayConventionsRecord.HitboxBudget -> Sage.Core.RecordRef<Sage.Gameplay.HitboxBudgetRecord!>
 Sage.Gameplay.GameplayConventionsRecord.Invulnerable -> Sage.Core.RecordRef<Sage.Gameplay.TagRecord!>
 Sage.Gameplay.GameplayConventionsRecord.Movement -> Sage.Core.RecordRef<Sage.Simulation.MovementProfileRecord!>
 Sage.Gameplay.GameplayConventionsRecord.PlayerFaction -> Sage.Core.RecordRef<Sage.Gameplay.FactionRecord!>
@@ -597,12 +655,84 @@ Sage.Gameplay.GameplayTags.Has(int tag) -> bool
 Sage.Gameplay.GameplayTags.HasAll(in Sage.Gameplay.TagSet mask) -> bool
 Sage.Gameplay.GameplayTags.HasAny(in Sage.Gameplay.TagSet mask) -> bool
 Sage.Gameplay.GameplayTags.Remove(int tag) -> void
-Sage.Gameplay.IAbilityDelivery
-Sage.Gameplay.IAbilityDelivery.Gather(ref Sage.Gameplay.AbilityLanding landing) -> void
-Sage.Gameplay.IAbilityDelivery.OnCaster.get -> bool
-Sage.Gameplay.IAbilityDelivery.Release(in Sage.Gameplay.AbilityRelease cast, out System.Numerics.Vector3 point, out Sage.Simulation.Entity struck) -> bool
-Sage.Gameplay.IAction
-Sage.Gameplay.IAction.Run(in Sage.Gameplay.ActionContext context) -> void
+Sage.Gameplay.HitContext
+Sage.Gameplay.HitContext.Attack.get -> Sage.Gameplay.AttackRecord!
+Sage.Gameplay.HitContext.Attack.init -> void
+Sage.Gameplay.HitContext.Cone.get -> float
+Sage.Gameplay.HitContext.Cone.init -> void
+Sage.Gameplay.HitContext.Debug.get -> Sage.Simulation.DebugDraw?
+Sage.Gameplay.HitContext.Debug.init -> void
+Sage.Gameplay.HitContext.HitContext() -> void
+Sage.Gameplay.HitContext.Land(in Sage.Gameplay.HitResult result) -> void
+Sage.Gameplay.HitContext.PelletAim(int pellet) -> System.Numerics.Vector3
+Sage.Gameplay.HitContext.Request.get -> Sage.Gameplay.HitRequest
+Sage.Gameplay.HitContext.Request.init -> void
+Sage.Gameplay.HitContext.Shot.get -> uint
+Sage.Gameplay.HitContext.Shot.init -> void
+Sage.Gameplay.HitContext.Space.get -> Sage.Simulation.IPhysicsWorld!
+Sage.Gameplay.HitContext.Space.init -> void
+Sage.Gameplay.HitContext.World.get -> Sage.Simulation.World!
+Sage.Gameplay.HitContext.World.init -> void
+Sage.Gameplay.HitDeliveries
+Sage.Gameplay.HitDeliveryAttribute
+Sage.Gameplay.HitDeliveryAttribute.HitDeliveryAttribute(string! id) -> void
+Sage.Gameplay.HitLocationRecord
+Sage.Gameplay.HitLocationRecord.DamageMultiplier -> float
+Sage.Gameplay.HitLocationRecord.Effects -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>!
+Sage.Gameplay.HitLocationRecord.HitLocationRecord() -> void
+Sage.Gameplay.HitLocationRecord.Resist -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.HitLocationRecord.Tags -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.TagRecord!>>!
+Sage.Gameplay.HitLocations
+Sage.Gameplay.HitRequest
+Sage.Gameplay.HitRequest.Aim.get -> System.Numerics.Vector3
+Sage.Gameplay.HitRequest.Aim.init -> void
+Sage.Gameplay.HitRequest.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.HitRequest.Attack.init -> void
+Sage.Gameplay.HitRequest.Attacker.get -> Sage.Simulation.Entity
+Sage.Gameplay.HitRequest.Attacker.init -> void
+Sage.Gameplay.HitRequest.HitRequest() -> void
+Sage.Gameplay.HitRequest.HitRequest(Sage.Simulation.Entity Attacker, System.Numerics.Vector3 Origin, System.Numerics.Vector3 Aim, Sage.Core.RecordId Attack) -> void
+Sage.Gameplay.HitRequest.Origin.get -> System.Numerics.Vector3
+Sage.Gameplay.HitRequest.Origin.init -> void
+Sage.Gameplay.HitResult
+Sage.Gameplay.HitResult.Collider.get -> Sage.Simulation.Entity
+Sage.Gameplay.HitResult.Collider.init -> void
+Sage.Gameplay.HitResult.HitResult() -> void
+Sage.Gameplay.HitResult.HitResult(Sage.Simulation.Entity Target, System.Numerics.Vector3 Point, System.Numerics.Vector3 Normal, Sage.Simulation.Entity Collider, Sage.Core.RecordId Location) -> void
+Sage.Gameplay.HitResult.Location.get -> Sage.Core.RecordId
+Sage.Gameplay.HitResult.Location.init -> void
+Sage.Gameplay.HitResult.Normal.get -> System.Numerics.Vector3
+Sage.Gameplay.HitResult.Normal.init -> void
+Sage.Gameplay.HitResult.Point.get -> System.Numerics.Vector3
+Sage.Gameplay.HitResult.Point.init -> void
+Sage.Gameplay.HitResult.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.HitResult.Target.init -> void
+Sage.Gameplay.Hitbox
+Sage.Gameplay.Hitbox.Hitbox() -> void
+Sage.Gameplay.Hitbox.Location -> Sage.Core.RecordId
+Sage.Gameplay.Hitbox.Owner -> Sage.Simulation.Entity
+Sage.Gameplay.HitboxBudgetRecord
+Sage.Gameplay.HitboxBudgetRecord.Distance -> float
+Sage.Gameplay.HitboxBudgetRecord.HitboxBudgetRecord() -> void
+Sage.Gameplay.HitboxBudgetRecord.MaxCreatures -> int
+Sage.Gameplay.HitboxShape
+Sage.Gameplay.HitboxShape.Bone -> string!
+Sage.Gameplay.HitboxShape.HitboxShape() -> void
+Sage.Gameplay.HitboxShape.Location -> Sage.Core.RecordRef<Sage.Gameplay.HitLocationRecord!>
+Sage.Gameplay.HitboxShape.Offset -> System.Numerics.Vector3
+Sage.Gameplay.HitboxShape.Shape -> Sage.Simulation.ColliderShape
+Sage.Gameplay.HitboxShape.Size -> System.Numerics.Vector3
+Sage.Gameplay.HitboxShape.Socket -> string!
+Sage.Gameplay.Hitboxes
+Sage.Gameplay.HitboxesPart
+Sage.Gameplay.HitboxesPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.HitboxesPart.HitboxesPart() -> void
+Sage.Gameplay.HitboxesPart.Model -> Sage.Core.AssetPath
+Sage.Gameplay.HitboxesRecord
+Sage.Gameplay.HitboxesRecord.Boxes -> System.Collections.Generic.Dictionary<string!, Sage.Gameplay.HitboxShape!>!
+Sage.Gameplay.HitboxesRecord.HitboxesRecord() -> void
+Sage.Gameplay.HitboxesRecord.Model -> Sage.Core.AssetPath
+Sage.Gameplay.Hits
 Sage.Gameplay.IAICondition
 Sage.Gameplay.IAICondition.IsSensed.get -> bool
 Sage.Gameplay.IAICondition.Sense(in Sage.Gameplay.AIPerception perception) -> bool
@@ -612,13 +742,19 @@ Sage.Gameplay.IAITask
 Sage.Gameplay.IAITask.Argument.get -> string?
 Sage.Gameplay.IAITask.Run(ref Sage.Gameplay.AITaskContext context) -> Sage.Gameplay.AITaskStatus
 Sage.Gameplay.IAITask.Start(ref Sage.Gameplay.AITaskContext context) -> Sage.Gameplay.AITaskStatus
-Sage.Gameplay.ICondition
-Sage.Gameplay.ICondition.Test(in Sage.Gameplay.ConditionContext context, out string! why) -> bool
+Sage.Gameplay.IAbilityDelivery
+Sage.Gameplay.IAbilityDelivery.Gather(ref Sage.Gameplay.AbilityLanding landing) -> void
+Sage.Gameplay.IAbilityDelivery.OnCaster.get -> bool
+Sage.Gameplay.IAbilityDelivery.Release(in Sage.Gameplay.AbilityRelease cast, out System.Numerics.Vector3 point, out Sage.Simulation.Entity struck) -> bool
 Sage.Gameplay.IEffectExecution
 Sage.Gameplay.IEffectExecution.Execute(in Sage.Gameplay.EffectExecution execution) -> void
+Sage.Gameplay.IHitDelivery
+Sage.Gameplay.IHitDelivery.Deliver(in Sage.Gameplay.HitContext hit) -> void
 Sage.Gameplay.IItemUse
 Sage.Gameplay.IItemUse.CanUse(in Sage.Gameplay.ItemUse use, out string! why) -> bool
 Sage.Gameplay.IItemUse.Use(in Sage.Gameplay.ItemUse use, out string! why) -> bool
+Sage.Gameplay.IOffscreenFight
+Sage.Gameplay.IOffscreenFight.Round(Sage.Gameplay.OffscreenAgent! a, Sage.Gameplay.OffscreenAgent! b, float roll) -> void
 Sage.Gameplay.Interactable
 Sage.Gameplay.Interactable.Interactable() -> void
 Sage.Gameplay.InteractionState
@@ -651,14 +787,6 @@ Sage.Gameplay.ItemRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecor
 Sage.Gameplay.ItemRecord.Uses -> System.Collections.Generic.List<Sage.Gameplay.IItemUse!>!
 Sage.Gameplay.ItemRecord.Value -> int
 Sage.Gameplay.ItemRecord.Weight -> float
-Sage.Gameplay.Items
-Sage.Gameplay.ItemsModule
-Sage.Gameplay.ItemsModule.Dependencies.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
-Sage.Gameplay.ItemsModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
-Sage.Gameplay.ItemsModule.ItemsModule() -> void
-Sage.Gameplay.ItemsModule.OnWorldCreated(Sage.Simulation.World! world) -> void
-Sage.Gameplay.ItemsModule.Slots.get -> Sage.Gameplay.EquipSlots!
-Sage.Gameplay.ItemsModule.Start(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Gameplay.ItemStack
 Sage.Gameplay.ItemStack.Count -> int
 Sage.Gameplay.ItemStack.Item -> Sage.Core.RecordId
@@ -676,6 +804,14 @@ Sage.Gameplay.ItemUse.World.init -> void
 Sage.Gameplay.ItemUseAttribute
 Sage.Gameplay.ItemUseAttribute.ItemUseAttribute(string! id) -> void
 Sage.Gameplay.ItemUses
+Sage.Gameplay.Items
+Sage.Gameplay.ItemsModule
+Sage.Gameplay.ItemsModule.Dependencies.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+Sage.Gameplay.ItemsModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
+Sage.Gameplay.ItemsModule.ItemsModule() -> void
+Sage.Gameplay.ItemsModule.OnWorldCreated(Sage.Simulation.World! world) -> void
+Sage.Gameplay.ItemsModule.Slots.get -> Sage.Gameplay.EquipSlots!
+Sage.Gameplay.ItemsModule.Start(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Gameplay.Journal
 Sage.Gameplay.Journal.Entries.get -> System.Collections.Generic.List<Sage.Gameplay.Journal.Entry!>!
 Sage.Gameplay.Journal.Entries.set -> void
@@ -691,15 +827,30 @@ Sage.Gameplay.Journal.Entry.Stage.get -> string!
 Sage.Gameplay.Journal.Entry.Stage.set -> void
 Sage.Gameplay.Journal.Journal() -> void
 Sage.Gameplay.Journal.Of(Sage.Core.RecordId quest) -> Sage.Gameplay.Journal.Entry?
+Sage.Gameplay.KnownTopics
+Sage.Gameplay.KnownTopics.KnownTopics() -> void
+Sage.Gameplay.KnownTopics.Topics -> System.Collections.Generic.List<Sage.Core.RecordId>?
 Sage.Gameplay.LightPart
 Sage.Gameplay.LightPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Gameplay.LightPart.Colour -> System.Numerics.Vector3
 Sage.Gameplay.LightPart.Intensity -> float
 Sage.Gameplay.LightPart.LightPart() -> void
+Sage.Gameplay.LightPart.Off -> bool
 Sage.Gameplay.LightPart.Range -> float
 Sage.Gameplay.LightsModule
 Sage.Gameplay.LightsModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Gameplay.LightsModule.LightsModule() -> void
+Sage.Gameplay.Magazine
+Sage.Gameplay.Magazine.Loaded -> System.Collections.Generic.List<Sage.Gameplay.MagazineSlot>?
+Sage.Gameplay.Magazine.Magazine() -> void
+Sage.Gameplay.Magazine.Reloading -> bool
+Sage.Gameplay.Magazine.Reloads -> Sage.Core.RecordId
+Sage.Gameplay.Magazine.RoundsFor(Sage.Core.RecordId attack) -> int
+Sage.Gameplay.Magazine.Timer -> float
+Sage.Gameplay.MagazineSlot
+Sage.Gameplay.MagazineSlot.Attack -> Sage.Core.RecordId
+Sage.Gameplay.MagazineSlot.MagazineSlot() -> void
+Sage.Gameplay.MagazineSlot.Rounds -> int
 Sage.Gameplay.Melee
 Sage.Gameplay.Melee.Attack -> Sage.Core.RecordId
 Sage.Gameplay.Melee.Cooldown -> float
@@ -722,24 +873,66 @@ Sage.Gameplay.ModifierOp.Add = 0 -> Sage.Gameplay.ModifierOp
 Sage.Gameplay.ModifierOp.Multiply = 1 -> Sage.Gameplay.ModifierOp
 Sage.Gameplay.ModifierOp.Override = 2 -> Sage.Gameplay.ModifierOp
 Sage.Gameplay.Mover
+Sage.Gameplay.Mover.Blocked -> bool
 Sage.Gameplay.Mover.CloseAfter -> float
 Sage.Gameplay.Mover.Closed -> System.Numerics.Vector3
+Sage.Gameplay.Mover.ClosedRotation -> System.Numerics.Quaternion
 Sage.Gameplay.Mover.Direction -> sbyte
+Sage.Gameplay.Mover.Halt -> float
 Sage.Gameplay.Mover.HoldRemaining -> float
+Sage.Gameplay.Mover.Locked -> bool
 Sage.Gameplay.Mover.Mover() -> void
+Sage.Gameplay.Mover.OnBlocked -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.Mover.OpenAngle -> float
+Sage.Gameplay.Mover.OpenAxis -> System.Numerics.Vector3
 Sage.Gameplay.Mover.OpenOffset -> System.Numerics.Vector3
+Sage.Gameplay.Mover.Path -> System.Numerics.Vector3[]?
+Sage.Gameplay.Mover.Pivot -> System.Numerics.Vector3
 Sage.Gameplay.Mover.Position -> float
 Sage.Gameplay.Mover.Seconds -> float
+Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverBlocked.Crush = 2 -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverBlocked.Reverse = 0 -> Sage.Gameplay.MoverBlocked
+Sage.Gameplay.MoverBlocked.Stop = 1 -> Sage.Gameplay.MoverBlocked
 Sage.Gameplay.MoverModule
 Sage.Gameplay.MoverModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Gameplay.MoverModule.MoverModule() -> void
 Sage.Gameplay.MoverModule.OnWorldCreated(Sage.Simulation.World! world) -> void
 Sage.Gameplay.MoverPart
+Sage.Gameplay.MoverPart.Angle -> float
 Sage.Gameplay.MoverPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.MoverPart.Axis -> System.Numerics.Vector3
 Sage.Gameplay.MoverPart.CloseAfter -> float
+Sage.Gameplay.MoverPart.Locked -> bool
 Sage.Gameplay.MoverPart.MoverPart() -> void
+Sage.Gameplay.MoverPart.OnBlocked -> Sage.Gameplay.MoverBlocked
 Sage.Gameplay.MoverPart.Open -> System.Numerics.Vector3
+Sage.Gameplay.MoverPart.Path -> System.Numerics.Vector3[]?
+Sage.Gameplay.MoverPart.Pivot -> System.Numerics.Vector3
 Sage.Gameplay.MoverPart.Seconds -> float
+Sage.Gameplay.MoverPart.Speed -> float
+Sage.Gameplay.NavArea
+Sage.Gameplay.NavArea.Area -> Sage.Core.RecordId
+Sage.Gameplay.NavArea.NavArea() -> void
+Sage.Gameplay.NavArea.Size -> System.Numerics.Vector3
+Sage.Gameplay.NavAreaPart
+Sage.Gameplay.NavAreaPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.NavAreaPart.Area -> Sage.Core.RecordRef<Sage.Gameplay.NavAreaRecord!>
+Sage.Gameplay.NavAreaPart.NavAreaPart() -> void
+Sage.Gameplay.NavAreaPart.Size -> System.Numerics.Vector3
+Sage.Gameplay.NavAreaRecord
+Sage.Gameplay.NavAreaRecord.Cost -> float
+Sage.Gameplay.NavAreaRecord.Forbidden -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.FactionRecord!>>!
+Sage.Gameplay.NavAreaRecord.NavAreaRecord() -> void
+Sage.Gameplay.NavAreaRecord.Surfaces -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>>!
+Sage.Gameplay.NavAreaRecord.Water -> bool
+Sage.Gameplay.NavDoor
+Sage.Gameplay.NavDoor.Locked -> bool
+Sage.Gameplay.NavDoor.NavDoor() -> void
+Sage.Gameplay.NavDoorPart
+Sage.Gameplay.NavDoorPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.NavDoorPart.Locked -> bool
+Sage.Gameplay.NavDoorPart.NavDoorPart() -> void
 Sage.Gameplay.NavGrid
 Sage.Gameplay.NavGrid.Block(int x, int y) -> void
 Sage.Gameplay.NavGrid.BlockBox(System.Numerics.Vector3 min, System.Numerics.Vector3 max, float grow) -> void
@@ -760,23 +953,27 @@ Sage.Gameplay.NavGrid.ResetStats() -> void
 Sage.Gameplay.NavGrid.Search(System.Numerics.Vector3 from, System.Numerics.Vector3 to, System.Span<System.Numerics.Vector3> corners, int maxNodes = 4096) -> int
 Sage.Gameplay.NavGrid.Searches.get -> int
 Sage.Gameplay.NavGrid.Width.get -> int
-Sage.Gameplay.Navigation
-Sage.Gameplay.Navigation.CellSize.get -> float
-Sage.Gameplay.Navigation.CellSize.set -> void
-Sage.Gameplay.Navigation.DrawLastGrid(Sage.Simulation.DebugDraw! draw, float seconds = 0) -> void
-Sage.Gameplay.Navigation.Enabled.get -> bool
-Sage.Gameplay.Navigation.Enabled.set -> void
-Sage.Gameplay.Navigation.Grid.get -> Sage.Gameplay.NavGrid!
-Sage.Gameplay.Navigation.MaxNodes.get -> int
-Sage.Gameplay.Navigation.MaxNodes.set -> void
-Sage.Gameplay.Navigation.Navigation() -> void
-Sage.Gameplay.Navigation.NoRoute.get -> int
-Sage.Gameplay.Navigation.Plan(Sage.Simulation.World! world, Sage.Simulation.IPhysicsWorld! space, System.Numerics.Vector3 from, System.Numerics.Vector3 to, float radius, float stepHeight, float maxSlopeDegrees, Sage.Simulation.Entity self, Sage.Simulation.Entity target, ref Sage.Gameplay.NavPath path) -> bool
-Sage.Gameplay.Navigation.Plans.get -> int
-Sage.Gameplay.Navigation.PlansPerTick.get -> int
-Sage.Gameplay.Navigation.PlansPerTick.set -> void
-Sage.Gameplay.Navigation.Refused.get -> int
-Sage.Gameplay.Navigation.ResetStats() -> void
+Sage.Gameplay.NavLink
+Sage.Gameplay.NavLink.Cost -> float
+Sage.Gameplay.NavLink.Disabled -> bool
+Sage.Gameplay.NavLink.End -> System.Numerics.Vector3
+Sage.Gameplay.NavLink.Kind -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLink.NavLink() -> void
+Sage.Gameplay.NavLink.TwoWay -> bool
+Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Drop = 2 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Jump = 1 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Ladder = 3 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Teleport = 4 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkKind.Walk = 0 -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkPart
+Sage.Gameplay.NavLinkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.NavLinkPart.Cost -> float
+Sage.Gameplay.NavLinkPart.End -> System.Numerics.Vector3
+Sage.Gameplay.NavLinkPart.Kind -> Sage.Gameplay.NavLinkKind
+Sage.Gameplay.NavLinkPart.NavLinkPart() -> void
+Sage.Gameplay.NavLinkPart.StartDisabled -> bool
+Sage.Gameplay.NavLinkPart.TwoWay -> bool
 Sage.Gameplay.NavPath
 Sage.Gameplay.NavPath.C0 -> System.Numerics.Vector3
 Sage.Gameplay.NavPath.C1 -> System.Numerics.Vector3
@@ -796,8 +993,89 @@ Sage.Gameplay.NavPath.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Gameplay.NavPath.ReplanIn -> float
 Sage.Gameplay.NavPath.Set(int i, System.Numerics.Vector3 corner) -> void
 Sage.Gameplay.NavPath.Step -> byte
-Sage.Gameplay.NavPath.this[int i].get -> System.Numerics.Vector3
 Sage.Gameplay.NavPath.Walking.get -> bool
+Sage.Gameplay.NavPath.this[int i].get -> System.Numerics.Vector3
+Sage.Gameplay.Navigation
+Sage.Gameplay.Navigation.CellSize.get -> float
+Sage.Gameplay.Navigation.CellSize.set -> void
+Sage.Gameplay.Navigation.DrawLastGrid(Sage.Simulation.DebugDraw! draw, float seconds = 0) -> void
+Sage.Gameplay.Navigation.Enabled.get -> bool
+Sage.Gameplay.Navigation.Enabled.set -> void
+Sage.Gameplay.Navigation.Grid.get -> Sage.Gameplay.NavGrid!
+Sage.Gameplay.Navigation.MaxNodes.get -> int
+Sage.Gameplay.Navigation.MaxNodes.set -> void
+Sage.Gameplay.Navigation.Navigation() -> void
+Sage.Gameplay.Navigation.NoRoute.get -> int
+Sage.Gameplay.Navigation.Plan(Sage.Simulation.World! world, Sage.Simulation.IPhysicsWorld! space, System.Numerics.Vector3 from, System.Numerics.Vector3 to, float radius, float stepHeight, float maxSlopeDegrees, Sage.Simulation.Entity self, Sage.Simulation.Entity target, ref Sage.Gameplay.NavPath path) -> bool
+Sage.Gameplay.Navigation.Plans.get -> int
+Sage.Gameplay.Navigation.PlansPerTick.get -> int
+Sage.Gameplay.Navigation.PlansPerTick.set -> void
+Sage.Gameplay.Navigation.Refused.get -> int
+Sage.Gameplay.Navigation.ResetStats() -> void
+Sage.Gameplay.Navigation.UseMesh.get -> bool
+Sage.Gameplay.Navigation.UseMesh.set -> void
+Sage.Gameplay.Offscreen
+Sage.Gameplay.Offscreen.Corpse -> bool
+Sage.Gameplay.Offscreen.Fight -> string!
+Sage.Gameplay.Offscreen.Offscreen() -> void
+Sage.Gameplay.Offscreen.Speed -> float
+Sage.Gameplay.Offscreen.Strength -> float
+Sage.Gameplay.OffscreenAgent
+Sage.Gameplay.OffscreenAgent.Corpse -> bool
+Sage.Gameplay.OffscreenAgent.Dead -> bool
+Sage.Gameplay.OffscreenAgent.Entity -> System.Collections.Generic.List<System.Text.Json.Nodes.JsonObject!>!
+Sage.Gameplay.OffscreenAgent.Faction -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Fight -> string!
+Sage.Gameplay.OffscreenAgent.Health -> float
+Sage.Gameplay.OffscreenAgent.Id -> string!
+Sage.Gameplay.OffscreenAgent.Lift -> float
+Sage.Gameplay.OffscreenAgent.Name -> string!
+Sage.Gameplay.OffscreenAgent.OffscreenAgent() -> void
+Sage.Gameplay.OffscreenAgent.Prefab -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Route -> System.Collections.Generic.List<System.Numerics.Vector3>!
+Sage.Gameplay.OffscreenAgent.RouteGoal -> System.Numerics.Vector3
+Sage.Gameplay.OffscreenAgent.Routine -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Scene -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenAgent.Speed -> float
+Sage.Gameplay.OffscreenAgent.Strength -> float
+Sage.Gameplay.OffscreenAgent.TracksHealth -> bool
+Sage.Gameplay.OffscreenAgent.X -> double
+Sage.Gameplay.OffscreenAgent.Y -> double
+Sage.Gameplay.OffscreenAgent.Z -> double
+Sage.Gameplay.OffscreenAgents
+Sage.Gameplay.OffscreenAgents.Add(Sage.Gameplay.OffscreenAgent! agent) -> void
+Sage.Gameplay.OffscreenAgents.AfterLoad(Sage.Simulation.World! world) -> void
+Sage.Gameplay.OffscreenAgents.Agents -> System.Collections.Generic.List<Sage.Gameplay.OffscreenAgent!>!
+Sage.Gameplay.OffscreenAgents.Find(Sage.Simulation.PersistentId id) -> Sage.Gameplay.OffscreenAgent?
+Sage.Gameplay.OffscreenAgents.Minute -> long
+Sage.Gameplay.OffscreenAgents.OffscreenAgents() -> void
+Sage.Gameplay.OffscreenDied
+Sage.Gameplay.OffscreenDied.Agent.get -> Sage.Simulation.PersistentId
+Sage.Gameplay.OffscreenDied.Agent.init -> void
+Sage.Gameplay.OffscreenDied.Faction.get -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenDied.Faction.init -> void
+Sage.Gameplay.OffscreenDied.Killer.get -> Sage.Simulation.PersistentId
+Sage.Gameplay.OffscreenDied.Killer.init -> void
+Sage.Gameplay.OffscreenDied.KillerFaction.get -> Sage.Core.RecordId
+Sage.Gameplay.OffscreenDied.KillerFaction.init -> void
+Sage.Gameplay.OffscreenDied.OffscreenDied() -> void
+Sage.Gameplay.OffscreenDied.OffscreenDied(Sage.Simulation.PersistentId Agent, Sage.Core.RecordId Faction, Sage.Simulation.PersistentId Killer, Sage.Core.RecordId KillerFaction) -> void
+Sage.Gameplay.OffscreenFightAttribute
+Sage.Gameplay.OffscreenFightAttribute.OffscreenFightAttribute(string! id) -> void
+Sage.Gameplay.OffscreenFights
+Sage.Gameplay.OffscreenMap
+Sage.Gameplay.OffscreenMap.AddDoor(Sage.Core.RecordId from, System.Numerics.Vector3 exit, Sage.Core.RecordId to, System.Numerics.Vector3 entry) -> void
+Sage.Gameplay.OffscreenMap.Blocked(Sage.Core.RecordId scene, System.Numerics.Vector3 a, System.Numerics.Vector3 b) -> bool
+Sage.Gameplay.OffscreenMap.OffscreenMap() -> void
+Sage.Gameplay.OffscreenMap.TryAnchor(Sage.Core.RecordId scene, string! name, out System.Numerics.Vector3 at) -> bool
+Sage.Gameplay.OffscreenMap.TryDoor(Sage.Core.RecordId from, Sage.Core.RecordId to, out System.Numerics.Vector3 exit, out System.Numerics.Vector3 entry) -> bool
+Sage.Gameplay.OffscreenPart
+Sage.Gameplay.OffscreenPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.OffscreenPart.Corpse -> bool
+Sage.Gameplay.OffscreenPart.Fight -> string!
+Sage.Gameplay.OffscreenPart.OffscreenPart() -> void
+Sage.Gameplay.OffscreenPart.Speed -> float
+Sage.Gameplay.OffscreenPart.Strength -> float
 Sage.Gameplay.Pickup
 Sage.Gameplay.Pickup.Count -> int
 Sage.Gameplay.Pickup.Item -> Sage.Core.RecordId
@@ -809,8 +1087,12 @@ Sage.Gameplay.PickupPart.Item -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
 Sage.Gameplay.PickupPart.PickupPart() -> void
 Sage.Gameplay.Projectile
 Sage.Gameplay.Projectile.Ability -> Sage.Core.RecordId
+Sage.Gameplay.Projectile.Attack -> Sage.Core.RecordId
 Sage.Gameplay.Projectile.Caster -> Sage.Simulation.Entity
+Sage.Gameplay.Projectile.Gravity -> float
 Sage.Gameplay.Projectile.Life -> float
+Sage.Gameplay.Projectile.Passed -> Sage.Simulation.Entity
+Sage.Gameplay.Projectile.Pierce -> int
 Sage.Gameplay.Projectile.Projectile() -> void
 Sage.Gameplay.Projectile.Radius -> float
 Sage.Gameplay.Projectile.Velocity -> System.Numerics.Vector3
@@ -847,11 +1129,6 @@ Sage.Gameplay.QuestRecord.QuestRecord() -> void
 Sage.Gameplay.QuestRecord.Stage(string! id) -> Sage.Gameplay.QuestStage?
 Sage.Gameplay.QuestRecord.Stages -> System.Collections.Generic.List<Sage.Gameplay.QuestStage!>!
 Sage.Gameplay.QuestRecord.Start -> string!
-Sage.Gameplay.Quests
-Sage.Gameplay.QuestsModule
-Sage.Gameplay.QuestsModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
-Sage.Gameplay.QuestsModule.OnWorldCreated(Sage.Simulation.World! world) -> void
-Sage.Gameplay.QuestsModule.QuestsModule() -> void
 Sage.Gameplay.QuestStage
 Sage.Gameplay.QuestStage.Done -> bool
 Sage.Gameplay.QuestStage.Id -> string!
@@ -859,6 +1136,25 @@ Sage.Gameplay.QuestStage.Next -> string!
 Sage.Gameplay.QuestStage.Objectives -> System.Collections.Generic.List<Sage.Gameplay.QuestObjective!>!
 Sage.Gameplay.QuestStage.QuestStage() -> void
 Sage.Gameplay.QuestStage.Text -> string!
+Sage.Gameplay.QuestWatch
+Sage.Gameplay.QuestWatch.Quest -> Sage.Core.RecordId
+Sage.Gameplay.QuestWatch.QuestWatch() -> void
+Sage.Gameplay.QuestWatchPart
+Sage.Gameplay.QuestWatchPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.QuestWatchPart.Quest -> Sage.Core.RecordRef<Sage.Gameplay.QuestRecord!>
+Sage.Gameplay.QuestWatchPart.QuestWatchPart() -> void
+Sage.Gameplay.Quests
+Sage.Gameplay.QuestsModule
+Sage.Gameplay.QuestsModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
+Sage.Gameplay.QuestsModule.OnWorldCreated(Sage.Simulation.World! world) -> void
+Sage.Gameplay.QuestsModule.QuestsModule() -> void
+Sage.Gameplay.RecoilRecord
+Sage.Gameplay.RecoilRecord.PitchMaxDegrees -> float
+Sage.Gameplay.RecoilRecord.PitchMinDegrees -> float
+Sage.Gameplay.RecoilRecord.RecoilRecord() -> void
+Sage.Gameplay.RecoilRecord.ReturnSpeedDegrees -> float
+Sage.Gameplay.RecoilRecord.YawMaxDegrees -> float
+Sage.Gameplay.RecoilRecord.YawMinDegrees -> float
 Sage.Gameplay.Reputation
 Sage.Gameplay.Reputation.Of(Sage.Core.RecordId faction) -> float
 Sage.Gameplay.Reputation.Reputation() -> void
@@ -880,6 +1176,44 @@ Sage.Gameplay.ReputationChanged.ReputationChanged() -> void
 Sage.Gameplay.ReputationChanged.ReputationChanged(Sage.Core.RecordId Faction, float Value, float Change) -> void
 Sage.Gameplay.ReputationChanged.Value.get -> float
 Sage.Gameplay.ReputationChanged.Value.init -> void
+Sage.Gameplay.Routine
+Sage.Gameplay.Routine.Id -> Sage.Core.RecordId
+Sage.Gameplay.Routine.Routine() -> void
+Sage.Gameplay.RoutineEntry
+Sage.Gameplay.RoutineEntry.At -> string!
+Sage.Gameplay.RoutineEntry.Days -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.RoutineEntry.From -> double
+Sage.Gameplay.RoutineEntry.RoutineEntry() -> void
+Sage.Gameplay.RoutineEntry.Scene -> Sage.Core.RecordId
+Sage.Gameplay.RoutineEntry.Schedule -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.RoutineEntry.To -> double
+Sage.Gameplay.RoutinePart
+Sage.Gameplay.RoutinePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.RoutinePart.Id -> Sage.Core.RecordRef<Sage.Gameplay.RoutineRecord!>
+Sage.Gameplay.RoutinePart.RoutinePart() -> void
+Sage.Gameplay.RoutineRecord
+Sage.Gameplay.RoutineRecord.Entries -> System.Collections.Generic.List<Sage.Gameplay.RoutineEntry!>!
+Sage.Gameplay.RoutineRecord.RoutineRecord() -> void
+Sage.Gameplay.RoutineTarget
+Sage.Gameplay.RoutineTarget.Anchor.get -> Sage.Simulation.Entity
+Sage.Gameplay.RoutineTarget.Anchor.init -> void
+Sage.Gameplay.RoutineTarget.At.get -> string!
+Sage.Gameplay.RoutineTarget.At.init -> void
+Sage.Gameplay.RoutineTarget.Elsewhere.get -> bool
+Sage.Gameplay.RoutineTarget.Elsewhere.init -> void
+Sage.Gameplay.RoutineTarget.Entry.get -> int
+Sage.Gameplay.RoutineTarget.Entry.init -> void
+Sage.Gameplay.RoutineTarget.InForce.get -> bool
+Sage.Gameplay.RoutineTarget.RoutineId.get -> Sage.Core.RecordId
+Sage.Gameplay.RoutineTarget.RoutineId.init -> void
+Sage.Gameplay.RoutineTarget.RoutineTarget() -> void
+Sage.Gameplay.RoutineTarget.RoutineTarget(Sage.Core.RecordId RoutineId, int Entry, Sage.Core.RecordId Schedule, string! At, Sage.Core.RecordId Scene, Sage.Simulation.Entity Anchor, bool Elsewhere) -> void
+Sage.Gameplay.RoutineTarget.Scene.get -> Sage.Core.RecordId
+Sage.Gameplay.RoutineTarget.Scene.init -> void
+Sage.Gameplay.RoutineTarget.Schedule.get -> Sage.Core.RecordId
+Sage.Gameplay.RoutineTarget.Schedule.init -> void
+Sage.Gameplay.Routines
+Sage.Gameplay.ShotRandom
 Sage.Gameplay.Spoke
 Sage.Gameplay.Spoke.Listener.get -> Sage.Simulation.Entity
 Sage.Gameplay.Spoke.Listener.init -> void
@@ -889,6 +1223,15 @@ Sage.Gameplay.Spoke.Speaker.get -> Sage.Simulation.Entity
 Sage.Gameplay.Spoke.Speaker.init -> void
 Sage.Gameplay.Spoke.Spoke() -> void
 Sage.Gameplay.Spoke.Spoke(Sage.Simulation.Entity Speaker, Sage.Simulation.Entity Listener, string! Node) -> void
+Sage.Gameplay.Spread
+Sage.Gameplay.SpreadRecord
+Sage.Gameplay.SpreadRecord.BaseDegrees -> float
+Sage.Gameplay.SpreadRecord.CrouchingMultiplier -> float
+Sage.Gameplay.SpreadRecord.GrowthPerShot -> float
+Sage.Gameplay.SpreadRecord.MaxDegrees -> float
+Sage.Gameplay.SpreadRecord.MovingMultiplier -> float
+Sage.Gameplay.SpreadRecord.RecoveryPerSecond -> float
+Sage.Gameplay.SpreadRecord.SpreadRecord() -> void
 Sage.Gameplay.SpriteAnimationExtensions
 Sage.Gameplay.SpriteAnimator
 Sage.Gameplay.SpriteAnimator.Clip -> int
@@ -899,6 +1242,7 @@ Sage.Gameplay.SpriteAnimator.Time -> float
 Sage.Gameplay.SpritePart
 Sage.Gameplay.SpritePart.Animation -> string!
 Sage.Gameplay.SpritePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.SpritePart.Graph -> Sage.Core.RecordRef<Sage.Simulation.AnimGraphRecord!>
 Sage.Gameplay.SpritePart.Material -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
 Sage.Gameplay.SpritePart.Sheet -> Sage.Core.RecordRef<Sage.Simulation.SpriteSheetRecord!>
 Sage.Gameplay.SpritePart.Size -> System.Numerics.Vector2
@@ -920,6 +1264,17 @@ Sage.Gameplay.TagSet.IsEmpty.get -> bool
 Sage.Gameplay.TagSet.Remove(int tag) -> void
 Sage.Gameplay.TagSet.Replace(in Sage.Gameplay.TagSet remove, in Sage.Gameplay.TagSet add) -> Sage.Gameplay.TagSet
 Sage.Gameplay.TagSet.TagSet() -> void
+Sage.Gameplay.TopicInfo
+Sage.Gameplay.TopicInfo.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.TopicInfo.Text -> string!
+Sage.Gameplay.TopicInfo.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Gameplay.TopicInfo.TopicInfo() -> void
+Sage.Gameplay.TopicRecord
+Sage.Gameplay.TopicRecord.Infos -> System.Collections.Generic.List<Sage.Gameplay.TopicInfo!>!
+Sage.Gameplay.TopicRecord.Keyword -> string!
+Sage.Gameplay.TopicRecord.KeywordOf(Sage.Core.RecordId id) -> string!
+Sage.Gameplay.TopicRecord.Known -> bool
+Sage.Gameplay.TopicRecord.TopicRecord() -> void
 Sage.Gameplay.Used
 Sage.Gameplay.Used.Item.get -> Sage.Core.RecordId
 Sage.Gameplay.Used.Item.init -> void
@@ -931,8 +1286,58 @@ Sage.Gameplay.Used.Used() -> void
 Sage.Gameplay.Used.Used(Sage.Simulation.Entity User, Sage.Simulation.Entity Target) -> void
 Sage.Gameplay.Used.User.get -> Sage.Simulation.Entity
 Sage.Gameplay.Used.User.init -> void
-static readonly Sage.Gameplay.GameplayConventionsRecord.DefaultId -> Sage.Core.RecordId
-static readonly Sage.Gameplay.GameplayConventionsRecord.None -> Sage.Gameplay.GameplayConventionsRecord!
+Sage.Gameplay.WeaponFired
+Sage.Gameplay.WeaponFired.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.WeaponFired.Attack.init -> void
+Sage.Gameplay.WeaponFired.Shooter.get -> Sage.Simulation.Entity
+Sage.Gameplay.WeaponFired.Shooter.init -> void
+Sage.Gameplay.WeaponFired.WeaponFired() -> void
+Sage.Gameplay.WeaponFired.WeaponFired(Sage.Simulation.Entity Shooter, Sage.Core.RecordId Attack) -> void
+Sage.Gameplay.WeaponState
+Sage.Gameplay.WeaponState.AppliedPitch -> float
+Sage.Gameplay.WeaponState.AppliedYaw -> float
+Sage.Gameplay.WeaponState.Bloom -> float
+Sage.Gameplay.WeaponState.KickPitch -> float
+Sage.Gameplay.WeaponState.KickYaw -> float
+Sage.Gameplay.WeaponState.LastPitch -> float
+Sage.Gameplay.WeaponState.LastYaw -> float
+Sage.Gameplay.WeaponState.Recovery -> float
+Sage.Gameplay.WeaponState.ReturnSpeed -> float
+Sage.Gameplay.WeaponState.Shots -> uint
+Sage.Gameplay.WeaponState.WeaponState() -> void
+abstract Sage.Gameplay.QuestObjective.Describe(Sage.Simulation.World! world, int count) -> string!
+const Sage.Gameplay.AIConditions.Max = 64 -> int
+const Sage.Gameplay.AIScheduleSelectors.Default = "default" -> string!
+const Sage.Gameplay.AIScheduleSelectors.Rules = "rules" -> string!
+const Sage.Gameplay.BridgeIO.ApplyEffect = "ApplyEffect" -> string!
+const Sage.Gameplay.BridgeIO.GiveItem = "GiveItem" -> string!
+const Sage.Gameplay.BridgeIO.OnDamaged = "OnDamaged" -> string!
+const Sage.Gameplay.BridgeIO.OnDeath = "OnDeath" -> string!
+const Sage.Gameplay.BridgeIO.OnPickedUp = "OnPickedUp" -> string!
+const Sage.Gameplay.BridgeIO.OnQuestFinished = "OnQuestFinished" -> string!
+const Sage.Gameplay.BridgeIO.OnStageChanged = "OnStageChanged" -> string!
+const Sage.Gameplay.BridgeIO.SetFaction = "SetFaction" -> string!
+const Sage.Gameplay.BridgeIO.SetStage = "SetStage" -> string!
+const Sage.Gameplay.BridgeIO.StartDialogue = "StartDialogue" -> string!
+const Sage.Gameplay.DamageNumbers.Default = 4293848814 -> uint
+const Sage.Gameplay.DamageNumbers.Mine = 4294932326 -> uint
+const Sage.Gameplay.GameplayRegistries.MaxTags = 256 -> int
+const Sage.Gameplay.HitDeliveries.Default = "sweep" -> string!
+const Sage.Gameplay.Hitboxes.Layer = "hitbox" -> string!
+const Sage.Gameplay.NavGrid.MaxSide = 96 -> int
+const Sage.Gameplay.NavPath.MaxCorners = 6 -> int
+const Sage.Gameplay.OffscreenFights.Default = "strength" -> string!
+const Sage.Gameplay.OffscreenFights.Range = 12 -> float
+const Sage.Gameplay.OffscreenMap.DoorPart = "load_door" -> string!
+const Sage.Gameplay.QuestHappening.Killed = "killed" -> string!
+const Sage.Gameplay.QuestHappening.Polled = "polled" -> string!
+const Sage.Gameplay.QuestHappening.Talked = "talked" -> string!
+const Sage.Gameplay.TagSet.Capacity = 256 -> int
+override Sage.Gameplay.OffscreenAgent.ToString() -> string!
+override Sage.Gameplay.TagSet.Equals(object? obj) -> bool
+override Sage.Gameplay.TagSet.GetHashCode() -> int
+static Sage.Gameplay.AIConditions.Of(Sage.Simulation.World! world) -> Sage.Gameplay.AIConditions!
+static Sage.Gameplay.AIScheduleSelectors.NameOf(Sage.Gameplay.AIProfileRecord! profile) -> string!
 static Sage.Gameplay.Abilities.With(params Sage.Core.RecordId[]! known) -> Sage.Gameplay.Abilities
 static Sage.Gameplay.AbilityDeliveries.Check(Sage.Core.Vocabularies! vocabularies, Sage.Gameplay.AbilityRecord! ability, Sage.Core.RecordCheck! check) -> void
 static Sage.Gameplay.AbilityDeliveries.NameOf(Sage.Gameplay.AbilityRecord! record) -> string!
@@ -949,21 +1354,28 @@ static Sage.Gameplay.AbilityRules.Explain(Sage.Gameplay.CastRefusal why) -> stri
 static Sage.Gameplay.AbilityRules.OnCooldown(Sage.Simulation.World! world, Sage.Core.RecordStore! records, Sage.Simulation.Entity caster, Sage.Gameplay.AbilityRecord! record) -> bool
 static Sage.Gameplay.AbilityRules.TagsAllow(Sage.Simulation.World! world, Sage.Simulation.Entity caster, Sage.Gameplay.AbilityRecord! record) -> bool
 static Sage.Gameplay.ActiveEffects.Create() -> Sage.Gameplay.ActiveEffects
-static Sage.Gameplay.AIConditions.Of(Sage.Simulation.World! world) -> Sage.Gameplay.AIConditions!
-static Sage.Gameplay.AIScheduleSelectors.NameOf(Sage.Gameplay.AIProfileRecord! profile) -> string!
+static Sage.Gameplay.Ammunition.Loaded(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId attack) -> int
 static Sage.Gameplay.Attributes.Create() -> Sage.Gameplay.Attributes
 static Sage.Gameplay.BasePlugins.All() -> Sage.Simulation.IModule![]!
 static Sage.Gameplay.Combat.ApplyDamage(Sage.Simulation.World! world, in Sage.Gameplay.DamageInfo hit, System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>? alsoApply = null) -> float
+static Sage.Gameplay.Combat.ApplyHit(Sage.Simulation.World! world, in Sage.Gameplay.DamageInfo damage, in Sage.Gameplay.HitResult result, System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>? alsoApply = null) -> float
+static Sage.Gameplay.Combat.ApplyHit(Sage.Simulation.World! world, in Sage.Gameplay.HitRequest request, in Sage.Gameplay.HitResult result, Sage.Gameplay.AttackRecord! attack) -> float
 static Sage.Gameplay.DamageNumbers.Above(System.Numerics.Vector3 point) -> System.Numerics.Vector3
 static Sage.Gameplay.DamageNumbers.ColourFor(Sage.Core.RecordStore! records, Sage.Core.RecordId damageType, bool onThePlayer) -> uint
 static Sage.Gameplay.DialogueRules.CanPick(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Gameplay.DialogueOption! option, out string! why) -> bool
 static Sage.Gameplay.DialogueRules.Current(Sage.Simulation.World! world) -> Sage.Gameplay.DialogueNode?
 static Sage.Gameplay.DialogueRules.Pick(Sage.Simulation.World! world, Sage.Gameplay.DialogueOption! option) -> bool
 static Sage.Gameplay.DialogueRules.Start(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener) -> bool
+static Sage.Gameplay.DialogueTopics.Answer(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> Sage.Gameplay.TopicInfo?
+static Sage.Gameplay.DialogueTopics.Ask(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> Sage.Gameplay.TopicInfo?
+static Sage.Gameplay.DialogueTopics.Available(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, System.Collections.Generic.List<Sage.Gameplay.AvailableTopic>! into) -> int
+static Sage.Gameplay.DialogueTopics.Knows(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
+static Sage.Gameplay.DialogueTopics.Learn(Sage.Simulation.World! world, Sage.Simulation.Entity listener, Sage.Core.RecordId topic) -> bool
 static Sage.Gameplay.Effects.Apply(Sage.Simulation.World! world, Sage.Simulation.Entity target, Sage.Core.RecordId effect, Sage.Simulation.Entity source = default(Sage.Simulation.Entity), float magnitude = 1) -> bool
 static Sage.Gameplay.Effects.IsActive(Sage.Simulation.World! world, Sage.Simulation.Entity target, Sage.Core.RecordId effect) -> bool
 static Sage.Gameplay.Effects.Remove(Sage.Simulation.World! world, Sage.Simulation.Entity target, Sage.Core.RecordId effect) -> int
 static Sage.Gameplay.Factions.AreEnemies(Sage.Simulation.World! world, Sage.Simulation.Entity a, Sage.Simulation.Entity b) -> bool
+static Sage.Gameplay.Factions.AreHostile(Sage.Core.RecordStore! records, Sage.Core.RecordId a, Sage.Core.RecordId b) -> bool
 static Sage.Gameplay.Factions.Between(Sage.Core.RecordStore! records, Sage.Core.RecordId a, Sage.Core.RecordId b) -> Sage.Gameplay.Stance
 static Sage.Gameplay.Factions.Change(Sage.Simulation.World! world, Sage.Core.RecordId faction, float amount) -> void
 static Sage.Gameplay.Factions.FactionOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Core.RecordId
@@ -981,7 +1393,22 @@ static Sage.Gameplay.GameplayExtensions.HasTag(this Sage.Simulation.World! world
 static Sage.Gameplay.GameplayExtensions.RemoveTag(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId tag) -> void
 static Sage.Gameplay.GameplayModules.AddGameplay(this Sage.Simulation.ModuleManager! modules) -> void
 static Sage.Gameplay.GameplayModules.All() -> Sage.Simulation.IModule![]!
+static Sage.Gameplay.HitDeliveries.Check(Sage.Core.Vocabularies! vocabularies, Sage.Gameplay.AttackRecord! attack, Sage.Core.RecordCheck! check) -> void
+static Sage.Gameplay.HitDeliveries.NameOf(Sage.Gameplay.AttackRecord! attack) -> string!
+static Sage.Gameplay.HitDeliveries.Of(Sage.Simulation.World! world, Sage.Gameplay.AttackRecord! attack) -> Sage.Gameplay.IHitDelivery?
+static Sage.Gameplay.HitLocations.HasTag(Sage.Core.RecordStore! records, Sage.Core.RecordId location, Sage.Core.RecordId tag) -> bool
+static Sage.Gameplay.HitResult.Of(in Sage.Gameplay.DamageInfo damage) -> Sage.Gameplay.HitResult
+static Sage.Gameplay.Hitboxes.Mask(Sage.Simulation.IPhysicsWorld! space) -> Sage.Simulation.LayerMask
+static Sage.Gameplay.Hitboxes.Resolve(in Sage.Gameplay.HitResult result) -> Sage.Gameplay.HitResult
+static Sage.Gameplay.Hitboxes.Spawn(Sage.Simulation.World! world, Sage.Simulation.Entity owner, Sage.Core.AssetPath model, byte layer) -> int
+static Sage.Gameplay.Hits.CanBeHurt(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
+static Sage.Gameplay.Hits.Launch(Sage.Simulation.World! world, in Sage.Gameplay.HitRequest request, Sage.Gameplay.AttackRecord! attack) -> Sage.Simulation.Entity
+static Sage.Gameplay.Hits.Ray(Sage.Simulation.IPhysicsWorld! space, Sage.Simulation.Entity attacker, System.Numerics.Vector3 origin, System.Numerics.Vector3 aim, float range, out Sage.Gameplay.HitResult result) -> bool
+static Sage.Gameplay.Hits.Sweep(Sage.Simulation.IPhysicsWorld! space, Sage.Simulation.Entity attacker, System.Numerics.Vector3 origin, System.Numerics.Vector3 aim, float radius, float reach, out Sage.Gameplay.HitResult result) -> bool
 static Sage.Gameplay.Inventory.Create(float capacity = 0) -> Sage.Gameplay.Inventory
+static Sage.Gameplay.ItemUses.CanUse(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, out string! why) -> bool
+static Sage.Gameplay.ItemUses.UseItem(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item) -> bool
+static Sage.Gameplay.ItemUses.UseItem(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, out string! why) -> bool
 static Sage.Gameplay.Items.AddInventory(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, float capacity = 0) -> void
 static Sage.Gameplay.Items.CanEquip(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId item, out string! reason) -> bool
 static Sage.Gameplay.Items.CountOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId item) -> int
@@ -993,14 +1420,14 @@ static Sage.Gameplay.Items.SpawnPickup(this Sage.Simulation.World! world, Sage.C
 static Sage.Gameplay.Items.Take(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId item, int count = 1) -> bool
 static Sage.Gameplay.Items.Unequip(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! slot) -> void
 static Sage.Gameplay.Items.WeightOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> float
-static Sage.Gameplay.ItemUses.CanUse(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, out string! why) -> bool
-static Sage.Gameplay.ItemUses.UseItem(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item) -> bool
-static Sage.Gameplay.ItemUses.UseItem(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, out string! why) -> bool
 static Sage.Gameplay.Melee.With(Sage.Core.RecordId attack) -> Sage.Gameplay.Melee
+static Sage.Gameplay.OffscreenMap.Of(Sage.Simulation.World! world) -> Sage.Gameplay.OffscreenMap!
 static Sage.Gameplay.ProjectileExtensions.Launch(this Sage.Simulation.World! world, Sage.Simulation.Entity caster, Sage.Core.RecordId ability, Sage.Gameplay.AbilityRecord! record, System.Numerics.Vector3 from, System.Numerics.Vector3 direction) -> Sage.Simulation.Entity
+static Sage.Gameplay.ProjectileExtensions.Launch(this Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Core.RecordId attack, Sage.Gameplay.AttackRecord! record, System.Numerics.Vector3 from, System.Numerics.Vector3 direction) -> Sage.Simulation.Entity
 static Sage.Gameplay.Quests.Check(Sage.Simulation.World! world, Sage.Core.RecordId quest = default(Sage.Core.RecordId)) -> void
 static Sage.Gameplay.Quests.Describe(Sage.Simulation.World! world, Sage.Gameplay.QuestObjective! objective, int progress) -> string!
 static Sage.Gameplay.Quests.Finish(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
+static Sage.Gameplay.Quests.HasReached(Sage.Simulation.World! world, Sage.Core.RecordId quest, string! stage) -> bool
 static Sage.Gameplay.Quests.IsActive(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.IsFinished(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.IsNotStarted(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
@@ -1013,8 +1440,18 @@ static Sage.Gameplay.Quests.Progress(Sage.Simulation.World! world, Sage.Simulati
 static Sage.Gameplay.Quests.SetStage(Sage.Simulation.World! world, Sage.Core.RecordId quest, string! stage) -> bool
 static Sage.Gameplay.Quests.StageOf(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> string!
 static Sage.Gameplay.Quests.Start(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
+static Sage.Gameplay.Routines.EntryAt(Sage.Gameplay.RoutineRecord! routine, Sage.Simulation.CalendarRecord! calendar, double elapsed) -> int
+static Sage.Gameplay.Routines.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.RoutineRecord?
+static Sage.Gameplay.Routines.StartOf(Sage.Gameplay.RoutineEntry! entry, double elapsed) -> double
+static Sage.Gameplay.Routines.Target(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.RoutineTarget
+static Sage.Gameplay.ShotRandom.Hash(long tick, int entity, uint shot, uint salt) -> ulong
+static Sage.Gameplay.ShotRandom.Value(long tick, int entity, uint shot, uint salt) -> float
+static Sage.Gameplay.Spread.ConeOf(Sage.Simulation.World! world, Sage.Simulation.Entity shooter, Sage.Gameplay.SpreadRecord! spread) -> float
+static Sage.Gameplay.Spread.Deflect(System.Numerics.Vector3 aim, float coneRadians, long tick, int entity, uint shot, int pellet) -> System.Numerics.Vector3
 static Sage.Gameplay.SpriteAnimationExtensions.PlayClip(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! name, Sage.Core.RecordStore! records) -> void
 static Sage.Gameplay.SpriteAnimator.Play(int clip, float speed = 1) -> Sage.Gameplay.SpriteAnimator
+static readonly Sage.Gameplay.GameplayConventionsRecord.DefaultId -> Sage.Core.RecordId
+static readonly Sage.Gameplay.GameplayConventionsRecord.None -> Sage.Gameplay.GameplayConventionsRecord!
 virtual Sage.Gameplay.QuestObjective.Measure(Sage.Simulation.World! world, Sage.Simulation.Entity player) -> int?
 virtual Sage.Gameplay.QuestObjective.Notice(Sage.Simulation.World! world, in Sage.Gameplay.QuestHappening happened) -> int
 virtual Sage.Gameplay.QuestObjective.Polls.get -> bool

@@ -1,42 +1,197 @@
 #nullable enable
-const Sage.Kits.Rpg.RpgKitModule.Id = "sage.kits.rpg" -> string!
-const Sage.Kits.Rpg.RpgKitModule.MainHand = "MainHand" -> string!
-const Sage.Kits.Rpg.RpgKitModule.OffHand = "OffHand" -> string!
-override Sage.Kits.Rpg.DialogueScreen.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
-override Sage.Kits.Rpg.DialogueScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
-override Sage.Kits.Rpg.DialogueScreen.Hint.get -> string!
-override Sage.Kits.Rpg.DialogueScreen.Width.get -> float
-override Sage.Kits.Rpg.JournalScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
-override Sage.Kits.Rpg.JournalScreen.Hint.get -> string!
-override Sage.Kits.Rpg.JournalScreen.Width.get -> float
-override Sage.Kits.Rpg.SpellmakerScreen.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
-override Sage.Kits.Rpg.SpellmakerScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
-override Sage.Kits.Rpg.SpellmakerScreen.Field.get -> Sage.Simulation.TextField?
-override Sage.Kits.Rpg.SpellmakerScreen.Hint.get -> string!
-override Sage.Kits.Rpg.SpellmakerScreen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
-override Sage.Kits.Rpg.SpellmakerScreen.Width.get -> float
+Sage.Kits.Rpg.AmmoReadout
+Sage.Kits.Rpg.AmmoReadout.AmmoReadout() -> void
+Sage.Kits.Rpg.AmmoReadout.Attack.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.AmmoReadout.Carried.get -> int
+Sage.Kits.Rpg.AmmoReadout.Has.get -> bool
+Sage.Kits.Rpg.AmmoReadout.Loaded.get -> int
+Sage.Kits.Rpg.AmmoReadout.Magazine.get -> int
+Sage.Kits.Rpg.AmmoReadout.Read(Sage.Simulation.World! world, Sage.Simulation.Entity wielder) -> bool
+Sage.Kits.Rpg.AmmoReadout.Text.get -> string!
 Sage.Kits.Rpg.DialogueScreen
 Sage.Kits.Rpg.DialogueScreen.DialogueScreen() -> void
+Sage.Kits.Rpg.EquipmentView
+Sage.Kits.Rpg.EquipmentView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.EquipmentView.Ammo.get -> Sage.Kits.Rpg.AmmoReadout!
+Sage.Kits.Rpg.EquipmentView.CandidateRow
+Sage.Kits.Rpg.EquipmentView.CandidateRow.CandidateRow() -> void
+Sage.Kits.Rpg.EquipmentView.CandidateRow.Item.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.EquipmentView.CandidateRow.Slot.get -> string!
+Sage.Kits.Rpg.EquipmentView.CandidateRow.Text.get -> string!
+Sage.Kits.Rpg.EquipmentView.Candidates.get -> System.Collections.Generic.List<Sage.Kits.Rpg.EquipmentView.CandidateRow!>!
+Sage.Kits.Rpg.EquipmentView.EquipmentView() -> void
+Sage.Kits.Rpg.EquipmentView.Message.get -> string!
+Sage.Kits.Rpg.EquipmentView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.EquipmentView.SlotRow
+Sage.Kits.Rpg.EquipmentView.SlotRow.IsEmpty.get -> bool
+Sage.Kits.Rpg.EquipmentView.SlotRow.Item.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.EquipmentView.SlotRow.Slot.get -> string!
+Sage.Kits.Rpg.EquipmentView.SlotRow.SlotRow() -> void
+Sage.Kits.Rpg.EquipmentView.SlotRow.Text.get -> string!
+Sage.Kits.Rpg.EquipmentView.Slots.get -> System.Collections.Generic.List<Sage.Kits.Rpg.EquipmentView.SlotRow!>!
 Sage.Kits.Rpg.GameplayPanels
+Sage.Kits.Rpg.GridCell
+Sage.Kits.Rpg.GridCell.Grid.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.GridCell.GridCell() -> void
+Sage.Kits.Rpg.GridCell.IsEmpty.get -> bool
+Sage.Kits.Rpg.GridCell.Item.get -> Sage.Kits.Rpg.GridItem?
+Sage.Kits.Rpg.GridCell.Label.get -> string!
+Sage.Kits.Rpg.GridCell.Style.get -> string!
+Sage.Kits.Rpg.GridCell.Tooltip.get -> string!
+Sage.Kits.Rpg.GridCell.X.get -> int
+Sage.Kits.Rpg.GridCell.Y.get -> int
+Sage.Kits.Rpg.GridItem
+Sage.Kits.Rpg.GridItem.Count.get -> int
+Sage.Kits.Rpg.GridItem.Covers(int x, int y) -> bool
+Sage.Kits.Rpg.GridItem.Grid.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.GridItem.GridItem() -> void
+Sage.Kits.Rpg.GridItem.Height.get -> int
+Sage.Kits.Rpg.GridItem.Item.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.GridItem.Label.get -> string!
+Sage.Kits.Rpg.GridItem.Tooltip.get -> string!
+Sage.Kits.Rpg.GridItem.Weight.get -> float
+Sage.Kits.Rpg.GridItem.Width.get -> int
+Sage.Kits.Rpg.GridItem.X.get -> int
+Sage.Kits.Rpg.GridItem.Y.get -> int
+Sage.Kits.Rpg.GridPlacement
+Sage.Kits.Rpg.GridPlacement.GridPlacement() -> void
+Sage.Kits.Rpg.GridPlacement.Item -> Sage.Core.RecordId
+Sage.Kits.Rpg.GridPlacement.X -> int
+Sage.Kits.Rpg.GridPlacement.Y -> int
+Sage.Kits.Rpg.IPriceRule
+Sage.Kits.Rpg.IPriceRule.Price(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, bool buying) -> int
+Sage.Kits.Rpg.InventoryView
+Sage.Kits.Rpg.InventoryView.Bag.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.InventoryView.InventoryView() -> void
+Sage.Kits.Rpg.ItemGrid
+Sage.Kits.Rpg.ItemGrid.Capacity.get -> float
+Sage.Kits.Rpg.ItemGrid.CellAt(int x, int y) -> Sage.Kits.Rpg.GridCell?
+Sage.Kits.Rpg.ItemGrid.Cells.get -> System.Collections.Generic.List<Sage.Kits.Rpg.GridCell!>!
+Sage.Kits.Rpg.ItemGrid.Columns.get -> int
+Sage.Kits.Rpg.ItemGrid.Fits(int width, int height, int x, int y, Sage.Kits.Rpg.GridItem? ignore = null) -> bool
+Sage.Kits.Rpg.ItemGrid.ItemAt(int x, int y) -> Sage.Kits.Rpg.GridItem?
+Sage.Kits.Rpg.ItemGrid.ItemGrid(int columns = 8, int minRows = 6) -> void
+Sage.Kits.Rpg.ItemGrid.Items.get -> System.Collections.Generic.List<Sage.Kits.Rpg.GridItem!>!
+Sage.Kits.Rpg.ItemGrid.Limited.get -> bool
+Sage.Kits.Rpg.ItemGrid.MinRows.get -> int
+Sage.Kits.Rpg.ItemGrid.Move(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, int x, int y) -> bool
+Sage.Kits.Rpg.ItemGrid.Owner.get -> Sage.Simulation.Entity
+Sage.Kits.Rpg.ItemGrid.Refresh(Sage.Simulation.World! world, Sage.Simulation.Entity owner) -> bool
+Sage.Kits.Rpg.ItemGrid.Resize(int columns, int minRows) -> void
+Sage.Kits.Rpg.ItemGrid.Restyle(Sage.Kits.Rpg.GridItem? held) -> void
+Sage.Kits.Rpg.ItemGrid.Rows.get -> int
+Sage.Kits.Rpg.ItemGrid.Unlimited.get -> bool
+Sage.Kits.Rpg.ItemGrid.Version.get -> int
+Sage.Kits.Rpg.ItemGrid.Weight.get -> float
+Sage.Kits.Rpg.ItemGridPlacements
+Sage.Kits.Rpg.ItemGridPlacements.ItemGridPlacements() -> void
+Sage.Kits.Rpg.ItemGridPlacements.Placed -> System.Collections.Generic.List<Sage.Kits.Rpg.GridPlacement>?
+Sage.Kits.Rpg.ItemGridView
+Sage.Kits.Rpg.ItemGridView.Held.get -> Sage.Kits.Rpg.GridItem?
+Sage.Kits.Rpg.ItemGridView.HeldLabel.get -> string!
+Sage.Kits.Rpg.ItemGridView.Holding.get -> bool
+Sage.Kits.Rpg.ItemGridView.ItemGridView(params Sage.Kits.Rpg.ItemGrid![]! grids) -> void
+Sage.Kits.Rpg.ItemGridView.Message.get -> string!
+Sage.Kits.Rpg.ItemGridView.Message.set -> void
 Sage.Kits.Rpg.JournalScreen
 Sage.Kits.Rpg.JournalScreen.JournalScreen() -> void
+Sage.Kits.Rpg.JournalView
+Sage.Kits.Rpg.JournalView.Active.get -> int
+Sage.Kits.Rpg.JournalView.Empty.get -> bool
+Sage.Kits.Rpg.JournalView.Finished.get -> int
+Sage.Kits.Rpg.JournalView.JournalView() -> void
+Sage.Kits.Rpg.JournalView.Line
+Sage.Kits.Rpg.JournalView.Line.Done.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Line() -> void
+Sage.Kits.Rpg.JournalView.Line.Objective.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Progress.get -> string!
+Sage.Kits.Rpg.JournalView.Line.Quest.get -> bool
+Sage.Kits.Rpg.JournalView.Line.QuestId.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.JournalView.Line.Stage.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Text.get -> string!
+Sage.Kits.Rpg.JournalView.Lines.get -> System.Collections.Generic.List<Sage.Kits.Rpg.JournalView.Line!>!
+Sage.Kits.Rpg.JournalView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.LootView
+Sage.Kits.Rpg.LootView.Bag.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.LootView.Container.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.LootView.ContainerName.get -> string!
+Sage.Kits.Rpg.LootView.IsEmpty.get -> bool
+Sage.Kits.Rpg.LootView.LootView() -> void
+Sage.Kits.Rpg.LootView.TakeAll(Sage.Simulation.World! world, Sage.Simulation.Entity from, Sage.Simulation.Entity to) -> int
+Sage.Kits.Rpg.MapMarker
+Sage.Kits.Rpg.MapMarker.Label -> string!
+Sage.Kits.Rpg.MapMarker.MapMarker() -> void
+Sage.Kits.Rpg.MapMarker.Style -> string!
+Sage.Kits.Rpg.MapView
+Sage.Kits.Rpg.MapView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.MapView.Count.get -> int
+Sage.Kits.Rpg.MapView.Destinations.get -> System.Collections.Generic.List<Sage.Kits.Rpg.MapView.Marker!>!
+Sage.Kits.Rpg.MapView.HasDestinations.get -> bool
+Sage.Kits.Rpg.MapView.HasPlayer.get -> bool
+Sage.Kits.Rpg.MapView.MapView() -> void
+Sage.Kits.Rpg.MapView.Marker
+Sage.Kits.Rpg.MapView.Marker.CanTravel.get -> bool
+Sage.Kits.Rpg.MapView.Marker.Distance.get -> int
+Sage.Kits.Rpg.MapView.Marker.Entity.get -> Sage.Simulation.Entity
+Sage.Kits.Rpg.MapView.Marker.Label.get -> string!
+Sage.Kits.Rpg.MapView.Marker.Marker() -> void
+Sage.Kits.Rpg.MapView.Marker.Point.get -> Sage.Simulation.TravelDestination?
+Sage.Kits.Rpg.MapView.Marker.Style.get -> string?
+Sage.Kits.Rpg.MapView.Marker.TravelHours.get -> string!
+Sage.Kits.Rpg.MapView.Marker.X.get -> float
+Sage.Kits.Rpg.MapView.Marker.Y.get -> float
+Sage.Kits.Rpg.MapView.Markers.get -> System.Collections.Generic.List<Sage.Kits.Rpg.MapView.Marker!>!
+Sage.Kits.Rpg.MapView.Range.get -> int
+Sage.Kits.Rpg.MapView.Refresh(in Sage.UI.UiBindContext context) -> void
 Sage.Kits.Rpg.ReadiedSpell
+Sage.Kits.Rpg.Rest
+Sage.Kits.Rpg.RestKind
+Sage.Kits.Rpg.RestKind.Sleep = 0 -> Sage.Kits.Rpg.RestKind
+Sage.Kits.Rpg.RestKind.Wait = 1 -> Sage.Kits.Rpg.RestKind
+Sage.Kits.Rpg.RestView
+Sage.Kits.Rpg.RestView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.RestView.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Kits.Rpg.RestKind kind) -> bool
+Sage.Kits.Rpg.RestView.CanSleep.get -> bool
+Sage.Kits.Rpg.RestView.CanWait.get -> bool
+Sage.Kits.Rpg.RestView.Hours.get -> int
+Sage.Kits.Rpg.RestView.Hours.set -> void
+Sage.Kits.Rpg.RestView.MaxHours.get -> int
+Sage.Kits.Rpg.RestView.Message.get -> string!
+Sage.Kits.Rpg.RestView.Now.get -> string!
+Sage.Kits.Rpg.RestView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.RestView.Refused.get -> string!
+Sage.Kits.Rpg.RestView.RestView() -> void
+Sage.Kits.Rpg.RestView.Subject.get -> Sage.Simulation.Entity
 Sage.Kits.Rpg.RpgConventions
 Sage.Kits.Rpg.RpgConventionsRecord
 Sage.Kits.Rpg.RpgConventionsRecord.CastAction -> string!
+Sage.Kits.Rpg.RpgConventionsRecord.GridSize.get -> (int Columns, int Rows)
+Sage.Kits.Rpg.RpgConventionsRecord.InventoryGrid -> System.Numerics.Vector2
+Sage.Kits.Rpg.RpgConventionsRecord.RestEffect -> Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>
+Sage.Kits.Rpg.RpgConventionsRecord.RestEnemyRange -> float
+Sage.Kits.Rpg.RpgConventionsRecord.RestMaxHours -> int
 Sage.Kits.Rpg.RpgConventionsRecord.RpgConventionsRecord() -> void
 Sage.Kits.Rpg.RpgConventionsRecord.SpellNamespace -> string!
+Sage.Kits.Rpg.RpgItemRecord
+Sage.Kits.Rpg.RpgItemRecord.Footprint.get -> (int Width, int Height)
+Sage.Kits.Rpg.RpgItemRecord.Grid -> System.Numerics.Vector2
+Sage.Kits.Rpg.RpgItemRecord.RpgItemRecord() -> void
 Sage.Kits.Rpg.RpgKitModule
 Sage.Kits.Rpg.RpgKitModule.Dependencies.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
 Sage.Kits.Rpg.RpgKitModule.Init(Sage.Simulation.ModuleContext! ctx) -> void
 Sage.Kits.Rpg.RpgKitModule.OnWorldCreated(Sage.Simulation.World! world) -> void
 Sage.Kits.Rpg.RpgKitModule.RpgKitModule() -> void
 Sage.Kits.Rpg.RpgKitModule.Start(Sage.Simulation.ModuleContext! ctx) -> void
-Sage.Kits.Rpg.Spellbook
-Sage.Kits.Rpg.Spellbook.AfterLoad(Sage.Simulation.World! world) -> void
-Sage.Kits.Rpg.Spellbook.Drafts.get -> System.Collections.Generic.List<Sage.Kits.Rpg.SpellDraft!>!
-Sage.Kits.Rpg.Spellbook.Drafts.set -> void
-Sage.Kits.Rpg.Spellbook.Spellbook() -> void
+Sage.Kits.Rpg.ShopView
+Sage.Kits.Rpg.ShopView.Bag.get -> Sage.Kits.Rpg.ItemGrid!
+Sage.Kits.Rpg.ShopView.Balance.get -> int
+Sage.Kits.Rpg.ShopView.HeldIsStock.get -> bool
+Sage.Kits.Rpg.ShopView.HeldPrice.get -> int
+Sage.Kits.Rpg.ShopView.MerchantName.get -> string!
+Sage.Kits.Rpg.ShopView.Prices.get -> Sage.Kits.Rpg.IPriceRule!
+Sage.Kits.Rpg.ShopView.Prices.set -> void
+Sage.Kits.Rpg.ShopView.ShopView() -> void
+Sage.Kits.Rpg.ShopView.Stock.get -> Sage.Kits.Rpg.ItemGrid!
 Sage.Kits.Rpg.SpellDraft
 Sage.Kits.Rpg.SpellDraft.Damage -> float
 Sage.Kits.Rpg.SpellDraft.DamageType -> Sage.Core.RecordId
@@ -49,10 +204,6 @@ Sage.Kits.Rpg.SpellDraft.Radius -> float
 Sage.Kits.Rpg.SpellDraft.Range -> float
 Sage.Kits.Rpg.SpellDraft.SpellDraft() -> void
 Sage.Kits.Rpg.SpellDraft.Targeting -> Sage.Gameplay.AbilityTargeting
-Sage.Kits.Rpg.Spellmaker
-Sage.Kits.Rpg.SpellmakerScreen
-Sage.Kits.Rpg.SpellmakerScreen.Draft.get -> Sage.Kits.Rpg.SpellDraft!
-Sage.Kits.Rpg.SpellmakerScreen.SpellmakerScreen() -> void
 Sage.Kits.Rpg.SpellResult
 Sage.Kits.Rpg.SpellResult.Cost.get -> float
 Sage.Kits.Rpg.SpellResult.Cost.init -> void
@@ -64,15 +215,87 @@ Sage.Kits.Rpg.SpellResult.Problem.get -> string!
 Sage.Kits.Rpg.SpellResult.Problem.init -> void
 Sage.Kits.Rpg.SpellResult.SpellResult() -> void
 Sage.Kits.Rpg.SpellResult.SpellResult(bool Ok, Sage.Core.RecordId Id, float Cost, string! Problem) -> void
-static readonly Sage.Kits.Rpg.RpgConventionsRecord.Default -> Sage.Kits.Rpg.RpgConventionsRecord!
+Sage.Kits.Rpg.Spellbook
+Sage.Kits.Rpg.Spellbook.AfterLoad(Sage.Simulation.World! world) -> void
+Sage.Kits.Rpg.Spellbook.Drafts.get -> System.Collections.Generic.List<Sage.Kits.Rpg.SpellDraft!>!
+Sage.Kits.Rpg.Spellbook.Drafts.set -> void
+Sage.Kits.Rpg.Spellbook.Spellbook() -> void
+Sage.Kits.Rpg.Spellmaker
+Sage.Kits.Rpg.SpellmakerScreen
+Sage.Kits.Rpg.SpellmakerScreen.Draft.get -> Sage.Kits.Rpg.SpellDraft!
+Sage.Kits.Rpg.SpellmakerScreen.SpellmakerScreen() -> void
+Sage.Kits.Rpg.StubPriceRule
+Sage.Kits.Rpg.StubPriceRule.Price(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, bool buying) -> int
+Sage.Kits.Rpg.StubPriceRule.StubPriceRule() -> void
+Sage.Kits.Rpg.TopicsView
+Sage.Kits.Rpg.TopicsView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.TopicsView.Answer.get -> string!
+Sage.Kits.Rpg.TopicsView.Ask(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener, Sage.Kits.Rpg.TopicsView.TopicRow! row) -> Sage.Gameplay.TopicInfo?
+Sage.Kits.Rpg.TopicsView.Asked.get -> string!
+Sage.Kits.Rpg.TopicsView.HasTopics.get -> bool
+Sage.Kits.Rpg.TopicsView.NoTopics.get -> bool
+Sage.Kits.Rpg.TopicsView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.TopicsView.Speaker.get -> string!
+Sage.Kits.Rpg.TopicsView.TopicRow
+Sage.Kits.Rpg.TopicsView.TopicRow.Asked.get -> bool
+Sage.Kits.Rpg.TopicsView.TopicRow.Keyword.get -> string!
+Sage.Kits.Rpg.TopicsView.TopicRow.Style.get -> string!
+Sage.Kits.Rpg.TopicsView.TopicRow.Topic.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.TopicsView.TopicRow.TopicRow() -> void
+Sage.Kits.Rpg.TopicsView.Topics.get -> System.Collections.Generic.List<Sage.Kits.Rpg.TopicsView.TopicRow!>!
+Sage.Kits.Rpg.TopicsView.TopicsView() -> void
+abstract Sage.Kits.Rpg.ItemGridView.OwnerOf(int grid, in Sage.UI.UiBindContext context) -> Sage.Simulation.Entity
+const Sage.Kits.Rpg.GridCell.EmptyStyle = "rpg:cell" -> string!
+const Sage.Kits.Rpg.GridCell.HeldStyle = "rpg:cell_held" -> string!
+const Sage.Kits.Rpg.GridCell.ItemStyle = "rpg:cell_item" -> string!
+const Sage.Kits.Rpg.LootView.TakeAllButton = "take_all" -> string!
+const Sage.Kits.Rpg.MapView.MinimumRange = 20 -> float
+const Sage.Kits.Rpg.MapView.RangeStep = 10 -> float
+const Sage.Kits.Rpg.MapView.TravelStyle = "rpg:map_travel" -> string!
+const Sage.Kits.Rpg.Rest.SleepReason = "rest" -> string!
+const Sage.Kits.Rpg.Rest.WaitReason = "wait" -> string!
+const Sage.Kits.Rpg.RestView.DefaultHours = 8 -> int
+const Sage.Kits.Rpg.RestView.LessButton = "less" -> string!
+const Sage.Kits.Rpg.RestView.MoreButton = "more" -> string!
+const Sage.Kits.Rpg.RestView.SleepButton = "sleep" -> string!
+const Sage.Kits.Rpg.RestView.WaitButton = "wait" -> string!
+const Sage.Kits.Rpg.RpgKitModule.ContentNamespace = "rpg" -> string!
+const Sage.Kits.Rpg.RpgKitModule.Id = "sage.kits.rpg" -> string!
+const Sage.Kits.Rpg.RpgKitModule.MainHand = "MainHand" -> string!
+const Sage.Kits.Rpg.RpgKitModule.OffHand = "OffHand" -> string!
+const Sage.Kits.Rpg.TopicsView.AskedStyle = "rpg:topic_asked" -> string!
+const Sage.Kits.Rpg.TopicsView.TopicStyle = "rpg:topic" -> string!
+override Sage.Kits.Rpg.DialogueScreen.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
+override Sage.Kits.Rpg.DialogueScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+override Sage.Kits.Rpg.DialogueScreen.Hint.get -> string!
+override Sage.Kits.Rpg.DialogueScreen.Width.get -> float
+override Sage.Kits.Rpg.JournalScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+override Sage.Kits.Rpg.JournalScreen.Hint.get -> string!
+override Sage.Kits.Rpg.JournalScreen.Width.get -> float
+override Sage.Kits.Rpg.LootView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+override Sage.Kits.Rpg.LootView.Refresh(in Sage.UI.UiBindContext context) -> void
+override Sage.Kits.Rpg.ShopView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+override Sage.Kits.Rpg.ShopView.Refresh(in Sage.UI.UiBindContext context) -> void
+override Sage.Kits.Rpg.SpellmakerScreen.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
+override Sage.Kits.Rpg.SpellmakerScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+override Sage.Kits.Rpg.SpellmakerScreen.Field.get -> Sage.Simulation.TextField?
+override Sage.Kits.Rpg.SpellmakerScreen.Hint.get -> string!
+override Sage.Kits.Rpg.SpellmakerScreen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+override Sage.Kits.Rpg.SpellmakerScreen.Width.get -> float
 static Sage.Kits.Rpg.GameplayPanels.ComposedSpells(Sage.Simulation.World! world, Sage.Simulation.Panel? into = null) -> Sage.Simulation.Panel!
 static Sage.Kits.Rpg.GameplayPanels.Inventory(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Simulation.Panel? into = null) -> Sage.Simulation.Panel!
-static Sage.Kits.Rpg.GameplayPanels.Spellbook(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Simulation.Panel? into = null) -> Sage.Simulation.Panel!
 static Sage.Kits.Rpg.GameplayPanels.SpellEffects(Sage.Simulation.World! world, Sage.Simulation.Panel? into = null) -> Sage.Simulation.Panel!
+static Sage.Kits.Rpg.GameplayPanels.Spellbook(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Simulation.Panel? into = null) -> Sage.Simulation.Panel!
+static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, out string! reason) -> bool
 static Sage.Kits.Rpg.ReadiedSpell.Readied(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Core.RecordId
 static Sage.Kits.Rpg.ReadiedSpell.Ready(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId ability) -> bool
+static Sage.Kits.Rpg.Rest.Begin(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Kits.Rpg.RestKind kind, double hours, out string! reason) -> bool
+static Sage.Kits.Rpg.Rest.Can(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Kits.Rpg.RestKind kind, double hours, out string! reason) -> bool
+static Sage.Kits.Rpg.Rest.EnemyNear(Sage.Simulation.World! world, Sage.Simulation.Entity who, float range) -> Sage.Simulation.Entity
 static Sage.Kits.Rpg.RpgConventions.Of(Sage.Core.RecordStore! records) -> Sage.Kits.Rpg.RpgConventionsRecord!
 static Sage.Kits.Rpg.RpgConventions.Of(Sage.Simulation.World! world) -> Sage.Kits.Rpg.RpgConventionsRecord!
+static Sage.Kits.Rpg.RpgItemRecord.Of(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> (int Width, int Height)
+static Sage.Kits.Rpg.SpellResult.Failed(string! problem) -> Sage.Kits.Rpg.SpellResult
 static Sage.Kits.Rpg.Spellmaker.Book(Sage.Simulation.World! world) -> Sage.Kits.Rpg.Spellbook!
 static Sage.Kits.Rpg.Spellmaker.CanCompose(Sage.Simulation.World! world, Sage.Kits.Rpg.SpellDraft! draft, out string! problem) -> bool
 static Sage.Kits.Rpg.Spellmaker.Compose(Sage.Simulation.World! world, Sage.Kits.Rpg.SpellDraft! draft) -> Sage.Kits.Rpg.SpellResult
@@ -82,4 +305,14 @@ static Sage.Kits.Rpg.Spellmaker.IdOf(Sage.Core.RecordStore! records, string! nam
 static Sage.Kits.Rpg.Spellmaker.Namespace(Sage.Core.RecordStore! records) -> string!
 static Sage.Kits.Rpg.Spellmaker.Price(Sage.Core.RecordStore! records, Sage.Kits.Rpg.SpellDraft! draft) -> float
 static Sage.Kits.Rpg.Spellmaker.Restore(Sage.Simulation.World! world) -> int
-static Sage.Kits.Rpg.SpellResult.Failed(string! problem) -> Sage.Kits.Rpg.SpellResult
+static readonly Sage.Kits.Rpg.RpgConventionsRecord.Default -> Sage.Kits.Rpg.RpgConventionsRecord!
+static readonly Sage.Kits.Rpg.RpgKitModule.EquipmentScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.InventoryScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.LootScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.ModsScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.RestScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.TopicsScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.StubPriceRule.Instance -> Sage.Kits.Rpg.StubPriceRule!
+virtual Sage.Kits.Rpg.ItemGridView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.Back(in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.Refresh(in Sage.UI.UiBindContext context) -> void

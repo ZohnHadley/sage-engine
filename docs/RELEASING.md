@@ -126,7 +126,11 @@ The RPG kit, the Sandbox, Hello and the `sage-game` template declare `>=0.1`.
 3. Review `docs/` for the version (MAKING_A_GAME's install line names the templates' file), merge.
 4. Tag the merge commit and push the tag: `git tag -a v0.1.0 -m "Sage 0.1.0" && git push origin v0.1.0`.
    Every build of that commit is now `0.1.0`; the next commit is `0.1.1-alpha.0.1`.
-5. Pack from the tag (`tools/pack_sdk.sh <feed> --build`); nothing is published yet (REDESIGN §6 item 7).
+5. The tag starts the release workflow ([`.github/workflows/release.yml`](../.github/workflows/release.yml)):
+   on Windows, so the Player's shaders compile, it builds the tagged commit in all three configurations,
+   runs the tests, packs the SDK, the Player and the templates (`tools/pack_sdk.sh`), checks they carry the
+   tag's version, and creates the GitHub release with the three `.nupkg` files attached. Nothing goes to a
+   public feed (REDESIGN §6 item 7, #296). To pack by hand instead: `tools/pack_sdk.sh <feed> --build`.
 
 To start a minor rather than a patch after a release (0.2.0 rather than 0.1.1), nothing needs doing
 until the tag: the pre-releases say 0.1.1-alpha, and tagging `v0.2.0` is what makes it 0.2.0. A branch
