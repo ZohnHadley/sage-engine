@@ -124,20 +124,7 @@ The step is called from the simulation thread, and Bepu spreads its work over it
 
 Milestone 4k, Joints and ragdolls (epic #130), is done: #242 to #249 are merged. A ragdoll head that rocks at about its `settleSpeed` can take ten seconds or more to settle; that is left for later (design 12, "As built (phase 4k's exit)").
 
-Milestone 4l, Physics, movement and navigation (epic #258):
-
-- #259 4l-1 Narrow-phase overlap query and depenetration for the character controller (P0)
-- #260 4l-2 Movers sweep and push or block what is in their way (closing doors, TODO bug 61) (P0)
-- #261 4l-3 Movers become kinematic bodies with velocity (and carry riders) (P1)
-- #262 4l-4 Swimming and water volumes (P1)
-- ~~#263 4l-5 Ladders and climbing (P1)~~ done: the `ladder` part and the controller's climb
-- #266 4l-8 Rotating and multi-stage movers (hinged doors, path movers) (P2)
-- #267 4l-9 Movement modes in the controller: noclip/fly, GoldSrc air-strafe, smooth crouch, crouching collider (P2)
-- ~~#268 4l-10 Moving a physics shape in place and parented colliders (P2)~~ done: `SetShape`, colliders on child entities, compounds
-- #269 4l-11 Game events from physics (Collided, TriggerEntered/Exited) and richer queries (P2)
-- #270 4l-12 Physics materials and surface types (P2)
-- ~~#272 4l-14 Mover and physics test coverage (P2)~~ done: `MoverTests` and `MoverBudgetTests`
-- ~~#273 4l-15 Perf and determinism: 40 B/tick allocation, hitbox cost, sleeping and rebase wake (P3)~~ done: the step allocates nothing, bit-identical runs on any core count, the hitbox budget, sleepers stay asleep across a rebase
+Milestone 4l, Physics, movement and navigation (epic #258), is done for physics: #259 to #263, #266 to #270, #272 and #273 are merged, and every row above is Done. What the design notes still list as left has no issue yet (design 10): the water surface's drawing is #411; the `impact` cue, decal and penetration hints are carried for weapon code that does not read them yet (#306 draws decals); a collider reparented after it has a body is not rebuilt by the sync (call `SetShape`); kinematic children are teleported with no velocity; crouch-jumping and a crouching animation state; mounts (TODO F8).
 
 Navigation issues of the same milestone (#264, #265, #271) are in sheet [09](09-navigation-and-ai.md).
 

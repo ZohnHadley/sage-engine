@@ -39,7 +39,7 @@ An **action** is a named input with a kind:
 
 - **Bindings** are data: an **input-map record** (05 §3.5) per context.
 - Several bindings per action. Composite bindings (`W/A/S/D` → `Move`). Modifiers (`Ctrl+Z` uses the existing exact-chord logic). Per-binding scale, dead zone and invert.
-- **Rebinding:** the player's changes are saved to `user://input.json` as **record patches** (`"patch": true`), applied after all mods. That reuses the one merge rule instead of inventing a second one.
+- **Rebinding:** the player's changes are saved to `user://input.json` as **record patches** (`"patch": true`), applied after all mods. That reuses the one merge rule instead of inventing a second one. *The design; not built yet (#328).*
 
 ### 3.3 Input contexts
 A stack, highest priority first:
@@ -98,9 +98,9 @@ Text typed into UI fields (the console, name entry, editor fields) comes from Mo
 - **Fixed on the way (#40):** the keyboard and mouse listeners rolled their previous state at the *end* of `Update`, so every polled edge (`IsKeyPressed`…) read false afterwards, and Escape-to-quit never worked. They now roll at the start.
 - **Not yet:**
   - ~~an `Editor` input map~~ **done (#219)**: `editor`, with `EditorMove`, on only in the editor mode (15 §10f); the free camera's right-drag look still reads the mouse (§14 step 4);
-  - mouse capture (it comes with a possessed pawn);
-  - `bind`/`unbind` + `user://input.json` (§14 step 5);
-  - `in_showactions`, `joy_deadzone` (dead zones are per binding);
+  - mouse capture (it comes with a possessed pawn; the handoff with menus is #334);
+  - `bind`/`unbind` + `user://input.json` (§14 step 5, #328);
+  - `in_showactions` (#332), `joy_deadzone` (dead zones are per binding);
   - text input stays with ImGui.
 
 ### 3.7 What counts as a press (review #60)
@@ -193,14 +193,14 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
 
 ## 7. File formats
 - Input-map records (JSON, §4).
-- `user://input.json`: the player's rebinds as record patches.
+- `user://input.json`: the player's rebinds as record patches. **Not built** (#328).
 - Later: command recordings (`.sagedemo`): header (build, game, mods, map, seed or save) + one `PlayerCommand` per tick.
 
 ## 8. Errors and fallbacks
 - An unknown key/button name in a binding: validation error for that binding (the record still loads).
 - Two actions bound to the same key in one context: `Warn` at load, listing both. First registered wins.
 - Gamepad disconnected: its axes read 0; a `GamepadDisconnected` engine signal lets the game pause.
-- A corrupt `user://input.json`: ignored with a `Warn`; defaults are used, and the file is kept as `input.json.bad`.
+- A corrupt `user://input.json`: ignored with a `Warn`; defaults are used, and the file is kept as `input.json.bad`. (Planned with the file itself, #328.)
 
 ## 9. Debug and tooling hooks
 - **Cvars:**
@@ -208,7 +208,7 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
   - `m_invert_y`;
   - `joy_deadzone`;
   - `in_showactions` (overlay of active contexts, actions, the current `PlayerCommand`).
-- **Commands:** `bind <key> <action>` (writes a patch to `user://input.json`), `unbind`, `bindlist`, `in_contexts`.
+- **Commands:** `bindlist` and `in_contexts` are built. `bind <key> <action>` (writes a patch to `user://input.json`) and `unbind` are not (#328), nor is `in_showactions` (#332).
 - **Log category:** `Input` (context push/pop at `Debug`, binding problems at `Warn`).
 
 ## 10. Mapping from today's code
@@ -224,12 +224,12 @@ All main thread. `PlayerCommand` is a small struct; there are no allocations per
   - devices (keyboard, mouse, gamepad);
   - actions + input-map records;
   - the context stack with ImGui capture;
-  - mouse capture;
+  - mouse capture, **partly built** (#334 finishes it and the handoff with menus);
   - `PlayerCommand` with latching;
   - frame-rate look;
-  - text input routing;
-  - `bind` + `user://input.json`.
-- **Later:** an in-game rebinding UI, command recording/replay, touch.
+  - text input routing.
+- **Planned for v1, not built:** `bind`/`unbind` and `user://input.json` (#328), which §3.2, §7 and §9 describe. The code has no `bind` command and no input patch file; a player's rebind does not persist.
+- **Later:** an in-game rebinding UI (#341), command recording/replay (#333), touch (no issue yet).
 
 ### As built (scripted input, 2026-09-23)
 
@@ -292,5 +292,5 @@ simulation can simply do.
 2. ~~Actions + input-map records + contexts (with ImGui capture)~~ **Done 2026-09-22** (TODO R3).
 3. ~~`PlayerCommand` + `CommandSampler` + latching; the `Menu` action replaces the Escape check~~ **Done 2026-09-22** (TODO R3, #37). The sampler is `CommandLatch` + the host's tick loop.
 4. Editor camera rig on actions; drop display-size scaling (TODO #39).
-5. `bind`/`unbind` + `user://input.json`.
+5. `bind`/`unbind` + `user://input.json`. **Not built** (#328).
 6. ~~Focus gating, raw-state edges and trigger hysteresis~~ **Done 2026-09-24** (review #60, §3.7).

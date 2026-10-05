@@ -1,6 +1,6 @@
 # 06 · Assets and content
 
-> Status: partly built. The virtual file system, records, strict loading, patches, schemas, `sage validate` and hot reload of records, textures, models, sounds and compiled effects work. Zip mounts, asset scopes with unloading, cooked formats and mipmaps are not built. Owning assemblies: `Sage.Core` (`Content`), `Sage.Simulation` (`Content`), `Sage.Client` (`Assets`), `Sage.Cli`. Design doc: [05 Assets and VFS](../../design/05-assets-and-vfs.md).
+> Status: partly built. The virtual file system, records, strict loading, patches, schemas, `sage validate` and hot reload of records, textures, models, sounds and compiled effects work. Cooked meshes and textures (`sage cook`) and OGG sounds work (#302). Zip mounts, asset scopes with unloading and mipmaps are not built. Owning assemblies: `Sage.Core` (`Content`), `Sage.Simulation` (`Content`), `Sage.Client` (`Assets`), `Sage.Cli`. Design doc: [05 Assets and VFS](../../design/05-assets-and-vfs.md).
 
 ## 1. Purpose and scope
 
@@ -25,8 +25,9 @@ Not responsible for: unloading assets (not built, #308), compiling shaders at bu
 |---|---|---|
 | `VirtualFileSystem`, mounts, `AssetPath`, `RecordStore`, `RecordId`, `RecordRef<T>`, content checks, `RecordHotReload` | `Sage.Core` | No simulation or MonoGame types. |
 | Record schemas, content validation, scenes, prefabs, `ShaderIncludes` | `Sage.Simulation` | `RecordSchemas`, `ContentValidation`. |
-| `ContentService`, `AssetHotReload`, `ShaderRecompiler`, `GltfLoader` | `Sage.Client` | MonoGame: decodes textures and sounds, builds effects. Tests cannot reference it, so it is covered by the smoke run. |
-| `sage validate`, `sage schema`, `sage mods` | `Sage.Cli` | Headless, throwaway user folder. |
+| `MeshGeometry` (`.glb` reading), `CookedAssets`, `BlockCompression`, `OggVorbis` | `Sage.Simulation` | Headless: the glTF reading moved here from the client's `GltfLoader` (#302), so a test can compare a cooked mesh with its `.glb`. |
+| `ContentService`, `AssetHotReload`, `ShaderRecompiler` | `Sage.Client` | MonoGame: decodes textures and sounds, builds effects, uploads meshes. Tests cannot reference it, so it is covered by the smoke run. |
+| `sage validate`, `sage schema`, `sage mods`, `sage cook`, `sage package` | `Sage.Cli` | Headless, throwaway user folder. `cook` is `GameCook.cs`. |
 
 Mounts are made at boot by `SageApp`: engine content under namespace `sage`, each plugin's embedded content under the plugin's record namespace, the game's mounts under the game id, then mods under their ids. A mount's `RecordNamespace` is what a bare id in its files means.
 
@@ -49,7 +50,7 @@ Attributes that describe fields: `[Record("type")]`, `[RecordRef("type")]` on a 
 
 Commands: `vfs_mounts`, `vfs_which <path>`, `vfs_ls [dir]`, `rec_list [type]`, `rec_get <type> <id>` (the merged record and which file set each field), `rec_reload`, `asset_list`, `asset_reload [path]`.
 
-Command line: `sage validate <game>`, `sage schema <games...> --out <dir>`, `sage mods <game>` (flags `--mods`, `--game-mods`, `--mounts dir[=ns]`, `--engine-content`).
+Command line: `sage validate <game>`, `sage schema <games...> --out <dir>`, `sage mods <game>` (flags `--mods`, `--game-mods`, `--mounts dir[=ns]`, `--engine-content`), and `sage cook <game> [--force] [--clean]` (#302): a `<path>.sgmesh` beside each `.glb` and a `<path>.sgtex` beside each `.png`, `.jpg` and `.jpeg` in the game's mounts (premultiplied RGBA, or BC1/BC3 blocks; `game.json`'s `"cook": { "compress", "uncompressed" }` says which are exact). The client reads a cooked file in place of its loose one only when its mount is at least as high as the loose file's (a mod's loose file still wins), and falls back to the loose file with a warning when the cooked one is unreadable or was cooked from a file of another length. `sage package` cooks its copies unless `--no-cook`. Design 05 §7.
 
 ## 5. Data model
 
@@ -72,7 +73,7 @@ A record file is a JSON or JSONC array of records, or one record:
 
 A redefinition without `patch` is an error that names both places, and is applied as a patch anyway. Colours read as hex, arrays or packed numbers. `MaterialRecord` params may name a texture or `"rt:name"` for a render target.
 
-Asset kinds the client reads: textures (`.png`, `.jpg`, `.bmp`, `.tga`, `.gif`, `.psd`, `.hdr`; premultiplied on load), models (`.glb`), sounds (`.wav`), compiled effects (`.mgfxo`). Shaders are HLSL `.fx`, built into `.mgfxo` by `mgfxc`. Nothing goes through a content pipeline.
+Asset kinds the client reads: textures (`.png`, `.jpg`, `.bmp`, `.tga`, `.gif`, `.psd`, `.hdr`; premultiplied on load), models (`.glb`), sounds (`.wav`, and `.ogg` decoded whole to PCM: mono or stereo, up to 600 s), compiled effects (`.mgfxo`), and the cooked `.sgtex` and `.sgmesh` that stand in for a texture and a model. Shaders are HLSL `.fx`, built into `.mgfxo` by `mgfxc`. Nothing goes through a content pipeline.
 
 Schemas in `schemas/`: `record.schema.json` (root), one `<type>.schema.json` per record type, `prefab-components`, `prefab-parts`, `ids`, `vocabularies`, `mod`, `game`. They are generated, never edited, and CI diffs them.
 
@@ -124,8 +125,8 @@ Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` an
 | REQ-ASSET-15 | Textures, models, sounds and compiled effects shall hot reload individually, and a failed reload shall keep the old asset. | Should | Done (client; smoke run) | `Sage.Client/Assets/AssetHotReload.cs`; test: ReplacingAFileStopsItsOneShotsRestartsItsLoopsAndLeavesOthersAlone |
 | REQ-ASSET-16 | A changed `.fx` source shall be recompiled and swapped in, with compile errors in the log and a visible fallback on failure. | Should | Done for the game and engine (Windows or Wine); mods open | `Sage.Client/Assets/ShaderRecompiler.cs`; mods: #400 |
 | REQ-ASSET-17 | Assets shall have scopes (sector, game, UI), ref-counted release, eviction on unload and an upload budget. | Must | Partial: sector scopes for meshes, ref-counted (test: `ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept`); textures, sounds, UI scope and an upload budget open | #308 |
-| REQ-ASSET-18 | Textures shall load with mipmaps and optional compression, and the loader shall read the formats art tools write. | Should | Partial: PNG, JPG, BMP, TGA, GIF load; no mips | #317 |
-| REQ-ASSET-19 | A cook step shall produce binary meshes and compressed textures for Shipping, loaded when present. | Could | Not started | #302 |
+| REQ-ASSET-18 | Textures shall load with mipmaps and optional compression, and the loader shall read the formats art tools write. | Should | Partial: PNG, JPG, BMP, TGA, GIF load; BC1/BC3 compression exists through the cook (REQ-ASSET-19); no mips, no DDS | #317 |
+| REQ-ASSET-19 | A cook step shall produce binary meshes and compressed textures for Shipping, loaded when present. | Could | Done (#302): `sage cook` and `sage package`; a mod's loose file still overrides a cooked one | test: ACookedMeshReadsBackAsTheGeometryOfItsGlb, TheCookedFileStandsInForTheLooseOneInItsMountAndALaterMountsLooseFileWins, AnUnreadableOrOutOfDateCookedFileFallsBackToTheLooseOneWithAWarning, ATextureCooksToBlocksWhenItCanAndToExactPremultipliedPixelsWhenItCannot, BlockCompressionIsExactOnFlatBlocksAndCloseOnGradients, CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate, APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff, CookedAssetsLoadFasterWithLessAllocationAndTexturesTakeLessMemory |
 | REQ-ASSET-20 | Prefabs and scenes shall reload into running worlds. | Could | Done (#287): a scene is placed again; a prefab's live instances follow it field by field where the game did not change the field | `RecordStore.ReloadPolicyOf`; test: EditingAPrefabUpdatesTheFieldsNoOneChangedOnEveryLiveInstance, InTheSandboxEditingAPrefabUpdatesItsUnmodifiedInstances, RecordTypesDeclareTheirReloadPolicy, ASaveAfterAReloadDiffsAgainstTheNewPrefab, AValueALoadPutBackIsKeptByAReload, EachReloadFollowsFromTheLastOne |
 | REQ-ASSET-21 | The game shall offer a problems list of load errors without the editor. | Could | Done (#301): the `problems` command and the dev overlay's badge | test: ProblemsListsTheSameEntriesAsValidate, ProblemsListsTheLoadErrorsWithFileAndLine, ACleanLoadSaysSo_AndModConflictsAreWarnings |
 
@@ -146,7 +147,7 @@ Milestone 9, Code mods and packaging (epic #395):
 
 Milestone R1, Tooling and the first release (epic #292):
 
-- #302 R1-10 Cooked asset formats and a cook step for Shipping (P3)
+- ~~#302 R1-10 Cooked asset formats and a cook step for Shipping (P3)~~ done. Left from it: no OGG streaming and no WAV-to-OGG step (#326), no mipmaps (#317), `Content/` and a game's `mods/` are not cooked, loose files stay in a package, staleness on a folder mount is by length only, and only `.glb`, `.png`, `.jpg` and `.jpeg` are cooked.
 
 Milestone 10b, Editor part 2: #366 10b-1 Asset browser and material preview (P1).
 

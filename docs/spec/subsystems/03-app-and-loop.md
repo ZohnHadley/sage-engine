@@ -48,13 +48,13 @@ The base plugins, by id: `sage.physics3d`, `sage.streaming`, `sage.maps`, the `s
 | `WorldSystems` | `ECS/Systems/WorldSystems.cs` | `world.Systems.Replace(id, system)` and `Disable(id)`, both recorded against the calling plugin; `Parallel`, `Threads` and `AccessCheckLevel` (per-world overrides of the cvars), `AccessViolations`, `AccessReports` (#288). |
 | `IDeclaresAccess`, `SystemAccess` | `ECS/Systems/SystemAccess.cs`, `ParallelSystems.cs` | `Declare(access)`: `Reads<T>`, `Writes<T>`, `ReadsEvents<T>`, `Sends<T>`, `ReadsResource<T>`, `WritesResource<T>`, `Exclusive()`; `ConflictsWith`. A declared system may run at the same time as others of its phase it does not conflict with (#288). |
 | `GameManifest` | `src/Sage.Core/GameManifest.cs` | `Locate`, `Load`. |
-| `RegistryDump` | `src/Sage.Simulation/App/RegistryDump.cs` | Everything registered, as JSON, for `-dump-registry` and `tools/check_docs.py`. |
+| `RegistryDump` | `src/Sage.Simulation/App/RegistryDump.cs` | Everything registered, as JSON, for `-dump-registry` and `tools/check_docs.py`: commands, cvars, records, components, systems, entity inputs and outputs, game events (`gameEvents`, #298), input actions and vocabularies. |
 
 **`game.json` keys:** `name`, `id`, `assembly` (with `{config}`), `mounts`, `modsDirectory`, `modules.add`, `modules.disable`, `plugins`, `kits`, `scene`, `sage` (version range), `version`. A misspelt key is an error (test: AMisspeltGameJsonKeyIsAnError).
 
 **Console commands:** `plugins`, `modules`, `sys_list`, `sys_toggle`, `ev_stats`, `vfs_mounts`, `quit`, `pause`, `time_scale` (the clock's hours), `world_speed`, `hit_stop` (the world's time, #283).
 
-**Launch:** `Sage.Host -game <folder> [-mods ...] [-nomods] [-edit [doc]] [-dump-registry file] [+statement ...]`. There is no implicit game: without `-game` or a `game/` folder beside the executable the host stops and lists the games it can see.
+**Launch:** `Sage.Host -game <folder> [-mods ...] [-nomods] [-edit [doc]] [-dump-registry file] [+statement ...]` (options read by `HostOptions`, under test: sheet 01, #298). There is no implicit game: without `-game` or a `game/` folder beside the executable the host stops and lists the games it can see.
 
 ## 5. Data model
 

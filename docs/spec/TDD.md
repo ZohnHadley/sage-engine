@@ -274,8 +274,8 @@ the JSON Schemas read. `sage schema` writes `schemas/` from it; CI diffs the res
 (test: EveryShippedDataFile_ValidatesAgainstTheCommittedSchemas).
 
 **Assets on the client.** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads textures
-(PNG, JPG), compiled effects (`.mgfxo`), sounds (WAV) and the bitmap font from VFS streams; the renderer
-keeps meshes read by `GltfLoader` (`.glb`) in its own table. Components hold `AssetPath`, an interned id,
+(PNG, JPG, or the cooked `.sgtex`), compiled effects (`.mgfxo`), sounds (WAV, OGG) and the bitmap font from VFS streams; the renderer
+keeps meshes read by `MeshGeometry.ReadGlb` (`.glb`, or the cooked `.sgmesh`; #302) in its own table. Components hold `AssetPath`, an interned id,
 never a loaded object. A failed load logs once and the caller draws a placeholder. `dotnet-mgfxc` for
 `.fx` is the only build-time content step (decision D10).
 
@@ -433,10 +433,11 @@ Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-seriali
 | Asserts | `Assert.Dev`, `Ensure`, `Check` (`src/Sage.Core/Diagnostics/Assert.cs`). |
 | Crashes | `CrashReporter` writes `user://logs/crash-*.txt` on `Log.Fatal`, failed `Check` and unhandled exceptions: exception, log tail, sections added by the host (non-default cvars, modules, mounts, mods). |
 | Console and cvars | `CVarRegistry` with flags (`Archive`, `Cheat`, `DevOnly`); `developer` sets dev defaults; Shipping keeps a restricted console (`con_enable`, cheats behind `sv_cheats`). The registry dump lists every command and cvar. |
-| Profiling | `Profiler.Begin` scopes; the world wraps every phase and system automatically; `stat`, `sys_list` and `sys_toggle` read them; tables are per thread. |
+| Profiling | `Profiler.Begin` scopes; the world wraps every phase and system automatically; `stat`, `sys_list` and `sys_toggle` read them; tables are per thread. `trace_start`/`trace_dump` capture every scope on every thread as a Chrome trace; `WorkStats` counts jobs, loads and uploads for `stat render` and `stat assets` (#300). |
+| Visual log | `world.VisualLog()` keeps debug shapes per tick and category (`vlog_record`, `vlog_ticks`, `vlog_show`), scrubbed by `vlog_at`, `vlog_step`, `vlog_list` and the editor's Visual log window (#300). |
 | Runtime introspection | `ent_dump`, `rec_get`, `vfs_which`, `ev_stats`, `r_passes`, `scale_report`. |
 
-The console has Up/Down history and Tab completion of commands, cvars, cvar values and record ids (`ConsoleInput`, #299). Planned: Chrome-trace export, `stat render`, a visual logger (#300).
+The console has Up/Down history and Tab completion of commands, cvars, cvar values and record ids (`ConsoleInput`, #299).
 Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 
 ## 14. Testing architecture
@@ -497,7 +498,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | R§3.2 | One boot path, sealed stages | Built (#10) |
 | R§3.3 | Plugins with string ids and SemVer ranges; system ids with replace/disable | Built (#12, #17) |
 | R§3.4 | Source generator as the single declaration registry | Built (#16, #18, #19, #21) |
-| R§3.6 | Declared public API, MinVer versions, `[Experimental]` ids | Built (#31); 0.1.0 released (#295) |
+| R§3.6 | Declared public API, MinVer versions, `[Experimental]` ids | Built (#31); 0.1.0's API frozen in Shipped and a release workflow built (#295), the tag itself pending |
 | R§0.5 | Base engine first, genre rules in kits | Built (#26, #27) |
 | R§6 | Open owner decisions: scripting language, editor for modders, platforms, distribution | Open (SRS §10) |
 

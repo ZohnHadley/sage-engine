@@ -61,12 +61,12 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 
 | Type | Source format | Loader | Notes |
 |---|---|---|---|
-| `Texture` (MonoGame `Texture2D`) | `.png`, `.jpg` | `Texture2D.FromStream` + `PremultiplyAlpha` processor | tga isn't supported by `FromStream`; convert to png |
+| `Texture` (MonoGame `Texture2D`) | `.png`, `.jpg` | `Texture2D.FromStream` + `PremultiplyAlpha` processor, or the cooked `.sgtex` beside it (§7) | tga isn't supported by `FromStream`; convert to png |
 | `SpriteSheetData` | **built as the `sprite_sheet` record** (§3.5), not a `.sheet.json` asset (12 "As built") | **sim** | Timings and events are needed by the simulation (melee "hit" frames, 12). The texture is loaded separately |
 | `SpriteSheet` | `.png` + its `SpriteSheetData` | client | the Daggerfall-style creature/NPC sprites (06, 12) |
-| `Mesh` | `.glb` | SharpGLTF → our vertex/index buffers, one part per primitive | **built (R12)**: `GltfLoader`; node transforms baked in, winding flipped once on load. **Binary only** — a text `.gltf` keeps its buffers in files beside it, which a mount cannot always hand over, so it is refused rather than half-loaded (§8). Material slots still to come |
+| `Mesh` | `.glb` | SharpGLTF → our vertex/index buffers, one part per primitive | **built (R12)**: `MeshGeometry.ReadGlb` (`Sage.Simulation`, headless; the client's `GltfLoader` until issue #302 moved it, §10), or the cooked `.sgmesh` beside the file (§7); node transforms baked in, winding flipped once on load. **Binary only** — a text `.gltf` keeps its buffers in files beside it, which a mount cannot always hand over, so it is refused rather than half-loaded (§8). Material slots still to come |
 | `Effect` | `.mgfxo` (compiled from `.fx`, 07) | `new Effect(device, bytes)` | |
-| `Sound` | `.wav` | `SoundEffect.FromStream` | `.ogg` needs a decoder library; see Open questions |
+| `Sound` | `.wav`, `.ogg` | `SoundEffect.FromStream`; an `.ogg` is decoded whole to PCM by `OggVorbis` (NVorbis, issue #302) | **built:** mono or stereo, up to 600 s per file, anything else refused (11 §3); streaming long audio is not built |
 | `Heightmap` | 16-bit `.png` or `.r16` | sim | terrain (14) |
 | `CollisionMesh` | `.glb` (a collision node) | sim | physics (10) |
 | `Level` | `.map` (TrenchBroom) | **sim** | **built (F16)**: `MapFile` + `BrushGeometry` read it engine-side, straight off a mount — brushes become hulls and meshes, `classname` becomes a prefab (15 §10a). A level is named by a `map` record, so a mod replaces one like any other file |
@@ -466,8 +466,8 @@ loading one of each through the sprite pipeline.
 |---|---|---|---|
 | Texture | `.png` `.jpg` `.bmp` `.tga` `.gif` `.psd` `.hdr` | yes | `Texture2D.FromStream`. GIF gives frame 0; HDR is tone-mapped to 8-bit; 16-bit PNG is truncated to 8 |
 | Compiled effect | `.mgfxo` | yes | the engine mount *is* where `dotnet-mgfxc` writes, so recompiling swaps the shader |
-| Model | `.glb` | yes (issue 4h-3) | `GltfLoader` (SharpGLTF) reads it off the mount; the renderer swaps the mesh in its own slot, so every id already handed out draws the new geometry. Text `.gltf` is not read at all |
-| Sound | `.wav` | yes (issue 4h-3) | `SoundEffect.FromStream` (11 §3). The backends drop their instances first and the mixers stop one-shots and restart loops (see "As built (hot reload of meshes, sounds and shaders, issue 4h-3)") |
+| Model | `.glb` | yes (issue 4h-3) | `MeshGeometry.ReadGlb` (SharpGLTF) reads it off the mount, or its cooked `.sgmesh` stands in for it (§7); the renderer swaps the mesh in its own slot, so every id already handed out draws the new geometry. Text `.gltf` is not read at all |
+| Sound | `.wav` (`.ogg` loads but is not watched) | yes (issue 4h-3) | `SoundEffect.FromStream` (11 §3). The backends drop their instances first and the mixers stop one-shots and restart loops (see "As built (hot reload of meshes, sounds and shaders, issue 4h-3)") |
 | Shader source | `.fx` `.fxh` | yes, where mgfxc runs | recompiled to the `.mgfxo` the VFS serves, which then reloads as a compiled effect; a changed header recompiles the effects that include it |
 | Font | `.png` atlas | yes | a texture with a glyph grid over it (13 §3), so reloading the image reloads the font |
 | `.tif` `.dds` `.webp` | — | — | **no runtime decoder** in StbImageSharp; convert to PNG (there is no MGCB left to take them through) |
@@ -543,10 +543,10 @@ than as art.
   - hot reload re-runs the whole load (all types; it takes about 1 ms today) and raises a plain `RecordStore.Reloaded` event, not `EngineSignals.RecordsReloaded(RecordType)` (04). Instances of records that still exist are updated in place. (Since issue #287 a prefab's live instances follow too: "As built (hot reload reaches live instances)".)
 - **Hot reload** (`RecordHotReload`, dev builds): a `FileSystemWatcher` on each folder mount's `data/`, polled from the main thread and reloaded after 200 ms of quiet, while `rec_hotreload` is on. `games/Sandbox` respawns its scene on reload, so editing `content/data/scene.json` updates the running game.
 - **Assets — as built (R12, 2026-09-24):** `ContentService` (`src/Sage.Client/Assets/ContentService.cs`) loads everything through the VFS, so any asset can come from any mount and be shadowed like any other file:
-  - models: `.glb`/`.gltf`, read by `GltfLoader` (SharpGLTF) into vertex and index buffers the renderer owns and disposes;
+  - models: `.glb`, read by `MeshGeometry.ReadGlb` (SharpGLTF; `GltfLoader` until issue #302) into vertex and index buffers the renderer owns and disposes, or from a cooked `.sgmesh` (§7);
   - compiled effects (`.mgfxo`, step 6);
   - `.png`/`.jpg` textures via `Texture2D.FromStream`, premultiplied (step 6);
-  - `.wav` sounds via `SoundEffect.FromStream` (11 §3);
+  - `.wav` sounds via `SoundEffect.FromStream`, and `.ogg` decoded to PCM first (11 §3);
   - the UI font, which is a texture with a glyph grid over it (13 §3).
 
   **Nothing is built by a content pipeline any more.** `ContentService.Open(path)` hands a mount's bytes to whoever knows the format, which is what lets a mod drop in a model or a game ship art made this morning; `Content.mgcb`, `MonoGame.Content.Builder.Task`, the `dotnet-mgcb*` tools, `VfsContentManager` and every `.xnb` branch are gone, and `dotnet-mgfxc` (07 §3.1) is the only build-time content step left. Everything is cached for the process. `AssetPath` (the interned path, §3.2) exists since step 6 and is what `MeshRenderer` and material records store. `AssetServer`, `AssetRef`, scopes and async loading are still to be built (§14 step 2).
@@ -685,7 +685,13 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 | `data/**/*.json` | record arrays (§3.5) |
 | `*.sheet.json` | sprite sheet: frame rects, pivot, animations, 8-direction frame groups (06, 12) |
 | `strings/<lang>/**/*.json` | localisation tables: key → text or plural forms; the file's path is the key's namespace (§3.7) |
-| Cooked formats (later) | `.sgmesh` (binary vertex/index blobs), compressed textures; produced by a cook tool, loaded in `Shipping` when present |
+| `<path>.sgmesh`, `<path>.sgtex` | **Cooked formats, built (issue #302), below** |
+
+**As built (cooked formats, 2026-10-05, issue #302).** `sage cook <game> [--force] [--clean]` (`Sage.Cli/GameCook.cs`) writes a cooked file *beside* each loose one, under the loose file's path plus an extension: `models/bunny.glb.sgmesh` (the vertex and index arrays as the GPU takes them, and a skin's matrices) and `textures/wall.png.sgtex` (premultiplied RGBA, or BC1 for an opaque texture and BC3 for one with alpha, from `BlockCompression`). Both start with four magic bytes, a format version, and the loose file's length and FNV-1a hash, which say which file it was cooked from. Nothing names a cooked file: records, prefabs and maps keep naming the `.glb` and the `.png`, and the loose files stay (the simulation reads skeletons and clips from the `.glb`, and `sage validate` checks the paths). `sage package` cooks the package's copies unless `--no-cook`; the game's own folder is not written to by it. The reading side is `CookedAssets` in `Sage.Simulation`, so tests can use it headless; the client's `ContentService` asks it first.
+- **When one is used.** A cooked file stands in for its loose file only when its mount is at least as high as the loose file's, so a mod's loose `wall.png` (a later mount) beats the game's cooked `wall.png.sgtex`, which was made from the file the mod replaced (§3.2: the last mount wins, cooked or not) (test: TheCookedFileStandsInForTheLooseOneInItsMountAndALaterMountsLooseFileWins). A cooked file that cannot be read, or that was cooked from a file of another length (checked only where the mount is a folder that can say so), is a warning once and the loose file is read (test: AnUnreadableOrOutOfDateCookedFileFallsBackToTheLooseOneWithAWarning). Staleness is by length, not by hash, on a folder mount; `sage cook` itself skips a file only when length and hash both match.
+- **Round trips.** A cooked mesh reads back as exactly the geometry of its `.glb` (test: ACookedMeshReadsBackAsTheGeometryOfItsGlb); a texture cooks to blocks when it can and to exact premultiplied pixels when it cannot, or when game.json's `"cook": { "compress": false }` or an `"uncompressed"` glob says so (tests: ATextureCooksToBlocksWhenItCanAndToExactPremultipliedPixelsWhenItCannot, GameJsonCookSettingsAreReadAndAMisspeltKeyIsRefused, UncompressedPatternsAreGlobsInsideAMount); block compression is exact on flat blocks and close on gradients (test: BlockCompressionIsExactOnFlatBlocksAndCloseOnGradients). A graphics device that does not sample DXT1/DXT5 gets the blocks decoded to RGBA as they load (a warning once). `sage cook` skips what is up to date (test: CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate), and `sage package` cooks (test: APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff).
+- **What it buys, measured** on the Sandbox's own models and textures: loading cooked takes about 0.05 ms against about 10 ms loose (no glTF parse, no PNG inflate, no premultiply), allocates about 322 KB against 2143 KB, and the textures take about 217 KB of GPU memory against 902 KB as RGBA; the test asserts at least twice as fast, at most half the allocation and at most a third of the memory (test: CookedAssetsLoadFasterWithLessAllocationAndTexturesTakeLessMemory). The numbers are from one machine; the test is what holds.
+- **Not built:** mipmaps; cooking the engine's `Content/` or a game's `mods/` (a package's mods stay loose); formats other than `.glb` and `.png`/`.jpg`/`.jpeg`; dropping the loose files from a package; a hash check at load (a folder mount is checked by length); `.pak` mounts (#397). Block-compressed `SetData` on a Direct3D device is untested (CI's client run is on Linux).
 
 ## 8. Errors and fallbacks
 | Failure | Behaviour |
@@ -715,7 +721,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 | Today | Becomes |
 |---|---|
 | `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | **Removed (step 5):** the Sandbox loads models through `ContentService` (VFS-backed, §3.6). Later: `AssetRef`s loaded into scopes |
-| `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | **Both deleted (R12, done).** Models load at runtime from `.glb` via SharpGLTF (`GltfLoader`). The Sandbox's placeholder is `games/Sandbox/content/models/bunny.glb`, generated by `games/Sandbox/tools/make_placeholder_model.py` — like the sprites and the sounds, the repository ships no art it did not make. Shaders compile with `dotnet-mgfxc` (07) |
+| `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | **Both deleted (R12, done).** Models load at runtime from `.glb` via SharpGLTF (`MeshGeometry.ReadGlb`, once the client's `GltfLoader`; issue #302 moved it into `Sage.Simulation`, leaving `VertexSkinned` and `VertexLayouts` in the client). The Sandbox's placeholder is `games/Sandbox/content/models/bunny.glb`, generated by `games/Sandbox/tools/make_placeholder_model.py` — like the sprites and the sounds, the repository ships no art it did not make. Shaders compile with `dotnet-mgfxc` (07) |
 | The FreeImage failure that removed `light.png` (review #9, 2026-09-22) | Textures load with `Texture2D.FromStream` (StbImageSharp, no FreeImage) |
 | `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json`. **Done (step 5)** for game content; **the line itself is gone (R12)** — nothing uses MonoGame's `ContentManager` any more, not the host, the client, or the vendored ImGui renderer |
 
@@ -730,13 +736,14 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
   - hot reload for folder mounts;
   - `RecordStore` with namespaces, `base`, patch merge, generated validation, hot reload;
   - localization keys (English table only) — **built** (§3.7, issue #96).
-- **Later:** `.pak` mounts, `.uid` sidecars (if needed), cooked formats + a cook tool (possibly on MonoGame 3.8.5's C# content builder — evaluate then), OGG music streaming, texture compression.
+- **Done since:** cooked formats, a cook tool (`sage cook`, not MonoGame's builder) and texture compression (BC1/BC3), and `.ogg` sounds decoded whole (issue #302, §7, 11 §3).
+- **Later:** `.pak` mounts (zip mounts, #397), `.uid` sidecars (if needed), OGG music streaming (#326), mipmaps (#317).
 
 ## 12. Multiplayer-later notes
 A server needs the same records and simulation assets. The mod list plus record hashes will be compared on connect (as Quake 3's `sv_pure` checks paks). Only data and asset mods may be auto-downloaded; code mods never are (17).
 
 ## 13. Open questions
-- OGG decoding: MonoGame's `Song`/`SoundEffect` support differs per platform. Evaluate NVorbis (managed OGG decoder) for music streaming when audio (11) starts. **[unverified which formats `SoundEffect.FromStream` accepts beyond WAV on DesktopGL]**
+- ~~OGG decoding~~ **Decided and built (issue #302):** NVorbis decodes an `.ogg` whole to PCM for `SoundEffect` (11 §3). Still open: *streaming* long music (#326), where MonoGame's `Song`/`SoundEffect` support differs per platform.
 - JSON library: `System.Text.Json` source-generated readers vs a custom reader that keeps line numbers for error messages. Leaning towards **`Utf8JsonReader` + a generated per-type reader** (fast, with position info for errors).
 
 ### Namespaces and inheritance

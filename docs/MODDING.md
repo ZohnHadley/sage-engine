@@ -26,8 +26,15 @@ better_blades/                the mod's folder; its name doesn't matter, its id 
 The folder **is** the mod's mount root: `data/`, `strings/`, `textures/`, `sounds/`, `models/` sit at its
 top, exactly where they sit in a game's `content/`. There is no `content/` folder inside a mod.
 
-`dotnet new sage-mod-data -o MyMod` makes one (MAKING_A_GAME §2): a `mod.json`, a prefab, a weapon and a
-patch of the game's player, ready to edit.
+`sage new mod-data -n MyMod -o MyMod --game <game folder>` makes one (MAKING_A_GAME §2; `dotnet new
+sage-mod-data -o MyMod` does the first half): a `mod.json` naming the game, a prefab, a weapon and a patch of the
+game's player, ready to edit. With `--game <game folder>` it also writes the game's JSON Schemas into the mod's
+`schemas/` (including this mod's own ids), validates the mod against the game, and the folder carries
+`.vscode/settings.json`, which maps `data/**/*.json` and `mod.json` onto those schemas, and `.vscode/tasks.json`,
+which has tasks for `sage validate`, `sage mods` and `sage schema` against the game (the template's `gameDir`
+parameter is the path from the mod to the game folder; test:
+New_ModData_WritesAModThatValidatesAgainstTheGame_WithItsSchemasMapped). Write the schemas again when the game
+changes, since they describe the version of the game you have; `schemas/` is git-ignored.
 
 ## 2. `mod.json`
 
@@ -53,8 +60,8 @@ patch of the game's player, ready to edit.
 - **The id is your namespace.** Everything your `data/` defines is `better_blades:something`. It may not be
   `sage`, the game's id, or a kit's content namespace (`rpg`).
 - Every field but `id` is optional; `version` defaults to `0.0.0`.
-- VS Code checks it as you type: `sage schema` writes `mod.schema.json` and the repository's
-  `.vscode/settings.json` maps it onto every `mod.json`.
+- VS Code checks it as you type: `sage schema` writes `mod.schema.json`, and the repository's
+  `.vscode/settings.json` (or the one a `sage-mod-data` mod carries) maps it onto every `mod.json`.
 
 ## 3. Where mods go, and turning them on and off
 
@@ -143,7 +150,12 @@ is the engine's, written in full.
 
 **Strings** merge key by key: a mod's `strings/en/items.json` with one key changes that line and leaves
 the rest of the game's table. **Assets** are replaced by path: a mod shipping `textures/hut_wall.png`
-replaces the game's, and every record that names that path gets yours.
+replaces the game's, and every record that names that path gets yours. That holds for a game that ships
+cooked files too (`sage package` writes a `.sgtex` beside each texture and a `.sgmesh` beside each model, design 05
+§7): the client reads a cooked file only when its mount is at least as high as the loose file's, so **a mod's
+loose file overrides a game's cooked one below it** (test:
+TheCookedFileStandsInForTheLooseOneInItsMountAndALaterMountsLooseFileWins). A mod may ship `.sgtex` and `.sgmesh` files of its own, under the same rules, but usually leaves its assets
+loose, as a game's `mods/` folder does when it is packaged (the cook does not touch it); sounds may be `.wav` or `.ogg`.
 
 ## 6. Conflicts and the report
 

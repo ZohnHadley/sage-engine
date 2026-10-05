@@ -1,6 +1,6 @@
 # 11 · Audio
 
-> Status: partly built. WAV one-shots and loops play through a headless, tested mixer (buses, voice limits, distance, pan) and a MonoGame backend. Music, OGG decoding and streaming, occlusion, reverb, surface footsteps and doppler are not built. Owning assemblies: `Sage.Simulation` (records and mixer), `Sage.Client` (system and backend), `Sage.Gameplay` (cue records and events). Design doc: [11 Audio](../../design/11-audio.md).
+> Status: partly built. WAV and OGG one-shots and loops play through a headless, tested mixer (buses, voice limits, distance, pan) and a MonoGame backend; an OGG file is decoded whole when it loads (#302). Music, OGG streaming, occlusion, reverb, surface footsteps and doppler are not built. Owning assemblies: `Sage.Simulation` (records and mixer), `Sage.Client` (system and backend), `Sage.Gameplay` (cue records and events). Design doc: [11 Audio](../../design/11-audio.md).
 
 ## 1. Purpose and scope
 
@@ -48,7 +48,7 @@ Events consumed: `CueTriggered`, `Damaged` (the damage type's sound), `Used` (th
 | `cue` | Record | `Description`, `Sound`, `Particles` |
 | `sage:audio_source` | Component | `Sound`, `Loop`, `Volume`; the `Voice` is transient, so a load restarts the loop |
 
-Other records name sounds by id: damage types, items and cues carry a `Sound` reference. Sound files are WAV.
+Other records name sounds by id: damage types, items and cues carry a `Sound` reference. Sound files are WAV or OGG; an OGG is decoded whole to PCM on load (mono or stereo, up to 600 s), and is not hot reloaded.
 
 ## 6. Lifecycle and data flow
 
@@ -76,7 +76,7 @@ A sound with no variations is refused quietly and counted (test: NothingToPlayIs
 | REQ-AUD-06 | Sounds shall move with an origin rebase. | Must | Done | test: SoundsMoveWithAnOriginRebase |
 | REQ-AUD-07 | A cue, a hit and an item use shall be audible from data alone. | Must | Done | `AudioSystem` in `src/Sage.Client/Audio/AudioSystem.cs` |
 | REQ-AUD-08 | Music shall be a streamed, crossfaded system that is never voice-stolen. | Must | Not started | #325 |
-| REQ-AUD-09 | The engine shall decode OGG and stream long audio with bounded memory. | Must | Not started | #326 |
+| REQ-AUD-09 | The engine shall decode OGG and stream long audio with bounded memory. | Must | Partial: OGG decodes whole (mono or stereo, up to 600 s), nothing streams | #326; test: AnOggFileDecodesToPcmMonoOrStereo, AFileThatIsNotOggVorbisIsRefusedWithInvalidData |
 | REQ-AUD-10 | Footsteps and surface sounds shall come from animation events and ground surfaces. | Must | Not started | #327 |
 | REQ-AUD-11 | Effect, attack and screen actions shall raise sounds from data. | Should | Not started | #330 |
 | REQ-AUD-12 | Interiors shall have occlusion, obstruction and reverb zones. | Should | Not started | #329 |
@@ -89,7 +89,7 @@ A sound with no variations is refused quietly and counted (test: NothingToPlayIs
 Milestone 5, audio and input (epic #324):
 
 - #325 4o-1 Build the music system (streamed, crossfaded, not voice-stolen) (P1)
-- #326 4o-2 Decode OGG and stream long audio (P1)
+- #326 4o-2 Decode OGG and stream long audio (P1): the decode is built (#302); streaming is not
 - #327 4o-3 Raise footstep and surface sounds from animation events (P1)
 - #329 4o-5 Add occlusion, obstruction and reverb zones (P2)
 - #330 4o-6 Finish the cue and sound wiring that is declared but not raised (P2)

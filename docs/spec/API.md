@@ -34,8 +34,10 @@ CLI's C# API, the editor host (`Sage.Editor`) and the generators. Nothing compil
 - **SemVer, 0.x rules.** Before 1.0 the *minor* is the breaking number: 0.2.0 may break what 0.1.x code
   compiles against; a 0.1.x patch may not. From 1.0 the major is. "Breaking" means a declared public
   symbol was removed or changed, or a record, component or save format changed without an upgrader.
-- **Release state.** 0.1.0 is released: its API is in the Shipped files, the `v0.1.0` tag is pushed, and
-  the GitHub release carries its packages (#295 R1-3). Builds after it report `0.1.1-alpha.0.N`.
+- **Release state.** 0.1.0's API is frozen: it is in the Shipped files (#295 R1-3), and the release workflow
+  (`.github/workflows/release.yml`) builds, tests and packs the tagged commit and attaches the packages to a
+  GitHub release. The `v0.1.0` tag itself is the owner's push and has not been pushed; until it is, builds
+  report `0.1.0-alpha.0.N`, and after it `0.1.1-alpha.0.N`.
 
 ### 1.3 The declared API files
 
@@ -546,7 +548,7 @@ can. Neither should surface as a crash in play.
 | Keyed list merge, `"$remove"` and `"replace": true` in patches (#399 9-4) | Lists of objects with a key merge by key; per-key conflicts | Phase 9 |
 | UI actions from data: a button names a UI action or console command (#347 4q-10) | Screens work without C# `Activated` handlers | 4q |
 | Render pass replacement and disabling by id (#322 4n-18) | `sage:` passes become replaceable | 4n |
-| First tagged release and Shipped freeze (#295 R1-3) | Version numbers stop being pre-releases | R1 |
+| First tagged release (#295 R1-3; the Shipped freeze is done, the tag is the owner's push) | Version numbers stop being pre-releases | R1 |
 
 Each experimental area in §1.4 is expected to leave experimental once its first outside consumer has
 used it; the reason is given per id in MAKING_A_GAME §10b.

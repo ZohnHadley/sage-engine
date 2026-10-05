@@ -105,7 +105,7 @@ Milestone 6, game UI and menus (epic #337), where the player-facing half lives:
 - #352 4q-15 Input glyphs and prompts per device (P2)
 - #354 4q-17 Kit default input maps and registry dump coverage (P3)
 
-Design doc 08 contradicts itself on whether `bind` and `user://input.json` are in v1 (§3 says not yet, §11 lists them); the code agrees with §3. Refreshing it is part of #328.
+Design doc 08 now says what the code does: `bind`, `unbind` and `user://input.json` are planned for v1 and not built (#328), and mouse capture is partial (#334) (reconciled in #303).
 
 ## 11. References
 
