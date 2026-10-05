@@ -54,6 +54,7 @@ return args.Length == 0 ? Usage()
     : args[0] == "mods" ? Mods(args[1..])
     : args[0] == "package" ? Package(args[1..])
     : args[0] == "cook" ? Cook(args[1..])
+    : args[0] == "new" ? New(args[1..])
     : args[0] == "run" ? Run(args[1..])
     : Usage();
 
