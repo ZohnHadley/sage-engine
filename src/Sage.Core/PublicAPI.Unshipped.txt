@@ -177,3 +177,4 @@ Sage.Core.RecordStore.ReloadPolicyOf(string! typeName) -> Sage.Core.ReloadPolicy
 Sage.Core.ReloadPolicy
 Sage.Core.ReloadPolicy.Live = 1 -> Sage.Core.ReloadPolicy
 Sage.Core.ReloadPolicy.NextSpawn = 0 -> Sage.Core.ReloadPolicy
+static Sage.Core.Profiler.Record(string! name, long elapsedTicks) -> void

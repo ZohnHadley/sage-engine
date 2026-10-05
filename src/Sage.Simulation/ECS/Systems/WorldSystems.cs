@@ -42,7 +42,7 @@ public sealed class WorldSystems : IEnumerable<SystemInfo>
             throw new InvalidOperationException($"{replacement.GetType().Name} is declared for {declared.Phase} and cannot " +
                                                 $"replace '{id}', which runs in {old.Phase}");
 
-        var info = _scheduler.Replace(old, replacement, Caller);
+        var info = _scheduler.Replace(old, replacement, Caller, _world.Declare(replacement));
         _world.Retire(old.System);
         _world.Engine?.Registrations.Record("system", id);
         Log.Info(LogCat.World, $"System '{id}' in '{_world.Name}': {old.Name} (from {old.Owner}) replaced by {info.Name} (from {Caller})");
@@ -69,6 +69,55 @@ public sealed class WorldSystems : IEnumerable<SystemInfo>
     }
 
     private string Caller => _world.Engine?.Registrations.Owner ?? "host";
+
+    // ---- Running side by side (issue #288) ---------------------------------------------------------
+
+    // Whether this world runs systems that declare their access (IDeclaresAccess) at the same time when
+    // they do not conflict; null follows `sys_parallel` (on by default). Results are the same either way:
+    // this is the switch to compare them, or to rule the scheduler out.
+    public bool? Parallel { get; set; }
+
+    // Worker threads for it; null follows `sys_threads`, and 0 there means one fewer than the cores (at
+    // most 7). The world's own thread runs systems too.
+    public int? Threads { get; set; }
+
+    // Dev builds: 0 = no check, 1 = what a declared system touches is compared with its declaration,
+    // 2 = and a component it declared only reading must not change. Null follows `sys_access_check` (2).
+    public int? AccessCheckLevel { get; set; }
+
+    private readonly object _reportLock = new();
+    private readonly HashSet<(SystemInfo, string, Type?)> _reported = new();
+    private readonly List<string> _reports = new();
+
+    // How many different things declared systems touched without declaring them (dev builds): each is
+    // reported once, as an error naming the system and the type. A test asserts this is zero.
+    public int AccessViolations
+    {
+        get { lock (_reportLock) return _reports.Count; }
+    }
+
+    // The reports themselves, in the order they were found.
+    public IReadOnlyList<string> AccessReports
+    {
+        get { lock (_reportLock) return _reports.ToArray(); }
+    }
+
+    // What the workers allocated running systems (bytes, since the world was made): the half of a
+    // zero-allocation check the world's own thread cannot see.
+    internal long WorkerAllocatedBytes;
+
+    internal void ReportAccess(SystemInfo system, string what, Type? type)
+    {
+        string message;
+        lock (_reportLock)
+        {
+            if (!_reported.Add((system, what, type))) return;
+            message = $"System {system.Id ?? system.Name} in '{_world.Name}' {what}{(type == null ? "" : $" {type.Name}")}, " +
+                      $"which its access declaration does not admit (declared: {system.Access}).";
+            _reports.Add(message);
+        }
+        Log.Error(LogCat.World, message);
+    }
 
     public IEnumerator<SystemInfo> GetEnumerator() => _scheduler.All.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
