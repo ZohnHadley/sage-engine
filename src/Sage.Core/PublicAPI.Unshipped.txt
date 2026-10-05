@@ -178,3 +178,14 @@ Sage.Core.ReloadPolicy
 Sage.Core.ReloadPolicy.Live = 1 -> Sage.Core.ReloadPolicy
 Sage.Core.ReloadPolicy.NextSpawn = 0 -> Sage.Core.ReloadPolicy
 static Sage.Core.Profiler.Record(string! name, long elapsedTicks) -> void
+Sage.Core.ConsoleInput
+Sage.Core.ConsoleInput.Complete(string! line) -> (string! Line, System.Collections.Generic.IReadOnlyList<string!>! Candidates)
+Sage.Core.ConsoleInput.ConsoleInput(Sage.Core.CVarRegistry! cvars, System.Func<System.Collections.Generic.IEnumerable<string!>!>? recordIds = null) -> void
+Sage.Core.ConsoleInput.History.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ConsoleInput.Next(string! current) -> string!
+Sage.Core.ConsoleInput.Previous(string! current) -> string!
+Sage.Core.ConsoleInput.Submit(string! line) -> void
+const Sage.Core.ConsoleInput.MaxHistory = 100 -> int
+Sage.Core.FrameLimiter
+static Sage.Core.FrameLimiter.Remaining(int maxFps, double frameStart, double now) -> double
+static Sage.Core.UserPaths.AutoexecFile.get -> string!
