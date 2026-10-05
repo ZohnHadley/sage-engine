@@ -235,7 +235,10 @@ public class RagdollSaveTests
         var world = app.World;
         using var log = new CaptureSink();
         Assert.True(app.Engine.Saves.Load("golden"));
-        Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn && e.Message.Contains("ragdoll"));
+        // This thread's entries only: the sink sees every parallel test's log (RagdollRecordTests warns about
+        // its own ragdoll records).
+        int thread = System.Environment.CurrentManagedThreadId;
+        Assert.DoesNotContain(log.Entries, e => e.ThreadId == thread && e.Level >= LogLevel.Warn && e.Message.Contains("ragdoll"));
         var corpse = world.FindByName("corpse");
         var faller = world.FindByName("faller");
         var savedFaller = JsonNode.Parse(File.ReadAllText(Path.Combine(golden, "golden", "world_main.json")))!["entities"]!.AsArray()
