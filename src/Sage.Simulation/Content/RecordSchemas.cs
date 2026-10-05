@@ -958,6 +958,16 @@ internal static class ManifestSchemas
             ["add"] = Strings("Further assemblies whose modules are added after the game's own."),
         });
         modules.Remove("$schema");
+        var cook = Object("cook", new JsonObject
+        {
+            ["compress"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["description"] = "Whether `sage cook` block-compresses textures (BC1/BC3). Default true.",
+            },
+            ["uncompressed"] = Strings("Texture paths inside a mount, with * and ** wildcards, that `sage cook` keeps as exact RGBA (pixel art, UI, fonts)."),
+        });
+        cook.Remove("$schema");
         var schema = Object("Sage game.json", new JsonObject
         {
             ["name"] = Str("The game's name."),
@@ -975,6 +985,7 @@ internal static class ManifestSchemas
             ["scene"] = Str("The scene record every world starts in."),
             ["sage"] = Str("The engine versions this game was made for: \"^0.1\"."),
             ["version"] = Str("The game's own version, 1.4.0: what a mod's \"gameVersion\" is checked against."),
+            ["cook"] = cook,
         });
         schema["required"] = new JsonArray("id");
         return schema;

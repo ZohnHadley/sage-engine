@@ -15,7 +15,9 @@ namespace Sage.Cli;
 //   <out>/game/game.json                                                 the manifest, its paths rewritten
 //   <out>/game/bin/<Name>.dll                                            "assembly" and "modules.add" (and a kit
 //                                                                        the host does not have)
-//   <out>/game/<mount>/                                                  each mount, copied
+//   <out>/game/<mount>/                                                  each mount, copied, then cooked (issue
+//                                                                        #302): a .sgmesh beside each .glb and a
+//                                                                        .sgtex beside each .png/.jpg (GameCook.cs)
 //   <out>/game/<modsDirectory>/                                          the game's own mods, when it has any
 //
 // The host runs the `game` folder beside it when no -game is given (GameManifest.Locate), so the folder starts
@@ -34,6 +36,9 @@ internal sealed class PackageOptions
 
     // What "{config}" means in the game's manifest when its built files are found.
     public string Configuration { get; init; } = "Shipping";
+
+    // Cook the packaged mounts (issue #302, GameCook.cs): cooked meshes and textures beside the loose files.
+    public bool Cook { get; init; } = true;
 }
 
 internal sealed class PackageResult
@@ -42,6 +47,9 @@ internal sealed class PackageResult
 
     // What was written under the output folder, relative to it, with '/' separators.
     public List<string> Files { get; } = new();
+
+    // What the cook did, when the package was cooked.
+    public CookResult? Cook { get; set; }
 
     public bool Ok => Errors.Count == 0;
 }
@@ -196,6 +204,18 @@ internal static class GamePackage
             if (File.Exists(pdb)) Copy(pdb, "game/" + Path.ChangeExtension(target, ".pdb"));
         }
         foreach (var (source, target) in mounts) CopyTree(source, "game/" + target);
+
+        // The cook (issue #302), on the copies: the game's own folder is never written to. The game's mods are
+        // left loose, as a player's mods are: a mod's loose file wins over a cooked one below it anyway.
+        if (options.Cook)
+        {
+            var cook = new CookResult();
+            var cookOptions = CookOptions.From(manifest.Cook);
+            foreach (var (_, target) in mounts) GameCook.CookFolder(Path.Combine(output, "game", target), cookOptions, cook);
+            foreach (string written in cook.Written) result.Files.Add(Relative(output, written));
+            result.Errors.AddRange(cook.Errors);
+            result.Cook = cook;
+        }
         if (mods != null) CopyTree(mods, "game/" + Relative(game, mods));
 
         // The manifest, everything as the game wrote it except the paths, which name the copies.

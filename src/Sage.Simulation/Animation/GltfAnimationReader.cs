@@ -143,7 +143,7 @@ public sealed class GltfAnimationReader
         ModelRoot root;
         try
         {
-            // Binary only, as the client's GltfLoader: a text .gltf keeps its buffers beside it (05 §8).
+            // Binary only, as MeshGeometry.ReadGlb: a text .gltf keeps its buffers beside it (05 §8).
             root = ModelRoot.ReadGLB(stream, new ReadSettings());
         }
         catch (Exception ex)

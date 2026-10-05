@@ -10,7 +10,7 @@ namespace Sage.Client;
 
 // `r_testskin 1` (issue #117): a generated skinned model in front of the camera, bending, so GPU
 // skinning can be seen working (and smoke-tested) with no content at all. The model is written as a
-// .glb in memory and read back through GltfLoader, so the loader's skinned path is what draws it.
+// .glb in memory and read back through MeshGeometry.ReadGlb, so the loader's skinned path is what draws it.
 //
 // The model: a square column two metres tall on two joints, `root` at its foot and `bend` a metre up.
 // Rings below the middle follow the root, rings above follow `bend`, and the middle ring is shared

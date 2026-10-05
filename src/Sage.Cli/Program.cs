@@ -11,7 +11,8 @@ using System.Linq;
 //   sage schema <game> [<game> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...]
 //               [--engine-content <dir>] [--client <Sage.Client.dll>]
 //   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
-//   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate]
+//   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook]
+//   sage cook <game> [--force] [--clean]
 //   sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]
 //   sage run <game> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]
 //
@@ -31,7 +32,14 @@ using System.Linq;
 // (GamePackage.cs says what goes in). --host is the host's build output (default: the host beside this
 // program, as in the Player package, else this repository's src/Sage.Host/bin/<config>/net8.0); --config is
 // the configuration the game was built in (default Shipping). The written folder's content is then checked as
-// `validate` would, with the host's Content/ as engine content, unless --no-validate.
+// `validate` would, with the host's Content/ as engine content, unless --no-validate. The package's mounts are
+// cooked (below) unless --no-cook.
+//
+// `cook` (issue #302, GameCook.cs) writes a cooked .sgmesh beside every .glb and a .sgtex beside every .png/.jpg
+// in the game's mounts, in place, which the client then reads instead of the loose files. It is for a packaged
+// game (`package` runs it on its copy); in a source folder a cooked file stands in for the loose one until it is
+// cooked again (or removed with --clean), so an edit to the loose file is not seen until then. Up-to-date files
+// are skipped unless --force. game.json's "cook" says which textures are not block-compressed.
 //
 // `new` (issue #297) is `dotnet new` with the Sage.Templates templates by short name (game, game-data, game-client,
 // mod-data), and the steps a mod or a client half needs to fit the game --game names: a mod's schemas written and the
@@ -45,6 +53,7 @@ return args.Length == 0 ? Usage()
     : args[0] == "schema" ? Schema(args[1..])
     : args[0] == "mods" ? Mods(args[1..])
     : args[0] == "package" ? Package(args[1..])
+    : args[0] == "cook" ? Cook(args[1..])
     : args[0] == "new" ? New(args[1..])
     : args[0] == "run" ? Run(args[1..])
     : Usage();
@@ -54,7 +63,8 @@ static int Usage()
     Console.Error.WriteLine("usage: sage validate <game folder> [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage schema <game folder> [<game folder> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>] [--client <Sage.Client.dll>]");
     Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
-    Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate]");
+    Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook]");
+    Console.Error.WriteLine("       sage cook <game folder> [--force] [--clean]");
     Console.Error.WriteLine("       sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]");
     Console.Error.WriteLine("       sage run <game folder> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]");
     return 2;
@@ -216,12 +226,13 @@ static int Schema(string[] args)
 static int Package(string[] args)
 {
     string? game = null, output = null, host = null, config = "Shipping";
-    bool validate = true;
+    bool validate = true, cook = true;
     for (int i = 0; i < args.Length; i++)
     {
         switch (args[i])
         {
             case "--out" when i + 1 < args.Length: output = args[++i]; break;
+            case "--no-cook": cook = false; break;
             case "--host" when i + 1 < args.Length: host = args[++i]; break;
             case "--config" when i + 1 < args.Length: config = args[++i]; break;
             case "--no-validate": validate = false; break;
@@ -240,10 +251,15 @@ static int Package(string[] args)
         return 1;
     }
 
-    var result = Sage.Cli.GamePackage.Run(new Sage.Cli.PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host, Configuration = config });
+    var result = Headless(() => Sage.Cli.GamePackage.Run(new Sage.Cli.PackageOptions
+    {
+        GameDirectory = game, OutputDirectory = output, HostDirectory = host, Configuration = config, Cook = cook,
+    }));
+    foreach (string warning in result.Cook?.Warnings ?? new List<string>()) Console.WriteLine($"WARN  {warning}");
     foreach (string error in result.Errors) Console.WriteLine($"ERROR {error}");
     if (!result.Ok) return 1;
     Console.WriteLine($"{Path.GetFullPath(output)}: {result.Files.Count} file(s), the {config} host from {Path.GetFullPath(host)} and the game in game/");
+    if (result.Cook != null) Console.WriteLine($"Cooked: {result.Cook.Summary()}");
     if (!validate) return 0;
 
     string packaged = Path.Combine(output, "game");
@@ -258,9 +274,41 @@ static int Package(string[] args)
     return report.Ok ? 0 : 1;
 }
 
+// Cooks a game's mounts in place (or, with --clean, removes what a cook wrote).
+static int Cook(string[] args)
+{
+    string? game = null;
+    bool force = false, clean = false;
+    foreach (string arg in args)
+    {
+        switch (arg)
+        {
+            case "--force": force = true; break;
+            case "--clean": clean = true; break;
+            default:
+                if (arg.StartsWith("--", StringComparison.Ordinal) || game != null) return Usage();
+                game = arg;
+                break;
+        }
+    }
+    if (game == null) return Usage();
+    var result = Headless(() => Sage.Cli.GameCook.Run(game, force, clean));
+    foreach (string warning in result.Warnings) Console.WriteLine($"WARN  {warning}");
+    foreach (string error in result.Errors) Console.WriteLine($"ERROR {error}");
+    if (clean) Console.WriteLine($"{Path.GetFullPath(game)}: {result.Removed} cooked file(s) removed");
+    else
+    {
+        foreach (var file in result.Cooked)
+            Console.WriteLine($"  {file.Path}: {file.Format}, {file.LooseMs:F2} ms -> {file.CookedMs:F2} ms" +
+                              (file.Kind == "texture" ? $", {file.LooseMemory / 1024.0:F1} KB -> {file.CookedMemory / 1024.0:F1} KB" : ""));
+        Console.WriteLine($"{Path.GetFullPath(game)}: {result.Summary()}");
+    }
+    return result.Ok ? 0 : 1;
+}
+
 // A headless run: a throwaway user folder (no config, saves or logs written into the game's) and a log
 // that prints nothing (what matters is collected by the run's own sink).
-static ValidationReport Headless(Func<ValidationReport> run)
+static T Headless<T>(Func<T> run)
 {
     string user = Path.Combine(Path.GetTempPath(), "sage-cli-" + Guid.NewGuid().ToString("N"));
     UserPaths.Initialize("validate", user);

@@ -16,6 +16,7 @@
       SageGameDirectory         the game folder `dotnet run` passes as -game; default: this project's
                                 folder when it has a game.json.
       SagePackageDirectory      where SagePackage writes the shippable folder; default bin/package/<config>.
+      SageCook=false            SagePackage leaves the package's models and textures uncooked (issue #302).
     Items:
       <SageKit Include="sage.kits.rpg" />   a kit the game is built on (issue #27): references its
                                 assembly (and, in a client half, its client half; Client="false" for a
@@ -242,16 +243,17 @@
 
   <!-- `dotnet msbuild -t:SagePackage -p:Configuration=Shipping` (issue #293): builds the game, then `sage package`
        writes a folder a player runs (the host of this configuration with the game beside it in game/, no `sage`,
-       editor or ImGui) into SagePackageDirectory, and validates it. A Debug or Development host has the editor
+       editor or ImGui) into SagePackageDirectory, cooks its models and textures (issue #302), and validates it. A Debug or Development host has the editor
        in it, so only Shipping packages. -->
   <Target Name="SagePackage" DependsOnTargets="Build" Condition="'$(SageGameDirectory)' != ''">
     <PropertyGroup>
       <SagePackageDirectory Condition="'$(SagePackageDirectory)' == ''">$(MSBuildProjectDirectory)\bin\package\$(Configuration)</SagePackageDirectory>
       <_SagePackageOut>$([System.IO.Path]::GetFullPath('$(SagePackageDirectory)').TrimEnd('\').TrimEnd('/'))</_SagePackageOut>
       <_SagePackageHost>$(SageHostDirectory.TrimEnd('\').TrimEnd('/'))</_SagePackageHost>
+      <_SagePackageCook Condition="'$(SageCook)' == 'false'"> --no-cook</_SagePackageCook>
     </PropertyGroup>
     <Error Code="SAGE0112" Condition="!Exists('$(SageCliDirectory)sage.dll')"
            Text="No `sage` CLI for $(Configuration) in $(SageCliDirectory) (in this repository: dotnet build src/Sage.Cli -c $(Configuration))." />
-    <Exec Command="&quot;$(SageDotnet)&quot; &quot;$(SageCliDirectory)sage.dll&quot; package &quot;$(SageGameDirectory)&quot; --out &quot;$(_SagePackageOut)&quot; --host &quot;$(_SagePackageHost)&quot; --config $(Configuration)" />
+    <Exec Command="&quot;$(SageDotnet)&quot; &quot;$(SageCliDirectory)sage.dll&quot; package &quot;$(SageGameDirectory)&quot; --out &quot;$(_SagePackageOut)&quot; --host &quot;$(_SagePackageHost)&quot; --config $(Configuration)$(_SagePackageCook)" />
   </Target>
 </Project>

@@ -73,6 +73,24 @@
     "version": {
       "type": "string",
       "description": "The game's own version, 1.4.0: what a mod's \"gameVersion\" is checked against."
+    },
+    "cook": {
+      "title": "cook",
+      "type": "object",
+      "properties": {
+        "compress": {
+          "type": "boolean",
+          "description": "Whether `sage cook` block-compresses textures (BC1/BC3). Default true."
+        },
+        "uncompressed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Texture paths inside a mount, with * and ** wildcards, that `sage cook` keeps as exact RGBA (pixel art, UI, fonts)."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,

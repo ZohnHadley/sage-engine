@@ -26,6 +26,11 @@
          MonoGame, so SAGE0024 allows it; the client's GltfLoader reads meshes through this reference
          too. No SharpGLTF type appears in the public API: games never need the dll to compile. -->
     <PackageReference Include="SharpGLTF.Core" />
+    <!-- Cooked assets (issue #302): images decoded headlessly for `sage cook` (StbImageSharp, the decoder
+         MonoGame's Texture2D.FromStream is built on), and Ogg Vorbis decoded to PCM for the client's sounds
+         (NVorbis, which MonoGame already depends on). Neither appears in the public API. -->
+    <PackageReference Include="StbImageSharp" />
+    <PackageReference Include="NVorbis" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +42,9 @@
     <!-- The one internal the client uses: RenderViewPlan (issue #77), the planning half of multi-view
          drawing, kept here so the headless tests can reach it. -->
     <InternalsVisibleTo Include="Sage.Client" />
+    <!-- `sage cook` (src/Sage.Cli, assembly "sage") writes the cooked formats the client reads (issue #302):
+         MeshGeometry and CookedAssets stay internal to the engine and its tools. -->
+    <InternalsVisibleTo Include="sage" />
   </ItemGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->

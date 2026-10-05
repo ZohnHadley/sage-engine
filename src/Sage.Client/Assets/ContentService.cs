@@ -9,10 +9,17 @@ namespace Sage.Client;
 
 // Client asset loading through the VFS (docs/design/05 §3.6), interim until the AssetServer with
 // scopes and async loading (05 §14 step 2):
-//   - models (.glb, read at runtime by `GltfLoader`);
+//   - models (.glb, read at runtime by `MeshGeometry.ReadGlb`);
 //   - compiled effects (.mgfxo, 07 §3.1 — the one thing still built ahead of time);
 //   - textures (.png/.jpg via Texture2D.FromStream, premultiplied on load, 07 §13);
-//   - sounds (.wav via SoundEffect.FromStream, 11 §3), and the bitmap font, which is a texture.
+//   - sounds (.wav via SoundEffect.FromStream, .ogg decoded by OggVorbis, 11 §3), and the bitmap font,
+//     which is a texture.
+//
+// **Cooked files stand in when there are some** (issue #302, 05 §7): `sage cook` (run by `sage package`)
+// writes `<path>.sgmesh` and `<path>.sgtex` beside a model and a texture, and this reads them instead of
+// the loose file: no glTF parse, no PNG inflate or premultiply, and BC1/BC3 textures at an eighth or a
+// quarter of the memory. `CookedAssets` says when one stands in (a later mount's loose file still wins)
+// and falls back to the loose file, with a warning, when one cannot be read.
 //
 // **Nothing here is built by a content pipeline** (R12): every asset is a file the VFS hands over as
 // bytes, which is what lets a mod replace one and a game ship art it made this morning.
@@ -161,6 +168,19 @@ public sealed class ContentService : IDisposable
         return font;
     }
 
+    // A model's geometry: its cooked `.sgmesh` when one stands in for it, else the `.glb` read now. Null
+    // (logged) when neither can be read; the renderer draws the error mesh.
+    internal MeshGeometry? LoadModel(AssetPath path)
+    {
+        if (CookedAssets.LoadMesh(_vfs, path.Path) is { } cooked)
+        {
+            Log.Debug(LogCat.Assets, $"Loaded cooked model {path}");
+            return cooked;
+        }
+        using var stream = Open(path);
+        return stream == null ? null : MeshGeometry.ReadGlb(stream, path.ToString());
+    }
+
     // Opens an asset as bytes, for whoever knows what to do with them (a model, and later anything
     // else a runtime loader reads). The VFS decides which mount wins (05 §3.2).
     public System.IO.Stream? Open(AssetPath path)
@@ -202,8 +222,8 @@ public sealed class ContentService : IDisposable
         return _effects[path] = effect;
     }
 
-    // A WAV through the VFS (11 §3, 05 §3.2). `SoundEffect.FromStream` takes PCM wave data, which is
-    // why v1 is WAV: OGG needs a decoder library, and that decision is still open (05).
+    // A WAV or an Ogg Vorbis file through the VFS (11 §3, 05 §3.2). `SoundEffect.FromStream` takes RIFF
+    // wave data; a `.ogg` is decoded to PCM whole first (OggVorbis, issue #302).
     public Microsoft.Xna.Framework.Audio.SoundEffect? LoadSound(AssetPath path)
     {
         if (_sounds.TryGetValue(path, out var sound)) return sound;
@@ -218,11 +238,17 @@ public sealed class ContentService : IDisposable
             try
             {
                 using var stream = mount.Open(path.Path);
-                sound = Microsoft.Xna.Framework.Audio.SoundEffect.FromStream(stream);
+                if (path.Path.Value.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase))
+                {
+                    var pcm = OggVorbis.Decode(stream);
+                    sound = new Microsoft.Xna.Framework.Audio.SoundEffect(pcm.Samples, pcm.SampleRate,
+                        pcm.Channels == 1 ? Microsoft.Xna.Framework.Audio.AudioChannels.Mono : Microsoft.Xna.Framework.Audio.AudioChannels.Stereo);
+                }
+                else sound = Microsoft.Xna.Framework.Audio.SoundEffect.FromStream(stream);
                 sound.Name = path.ToString();
                 Log.Debug(LogCat.Audio, $"Loaded sound {path} ({sound.Duration.TotalSeconds:F2}s) from {mount.Name}");
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException)
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException or InvalidDataException)
             {
                 // A missing or unreadable sound costs the sound, not the frame (11 §8).
                 Log.Once(LogCat.Audio, LogLevel.Error, $"sound-load:{path}", $"Sound '{path}': {ex.Message}");
@@ -235,6 +261,11 @@ public sealed class ContentService : IDisposable
     {
         if (_textures.TryGetValue(path, out var texture)) return texture;
         texture = null;
+        if (CookedAssets.LoadTexture(_vfs, path.Path) is { } cooked && FromCooked(path, cooked) is { } fromCooked)
+        {
+            Log.Debug(LogCat.Assets, $"Loaded cooked texture {path} ({cooked.Width}x{cooked.Height} {cooked.Format})");
+            return _textures[path] = fromCooked;
+        }
         if (_vfs.Which(path.Path) is not { } mount)
         {
             Log.Warn(LogCat.Assets, $"Texture '{path}' not found in any mount");
@@ -255,6 +286,43 @@ public sealed class ContentService : IDisposable
             }
         }
         return _textures[path] = texture;
+    }
+
+    // A cooked texture on the GPU: its blocks as they are where the device samples DXT1/DXT5, decoded to
+    // RGBA on the CPU where it does not (MonoGame refuses the format with NotSupportedException).
+    private Texture2D? FromCooked(AssetPath path, CookedTextureData cooked)
+    {
+        var format = cooked.Format switch
+        {
+            CookedTextureFormat.Bc1 => SurfaceFormat.Dxt1,
+            CookedTextureFormat.Bc3 => SurfaceFormat.Dxt5,
+            _ => SurfaceFormat.Color,
+        };
+        try
+        {
+            if (format != SurfaceFormat.Color)
+            {
+                try
+                {
+                    var compressed = new Texture2D(_device, cooked.Width, cooked.Height, false, format) { Name = path.ToString() };
+                    compressed.SetData(cooked.Data);
+                    return compressed;
+                }
+                catch (NotSupportedException)
+                {
+                    Log.Once(LogCat.Assets, LogLevel.Warn, "cooked-no-s3tc",
+                             "This graphics device does not sample DXT1/DXT5: cooked textures are decoded to RGBA as they load");
+                }
+            }
+            var texture = new Texture2D(_device, cooked.Width, cooked.Height, false, SurfaceFormat.Color) { Name = path.ToString() };
+            texture.SetData(cooked.ToRgba());
+            return texture;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            Log.Warn(LogCat.Assets, $"Cooked texture for '{path}' could not be made ({ex.Message}); reading the loose file");
+            return null;
+        }
     }
 
     // Blend states assume premultiplied alpha (07 §13); FromStream returns straight alpha.
