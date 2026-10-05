@@ -47,7 +47,8 @@ internal static class Followers
         back = back.LengthSquared() > 1e-6f ? Vector3.Normalize(back) : Vector3.UnitZ;
         side = side.LengthSquared() > 1e-6f ? Vector3.Normalize(side) : Vector3.UnitX;
 
-        var terrain = world.Resources.TryGet<Terrain>(out var t) && t is { Generator: not null } && t.Sectors.Count > 0 ? t : null;
+        // Inside an interior the ground is not the floor, even when an exterior held live beside it keeps its own (4m-17).
+        var terrain = !Interiors.Active(world) && world.Resources.TryGet<Terrain>(out var t) && t is { Generator: not null } && t.Sectors.Count > 0 ? t : null;
         float above = terrain != null ? leader.LocalPosition.Y - terrain.HeightAt(leader.LocalPosition.X, leader.LocalPosition.Z) : 0f;
 
         for (int i = 0; i < followers.Count; i++)

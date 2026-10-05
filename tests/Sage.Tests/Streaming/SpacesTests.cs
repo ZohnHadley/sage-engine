@@ -23,6 +23,7 @@ public class SpacesTests
       { "type": "terrain", "id": "plain", "generator": "Flat", "height": 0 },
       { "type": "prefab", "id": "hero", "name": "hero", "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } },
       { "type": "prefab", "id": "marker", "name": "marker" },
+      { "type": "prefab", "id": "hound", "name": "hound", "parts": { "attributes": {}, "follower": { "distance": 2 } } },
       { "type": "prefab", "id": "goblin", "name": "goblin", "parts": { "attributes": {} } },
       { "type": "prefab", "id": "skeleton", "name": "skeleton", "parts": { "attributes": {} } },
       { "type": "prefab", "id": "slab", "name": "slab", "parts": { "body": { "size": [40, 1, 40] } } },
@@ -30,7 +31,8 @@ public class SpacesTests
       { "type": "scene", "id": "village", "streamed": true, "live": true, "terrain": "plain", "relativeTo": "Ground",
         "player": { "prefab": "hero", "at": [0, 0.05, 0] },
         "place": [ { "prefab": "marker", "at": [0, 0.05, 1.5], "yaw": 180, "name": "crypt_door_out" },
-                   { "prefab": "goblin", "at": [30, 0, 30], "name": "home", "id": "home" } ] },
+                   { "prefab": "goblin", "at": [30, 0, 30], "name": "home", "id": "home" },
+                   { "prefab": "hound", "at": [3, 0, 3], "name": "hound", "id": "hound" } ] },
       { "type": "scene", "id": "crypt", "space": "interior", "live": true, "environment": { "ambient": [0.1, 0.1, 0.12] },
         "place": [ { "prefab": "slab", "at": [5000, -0.5, 0] },
                    { "prefab": "marker", "at": [5000, 0.05, 2], "yaw": 90, "name": "crypt_in" },
@@ -250,6 +252,43 @@ public class SpacesTests
         Assert.InRange(fell, 0.2f, 0.45f);
         AssertNear(new Vector3(5010, 10, 10), Absolute(world, crate), 0.01f);
         Assert.Equal(0f, SpaceGravity.Of(world).ScaleAt(world, world.Origin().ToOrigin(new Vector3(5010, 10, 10))));
+    }
+
+    // Companions go through doors: a follower leaves the scene the player leaves — held live or gone to sleep —
+    // and arrives behind the player in the next, one of that scene's now, with what it had; coming back, it is
+    // there once, never placed again by the content it left.
+    [Xunit.Theory]
+    [Xunit.InlineData(4)]
+    [Xunit.InlineData(0)]
+    public void CompanionsComeThroughTheDoor(int liveMax)
+    {
+        using var app = Run(Files(), TestEnv.NewTempDir());
+        var world = app.World;
+        app.CVars.Execute($"space_live_max {liveMax}");
+        Effects.Apply(world, One(world, "hound"), Game("hurt"), One(world, "hound"), 30f);
+        world.FlushCommands();
+
+        Go(world, "crypt", "crypt_in");
+        var hound = One(world, "hound");
+        Assert.Equal(70f, world.Attribute(hound, Game("health")));
+        Assert.True(Vector3.Distance(Absolute(world, Hero(world)), Absolute(world, hound)) < 2.5f);
+        Assert.Equal(ContentIds.SceneSource(Game("crypt")), world.Get<InCell>(hound).Source);
+        Tick(world, 10);
+        Assert.Equal(hound, One(world, "hound"));                           // the village, live or asleep, has none
+        AssertNoIdTwice(world);
+
+        Go(world, "tower", "tower_in");
+        hound = One(world, "hound");
+        Assert.True(Vector3.Distance(Absolute(world, Hero(world)), Absolute(world, hound)) < 2.5f);
+        Assert.Equal(ContentIds.SceneSource(Game("tower")), world.Get<InCell>(hound).Source);
+
+        Go(world, "village", "crypt_door_out");
+        Tick(world, 5);
+        hound = One(world, "hound");                                         // not placed a second time
+        Assert.Equal(70f, world.Attribute(hound, Game("health")));
+        Assert.StartsWith(ContentIds.SectorPrefix, world.Get<InCell>(hound).Source);
+        Assert.True(Vector3.Distance(Absolute(world, Hero(world)), Absolute(world, hound)) < 2.5f);
+        AssertNoIdTwice(world);
     }
 
     // `space_live_max` bounds how many are held: the one left longest ago goes dormant (and comes back from
