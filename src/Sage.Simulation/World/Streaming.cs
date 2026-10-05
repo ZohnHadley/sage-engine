@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Sage.Simulation;
@@ -25,10 +26,38 @@ namespace Sage.Simulation;
 // **The ring runs without a generator** (4g-3): a world with no ground still has sectors, so a streamed
 // scene in a game with no terrain, or whose terrain comes from a `terrain` record set later, streams.
 
-// Tag: the world loads around this. The player has it; a followed companion or a remote camera could
-// too, and each one keeps its own ring.
+// Tag: the world loads around this, with the rings `stream_radius` and `stream_far_radius` say. The local
+// player is always a source; a followed companion or a remote camera can be one too, and each keeps its own
+// ring (#290).
 [Tag("sage:streaming_source")]
 public struct StreamingSource : ITag { }
+
+// A streaming source with rings of its own (#290): a companion the camera follows that needs only the sector it
+// stands in, a camera cut that wants to see further. It is a source whether or not it has the tag; on the player
+// it replaces the cvars' rings. Where rings of two sources meet, the larger wins.
+[Component("sage:streaming_ring")]
+[Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+public struct StreamingRing : IComponent
+{
+    [Property(Min = 0, Max = 8, Unit = "sectors", Tooltip = "Full-detail sectors kept around it (0: only the one it stands in)")]
+    public int Radius;
+    [Property(Min = 0, Max = 16, Unit = "sectors", Tooltip = "Coarse ground and far looks out to here (0, or not more than Radius: none)")]
+    public int FarRadius;
+}
+
+// "streaming_ring": { "radius": 0, "farRadius": 0 }
+[PrefabPart("streaming_ring", Plugin = RegistrationOwners.Core)]
+[Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+public sealed class StreamingRingPart : IPrefabPart
+{
+    [Property(Min = 0, Max = 8, Unit = "sectors", Tooltip = "Full-detail sectors kept around it (0: only the one it stands in)")]
+    public int Radius = 1;
+    [Property(Min = 0, Max = 16, Unit = "sectors", Tooltip = "Coarse ground and far looks out to here (0, or not more than radius: none)")]
+    public int FarRadius;
+
+    public void Apply(in PrefabPartContext ctx) =>
+        ctx.World.Add(ctx.Entity, new StreamingRing { Radius = Math.Clamp(Radius, 0, 8), FarRadius = Math.Clamp(FarRadius, 0, 16) });
+}
 
 // What a sector owns: chunk meshes, its collision body, and later the props a map placed in it. When
 // the sector goes, these go. It is a component rather than a tag because the *which sector* is the
@@ -150,6 +179,7 @@ public sealed class StreamingModule : IModule
                 var local = origin.ToOrigin(new Vector3(absoluteX, 0, absoluteZ));
                 local.Y = terrain.HeightAt(local.X, local.Z) + 1f;
                 world.Teleport(entity, Transform.At(local));
+                Followers.Bring(world, entity);   // and whoever follows them (#290)
                 Log.Info(LogCat.Console, $"{World.Describe(entity)} warped to {absoluteX:F0}, {absoluteZ:F0} " +
                                          $"(sector {destination}, ground {local.Y - 1f:F1} m)");
             }
@@ -204,7 +234,7 @@ internal sealed class SectorRing
     // "nothing is live", and a streamed scene waits rather than putting everything to sleep.
     public bool Ready;
 
-    // The sector of the first source: what a streamed scene places first.
+    // The sector of the primary source (the player's, #290): what a streamed scene places first.
     public SectorCoord Centre;
 
     // Entities placed per tick at most (`stream_place_budget`).
@@ -219,6 +249,9 @@ internal sealed class SectorRing
     // Full sectors whose ground was loaded on the last tick streaming ran (#277): the per-tick work the
     // scale test bounds by `stream_load_budget`.
     public int LoadedLastTick;
+
+    // Streaming sources on the last tick streaming ran, two in one sector counted once (#290).
+    public int Sources;
 }
 
 internal sealed record StreamingCVars(CVar<int> Radius, CVar<bool> Enabled, CVar<int> PlaceBudget,
@@ -233,9 +266,23 @@ internal sealed record StreamingCVars(CVar<int> Radius, CVar<bool> Enabled, CVar
 //   * **ahead**: the ring plus one is generated on the thread pool before it is needed, so crossing an edge
 //     takes finished heights instead of generating three sectors in one tick. Dropped past the ring plus two.
 //   * **far**: out to `stream_far_radius`, not full: coarse ground on a job and far looks (SectorLod).
+//
+// **Several sources, each with its own rings** (#290): the local player always, everything tagged
+// `StreamingSource` with the cvars' rings, and everything with a `StreamingRing` with its own. A sector is in
+// the full ring when it is within *some* source's radius, and kept until past that radius plus the margin.
+// The origin follows the **primary** source — the player, else the first source — so a companion left in
+// the next valley keeps its ground loaded without holding the frame of reference back.
 [System("sage.streaming.sectors", Phase.Late)]
 internal sealed class StreamingSystem : ISystem
 {
+    // One source as this tick sees it: the sector it stands in and its two radii, in sectors.
+    private struct Source
+    {
+        public SectorCoord Sector;
+        public int Radius;
+        public int Far;
+    }
+
     private readonly World _world;
     private readonly Terrain _terrain;
     private readonly SectorRing _ring;
@@ -244,12 +291,14 @@ internal sealed class StreamingSystem : ISystem
     private readonly StreamingCVars _cvars;
 
     private readonly Query<Transform> _sources;
+    private readonly Query<Transform, StreamingRing> _rings;
     private readonly Query<Transform> _players;
 
     // Reused every tick: this runs in the fixed schedule, where allocating is not allowed (02 §4.6).
-    private readonly List<SectorCoord> _sourceSectors = new();
+    private readonly List<Source> _sourceSectors = new();
     private readonly List<SectorCoord> _stale = new();
     private readonly List<SectorCoord> _missing = new();
+    private int _primary = -1;
 
     // How far past the ring a sector survives before being dropped, and how far a source may drift
     // from the origin before everything shifts. Both in sectors.
@@ -265,8 +314,9 @@ internal sealed class StreamingSystem : ISystem
         _origin = world.Origin();
         _cvars = cvars;
         _sources = world.Query<Transform>().AllTags(Tags.Get<StreamingSource>());
-        // Before a game marks anything, the local player is the obvious source: a world streaming
-        // around nothing would unload the ground under the only thing standing on it.
+        _rings = world.Query<Transform, StreamingRing>();
+        // The local player is always a source: a world streaming around a camera cut or a companion alone
+        // would unload the ground under the only thing standing on it.
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
     }
 
@@ -282,49 +332,47 @@ internal sealed class StreamingSystem : ISystem
             return;
         }
 
-        CollectSources();
+        int far = Math.Clamp(_cvars.FarRadius.Value, 0, 16);
+        CollectSources(radius, far);
         if (_sourceSectors.Count == 0) return;
 
         bool ground = _terrain.Generator != null;
-        LoadRing(radius, ground);
-        if (ground) Ahead(radius);
+        LoadRing(ground);
+        if (ground) Ahead();
 
         // Drop anything past the ring plus its margin. Collected first, because unloading raises an
         // event that destroys entities and the terrain's own list must not be walked while it changes.
         _stale.Clear();
         var loaded = _terrain.Sectors;
         for (int i = 0; i < loaded.Count; i++)
-            if (!WithinAnySource(loaded[i].Coord, radius + KeepMargin)) _stale.Add(loaded[i].Coord);
+            if (!WithinAnyRing(loaded[i].Coord, KeepMargin)) _stale.Add(loaded[i].Coord);
         for (int i = 0; i < _stale.Count; i++) _terrain.Unload(_stale[i]);
 
         _stale.Clear();
         foreach (var coord in _ring.Live)
-            if (!WithinAnySource(coord, radius + KeepMargin)) _stale.Add(coord);
+            if (!WithinAnyRing(coord, KeepMargin)) _stale.Add(coord);
         for (int i = 0; i < _stale.Count; i++) _ring.Live.Remove(_stale[i]);
         _ring.Ready = true;
-        _ring.Centre = _sourceSectors[0];
+        var primary = _sourceSectors[_primary].Sector;
+        _ring.Centre = primary;
         _ring.Budget = _cvars.PlaceBudget.Value;
+        _ring.Sources = _sourceSectors.Count;
 
-        Far(radius, ground);
+        Far(far, ground);
 
-        // And the origin follows, once the nearest source is far enough that precision would suffer.
-        var nearest = _sourceSectors[0];
-        float distance = Distance(nearest, _origin.Sector);
-        for (int i = 1; i < _sourceSectors.Count; i++)
-        {
-            float d = Distance(_sourceSectors[i], _origin.Sector);
-            if (d < distance) { distance = d; nearest = _sourceSectors[i]; }
-        }
-        if (distance > RebaseDistance) _world.Rebase(nearest);
+        // And the origin follows the primary source once it is far enough that precision would suffer.
+        if (Distance(primary, _origin.Sector) > RebaseDistance) _world.Rebase(primary);
     }
 
     // The full ring around each source: the sectors (4g-3), and their ground when there is a generator.
-    private void LoadRing(int radius, bool ground)
+    private void LoadRing(bool ground)
     {
         _missing.Clear();
         _ring.LoadedLastTick = 0;
-        foreach (var centre in _sourceSectors)
+        foreach (var source in _sourceSectors)
         {
+            var centre = source.Sector;
+            int radius = source.Radius;
             // A source standing where there is no ground has jumped (or just arrived): its ring loads now,
             // because it is about to fall through the world otherwise.
             bool jump = ground && !_terrain.IsLoaded(centre);
@@ -375,35 +423,40 @@ internal sealed class StreamingSystem : ISystem
         int best = int.MaxValue;
         for (int i = 0; i < _sourceSectors.Count; i++)
         {
-            var s = _sourceSectors[i];
+            var s = _sourceSectors[i].Sector;
             best = Math.Min(best, Math.Abs(coord.X - s.X) * Math.Abs(coord.X - s.X) + Math.Abs(coord.Z - s.Z) * Math.Abs(coord.Z - s.Z));
         }
         return best;
     }
 
-    // The ring plus one, generated on jobs before the ring reaches it; what was generated ahead and is
-    // now past the ring plus two is dropped unused.
-    private void Ahead(int radius)
+    // Each ring plus one, generated on jobs before the ring reaches it; what was generated ahead and is
+    // now past every ring plus two is dropped unused.
+    private void Ahead()
     {
         if (!_terrain.Jobs) return;
-        int ahead = radius + 1;
-        foreach (var centre in _sourceSectors)
+        foreach (var source in _sourceSectors)
+        {
+            int ahead = source.Radius + 1;
+            var centre = source.Sector;
             for (int z = -ahead; z <= ahead; z++)
                 for (int x = -ahead; x <= ahead; x++)
                     _terrain.Prefetch(new SectorCoord(centre.X + x, centre.Z + z));
+        }
 
         _stale.Clear();
         _terrain.CollectAhead(_stale);
         for (int i = 0; i < _stale.Count; i++)
-            if (!WithinAnySource(_stale[i], ahead + KeepMargin)) _terrain.DropAhead(_stale[i]);
+            if (!WithinAnyRing(_stale[i], 1 + KeepMargin)) _terrain.DropAhead(_stale[i]);
     }
 
-    // The far ring (SectorLod): what is within `stream_far_radius` and not full has coarse ground and far
-    // looks; what came into the full ring, or went past the far one plus the margin, is dropped.
-    private void Far(int radius, bool ground)
+    // The far ring (SectorLod): what is within a source's far radius and in no full ring has coarse ground
+    // and far looks; what came into a full ring, or went past every far one plus the margin, is dropped.
+    private void Far(int far, bool ground)
     {
-        int far = Math.Clamp(_cvars.FarRadius.Value, 0, 16);
-        _lod.Radius = far;
+        int widest = 0;
+        for (int i = 0; i < _sourceSectors.Count; i++)
+            if (_sourceSectors[i].Far > _sourceSectors[i].Radius) widest = Math.Max(widest, _sourceSectors[i].Far);
+        _lod.Radius = Math.Max(far, widest);
         StreamedScene? streamed = _world.Resources.TryGet<ActiveScene>(out var scene) ? scene?.Streamed : null;
         if (_lod.TerrainVersion != _terrain.Version || !ReferenceEquals(_lod.Scene, streamed))
         {
@@ -411,7 +464,7 @@ internal sealed class StreamingSystem : ISystem
             _lod.TerrainVersion = _terrain.Version;
             _lod.Scene = streamed;
         }
-        if (far <= radius || (!ground && streamed == null))
+        if (widest == 0 || (!ground && streamed == null))
         {
             if (_lod.Count > 0) _lod.Clear();
             return;
@@ -422,50 +475,94 @@ internal sealed class StreamingSystem : ISystem
         for (int i = 0; i < sectors.Count; i++)
         {
             var coord = sectors[i].Coord;
-            if (_ring.Live.Contains(coord) || !WithinAnySource(coord, far + KeepMargin)) _stale.Add(coord);
+            if (_ring.Live.Contains(coord) || !WithinAnyFar(coord, KeepMargin)) _stale.Add(coord);
         }
         for (int i = 0; i < _stale.Count; i++) _lod.Remove(_stale[i]);
 
-        foreach (var centre in _sourceSectors)
-            for (int z = -far; z <= far; z++)
-                for (int x = -far; x <= far; x++)
+        foreach (var source in _sourceSectors)
+        {
+            if (source.Far <= source.Radius) continue;
+            var centre = source.Sector;
+            for (int z = -source.Far; z <= source.Far; z++)
+                for (int x = -source.Far; x <= source.Far; x++)
                 {
                     var coord = new SectorCoord(centre.X + x, centre.Z + z);
-                    if (_lod.Contains(coord) || _ring.Live.Contains(coord) || WithinAnySource(coord, radius)) continue;
+                    if (_lod.Contains(coord) || _ring.Live.Contains(coord) || WithinAnyRing(coord, 0)) continue;
                     var sector = _lod.Add(coord);
                     if (ground) sector.Job = _terrain.Coarse(coord);
                     streamed?.FarProxies(_world, coord, sector.Proxies);
                 }
+        }
         _lod.Collect();
     }
 
-    // Tagged sources if there are any, the local player otherwise.
-    private void CollectSources()
+    // Every source this tick: those with rings of their own, then the tagged ones and the local player with
+    // the cvars' rings. Two sources in one sector are one, with the larger of each radius. The primary is
+    // the player's (the first player's), else the first source.
+    private void CollectSources(int radius, int far)
     {
         _sourceSectors.Clear();
-        Collect(_sources);
-        if (_sourceSectors.Count == 0) Collect(_players);
+        _primary = -1;
+        foreach (var (transforms, rings, entities) in _rings.Chunks)
+        {
+            var t = transforms.Span;
+            var r = rings.Span;
+            for (int i = 0; i < t.Length; i++)
+            {
+                int at = Add(t[i].LocalPosition, Math.Clamp(r[i].Radius, 0, 8), Math.Clamp(r[i].FarRadius, 0, 16));
+                if (_primary < 0 && entities.EntityAt(i).Tags.Has<PlayerControlled>()) _primary = at;
+            }
+        }
+        Collect(_players, radius, far, player: true);
+        Collect(_sources, radius, far, player: false);
+        if (_primary < 0 && _sourceSectors.Count > 0) _primary = 0;
     }
 
-    private void Collect(Query<Transform> query)
+    private void Collect(Query<Transform> query, int radius, int far, bool player)
     {
-        foreach (var (transforms, _) in query.Chunks)
+        foreach (var (transforms, entities) in query.Chunks)
         {
             var span = transforms.Span;
             for (int i = 0; i < span.Length; i++)
             {
-                var sector = _origin.SectorOf(span[i].LocalPosition);
-                if (!_sourceSectors.Contains(sector)) _sourceSectors.Add(sector);
+                if (_world.Has<StreamingRing>(entities.EntityAt(i))) continue;   // its own rings, counted above
+                int at = Add(span[i].LocalPosition, radius, far);
+                if (player && _primary < 0) _primary = at;
             }
         }
     }
 
-    // Chebyshev distance in sectors: rings are squares, so "two sectors away" means two in the
-    // longest axis rather than along a diagonal.
-    private bool WithinAnySource(SectorCoord coord, int radius)
+    private int Add(Vector3 position, int radius, int far)
+    {
+        var sector = _origin.SectorOf(position);
+        for (int i = 0; i < _sourceSectors.Count; i++)
+        {
+            if (_sourceSectors[i].Sector != sector) continue;
+            var merged = _sourceSectors[i];
+            merged.Radius = Math.Max(merged.Radius, radius);
+            merged.Far = Math.Max(merged.Far, far);
+            _sourceSectors[i] = merged;
+            return i;
+        }
+        _sourceSectors.Add(new Source { Sector = sector, Radius = radius, Far = far });
+        return _sourceSectors.Count - 1;
+    }
+
+    // Within some source's full ring plus `extra` sectors. Chebyshev distance: rings are squares, so "two
+    // sectors away" means two in the longest axis rather than along a diagonal.
+    private bool WithinAnyRing(SectorCoord coord, int extra)
     {
         for (int i = 0; i < _sourceSectors.Count; i++)
-            if (Distance(coord, _sourceSectors[i]) <= radius) return true;
+            if (Distance(coord, _sourceSectors[i].Sector) <= _sourceSectors[i].Radius + extra) return true;
+        return false;
+    }
+
+    // Within some source's far ring (one that has one) plus `extra` sectors.
+    private bool WithinAnyFar(SectorCoord coord, int extra)
+    {
+        for (int i = 0; i < _sourceSectors.Count; i++)
+            if (_sourceSectors[i].Far > _sourceSectors[i].Radius &&
+                Distance(coord, _sourceSectors[i].Sector) <= _sourceSectors[i].Far + extra) return true;
         return false;
     }
 
