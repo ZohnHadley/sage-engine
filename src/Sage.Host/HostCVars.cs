@@ -7,6 +7,7 @@ internal sealed class HostCVars
     public CVar<float> MaxFrameTime { get; }
     public CVar<float> TimeScale { get; }
     public CVar<bool> VSync { get; }
+    public CVar<int> MaxFps { get; }
     public CVar<float> ExitAfter { get; }
     public CVar<int> Width { get; }
     public CVar<int> Height { get; }
@@ -22,6 +23,8 @@ internal sealed class HostCVars
             "Simulation speed multiplier, on top of each world's own (WorldTime.HostScale; 0.2 = slow motion).", 0f, 10f);
         VSync = r.Register("r_vsync", true, CVarFlags.Archive,
             "Wait for the display's vertical sync.");
+        MaxFps = r.Register("host_maxfps", 0, CVarFlags.Archive,
+            "Frame-rate cap in frames per second (0 = uncapped; with r_vsync on, the display paces frames anyway).", 0, 1000);
         ExitAfter = r.Register("host_exitafter", 0f, CVarFlags.DevOnly,
             "Quit after this many seconds of real time and log frame/tick counts (0 = off). For automated smoke runs.", 0f, 86400f);
         // The window's size in pixels (issue #81): saved in config.cfg, or given on the command line as

@@ -15,7 +15,8 @@ namespace Sage.Simulation;
 // tick of a player's input. Deferring a system's *own* work (not a structural change) is `Deferred<T>`.
 public sealed class EntityCommands
 {
-    private readonly F.CommandBuffer _buffer;
+    private readonly F.CommandBuffer? _buffer;
+    private readonly SystemCommandLog? _log;   // a system's own, while its phase runs in parallel (issue #288)
 
     internal EntityCommands(F.CommandBuffer buffer)
     {
@@ -23,25 +24,54 @@ public sealed class EntityCommands
         _buffer.ReuseBuffer = true;
     }
 
+    internal EntityCommands(SystemCommandLog log) => _log = log;
+
     // How many changes are waiting.
-    public int Count => _buffer.EntityCommandsCount + _buffer.ComponentCommandsCount +
+    public int Count => _log?.Count ?? _buffer!.EntityCommandsCount + _buffer.ComponentCommandsCount +
                         _buffer.TagCommandsCount + _buffer.ChildCommandsCount;
 
     // Adds the component, or replaces its value if the entity has one by then.
-    public void Add<T>(Entity entity, in T component) where T : struct, IComponent =>
-        _buffer.AddComponent(entity.Id, component);
+    public void Add<T>(Entity entity, in T component) where T : struct, IComponent
+    {
+        if (_log != null) _log.Add(entity.Id, component);
+        else _buffer!.AddComponent(entity.Id, component);
+    }
 
-    public void Remove<T>(Entity entity) where T : struct, IComponent => _buffer.RemoveComponent<T>(entity.Id);
+    public void Remove<T>(Entity entity) where T : struct, IComponent
+    {
+        if (_log != null) _log.Remove<T>(entity.Id);
+        else _buffer!.RemoveComponent<T>(entity.Id);
+    }
 
-    public void AddTag<T>(Entity entity) where T : struct, ITag => _buffer.AddTag<T>(entity.Id);
-    public void RemoveTag<T>(Entity entity) where T : struct, ITag => _buffer.RemoveTag<T>(entity.Id);
+    public void AddTag<T>(Entity entity) where T : struct, ITag
+    {
+        if (_log != null) _log.AddTag<T>(entity.Id);
+        else _buffer!.AddTag<T>(entity.Id);
+    }
 
-    public void SetParent(Entity child, Entity parent) => _buffer.AddChild(parent.Id, child.Id);
+    public void RemoveTag<T>(Entity entity) where T : struct, ITag
+    {
+        if (_log != null) _log.RemoveTag<T>(entity.Id);
+        else _buffer!.RemoveTag<T>(entity.Id);
+    }
+
+    public void SetParent(Entity child, Entity parent)
+    {
+        if (_log != null) _log.SetParent(child.Id, parent.Id);
+        else _buffer!.AddChild(parent.Id, child.Id);
+    }
 
     // Destroys the entity (World.EntityDestroyed and its ComponentRemoved are raised at playback).
-    public void Destroy(Entity entity) => _buffer.DeleteEntity(entity.Id);
+    public void Destroy(Entity entity)
+    {
+        if (_log != null) _log.Destroy(entity.Id);
+        else _buffer!.DeleteEntity(entity.Id);
+    }
 
     internal bool HasPending => Count > 0;
 
-    internal void Playback() => _buffer.Playback();
+    internal void Playback() => _buffer!.Playback();
+
+    // A system's log, moved onto the world's buffer in order (issue #288).
+    internal void ReplayInto(EntityCommands world) => _log!.ReplayInto(world._buffer!);
 }
