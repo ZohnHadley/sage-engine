@@ -4,6 +4,8 @@
   // check it before that with
   //   sage mods <game folder> --mods <this folder>
   //   sage validate <game folder> --mods <this folder>
+  // (the tasks in .vscode/tasks.json run these; `sage new mod-data --game <game folder>` ran the second
+  // and wrote schemas/, which .vscode/settings.json maps data/ and this file onto).
   // `id` is the mod's record namespace, as a game's is: what data/ defines is `mymod:...`.
   "id": "mymod",
   "name": "MyMod",

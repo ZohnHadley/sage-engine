@@ -1,0 +1,16 @@
+{
+  // This mod's records and mod.json against the JSON Schemas of the game it is for: autocomplete for
+  // fields, part ids and the ids the game and this mod define, a tooltip with each field's unit and range,
+  // and a red underline under a misspelt field before the game runs. The schemas are written into
+  // schemas/ by `sage schema <game folder> --mods <this folder> --out <this folder>/schemas` (the task
+  // "sage: schemas", or `sage new mod-data --game <game folder>`, which did it once); write them again
+  // when the game changes, or when this mod adds a record type's first id.
+  "files.associations": {
+    "**/data/**/*.json": "jsonc",
+    "mod.json": "jsonc"
+  },
+  "json.schemas": [
+    { "fileMatch": ["data/**/*.json"], "url": "./schemas/record.schema.json" },
+    { "fileMatch": ["mod.json"], "url": "./schemas/mod.schema.json" }
+  ]
+}

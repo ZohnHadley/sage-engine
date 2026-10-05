@@ -1,0 +1,29 @@
+{
+  // This mod checked against its game, without playing (`sage` is the engine's command line; the Player
+  // package keeps one beside each host). SAGE_GAME_FOLDER is the game's folder, relative to this one.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "sage: validate against the game",
+      "type": "process",
+      "command": "sage",
+      "args": ["validate", "${workspaceFolder}/SAGE_GAME_FOLDER", "--mods", "${workspaceFolder}"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "sage: load order and report",
+      "type": "process",
+      "command": "sage",
+      "args": ["mods", "${workspaceFolder}/SAGE_GAME_FOLDER", "--mods", "${workspaceFolder}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "sage: schemas",
+      "type": "process",
+      "command": "sage",
+      "args": ["schema", "${workspaceFolder}/SAGE_GAME_FOLDER", "--mods", "${workspaceFolder}", "--out", "${workspaceFolder}/schemas"],
+      "problemMatcher": []
+    }
+  ]
+}
