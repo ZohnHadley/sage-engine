@@ -4,7 +4,8 @@
   "name": "MyGame",
   "id": "mygame",
   // Both halves, where Sage.Sdk builds them: bin/<configuration>/Name.dll, {config} being the host's
-  // configuration. The build checks these paths (SAGE0110, SAGE0111).
+  // configuration (Debug, Development or Shipping; -c Release is Shipping and writes bin/Shipping). The build
+  // checks these paths (SAGE0110, SAGE0111).
   "assembly": "Simulation/bin/{config}/MyGame.dll",
   "mounts": ["content"],
   "modsDirectory": "mods",

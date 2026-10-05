@@ -325,7 +325,7 @@ All of this is on `World` (`Sage.Simulation`) or its extension classes; names ar
 | Persistent identity | `world.MakePersistent(e)` returns a `PersistentId`; `world.Resolve(id)` finds the entity again |
 | Resources | `world.Resources`: `Add<T>` (throws if present), `Replace<T>` (on purpose; disposes the old), `Get<T>` (throws if absent), `TryGet<T>`, `GetOrAdd<T>`, `Remove<T>` |
 | Events | `world.Events.Send(in ev)`; `world.Events.Reader<T>(owner)`; `reader.Read()`; `Release(owner)` (§9) |
-| Systems | `world.AddSystem(system)`; `world.Systems.Replace(id, s)`, `Disable(id)`, `Find(id)` |
+| Systems | `world.AddSystem(system)`; `world.Systems.Replace(id, s)`, `Disable(id)`, `Find(id)`; a system that implements `IDeclaresAccess` declares what it touches in `Declare(SystemAccess)` (`Reads<T>`, `Writes<T>`, `ReadsEvents<T>`, `Sends<T>`, `ReadsResource<T>`, `WritesResource<T>`, `Exclusive()`) and may run at the same time as others of its phase it does not conflict with (#288) |
 | Entity I/O | `world.FireOutput(source, "OnX", activator)` (and value overloads); `world.IO().FireInput(target, "Open", parameter, delay)`; `world.FindByName(name)`; inputs registered with `engine.Inputs.Register(name, handler)` or `Register<TComponent>(...)`, outputs declared with `engine.Outputs.Declare(name, help)` |
 | Spawning | `world.Spawn(prefabId, position, yawDegrees)`, and the overload with `PrefabOverrides` (SAGE0131) |
 | Timers, tweens and spawners | Usually content (`timer`, `tween`, `spawner` parts); in code `Timers.Start`, `Tweens.Begin`, `Spawners.Spawn(world, spawner)` (SAGE0124) |
@@ -383,9 +383,9 @@ ctx.Engine.CVars.RegisterCommand("yourgame_wave", CVarFlags.Cheat, "Start the ne
 
 | Flag | Meaning |
 |---|---|
-| `Archive` | Saved to `config.cfg` on shutdown, read back after `Init` |
+| `Archive` | Saved to `config.cfg` on shutdown, read back after `Init` (then `autoexec.cfg`, #299) |
 | `Cheat` | Changeable only while `sv_cheats` is 1 |
-| `DevOnly` | Exists only in Debug and Development builds; not registered in Shipping |
+| `DevOnly` | Exists only in Debug and Development builds; not registered in Shipping, where a `config.cfg` or `autoexec.cfg` that names one is an Info note, not a warning (#293) |
 | `ReadOnly` | Shown, not changeable from the console |
 
 **Naming.** Lower-case `snake_case`, prefixed by area. The engine's prefixes include `r_` (rendering),
@@ -443,8 +443,8 @@ space in `Sage.Physics3D` is an implementation detail, so a 2D backend can repla
 A component is saved by declaring it (§4); a world singleton by `[SavedResource]`; a value type the save
 cannot write by default by `SaveSystem.AddConverter` in `Init`. `GameRules.OnLoaded` runs after a load;
 `ISavedResource.AfterLoad` runs per resource. A save is snapshotted on the tick and, when taken while
-playing, written on a thread-pool thread (#285): a component made only of values and strings is serialised
-by the writer, and one a plugin's converter writes (it may read the world) in the snapshot, on the tick. A client sets
+playing, written on a thread-pool thread (#285): the snapshot copies component columns, a component made only of values and strings is serialised
+by the writer, and one with entity references, lists or a plugin's converter (it may read the world) in the snapshot, on the tick, per entity. A client sets
 `SaveSystem.Thumbnail` to hand over the frame's pixels; `SaveSystem.WaitForWrites`, `IsWriting` and
 `Report(slot)` (a `SaveVersionReport`) are SAGE0131, as are `SaveSlot.Title`, `ThumbnailPath` and `Compressed`.
 
@@ -489,7 +489,10 @@ and `io_history` show the wiring.
 
 - **Main thread only.** Worlds, their events, I/O and resources, the record store and the console are
   single-threaded in v1. Jobs may work over copied input and hand results to a system; they never touch
-  world structure or send events.
+  world structure or send events. The one exception is a system that declares its access (#288): it may
+  run on a scheduler worker beside others of its stage, so it touches only what it declared, records
+  structural changes on `ctx.Commands`, and declares a resource it took in its constructor too (a dev
+  build reports anything else it touches, `sys_access_check`).
 - **No MonoGame in simulation** (SAGE0024). Anything that decides belongs in the simulation half and is
   testable headlessly through `HeadlessApp` (`tests/Sage.Testing`).
 - **Entity handles are per session.** An `Entity` is valid for one world and one run; check `IsNull` or

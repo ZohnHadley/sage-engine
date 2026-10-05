@@ -47,12 +47,12 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 
 | Area | What exists |
 |---|---|
-| Core | Fixed 60 Hz tick with render interpolation, phases with ordering and dev-asserted contracts, logging with categories, cvars and a console, crash reports, three build configurations |
+| Core | Fixed 60 Hz tick with render interpolation, phases with ordering and dev-asserted contracts, systems that declare their access running in parallel, logging with categories, cvars and a console with history and Tab completion, crash reports, three build configurations and a packaged game folder |
 | World | Friflo ECS behind a thin `World`, in Sage's own vocabulary (`Entity`, `IComponent`, `Query<…>`, `EntityCommands`; no Friflo type in the API), several worlds per engine, hierarchy and transform propagation, one typed event bus with per-reader cursors, world resources |
 | Content | One JSON record pipeline for every definition (items, spells, materials, AI, input maps, prefabs…) with namespaces, inheritance, per-field patch merge, validation and hot reload; a layered VFS; records that can also be made at run time |
 | Rendering | Extract → pooled snapshot → registered render passes, our own shaders through `dotnet-mgfxc`, material records, 8-direction billboards with sprite animation, GPU-skinned models, heightmap terrain, debug draw; a world clock and `sky` records lighting a day (the Sandbox opens at dusk and its lamps light at sunset), stable sun shadows, a sky pass with stars, exp² fog, post-processing and a render scale |
 | Cameras | Cameras are entities with a director: first- and third-person rigs with the `V` toggle, scripted cuts from entity I/O, several views a frame and named render targets |
-| World | An unbounded grid of 1024 m sectors: terrain streams in and out in rings around the player, and the simulation rebases so nothing is ever far from its own origin — verified 120 km out |
+| World | An unbounded grid of 1024 m sectors: terrain streams in and out in rings around the player (and any other streaming source), and the simulation rebases so nothing is ever far from its own origin — verified 120 km out; interiors can stay live beside their exterior, and companions follow through doors |
 | Physics | BepuPhysics per world behind handles, layers, raycast/sweep/overlap, triggers, and our own kinematic character controller |
 | Gameplay | `GameRules`, controller → pawn intent → movement, attributes/tags/effects, one damage pipeline, items and equipment, abilities and projectiles, a spellmaker, HL1-style AI that chases, swings and casts — and now walks round what is in the way, remembering what it can no longer see |
 | Weapons | Every attack goes through one hit pipeline (`hit_delivery`): a melee sweep, a hitscan ray with pellets, or a projectile on the same carrier abilities use, flying straight or arcing under gravity and piercing what it can hurt. Attacks can spend ammunition from the bag, with magazines kept per attack in the save and a reload that lands on the animation's `mag_in`. Spread and recoil, and hit locations are being built (4e) |
@@ -64,7 +64,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; the kit's inventory grid with weight, equipment, loot, topics, journal, map and shop screens, the HUD and a main menu that loads a save — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices; written in the background, optionally compressed, with a thumbnail and a title |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1730 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 1770 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: code mods, the editor's brushes and asset
 browser (its first half, phase 10a, is a mode of the dev host: [`docs/EDITOR.md`](docs/EDITOR.md)), and
@@ -253,9 +253,11 @@ and every pull request:
   warning outside the categories it expects. Last, it packs `Sage.Sdk`, `Sage.Player` and the templates
   into a local feed ([`tools/pack_sdk.sh`](tools/pack_sdk.sh)) and makes a game from each template in a
   folder outside the checkout: built against the packages alone, validated, shown to get the Sage
-  analyzers, and started with `dotnet run` under the virtual display, walking.
+  analyzers, and started with `dotnet run` under the virtual display, walking; then built in Shipping,
+  packaged with `sage package` (no developer files allowed in) and run from the package's folder.
 - **Windows** builds the whole solution, shaders included, and runs the tests; then builds a template
-  game with a shader of its own against the packed SDK, which is where `mgfxc` runs for a game.
+  game with a shader of its own against the packed SDK, which is where `mgfxc` runs for a game, and
+  packages it.
 
 Both jobs check out the whole history (`fetch-depth: 0`), because the version comes from git tags, and
 both jobs' builds check the **declared public API**: each assembly games compile against keeps

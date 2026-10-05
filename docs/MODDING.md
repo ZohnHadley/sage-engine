@@ -136,6 +136,10 @@ is the engine's, written in full.
 - A patch of a record nobody defined is a warning and is skipped, so a patch of an optional mod's record
   does nothing when that mod is absent.
 - `"place+"` on the game's `scene` adds placements, so a mod can put things in the world.
+- `"live": true` in a patch of a game's scene keeps it placed and simulated while the player is elsewhere
+  (issue #291; `space_live_max` bounds how many), and `"environment": { "gravityScale": 0.5 }` gives it its own
+  gravity. Followers (the `follower` part) and streaming sources (`streaming_ring`) are parts a prefab patch can add
+  (issue #290).
 
 **Strings** merge key by key: a mod's `strings/en/items.json` with one key changes that line and leaves
 the rest of the game's table. **Assets** are replaced by path: a mod shipping `textures/hut_wall.png`
@@ -198,6 +202,9 @@ sage schema <game> --mods <mod folder> --out schemas   # JSON Schemas that know 
 The mods are ordered and mounted exactly as the game does it, by the same code. Conflicts are warnings
 here too; a broken reference, an unknown field or a missing asset is an error at its file and line. Run
 `sage mods` before you publish.
+
+In the running game, `problems` at the console lists the same errors and warnings from the load it made,
+with file and line, and the conflicts between mods as warnings, in any build (issue #301).
 
 While the game runs (a dev build), a saved change to your `data/`, `strings/` or assets **hot reloads**, as
 the game's own do; a change to `mod.json` says "restart to apply". A patch to a prefab reaches what is already spawned

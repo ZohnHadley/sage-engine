@@ -1,6 +1,6 @@
 # 14 · World, streaming and time
 
-> Status: built and tested for the 4g exit game; streaming has a far ring of coarse ground and far looks, per-sector asset scopes, generation on jobs and budgeted per-chunk collision (#277); a world's time scale, pause and hit-stop are a saved service (`WorldTime`, #283); the calendar has leap years, seasons, moon phases and scheduled calendar events (#289); off-screen agents walk a coarse graph of the content's walls and doors, start in sectors never placed and take live NPCs through doors (#284). Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes, the far ring). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
+> Status: built and tested for the 4g exit game; streaming has a far ring of coarse ground and far looks, per-sector asset scopes, generation on jobs and budgeted per-chunk collision (#277); a world's time scale, pause and hit-stop are a saved service (`WorldTime`, #283); the calendar has leap years, seasons, moon phases and scheduled calendar events (#289); off-screen agents walk a coarse graph of the content's walls and doors, start in sectors never placed and take live NPCs through doors (#284); several streaming sources keep rings of their own and followers travel with the player (#290); a `live` scene the player leaves stays placed and simulated beside the next, with its own gravity, and companions come through doors (#291). Owning assemblies: `Sage.Simulation` (`World`, `Levels`, `Content`), `Sage.Physics3D` (terrain collision), `Sage.Gameplay` (off-screen simulation), `Sage.Client` (terrain meshes, the far ring). Design doc: [14-world-streaming](../../design/14-world-streaming.md).
 
 ## 1. Purpose and scope
 
@@ -11,16 +11,16 @@ It deliberately does not do the following. Entity storage, scenes and prefabs ar
 ## 2. Responsibilities
 
 - `SectorCoord` addressing, sector-local root transforms, the `Origin` resource and rebasing of every position-holder between ticks.
-- The streaming ring: load within `stream_radius`, unload past `stream_radius + 1`, rebase past 1.5 sectors, all with hysteresis.
+- The streaming rings: one per streaming source (the player always; `streaming_source` tags and `streaming_ring` components add more, #290); load within `stream_radius`, unload past `stream_radius + 1`, rebase past 1.5 sectors from the player, all with hysteresis.
 - Built-in terrain: heightfields of 129 by 129 samples, the `terrain` record and its `Flat` and `Hills` generators, and the `ITerrainGenerator` seam for a game's own (with `ITerrainSampler` for seam-free edge normals).
 - The far ring (`stream_far_radius`): coarse ground and far looks (`PrefabRecord.Far`) past the full ring, generation ahead on jobs (`stream_jobs`), a load budget while walking (`stream_load_budget`), and per-sector asset scopes (`SectorAssets`).
 - Streamed scenes: placements, placements documents and `.map` levels bucketed by sector, placed within a per-tick budget at the tick boundary.
 - Cells: dormancy with state, runtime spawns owned by a cell, waking, absolute positions across rebases.
-- Interiors (`"space": "interior"`), load doors, travel points, `Travel.To` and `travel`.
+- Interiors (`"space": "interior"`), load doors, travel points, `Travel.To` and `travel`; followers who come along on every journey (#290); scenes held live beside the player's (`"live": true`, `space_live_max`) with per-space gravity (#291).
 - The world clock, calendar record, `Time.Pass` skips and the `TimePassed` event.
 - The `ICellHandoff` seam for what keeps simulating while a cell sleeps.
 
-Not responsible for: mesh LOD groups and instancing ([07-rendering](07-rendering.md), #305), the asset server's scopes for textures and sounds and a memory budget (#308), several streaming sources (#290), interiors as separate spaces (#291).
+Not responsible for: mesh LOD groups and instancing ([07-rendering](07-rendering.md), #305), the asset server's scopes for textures and sounds and a memory budget (#308); source priorities; separate physics simulations or `World`s per space (spaces share one world and one physics simulation, apart by their coordinates).
 
 ## 3. Placement and dependencies
 
@@ -35,7 +35,10 @@ Plugins: `sage.streaming` (`StreamingModule`) installs the `Terrain` resource an
 | `SectorCoord` | `World/Terrain.cs` | Absolute sector address (X, Z); sectors are 1024 m. |
 | `Terrain`, `Heightfield`, `ITerrainGenerator` | `World/Terrain.cs` | Per-world ground: `Load`, `Unload`, `HeightAt`, `NormalAt`, `OnGround`, origin-aware. |
 | `Origin` | `World/Origin.cs` | The origin sector, `ToAbsolute`/`ToOrigin`, event `Rebased(offset)`; `world.Rebase(sector)`. |
-| `StreamingSource` | `World/Streaming.cs` | Tag on what the ring follows (the player). |
+| `StreamingSource` | `World/Streaming.cs` | Tag (`sage:streaming_source`): another source with the cvars' rings; the player is always a source (#290). |
+| `StreamingRing` | `World/Streaming.cs` | `sage:streaming_ring` and the part `streaming_ring` (`radius` 0 to 8, default 1; `farRadius` 0 to 16, default 0): a source with rings of its own; on the player it replaces the cvars' (#290). |
+| `Follower`, `Followers` | `World/Followers.cs` | `sage:follower` and the part `follower` (`distance`, m, default 2); `Followers.Bring` puts every live follower behind the player after a journey (#290). |
+| `Scenes.LiveBeside`, `SpaceGravity`, `GravityRegion` | `World/Spaces.cs` | The scenes held live beside the player's, and each space's gravity scale by where a body is, read by physics and the character controller (#291). |
 | `StreamingSystem`, `SectorRing`, `SectorOwnersSystem` | `World/Streaming.cs` | The ring, and crossing-an-edge ownership (both Phase.Late). |
 | `SectorLod`, `FarSector`, `FarLook` | `World/SectorLod.cs` | The far ring: coarse ground and far looks past the full ring, drawn by the client's `FarLodSystem` (#277). |
 | `SectorAssets` | `World/SectorAssets.cs` | Per-sector asset scopes: mesh paths ref-counted by live users, released when a leaving sector let go of the last one (#277). |
@@ -47,13 +50,15 @@ Plugins: `sage.streaming` (`StreamingModule`) installs the `Terrain` resource an
 | `CalendarRecord` | `World/Calendar.cs` | Months, weekdays, start year, leap rule, seasons, moon cycle; `WorldClock.Date`, `IsLeapYear`, `SeasonOf`, `MoonPhaseOf` (#289). |
 | `CalendarEventRecord`, `CalendarEventListener` | `World/CalendarEvents.cs` | A dated (or moon-phase) event and the component that fires `OnCalendarEvent` on its day (#289). |
 
-Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_enabled`, `stream_place_budget`, `travel <point>`, `travel_speed`, `scene_load`, `time`, `time_set`, `time_pass <hours>`, `offscreen_status`. Inputs: the `Travel` input goes through a door, or takes `"<scene> <entry>"` sent to any entity; the Use action opens a `load_door`. Events: `Origin.Rebased`, `TimePassed(Hours, Reason, FromElapsed, ToElapsed)`, and `OffscreenDied`. Output: `OnCalendarEvent` (#289). Conditions: `weekday`, `date_between`, `season`, `moon_phase`, `on_date`.
+Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_enabled`, `stream_place_budget`, `space_live_max`, `spaces`, `travel <point>`, `travel_speed`, `scene_load`, `time`, `time_set`, `time_pass <hours>`, `offscreen_status`. Inputs: the `Travel` input goes through a door, or takes `"<scene> <entry>"` sent to any entity; the Use action opens a `load_door`. Events: `Origin.Rebased`, `TimePassed(Hours, Reason, FromElapsed, ToElapsed)`, and `OffscreenDied`. Output: `OnCalendarEvent` (#289). Conditions: `weekday`, `date_between`, `season`, `moon_phase`, `on_date`.
 
 ## 5. Data model
 
 | Id | Kind | Notes |
 |---|---|---|
-| `scene` | record | `streamed`, `space` (`Exterior` or `Interior`), `terrain` reference, `environment`, placements, levels. |
+| `scene` | record | `streamed`, `space` (`Exterior` or `Interior`), `live` (held and simulated when the player leaves, #291), `terrain` reference, `environment` (with `gravityScale`, default 1, #291), placements, levels. |
+| `sage:streaming_ring` | component and part `streaming_ring` | `radius`, `farRadius` (#290). |
+| `sage:follower` | component and part `follower` | `distance` (#290). |
 | `terrain` | record | `Flat` or `Hills`, with `seed`, `height`, `amplitude`, `wavelength`. |
 | `calendar` | record | `Months` (name, days), `Weekdays`, `StartYear`, `StartWeekday`; `LeapEvery`, `LeapSkipEvery`, `LeapRestoreEvery`, `LeapMonth` (no leap years by default); `Seasons` (name, month, day; each runs to the next start; the default calendar has four from 1 March); `MoonCycle` (days, default 29.53), `MoonStart` (#289). |
 | `calendar_event` | record | `Name`, `Month` (0: any month, with a moon phase), `Day`, `Year` (0: every year), `Moon` (a phase name) (#289). |
@@ -67,6 +72,7 @@ Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_ena
 | `time` | saved resource | `WorldTime` (#283): `Scale` (world speed), `Paused`, `HitStopLeft`, `Unscaled`, `Scaled`, `Carry`. The clock advances on its steps, so at half speed the hours go by at half speed too. Console `world_speed`, `hit_stop`; actions `world_speed`, `hit_stop`. |
 | `travel` | saved resource | The `TravelLog`: discovered points with scene and absolute place. |
 | `offscreen` | saved resource | The table of agents that are simulated while their cell sleeps. |
+| `spaces` | saved resource | `LiveSpaces`: the ids of the scenes held live beside the player's; a load places each again with the save's state (#291). |
 
 Dormant cells are written in the save under `dormant`, by source, each with its own origin frame (save format 4, see [15-saves](15-saves.md)).
 
@@ -77,6 +83,8 @@ At the fixed tick: `sage.world.clock` (Phase.Commands) advances the clock; `sage
 A rebase moves every root, both poses of every `GlobalTransform`, every physics body and static, and the cameras at once, then raises `Origin.Rebased`. Order for travel and `warp` is rebase, generate ground, then place the player.
 
 Going dormant writes live entities and the cell's runtime spawns as save entries, destroys them, and keeps the entries per source; waking lays them back on the placed content by stable id. Off-screen agents are taken out of the cell by `ICellHandoff` before it is written, and come back when their scene and sector are live. Placements with the `offscreen` part in sectors of the current streamed scene that were never placed join the table once per placing of the scene, at their routine's place, and are tombstoned in their sector (`CellContent.SeedUnplaced`, #284). A time skip steps every game minute of the skip for off-screen agents. Save and load: the clock, travel log and off-screen table are saved resources; cells are the `dormant` section.
+
+A scene with `"live": true` is held instead of going dormant when the player leaves it (#291): what it placed stays and is simulated, and going back takes it up as it is. An exterior is held only while the player is inside an interior (the ring stops following the player but keeps its sectors), and going to another exterior puts every held exterior to sleep first. At most `space_live_max` (default 4) are held; the one left longest ago goes dormant, and 0 is the old swap. A runtime spawn within the box a held scene's things stand in belongs to that scene's cell. A journey releases every follower from the scene being left and restores it into the cell the player arrives in, then `Followers.Bring` stands it behind the player (#290, #291). The `spaces` resource saves the held scenes; a held streamed exterior is dormant after a load until the player goes back.
 
 ## 7. Threading, memory and performance
 
@@ -106,15 +114,12 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 | REQ-WORLD-14 | Prefabs shall nest and keep per-placement overrides across sectors. | Should | Done | test: `AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing` |
 | REQ-WORLD-15 | The world shall offer a time scale, pause and hit-stop as services. | Should | Done | `src/Sage.Simulation/World/WorldTime.cs` (the saved `time` resource); test: TheWorldsTimeSurvivesASave, PauseStopsScaledTimeButNotRealTime |
 | REQ-WORLD-16 | The calendar shall add seasons, moon phases, leap years and scheduled events. | Could | Done (#289) | test: `LeapYearsFollowTheRule`, `SeasonsRunToTheNextStart`, `TheMoonCyclesThroughEightPhases`, `OnDateMatchesADayOfTheYear_AndALeapDayOnlyInLeapYears`, `AFestivalFiresItsWireOnItsDay`, `ASkippedFestivalStillFires` |
-| REQ-WORLD-17 | There shall be several streaming sources, each with its own ring. | Could | Not started | #290 |
-| REQ-WORLD-18 | Interiors shall be separate spaces, and companions shall follow through doors. | Could | Not started | #291 |
+| REQ-WORLD-17 | There shall be several streaming sources, each with its own ring. | Could | Done (#290): no source priorities | test: `EachSourceKeepsItsOwnRing`, `ASourcesFarRadiusIsItsOwn`, `ThePlayersOwnRingIsUsedAndTheOriginFollowsThePlayer`, `AFollowerArrivesWithThePlayerAfterFastTravel`, `FollowersStandApartBehindThePlayerAndComeAlongOnAWarp` |
+| REQ-WORLD-18 | Interiors shall be separate spaces, and companions shall follow through doors. | Could | Done (#291): spaces in one world and one physics simulation, apart by their coordinates | test: `TwoInteriorsAreLiveAtOnceBesideTheirExterior`, `ASaveKeepsTheSpacesHeldLive`, `ARuntimeSpawnAmongAHeldSpaceIsThatSpaces`, `EachSpaceFallsAtItsOwnGravity`, `CompanionsComeThroughTheDoor`, `HowManySpacesStayLiveIsBounded` |
 
 ## 10. Open work
 
-Milestone 2 (epic #274).
-
-- #290 4m-16 Several streaming sources and per-source rings (P3)
-- #291 4m-17 Interiors as separate spaces and companions through doors (P3)
+Milestone 2 (epic #274): none left on this sheet.
 
 Related: #308 4n-4 AssetServer scopes and memory budget (P1), #307 4n-3 terrain splat materials (P1).
 
