@@ -8,9 +8,11 @@ namespace Sage.Simulation;
 public sealed class SystemInfo
 {
     internal SystemInfo(ISystem system, string? id, Phase phase, RunCondition condition,
-                        IReadOnlyList<string> before, IReadOnlyList<string> after, int registration, string owner)
+                        IReadOnlyList<string> before, IReadOnlyList<string> after, int registration, string owner,
+                        SystemAccess? access = null)
     {
         System = system;
+        Access = access;
         Id = id;
         Phase = phase;
         Condition = condition;
@@ -43,11 +45,18 @@ public sealed class SystemInfo
     public IReadOnlyList<string> Before { get; }
     public IReadOnlyList<string> After { get; }
     internal int Registration { get; }
+
+    // What it declared it touches (IDeclaresAccess, issue #288), or null: a system without a declaration
+    // runs alone, in its place in the phase's order.
+    public SystemAccess? Access { get; }
+
+    // Its run state, when its phase is scheduled from declarations or it is checked against one.
+    internal SystemRun? Run;
 }
 
 // Systems per phase, in a deterministic order: `before`/`after` constraints by system id first,
-// registration order otherwise (docs/design/03 §3.5, issue #17). Access declarations (reads/writes)
-// come with the parallel scheduler and phase contracts (R16); v1 runs systems sequentially.
+// registration order otherwise (docs/design/03 §3.5, issue #17). Systems that declare what they touch
+// (IDeclaresAccess, issue #288) are grouped into stages that may run at the same time (PhasePlan).
 //
 // A constraint is checked when its system is added rather than when the phase is sorted, so the error
 // names the system that is wrong:
@@ -63,6 +72,7 @@ internal sealed class SystemScheduler
     private readonly string[] _phaseProfileNames = Enumerable.Range(0, PhaseInfo.Count)
         .Select(i => $"{PhaseInfo.ScheduleOf((Phase)i)}.{(Phase)i}").ToArray();
     private readonly Dictionary<string, SystemInfo> _byId = new(StringComparer.Ordinal);
+    private readonly PhasePlan?[] _plans = new PhasePlan?[PhaseInfo.Count];
     private readonly SystemCatalog _catalog;
     private int _registrations;
 
@@ -75,7 +85,8 @@ internal sealed class SystemScheduler
     public SystemInfo? Find(string id) => _byId.TryGetValue(id, out var info) ? info : null;
 
     public SystemInfo Add(ISystem system, string? id, Phase phase, RunCondition condition,
-                          IReadOnlyList<string> before, IReadOnlyList<string> after, string owner)
+                          IReadOnlyList<string> before, IReadOnlyList<string> after, string owner,
+                          SystemAccess? access = null)
     {
         if (All.Any(s => ReferenceEquals(s.System, system)))
             throw new InvalidOperationException($"System {system.GetType().Name} is already registered.");
@@ -96,22 +107,23 @@ internal sealed class SystemScheduler
                 if (other.Phase != phase && (Names(other.Before, id) || Names(other.After, id)))
                     throw CrossPhase(other.Id ?? other.Name, other.Phase, id, phase);
 
-        var info = new SystemInfo(system, id, phase, condition, before, after, _registrations++, owner);
+        var info = new SystemInfo(system, id, phase, condition, before, after, _registrations++, owner, access);
         Insert(info);
         return info;
     }
 
     // Puts `replacement` in `old`'s place: the same id, phase, order and run condition.
-    public SystemInfo Replace(SystemInfo old, ISystem replacement, string by)
+    public SystemInfo Replace(SystemInfo old, ISystem replacement, string by, SystemAccess? access = null)
     {
         if (All.Any(s => ReferenceEquals(s.System, replacement)))
             throw new InvalidOperationException($"System {replacement.GetType().Name} is already registered.");
         _catalog.Include(replacement.GetType().Assembly);
 
         var info = new SystemInfo(replacement, old.Id, old.Phase, old.Condition, old.Before, old.After,
-                                  old.Registration, old.Owner) { ReplacedBy = by };
+                                  old.Registration, old.Owner, access) { ReplacedBy = by };
         var list = _phases[(int)old.Phase];
         list[list.IndexOf(old)] = info;
+        _plans[(int)old.Phase] = null;
         if (old.Id != null) _byId[old.Id] = info;
         return info;
     }
@@ -124,6 +136,7 @@ internal sealed class SystemScheduler
             if (index < 0) continue;
             var info = list[index];
             list.RemoveAt(index);
+            _plans[(int)info.Phase] = null;
             if (info.Id != null) _byId.Remove(info.Id);
             return info;
         }
@@ -132,9 +145,13 @@ internal sealed class SystemScheduler
 
     public IReadOnlyList<SystemInfo> In(Phase phase) => _phases[(int)phase];
 
+    // The phase's stages (issue #288), worked out again after any system is added, removed or replaced.
+    public PhasePlan Plan(Phase phase) => _plans[(int)phase] ??= new PhasePlan(_phases[(int)phase]);
+
     private void Insert(SystemInfo info)
     {
         var list = _phases[(int)info.Phase];
+        _plans[(int)info.Phase] = null;
         list.Add(info);
         if (info.Id != null) _byId[info.Id] = info;
         try

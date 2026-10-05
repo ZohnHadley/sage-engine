@@ -53,10 +53,18 @@ public readonly struct Entity : IEquatable<Entity>
 
     // A reference to the component; throws when the entity has none (World.Get<T> says who).
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref T GetComponent<T>() where T : struct, IComponent => ref Raw.GetComponent<T>();
+    public ref T GetComponent<T>() where T : struct, IComponent
+    {
+        AccessCheck.Component<T>();   // dev builds, inside a declared system (issue #288)
+        return ref Raw.GetComponent<T>();
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryGetComponent<T>(out T value) where T : struct, IComponent => Raw.TryGetComponent(out value);
+    public bool TryGetComponent<T>(out T value) where T : struct, IComponent
+    {
+        AccessCheck.Component<T>();
+        return Raw.TryGetComponent(out value);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasComponent<T>() where T : struct, IComponent => Raw.HasComponent<T>();
@@ -76,10 +84,11 @@ public readonly struct Entity : IEquatable<Entity>
 
     public Tags Tags => new(Raw.Tags);
 
-    public bool AddTag<T>() where T : struct, ITag => Raw.AddTag<T>();
-    public bool RemoveTag<T>() where T : struct, ITag => Raw.RemoveTag<T>();
-    public bool AddTags(in Tags tags) => Raw.AddTags(tags.Raw);
-    public bool RemoveTags(in Tags tags) => Raw.RemoveTags(tags.Raw);
+    // A tag change is structural: a system running beside others records it on ctx.Commands (issue #288).
+    public bool AddTag<T>() where T : struct, ITag { AccessCheck.Structural(); return Raw.AddTag<T>(); }
+    public bool RemoveTag<T>() where T : struct, ITag { AccessCheck.Structural(); return Raw.RemoveTag<T>(); }
+    public bool AddTags(in Tags tags) { AccessCheck.Structural(); return Raw.AddTags(tags.Raw); }
+    public bool RemoveTags(in Tags tags) { AccessCheck.Structural(); return Raw.RemoveTags(tags.Raw); }
 
     // ---- Name -------------------------------------------------------------------------------------
 

@@ -99,6 +99,18 @@ internal sealed class SpawnBaseline
 
     public JsonNode? Entry(string id) =>
         _own != null && _own.TryGetPropertyValue(id, out var own) ? own : Components[id];
+
+    // A copy a save's writer owns (issue #285): it diffs against it on its own thread while the game goes on,
+    // and a JSON tree is not safe to read from two threads (a parsed one fills itself in on first read). The
+    // shared part is copied once a save (`copies`), an entity's own part once an entity; the boxed values
+    // are only ever read.
+    public SpawnBaseline CopyForWriter(Dictionary<SpawnBaseline, SpawnBaseline> copies)
+    {
+        var shared = Shared;
+        if (!copies.TryGetValue(shared, out var copy))
+            copies[shared] = copy = new SpawnBaseline((JsonObject)shared.Components.DeepClone(), shared.FromPlacement, shared._values);
+        return _own == null ? copy : new SpawnBaseline(copy, (JsonObject)_own.DeepClone());
+    }
 }
 
 // The baselines taken in one world, by prefab and overrides (a world resource: the dialect a baseline is

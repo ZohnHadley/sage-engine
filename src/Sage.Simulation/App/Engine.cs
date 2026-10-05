@@ -102,6 +102,10 @@ public sealed class Engine : IDisposable
         Records.Reloaded += () => Saves.ReloadPrefabInstances();
     }
 
+    // sys_parallel, sys_threads and sys_access_check (issue #288), once the app has registered them; a
+    // world without them uses the defaults.
+    internal SchedulingCVars? Scheduling { get; set; }
+
     // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).
     public RegistrationLedger Registrations { get; } = new();
 

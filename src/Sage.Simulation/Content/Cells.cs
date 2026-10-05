@@ -77,6 +77,10 @@ internal static class Cells
     public static string? Current(World world, Entity entity)
     {
         if (!world.Resources.TryGet<ActiveScene>(out var scene) || scene is not { Id.IsEmpty: false }) return null;
+        // Made among the things of a scene held live beside the player's (4m-17): that scene's.
+        if (world.Resources.TryGet<LiveSpaces>(out var live) && live is { Held.Count: > 0 } && world.TryGet<Transform>(entity, out var at)
+            && live.TryCellAt(world.Origin().ToAbsolute(at.LocalPosition), out var held))
+            return held;
         if (scene.Streamed is { } streamed && world.TryGet<Transform>(entity, out var transform))
         {
             var sector = world.Origin().SectorOf(transform.LocalPosition);

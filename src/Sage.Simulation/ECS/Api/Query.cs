@@ -90,7 +90,11 @@ public readonly struct QueryChunks<T1>
     public int Count => _raw.Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChunkEnumerator<T1> GetEnumerator() => new(_raw.GetEnumerator());
+    public ChunkEnumerator<T1> GetEnumerator()
+    {
+        AccessCheck.Component<T1>();   // dev builds, inside a declared system (issue #288)
+        return new(_raw.GetEnumerator());
+    }
 }
 
 public struct ChunkEnumerator<T1> : IDisposable
@@ -182,7 +186,11 @@ public readonly struct QueryChunks<T1, T2>
     public int Count => _raw.Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChunkEnumerator<T1, T2> GetEnumerator() => new(_raw.GetEnumerator());
+    public ChunkEnumerator<T1, T2> GetEnumerator()
+    {
+        AccessCheck.Component<T1>(); AccessCheck.Component<T2>();   // dev builds, inside a declared system (issue #288)
+        return new(_raw.GetEnumerator());
+    }
 }
 
 public struct ChunkEnumerator<T1, T2> : IDisposable
@@ -277,7 +285,11 @@ public readonly struct QueryChunks<T1, T2, T3>
     public int Count => _raw.Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChunkEnumerator<T1, T2, T3> GetEnumerator() => new(_raw.GetEnumerator());
+    public ChunkEnumerator<T1, T2, T3> GetEnumerator()
+    {
+        AccessCheck.Component<T1>(); AccessCheck.Component<T2>(); AccessCheck.Component<T3>();   // dev builds, inside a declared system (issue #288)
+        return new(_raw.GetEnumerator());
+    }
 }
 
 public struct ChunkEnumerator<T1, T2, T3> : IDisposable
@@ -375,7 +387,11 @@ public readonly struct QueryChunks<T1, T2, T3, T4>
     public int Count => _raw.Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChunkEnumerator<T1, T2, T3, T4> GetEnumerator() => new(_raw.GetEnumerator());
+    public ChunkEnumerator<T1, T2, T3, T4> GetEnumerator()
+    {
+        AccessCheck.Component<T1>(); AccessCheck.Component<T2>(); AccessCheck.Component<T3>(); AccessCheck.Component<T4>();   // dev builds, inside a declared system (issue #288)
+        return new(_raw.GetEnumerator());
+    }
 }
 
 public struct ChunkEnumerator<T1, T2, T3, T4> : IDisposable
@@ -476,7 +492,11 @@ public readonly struct QueryChunks<T1, T2, T3, T4, T5>
     public int Count => _raw.Count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ChunkEnumerator<T1, T2, T3, T4, T5> GetEnumerator() => new(_raw.GetEnumerator());
+    public ChunkEnumerator<T1, T2, T3, T4, T5> GetEnumerator()
+    {
+        AccessCheck.Component<T1>(); AccessCheck.Component<T2>(); AccessCheck.Component<T3>(); AccessCheck.Component<T4>(); AccessCheck.Component<T5>();   // dev builds, inside a declared system (issue #288)
+        return new(_raw.GetEnumerator());
+    }
 }
 
 public struct ChunkEnumerator<T1, T2, T3, T4, T5> : IDisposable
