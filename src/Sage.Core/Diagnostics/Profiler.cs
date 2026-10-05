@@ -98,6 +98,23 @@ public static class Profiler
         return tables.TrackAllocations ? Scope.Tracked(entry, tables) : new Scope(entry);
     }
 
+    // Adds a span timed elsewhere to `name`'s entry on this thread, as if a scope of that name had been
+    // open for `elapsedTicks` (Stopwatch ticks): for work that ran on another thread on this one's behalf —
+    // a world's systems run side by side (issue #288) — so `stat frame` and `sys_list` still show it.
+    public static void Record(string name, long elapsedTicks)
+    {
+        if (!Enabled) return;
+        var tables = Current;
+        if (!tables.Entries.TryGetValue(name, out var entry))
+        {
+            entry = new Entry(name, tables.Ordered.Count);
+            tables.Entries.Add(name, entry);
+            tables.Ordered.Add(entry);
+        }
+        entry.Ticks += elapsedTicks;
+        entry.Calls++;
+    }
+
     // **Allocation tracking, for tests** (this thread only): while on, every scope also adds up what was
     // allocated on this thread inside it (Entry.AllocatedBytes, never reset by EndFrame), so a failing
     // zero-allocation test can name the phase or system that allocated (tests: AllocationProbe). Off, it

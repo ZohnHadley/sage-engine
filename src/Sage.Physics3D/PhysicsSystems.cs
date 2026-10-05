@@ -238,10 +238,22 @@ internal static class PhysicsPoses
 internal sealed class PhysicsStepSystem : ISystem
 {
     private readonly PhysicsSpace _space;
+    private readonly World _world;
 
-    public PhysicsStepSystem(PhysicsSpace space) { _space = space; }
+    public PhysicsStepSystem(World world, PhysicsSpace space)
+    {
+        _world = world;
+        _space = space;
+    }
 
-    public void Run(in SystemContext ctx) => _space.Step(ctx.Tick.Dt);
+    public void Run(in SystemContext ctx)
+    {
+#pragma warning disable SAGE0129 // space gravity (4m-17): physics ships with the engine that declares it
+        // Each space's gravity (4m-17): the player's scene's, and the scenes held live beside it.
+        if (_world.Resources.TryGet<SpaceGravity>(out var gravity) && gravity != null) _space.UseGravity(gravity, _world.Origin());
+#pragma warning restore SAGE0129
+        _space.Step(ctx.Tick.Dt);
+    }
 }
 
 // PostPhysics: dynamic bodies win over their transform, and trigger overlaps become readable.
@@ -486,7 +498,7 @@ public sealed class PhysicsModule : IModule
 
         world.AddSystem(new TerrainCollisionSystem(world, space));
         world.AddSystem(new PhysicsSyncSystem(world, space));
-        world.AddSystem(new PhysicsStepSystem(space));
+        world.AddSystem(new PhysicsStepSystem(world, space));
         world.AddSystem(new PhysicsWriteBackSystem(world, space));
         world.AddSystem(new PhysicsEventSystem(space));   // the buffers as game events (issue #269)
         world.AddSystem(new JointSystem(world, space));

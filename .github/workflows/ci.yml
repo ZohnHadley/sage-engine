@@ -6,10 +6,11 @@
 #            the committed JSON Schemas against a fresh `sage schema`, and the real executable run for a few
 #            seconds on each game under Xvfb (tools/smoke_run.sh); then the SDK, the Player and the templates
 #            packed into a local feed and a game made from each template outside the checkout: built against
-#            the packages alone, validated, and run with `dotnet run` under Xvfb (issue #32)
+#            the packages alone, validated, and run with `dotnet run` under Xvfb (issue #32); then packaged in
+#            Shipping (`sage package`, issue #293) and run from the package's folder
 #            Both jobs' builds check each engine assembly's declared public API (PublicAPI.*.txt, issue #31).
 #   windows  the whole solution in all three configurations, shaders included, and the tests; then the
-#            packed templates build a game with a shader of its own, which is where mgfxc runs
+#            packed templates build a game with a shader of its own, which is where mgfxc runs, and package it
 #
 # Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001).
 # The .NET 10 SDK builds; the .NET 8 runtime runs. Both matter: the 8.0.1xx SDK's compiler produced
@@ -336,6 +337,23 @@ jobs:
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_axis Move 0 1 2' tools/smoke_run.sh --dotnet-run "$games/MyGame" 4 Shaders Audio
           tools/smoke_run.sh --dotnet-run "$games/MyData" 3 Shaders Audio Records Input
 
+      # `sage package` (issue #293): the template game built in Shipping and packaged by the SDK's SagePackage
+      # target, which runs the Player's own `sage package` on its Shipping host: the host, the game beside it in
+      # game/ and nothing of the developer's (no sage CLI, editor or ImGui), validated where it was written. Then
+      # the folder is run as a player would, its Sage.Host with no -game, for a few seconds under Xvfb. A Shipping
+      # host has no developer commands (in_axis, host_exitafter are DevOnly), so the run boots, plays and quits
+      # on +quit; the walk is the step above's, in the Debug host.
+      - name: Package a template game and run the package (Shipping)
+        run: |
+          set -euo pipefail
+          game="$RUNNER_TEMP/sage-games/MyGame"
+          out="$RUNNER_TEMP/sage-package/MyGame"
+          ( cd "$game" && dotnet build -c Shipping && dotnet msbuild -t:SagePackage -p:Configuration=Shipping -p:SagePackageDirectory="$out" -nologo )
+          dev=$(find "$out" -iname 'Sage.Editor*' -o -iname 'Sage.Editing*' -o -iname '*imgui*' -o -iname 'sage.dll' -o -iname '*.csproj' -o -iname '*.cs')
+          if [ -n "$dev" ]; then echo "::error::the package has developer files in it: $dev"; exit 1; fi
+          test -x "$out/Sage.Host" && test -s "$out/game/game.json" && test -s "$out/game/bin/MyGame.dll" && test -s "$out/game/bin/MyGame.Client.dll"
+          tools/smoke_run.sh --packaged "$out" 4 Shaders Audio
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -398,6 +416,23 @@ jobs:
           cp engine_content/shaders/debug.fx engine_content/shaders/common.fxh "$game/content/shaders/"
           ( cd "$game" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
           test -s "$game/content/shaders/debug.mgfxo"
+
+      # `sage package` (issue #293) where the host has its shaders: the same game built in Shipping and packaged
+      # by SagePackage (which validates the folder, compiled shaders and all), and the folder checked for the
+      # executable, the game's shader and no developer files. The Linux job runs its package; a Windows runner
+      # has no OpenGL beyond 1.1, which is why no job here runs the host.
+      - name: Package the template game (Shipping)
+        shell: bash
+        run: |
+          set -euo pipefail
+          temp=$(cygpath -m "$RUNNER_TEMP")
+          game="$temp/sage-games/MyGame"
+          out="$temp/sage-package/MyGame"
+          ( cd "$game" && dotnet build -c Shipping && dotnet msbuild -t:SagePackage -p:Configuration=Shipping -p:SagePackageDirectory="$out" -nologo )
+          dev=$(find "$out" -iname 'Sage.Editor*' -o -iname 'Sage.Editing*' -o -iname '*imgui*' -o -iname 'sage.dll' -o -iname '*.csproj' -o -iname '*.cs')
+          if [ -n "$dev" ]; then echo "::error::the package has developer files in it: $dev"; exit 1; fi
+          test -s "$out/Sage.Host.exe" && test -s "$out/game/game.json" && test -s "$out/game/bin/MyGame.dll"
+          test -s "$out/game/content/shaders/debug.mgfxo" && test -s "$out/Content/shaders/lit.mgfxo"
 
       - name: Upload test results
         if: always()
