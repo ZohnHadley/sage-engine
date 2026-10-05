@@ -3,6 +3,7 @@
 #
 #   tools/smoke_run.sh <host-output-dir> <game-dir> [seconds] [allowed-category ...]
 #   tools/smoke_run.sh --dotnet-run <game-dir> [seconds] [allowed-category ...]
+#   tools/smoke_run.sh --packaged <package-dir> [seconds] [allowed-category ...]
 #
 # The host is started under a virtual display (xvfb-run) with `+quit <seconds>`, so it boots the game,
 # runs the loop and shuts down on its own. The run fails if the host exits non-zero, writes a crash
@@ -15,13 +16,18 @@
 # console command per line, runs before the quit (e.g. $'+wait 1\n+in_axis Move 0 1 2', a walk).
 # SAGE_SMOKE_ARGS, launch options separated by spaces, go before them: `-edit yard` runs the editor (#219).
 #
+# --packaged runs a folder `sage package` wrote (issue #293): its ./Sage.Host with no -game, so the host finds
+# the game in the `game` folder beside it, as a player's would.
+#
 # The log is found from what the host prints ("Log file ...", "user folder ..."), so it works wherever the
 # user folder is: <repo>/user/<game id>/logs for a dev build in this repository, the platform's app-data
 # folder otherwise.
 set -euo pipefail
 
-if [ "$1" = "--dotnet-run" ]; then host_dir=; else host_dir=$1; fi
-game_dir=$(cd "$2" && pwd)
+packaged=false
+if [ "$1" = "--dotnet-run" ]; then host_dir=; game_dir=$(cd "$2" && pwd)
+elif [ "$1" = "--packaged" ]; then packaged=true; host_dir=$(cd "$2" && pwd); game_dir=$host_dir/game
+else host_dir=$1; game_dir=$(cd "$2" && pwd); fi
 seconds=${3:-3}
 shift $(( $# < 3 ? $# : 3 ))
 allowed=("$@")
@@ -44,8 +50,10 @@ if [ -z "$host_dir" ]; then
     ( cd "$game_dir" && timeout $((seconds + 600)) xvfb-run -a -s "-screen 0 1024x768x24" \
         dotnet run -- "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
 else
+    game_option=(-game "$game_dir")
+    $packaged && game_option=()
     ( cd "$host_dir" && timeout $((seconds + 60)) xvfb-run -a -s "-screen 0 1024x768x24" \
-        ./Sage.Host -game "$game_dir" "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
+        ./Sage.Host "${game_option[@]}" "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
 fi
 
 # The log this run wrote: the one the host printed, else the newest one written since it started in the
