@@ -132,7 +132,7 @@ AGameNotBuiltInTheConfigurationOrAnOutputFolderInTheWayIsAnErrorThatWritesNothin
 | REQ-TOOL-08 | Documentation claims shall be checked against the registry dump and the tests. | Must | Partial | `tools/check_docs.py`; blind spot in #298 |
 | REQ-TOOL-09 | `sage package` shall produce a folder that runs on a machine without the SDK. | Must | Done (#293): mounts are copied as folders (zip mounts are #397); CI runs the package on Linux | test: APackageIsTheShippingHostWithTheGameBesideItAndNothingElse, AHostWithTheEditorOrImGuiInItIsRefused, AGameNotBuiltInTheConfigurationOrAnOutputFolderInTheWayIsAnErrorThatWritesNothing, ThePackagedHelloAndSceneOnlyGamesLoadAndValidateFromTheOutputFolder |
 | REQ-TOOL-10 | The `{config}` path in `game.json` shall resolve for Shipping. | Must | Done (#294): `-c Release` is Shipping and writes `bin/Shipping` | test: AReleaseBuildIsShippingAndWritesTheShippingFolder, OtherConfigurationsKeepTheirOwnFolder, TheEnginesConfigurationNameIsOneOfTheFoldersABuildWrites |
-| REQ-TOOL-11 | A first release shall be tagged and cut. | Must | Not started | #295 |
+| REQ-TOOL-11 | A first release shall be tagged and cut. | Must | Done | #295 |
 | REQ-TOOL-12 | The packages shall be published to a feed and `sage` shipped as a dotnet tool. | Should | Not started | #296 |
 | REQ-TOOL-13 | `sage` shall have `new`, `run` and `package` and every template shall exist. | Should | Partial (`package`, #293) | #297 |
 | REQ-TOOL-14 | Tooling shall have test and CI coverage. | Should | Partial | #298 |

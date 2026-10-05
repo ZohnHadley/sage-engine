@@ -11,28 +11,53 @@ Sage.Physics3D.PhysicsModule.PhysicsModule() -> void
 Sage.Physics3D.PhysicsModule.Shutdown() -> void
 Sage.Physics3D.PhysicsSpace
 Sage.Physics3D.PhysicsSpace.AddBody(Sage.Simulation.Entity entity, in Sage.Simulation.Collider collider, in Sage.Simulation.RigidBody body, in Sage.Simulation.Pose pose) -> Sage.Simulation.PhysicsBody
+Sage.Physics3D.PhysicsSpace.AddBody(Sage.Simulation.Entity entity, in Sage.Simulation.Collider collider, in Sage.Simulation.RigidBody body, in Sage.Simulation.Pose pose, int group) -> Sage.Simulation.PhysicsBody
 Sage.Physics3D.PhysicsSpace.AddHull(Sage.Simulation.Entity entity, System.ReadOnlySpan<System.Numerics.Vector3> points, System.Numerics.Vector3 position, byte layer = 0, bool isTrigger = false) -> Sage.Simulation.PhysicsBody
+Sage.Physics3D.PhysicsSpace.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
+Sage.Physics3D.PhysicsSpace.AddJoint(in Sage.Simulation.PhysicsBody a, in Sage.Simulation.PhysicsBody b, in Sage.Simulation.JointDesc desc) -> Sage.Simulation.PhysicsJoint
 Sage.Physics3D.PhysicsSpace.AddMesh(Sage.Simulation.Entity entity, System.ReadOnlySpan<System.Numerics.Vector3> vertices, System.ReadOnlySpan<int> indices, System.Numerics.Vector3 position, byte layer = 0) -> Sage.Simulation.PhysicsBody
+Sage.Physics3D.PhysicsSpace.AngularVelocityOf(in Sage.Simulation.PhysicsBody body) -> System.Numerics.Vector3
+Sage.Physics3D.PhysicsSpace.ApplyImpulse(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 impulse, System.Numerics.Vector3 worldPoint) -> void
 Sage.Physics3D.PhysicsSpace.BodyCount.get -> int
 Sage.Physics3D.PhysicsSpace.ContactBegin.get -> System.ReadOnlySpan<Sage.Simulation.ContactEvent>
 Sage.Physics3D.PhysicsSpace.ContactEnd.get -> System.ReadOnlySpan<Sage.Simulation.ContactEvent>
 Sage.Physics3D.PhysicsSpace.Dispose() -> void
 Sage.Physics3D.PhysicsSpace.DrawDebug(Sage.Simulation.DebugDraw! debug, System.Numerics.Vector3 around, float range) -> void
 Sage.Physics3D.PhysicsSpace.Gravity.get -> System.Numerics.Vector3
+Sage.Physics3D.PhysicsSpace.GroupOf(in Sage.Simulation.PhysicsBody body) -> int
 Sage.Physics3D.PhysicsSpace.IsAwake(in Sage.Simulation.PhysicsBody body) -> bool
 Sage.Physics3D.PhysicsSpace.IsDynamic(in Sage.Simulation.PhysicsBody body) -> bool
+Sage.Physics3D.PhysicsSpace.JointBroken.get -> System.ReadOnlySpan<Sage.Simulation.JointBroken>
+Sage.Physics3D.PhysicsSpace.JointCount.get -> int
+Sage.Physics3D.PhysicsSpace.JointExists(in Sage.Simulation.PhysicsJoint joint) -> bool
 Sage.Physics3D.PhysicsSpace.LastStepMilliseconds.get -> double
 Sage.Physics3D.PhysicsSpace.Layers.get -> Sage.Simulation.LayerMatrix!
+Sage.Physics3D.PhysicsSpace.MakeKinematic(in Sage.Simulation.PhysicsBody body) -> Sage.Simulation.PhysicsBody
+Sage.Physics3D.PhysicsSpace.MoveKinematic(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 position, System.Numerics.Vector3 velocity) -> void
+Sage.Physics3D.PhysicsSpace.MoveKinematic(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Pose pose, System.Numerics.Vector3 velocity, System.Numerics.Vector3 angularVelocity) -> void
 Sage.Physics3D.PhysicsSpace.MoveStatic(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 position) -> void
+Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.Collider shape, in Sage.Simulation.Pose at, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
+Sage.Physics3D.PhysicsSpace.Overlap(in Sage.Simulation.PhysicsBody body, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false) -> int
 Sage.Physics3D.PhysicsSpace.OverlapBox(System.Numerics.Vector3 center, System.Numerics.Vector3 halfExtents, System.Span<Sage.Simulation.Entity> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
+Sage.Physics3D.PhysicsSpace.OverlapSphere(System.Numerics.Vector3 center, float radius, System.Span<Sage.Simulation.OverlapHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Physics3D.PhysicsSpace.PhysicsSpace(System.Numerics.Vector3? gravity = null) -> void
 Sage.Physics3D.PhysicsSpace.PoseOf(in Sage.Simulation.PhysicsBody body) -> Sage.Simulation.Pose
 Sage.Physics3D.PhysicsSpace.Raycast(System.Numerics.Vector3 from, System.Numerics.Vector3 direction, float maxDistance, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> Sage.Simulation.RayHit
+Sage.Physics3D.PhysicsSpace.RaycastAll(System.Numerics.Vector3 from, System.Numerics.Vector3 direction, float maxDistance, System.Span<Sage.Simulation.RayHit> results, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity)) -> int
 Sage.Physics3D.PhysicsSpace.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Physics3D.PhysicsSpace.RemoveBody(in Sage.Simulation.PhysicsBody body) -> void
+Sage.Physics3D.PhysicsSpace.RemoveJoint(in Sage.Simulation.PhysicsJoint joint) -> void
+Sage.Physics3D.PhysicsSpace.SetAngularVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
+Sage.Physics3D.PhysicsSpace.SetGroup(in Sage.Simulation.PhysicsBody body, int group) -> void
 Sage.Physics3D.PhysicsSpace.SetPose(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Collider collider, in Sage.Simulation.Pose pose) -> void
+Sage.Physics3D.PhysicsSpace.SetShape(in Sage.Simulation.PhysicsBody body, in Sage.Simulation.Collider collider, in Sage.Simulation.Pose pose) -> void
+Sage.Physics3D.PhysicsSpace.SetSurface(in Sage.Simulation.PhysicsBody body, Sage.Core.RecordId surface) -> void
+Sage.Physics3D.PhysicsSpace.SetSurfaces(in Sage.Simulation.PhysicsBody body, System.ReadOnlySpan<Sage.Core.RecordId> layers, System.ReadOnlySpan<byte> perTriangle) -> void
+Sage.Physics3D.PhysicsSpace.SetSurfaces(in Sage.Simulation.PhysicsBody body, System.ReadOnlySpan<Sage.Simulation.SurfaceFace> faces) -> void
 Sage.Physics3D.PhysicsSpace.SetVelocity(in Sage.Simulation.PhysicsBody body, System.Numerics.Vector3 velocity) -> void
+Sage.Physics3D.PhysicsSpace.Sleep(System.ReadOnlySpan<Sage.Simulation.PhysicsBody> bodies) -> void
 Sage.Physics3D.PhysicsSpace.StaticCount.get -> int
+Sage.Physics3D.PhysicsSpace.SurfaceOf(in Sage.Simulation.PhysicsBody body) -> Sage.Core.RecordId
 Sage.Physics3D.PhysicsSpace.Sweep(in Sage.Simulation.Collider shape, in Sage.Simulation.Pose from, System.Numerics.Vector3 direction, float maxDistance, Sage.Simulation.LayerMask mask = default(Sage.Simulation.LayerMask), bool includeTriggers = false, Sage.Simulation.Entity ignore = default(Sage.Simulation.Entity), bool ignoreInitialOverlaps = false) -> Sage.Simulation.SweepHit
 Sage.Physics3D.PhysicsSpace.TriggerEnter.get -> System.ReadOnlySpan<Sage.Simulation.TriggerOverlap>
 Sage.Physics3D.PhysicsSpace.TriggerExit.get -> System.ReadOnlySpan<Sage.Simulation.TriggerOverlap>
