@@ -318,7 +318,7 @@ any thread ── Log.X(cat, $"...") ──► enabled? ─no─► (nothing for
   - ✓ the allocation counter + `stat fps`/`stat mem`;
   - ✓ `TickTime`/`FrameTime` and profiler scopes + `stat frame` (step 4);
   - `JobSystem` over the thread pool (step 5, with async asset loading).
-- **Later:** console command history and Tab completion (`CVarRegistry.Complete` exists; the ImGui input callback isn't wired yet), editor log panel, Chrome-trace dump, Tracy, visual logger, structured-field search.
+- **Later:** ~~console command history and Tab completion~~ (built with #299: `ConsoleInput` in `Sage.Core` keeps up to 100 lines of Up/Down history with the draft restored, and Tab completes the first word against commands and cvars and later words against a cvar's enum or bool values and record ids; the ImGui console only forwards the keys; tests: History_WalksBackAndForthAndKeepsTheDraft, History_IsBounded, Tab_CompletesCommandsAndCVars, Tab_CompletesCVarValuesAndRecordIds; arguments are not completed by kind, so `exec` does not complete file names), editor log panel, Chrome-trace dump, Tracy, visual logger, structured-field search.
 
 ## 12. Multiplayer-later notes
 - Add a `Replicated` cvar flag (server values pushed to clients, like Quake 3 `SERVERINFO`).

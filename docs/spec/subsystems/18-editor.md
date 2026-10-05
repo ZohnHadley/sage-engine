@@ -64,7 +64,7 @@ console. A Shipping build references neither `Sage.Editor` nor ImGui (guarded by
 | `RecordDocument`, `RecordEditor` | The record browser's document and its own undo | `RecordDocument.cs`, `RecordEditor.cs` |
 | `WiringModel`, `Wiring` | Outputs on offer, valid inputs, add and edit a wire | `Wiring.cs` |
 | `PlaySession` | Play and Stop over a second world | `PlaySession.cs` |
-| `ProblemList` | Load problems, mod conflicts and document problems, by file | `ProblemList.cs` |
+| `ProblemList` | Load problems, mod conflicts and document problems, by file; the load problems and conflicts are `Sage.Core`'s `ContentProblems`, which the `problems` command and the dev overlay's badge read too (#301) | `ProblemList.cs` |
 | `LogView` | The log filtered by level and category | `LogView.cs` |
 | `DevTools` | Host-side owner of ImGui, the free camera, console, panels and layout | `src/Sage.Editor/DevTools.cs` |
 | `JsonFileEdit` (in `Sage.Core`) | The comment-preserving JSONC splice used by every save | `src/Sage.Core/Content/JsonFileEdit.cs` |
@@ -166,7 +166,7 @@ The ImGui panels have no unit tests: only the smoke run touches them (#371).
 - #61 Brushes and block-out in the editor (P1)
 - #49 Per-app log, user folder and crash reporter (P2)
 
-Related: #362 4p-6 skeletal animation coverage and an editor preview (P2), #276 4m-2 entity I/O editor link view (done: `WiringModel.Links`, test: TheLinkViewFansAGroupWireOutToEveryMember_AndShowsWhatReachesAnEntity), #301 R1-9 in-game problems list.
+Related: #362 4p-6 skeletal animation coverage and an editor preview (P2), #276 4m-2 entity I/O editor link view (done: `WiringModel.Links`, test: TheLinkViewFansAGroupWireOutToEveryMember_AndShowsWhatReachesAnEntity), #301 R1-9 in-game problems list (done: `problems` and the dev overlay's badge share `ContentProblems` with this panel, test: ProblemsListsTheSameEntriesAsValidate).
 
 ## 11. References
 

@@ -104,7 +104,8 @@ project needs:
   as global usings: `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D`, `Sage.Gameplay`, and `Sage.Client`
   in a client half. The ECS is in there: `Entity`, `IComponent`, `ITag`, `Tags`, `Query<…>` and
   `EntityCommands` are `Sage.Simulation`'s (§6).
-- The Debug, Development and Shipping configurations (`Release` is Shipping, writing to `bin/Release`).
+- The Debug, Development and Shipping configurations. `Release` (what `dotnet publish` builds by default) is
+  Shipping and writes `bin/Shipping`, so `{config}` and the packed Player's Shipping host agree (issue #294).
 - The engine, **compile-time only**: the assemblies of the `Sage.Player` package's host for your
   configuration, so a game compiles against exactly what runs it, and nothing of the engine is copied
   into your `bin/`, which holds your dll and nothing else. Add other references as usual.
@@ -161,8 +162,8 @@ replaces for a game that uses it.
 
 - **`id` is your record namespace.** Everything your game defines is `yourgame:something`, and that is
   how mods and the engine tell your records from `sage:`'s.
-- `{config}` is replaced with the host's configuration name (Debug, Development, Shipping, or Release),
-  so one manifest works for all of them. Paths are relative to the game folder.
+- `{config}` is replaced with the host's configuration name (Debug, Development or Shipping; a `-c Release`
+  build is Shipping and writes `bin/Shipping`), so one manifest works for all of them. Paths are relative to the game folder.
 - `mounts` are folders layered over the engine's own content, **later wins** — which is how a game (or a
   mod) replaces an engine texture without touching it.
 - `assembly` is optional: a game made only of data and engine plugins leaves it out.
@@ -274,6 +275,34 @@ a `game` folder beside the executable (how a packaged game ships) or stops with 
 to pass — and, in this repository, lists its games (test: GameManifest_Locate_WithoutAGameIsAnErrorThatListsTheGames).
 Until issue #32 a dev build loaded `games/Sandbox` instead, so a forgotten `-game` ran the wrong game
 without a word.
+
+**The console** (`~` in a dev build) keeps what you typed: Up and Down walk back through the last 100 lines
+and back to what you were typing, and Tab completes a command or cvar name, then a cvar's values (an enum's
+names, `0`/`1`) and record ids (issue #299). `autoexec.cfg` in the user folder, if there is one, runs right
+after `config.cfg`, so a line in it wins over a saved value. `host_maxfps` (0 to 1000; 0 uncapped) caps the
+frame rate when `r_vsync` is off.
+
+### Shipping it
+
+**`sage package`** (issue #293) writes a folder a player runs: the Shipping host as built, with your game
+beside it in `game/` — its assembly and `modules.add` dlls in `game/bin`, its mounts and its own mods copied as
+folders, and a `game.json` naming the copies with no `{config}` left. Nothing else of your game folder goes in
+(no sources, project files, `obj/` or tools), and neither does the `sage` CLI. Run `Sage.Host` in the folder:
+with no `-game` it runs the `game` folder beside it. The folder's content is validated where it was written.
+
+```bash
+dotnet build -c Shipping                                       # in your game's folder
+dotnet msbuild -t:SagePackage -p:Configuration=Shipping        # into bin/package/Shipping (SagePackageDirectory)
+sage package <game folder> --out <dir> [--host <dir>] [--config Shipping] [--no-validate]   # by hand
+```
+
+Only a Shipping host packages: one with the editor or ImGui in it (Debug, Development) is refused, and so is
+a game not built in that configuration or an output folder already in the way, before anything is written
+(tests: AHostWithTheEditorOrImGuiInItIsRefused,
+AGameNotBuiltInTheConfigurationOrAnOutputFolderInTheWayIsAnErrorThatWritesNothing). `tools/smoke_run.sh
+--packaged <dir>` runs a package the way a player would, and CI packages the template game on both jobs and
+runs it on Linux. A Shipping host reads the same `config.cfg` a dev build archived, so a name in it that only
+a dev build has (an editor cvar) is a note in the log, not a warning. Mounts are not zipped yet (#397).
 
 ---
 
@@ -760,6 +789,24 @@ resolution. Make it an `ITerrainSampler` too — `SampleHeight(absoluteX, absolu
 A prefab placed by a streamed scene is drawn in the far ring if it says how: `"far": { "size": [6, 18, 6] }`
 (a box standing on the ground) or `"far": { "mesh": "models/tower_far.glb" }`; raise your camera's `far` to see
 that far. `stream_load_budget` (sectors made live a tick while walking) and `stream_jobs` tune the rest.
+
+**More than the player can keep the world loaded** (issue #290, SAGE0129). The player is always a streaming
+source; tag anything else `streaming_source` and it keeps the cvars' rings around itself too, or give it the
+`streaming_ring` part (`"streaming_ring": { "radius": 0, "farRadius": 0 }`: `radius` 0 to 8 sectors, default 1;
+`farRadius` 0 to 16, default none) for rings of its own — on the player, that replaces the cvars'. Where rings
+meet the larger wins, and the origin always follows the player. A companion gets the `follower` part
+(`"follower": { "distance": 2 }`): every journey — a door, fast travel, `warp` — stands each follower behind the
+player in rows, facing the same way, and it stays live where it arrived.
+
+**Interiors that keep going while you are out** (issue #291, SAGE0129). A scene with `"live": true` is held when
+the player leaves it instead of going to sleep: the dungeon's skeletons go on patrolling, its crates go on
+falling, and going back takes it up as it is. An exterior is held only while the player is inside an
+interior. `space_live_max` (default 4) bounds how many are held, the one left longest ago going to sleep
+first; 0 is the old swap. `"environment": { "gravityScale": 0.25 }` gives a scene its own gravity, for its
+bodies and characters, even while it is held beside another. Followers come through doors with the player.
+`spaces` in the console lists what is held; a save keeps it (a held streamed exterior sleeps after a load
+until you go back). Spaces share one world and one physics simulation, kept apart by their coordinates, so
+put them far apart.
 
 A world resource your module installs goes in with `world.Resources.Add(...)`, which refuses a second
 one of the same type; `Replace` is for swapping one on purpose, and disposes the old.
@@ -1402,6 +1449,27 @@ public void OnWorldCreated(World world) => world.AddSystem(new TideSystem(world)
   plugin that depends on the one it changes. Both are logged against your plugin, and `sys_list` shows
   every system's id, its plugin and who replaced or disabled it.
 - A test's probe or a tool's one-off can stay undeclared: `world.AddSystem(probe, Phase.Late)`.
+- **A system that says what it touches can run beside others** (issue #288). Implement `IDeclaresAccess`
+  and declare it once; systems of a phase that conflict with nothing of each other's run at the same time,
+  on the world's own worker threads, and the results are what running them in order gives:
+
+  ```csharp
+  [System("yourgame.regen", Phase.Gameplay)]
+  public sealed class RegenSystem : IDeclaresAccess
+  {
+      public void Declare(SystemAccess access) => access.Reads<Stats>().Writes<Health>().Sends<Healed>();
+      public void Run(in SystemContext ctx) { /* ... */ }
+  }
+  ```
+
+  `Reads<T>`, `Writes<T>`, `ReadsEvents<T>`, `Sends<T>`, `ReadsResource<T>`, `WritesResource<T>`, or
+  `Exclusive()` for a system that touches everything. Make structural changes on `ctx.Commands` (they need no
+  declaration; a direct `world.Add` or `FlushCommands` needs `Exclusive`), and declare a resource you took in
+  the constructor too. A dev build checks you: what a declared system touches without declaring it is an
+  error in the log, counted in `world.Systems.AccessViolations` (`sys_access_check`). `sys_parallel 0` runs
+  every phase in order on one thread, `sys_threads` sets the workers, and `sys_list` shows each declaration.
+  A system that declares nothing runs alone, in its place, as before — and the engine's own declare nothing
+  yet.
 
 **The ECS is Sage's vocabulary** (issue #25). Components are structs implementing `IComponent` and
 tags implement `ITag`, each with a stable id (§3); an `Entity` is a handle that reports `IsNull` once
@@ -1664,8 +1732,11 @@ menu (issue #99): each slot's name and header (`SavedUtc`, `FormatVersion`, `Gam
 320 pixels wide), and the slot gets `thumbnail.png`, which `SaveSlot.ThumbnailPath` names. `save_compress 1`
 writes `world_<name>.json.gz` (`SaveSlot.Compressed`); either kind loads. A save the game takes while it
 plays (F5, a trigger's `save_game`, an autosave) is snapshotted on the tick and written on a background
-thread (`save_background`, on by default); reading a slot waits for a write in flight, and
-`SaveSystem.WaitForWrites()` does it by hand. F5 and F9 work while the game is paused. `save_quick_slot`
+thread (`save_background`, on by default). The snapshot only copies your components' columns, a few
+milliseconds for ten thousand entities; a component with an `Entity` field, a list or a converter of your
+plugin's is serialised there and then, per entity, so a component thousands of things carry is cheapest
+made of plain values and strings. Reading a slot
+waits for a write in flight, and `SaveSystem.WaitForWrites()` does it by hand. F5 and F9 work while the game is paused. `save_quick_slot`
 and `save_autosave_prefix` rename the quick slot and the autosaves, and the rotation never overwrites a
 slot the player saved under an autosave's name. `save_report <slot>` (`SaveSystem.Report`) says what
 loading a save would do: each component's and resource's saved version against this build's, as current,
@@ -1774,6 +1845,11 @@ It loads what a dedicated server loads plus the engine client's record types (ma
 sprite sheets, particles), so a prefab part only your client half declares is skipped there — the real
 game's load checks those, at the same lines. `--engine-content <dir>` points at engine content when the
 tool can't find `engine_content/` above it.
+
+In a running game, **`problems`** at the console prints the same list from the load it made — errors and
+warnings with file and line, then conflicts between mods as warnings — in every build, Shipping included
+(issue #301). A dev build's overlay shows a red (errors) or yellow (warnings) count in the corner while
+there are any; `ui_problems 0` hides it. The editor's problems panel is the same list ([EDITOR.md](EDITOR.md)).
 
 **Headless tests.** Your simulation half can be ticked in a test with no window and no graphics device.
 This is the engine's own habit and the reason the split exists. Reference `tests/Sage.Testing` and your
@@ -1924,7 +2000,7 @@ diagnostic they report is an error. One line each, with the fix:
 | SAGE0050 | A `Friflo.*` type or namespace named anywhere but `Sage.Simulation`, which implements the ECS over it | Use Sage's `Entity`, `IComponent`, `ITag`, `Tags`, `Query<…>`, `EntityCommands` (§6) |
 | SAGE0110 | *Sage.Sdk, after a build:* `game.json` names an `assembly` or `modules.add` path that the build did not write | Point it at `bin/{config}/Name.dll` (relative to the game folder; no target framework in the path) |
 | SAGE0111 | *Sage.Sdk, after a build:* `game.json` does not load the project's own dll | Name it as `assembly` (the simulation half) or in `modules.add` (a client half); the message has the path |
-| SAGE0112 | *Sage.Sdk:* no host, engine or `sage` CLI for this configuration (the `Sage.Player` package has Debug, Development and Shipping; in this repository, the host is not built) | Build with `-c Shipping` rather than `Release`, or build `src/Sage.Host` / `src/Sage.Cli` in that configuration |
+| SAGE0112 | *Sage.Sdk:* no host, engine or `sage` CLI for this configuration (the `Sage.Player` package has Debug, Development and Shipping; in this repository, the host is not built) | Build in Debug, Development or Shipping (`-c Release` is Shipping since #294), or build `src/Sage.Host` / `src/Sage.Cli` in that configuration |
 | SAGE0113 | *Sage.Sdk:* the project has `.fx` shaders but no local `mgfxc` (no `.config/dotnet-tools.json` above it) | `dotnet new tool-manifest && dotnet tool install dotnet-mgfxc --version 3.8.5.1`, or `-p:SageSkipShaders=true` |
 | SAGE0114 | *Sage.Sdk, after a build:* a `<SageKit>` the project is built on that `game.json`'s `"kits"` does not name, so the host would not load it | Add its id to `"kits"` |
 
@@ -1980,7 +2056,7 @@ names their types needs the opt-in.
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack` (with `OpenHud`, issue #99), `UiLayer`, `UiTween`; and the RPG kit's view-models (issues #98, #99): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `ShopView`, `IPriceRule`, `StubPriceRule` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98), the HUD, journal, map, menu and shop (#99) |
 | SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; sockets and IK (issue #120): `SkeletonPoses`, `TwoBoneIk`, `AimChainIk`, `AimJoint`, `PoseSampler.ToModelSpace(…, firstJoint)`, `SkeletonSocketsRecord`, `SkeletonSocket`, `BoneAttachment`, `BoneAttachmentPart`, `BoneAttachments`, `AimIk`, `AimIkJoint`, `AimIkPart`, and in Gameplay `FootIk`, `FootIkLeg`, `FootIkPart`; animation graphs (issue #118): `AnimGraphRecord`, `AnimState`, `AnimBlendSpace`, `AnimBlendPoint`, `AnimLayer`, `AnimParam`, `AnimParamKind`, `AnimParamSource`, `Animator`, `AnimatorLayer`, `AnimatorParam`, `AnimatorPart`, `Animators` (`SetParam`, `SetTrigger`, `GetParam`, `StateOf`, `HasTag`, `ClipWeight`, `Play`, `TryGetPose`, `Describe`), `Engine.Animations`; first-person arms (issue #121): `ViewmodelRecord`, `Viewmodel`, `ViewmodelPart`, `ViewmodelLayer`, `Viewmodels` (`Show`, `ArmsOf`, `WeaponOf`, `CameraOf`, `IsDrawn`), and in Gameplay `AttackRecord.Arms`; clip events (issue #119): `AnimEventsRecord`, `AnimEventEntry`, `IAnimationEventSink`, `Animators.TryGetClip`, `Animators.SpriteSwingGraph`, `Animators.AnimEventOutput`. Complete for phase 4d: its exit (issue #122) added no API — an NPC walking, running, aiming and attacking, and first-person arms reloading, are content over these (`tests/games/skeletal`) | Stable after the Sandbox's creatures move to skeletons and 4e's weapons build on it; until then it may change |
 | SAGE0127 | Weapons and combat generalised (issue #133, phase 4e): the hit pipeline — `HitRequest`, `HitResult`, `Combat.ApplyHit`, the `hit_delivery` vocabulary (`IHitDelivery`, `HitDeliveryAttribute`, `HitContext`, `HitDeliveries`), the shared queries `Hits` (`Sweep`, `Ray`, `CanBeHurt`, `Launch`), `DamageInfo.Location`/`Damaged.Location`, `AttackRecord.Delivery`/`Range`/`Pellets`/`ProjectileSpeed` and `Projectile.Attack`; since #134 `AttackRecord.Projectile`/`ProjectileGravity`/`ProjectilePierce`, `Projectile.Gravity`/`Pierce`/`Passed` and the attack overload of `ProjectileExtensions.Launch`; hit locations (issue #137): the `hit_location` and `hitboxes` records (`HitLocationRecord`, `HitboxesRecord`, `HitboxShape`), the `hitboxes` part, `Hitbox`, `Hitboxes`, `HitLocations`, and the query-only physics layers (`LayerMatrix.QueryOnly`, `Sees`); ammunition (issue #135): `AttackRecord.Ammo`/`Magazine`/`AmmoPerShot`/`ReloadTime`/`Automatic`/`RateOfFire`, `Magazine`, `MagazineSlot`, `Ammunition`, `WeaponFired`, `DryFire`; spread and recoil (issue #136): the `spread` and `recoil` records (`SpreadRecord`, `RecoilRecord`), `AttackRecord.Spread`/`Recoil`, `WeaponState`, `ShotRandom`, `Spread`, `HitContext.Cone`/`Shot`/`PelletAim`; and in the RPG kit (issue #138) `AmmoReadout` and `EquipmentView.Ammo`. Since #138 a projectile lands on hitboxes like a sweep or a ray, with no API change | Phase 4e's exit (#139) is a data-only weapons game over it; stable once that and a game with real weapons have used it |
-| SAGE0129 | The open world (phase 4g). The calendar and passing time (issue 4g-2): `CalendarRecord` (the `calendar` record: `Months`, `Weekdays`, `StartYear`, `StartWeekday`, `Default`, `DateOf`, `DaysIn`, `DaysInYear`, `WeekdayOf`, `WeekdayIndex`, `InWindow`), `CalendarMonth`, `GameDate`, `Calendars` (`Of`, `Today`), `WorldClock.Calendar`/`Date`, the `weekday` and `date_between` conditions, `Time.Pass` and the `TimePassed` event; cells that go dormant with their state (4g-1): `InCell` (the `sage:cell` component: the scene, or the streamed sector, a runtime spawn belongs to and goes to sleep with) and save format 4 (`SaveSystem.FormatVersion`: `dormant` cells by source, each with the sector its positions are relative to); entities that stream by sector (4g-3): `SceneRecord.Streamed` (a scene placed sector by sector, each sector a cell `sector:<scene>:<x>,<z>`), `SceneRecord.Terrain` and the `terrain` record (`TerrainRecord`, `TerrainGeneratorKind`: the built-in `Flat` and `Hills` ground); NPC routines (issue 4g-4): `RoutineRecord` (the `routine` record), `RoutineEntry`, the `Routine` component (`sage:routine`) and `RoutinePart`, `Routines` (`Of`, `EntryAt`, `StartOf`, `Target`), `RoutineTarget`, `AIProfileRecord.Routine` and `AIScheduleChoice.Routine` (the `in_routine` condition, `AICondition.InRoutine`, and the `MoveToAnchor`, `FaceAnchor` and `StayAt` tasks are content and not marked); load doors, interiors and fast travel (4g-5): `Travel` (`To`, `ToPoint`, `HoursTo`, `Use`, the `Travel` input), `SceneRecord.Space` and `SceneSpace` (`Interior`: no rings, no terrain, lit by its lights and `SceneEnvironment.Ambient`), `LoadDoor` (`sage:load_door`) and `LoadDoorPart`, `TravelPoint` (`sage:travel_point`) and `TravelPointPart`, `TravelLog` (the saved `travel` resource) and `TravelDestination`; off-screen simulation (issue 4g-6): the cell handoff in Simulation (`ICellHandoff`, `CellContent`: `AddHandoff`, `RemoveHandoff`, `Release`, `Restore`, `SceneOf`, `IsLive`, `CellAt`, `Generation`), and in Gameplay the `Offscreen` component (`sage:offscreen`) and `OffscreenPart` (the `offscreen` part), `OffscreenAgent`, `OffscreenAgents` (the saved `offscreen` resource), `OffscreenDied`, the `offscreen_fight` vocabulary (`IOffscreenFight`, `OffscreenFightAttribute`, the built-in `strength`), `OffscreenFights`, `OffscreenMap` and `Factions.AreHostile`; the RPG kit's rest and fast travel (4g-7): `Scenes.Current`, `Rest` (`Can`, `EnemyNear`, `Begin`, the `rest` command), `RestKind`, `RestView` (the `rpg_rest` view-model of the `rpg:rest` screen), `RpgConventionsRecord.RestEnemyRange`/`RestMaxHours`/`RestEffect`, and `MapView`'s travel (`Destinations`, `HasDestinations`, `TravelStyle`, `Activate`, `Marker.Point`/`CanTravel`/`TravelHours`); the far ring (#277): `PrefabRecord.Far` and `FarLook` (a prefab's `"far"`: `mesh`, `size`, `material`); seasons, moons, leap years and calendar events (#289): `CalendarRecord`'s `LeapEvery`, `LeapSkipEvery`, `LeapRestoreEvery`, `LeapMonth`, `Seasons`, `MoonCycle`, `MoonStart`, `IsLeapYear`, `SeasonOf`, `MoonAge`, `MoonPhaseOf`, `MoonLight`, `MoonPhaseNames`, `CalendarSeason`, `CalendarEventRecord` (the `calendar_event` record), `CalendarEventListener` (`sage:calendar_event`) and `CalendarEventPart`, `CalendarEvents.OnCalendarEvent`; off-screen pathing and seeding (#284): `CellContent.SeedUnplaced`, `OffscreenMap.Blocked`, `OffscreenAgent.Route`/`RouteGoal` | Phase 4g's last pieces are built on it; its exit (4g-8) may reshape it. Stable once routines and the off-screen simulation have read `TimePassed`; a calendar per scene may still reshape the calendar |
+| SAGE0129 | The open world (phase 4g). The calendar and passing time (issue 4g-2): `CalendarRecord` (the `calendar` record: `Months`, `Weekdays`, `StartYear`, `StartWeekday`, `Default`, `DateOf`, `DaysIn`, `DaysInYear`, `WeekdayOf`, `WeekdayIndex`, `InWindow`), `CalendarMonth`, `GameDate`, `Calendars` (`Of`, `Today`), `WorldClock.Calendar`/`Date`, the `weekday` and `date_between` conditions, `Time.Pass` and the `TimePassed` event; cells that go dormant with their state (4g-1): `InCell` (the `sage:cell` component: the scene, or the streamed sector, a runtime spawn belongs to and goes to sleep with) and save format 4 (`SaveSystem.FormatVersion`: `dormant` cells by source, each with the sector its positions are relative to); entities that stream by sector (4g-3): `SceneRecord.Streamed` (a scene placed sector by sector, each sector a cell `sector:<scene>:<x>,<z>`), `SceneRecord.Terrain` and the `terrain` record (`TerrainRecord`, `TerrainGeneratorKind`: the built-in `Flat` and `Hills` ground); NPC routines (issue 4g-4): `RoutineRecord` (the `routine` record), `RoutineEntry`, the `Routine` component (`sage:routine`) and `RoutinePart`, `Routines` (`Of`, `EntryAt`, `StartOf`, `Target`), `RoutineTarget`, `AIProfileRecord.Routine` and `AIScheduleChoice.Routine` (the `in_routine` condition, `AICondition.InRoutine`, and the `MoveToAnchor`, `FaceAnchor` and `StayAt` tasks are content and not marked); load doors, interiors and fast travel (4g-5): `Travel` (`To`, `ToPoint`, `HoursTo`, `Use`, the `Travel` input), `SceneRecord.Space` and `SceneSpace` (`Interior`: no rings, no terrain, lit by its lights and `SceneEnvironment.Ambient`), `LoadDoor` (`sage:load_door`) and `LoadDoorPart`, `TravelPoint` (`sage:travel_point`) and `TravelPointPart`, `TravelLog` (the saved `travel` resource) and `TravelDestination`; off-screen simulation (issue 4g-6): the cell handoff in Simulation (`ICellHandoff`, `CellContent`: `AddHandoff`, `RemoveHandoff`, `Release`, `Restore`, `SceneOf`, `IsLive`, `CellAt`, `Generation`), and in Gameplay the `Offscreen` component (`sage:offscreen`) and `OffscreenPart` (the `offscreen` part), `OffscreenAgent`, `OffscreenAgents` (the saved `offscreen` resource), `OffscreenDied`, the `offscreen_fight` vocabulary (`IOffscreenFight`, `OffscreenFightAttribute`, the built-in `strength`), `OffscreenFights`, `OffscreenMap` and `Factions.AreHostile`; the RPG kit's rest and fast travel (4g-7): `Scenes.Current`, `Rest` (`Can`, `EnemyNear`, `Begin`, the `rest` command), `RestKind`, `RestView` (the `rpg_rest` view-model of the `rpg:rest` screen), `RpgConventionsRecord.RestEnemyRange`/`RestMaxHours`/`RestEffect`, and `MapView`'s travel (`Destinations`, `HasDestinations`, `TravelStyle`, `Activate`, `Marker.Point`/`CanTravel`/`TravelHours`); the far ring (#277): `PrefabRecord.Far` and `FarLook` (a prefab's `"far"`: `mesh`, `size`, `material`); seasons, moons, leap years and calendar events (#289): `CalendarRecord`'s `LeapEvery`, `LeapSkipEvery`, `LeapRestoreEvery`, `LeapMonth`, `Seasons`, `MoonCycle`, `MoonStart`, `IsLeapYear`, `SeasonOf`, `MoonAge`, `MoonPhaseOf`, `MoonLight`, `MoonPhaseNames`, `CalendarSeason`, `CalendarEventRecord` (the `calendar_event` record), `CalendarEventListener` (`sage:calendar_event`) and `CalendarEventPart`, `CalendarEvents.OnCalendarEvent`; off-screen pathing and seeding (#284): `CellContent.SeedUnplaced`, `OffscreenMap.Blocked`, `OffscreenAgent.Route`/`RouteGoal`; several streaming sources and followers (#290): `StreamingRing` (`sage:streaming_ring`) and `StreamingRingPart`, `Follower` (`sage:follower`) and `FollowerPart`; live spaces (#291): `SceneRecord.Live`, `SceneEnvironment.GravityScale`, `Scenes.LiveBeside`, `SpaceGravity`, `GravityRegion` and the saved `spaces` resource | Phase 4g's last pieces are built on it; its exit (4g-8) may reshape it. Stable once routines and the off-screen simulation have read `TimePassed`; a calendar per scene may still reshape the calendar |
 | SAGE0130 | The world clock, sky records and weather composition (issue 4h-2, phase 4h): `WorldClock`, `WorldClock.Between`/`Format`/`TryParseHour`/`Of`, the `time_between` condition, `SkyRecord`, `SkyKey`, `SkyState`, `SkyRules` (`Evaluate`, `SunAt`, `Current`, `Apply`), `RenderEnvironment.Zenith`/`ShadowStrength`, `SceneEnvironment.Sky`/`Hour` and the weather record's `fogTint`, `skyTint`, `fogStartScale`, `fogEndScale`. The render pass registry (issue 4h-1): `RenderStage`, `RenderStages`, `RenderPassAttribute`, `RenderPassInfo`, `RenderPassRegistry<TPass>`, and in the client `IRenderPass`, `RenderPasses`, `ClientModule.Passes`, `RenderContext`, `RenderViewInfo`, and `Renderer.DeclareTarget` with a format and a depth buffer. Sun shadows (issue 4h-4): `ShadowMath` (`Fit`, `PerspectiveSlice`, `OrthographicSlice`, `ToClip`, `Contains`, `TexelOf`, `Strength`, `Casts`), `ShadowFit`, `MaterialRecord.CastShadows`, and in the client `RenderStats.ShadowCasters`. The sky and fog (issue 4h-5): `FogMode`, `FogMath` (`Factor`, `Density`, `CullDistance`, `Hides`, `ShaderParam`, `Invisible`), `SkyRules` (`StarsAt`, `Gradient`, `Haze`, `SunDisc`, `ColorAt` and their constants), `SkyRecord.FogMode`, `SkyKey.FogDensity`, `SkyState.FogDensity`/`Stars`, `RenderEnvironment.DrawSky`/`Stars`/`FogMode`/`FogDensity`, and in the client `RenderStats.FogCulled`/`Skies`. Post-processing (issue 4h-6): `PostEffectRecord` (the `post_effect` record) and `RenderStats.PostSteps`. Complete for phase 4h: its exit (issue 4h-7) added no experimental API — the Sandbox's dusk, night and lamps are content over these, and the light switch it needed (`PointLight.Off`/`Lit`, `LightPart.Off`, the `TurnOn`/`TurnOff`/`Toggle` inputs) is ordinary API | Phase 4h is done; 4g adds the calendar and schedules on the clock. Stable once 4g and a game with its own sky, shadows and post chain have used it; cascades, HDR and bloom may still reshape the shadow and post halves |
 | SAGE0131 | Saves you can trust (phase 4i). The save placeholder and header API, a load that cannot half-happen (4i-2): `SavePlaceholder` (an entity whose prefab is gone, kept inert and written back unchanged), `UnknownSavedData` (components and tags this game has no type for, written back unchanged), the header's plugins and content (`SaveSlot.Plugins`, `SaveSlot.Content`, `SaveSlot.Mismatches`, `SavedPlugin`, `SavedContent`). The prefab override API (4i-1): `PrefabOverrides` (`Placement.Overrides`, `PrefabChild.Overrides`), `PrefabChild`, `PrefabRecord.Children`, `PrefabRecord.Persist` (runtime spawns persist unless a prefab says `"persist": false`, 4i-4; such a spawn is `Unsaved` and a load removes it, 4m-4), `PrefabOverridden`, `FromParentPrefab`, the overrides overload of `PrefabExtensions.Spawn`, and `RecordCheck.TryGet`. Reconciling loads (4i-3): `Placement.Id` (a placement's authored id in saves) and save format 3 (`SaveSystem.FormatVersion`: sources, tombstones and the world's scene). Saving what changed (4i-5): an entity spawned from a prefab is saved as a diff against its prefab as spawned (`"diff"`, `"removed"` in format 3), and a load lays it over the current prefab. Quick-save and autosave (4i-6): `SaveKind` and `SaveSlot.Kind`, `SaveSystem.Save(slot, kind)`, `RequestSave`, `RequestLoad`, `QuickSave`, `QuickLoad`, `Autosave`, `NextAutosaveSlot`, `Delete`, `HasPendingRequests`, and the `QuickSlot`, `AutosavePrefix`, `QuickSaveAction` and `QuickLoadAction` names. Thumbnails, compression, the background write and the version report (#285): `SaveSystem.Thumbnail`, `SaveThumbnail`, `IsWriting`, `WaitForWrites`, `Report`, `QuickSlotName`, `AutosavePrefixName`, the title overloads of `Save` and `RequestSave`, `SaveSlot.Title`/`ThumbnailPath`/`Compressed`, `SaveVersionReport`, `SaveVersionEntry`, `SaveVersionStatus` | Phase 4i is building on both: the exit game (4i-7) may reshape them |
 | SAGE0132 | Data mods (phase 4j). Mod manifests and the load order (4j-1): `ModManifest` (`mod.json`), `ModLoadOrder.Resolve`, `ModLoadResult`, `RefusedMod`, `ModList` (`user://mods.json`) and `Engine.Mods`. Merge provenance and the content report (4j-2): `RecordStore.Writes`, `RecordWrite`, `RecordWriteOp`, `ContentReport` (`Build`, `Lines`, `IsModMount`, `NameOf`, `ModMountPrefix`), `ContentMountReport`, `PatchedRecord`, `ContentConflict`, `ContentConflictKind`, `ShadowedAsset` and `VirtualFileSystem.Shadows`. Saves name their mods (4j-4): `SaveSlot.Mods` and `SavedMod`. Mods at boot (4j-3): `ModManager` (`Engine.ModManager`: what was found, `Enable`/`Disable`/`Move` for the next start, `Next`, `WatchManifests`) and `SageAppOptions.Mods`, `UserModsDirectory`, `ModListFile` and `ModReportFile`. `sage` with mods (4j-5): `ValidateOptions.Mods` and `GameMods`, `ValidationReport.Mods`, `ModLines`, `ReportLines` and `Conflicts`, and `RecordSchemas.Mod` and `Game`. The mods screen (4j-6): `Sage.UI.ModsView` (`ui_mods`) and the kit's `RpgKitModule.ModsScreen` | Phase 4j is done: its exit game (`tests/games/mods`, 4j-7) used it unchanged, data only. Stable once a game with players' mods has used it; code mods, `.sagemod` zips and namespaced assets (phase 9) may still reshape the manifest and the report |

@@ -144,6 +144,11 @@ mods, and what is wrong with the open document as you edit it: a placement whose
 a target that is not in the document, two placements with one name or one id. Click a row to select the
 placement or open the record. The count is in the status bar.
 
+Outside the editor, the content half of the same list is the console's `problems` (in every build, Shipping
+included), and a dev build's overlay shows a red or yellow count in the top-left corner while there are any
+(`ui_problems 0` hides it; issue #301). The document's own problems are only here. In `-edit` mode the corner count
+shows only while playing; otherwise the status bar has it.
+
 **Log** is the log, at or above a level, with categories hidden or shown one at a time.
 
 ## 4. The keys
@@ -283,7 +288,7 @@ its own, `mover.seconds` means the part's field, the one you can change.
 |---|---|
 | `ed_play [x y z [yaw]]` | Play from the free camera (or from that point) |
 | `ed_stop` | Stop, back to the editor |
-| `ed_problems` | The problems, by file |
+| `ed_problems` | The problems, by file (`problems`, outside the editor too, lists the content's) |
 | `ed_layout` | Put the panels back |
 | `ed_viewport 1` | A second view of the free camera in a window |
 | `cam_set <x> <y> <z> [yaw] [pitch]` | Put the free camera somewhere |

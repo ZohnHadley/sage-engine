@@ -116,7 +116,7 @@ developer tools.
 | REQ-SYS-02 | The engine shall run a game in a window through MonoGame DesktopGL, and headlessly with no window or GPU. | Must | Done |
 | REQ-SYS-03 | Simulation assemblies shall not reference MonoGame; the client, hosts and editor may. | Must | Done (SAGE0024) |
 | REQ-SYS-04 | A game shall be buildable outside the repository from the Sage SDK and templates. | Must | Done (local feed); public feed open (R1) |
-| REQ-SYS-05 | A game shall be packageable into a folder that runs on a machine without the SDK. | Must | Not started (R1, #6) |
+| REQ-SYS-05 | A game shall be packageable into a folder that runs on a machine without the SDK. | Must | Done (#293: `sage package`, the Shipping host with the game beside it; CI packages the template game and runs it on Linux; test: `APackageIsTheShippingHostWithTheGameBesideItAndNothingElse`) |
 | REQ-SYS-06 | The engine shall keep its public API declared and versioned with SemVer from git tags. | Must | Done; first tag pending (R1) |
 
 ## 5. Performance requirements
@@ -132,7 +132,7 @@ developer's machine, and the zero-allocation rules are the hard requirements.
 | REQ-PERF-04 | The Sandbox shall hold 60 frames per second with 2,000 entities, and a tick shall use under a quarter of its budget at that size. | Must | Done for the tick (scale review 2026-09-24: 0.76 ms of 16.67 ms) |
 | REQ-PERF-05 | Crossing a streaming sector edge shall not stall a frame beyond the frame budget. | Must | Done (generation on jobs, one sector a tick, collision four chunks a tick; #277; test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`) |
 | REQ-PERF-06 | GPU texture and mesh memory shall return to baseline after the content that used them unloads. | Must | Partial (meshes released with their sector, #277; textures and sounds #308) |
-| REQ-PERF-07 | Saving a large world shall not stall the tick that requested it. | Should | Partial (#285: the write is on a background thread, but a 10k-entity snapshot still takes about 50 to 75 ms on the tick in a Debug build; test: `ATenThousandEntitySaveDoesNotStallAFrame`) |
+| REQ-PERF-07 | Saving a large world shall not stall the tick that requested it. | Should | Done (#285: the tick copies component columns, about 3 ms for 10k entities in a Debug build, and the writer builds and writes the JSON; test: `ATenThousandEntitySaveDoesNotStallAFrame`, `ABackgroundSaveIsTheTickItWasTakenOn`) |
 | REQ-PERF-08 | Distant animators and AI shall update less often (LOD) without changing results near the player. | Should | Done for animators (`anim_lod_distance`) |
 
 ## 6. Functional requirements

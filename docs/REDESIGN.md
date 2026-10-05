@@ -640,7 +640,9 @@ AGameRenamesHealthToHpByChangingOneRecord). No `new RecordId("sage", …)` is le
   zero-damage sword.
 - **In-game problems panel.** Every content error or warning appears as a clickable list in the dev
   overlay and editor, grouped by file, with a count badge on the HUD. It opens the file at the line.
-  "Grep the log for ERROR" stops being a designer's job.
+  "Grep the log for ERROR" stops being a designer's job. *As built:* the editor's panel (#227, 10-12), and
+  without the editor (#301) the `problems` command in every build and a count badge on a dev build's overlay
+  (`ui_problems`), all three reading `ContentProblems` (test: ProblemsListsTheSameEntriesAsValidate).
 - **Nicer data:**
   - Replace the string mini-languages (`"Wait:1.5"`) with objects (`{"task":"wait","seconds":1.5}`).
   - Colours as `"#FFB0A0"`, not `4294960111`.
@@ -1005,19 +1007,33 @@ because it edits the live play world (`DevTools.cs:84-87`).
   mods). CI packs all three packages into a local feed and, outside the checkout, builds a game from
   each template, validates it (the mod against the game), checks SAGE0050 fires, and `dotnet run`s it
   under Xvfb, walking; Windows builds one with a shader of its own. Not yet: a public feed (§6 decision
-  7), `sage` as a dotnet tool, `sage-game-client`/`sage-mod-code`, the Release→Shipping `{config}` fix
-  below (a packed Player has no Release host, so the SDK says to use Shipping), and the Sandbox on the SDK.
+  7), `sage` as a dotnet tool, `sage-game-client`/`sage-mod-code`, ~~the Release→Shipping `{config}` fix~~
+  (issue #294: `-c Release` is Shipping and writes `bin/Shipping`, so `{config}` and the packed Player's
+  Shipping host agree; test: AReleaseBuildIsShippingAndWritesTheShippingFolder), and the Sandbox on the SDK.
 - **`dotnet new` templates:** `sage-game`, `sage-game-client`, `sage-mod-data` and `sage-mod-code`.
 - **`sage` CLI:**
   - `new`, `run`, `validate`, `schema`, `package`;
   - `package` copies the Shipping build, packs mounts into zips and strips `tools/`.
+
+  *As built (issue #293, 2026-10-05).* `sage package <game> --out <dir> [--host <dir>] [--config Shipping]
+  [--no-validate]` and the SDK's `SagePackage` target (into `SagePackageDirectory`, default
+  `bin/package/<config>`) write the Shipping host as built, less the `sage` CLI, with the game beside it in
+  `game/`: its assembly and `modules.add` dlls in `game/bin`, its mounts and its own mods, and a `game.json`
+  naming the copies with no `{config}` left. The host runs `game/` with no `-game`. A host with the editor or
+  ImGui in it (Debug, Development) is refused rather than stripped, and the written folder is validated with
+  the host's `Content/` (tests: APackageIsTheShippingHostWithTheGameBesideItAndNothingElse,
+  AHostWithTheEditorOrImGuiInItIsRefused, ThePackagedHelloAndSceneOnlyGamesLoadAndValidateFromTheOutputFolder).
+  Mounts are copied as folders, not zipped (#397); `new` and `run` are #297.
 - **CI (GitHub Actions), on Windows and Linux:**
   - `dotnet tool restore`, then build all three configurations;
   - tests with coverage;
   - `check_docs.py`, with the test count read from the test run;
   - public API diff;
   - template smoke test (`dotnet new sage-game && dotnet build && sage validate`);
-  - a headless scripted run of `Hello`.
+  - a headless scripted run of `Hello`;
+  - *as built (#293):* the template game packaged in Shipping on both jobs, checked for developer files,
+    and run from the package under Xvfb on Linux (`tools/smoke_run.sh --packaged`): the publish smoke test #6
+    asked for.
 - **Build hygiene:**
   - `global.json`, a root `Directory.Build.props` (Nullable, warnings as errors, LangVersion,
     Deterministic) and `Directory.Packages.props`.
@@ -1067,12 +1083,12 @@ what the base therefore needs first:
 | Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ topics, quests, journal and factions in data (4b, 4c); barks and richer objectives in 4r |
 | Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary, nested state machines and the rest of HL1's and Source's logic set: multisource, logic_case, logic_auto, filtered triggers, spawners (4m) |
 | AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g) that paths round walls, covers sectors never visited and takes NPCs through doors (4m); hearing, behaviour trees and squads in 4r |
-| Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); LOD in 4m and 4n |
+| Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); the far ring, several streaming sources, followers, and interiors that stay live beside their exterior (4m); more LOD in 4n |
 | Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m) |
-| Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i); thumbnails, compression, a background write and a version report (4m), though a 10k-entity snapshot still costs more than a frame |
+| Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i); thumbnails, compression, a background write that costs the tick about 3 ms at 10k entities, and a version report (4m) |
 | Mod culture (data mods first) | ○ | ● | ●● | ●● | ◐ data mods (4j); packed and code mods in 9 |
 
-*"Sage today" refreshed 2026-10-03.* The owner also named **Lugaru** (third-person skeletal fighting) as a game to emulate: rendering must carry lit, normal-mapped meshes and skinned characters as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410 (Stage B, part 2).
+*"Sage today" refreshed 2026-10-05.* The owner also named **Lugaru** (third-person skeletal fighting) as a game to emulate: rendering must carry lit, normal-mapped meshes and skinned characters as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410 (Stage B, part 2).
 
 ### Stage A: make the base able to hold any game (unchanged, and ready as GitHub issues)
 
@@ -1082,7 +1098,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 
 | Phase | State |
 |---|---|
-| 0 — Clean ground | **Done** except a publish smoke test (#6, now in R1) and deleting `dev_branch_test` (owner) |
+| 0 — Clean ground | **Done**: the publish smoke test (#6) is CI's package-and-run step (#293, R1); deleting `dev_branch_test` is the owner's |
 | 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to Stage E (#49), when an editor hosts a play session: a separate log, user folder and crash reporter per app |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
 | 3 — Carve the base | **Done** (#23). the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), and public API files, SemVer from git tags and `sage` ranges (#31, [RELEASING](RELEASING.md)), each with an "As built" note |
@@ -1169,8 +1185,8 @@ issues go first inside each phase.
 root motion and directional attacks (4p), knockback and blocking (4r) and richer character materials
 (#410), and its third-person camera exists since 4a.
 
-**Proposed for closing (owner's call):** #16 (generated registration, done in phase 2) and #2 (phase 0,
-which now waits only on #6, moved to R1).
+**Closed:** #16 (generated registration, done in phase 2), #2 (phase 0) and #6 (its publish smoke test is
+CI's package-and-run step since #293).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,

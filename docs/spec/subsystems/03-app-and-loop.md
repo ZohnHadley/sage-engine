@@ -1,6 +1,6 @@
 # 03 · App and game loop
 
-> Status: built. One boot path, plugins, sealed registries, generated registration, `game.json`, the fixed-tick loop and the declared-system scheduler all work and are tested. Parallel system execution, game-assembly hot reload and multiple simultaneously visible worlds are not built. Owning assemblies: `Sage.Simulation` (`App/`, `ECS/Systems/`), `Sage.Core` (`GameManifest`, `Declarations/`), `Sage.Generators`, `Sage.Host`. Design docs: [01 host and modules](../../design/01-host-and-modules.md), [REDESIGN](../../REDESIGN.md) §3.2 to §3.4.
+> Status: built. One boot path, plugins, sealed registries, generated registration, `game.json`, the fixed-tick loop and the declared-system scheduler all work and are tested; systems that declare their access run in parallel stages (#288), and a game packages into a folder a player runs (#293). Game-assembly hot reload and multiple simultaneously visible worlds are not built. Owning assemblies: `Sage.Simulation` (`App/`, `ECS/Systems/`), `Sage.Core` (`GameManifest`, `Declarations/`), `Sage.Generators`, `Sage.Host`. Design docs: [01 host and modules](../../design/01-host-and-modules.md), [REDESIGN](../../REDESIGN.md) §3.2 to §3.4.
 
 ## 1. Purpose and scope
 
@@ -45,7 +45,8 @@ The base plugins, by id: `sage.physics3d`, `sage.streaming`, `sage.maps`, the `s
 | `HostLoop` | `src/Sage.Simulation/App/HostLoop.cs` | `Update(realDt, tickRate, maxFrameTime, timeScale, beforeTick)` and `Frame()`; `RealTime`, `Last`, `ResetAccumulator`. |
 | `Phase`, `Schedule`, `RunCondition` | `src/Sage.Simulation/ECS/Systems/ISystem.cs` | See section 6. |
 | `ISystem`, `SystemContext`, `SystemAttribute` | `ECS/Systems/ISystem.cs`, `SystemDeclarations.cs` | `[System("id", Phase.X, Before = ..., After = ..., Condition = ...)]`, added with `world.AddSystem(new X(...))`. |
-| `WorldSystems` | `ECS/Systems/WorldSystems.cs` | `world.Systems.Replace(id, system)` and `Disable(id)`, both recorded against the calling plugin. |
+| `WorldSystems` | `ECS/Systems/WorldSystems.cs` | `world.Systems.Replace(id, system)` and `Disable(id)`, both recorded against the calling plugin; `Parallel`, `Threads` and `AccessCheckLevel` (per-world overrides of the cvars), `AccessViolations`, `AccessReports` (#288). |
+| `IDeclaresAccess`, `SystemAccess` | `ECS/Systems/SystemAccess.cs`, `ParallelSystems.cs` | `Declare(access)`: `Reads<T>`, `Writes<T>`, `ReadsEvents<T>`, `Sends<T>`, `ReadsResource<T>`, `WritesResource<T>`, `Exclusive()`; `ConflictsWith`. A declared system may run at the same time as others of its phase it does not conflict with (#288). |
 | `GameManifest` | `src/Sage.Core/GameManifest.cs` | `Locate`, `Load`. |
 | `RegistryDump` | `src/Sage.Simulation/App/RegistryDump.cs` | Everything registered, as JSON, for `-dump-registry` and `tools/check_docs.py`. |
 
@@ -102,13 +103,13 @@ Within a phase, systems run in dependency order from `Before` and `After` (same-
 
 ## 7. Threading and memory
 
-The loop, every system and every registration run on the main thread, sequentially; there is no parallel scheduler yet and systems declare no data access (#288). Boot allocates freely. A steady-state tick and frame allocate nothing through the loop and scheduler (test: SteadyStateTicksAndFrames_DoNotAllocate): the system lists are indexed, not enumerated, and `beforeTick` is a cached delegate. Several apps may exist in one process (tests do), but they share the static `Log` and `UserPaths` (#49).
+The loop and every registration run on the main thread. A system that implements `IDeclaresAccess` says what it reads and writes (`SystemAccess`: components, game events, resources, or `Exclusive`), and each phase is grouped into stages: a system goes one stage past the latest earlier system it conflicts with by data, events, resources or an explicit `Before`/`After`, and an undeclared or exclusive system has a stage of its own in its old place. A stage's systems run at once on the world's thread and per-world workers (`sys_parallel`, `sys_threads`); each records structural changes on its own log, replayed in phase order, so results match a sequential run (test: DeclaredSystemsRunInParallelWithResultsIdenticalToSequential, ParallelResultsMatchSequentialAcrossASaveAndALoad; #288). No engine system declares its access yet, so today's phases still run one system at a time. Boot allocates freely. A steady-state tick and frame allocate nothing through the loop and scheduler (test: SteadyStateTicksAndFrames_DoNotAllocate): the system lists are indexed, not enumerated, and `beforeTick` is a cached delegate. Several apps may exist in one process (tests do), but they share the static `Log` and `UserPaths` (#49).
 
 ## 8. Errors and diagnostics
 
 Boot failures are exceptions the host reports, writes a crash report for and exits non-zero on: a missing `game.json` (the message lists the games it found), a game assembly that was not built (it says to build), a plugin that does not exist or is too old (it says which), a `plugins` pattern that matches nothing, an unknown `modules.disable` entry (a warning), a start scene that is not a scene record (it lists the scenes). A stage out of order says which stage was expected. Dependency cycles name the cycle. Build-time problems are the SAGE diagnostics listed in [MAKING_A_GAME](../../MAKING_A_GAME.md) §10a. Each stage logs under `LogCat.Host` or `LogCat.Modules`.
 
-Debug: `plugins` (each plugin, version, what it registered), `modules`, `sys_list` (every system, phase, order, owner, replaced or disabled by), `sys_toggle <id>`, `ev_stats`, `stat frame`, `-dump-registry`.
+Debug: `plugins` (each plugin, version, what it registered), `modules`, `sys_list` (every system, phase, order, owner, replaced or disabled by, and its declared access), `sys_access_check` (dev builds: what a declared system touched without declaring it, in `world.Systems.AccessViolations` and `AccessReports`), `sys_toggle <id>`, `ev_stats`, `stat frame`, `-dump-registry`.
 
 ## 9. Requirements
 
@@ -124,24 +125,16 @@ Debug: `plugins` (each plugin, version, what it registered), `modules`, `sys_lis
 | REQ-LOOP-08 | Let a game or mod replace or disable an engine system by id and record who did. | Must | Done | test: ReplaceKeepsTheSlotAndRetiresTheOldSystem |
 | REQ-LOOP-09 | Check phase guarantees in dev builds, not in comments. | Should | Done | test: WritingAfterTheDeclaredPhaseIsReported |
 | REQ-LOOP-10 | Reject unknown `game.json` keys and report a bad manifest with its path. | Must | Done | test: AMisspeltGameJsonKeyIsAnError |
-| REQ-LOOP-11 | Run non-conflicting systems of a phase in parallel from declared access, with identical results. | Could | Not started | #288 |
+| REQ-LOOP-11 | Run non-conflicting systems of a phase in parallel from declared access, with identical results. | Could | Done (#288): `IDeclaresAccess`, stages, per-system command logs; checked in dev builds (`sys_access_check`) | test: DeclaredSystemsRunInParallelWithResultsIdenticalToSequential, ConflictingSystemsKeepTheirOrderAndAnUndeclaredOneRunsAlone, TwoSystemsThatDoNotConflictRunAtTheSameTime, ParallelStagesAllocateNothingInSteadyState |
 | REQ-LOOP-12 | Run a time scale, pause and hit-stop per world. | Should | Done | `WorldTime`: constant-length steps, more or fewer per real tick; `host_timescale` goes through it; test: AScaledWorldIsDeterministic, TheHostLoopsTimeScaleRoutesThroughWorldTime |
 | REQ-LOOP-13 | Offer queued `Added<T>`/`Removed<T>` events and engine signals (scene loaded, world created, paused). | Should | Done: `Added<T>`/`Removed<T>` and `engine.Signals` (world created, scene loaded, world destroying, paused and resumed, raised on the first tick that sees the change) | test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, EngineSignalsSayAWorldWasCreatedAndASceneLoaded |
 | REQ-LOOP-14 | Put several worlds on screen at once (split-screen, secondary views). | Could | Not started | #323 |
-| REQ-LOOP-15 | Run two interior spaces or worlds live at once. | Could | Not started | #291 |
+| REQ-LOOP-15 | Run two interior spaces or worlds live at once. | Could | Done (#291): spaces in one world; a `live` scene the player leaves is held and simulated beside the next | test: TwoInteriorsAreLiveAtOnceBesideTheirExterior, EachSpaceFallsAtItsOwnGravity |
 | REQ-LOOP-16 | Load a code mod assembly into a collectible load context, ordered against the game's plugins. | Should | Not started | #396 |
-| REQ-LOOP-17 | Package a game that boots from its folder with Release treated as Shipping. | Must | Not started | #293, #294 |
+| REQ-LOOP-17 | Package a game that boots from its folder with Release treated as Shipping. | Must | Done (#293, #294): the host finds `game/` beside it with no `-game` | test: APackageIsTheShippingHostWithTheGameBesideItAndNothingElse, ThePackagedHelloAndSceneOnlyGamesLoadAndValidateFromTheOutputFolder, AReleaseBuildIsShippingAndWritesTheShippingFolder |
 | REQ-LOOP-18 | Keep the base free of kits and of MonoGame. | Must | Done | SAGE0024, SAGE0025; test: EveryBaseAssemblyIsSimulationOnly |
 
 ## 10. Open work
-
-Milestone 3, R1 (Tooling and the first release):
-- #293 R1-1 sage package: build a shippable game folder (P1)
-- #294 R1-2 Fix the Release-vs-Shipping `{config}` trap (P1)
-
-Milestone 2, 4m (World, logic and saves):
-- #288 4m-14 Parallel scheduler and access declarations (P3)
-- #291 4m-17 Interiors as separate spaces and companions through doors (P3)
 
 Milestone 4, 4n (Rendering and assets):
 - #323 4n-19 Split-screen and secondary views (P3)
@@ -149,7 +142,7 @@ Milestone 4, 4n (Rendering and assets):
 Milestone 11, 9 (Code mods and packaging):
 - #396 9-1 Code mods: trusted assemblies in a collectible load context (P1)
 
-Existing: #16 generated registration is done and proposed for closing; #2 Phase 0 only waits on #6.
+#16 (generated registration), #2 (Phase 0) and #6 are closed; the publish smoke test #6 asked for is CI's package-and-run step (#293).
 
 ## 11. References
 

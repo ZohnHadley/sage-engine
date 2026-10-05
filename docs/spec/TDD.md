@@ -326,10 +326,11 @@ backend switch (DesktopVK) possible; the snapshot is the seam. Detail: [subsyste
 
 | Thread | What runs there | Shares with the main thread |
 |---|---|---|
-| **Main** (`"main"`) | Everything in §5: every world's Fixed and Frame schedules, all systems, command playback, events, saves and loads, record and asset loading, GPU work, hot-reload polling, the console. | Owner of all world and engine state. |
+| **Main** (`"main"`) | Everything in §5: every world's Fixed and Frame schedules, all systems (but see the scheduler's workers below), command playback, events, saves and loads, record and asset loading, GPU work, hot-reload polling, the console. | Owner of all world and engine state. |
 | **Bepu workers** | Inside `sage.physics.step`, `PhysicsSpace` passes a `ThreadDispatcher` (processor count minus one) to `Simulation.Timestep`. The step is synchronous: the main thread waits for it. | Bepu's own buffers only; `Simulation.Deterministic = true`. |
 | **`log-writer`** | `Log` producers enqueue into a `ConcurrentQueue`; a background thread feeds the sinks (file, stdout, ring, console). | The queue only. |
-| **Thread pool** | `FileSystemWatcher` callbacks (they only set flags); `ShaderRecompiler`'s mgfxc task (writes a file the main thread then reloads); a save's write (#285: serialising, compressing and writing a snapshot taken on the tick, one save after another). | A flag or a file; a save's snapshot shares nothing with the world. |
+| **Scheduler workers** | Per world (`sys_threads`; default one fewer than the cores, at most 7), with the world's own thread: the systems of a parallel stage, those that declare their access (`IDeclaresAccess`) and conflict with nothing else in it (#288). Each records structural changes on its own log, replayed in phase order; the stage ends before the next starts. No engine system declares its access yet. | The world, under the declarations: a dev build reports what a declared system touched without declaring it (`sys_access_check`). |
+| **Thread pool** | `FileSystemWatcher` callbacks (they only set flags); `ShaderRecompiler`'s mgfxc task (writes a file the main thread then reloads); a save's write (#285: building the entities' JSON from component columns copied on the tick, compressing and writing, one save after another). | A flag or a file; a save's snapshot shares nothing with the world. |
 | **MonoGame/OpenAL** | The audio device's own mixing. | Through `SoundEffect` instances, driven from the main thread. |
 
 A test may tick a world on its own thread; several tests do so in parallel. That is safe because worlds
@@ -338,7 +339,7 @@ intern table) or per thread (`Profiler` tables, `[ThreadStatic]` scratch buffers
 
 ### 10.2 Rules
 
-1. A world is touched by one thread at a time. No system starts a thread or a task.
+1. A world is touched by one thread at a time, except by a parallel stage's systems, which touch only what they declared (#288). No system starts a thread or a task.
 2. Structural changes during iteration go through `EntityCommands`; nothing mutates world structure from
    outside the phase that owns it.
 3. Cross-system facts go through event queues read in a later phase, never through callbacks into
@@ -353,7 +354,6 @@ intern table) or per thread (`Profiler` tables, `[ThreadStatic]` scratch buffers
 
 | Plan | Milestone | Issue |
 |---|---|---|
-| Parallel scheduler with read/write access declarations per system | 4m | #288 |
 | A `JobSystem` over the thread pool and async asset decode with budgeted GPU upload ([`../design/02-core-services-and-logging.md`](../design/02-core-services-and-logging.md) §4.5, 05 §6) | 4n | #308 |
 | A render thread handed a copy of the snapshot (the snapshot is value data for this reason) | later | none filed |
 
@@ -418,7 +418,7 @@ boundary only.
   files use write-to-`.tmp` then move.
 - **World resources** marked `[SavedResource]` are saved beside entities and rebuilt through
   `ISavedResource.AfterLoad`. Behaviour or script state is never saved.
-- **Snapshot on the tick, write in the background** (#285). The tick pays for the snapshot; serialising, gzip (`save_compress`), the thumbnail's PNG and the files are written on a thread-pool thread, and reading a slot waits for writes in flight. A slot carries a title and, from the client, a thumbnail; `save_report` says what a load would upgrade. A 10k-entity snapshot is still about 50 to 75 ms (Debug), over a frame.
+- **Snapshot on the tick, write in the background** (#285). The tick pays for the snapshot; serialising, gzip (`save_compress`), the thumbnail's PNG and the files are written on a thread-pool thread, and reading a slot waits for writes in flight. A slot carries a title and, from the client, a thumbnail; `save_report` says what a load would upgrade. The snapshot copies component columns per archetype (`SaveCapture`) and the writer builds the JSON, so a 10k-entity snapshot is about 3 ms (Debug).
 
 A load removes the live runtime spawns no save names (`Unsaved`, #278).
 Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-serialization-and-saves.md`](../design/09-serialization-and-saves.md).
@@ -427,7 +427,7 @@ Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-seriali
 
 | Concern | Mechanism |
 |---|---|
-| Content errors | Logged under `Records` with `mount:path:line:col`, counted in `RecordStore.ErrorCount`, listed in `LoadErrors`; the bad record is skipped. `sage validate` exits 1 on any. The editor's `ProblemList` shows them. An in-game problems surface is #301. |
+| Content errors | Logged under `Records` with `mount:path:line:col`, counted in `RecordStore.ErrorCount`, listed in `LoadErrors`; the bad record is skipped. `sage validate` exits 1 on any. The editor's `ProblemList`, the `problems` command and the dev overlay's badge (`ui_problems`) read the same `ContentProblems` (#301). |
 | Mod conflicts | `ContentReport` (provenance of every field write), `mod_conflicts`, `mod_report.txt`. |
 | Logging | `Log.Trace..Fatal` with `LogCat` categories (Core, Host, Modules, VFS, Assets, Records, Render, World, Events, Physics, Audio, Save, AI, Gameplay and more); per-category levels with `log_level`; rate limiting with `Log.Every`; sinks for file, stdout and a ring buffer that the in-game console and the editor's log view read. |
 | Asserts | `Assert.Dev`, `Ensure`, `Check` (`src/Sage.Core/Diagnostics/Assert.cs`). |
@@ -436,7 +436,7 @@ Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-seriali
 | Profiling | `Profiler.Begin` scopes; the world wraps every phase and system automatically; `stat`, `sys_list` and `sys_toggle` read them; tables are per thread. |
 | Runtime introspection | `ent_dump`, `rec_get`, `vfs_which`, `ev_stats`, `r_passes`, `scale_report`. |
 
-Planned: Chrome-trace export, `stat render`, a visual logger (#300); console history and completion (#299).
+The console has Up/Down history and Tab completion of commands, cvars, cvar values and record ids (`ConsoleInput`, #299). Planned: Chrome-trace export, `stat render`, a visual logger (#300).
 Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 
 ## 14. Testing architecture
@@ -507,13 +507,13 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 |---|---|---|
 | Per-process statics: `UserPaths`, `Log`, `CrashReporter` | Two apps in one process (an editor hosting a server, two test apps) share one log, user folder and crash report. | #49 (Stage E); rises if a server or multiplayer starts. |
 | Asset memory is freed only for meshes | A sector's meshes are released with it (#277); textures and sounds still grow without bound over a long session. | 4n, #308. |
-| Single-threaded scheduler | Only physics uses more than one core; the tick has headroom (0.76 ms at 2,000 entities) but large worlds will not. | 4m, #288. |
-| Save snapshots on the tick | The write is off the tick since #285, but the snapshot of a big world still stalls a frame (about 50 to 75 ms at 10k entities, Debug). | 4m, #285 (open). |
+| ~~Single-threaded scheduler~~ | Systems that declare their access run in parallel stages since #288; no engine system declares its access yet, so the engine's phases still run one system at a time. | Done (4m, #288); declaring the engine's systems has no issue yet. |
+| ~~Save snapshots on the tick~~ | Retired by #285: the tick copies component columns (about 3 ms at 10k entities, Debug) and the writer builds the JSON. | Done (4m, #285). |
 | ~~Bepu allocates about 40 B a tick~~ | Retired by #273: it was our Stopwatch, and the step allocates nothing. | Done (4l, #273). |
 | Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets) | Two ways to build a screen; features land in one or the other. | 4q, #350. |
 | Records and saves use reflection, not generated readers | Slower loads; not trim or AOT safe. | Generator follow-up; AOT out of scope (SRS §9). |
 | Determinism is by construction only | No cross-run check; replays not possible yet. | 4l (#273), 4o replay (#333). |
 | Default `AssemblyLoadContext` for game and kit assemblies | Code mods cannot be unloaded or isolated. | 9, #396. |
-| No packaging or archive mounts | A game cannot yet ship as a folder without the SDK. | R1, #293 and #6; archive mounts #397. |
+| No archive mounts | A game ships as a folder (`sage package`, #293), its mounts copied as folders. | Archive mounts, 9, #397. |
 | Render pass registry cannot replace or disable an engine pass | Games cannot swap core rendering stages. | 4n, #322. |
 | Dev tools allocate per frame | Frame zero-allocation holds only with the overlay closed. | 10b. |
