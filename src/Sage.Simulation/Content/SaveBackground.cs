@@ -10,21 +10,20 @@ namespace Sage.Simulation;
 
 // Saves a game takes while it plays (issue #285): **snapshot on the tick, write in the background.**
 //
-// A save is two halves. The *snapshot* reads the worlds: every persistent entity, resource, tombstone and
-// dormant cell becomes a JSON tree that shares nothing with the world (SaveSnapshot). It has to happen at
-// a tick boundary, on the simulation's thread, and it is what a save costs the frame. The *write* turns
-// those trees into bytes, compresses them (`save_compress`), encodes the thumbnail, writes the files into
+// A save is two halves. The *snapshot* reads the worlds: every persistent entity is captured as copies of
+// its components, and every resource, tombstone and dormant cell becomes a JSON tree, sharing nothing with
+// the world (SaveSnapshot). It has to happen at a tick boundary, on the simulation's thread, and it is what
+// a save costs the frame. The *write* builds the entities' trees from the copies, turns the trees into bytes, compresses them (`save_compress`), encodes the thumbnail, writes the files into
 // `slot.writing` and moves the folder into place. It touches nothing the simulation owns, so it runs on a
 // thread pool thread, one save after another in the order they were taken.
 //
-// **The snapshot serialises as little as it can.** A component whose type needs nothing but its own value
-// to be written (values and strings all the way down, none of a plugin's converters, which may read the
-// world) is kept as a boxed copy and serialised by the writer (SaveSerializer.ResolveDeferred); one still
-// bit for bit as its prefab spawned it is left out without serialising anything (SpawnBaseline keeps the
-// spawn's values). What is left on the tick is walking the entities and what needs the world: entity
-// references, gameplay's attributes and tags by name. For 10k spawned entities that took the tick from
-// about 190 ms to about 50 (Debug build), the rest moving to the writer (test:
-// ATenThousandEntitySaveDoesNotStallAFrame).
+// **The snapshot serialises as little as it can** (SaveCapture). It copies the component columns of the
+// archetypes that hold persistent entities, and the writer builds every entity's JSON from the copies; what
+// stays on the tick is what needs the world: a component with an entity reference, a list or a plugin's
+// converter in it (serialised there, per entity), where content placed an entity, and a copy of each prefab
+// baseline the diffs are taken against. For 10k spawned crates that took the tick from about 190 ms (the
+// whole save) to about 60 (JSON trees built on the tick) to under 10 (Debug build), the rest moving to the
+// writer (test: ATenThousandEntitySaveDoesNotStallAFrame).
 //
 // Which saves go to the background (`save_background`, default on): the ones a game takes while it plays —
 // a request made during a tick (F5, a system, a trigger), an autosave, `quicksave`, `RequestSave` between

@@ -302,6 +302,10 @@ public sealed class World : IDisposable
     // be written back and cleared.
     internal QueryEntities PersistentIncludingDisabled() => new(_store.Query<Persistent>().WithDisabled().Entities);
 
+    // The same, as the archetypes that hold them (issue #285): a save's snapshot copies their component
+    // columns whole rather than reading entity by entity (SaveCapture).
+    internal ReadOnlySpan<F.Archetype> PersistentArchetypes() => _store.Query<Persistent>().WithDisabled().Archetypes;
+
     // Every runtime spawn no save names (Unsaved, 4m-4), disabled ones included: what a load takes away.
     internal QueryEntities UnsavedIncludingDisabled() =>
         new(_store.Query().AllTags(F.Tags.Get<Unsaved>()).WithDisabled().Entities);

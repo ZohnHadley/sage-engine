@@ -162,11 +162,12 @@ public sealed partial class SaveSystem
     // ---- the snapshot, on the tick ------------------------------------------------------------------
 
     // What a save is, taken at a tick boundary and owned by nobody else: the header, each world's file as
-    // a JSON tree (built from the world's state now, sharing nothing with it), and the thumbnail's pixels.
-    // Turning that into bytes, compressing it and writing it is the writer's, on any thread (issue #285).
-    // One world's file in a snapshot: its tree, the components left for the writer to serialise into it
-    // (SaveSerializer.ResolveDeferred), and the dialect to do it in.
-    internal sealed record SnapshotWorld(string File, JsonObject Root, List<DeferredComponent> Deferred, JsonSerializerOptions Json);
+    // a JSON tree and its entities as copies of their components (taken from the world's state now, sharing
+    // nothing with it), and the thumbnail's pixels. Building the entities' JSON, turning it all into bytes,
+    // compressing it and writing it is the writer's, on any thread (issue #285).
+    // One world's file in a snapshot: its tree but for the entities, the entities as captured (SaveCapture),
+    // which the writer builds into it, and the dialect to do it in.
+    internal sealed record SnapshotWorld(string File, JsonObject Root, CapturedEntities Entities, JsonSerializerOptions Json);
 
     internal sealed class SaveSnapshot
     {
@@ -184,7 +185,9 @@ public sealed partial class SaveSystem
 
     // How long the last save spent on each side (issue #285): `Snapshot` on the tick that took it, `Write`
     // on whichever thread wrote it. For the measurement of a big save; nothing else reads it.
-    internal readonly record struct SaveTiming(TimeSpan Snapshot, TimeSpan Write);
+    // `SerialisedOnTick`: how many components the snapshot had to serialise itself (SaveCapture: the ones
+    // that need the world); the rest were copied and serialised by the writer.
+    internal readonly record struct SaveTiming(TimeSpan Snapshot, TimeSpan Write, int SerialisedOnTick);
 
     internal SaveTiming LastTiming => _lastTiming;
     private SaveTiming _lastTiming;
@@ -244,10 +247,9 @@ public sealed partial class SaveSystem
             var worlds = new List<SnapshotWorld>(_engine.Worlds.Count);
             foreach (var world in _engine.Worlds)
             {
-                var deferred = new List<DeferredComponent>();
-                var (root, count, json) = WriteWorld(world, deferred);
-                worlds.Add(new SnapshotWorld($"world_{Sanitise(world.Name)}.json{(compress ? ".gz" : "")}", root, deferred, json));
-                total += count;
+                var (root, captured, json) = WriteWorld(world);
+                worlds.Add(new SnapshotWorld($"world_{Sanitise(world.Name)}.json{(compress ? ".gz" : "")}", root, captured, json));
+                total += captured.Entities;
             }
             _sinceAutosave = 0;   // the autosave clock counts from the last save of any kind
             return new SaveSnapshot
@@ -287,7 +289,7 @@ public sealed partial class SaveSystem
             File.WriteAllText(Path.Combine(staging, "header.json"), s.Header.ToJsonString(Indented));
             foreach (var world in s.Worlds)
             {
-                SaveSerializer.ResolveDeferred(world.Deferred, world.Json);
+                world.Root["entities"] = BuildEntities(world.Entities, world.Json);   // in its place, captured on the tick
                 WriteJson(Path.Combine(staging, world.File), world.Root, s.Compress);
             }
             if (s.Thumbnail is { } thumbnail)
@@ -296,7 +298,7 @@ public sealed partial class SaveSystem
             if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
             Directory.Move(staging, directory);
             _slotsStale = true;
-            _lastTiming = new SaveTiming(s.Took, clock.Elapsed);
+            _lastTiming = new SaveTiming(s.Took, clock.Elapsed, s.Worlds.Sum(w => w.Entities.SerialisedOnTick));
             Log.Info(LogCat.Save, $"Saved '{s.Slot}' ({KindName(s.Kind)}): {s.Entities} entities across {s.WorldCount} world(s)");
             return true;
         }
@@ -356,16 +358,24 @@ public sealed partial class SaveSystem
                && (name.EndsWith(".json", StringComparison.Ordinal) || name.EndsWith(".json.gz", StringComparison.Ordinal));
     }
 
-    // `deferred`: where to leave the components the writer serialises (issue #285); null: all of them now.
-    private (JsonObject Root, int Count, JsonSerializerOptions Json) WriteWorld(World world, List<DeferredComponent>? deferred)
+    // The dialect a world's saves are written in (issue #285): made once a world and kept, like a spawn
+    // baseline's (PrefabBaselines.Dialect), so a save does not pay, on the tick, for the serialiser to look at
+    // every resource and component type again. Writing reads the world through its converters and keeps
+    // nothing; a load still makes its own (an entity converter remembers the dormant ids it read).
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<World, JsonSerializerOptions> _writeDialects = new();
+
+    private JsonSerializerOptions WriteDialect(World world) =>
+        _writeDialects.GetValue(world, w => SaveJson.For(w, _engine.Records, _converters));
+
+    // A world's file but for its entities, which are captured (SaveCapture) and built into "entities" by the
+    // writer (issue #285).
+    private (JsonObject Root, CapturedEntities Entities, JsonSerializerOptions Json) WriteWorld(World world)
     {
-        var json = SaveJson.For(world, _engine.Records, _converters);
-        var entities = new JsonArray();
+        var json = WriteDialect(world);
         world.Resources.TryGet<ContentBaseline>(out var baseline);
 
         // Disabled ones included: a placeholder is disabled so that nothing else sees it (issue 4i-2).
-        foreach (var entity in world.PersistentIncludingDisabled())
-            if (WriteEntity(world, entity, json, baseline, deferred) is { } saved) entities.Add(saved);
+        var entities = CaptureEntities(world, json, baseline);
 
         // **Which sector these positions are relative to** (R6, 14 §3). Every position in this file is
         // in origin space; without the origin, a save taken a hundred kilometres out would load its
@@ -378,7 +388,7 @@ public sealed partial class SaveSystem
         // The scene the world is in, which a load places (4i-3).
         if (world.Resources.TryGet<ActiveScene>(out var active) && active is { Id.IsEmpty: false })
             root["scene"] = active.Id.ToString();
-        root["entities"] = entities;
+        root["entities"] = null;   // its place: the writer builds it (BuildEntities)
         // Content not in the world just now, with its state (4g-1): a scene the player left, with what was
         // dropped there, or a level still waiting for its ground. Each keeps the sector its positions are
         // relative to, so the file's origin does not matter to them.
@@ -425,73 +435,22 @@ public sealed partial class SaveSystem
                 if (!resources.ContainsKey(name) && entry != null) resources[name] = entry.DeepClone();
         if (resources.Count > 0) root["resources"] = resources;
 
-        return (root, entities.Count, json);
-    }
-
-    // One persistent entity as a save writes it; null for one without an id.
-    private JsonObject? WriteEntity(World world, Entity entity, JsonSerializerOptions json, ContentBaseline? baseline,
-                                    List<DeferredComponent>? deferred = null)
-    {
-        var persistent = entity.GetComponent<Persistent>();
-        if (persistent.Id.IsEmpty) return null;
-
-        // An entity whose prefab this game does not have goes back as it came (issue 4i-2).
-        if (world.TryGet<SavePlaceholder>(entity, out var placeholder)
-            && JsonNode.Parse(placeholder.Saved ?? "") is JsonObject kept)
-        {
-            kept["id"] = persistent.Id.ToString();
-            return kept;
-        }
-
-        var saved = new JsonObject { ["id"] = persistent.Id.ToString() };
-        // What placed it (4i-3): content, which a load places again and lays this onto; or, for a child
-        // its parent's prefab placed, the parent, which brings it back when it is spawned.
-        if (baseline != null && baseline.IsBaseline(persistent.Id) && baseline.TryGetSource(persistent.Id, out var source))
-            saved["source"] = source;
-        else if (entity.Tags.Has<FromParentPrefab>() && !entity.Parent.IsNull
-                 && entity.Parent.TryGetComponent<Persistent>(out var parent) && !parent.Id.IsEmpty)
-            saved["parent"] = parent.Id.ToString();
-        if (world.TryGet<FromPrefab>(entity, out var from) && !from.Prefab.IsEmpty)
-            saved["prefab"] = from.Prefab.ToString();
-        if (entity.Name is { Length: > 0 } named)
-            saved["name"] = named;
-        // A root no content places (one that left its sector, #279): what its placement said, kept.
-        if (saved["source"] is null && saved["parent"] is null) KeptPlacement.Write(world, entity, saved, _engine.Records.Json);
-        // Spawned from a prefab: only what differs from it as spawned, and what it lost (4i-5, SaveDiff).
-        var asSpawned = world.TryGet<FromPrefab>(entity, out var spawned) ? spawned.Baseline : null;
-        var removed = new JsonArray();
-        var components = _serializer.WriteComponents(world, entity, json, asSpawned, removed, deferred: deferred);
-        if (asSpawned != null)
-        {
-            saved["diff"] = true;
-            if (removed.Count > 0) saved["removed"] = removed;
-        }
-        var tags = _serializer.WriteTags(world, entity);
-        // What the save said that this game has no component or tag for, back as it was (issue 4i-2).
-        if (world.TryGet<UnknownSavedData>(entity, out var unknown))
-            MergeUnknown(components, tags, unknown);
-        // Content's entity still where content placed it (4m-4): no transform, so a load leaves it where the
-        // content places it then, and moving the placement moves it. A runtime spawn always has one: it is
-        // rebuilt where it stood.
-        if (saved.ContainsKey("source") && spawned.HasPlaced && AtItsPlacement(world, entity, spawned))
-            components.Remove(SaveSerializer.TransformId);
-        saved["components"] = components;
-        if (tags.Count > 0) saved["tags"] = tags;
-        return saved;
+        return (root, entities, json);
     }
 
     // A cell going dormant (4g-1): these entities, and the persistent children their prefabs placed, as a
     // save writes them — in the frame the world is in now.
     internal List<JsonObject> Capture(World world, IEnumerable<Entity> roots)
     {
-        var json = SaveJson.For(world, _engine.Records, _converters);
+        var json = WriteDialect(world);
         world.Resources.TryGet<ContentBaseline>(out var baseline);
+        var context = new CaptureContext(world, json, baseline);
         var result = new List<JsonObject>();
         var seen = new HashSet<Entity>();
         void Write(Entity entity)
         {
             if (!seen.Add(entity) || !world.Has<Persistent>(entity)) return;
-            if (WriteEntity(world, entity, json, baseline) is { } saved) result.Add(saved);
+            if (CaptureOne(context, entity) is { } batch && BuildEntity(batch, 0, json) is { } saved) result.Add(saved);
             if (entity.ChildCount == 0) return;
             foreach (var child in entity.ChildEntities)
                 if (child.Tags.Has<FromParentPrefab>()) Write(child);
