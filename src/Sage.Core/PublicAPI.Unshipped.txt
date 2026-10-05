@@ -207,3 +207,11 @@ const Sage.Core.ConsoleInput.MaxHistory = 100 -> int
 Sage.Core.FrameLimiter
 static Sage.Core.FrameLimiter.Remaining(int maxFps, double frameStart, double now) -> double
 static Sage.Core.UserPaths.AutoexecFile.get -> string!
+Sage.Core.GameManifest.Cook.get -> Sage.Core.GameManifest.CookSettings!
+Sage.Core.GameManifest.Cook.set -> void
+Sage.Core.GameManifest.CookSettings
+Sage.Core.GameManifest.CookSettings.CookSettings() -> void
+Sage.Core.GameManifest.CookSettings.Compress.get -> bool
+Sage.Core.GameManifest.CookSettings.Compress.set -> void
+Sage.Core.GameManifest.CookSettings.Uncompressed.get -> System.Collections.Generic.List<string!>!
+Sage.Core.GameManifest.CookSettings.Uncompressed.set -> void

@@ -181,6 +181,37 @@ public class GamePackageTests
         }
     }
 
+    // The package's mounts are cooked (issue #302): a .sgmesh beside each .glb and a .sgtex beside each image,
+    // in the package and never in the game's own folder, and listed with the package's files; the loose files
+    // stay beside them. --no-cook (Cook = false) leaves them loose; a file that will not cook is a warning.
+    [Fact]
+    public void APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff()
+    {
+        string host = Host(), root = TestEnv.NewTempDir(), game = Game(root), output = Path.Combine(root, "out");
+        string sandbox = Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox", "content");
+        File.Copy(Path.Combine(sandbox, "models", "bunny.glb"), Path.Combine(game, "content", "bunny.glb"));
+        File.Copy(Path.Combine(sandbox, "textures", "hut_wall.png"), Path.Combine(root, "shared", "art", "textures", "wall.png"));
+
+        var result = GamePackage.Run(new PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host });
+        Assert.True(result.Ok, string.Join("\n", result.Errors));
+        Assert.Contains("game/content/bunny.glb.sgmesh", result.Files);
+        Assert.Contains("game/mounts/art/textures/wall.png.sgtex", result.Files);
+        Assert.True(File.Exists(Path.Combine(output, "game", "content", "bunny.glb")));   // the loose file stays
+        Assert.Equal(2, result.Cook!.Cooked.Count);
+        // The made-up game's "png" files are not images: warned about, left loose, not an error.
+        Assert.Contains(result.Cook.Warnings, w => w.Contains("wall.png", StringComparison.Ordinal) && w.Contains("content", StringComparison.Ordinal));
+        Assert.Empty(Directory.EnumerateFiles(game, "*.sg*", SearchOption.AllDirectories));
+
+        var vfs = new VirtualFileSystem();
+        vfs.Mount(new FolderMount("content", Path.Combine(output, "game", "content"), "mygame"));
+        Assert.NotNull(CookedAssets.LoadMesh(vfs, VirtualPath.Parse("bunny.glb")));
+
+        var loose = GamePackage.Run(new PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host, Cook = false });
+        Assert.True(loose.Ok, string.Join("\n", loose.Errors));
+        Assert.Null(loose.Cook);
+        Assert.Empty(Directory.EnumerateFiles(output, "*.sg*", SearchOption.AllDirectories));
+    }
+
     private static void Write(string folder, string relative, string text)
     {
         string path = Path.Combine(folder, relative);
