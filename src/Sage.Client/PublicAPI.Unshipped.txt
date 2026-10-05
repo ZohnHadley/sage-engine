@@ -51,3 +51,6 @@ Sage.Client.RenderStats.Skinned -> int
 Sage.Client.RenderStats.PostSteps -> int
 Sage.Client.RenderStats.FogCulled -> int
 Sage.Client.RenderStats.Skies -> int
+Sage.Client.RenderStats.Materials -> int
+Sage.Client.RenderStats.Meshes -> int
+Sage.Client.RenderStats.Textures -> int

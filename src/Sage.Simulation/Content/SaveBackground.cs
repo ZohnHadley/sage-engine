@@ -81,6 +81,7 @@ public sealed partial class SaveSystem
         var snapshot = Snapshot(slot, kind, title);
         if (snapshot == null) return false;
         Interlocked.Increment(ref _writesInFlight);
+        WorkStats.JobStarted();   // `stat render`'s jobs (issue #300)
         lock (_writerGate)
         {
             _writer = _writer.ContinueWith(_ =>
@@ -90,7 +91,7 @@ public sealed partial class SaveSystem
                     WriterGate?.Wait();
                     Write(snapshot);
                 }
-                finally { Interlocked.Decrement(ref _writesInFlight); }
+                finally { Interlocked.Decrement(ref _writesInFlight); WorkStats.JobFinished(); }
             }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
         }
         return true;

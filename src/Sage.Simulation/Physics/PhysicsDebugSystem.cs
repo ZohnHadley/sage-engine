@@ -16,6 +16,8 @@ public sealed class PhysicsDebugSystem : ISystem
 {
     private readonly Query<Transform, CharacterController> _characters;
     private readonly DebugDraw _debug;
+    private readonly VisualLog _log;
+    private const string Category = "physics";
     private readonly RecordStore _records;
     private readonly World _world;
     private IPhysicsWorld? _physics;
@@ -32,6 +34,7 @@ public sealed class PhysicsDebugSystem : ISystem
     {
         _characters = world.Query<Transform, CharacterController>();
         _debug = world.Debug();
+        _log = world.VisualLog();
         _world = world;
         _records = records;
         _enabled = enabled;
@@ -39,19 +42,26 @@ public sealed class PhysicsDebugSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        if (!_enabled.Value || !_debug.Enabled) return;
+        // Drawn now with `phys_debug`, and each character's capsule and ground kept in the visual log with
+        // `vlog_record` ("physics", issue #300), to scrub back to the tick it slid off a ledge.
+        bool draw = _enabled.Value && _debug.Enabled;
+        bool record = _log.Recording;
+        if (!draw && !record) return;
 
         // Only what is near the camera; everything, in a world with no camera to be near (issue #13).
         if (_camera == null) _world.Resources.TryGet(out _camera);
         Vector3 around = _camera?.Position ?? Vector3.Zero;
         float range = _camera != null ? DrawRange : float.PositiveInfinity;
 
-        if (_physics == null) _world.Resources.TryGet(out _physics);
-        _physics?.DrawDebug(_debug, around, range);
+        if (draw)
+        {
+            if (_physics == null) _world.Resources.TryGet(out _physics);
+            _physics?.DrawDebug(_debug, around, range);
+        }
 
         // A character's capsule is not its collider — it is what the controller sweeps — so it gets
         // drawn from the controller's own numbers, along with the ground it thinks it is standing on.
-        foreach (var (transforms, characters, _) in _characters.Chunks)
+        foreach (var (transforms, characters, entities) in _characters.Chunks)
         {
             var t = transforms.Span;
             var c = characters.Span;
@@ -61,8 +71,20 @@ public sealed class PhysicsDebugSystem : ISystem
                 var profile = CharacterConventions.Of(ctx.World).ProfileOf(_records, c[n].Profile);
                 float height = c[n].Height > 0f ? c[n].Height : profile.StandHeight;
                 Vector3 feet = t[n].LocalPosition;
-                _debug.Capsule(feet, profile.Radius, height, c[n].Grounded ? DebugColour.Green : DebugColour.Orange);
-                _debug.Arrow(feet, feet + c[n].GroundNormal * 0.6f, c[n].OnSteep ? DebugColour.Red : DebugColour.Yellow);
+                uint body = c[n].Grounded ? DebugColour.Green : DebugColour.Orange;
+                uint normal = c[n].OnSteep ? DebugColour.Red : DebugColour.Yellow;
+                if (draw)
+                {
+                    _debug.Capsule(feet, profile.Radius, height, body);
+                    _debug.Arrow(feet, feet + c[n].GroundNormal * 0.6f, normal);
+                }
+                if (record)
+                {
+                    _log.Capsule(Category, feet, profile.Radius, height, body,
+                        c[n].Grounded ? (c[n].OnSteep ? "grounded, on steep ground" : "grounded")
+                                      : (c[n].OnSteep ? "airborne, over steep ground" : "airborne"), entities.EntityAt(n));
+                    _log.Arrow(Category, feet, feet + c[n].GroundNormal * 0.6f, normal, entity: entities.EntityAt(n));
+                }
             }
         }
     }

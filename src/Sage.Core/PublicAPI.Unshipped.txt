@@ -174,6 +174,25 @@ override Sage.Core.ContentConflict.ToString() -> string!
 override Sage.Core.ContentReport.ToString() -> string!
 override Sage.Core.ModManifest.ToString() -> string!
 override Sage.Core.RecordWrite.ToString() -> string!
+Sage.Core.WorkStats.Frame
+Sage.Core.WorkStats.Frame.Frame() -> void
+Sage.Core.WorkStats.Frame.Frame(int JobsStarted, int JobsFinished, int JobsRunning, int LoadsFinished, double LoadMs, int LoadsPending, int Uploads, long UploadBytes) -> void
+Sage.Core.WorkStats.Frame.JobsFinished.get -> int
+Sage.Core.WorkStats.Frame.JobsFinished.init -> void
+Sage.Core.WorkStats.Frame.JobsRunning.get -> int
+Sage.Core.WorkStats.Frame.JobsRunning.init -> void
+Sage.Core.WorkStats.Frame.JobsStarted.get -> int
+Sage.Core.WorkStats.Frame.JobsStarted.init -> void
+Sage.Core.WorkStats.Frame.LoadMs.get -> double
+Sage.Core.WorkStats.Frame.LoadMs.init -> void
+Sage.Core.WorkStats.Frame.LoadsFinished.get -> int
+Sage.Core.WorkStats.Frame.LoadsFinished.init -> void
+Sage.Core.WorkStats.Frame.LoadsPending.get -> int
+Sage.Core.WorkStats.Frame.LoadsPending.init -> void
+Sage.Core.WorkStats.Frame.UploadBytes.get -> long
+Sage.Core.WorkStats.Frame.UploadBytes.init -> void
+Sage.Core.WorkStats.Frame.Uploads.get -> int
+Sage.Core.WorkStats.Frame.Uploads.init -> void
 static Sage.Core.ContentProblems.Build(Sage.Core.RecordStore! records, Sage.Core.VirtualFileSystem? vfs) -> System.Collections.Generic.IReadOnlyList<Sage.Core.ContentProblem!>!
 static Sage.Core.ContentProblems.Lines(System.Collections.Generic.IReadOnlyList<Sage.Core.ContentProblem!>! problems) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Sage.Core.ContentProblems.Summary(int errors, int warnings) -> string!
@@ -207,6 +226,22 @@ const Sage.Core.ConsoleInput.MaxHistory = 100 -> int
 Sage.Core.FrameLimiter
 static Sage.Core.FrameLimiter.Remaining(int maxFps, double frameStart, double now) -> double
 static Sage.Core.UserPaths.AutoexecFile.get -> string!
+Sage.Core.WorkStats
+static Sage.Core.Profiler.TraceSpan(string! name, long startTimestamp, long endTimestamp) -> void
+static Sage.Core.WorkStats.EndFrame() -> void
+static Sage.Core.WorkStats.JobFinished() -> void
+static Sage.Core.WorkStats.JobStarted() -> void
+static Sage.Core.WorkStats.JobsFinished.get -> long
+static Sage.Core.WorkStats.JobsRunning.get -> int
+static Sage.Core.WorkStats.JobsStarted.get -> long
+static Sage.Core.WorkStats.LastFrame.get -> Sage.Core.WorkStats.Frame
+static Sage.Core.WorkStats.LoadFinished(long elapsedTicks) -> void
+static Sage.Core.WorkStats.LoadStarted() -> void
+static Sage.Core.WorkStats.LoadsFinished.get -> long
+static Sage.Core.WorkStats.LoadsPending.get -> int
+static Sage.Core.WorkStats.UploadBytes.get -> long
+static Sage.Core.WorkStats.Uploaded(long bytes) -> void
+static Sage.Core.WorkStats.Uploads.get -> long
 Sage.Core.GameManifest.Cook.get -> Sage.Core.GameManifest.CookSettings!
 Sage.Core.GameManifest.Cook.set -> void
 Sage.Core.GameManifest.CookSettings

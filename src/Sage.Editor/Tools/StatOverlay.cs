@@ -5,14 +5,21 @@ using ImGuiNET;
 
 namespace Sage.Editor;
 
-// `stat fps` / `stat mem` / `stat frame` overlays (docs/design/02 §4.4, §4.6 and §9). Dev builds only
-// (ImGui dev tools). `stat frame` shows the profiler: ms per phase and per system, averaged.
+// `stat fps` / `stat mem` / `stat frame` / `stat render` / `stat assets` overlays (docs/design/02 §4.4,
+// §4.6 and §9; issue #300). Dev builds only (ImGui dev tools). `stat frame` shows the profiler: ms per phase
+// and per system, averaged. `stat render` is the renderer's last frame (draw calls, triangles, what it drew)
+// with the GPU uploads and thread-pool jobs of that frame (WorkStats); `stat assets` what is loaded, what
+// loading cost the frame and what is still loading.
 internal sealed class StatOverlay
 {
     private readonly CoreCVars _core;
     private bool _showFps;
     private bool _showMem;
     private bool _showFrame;
+    private bool _showRender;
+    private bool _showAssets;
+    private readonly Func<Renderer?> _renderer;
+    private readonly Func<World?> _world;
 
     // Frame timing, averaged over half a second so the numbers are readable.
     private double _accumSeconds;
@@ -27,10 +34,12 @@ internal sealed class StatOverlay
     private long _allocThisFrame;
     private int _framesOverBudget;
 
-    public StatOverlay(CVarRegistry cvars, CoreCVars core)
+    public StatOverlay(CVarRegistry cvars, CoreCVars core, Func<Renderer?> renderer, Func<World?> world)
     {
         _core = core;
-        cvars.RegisterCommand("stat", CVarFlags.None, "stat <fps|mem|frame|all|none>: toggle performance overlays.", a =>
+        _renderer = renderer;
+        _world = world;
+        cvars.RegisterCommand("stat", CVarFlags.None, "stat <fps|mem|frame|render|assets|all|none>: toggle performance overlays.", a =>
         {
             string what = a.Count > 0 ? a[0].ToLowerInvariant() : "";
             switch (what)
@@ -38,9 +47,11 @@ internal sealed class StatOverlay
                 case "fps": _showFps = !_showFps; break;
                 case "mem": _showMem = !_showMem; break;
                 case "frame": _showFrame = !_showFrame; break;
-                case "all": _showFps = _showMem = _showFrame = true; break;
-                case "none": _showFps = _showMem = _showFrame = false; break;
-                default: Log.Warn(LogCat.Console, "stat <fps|mem|frame|all|none>"); break;
+                case "render": _showRender = !_showRender; break;
+                case "assets": _showAssets = !_showAssets; break;
+                case "all": _showFps = _showMem = _showFrame = _showRender = _showAssets = true; break;
+                case "none": _showFps = _showMem = _showFrame = _showRender = _showAssets = false; break;
+                default: Log.Warn(LogCat.Console, "stat <fps|mem|frame|render|assets|all|none>"); break;
             }
         });
     }
@@ -98,9 +109,40 @@ internal sealed class StatOverlay
         }
     }
 
+    // The renderer's last frame, and the uploads and jobs of the frame before this one (WorkStats).
+    private void DrawRender()
+    {
+        ImGui.Separator();
+        var work = WorkStats.LastFrame;
+        if (_renderer() is { } renderer)
+        {
+            var r = renderer.LastFrame;
+            ImGui.Text($"draw calls {r.DrawCalls,6}   triangles {r.Triangles,8}   material switches {r.MaterialSwitches,4}");
+            ImGui.Text($"items {r.Items,6} (culled {r.Culled})   sprites {r.Sprites}   lights {r.Lights}   debug lines {r.DebugLines}");
+        }
+        else ImGui.Text("no renderer");
+        ImGui.Text($"uploads {work.Uploads,4} ({work.UploadBytes / 1024,6} KB)   total {WorkStats.Uploads} ({WorkStats.UploadBytes / (1024 * 1024)} MB)");
+        ImGui.Text($"jobs running {work.JobsRunning,3}   started {work.JobsStarted,3}   finished {work.JobsFinished,3}   total {WorkStats.JobsFinished}");
+    }
+
+    // What is loaded, and what loading cost the last frame.
+    private void DrawAssets()
+    {
+        ImGui.Separator();
+        var work = WorkStats.LastFrame;
+        if (_renderer() is { } renderer)
+        {
+            var r = renderer.LastFrame;
+            ImGui.Text($"meshes {r.Meshes,5}   textures {r.Textures,5}   materials {r.Materials,5}");
+        }
+        ImGui.Text($"loads {work.LoadsFinished,3} ({work.LoadMs,7:F2} ms)   pending {work.LoadsPending,3}   total {WorkStats.LoadsFinished}");
+        if (_world() is { } world && world.Resources.TryGet<Terrain>(out var terrain) && terrain is { Generator: not null })
+            ImGui.Text($"terrain sectors loaded {terrain.Sectors.Count,3}");
+    }
+
     public void Draw()
     {
-        if (!_showFps && !_showMem && !_showFrame) return;
+        if (!_showFps && !_showMem && !_showFrame && !_showRender && !_showAssets) return;
 
         var io = ImGui.GetIO();
         ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X - 10, 30), ImGuiCond.Always, new Vector2(1, 0));
@@ -120,6 +162,10 @@ internal sealed class StatOverlay
                 if (Log.DroppedCount > 0)
                     ImGui.Text($"log entries dropped: {Log.DroppedCount}");
             }
+            if (_showRender)
+                DrawRender();
+            if (_showAssets)
+                DrawAssets();
             if (_showFrame)
                 DrawProfiler();
         }

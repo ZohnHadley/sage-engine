@@ -158,6 +158,43 @@ public class AITests
     private static float Distance(World world, Entity a, Entity b) =>
         Vector3.Distance(world.Get<Transform>(a).LocalPosition, world.Get<Transform>(b).LocalPosition);
 
+    // The AI and physics debug views keep what they show in the visual log (issue #300): with vlog_record
+    // on, each agent's sight cone, its target and a line of what it is doing ("ai"), and each character's
+    // capsule and ground ("physics"), per tick — scrubbable back to the tick before it saw the player.
+    [Fact]
+    public void TheVisualLogKeepsWhatAnAgentSawAndWhereItStood()
+    {
+        using var engine = NewEngine();
+        var world = NewWorld(engine);
+        var creature = Creature(world, new Vector3(0, 0.1f, 0));   // placed facing -Z
+        var player = Player(world, new Vector3(0, 0.1f, -12));     // in front of it, in sight
+        Assert.True(engine.CVars.Execute("vlog_record 1"));
+
+        Tick(world, 60);
+
+        var log = world.VisualLog();
+        Assert.Contains("ai", log.Categories);
+        Assert.Contains("physics", log.Categories);
+
+        var now = new System.Collections.Generic.List<VisualLogEntry>();
+        log.CollectAt(log.NewestTick, now);
+        Assert.Contains(now, e => e.Category == "ai" && e.Shape == VisualShape.Cone && e.Entity == creature);
+        Assert.Contains(now, e => e.Category == "ai" && e.Shape == VisualShape.Line && e.Entity == creature);   // at the player
+        Assert.Contains(now, e => e.Category == "ai" && e.Entity == player);                                     // the cross on its target
+        Assert.Contains(now, e => e.Category == "ai" && e.Text != null && e.Text.Contains("target player"));
+        Assert.Contains(now, e => e.Category == "physics" && e.Shape == VisualShape.Capsule && e.Entity == creature && e.Text != null);
+
+        // The first tick is still there to scrub back to, with where it stood then.
+        Assert.Equal(1, log.OldestTick);
+        Assert.True(engine.CVars.Execute("vlog_at 1"));
+        var first = new System.Collections.Generic.List<VisualLogEntry>();
+        log.CollectAt(log.ShownTick, first);
+        Assert.All(first, e => Assert.Equal(1, e.Tick));
+        var then = Assert.Single(first, e => e.Category == "ai" && e.Shape == VisualShape.Cone);
+        var at = Assert.Single(now, e => e.Category == "ai" && e.Shape == VisualShape.Cone);
+        Assert.True(then.A.Z > at.A.Z + 1f, "it has chased the player since");
+    }
+
     [Fact]
     public void WithNothingToChaseItIdles()
     {

@@ -15,6 +15,8 @@ internal sealed class AIDebugSystem : ISystem
 {
     private readonly Query<Transform, AIState> _agents;
     private readonly DebugDraw _debug;
+    private readonly VisualLog _log;
+    private const string Category = "ai";
     private readonly RecordStore _records;
     private readonly World _world;
     private ActiveCamera? _camera;
@@ -29,6 +31,7 @@ internal sealed class AIDebugSystem : ISystem
     {
         _agents = world.Query<Transform, AIState>();
         _debug = world.Debug();
+        _log = world.VisualLog();
         _world = world;
         _records = records;
         _enabled = enabled;
@@ -43,7 +46,11 @@ internal sealed class AIDebugSystem : ISystem
 
     public void Run(in SystemContext ctx)
     {
-        if (!_enabled.Value || !_debug.Enabled) return;
+        // Drawn now with `ai_debug`, kept in the visual log with `vlog_record` ("ai", issue #300): the same
+        // shapes, so a decision can be scrubbed back to after the tick that made it has gone.
+        bool draw = _enabled.Value && _debug.Enabled;
+        bool record = _log.Recording;
+        if (!draw && !record) return;
         var world = ctx.World;
 
         foreach (var (transforms, states, entities) in _agents.Chunks)
@@ -55,13 +62,21 @@ internal sealed class AIDebugSystem : ISystem
                 if (OutOfRange(t[n].LocalPosition)) continue;
                 var profileId = s[n].Profile.IsEmpty ? world.Conventions().AiProfile.Id : s[n].Profile;
                 var profile = !profileId.IsEmpty && _records.TryGet(profileId, out AIProfileRecord found) ? found : Fallback;
-                Vector3 eye = t[n].LocalPosition + Vector3.UnitY * 1.4f;
+                Vector3 feet = t[n].LocalPosition;
+                Vector3 eye = feet + Vector3.UnitY * 1.4f;
+                Vector3 ground = feet + Vector3.UnitY * 0.05f;
                 float yaw = SageMath.YawOf(t[n].LocalRotation);
                 ulong conditions = s[n].Conditions;   // bits, not Enum.HasFlag: it boxes (R18)
+                var self = entities.EntityAt(n);
 
                 // The cone it can see through, on the ground, and how far it can see.
-                _debug.Cone(t[n].LocalPosition + Vector3.UnitY * 0.05f, yaw, profile.SightAngleDegrees,
-                            MathF.Min(profile.SightRange, 12f), DebugColour.Grey);
+                float sight = MathF.Min(profile.SightRange, 12f);
+                if (draw) _debug.Cone(ground, yaw, profile.SightAngleDegrees, sight, DebugColour.Grey);
+                if (record)
+                {
+                    _log.Cone(Category, ground, yaw, profile.SightAngleDegrees, sight, DebugColour.Grey, entity: self);
+                    _log.Point(Category, eye, Describe(world, s[n]), DebugColour.White, self, 0.1f);
+                }
 
                 // What it is after, if anything, and whether it thinks it can reach it.
                 if (!s[n].Target.IsNull && world.IsAlive(s[n].Target))
@@ -70,21 +85,40 @@ internal sealed class AIDebugSystem : ISystem
                     uint colour = Has(conditions, AICondition.EnemyInMeleeRange) ? DebugColour.Red
                         : Has(conditions, AICondition.SeeEnemy) ? DebugColour.Yellow
                         : DebugColour.Grey;
-                    _debug.Line(eye, target, colour);
-                    _debug.Cross(target, 0.2f, colour);
+                    if (draw)
+                    {
+                        _debug.Line(eye, target, colour);
+                        _debug.Cross(target, 0.2f, colour);
+                    }
+                    if (record)
+                    {
+                        _log.Line(Category, eye, target, colour, entity: self);
+                        _log.Point(Category, target, null, colour, s[n].Target);
+                    }
                 }
 
                 // Melee range as a ring, so "why is it standing there?" answers itself.
                 if (Has(conditions, AICondition.SeeEnemy))
-                    _debug.Circle(t[n].LocalPosition + Vector3.UnitY * 0.05f, Vector3.UnitX, Vector3.UnitZ,
-                                  profile.MeleeRange, DebugColour.Orange);
+                {
+                    if (draw) _debug.Circle(ground, Vector3.UnitX, Vector3.UnitZ, profile.MeleeRange, DebugColour.Orange);
+                    if (record) _log.Circle(Category, ground, profile.MeleeRange, DebugColour.Orange, entity: self);
+                }
 
                 // And the spell's reach for a caster, which is the other ring its decisions turn on
                 // (16 §3.4): inside it the agent casts or holds, outside it closes in.
                 if (!s[n].Spell.IsEmpty && _records.TryGet(s[n].Spell, out AbilityRecord spell))
-                    _debug.Circle(t[n].LocalPosition + Vector3.UnitY * 0.05f, Vector3.UnitX, Vector3.UnitZ,
-                                  spell.Range * 0.9f, DebugColour.Magenta);
+                {
+                    if (draw) _debug.Circle(ground, Vector3.UnitX, Vector3.UnitZ, spell.Range * 0.9f, DebugColour.Magenta);
+                    if (record) _log.Circle(Category, ground, spell.Range * 0.9f, DebugColour.Magenta, entity: self);
+                }
             }
         }
+    }
+
+    // The visual log's line about an agent: its schedule and task, what it is after and what it knows.
+    private static string Describe(World world, in AIState s)
+    {
+        string target = s.Target.IsNull || !world.IsAlive(s.Target) ? "no target" : "target " + World.Describe(s.Target);
+        return $"{(s.Schedule.IsEmpty ? "(no schedule)" : s.Schedule.ToString())} task {s.TaskIndex}, {target}, conditions 0x{s.Conditions:X}";
     }
 }
