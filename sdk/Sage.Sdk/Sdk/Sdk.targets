@@ -31,6 +31,11 @@
     <SageGameDirectory Condition="'$(SageGameDirectory)' == '' And Exists('$(MSBuildProjectDirectory)\game.json')">$(MSBuildProjectDirectory)</SageGameDirectory>
     <SageGameDirectory Condition="'$(SageGameDirectory)' != ''">$([System.IO.Path]::GetFullPath('$(SageGameDirectory)').TrimEnd('\').TrimEnd('/'))</SageGameDirectory>
 
+    <!-- A client half added later (sage-game-client, issue #297) is a project of its own in the game's Client/
+         folder: the game folder's project leaves its sources to it, and its dll to its own build's check below. -->
+    <_SageClientFolderProject Condition="'$(SageGameDirectory)' == '$(MSBuildProjectDirectory)' And Exists('$(MSBuildProjectDirectory)/Client')">$([System.IO.Directory]::GetFiles('$(MSBuildProjectDirectory)/Client', '*.csproj'))</_SageClientFolderProject>
+    <DefaultItemExcludes Condition="'$(_SageClientFolderProject)' != ''">$(DefaultItemExcludes);Client/**</DefaultItemExcludes>
+
     <!-- Where the host and the `sage` CLI are: the Player package's folder for this configuration, or
          this repository's build output. The package's also holds the engine a game compiles against. -->
     <SageHostDirectory Condition="'$(SageSdkFromPackage)' == 'true'">$(PkgSage_Player)\host\$(SageConfiguration)\</SageHostDirectory>
@@ -164,6 +169,8 @@
       <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Match($(_SageManifest), '"add"\s*:\s*\[[^\]]*\]'))</_SageNamedModules>
       <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedModules), '^"add"\s*:\s*\[|\]$', ''))</_SageNamedModules>
       <_SageNamedModules>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedModules), '\s*"([^"]*)"\s*,?', '$1;'))</_SageNamedModules>
+      <!-- The Client/ project's dll is built after this one, by that project, which checks it. -->
+      <_SageNamedModules Condition="'$(_SageClientFolderProject)' != ''">$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedModules), '(^|;)Client/[^;]*', '$1'))</_SageNamedModules>
       <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Match($(_SageManifest), '"kits"\s*:\s*\[[^\]]*\]'))</_SageNamedKits>
       <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedKits), '^"kits"\s*:\s*\[|\]$', ''))</_SageNamedKits>
       <_SageNamedKits>$([System.Text.RegularExpressions.Regex]::Replace($(_SageNamedKits), '\s*"([^"]*)"\s*,?', '$1;'))</_SageNamedKits>

@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -12,6 +13,8 @@ using System.Linq;
 //   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
 //   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook]
 //   sage cook <game> [--force] [--clean]
+//   sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]
+//   sage run <game> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]
 //
 // --mods names a mod (a folder with a mod.json) or a folder of mods; each mod.json is read, the mods are
 // ordered as the game would order them (dependencies, loadAfter, loadBefore, then the order given) and
@@ -38,6 +41,12 @@ using System.Linq;
 // cooked again (or removed with --clean), so an edit to the loose file is not seen until then. Up-to-date files
 // are skipped unless --force. game.json's "cook" says which textures are not block-compressed.
 //
+// `new` (issue #297) is `dotnet new` with the Sage.Templates templates by short name (game, game-data, game-client,
+// mod-data), and the steps a mod or a client half needs to fit the game --game names: a mod's schemas written and the
+// mod validated against the game, a client half's dll added to game.json. `run` builds a Sage.Sdk game and starts it
+// (`dotnet run`), or starts the host on a game folder with no project. Commands.cs has both; --dry-run prints the
+// command instead of running it. Their exit code is the command's.
+//
 // Exit codes: 0 clean (warnings allowed), 1 content errors, 2 a usage mistake.
 return args.Length == 0 ? Usage()
     : args[0] == "validate" ? Validate(args[1..])
@@ -45,6 +54,7 @@ return args.Length == 0 ? Usage()
     : args[0] == "mods" ? Mods(args[1..])
     : args[0] == "package" ? Package(args[1..])
     : args[0] == "cook" ? Cook(args[1..])
+    : args[0] == "run" ? Run(args[1..])
     : Usage();
 
 static int Usage()
@@ -54,7 +64,94 @@ static int Usage()
     Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook]");
     Console.Error.WriteLine("       sage cook <game folder> [--force] [--clean]");
+    Console.Error.WriteLine("       sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]");
+    Console.Error.WriteLine("       sage run <game folder> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]");
     return 2;
+}
+
+// `dotnet new sage-<template>`, then what the template needs from the game --game names.
+static int New(string[] args)
+{
+    if (Sage.Cli.NewRequest.Parse(args, out string? error) is not { } request)
+    {
+        Console.Error.WriteLine($"sage new: {error}. The templates (Sage.Templates):");
+        foreach (var (name, template, what) in Sage.Cli.NewRequest.Templates)
+            Console.Error.WriteLine($"  {name,-12} {template,-17} {what}");
+        return 2;
+    }
+
+    var command = request.Command();
+    if (request.DryRun)
+    {
+        Console.WriteLine(command);
+        if (request.ClientModulePath() is { } planned) Console.WriteLine($"then add \"{planned}\" to {Path.Combine(request.GameDirectory!, "game.json")}'s \"modules\": {{ \"add\" }}");
+        if (request.IsModData && request.GameDirectory != null) Console.WriteLine($"then sage schema and sage validate {request.GameDirectory} --mods {request.OutputDirectory ?? "(the new folder)"}");
+        return 0;
+    }
+    int code = Exec(command);
+    if (code != 0)
+    {
+        Console.WriteLine($"ERROR dotnet new {request.Template} failed. Is the template installed? dotnet new install Sage.Templates " +
+                          "(or a local feed's Sage.Templates.<version>.nupkg: tools/pack_sdk.sh in the engine's repository)");
+        return code;
+    }
+
+    if (request.ClientModulePath() is { } module)
+    {
+        string manifest = Path.Combine(request.GameDirectory!, "game.json");
+        string text = File.ReadAllText(manifest);
+        string added = Sage.Cli.GameJsonModules.Add(text, module);
+        if (added != text) File.WriteAllText(manifest, added);
+        Console.WriteLine(added != text ? $"{manifest}: \"modules\": {{ \"add\" }} now loads \"{module}\"" : $"{manifest} already loads \"{module}\"");
+        Console.WriteLine($"Build and start the game with: sage run {request.GameDirectory}");
+    }
+
+    if (request.IsModData && request.GameDirectory != null)
+    {
+        string? mod = request.OutputDirectory;
+        if (mod == null)
+        {
+            Console.WriteLine("WARN  no -o or -n: name the mod's folder to have its schemas written and it validated against the game");
+            return 0;
+        }
+        // The schemas its .vscode/settings.json maps data/ and mod.json onto, with the game's ids and the mod's own.
+        int schema = Schema(new[] { request.GameDirectory, "--mods", mod, "--out", Path.Combine(mod, "schemas") });
+        int validate = Validate(new[] { request.GameDirectory, "--mods", mod });
+        return Math.Max(schema, validate);
+    }
+    return 0;
+}
+
+// The game in the host: `dotnet run` on its Sage.Sdk project (which builds it), or the host with -game.
+static int Run(string[] args)
+{
+    if (Sage.Cli.RunRequest.Parse(args) is not { } request) return Usage();
+    if (request.Plan(Options.FindHost, out string? error) is not { } command)
+    {
+        Console.WriteLine($"ERROR {error}");
+        return 1;
+    }
+    Console.WriteLine(command);
+    return request.DryRun ? 0 : Exec(command);
+}
+
+// Starts a program with this console, waits for it and returns its exit code.
+static int Exec(Sage.Cli.ProcessPlan plan)
+{
+    var start = new ProcessStartInfo(plan.FileName) { UseShellExecute = false };
+    foreach (string arg in plan.Arguments) start.ArgumentList.Add(arg);
+    if (plan.WorkingDirectory != null) start.WorkingDirectory = plan.WorkingDirectory;
+    try
+    {
+        using var process = Process.Start(start)!;
+        process.WaitForExit();
+        return process.ExitCode;
+    }
+    catch (System.ComponentModel.Win32Exception ex)
+    {
+        Console.WriteLine($"ERROR could not start {plan.FileName}: {ex.Message}");
+        return 1;
+    }
 }
 
 static int Validate(string[] args)

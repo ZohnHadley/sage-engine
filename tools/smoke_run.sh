@@ -4,6 +4,7 @@
 #   tools/smoke_run.sh <host-output-dir> <game-dir> [seconds] [allowed-category ...]
 #   tools/smoke_run.sh --dotnet-run <game-dir> [seconds] [allowed-category ...]
 #   tools/smoke_run.sh --packaged <package-dir> [seconds] [allowed-category ...]
+#   tools/smoke_run.sh --sage-run <game-dir> [seconds] [allowed-category ...]
 #
 # The host is started under a virtual display (xvfb-run) with `+quit <seconds>`, so it boots the game,
 # runs the loop and shuts down on its own. The run fails if the host exits non-zero, writes a crash
@@ -19,13 +20,18 @@
 # --packaged runs a folder `sage package` wrote (issue #293): its ./Sage.Host with no -game, so the host finds
 # the game in the `game` folder beside it, as a player's would.
 #
+# --sage-run runs `sage run <game-dir>` (issue #297): `dotnet run` on the game's Sage.Sdk project (its Client/
+# one first), or the host on the folder. The `sage` is $SAGE_CLI, else this repository's Debug build.
+#
 # The log is found from what the host prints ("Log file ...", "user folder ..."), so it works wherever the
 # user folder is: <repo>/user/<game id>/logs for a dev build in this repository, the platform's app-data
 # folder otherwise.
 set -euo pipefail
 
 packaged=false
+sage_run=false
 if [ "$1" = "--dotnet-run" ]; then host_dir=; game_dir=$(cd "$2" && pwd)
+elif [ "$1" = "--sage-run" ]; then sage_run=true; host_dir=; game_dir=$(cd "$2" && pwd)
 elif [ "$1" = "--packaged" ]; then packaged=true; host_dir=$(cd "$2" && pwd); game_dir=$host_dir/game
 else host_dir=$1; game_dir=$(cd "$2" && pwd); fi
 seconds=${3:-3}
@@ -46,7 +52,11 @@ started=$(mktemp)   # crash reports newer than this are this run's
 trap 'rm -f "$out" "$started"' EXIT
 
 status=0
-if [ -z "$host_dir" ]; then
+if $sage_run; then
+    sage=${SAGE_CLI:-$(cd "$(dirname "$0")/.." && pwd)/src/Sage.Cli/bin/Debug/net8.0/sage}
+    timeout $((seconds + 600)) xvfb-run -a -s "-screen 0 1024x768x24" \
+        "$sage" run "$game_dir" -- "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 || status=$?
+elif [ -z "$host_dir" ]; then
     ( cd "$game_dir" && timeout $((seconds + 600)) xvfb-run -a -s "-screen 0 1024x768x24" \
         dotnet run -- "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
 else

@@ -114,6 +114,7 @@ jobs:
           )
           echo "dotnet test reported $count tests"
           python3 tools/check_docs.py --self-test
+          python3 -m unittest discover -s tools -p 'test_*.py'   # the checker's own tests (issue #298)
           # Docs are updated once per merged pack of issues, not in each issue's PR (owner, 2026-10-02):
           # an issue PR's quoted counts may be stale, so they are fixed in this checkout only and listed;
           # links, test citations and vocabulary still fail. A docs PR (a branch with "docs" in its name)
@@ -307,13 +308,21 @@ jobs:
           dotnet new install "$feed"/Sage.Templates.*.nupkg
           dotnet new sage-game -n MyGame -o "$games/MyGame" --feed "$feed"
           dotnet new sage-game-data -n MyData -o "$games/MyData" --feed "$feed"
-          dotnet new sage-mod-data -n MyMod -o "$games/MyMod" --game mygame
           ( cd "$games/MyGame" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
           ( cd "$games/MyData" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
+          sage=src/Sage.Cli/bin/Debug/net8.0/sage
+          # `sage new` (issue #297): the mod made for the built game, so its schemas are written into it (what its
+          # .vscode/settings.json maps data/ and mod.json onto) and it is validated against the game; then a client
+          # half added to the data-only game in its Client/ folder, game.json made to load it, and built.
+          $sage new mod-data -n MyMod -o "$games/MyMod" --game "$games/MyGame"
+          test -s "$games/MyMod/schemas/record.schema.json" && test -s "$games/MyMod/schemas/mod.schema.json"
+          grep -q '"game": "mygame"' "$games/MyMod/mod.json" || { echo "::error::sage new mod-data did not name the game"; exit 1; }
+          $sage new game-client --game "$games/MyData"
+          grep -q 'Client/bin/{config}/MyData.Client.dll' "$games/MyData/game.json" || { echo "::error::game.json does not load the client half"; exit 1; }
+          ( cd "$games/MyData/Client" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
           # The mod through its mod.json (phase 4j): validated with the game, and `sage mods` lists the order
           # and the report and exits 1 on a refused mod or a content error. Then the mod put where a game
           # finds its mods, and the game's own mods folder checked the same way.
-          sage=src/Sage.Cli/bin/Debug/net8.0/sage
           $sage validate "$games/MyGame" --mods "$games/MyMod"
           $sage mods "$games/MyGame" --mods "$games/MyMod" | tee "$games/mods.log"
           grep -q "1 mod(s) active, 0 refused" "$games/mods.log" || { echo "::error::the template mod was not loaded"; exit 1; }
@@ -335,7 +344,9 @@ jobs:
           rm "$games/MyGame/Simulation/Friflo.cs"
 
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_axis Move 0 1 2' tools/smoke_run.sh --dotnet-run "$games/MyGame" 4 Shaders Audio
-          tools/smoke_run.sh --dotnet-run "$games/MyData" 3 Shaders Audio Records Input
+          # The data-only game with its client half, through `sage run` (issue #297): `dotnet run` on Client/, which
+          # builds the game's own project too and starts the host on the game folder, the client half loaded.
+          tools/smoke_run.sh --sage-run "$games/MyData" 3 Shaders Audio Records Input
 
       # `sage package` (issue #293): the template game built in Shipping and packaged by the SDK's SagePackage
       # target, which runs the Player's own `sage package` on its Shipping host: the host, the game beside it in

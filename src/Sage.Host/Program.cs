@@ -14,13 +14,14 @@ using Sage.Host;
 Thread.CurrentThread.Name = "main";
 
 var launch = LaunchArgs.Parse(args);
+var options = HostOptions.From(launch);   // -game, -mods/-nomods, -dump-registry, -edit (HostOptions.cs)
 
 GameManifest manifest;
 try
 {
     // -game <folder>, else ./game beside the executable; without either it is an error that says so
     // (GameManifest.Locate): no build falls back to games/Sandbox any more (issue #32).
-    manifest = GameManifest.Load(GameManifest.Locate(launch.Options.GetValueOrDefault("game"), AppContext.BaseDirectory));
+    manifest = GameManifest.Load(GameManifest.Locate(options.Game, AppContext.BaseDirectory));
 }
 catch (Exception ex) when (ex is FileNotFoundException or InvalidDataException or FormatException)
 {
@@ -39,36 +40,15 @@ CrashReporter.Install();
 Log.Info(LogCat.Host, $"Sage {BuildInfo.EngineVersion} ({BuildInfo.Config}), game '{manifest.Name}' ({manifest.Id}), user folder {UserPaths.Root}");
 if (Log.File != null)
     Log.Info(LogCat.Host, $"Log file {Log.File.CurrentPath}");
-string[] knownOptions = { "game", "dump-registry", "mods", "nomods", "edit" };
-foreach (var option in launch.Options.Keys.Where(o => !knownOptions.Contains(o, StringComparer.OrdinalIgnoreCase)))
-    Log.Warn(LogCat.Host, $"Unknown launch option -{option} (ignored)");
-
-// Mods (phase 4j): found in the game's mods folder and user://mods unless named. `-mods <dir>[,<dir>]` loads
-// exactly those folders, in that order; `-nomods` loads none (a clean run, whatever is installed).
-IReadOnlyList<string>? namedMods = null;
-if (launch.Options.ContainsKey("nomods"))
-{
-    namedMods = Array.Empty<string>();
-    if (launch.Options.ContainsKey("mods")) Log.Warn(LogCat.Host, "-nomods and -mods together: -nomods wins, no mods load");
-}
-else if (launch.Options.TryGetValue("mods", out var modsOption))
-{
-    if (string.IsNullOrWhiteSpace(modsOption)) Log.Warn(LogCat.Host, "-mods needs folders, -mods <dir>[,<dir>] (ignored)");
-    else namedMods = modsOption.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                .Select(Path.GetFullPath).ToArray();
-}
-
-// -dump-registry <file>: boot, write everything registered as JSON (RegistryDump, issue #18) and quit.
-// Resolved against the directory it was typed in, before anything changes it.
-string? dumpRegistry = launch.Options.TryGetValue("dump-registry", out var dumpPath) && !string.IsNullOrEmpty(dumpPath)
-    ? Path.GetFullPath(dumpPath) : null;
-if (launch.Options.ContainsKey("dump-registry") && dumpRegistry == null)
-    Log.Warn(LogCat.Host, "-dump-registry needs a file name (ignored)");
+foreach (var warning in options.Warnings)
+    Log.Warn(LogCat.Host, warning);
+IReadOnlyList<string>? namedMods = options.Mods;
+string? dumpRegistry = options.DumpRegistry;
 
 // -edit [placements-or-scene]: the editor (phase 10a, issue #219). The app boots as it always does; then,
 // instead of the main world, the host makes an edit world from the document (Game1). A dev build only: a
 // Shipping host has no editor in it, so it says so and plays.
-string? edit = launch.Options.ContainsKey("edit") ? launch.Options["edit"] ?? "" : null;
+string? edit = options.Edit;
 #if !SAGE_DEV
 if (edit != null)
 {
